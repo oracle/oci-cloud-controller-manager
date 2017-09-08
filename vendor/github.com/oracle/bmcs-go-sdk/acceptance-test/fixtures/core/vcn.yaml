@@ -1,0 +1,660 @@
+---
+version: 1
+rwmutex: {}
+interactions:
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="GF/n5mqEqQvMkh5SF+Vob1D0mXN6mNZq7gpuctvO4nrLBzaAMknz6ED9E7xSzYS9kbo4BEWJovQuYBAZ8+YRkJWdOowALvUbGF30ofaBARbujCZ5aRewl31ebSY5kVwZD5lnTeG3ERV3gRJqzIUGVsbBsgDmNIUCfKycKJe0Y4LPbQzs9zDjWj1wHZu5Kpxdi43ovsWwDI4kWYb69m2oBbFCnMUS3Eqp5anMCHE3ud0pPSx6PtmepjH+G7VcFYEZzsNd2GuzRyPy2GmnEsoWX1xKKS/DwtrZdr+zBFzdmK04IREZUwYHVhvdgRTeNwX3+MDaRQVhsNoMsBP+WatWIw=="
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:45:00 GMT
+      Request-Number:
+      - "0"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://identity.us-phoenix-1.oraclecloud.com/20160918/compartments?compartmentId=ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta&limit=1
+    method: GET
+  response:
+    body: |-
+      [ {
+        "id" : "ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka",
+        "compartmentId" : "ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta",
+        "name" : "core-test-compartment",
+        "description" : "new desc",
+        "lifecycleState" : "ACTIVE",
+        "timeCreated" : "2017-02-03T10:12:54.513Z"
+      } ]
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - "348"
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:45:01 GMT
+      Opc-Limit:
+      - "1"
+      Opc-Next-Page:
+      - AAAAAAAAAAHVNWg_j7_k3zuXKETf5NEuWyvxIg36q-3uIBdMj3JqlmbBuNskG1NIl2xjMgLAjd54Wnkwtc5VpMFBaG9A-lO0vPbfVjLW8s6K22FJkjduwqLOo9iSSPDuq-Tj5fjLyhnGmA9m6AK1tHYZqk9f6Mwg3QqMWqgv11WqKPfxyOTIPGoGwlQcvpkPxxZBNdL0rl7DNwLKDfV3zImR3zigMz24RtyiNXph9rbyGfbUmsp4l5vXWOTtES1N4Tc6gp3xKzcqTCkUaMVpafUqY3jU6gO8dWUoKl4EtwoKFjDgf4UR0oUIWr8g00jEIBAbQMYD1UAQpt7lB6E4i1hZ-7QdmcF0vb-BBuAQ_e3Uhzw2bH84r6aJfAwclW_iSjsZc4ohcnXkQHZocgGx-35avQjKpTS44GUgrQPiweUOQQrEigVXbR0RyIHQQdD_Mw6J2SgXDAHa83gAa9BPr25wt_cXM1N9ZkzBm5KgnowgTnyerWmorzZ2S0oaguoj9m2vJ7qiMO7_0pWFaXIec_hUEdto7LldUCCqYPK1QyhSVEcA5vWiREzQdwqlr7ayyzToWoquh8xp94DKDDs1oxpwew==
+      Opc-Request-Id:
+      - /C2EA70E34A5F4D7DBA63AE70D7B4943A/901545BEE0734137950C1A155BF060F3
+    status: 200 OK
+    code: 200
+- request:
+    body: '{"cidrBlock":"172.16.0.0/16","compartmentId":"ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka","displayName":"vcn_MSc3Oe8H"}'
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target) content-length content-type x-content-sha256",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="ssDJ0MHF4rAErMLb1ly1itKISBRILXsPZ6gVq+ug9oF8sdjzU5iWm/RqUJqr6bgfso/YWrIJzEbzLQclPFer7cM/d37m4BRjD1fl17y5mgCh3r1z99y7sTiQ3MjRq1AF+bADgQYsO98pJM3oLvlxw+4z5YDvllKCg/i9cK2QOnZ8YZTmi+Odbc8NOA+xmvNgfAuRO+JLGpxNwKyL5ppoGWf0T3+I3mThtpMPhlqszegT8BmBFlunnG0WzW55LHF3sH+AiJqSLifozRGFbqXGVkUFT8uhc2YWESkhyimIeVCuXYoYzQACX+hmcqtgiagL1cBPG5/Ylc1RtOKJ9/Gg0Q=="
+      Content-Length:
+      - "160"
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:45:02 GMT
+      Opc-Retry-Token:
+      - retry_token_MSc3Oe8H
+      Request-Number:
+      - "1"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+      X-Content-Sha256:
+      - YMivq39OAOFeoi1w5BJLhHH3gmlcPZVxayBVuEtLVkE=
+      opc-retry-token:
+      - Kds3KsGmX5M0p9Z71tp1OraXqm8qi8
+    url: https://iaas.us-phoenix-1.oraclecloud.com/20160918/vcns?compartmentId=ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka
+    method: POST
+  response:
+    body: |-
+      {
+        "cidrBlock" : "172.16.0.0/16",
+        "compartmentId" : "ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka",
+        "defaultDhcpOptionsId" : "ocid1.dhcpoptions.oc1.phx.aaaaaaaahjkq7kulrkrraiz7gxdd4wpgxrmqojrzcjvna67pawztewlf3wza",
+        "defaultRouteTableId" : "ocid1.routetable.oc1.phx.aaaaaaaazcrcpzapg3ad3cnif3wcq3oa3mgljo62ztqki5serawossng7bkq",
+        "defaultSecurityListId" : "ocid1.securitylist.oc1.phx.aaaaaaaawoww32ob6lndpvtvvnaymq5f5jhm32d7vfuybs2rt3un27jlkm7q",
+        "displayName" : "vcn_MSc3Oe8H",
+        "id" : "ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq",
+        "lifecycleState" : "AVAILABLE",
+        "timeCreated" : "2017-07-24T20:45:02.912Z"
+      }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - "698"
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:45:03 GMT
+      Etag:
+      - 8ca01875
+      Opc-Request-Id:
+      - /33A6C9FE56D849D193EFB4EE74900F52/1AC57DEC384E4178AA063CAA7CAD4878
+    status: 200 OK
+    code: 200
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="hFUmvwTcg4YEHDRSx+gK3wVQHnvvlca9Ls6iF1uEiw8p+tkWKreFqdgCM0Nh9DxlGWKSLSmDYH37StFrZLy2C1EPb82Ipn8IG1SBE4OHDLiihNiIgBIWUwgUzgmEic5qlbk9rxaozpFOcM0OoyBIO7Dkx9UCfFcUQWBnujs8tzZd1ESeudynvqwr9v/kdnyLZdszPrXM5aUKeQMOT3TOQRImmKviy7NUvs/R5bvPLXFJCxuxxroI0zbbYT06B5CDs4R65ZU82RwTGtlYG0fchkv131xT8Yta3S/sCKxu07ST1Vxbya0SXulTKZ3mvbN1QklYX1LvbUQ8pbbdCUpOAg=="
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:45:03 GMT
+      Request-Number:
+      - "2"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://iaas.us-phoenix-1.oraclecloud.com/20160918/vcns/ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq
+    method: GET
+  response:
+    body: |-
+      {
+        "cidrBlock" : "172.16.0.0/16",
+        "compartmentId" : "ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka",
+        "defaultDhcpOptionsId" : "ocid1.dhcpoptions.oc1.phx.aaaaaaaahjkq7kulrkrraiz7gxdd4wpgxrmqojrzcjvna67pawztewlf3wza",
+        "defaultRouteTableId" : "ocid1.routetable.oc1.phx.aaaaaaaazcrcpzapg3ad3cnif3wcq3oa3mgljo62ztqki5serawossng7bkq",
+        "defaultSecurityListId" : "ocid1.securitylist.oc1.phx.aaaaaaaawoww32ob6lndpvtvvnaymq5f5jhm32d7vfuybs2rt3un27jlkm7q",
+        "displayName" : "vcn_MSc3Oe8H",
+        "id" : "ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq",
+        "lifecycleState" : "AVAILABLE",
+        "timeCreated" : "2017-07-24T20:45:02.912Z"
+      }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:45:04 GMT
+      Etag:
+      - 8ca01875--gzip
+      Opc-Request-Id:
+      - /F6454CE8D5A640C9BC32AEBAAAE0911D/10A5059704004E63B5D4534620366B4D
+      Vary:
+      - Accept-Encoding
+    status: 200 OK
+    code: 200
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="g636jktYBkiz/V+OxenHWAPhg/Cwnk39ZCKNDd9PI75PQ8Qdqw+APKdZyP7dLds11H16a6UJ1BdWyFxHee8ZndzMGVw0FpGRDmPY9mpYzaNO1Lb5ibUfEKxGZAaNBBsbQTdI5KnM3L7YXLv5ssfBI2uUXJJo8sJmNNRSzbZ4B01ZgykGkQGC/5WQ8UAoJpOMtCUjSWu5w+knvKfv3iU0mItAqLC+MqlGJe22MEpF3Uh5vIXVFQ6Hyb1qirn47VYHOKfmqThkiuyjO2mLNtIGDEQypljTnzXS6EitshVw90v80/mi3c1ns59P5cwQUF7xrVIIlciB25uv3QqvSYZ0ww=="
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:45:04 GMT
+      Request-Number:
+      - "3"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://iaas.us-phoenix-1.oraclecloud.com/20160918/vcns/ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq
+    method: GET
+  response:
+    body: |-
+      {
+        "cidrBlock" : "172.16.0.0/16",
+        "compartmentId" : "ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka",
+        "defaultDhcpOptionsId" : "ocid1.dhcpoptions.oc1.phx.aaaaaaaahjkq7kulrkrraiz7gxdd4wpgxrmqojrzcjvna67pawztewlf3wza",
+        "defaultRouteTableId" : "ocid1.routetable.oc1.phx.aaaaaaaazcrcpzapg3ad3cnif3wcq3oa3mgljo62ztqki5serawossng7bkq",
+        "defaultSecurityListId" : "ocid1.securitylist.oc1.phx.aaaaaaaawoww32ob6lndpvtvvnaymq5f5jhm32d7vfuybs2rt3un27jlkm7q",
+        "displayName" : "vcn_MSc3Oe8H",
+        "id" : "ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq",
+        "lifecycleState" : "AVAILABLE",
+        "timeCreated" : "2017-07-24T20:45:02.912Z"
+      }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:45:04 GMT
+      Etag:
+      - 8ca01875--gzip
+      Opc-Request-Id:
+      - /33ABDF691431467F812DD64B5CA3C2BB/E8DA0E32D8384F38A804B44548FE1744
+      Vary:
+      - Accept-Encoding
+    status: 200 OK
+    code: 200
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="GclMRLQouR6h68bn+oE0iodjebhu0BGVdRJ0P+7hmB0T/bdSGQOiCJ32UErPMBCCy441aPPKPXPS0ZwiuJjblPN6/tHEl6eQHAG9GlcKOsXHQ7TQGq/C0arKCHZ6REuyJrihQuXeIJTT/7erClEewL5l0w1IttfzonAEoCRdnC5+l+j+EUSEfCAvJAMUM7bT1yyG1CPRfSVRn03HFjmd9m404AeDMx3jGipdM0THAmsUZ/AYwe5/mbnWNI/iQ+JXTIUC/7DtsVh3BYCjZGL+ntvjVnUyxPUVUvfsU4q79wkkIouqAkVAW9djffezd5L8YUrVcU+jOGfeWCgeK3/X5A=="
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:45:04 GMT
+      Request-Number:
+      - "4"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://iaas.us-phoenix-1.oraclecloud.com/20160918/vcns/ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq
+    method: DELETE
+  response:
+    body: ""
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/octet-stream
+      Date:
+      - Mon, 24 Jul 2017 20:45:05 GMT
+      Opc-Request-Id:
+      - /E5E019D3D0664575AD383A123468CE14/0DD7D27215A34F3394DEF17C8672CA38
+    status: 204 No Content
+    code: 204
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="TpoMCJK3TdPaM5dV4S3eei2lQWd+bn7Vxg3QG1A7KxcuKaS6vULMtQ4YvfKpHSqP67l9KVTDZSJZl12iVwWg63+2hDXsSLZzVosQdd5gRLJUmhGK1fCOMsbr3gEWMxPEtTHJhxZb6Ky/saqdJXm/VGdf0N1SYSrOAGLHxDUKLqIkT52ItuHsCLjoG4dVM4Vvwws1gZhuj1AqEr+AB4nR46w0gwpThtrqDsc+At37DECf2PHzPwk8HLDzgItckv0/HjgWsmtMOQ5UE+tMVDchaWLZObwYDgG+SjfIzP70Es+KA7tVGDMWojB5lvfY35GEhYnJpaAzZ1QliKHeeZpmzA=="
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:45:05 GMT
+      Request-Number:
+      - "5"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://iaas.us-phoenix-1.oraclecloud.com/20160918/vcns/ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq
+    method: GET
+  response:
+    body: |-
+      {
+        "cidrBlock" : "172.16.0.0/16",
+        "compartmentId" : "ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka",
+        "defaultDhcpOptionsId" : "ocid1.dhcpoptions.oc1.phx.aaaaaaaahjkq7kulrkrraiz7gxdd4wpgxrmqojrzcjvna67pawztewlf3wza",
+        "defaultRouteTableId" : "ocid1.routetable.oc1.phx.aaaaaaaazcrcpzapg3ad3cnif3wcq3oa3mgljo62ztqki5serawossng7bkq",
+        "defaultSecurityListId" : "ocid1.securitylist.oc1.phx.aaaaaaaawoww32ob6lndpvtvvnaymq5f5jhm32d7vfuybs2rt3un27jlkm7q",
+        "displayName" : "vcn_MSc3Oe8H",
+        "id" : "ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq",
+        "lifecycleState" : "TERMINATING",
+        "timeCreated" : "2017-07-24T20:45:02.912Z"
+      }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:45:05 GMT
+      Etag:
+      - 8296f8c9--gzip
+      Opc-Request-Id:
+      - /5ED059D0D47646CB8C25ED1AC9B026C5/8B2090394E7C4F16AE291214CD480E4E
+      Vary:
+      - Accept-Encoding
+    status: 200 OK
+    code: 200
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="kANC2DU/10osM5PB2QuDPGsL6Il4H5u4yk7SAIpnZPYud+Czfikt4vyoMJgdZAhgPdHbTAgfzh+4s2DO0UjuEj0FvzjSWP9yp2NuBSJt2iss6WjU6v0Oz0D8ZxZcs3q8JWfyd+qn05j5XUJNbGt7Z+iKdxtbqAxeAoOp3t9bgtNbqK0zRLgnVIN5xawJu5pkSDq/VPNdCbrm2q9a/VKDLy6Ero0VhyHkvGYD83mAxi1tYIrbGbJTYcmdFL8OBzH0Qp+Pe2C7j5yMqtW5O472zFowXvTGMAyeyzge4Eh9EJ+lTD07xIXBFNK7mMZN6+epkaJPzJ/0lBEmtiqXkpQv+Q=="
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:45:08 GMT
+      Request-Number:
+      - "6"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://iaas.us-phoenix-1.oraclecloud.com/20160918/vcns/ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq
+    method: GET
+  response:
+    body: |-
+      {
+        "cidrBlock" : "172.16.0.0/16",
+        "compartmentId" : "ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka",
+        "defaultDhcpOptionsId" : "ocid1.dhcpoptions.oc1.phx.aaaaaaaahjkq7kulrkrraiz7gxdd4wpgxrmqojrzcjvna67pawztewlf3wza",
+        "defaultRouteTableId" : "ocid1.routetable.oc1.phx.aaaaaaaazcrcpzapg3ad3cnif3wcq3oa3mgljo62ztqki5serawossng7bkq",
+        "defaultSecurityListId" : "ocid1.securitylist.oc1.phx.aaaaaaaawoww32ob6lndpvtvvnaymq5f5jhm32d7vfuybs2rt3un27jlkm7q",
+        "displayName" : "vcn_MSc3Oe8H",
+        "id" : "ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq",
+        "lifecycleState" : "TERMINATING",
+        "timeCreated" : "2017-07-24T20:45:02.912Z"
+      }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:45:08 GMT
+      Etag:
+      - 8296f8c9--gzip
+      Opc-Request-Id:
+      - /B7B73B8030DC4164BE2C6501CEA0CFAA/5F6E239719F5414981D079CABD8B43C3
+      Vary:
+      - Accept-Encoding
+    status: 200 OK
+    code: 200
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="fVgvy2gwGn+Oy/s68g1/QsefN2ypct15hNYoPbnPw4H+NQmcqqTRGYgD4yNpB6i/LN8dL0slnkZFw1SZs8SIm4R+TIJgOFHSUZLd/ksWrIrFqYVEMSyJeObZO036Zgiws3mlCh5TCEvbHHbD6tTu5mL8Vh/KIrUHanXtLlQ0RUEAQQoVprZTL6DbjijppP8luRQwpvepv8dpu1VXj3Dt0EfL222bET9b1fNlrD3m9Co34ojjrin1jlah8Mw6gY4RXWQFeCovU4k5ilcKbqsMctrdH9PKf9pQmMlqiKGTI5E+k/h8XrnoOcPqGmwb0vcK6J9sRr2Xh5ZspIL0aeoGuQ=="
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:45:11 GMT
+      Request-Number:
+      - "7"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://iaas.us-phoenix-1.oraclecloud.com/20160918/vcns/ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq
+    method: GET
+  response:
+    body: |-
+      {
+        "cidrBlock" : "172.16.0.0/16",
+        "compartmentId" : "ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka",
+        "defaultDhcpOptionsId" : "ocid1.dhcpoptions.oc1.phx.aaaaaaaahjkq7kulrkrraiz7gxdd4wpgxrmqojrzcjvna67pawztewlf3wza",
+        "defaultRouteTableId" : "ocid1.routetable.oc1.phx.aaaaaaaazcrcpzapg3ad3cnif3wcq3oa3mgljo62ztqki5serawossng7bkq",
+        "defaultSecurityListId" : "ocid1.securitylist.oc1.phx.aaaaaaaawoww32ob6lndpvtvvnaymq5f5jhm32d7vfuybs2rt3un27jlkm7q",
+        "displayName" : "vcn_MSc3Oe8H",
+        "id" : "ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq",
+        "lifecycleState" : "TERMINATING",
+        "timeCreated" : "2017-07-24T20:45:02.912Z"
+      }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:45:11 GMT
+      Etag:
+      - 8d5b155a--gzip
+      Opc-Request-Id:
+      - /01C4DE956C324849967172EA14CE3308/AA45D0117D6047D98A52D36868A8FE7B
+      Vary:
+      - Accept-Encoding
+    status: 200 OK
+    code: 200
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="YLTn3VZaEle9TEyDJXio+f5MaUHj+ZFn0ht2O1ICtHfZsFwflncRDHDKkgKc/oP/HKr8rzCv1E/Zn6gkgJiiu71tQdSZWv6trqJJwuZlkzYXba4A6gpc7BrAb/1//mxc2IVl9HZmFrCuI3FE6VQFRXH6kSAZah9FIBAH3OX+TNxZ0vxrNwdkce4u+WaAIMZD6R7pgvC3d/lRNAGLAJKWBHV5OgWryPGsknVAhNt4p0Emh5EjrhdrkEhKFPid3ethWhiOKl/Qqy/X6uewyxI3kMCfpW9sA7UM7qMlnOr5L80Q667KzHETI7NsupIWyCVJ1vvn8zfYSnQmzTi4zkM3oQ=="
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:45:15 GMT
+      Request-Number:
+      - "8"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://iaas.us-phoenix-1.oraclecloud.com/20160918/vcns/ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq
+    method: GET
+  response:
+    body: |-
+      {
+        "code" : "NotAuthorizedOrNotFound",
+        "message" : "Either VCN with ID ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq does not exist or you are not authorized to access it."
+      }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - "210"
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:45:15 GMT
+      Opc-Request-Id:
+      - /82B3A7B5DEA64692824FE24D0558BBFC/655BD62148D540278E18236E4028BF15
+    status: 404 Not Found
+    code: 404
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="MynC/xJteWqCTckVZ112/AFeapdX+Lbci1xhn0Qj5PcCdDs4PM3fuY4GZNejdtBjIS6e/Yn7L9hAsdlsYwJ18WWSA3G/HqY8stvZP9OIPZkTnvttblFfqWTnGQtpPmwzRveAbHIpL0RsPIEU6IdwFXAJyx/lphKn0x/gUefLe9wQ9Z/Spzv8NWyhbPrp+VvBeNfPykSYCZ5umlngyv7sKESL+6oD2ie7qMJiSu2kAbvzduUH331lo/tPuhDq+aAZ3rYBYFDFDIUgsUtZSlp2lQkVmmIiKoRJlEi5NB17qbVF+VU9UXWQd4UEKLIBEGd5NP4NCInycY/1UpIg1C5IZw=="
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:45:16 GMT
+      Request-Number:
+      - "9"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://iaas.us-phoenix-1.oraclecloud.com/20160918/vcns/ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq
+    method: GET
+  response:
+    body: |-
+      {
+        "code" : "NotAuthorizedOrNotFound",
+        "message" : "Either VCN with ID ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq does not exist or you are not authorized to access it."
+      }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - "210"
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:45:16 GMT
+      Opc-Request-Id:
+      - /DE7C6151735A4B4BB01C86AEFF61F078/D4EB5B22545947F79C2B6AD9069812E2
+    status: 404 Not Found
+    code: 404
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="bfhGM2g7b7Kt3WBdLjnCxHKPpFW4Stjg6rL8bmBIyd5t8ZTmxca3zz4QmnOPgnhYK5fOaoQS75w3ktjiEofi80YixL2WucMhhk/n7q4ndDCSyAWP2FbGbBUMQsJemo6YAsiclHizOFtCVgQOpml+dDaIu8CLWkGDwLdzidvKaFKgqc7Sliulkh/pViwg4FB3OcdGBl9eIvnzg9BNnzUK1JZB77iAYfJUrMu/hDHiawGbi206IgGpClOgwe9tP4M0gWRncz+50ETprcDFgjNUWBZGKpud30dbYmj3N8Slsbei+Rw7Sn26PUBCyluFwXnVI/6KGttVc3DoCSfQsGvAzg=="
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:45:20 GMT
+      Request-Number:
+      - "10"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://iaas.us-phoenix-1.oraclecloud.com/20160918/vcns/ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq
+    method: GET
+  response:
+    body: |-
+      {
+        "code" : "NotAuthorizedOrNotFound",
+        "message" : "Either VCN with ID ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq does not exist or you are not authorized to access it."
+      }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - "210"
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:45:20 GMT
+      Opc-Request-Id:
+      - /0C90B24B9C3D4E1596D64E14EAA47793/DAFF68D085B441C583FAF3AA5DE51177
+    status: 404 Not Found
+    code: 404
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="LHzKCyzxElaxVKVkeutzEm0jF8+LUgDShoekrCv4YqCmLnVAigDuij4B78CnHmgFIn8aLOsbL/B9EiPNVv6DDvKPNqHKWdx7VsRocwAJG1as2w0VZbcCo5sUP26BHblv141Gdfj/jMtlwR502RtN9wfbefsjTg3RL+si+xlLHjmx547aQ/ecOJVQm68KcQoT+S5r9rAw4ikBfcq1sFFdzogwCTxlnlPU7OYb1lgcVmAxfwMcq/eEvkdv+btpsJZdBQD5kIP/MF97RwzR0r0nRPjJvOZNJ2KRTPh1aLHeNFngov3PmwGbf93p54YxNq95ACJhit5J95fb7RWJOZbftA=="
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:45:29 GMT
+      Request-Number:
+      - "11"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://iaas.us-phoenix-1.oraclecloud.com/20160918/vcns/ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq
+    method: GET
+  response:
+    body: |-
+      {
+        "code" : "NotAuthorizedOrNotFound",
+        "message" : "Either VCN with ID ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq does not exist or you are not authorized to access it."
+      }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - "210"
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:45:29 GMT
+      Opc-Request-Id:
+      - /84BC9A0710B64B878F7252100D6253EF/60B2CB1F11254BC49D9D7C8206160722
+    status: 404 Not Found
+    code: 404
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="Wh7IebUq6vtxwTRfzQH/wjY2PmZjS975dr29lAJ/7E5CIhwbYGM7SSRfLWjn/wSg0bkwOIyXtRUV+FukBJrmJuY3+1ThXAPmwCm1lxLLwO/cbGQ7sUizKbuWf1CkulTi0wTOoZS896TjkW99cuFKN1WWtCTAH8OPC0x0ZiuKUScHQmHMxKZQVtEbNBjYfVG/WghIB+Jgm13LbT8jJtpyb9T0a0iVch4tkF561srjXQToQma33MeHF92rciDSWG+5abfGz1mgVESL+b998vJUhcmTYMnmCLx3xhiYZa3wXsk+/xjt4dtO+ULYe8tF/aR6j9AdvOZ3byVofFDoXMD4wg=="
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:45:45 GMT
+      Request-Number:
+      - "12"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://iaas.us-phoenix-1.oraclecloud.com/20160918/vcns/ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq
+    method: GET
+  response:
+    body: |-
+      {
+        "code" : "NotAuthorizedOrNotFound",
+        "message" : "Either VCN with ID ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq does not exist or you are not authorized to access it."
+      }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - "210"
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:45:45 GMT
+      Opc-Request-Id:
+      - /7032AC5BB1F442ED957A5CA0E4092F7F/AB9547ACAB2543B8960930E412BCADC4
+    status: 404 Not Found
+    code: 404
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="S/cEr0M0tIwAnsK9sBPJoh3KVvn/a6bShaTHC0/xnj8d6v2Eim0k30YBUvHhYpyvTSUiVtapW8reBBl3Jelb9pMD8veX6U+ziCo/3edih8aZIWdtk+jXj3mjjtUw6u/gK6jq+x1fa4idc8o6bpyzcgE61IkPjmym3ln8Vq/PMv3yrY4r2SxPcOgwrW2KhWyTfJdOiuCZbpg2Vapr2Se469ysCgUthe4UKjF9XZRjOpB3vJtACMOzKZPP6U6aoetl8EsEHYCTKhnEW8ujtu39gEZjkcZW5WMUAbQSUwcKnaaqmNmAs+5fxlIWkbRutpvj9yD5sC2VF1GRMif48LNPkA=="
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:46:10 GMT
+      Request-Number:
+      - "13"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://iaas.us-phoenix-1.oraclecloud.com/20160918/vcns/ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq
+    method: GET
+  response:
+    body: |-
+      {
+        "code" : "NotAuthorizedOrNotFound",
+        "message" : "Either VCN with ID ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq does not exist or you are not authorized to access it."
+      }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - "210"
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:46:10 GMT
+      Opc-Request-Id:
+      - /61CD72080B81426C814F25D7C8B38EC1/1511BBF8B6DC4C358596CAC2FA2D27D5
+    status: 404 Not Found
+    code: 404
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="Xuo4rFi+YdPo6/J7EpBs4eiAVMbHECLHRXnbx+38BjwAgjv4sIimt5H7NiW3+Gi5clw2sLTqCpOKS3rG4N9v6RBQ8as/63BRJkGk8S8woGVaoHxvs2wB9BxZcJUekHRj/jl+aMoqcxMSOOkGJEA8hiO5CxZDIg48C+8qdalK0VbpzGFTUCEseF0zrvD3yfQvnU9OwtFN/0IofNGM6rbFCNburyNvZM3y39dh0exWRX77mWkJbVGwrAVrfhue2Tcam4L2LjCdslK33Xv/4DgugpaY9HQp0I36SjUu4cig+/KIyKgAD+H8/bHQJhfcf2n6+M7swcfZsI9VcOufHfpmFA=="
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:46:46 GMT
+      Request-Number:
+      - "14"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://iaas.us-phoenix-1.oraclecloud.com/20160918/vcns/ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq
+    method: GET
+  response:
+    body: |-
+      {
+        "code" : "NotAuthorizedOrNotFound",
+        "message" : "Either VCN with ID ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq does not exist or you are not authorized to access it."
+      }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - "210"
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:46:46 GMT
+      Opc-Request-Id:
+      - /850B3DF8B5704C3EB2FDDEC6786EFFC3/325E11FCFC2C4400BACE4E1D2D370533
+    status: 404 Not Found
+    code: 404
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="UP56ydgh9nuCxVGuexUd74APLH+QeCD0n34IkciC/SKz+7Urrt0YoBBI121dYpZNFor8UjjtZLSGrPfseJUU4SPfhdwts8L0SPqMA7pH4s7YP3lDFI+yhGjsK/8UHxmiJP4YdmjssZpHKG/sFBapBAs3IXW5ATuOyGA97zTL8GcaB8qEtRWukqdAPKxtiro1Clc7mgX078XZxEMcVdi62ASjQhnY8boIs5KMe8EU4JEqcLKV7fPe9WpZ7xxscc+Ek3Cf7Lpkvuz10h4au3UU+A7gn/T+k6zRFT43lxLiJ1Ashs5fZpwo9esNzyHU3QeNhOTENYne/VBv/GzlT2UkuQ=="
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:47:15 GMT
+      Request-Number:
+      - "15"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://iaas.us-phoenix-1.oraclecloud.com/20160918/vcns/ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq
+    method: GET
+  response:
+    body: |-
+      {
+        "code" : "NotAuthorizedOrNotFound",
+        "message" : "Either VCN with ID ocid1.vcn.oc1.phx.aaaaaaaagincxa7uvqs7ehwr3dimvhfisv22ry23lojqrqm2g2jzh4sjt3jq does not exist or you are not authorized to access it."
+      }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - "210"
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 24 Jul 2017 20:47:16 GMT
+      Opc-Request-Id:
+      - /0B1C10981D994211A64BECBD85B285B8/924776FEF64E422B8B38CE29F37702AA
+    status: 404 Not Found
+    code: 404

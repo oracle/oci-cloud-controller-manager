@@ -1,0 +1,47 @@
+---
+version: 1
+rwmutex: {}
+interactions:
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/71:58:06:91:46:b8:7b:8f:27:20:58:ba:a9:86:fd:ed",algorithm="rsa-sha256",signature="EcL3EKwrnTi9pllkT0vnHXGYxg5G3e912v/rZXpfvmqXSbSjLfE+Y/2JcBLuaoWzYRt9jv5S2JfcvZfFjGxwtXQ8ovegZQlVuHitOKbXrcOnYjqeyGXhtNUuBSvlcH2GA9mAtN+rvf+jH2Hq+oGZ9ZknPmJi3t0YXHeOxxFVhwBYdoHnIZ/BJh7sSaNjvWYB1svKeHVyaXlJWHx4+nth4mVPhlPyEHuxsR/MWQSqOXdVT75UbTtqih1sIBhGHPYPxvr2gboipcoSZP/3KdHlpCIK8W7yS1wjDjEo4BiVcW4QR08P4BRosklgooqAVmBx9HFLRZJm94D43VAmduJayg=="
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 03 Mar 2017 22:51:26 GMT
+      Request-Number:
+      - "0"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://identity.us-phoenix-1.oraclecloud.com/20160918/availabilityDomains?compartmentId=ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka
+    method: GET
+  response:
+    body: |-
+      [ {
+        "compartmentId" : "ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka",
+        "name" : "uGEq:PHX-AD-1"
+      }, {
+        "compartmentId" : "ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka",
+        "name" : "uGEq:PHX-AD-2"
+      }, {
+        "compartmentId" : "ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka",
+        "name" : "uGEq:PHX-AD-3"
+      } ]
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - "419"
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 03 Mar 2017 22:51:26 GMT
+      Opc-Request-Id:
+      - /BB191849211D4152B340A8E772E0D102/C0A97C9D8C2B49019842155622CF785D
+    status: 200 OK
+    code: 200

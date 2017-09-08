@@ -1,0 +1,49 @@
+---
+version: 1
+rwmutex: {}
+interactions:
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/71:58:06:91:46:b8:7b:8f:27:20:58:ba:a9:86:fd:ed",algorithm="rsa-sha256",signature="hTxe1/9iN8LVX20lE34SaqFlhgpu9oRxi2E3ybOEOnkSgU80dwYlXGdjL03CSzO4Q8Qb2FnnSfDVPoPJKMGMyOt9uS+GFbvOf2SkHO9Qo3NGMcBeuEPs9BrNAeGM9fqAKwfdebsik5CY9emVBlMEZs0z1zVGiobyF7lI3fOLDkeloAWbA67as7gSb1QIBjK4iI1cFa3FIjy5jGcp2UB/WgyQJ4JLJzA4KMMzKAuNzkcS11KYEPJH4wU5uKKvoY/VKxL2WViwKo3Mv73iQBHbbH3Dopzx3xmTAZOJoK7NLtk+2IQr+MELi7XcR5JRW+pMvUX+e/TmAcYvn03G733WQA=="
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 27 Jun 2017 00:07:15 GMT
+      Request-Number:
+      - "0"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://identity.us-phoenix-1.oraclecloud.com/20160918/compartments?compartmentId=ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta&limit=1
+    method: GET
+  response:
+    body: |-
+      [ {
+        "id" : "ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka",
+        "compartmentId" : "ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta",
+        "name" : "core-test-compartment",
+        "description" : "new desc",
+        "lifecycleState" : "ACTIVE",
+        "timeCreated" : "2017-02-03T10:12:54.513Z"
+      } ]
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - "348"
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 27 Jun 2017 00:07:15 GMT
+      Opc-Limit:
+      - "1"
+      Opc-Next-Page:
+      - AAAAAAAAAAEZs00aD8EQYDoP807y03r964jlHeQioSCL-U4GV_LaeTq_CQ4HSl_owrJd8ychZUvCnedbUz5a0g0ZKJ7JYg9gMhvTenSZYjGr3uF1Jw2TyP8tQnL2H1TQkLlqWuqv4ygJReU3pd0G0Lz3MWHCCD9v1Ukr5g5t79V-7MxIcO--pToABK97BKBw62JrXh6pxCPGSB3r0fcqjDhRxPL0TGTpCGE8wXRwPzOal8YYJiHDCbso6VvSY-oKJj6ZnUy05-wsABgNNeOuk5jRgT_YkpfQRb-aR5-uKYUzPutkG6HbHF7ZvEnD5HqmFC5gMvurI5MMsz3UB0S7mGj99j1vfYvvOOvxpoChylZG-Vq-G6RGV7ZGW05SsV1V4TFlORDd90VHT8-c8gBJXwIEGikxDzjhT63jjOVGJB3TsMNz6SMScVfmDvER3wdnK_2XC3a0kvdlbfeo5HGQH2FhMwQZ1BddSTJEPsWS_N-Hn3wxwbbNNf0gyS8MYiUzT0arEApOD1fai6hWT-vfp5o-53yNKCCAAN7sZeCdRlZOd9D7T_lw_DY6c2g7BVLe02o_9nTBEETDrbEh3_hIzNyHhA==
+      Opc-Request-Id:
+      - /94A69E09112F4D2CAD1BC5A781A1B0F8/4C08BD6369C34D7481602FEFB81AA64A
+    status: 200 OK
+    code: 200

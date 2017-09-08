@@ -1,0 +1,19 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: bmcs-cloud-controller-manager-config
+  namespace: bmcs
+  labels:
+    app: bmcs-cloud-controller-manager
+data:
+  cloud-config.cfg: |
+    [Global]
+    user = ocid1.user.oc1..aaaaaaaa3p67n2kmpxnbcnffjow6j5bhe6jze3obob3cjdctfftyfd4zou2q
+    fingerprint = a4:bb:34:43:54:c5:af:a5:4b:23:ce:82:2d:7f:12:45
+    key-file = /etc/pem/bmcs_api_key.pem
+    tenancy = ocid1.tenancy.oc1..aaaaaaaaxf3fuazosc6xng7l75rj6uist5jb6ken64t3qltimxnkymddqbma
+    compartment = ocid1.compartment.oc1..aaaaaaaae7u43snbtdlkzk5rbt7eutvxkljrlnal4d3u7x4jycd4ur4jbjga
+    region = us-ashburn-1
+    [LoadBalancer]
+    subnet1 = ocid1.subnet.oc1.iad.aaaaaaaa3pbojtbylqvido7njjyl2ol6ho5ymeukfa5ggzz7lnafhufb53dq
+    subnet2 = ocid1.subnet.oc1.iad.aaaaaaaapcrxkvrngmq4djdgjwprzpgcmavvf6mr3z5m3sva2chxqsdemgnq

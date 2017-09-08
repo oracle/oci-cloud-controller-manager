@@ -1,0 +1,36 @@
+# Ignore env
+env.sh
+
+# Ignore builds
+dist/
+.go/
+.container-*
+.push-*
+.dockerfile-amd64
+bin/
+
+# Binaries for programs and plugins
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binary, build with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
+.glide/
+
+cloud-provider.cfg
+manifests/bmcs-config.yaml
+manifests/bmcs-secret.yaml
+vendors.txt
+
+# vim
+*.sw[op]
+
+# OSX
+.DS_Store

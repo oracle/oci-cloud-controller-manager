@@ -1,0 +1,43 @@
+---
+version: 1
+rwmutex: {}
+interactions:
+- request:
+    body: '{"displayName":"vcn2"}'
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target) content-length content-type x-content-sha256",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/71:58:06:91:46:b8:7b:8f:27:20:58:ba:a9:86:fd:ed",algorithm="rsa-sha256",signature="FNitg2zktNBMVF030NLUJa0AG2K+x7652Ekv0j0cEidLtQUKKYu3exVKzU1dDIn+B0vHRZQz1dbmHmkFhua1s6tPjCykPxIPIUY2C5103yDmlST7uHRSm3fXU+KwnXYJ810x9F5+s4J3jn75+TN+dF43r2Hq5uvZc6JqKv46gmVni/wag+royUkZT4kx7PCMtjbegzynZGsHqljnx2BIGc/CeLbitxL5DAjlXj4Pot7lnBALjl2JROtFaimc0tGBZcKC49fs8KGW3+qAj1jp6jeLVC+aC4FbMn2QI6JkCkdMfPJ1y8rloaXZd5R5u/nWBxxNsYT7dMioskZE8x3Dsw=="
+      Content-Length:
+      - "22"
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 03 Feb 2017 10:34:54 GMT
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+      X-Content-Sha256:
+      - ExdISKlFmPcwcAR/tugiKCZHW39p3nb2S4CVKOr73IA=
+    url: https://core.us-az-phoenix-1.OracleIaaS.com/20160918/vcns/ocid1.vcn.oc1.phx.aaaaaaaaozb3fsxuzgdc6ufbdpwzusij4c7bvx5l6tkqhjnr6xhsu6dlgu3q
+    method: PUT
+  response:
+    body: |-
+      {
+        "code" : "IncorrectState",
+        "message" : "The existing VCN with ID ocid1.vcn.oc1.phx.aaaaaaaaozb3fsxuzgdc6ufbdpwzusij4c7bvx5l6tkqhjnr6xhsu6dlgu3q has a conflicting state of TERMINATING."
+      }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - "192"
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 03 Feb 2017 10:34:54 GMT
+      Opc-Request-Id:
+      - /8ECEA6BF520D4F14A193938C5BE83599/36F4E827D9D14B22B7FF31A4513865EB
+    status: 409 Conflict
+    code: 409
