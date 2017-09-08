@@ -24,7 +24,7 @@ import (
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/controller"
 
-	"gitlab-odx.oracle.com/odx/bmc-cloud-controller-manager/pkg/bmcs/client"
+	"github.com/oracle/kubernetes-cloud-controller-manager/pkg/bmcs/client"
 )
 
 // ProviderName uniquely identifies the Oracle Bare Metal Cloud Services (BMCS)

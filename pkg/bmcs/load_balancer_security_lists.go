@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"gitlab-odx.oracle.com/odx/bmc-cloud-controller-manager/pkg/bmcs/client"
+	"github.com/oracle/kubernetes-cloud-controller-manager/pkg/bmcs/client"
 
 	"k8s.io/apimachinery/pkg/util/sets"
 

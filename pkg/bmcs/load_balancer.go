@@ -18,7 +18,7 @@ import (
 	"errors"
 	"fmt"
 
-	"gitlab-odx.oracle.com/odx/bmc-cloud-controller-manager/pkg/bmcs/client"
+	"github.com/oracle/kubernetes-cloud-controller-manager/pkg/bmcs/client"
 
 	"github.com/golang/glog"
 

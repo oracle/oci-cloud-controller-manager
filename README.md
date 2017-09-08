@@ -3,8 +3,6 @@
 This project is an exernal Kubernetes cloud provider for Oracle's Bare Metal
 Cloud (BMCS).
 
-[![build status](https://gitlab-odx.oracle.com/odx/bmc-cloud-controller-manager/badges/master/build.svg)](https://gitlab-odx.oracle.com/odx/bmc-cloud-controller-manager/commits/master)
-
 ## Introduction
 
 External cloud providers were introduced as an _Alpha_ feature in Kubernetes
@@ -49,4 +47,4 @@ See [DEVELOPMENT.md](docs/development.md).
 If you need support, start with the documentation. If you still have problems
 [raise an issue][1] or contact odx_kubernetes_gb_grp@oracle.com.
 
-[1]: https://gitlab-odx.oracle.com/odx/bmc-cloud-controller-manager/issues/new?issue%5Bassignee_id%5D=&issue%5Bmilestone_id%5D=
+[1]: https://github.com/oracle/kubernetes-cloud-controller-manager/issues/new?issue%5Bassignee_id%5D=&issue%5Bmilestone_id%5D=

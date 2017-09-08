@@ -30,7 +30,7 @@ import (
 	_ "k8s.io/kubernetes/pkg/version/prometheus" // for version metric registration
 	"k8s.io/kubernetes/pkg/version/verflag"
 
-	"gitlab-odx.oracle.com/odx/bmc-cloud-controller-manager/pkg/bmcs"
+	"github.com/oracle/kubernetes-cloud-controller-manager/pkg/bmcs"
 
 	"github.com/golang/glog"
 	"github.com/spf13/pflag"

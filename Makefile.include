@@ -1,3 +1,3 @@
 BIN := bmcs-cloud-controller-manager
-PKG := gitlab-odx.oracle.com/odx/bmc-cloud-controller-manager
+PKG := github.com/oracle/kubernetes-cloud-controller-manager
 REGISTRY := registry.oracledx.com/skeppare

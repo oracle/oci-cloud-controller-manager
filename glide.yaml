@@ -1,4 +1,4 @@
-package: gitlab-odx.oracle.com/odx/bmc-cloud-controller-manager
+package: github.com/oracle/kubernetes-cloud-controller-manager
 import:
 - package: k8s.io/kubernetes
   version: master
