@@ -20,10 +20,11 @@ import (
 	"fmt"
 	"io"
 
+	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
+
 	"github.com/golang/glog"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/controller"
 
@@ -36,9 +37,10 @@ const ProviderName = "bmcs"
 
 // CloudProvider is an implementation of the cloud-provider interface for BMCS.
 type CloudProvider struct {
-	client     client.Interface
-	config     *client.Config
-	kubeclient clientset.Interface
+	client              client.Interface
+	kubeclient          clientset.Interface
+	securityListManager securityListManager
+	config              *client.Config
 }
 
 // Compile time check that CloudProvider implements the cloudprovider.Interface
@@ -60,7 +62,11 @@ func NewCloudProvider(cfg *client.Config) (cloudprovider.Interface, error) {
 		return nil, err
 	}
 
-	return &CloudProvider{client: c, config: cfg}, nil
+	return &CloudProvider{
+		client:              c,
+		config:              cfg,
+		securityListManager: newSecurityListManager(c),
+	}, nil
 }
 
 func init() {

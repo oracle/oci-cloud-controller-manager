@@ -15,23 +15,18 @@
 package bmcs
 
 import (
-	"errors"
 	"fmt"
-	"strconv"
-	"strings"
 
 	"github.com/oracle/kubernetes-cloud-controller-manager/pkg/bmcs/client"
 
 	"github.com/golang/glog"
 
+	baremetal "github.com/oracle/bmcs-go-sdk"
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
-	"k8s.io/kubernetes/pkg/cloudprovider"
 	k8sports "k8s.io/kubernetes/pkg/master/ports"
-
-	baremetal "github.com/oracle/bmcs-go-sdk"
 )
 
 const (
@@ -66,147 +61,6 @@ const (
 	lbNodesHealthCheckPort  = k8sports.ProxyHealthzPort
 	lbNodesHealthCheckProto = "HTTP"
 )
-
-const (
-	sslCertificateFileName = "tls.crt"
-	sslPrivateKeyFileName  = "tls.key"
-)
-
-// LBSpec holds the data required to build a BMCS load balancer from a
-// kubernetes service.
-type LBSpec struct {
-	Name    string
-	Shape   string
-	Service *api.Service
-	NodeIPs []string
-	Subnets []string
-}
-
-// NewLBSpec creates a LB Spec from a kubernetes service and a slice of nodes.
-func NewLBSpec(cp *CloudProvider, service *api.Service, nodeIPs []string) (LBSpec, error) {
-	if err := validateProtocols(service.Spec.Ports); err != nil {
-		return LBSpec{}, err
-	}
-
-	if service.Spec.SessionAffinity != api.ServiceAffinityNone {
-		return LBSpec{}, errors.New("BMCS only supports SessionAffinity `None` currently")
-	}
-
-	if service.Spec.LoadBalancerIP != "" {
-		return LBSpec{}, errors.New("BMCS does not support setting the LoadBalancerIP")
-	}
-
-	internalLB := false
-	internalAnnotation := service.Annotations[ServiceAnnotationLoadBalancerInternal]
-	if internalAnnotation != "" {
-		internalLB = true
-	}
-
-	if internalLB {
-		return LBSpec{}, fmt.Errorf("BMCS does not currently support internal load balancers")
-	}
-
-	// TODO (apryde): We should detect when this changes and WARN as we don't
-	// support updating a load balancer's Shape.
-	lbShape := service.Annotations[ServiceAnnotationLoadBalancerShape]
-	if lbShape == "" {
-		lbShape = lbDefaultShape
-	}
-
-	// TODO (apryde): What happens if this changes?
-	subnet1, ok := service.Annotations[ServiceAnnotationLoadBalancerSubnet1]
-	if !ok {
-		subnet1 = cp.config.LoadBalancer.Subnet1
-	}
-	subnet2, ok := service.Annotations[ServiceAnnotationLoadBalancerSubnet2]
-	if !ok {
-		subnet2 = cp.config.LoadBalancer.Subnet2
-	}
-
-	return LBSpec{
-		Name:    deriveLoadBalancerName(service),
-		Shape:   lbShape,
-		Service: service,
-		NodeIPs: nodeIPs,
-		Subnets: []string{subnet1, subnet2},
-	}, nil
-}
-
-func getBackendSetName(protocol string, port int) string {
-	return fmt.Sprintf("%s-%d", protocol, port)
-}
-
-// GetBackendSets builds a map of BackendSets based on the LBSpec.
-// TODO (apryde): Can/should we support SSL config here?
-// NOTE (apryde): Currently adds a node health-check per service port as
-// BackendSets and HealthCheckers are coupled.
-func (s *LBSpec) GetBackendSets() map[string]baremetal.BackendSet {
-	backendSets := make(map[string]baremetal.BackendSet)
-	for _, servicePort := range s.Service.Spec.Ports {
-		name := getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
-		backendSet := baremetal.BackendSet{
-			Name:          name,
-			Policy:        client.DefaultLoadBalancerPolicy,
-			Backends:      []baremetal.Backend{},
-			HealthChecker: s.getHealthChecker(),
-		}
-		for _, ip := range s.NodeIPs {
-			backendSet.Backends = append(backendSet.Backends, baremetal.Backend{
-				IPAddress: ip,
-				Port:      int(servicePort.NodePort),
-				Weight:    1,
-			})
-		}
-		backendSets[name] = backendSet
-	}
-	return backendSets
-}
-
-func (s *LBSpec) getHealthChecker() *baremetal.HealthChecker {
-	path, port := apiservice.GetServiceHealthCheckPathPort(s.Service)
-	if path != "" {
-		return &baremetal.HealthChecker{
-			Protocol: lbNodesHealthCheckProto,
-			URLPath:  path,
-			Port:     int(port),
-		}
-	}
-
-	return &baremetal.HealthChecker{
-		Protocol: lbNodesHealthCheckProto,
-		URLPath:  lbNodesHealthCheckPath,
-		Port:     lbNodesHealthCheckPort,
-	}
-}
-
-// getSSLEnabledPorts returns a set (implemented as a map) of port numbers for
-// which we need to enable SSL on the corresponding listener.
-func getSSLEnabledPorts(annotations map[string]string) (map[int]bool, error) {
-	sslPortsAnnotation, ok := annotations[ServiceAnnotationLoadBalancerSSLPorts]
-	if !ok {
-		return nil, nil
-	}
-
-	sslPorts := make(map[int]bool)
-	for _, sslPort := range strings.Split(sslPortsAnnotation, ",") {
-		i, err := strconv.Atoi(strings.TrimSpace(sslPort))
-		if err != nil {
-			return nil, fmt.Errorf("parse SSL port: %v", err)
-		}
-		sslPorts[i] = true
-	}
-	return sslPorts, nil
-}
-
-// parseSecretString returns the secret name and secret namespace from the
-// given secret string (taken from the ssl annotation value).
-func parseSecretString(secretString string) (string, string) {
-	fields := strings.Split(secretString, "/")
-	if len(fields) >= 2 {
-		return fields[0], fields[1]
-	}
-	return "", secretString
-}
 
 func (cp *CloudProvider) readTLSSecret(secretString, serviceNS string) (cert, key string, err error) {
 	ns, name := parseSecretString(secretString)
@@ -263,83 +117,6 @@ func (cp *CloudProvider) ensureSSLCertificate(name string, svc *api.Service, lb 
 	return nil
 }
 
-// GetSSLConfig builds a map of SSL configuration per listener port based on
-// the LBSpec.
-func (s *LBSpec) GetSSLConfig(certificateName string) (map[int]*baremetal.SSLConfiguration, error) {
-	sslConfigMap := make(map[int]*baremetal.SSLConfiguration)
-
-	sslEnabledPorts, err := getSSLEnabledPorts(s.Service.ObjectMeta.Annotations)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(sslEnabledPorts) == 0 {
-		glog.V(4).Infof("No SSL enabled ports found")
-		return sslConfigMap, nil
-	}
-
-	for _, servicePort := range s.Service.Spec.Ports {
-		port := int(servicePort.Port)
-		if _, ok := sslEnabledPorts[port]; ok {
-			sslConfigMap[port] = &baremetal.SSLConfiguration{
-				CertificateName:       certificateName,
-				VerifyDepth:           0,
-				VerifyPeerCertificate: false,
-			}
-		}
-	}
-	return sslConfigMap, nil
-}
-
-func sslEnabled(sslConfigMap map[int]*baremetal.SSLConfiguration) bool {
-	return len(sslConfigMap) > 0
-}
-
-func getListenerName(protocol string, port int, sslConfig *baremetal.SSLConfiguration) string {
-	if sslConfig != nil {
-		return fmt.Sprintf("%s-%d-%s", protocol, port, sslConfig.CertificateName)
-	}
-	return fmt.Sprintf("%s-%d", protocol, port)
-}
-
-// GetListeners builds a map of listeners based on the LBSpec.
-func (s *LBSpec) GetListeners(sslConfigMap map[int]*baremetal.SSLConfiguration) map[string]baremetal.Listener {
-	listeners := make(map[string]baremetal.Listener)
-	for _, servicePort := range s.Service.Spec.Ports {
-		protocol := string(servicePort.Protocol)
-		port := int(servicePort.Port)
-		sslConfig := sslConfigMap[port]
-		name := getListenerName(protocol, port, sslConfig)
-		listener := baremetal.Listener{
-			Name: name,
-			DefaultBackendSetName: getBackendSetName(string(servicePort.Protocol), int(servicePort.Port)),
-			Protocol:              protocol,
-			Port:                  port,
-			SSLConfig:             sslConfig,
-		}
-		listeners[name] = listener
-	}
-	return listeners
-}
-
-func deriveLoadBalancerName(service *api.Service) string {
-	return fmt.Sprintf("%s-%s", service.Name, cloudprovider.GetLoadBalancerName(service))
-}
-
-// Extract a list of all the external IP addresses for the available Kubernetes nodes
-// Each node IP address must be added to the backend set
-func extractNodeIPs(nodes []*api.Node) []string {
-	nodeIPs := []string{}
-	for _, node := range nodes {
-		for _, nodeAddr := range node.Status.Addresses {
-			if nodeAddr.Type == api.NodeInternalIP {
-				nodeIPs = append(nodeIPs, nodeAddr.Address)
-			}
-		}
-	}
-	return nodeIPs
-}
-
 // GetLoadBalancer returns whether the specified load balancer exists, and if
 // so, what its status is.
 func (cp *CloudProvider) GetLoadBalancer(clusterName string, service *api.Service) (status *api.LoadBalancerStatus, exists bool, retErr error) {
@@ -363,6 +140,10 @@ func (cp *CloudProvider) GetLoadBalancer(clusterName string, service *api.Servic
 	}
 
 	return lbStatus, true, nil
+}
+
+func getCertificateName(lb *baremetal.LoadBalancer) string {
+	return lb.DisplayName
 }
 
 // EnsureLoadBalancer creates a new load balancer or updates the existing one.
@@ -395,228 +176,160 @@ func (cp *CloudProvider) EnsureLoadBalancer(clusterName string, service *api.Ser
 		}
 	}
 
-	certificateName := lb.DisplayName
+	certificateName := getCertificateName(lb)
 
 	sslConfigMap, err := spec.GetSSLConfig(certificateName)
-	if err != nil {
-		return nil, err
-	}
-
 	if sslEnabled(sslConfigMap) {
 		if err = cp.ensureSSLCertificate(certificateName, spec.Service, lb); err != nil {
 			return nil, err
 		}
 	}
 
-	desiredBackendSets := spec.GetBackendSets()
-	desiredListeners := spec.GetListeners(sslConfigMap)
-
-	secListMngr, err := newSecurityListManagerFromLBSpec(cp.config, cp.client, &spec)
+	sourceRanges, err := apiservice.GetLoadBalancerSourceRanges(service)
 	if err != nil {
 		return nil, err
 	}
 
-	{
-		// 1. Has the front end port changed?
-		additions, removals, err := getListenerModifications(desiredListeners, lb.Listeners)
-		if err != nil {
-			return nil, err
-		}
-
-		if len(additions) > 0 {
-			glog.V(4).Infof("Adding %d listeners", len(additions))
-			for _, listener := range additions {
-				// Create a backend set for this listener
-				key := getBackendSetName(listener.Protocol, listener.Port)
-				bes, ok := desiredBackendSets[key]
-				if !ok {
-					return nil, fmt.Errorf("Cannot create backend set with name %s", key)
-				}
-
-				backendSet, err := cp.client.CreateAndAwaitBackendSet(lb, bes)
-				if err != nil {
-					return nil, err
-				}
-
-				err = secListMngr.EnsureRulesAdded(uint64(backendSet.Backends[0].Port))
-				if err != nil {
-					return nil, err
-				}
-
-				lb.BackendSets[backendSet.Name] = *backendSet
-
-				err = cp.client.CreateAndAwaitListener(lb, listener)
-				if err != nil {
-					return nil, err
-				}
-
-				lb.Listeners[listener.Name] = listener
-			}
-		}
-		if len(removals) > 0 {
-			glog.V(4).Infof("Removing %d Listeners and BackendSets", len(removals))
-			for _, listener := range removals {
-				// TODO (apryde): We should probably at least spawn go routines to
-				// poll these WorkRequests and log loudly if they fail.
-				_, err := cp.client.DeleteListener(lb.ID, listener.Name, nil)
-				if err != nil {
-					return nil, err
-				}
-				delete(lb.Listeners, listener.Name)
-
-				backendSet := lb.BackendSets[listener.Name]
-				err = secListMngr.EnsureRulesRemoved(uint64(backendSet.Backends[0].Port))
-				if err != nil {
-					return nil, err
-				}
-
-				_, err = cp.client.DeleteBackendSet(lb.ID, backendSet.Name, nil)
-				if err != nil {
-					return nil, err
-				}
-				delete(lb.BackendSets, listener.Name)
-			}
-		}
+	sourceCIDRs := make([]string, 0, len(sourceRanges))
+	for _, sourceRange := range sourceRanges {
+		sourceCIDRs = append(sourceCIDRs, sourceRange.String())
 	}
 
-	// At this point we have a load balancer, and all listeners are correct
-	// and a backend set exists for each listener. Now we just need to
-	// update the backends if:
-	//  1. A Node has been added or removed.
-	//  2. A NodePort has been modified.
-
-	{
-		additions, removals := getAllBackendModifications(desiredBackendSets, lb.BackendSets)
-
-		if len(additions) > 0 {
-			for backendName, backends := range additions {
-				err = secListMngr.EnsureRulesAdded(uint64(backends[0].Port))
-				if err != nil {
-					return nil, err
-				}
-
-				for _, backend := range backends {
-					glog.V(4).Infof("Adding Backend '%s:%d' to '%s'", backend.IPAddress, backend.Port, backendName)
-					_, err = cp.client.CreateBackend(lb.ID, backendName, backend.IPAddress, backend.Port, nil)
-					if err != nil {
-						return nil, err
-					}
-				}
-			}
-		}
-		if len(removals) > 0 {
-			for backendName, backends := range removals {
-				err = secListMngr.EnsureRulesRemoved(uint64(backends[0].Port))
-				if err != nil {
-					return nil, err
-				}
-
-				for _, backend := range backends {
-					target := fmt.Sprintf("%s:%d", backend.IPAddress, backend.Port)
-					glog.V(4).Infof("Deleting Backend '%s' from '%s'", target, backendName)
-					_, err = cp.client.DeleteBackend(lb.ID, backendName, target, nil)
-					if err != nil {
-						return nil, err
-					}
-				}
-			}
-		}
-	}
-
-	err = secListMngr.Save()
+	err = cp.updateListeners(lb, spec, sslConfigMap, sourceCIDRs)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("udpate listeners: %v", err)
+	}
+
+	err = cp.updateBackendSets(lb, spec)
+	if err != nil {
+		return nil, fmt.Errorf("update backendsets: %v", err)
 	}
 
 	return loadBalancerToStatus(lb)
 }
 
-// getAllBackendModifications returns the Backends that need to be
-// added/removed for the actual state of a []BackendSets to converge with the
-// desired state. Returns a map keyed by BackendSet.Name as BackendSet.Name is
-// needed when adding/deleting Backends.
-func getAllBackendModifications(desired, actual map[string]baremetal.BackendSet) (additions, removals map[string][]baremetal.Backend) {
-	additions = make(map[string][]baremetal.Backend)
-	removals = make(map[string][]baremetal.Backend)
+func (cp *CloudProvider) updateSecurityRules(backendSets map[string]baremetal.BackendSet) error {
 
-	for _, backendSet := range desired {
-		toAdd, toRemove := getBackendModifications(backendSet, actual[backendSet.Name])
-		if len(toAdd) > 0 {
-			additions[backendSet.Name] = toAdd
-		}
-		if len(toRemove) > 0 {
-			removals[backendSet.Name] = toRemove
-		}
-	}
-	return additions, removals
+	return nil
 }
 
-// getBackendModifications returns the load balancer Backends that need to be
-// added/removed for the actual state of a BackendSet to converge with the
-// desired state.
-func getBackendModifications(desired, actual baremetal.BackendSet) (additions, removals []baremetal.Backend) {
-	nameFormat := "%s-%d"
-	lookup := make(map[string]baremetal.Backend)
+func (cp *CloudProvider) updateBackendSets(lb *baremetal.LoadBalancer, spec LBSpec) error {
+	lbOCID := lb.ID
 
-	desiredSet := sets.NewString()
-	for _, backend := range desired.Backends {
-		name := fmt.Sprintf(nameFormat, backend.IPAddress, backend.Port)
-		desiredSet.Insert(name)
-		lookup[name] = backend
+	actual := lb.BackendSets
+	desired := spec.GetBackendSets()
+
+	actions := getBackendSetChanges(actual, desired)
+
+	for _, action := range actions {
+		var workRequestID string
+		var err error
+
+		be := action.BackendSet
+
+		glog.V(2).Infof("Applying %s action backend set `%s` for lb `%s`", action.Type, be.Name, lbOCID)
+
+		switch action.Type {
+		case Create:
+			workRequestID, err = cp.client.CreateBackendSet(
+				lbOCID,
+				be.Name,
+				be.Policy,
+				be.Backends,
+				be.HealthChecker,
+				nil, // ssl config
+				nil, // session persistence
+				nil, // create opts
+			)
+		case Update:
+			workRequestID, err = cp.client.UpdateBackendSet(lbOCID, be.Name, &baremetal.UpdateLoadBalancerBackendSetOptions{
+				Policy:        be.Policy,
+				HealthChecker: be.HealthChecker,
+				Backends:      be.Backends,
+			})
+		case Delete:
+			workRequestID, err = cp.client.DeleteBackendSet(lbOCID, be.Name, nil)
+		}
+
+		if err != nil {
+			// TODO(horwitz): check for retryable errors
+			return err
+		}
+
+		_, err = cp.client.AwaitWorkRequest(workRequestID)
+		if err != nil {
+			// TODO(horwitz): check for retryable errors
+			return err
+		}
 	}
 
-	actualSet := sets.NewString()
-	for _, backend := range actual.Backends {
-		name := fmt.Sprintf(nameFormat, backend.IPAddress, backend.Port)
-		actualSet.Insert(name)
-		lookup[name] = backend
-	}
-
-	additionNames := desiredSet.Difference(actualSet)
-	for _, name := range additionNames.List() {
-		additions = append(additions, lookup[name])
-	}
-	removalNames := actualSet.Difference(desiredSet)
-	for _, name := range removalNames.List() {
-		removals = append(removals, lookup[name])
-	}
-
-	return additions, removals
+	return nil
 }
 
-// getListenerModifications returns the load balancer Listeners that need to be
-// added/removed for the actual state to converge with the desired state.
-func getListenerModifications(desired, actual map[string]baremetal.Listener) (additions, removals []baremetal.Listener, err error) {
-	desiredSet := sets.NewString()
-	for _, listener := range desired {
-		desiredSet.Insert(getListenerName(listener.Protocol, listener.Port, listener.SSLConfig))
-	}
+func (cp *CloudProvider) updateListeners(lb *baremetal.LoadBalancer, spec LBSpec, sslConfigMap map[int]*baremetal.SSLConfiguration, sourceCIDRs []string) error {
+	lbOCID := lb.ID
 
-	actualSet := sets.NewString()
-	for _, listener := range actual {
-		actualSet.Insert(getListenerName(listener.Protocol, listener.Port, listener.SSLConfig))
-	}
+	desired := spec.GetListeners(sslConfigMap)
+	actions := getListenerChanges(lb.Listeners, desired)
+	for _, action := range actions {
+		var workRequestID string
+		var err error
+		l := action.Listener
 
-	additionNames := desiredSet.Difference(actualSet)
-	removalNames := actualSet.Difference(desiredSet)
+		glog.V(2).Infof("Applying %s action listener `%s` for lb `%s`", action.Type, l.Name, lbOCID)
 
-	for _, name := range additionNames.List() {
-		listener, ok := desired[name]
-		if !ok {
-			return nil, nil, fmt.Errorf("could not find listener with name %q", name)
+		backends := spec.GetBackendSets()[l.DefaultBackendSetName].Backends
+
+		switch action.Type {
+		case Create:
+			err = cp.securityListManager.Update(spec.Subnets, sourceCIDRs, &l, backends)
+			if err != nil {
+				return err
+			}
+
+			workRequestID, err = cp.client.CreateListener(
+				lbOCID,
+				l.Name,
+				l.DefaultBackendSetName,
+				l.Protocol,
+				l.Port,
+				l.SSLConfig,
+				nil, // create opts
+			)
+		case Update:
+			err = cp.securityListManager.Update(spec.Subnets, sourceCIDRs, &l, backends)
+			if err != nil {
+				return err
+			}
+
+			workRequestID, err = cp.client.UpdateListener(lbOCID, l.Name, &baremetal.UpdateLoadBalancerListenerOptions{
+				DefaultBackendSetName: l.DefaultBackendSetName,
+				Port:      l.Port,
+				Protocol:  l.Protocol,
+				SSLConfig: l.SSLConfig,
+			})
+		case Delete:
+			err = cp.securityListManager.Delete(spec.Subnets, &l, backends)
+			if err != nil {
+				return err
+			}
+
+			workRequestID, err = cp.client.DeleteListener(lbOCID, l.Name, nil)
 		}
-		additions = append(additions, listener)
-	}
 
-	for _, name := range removalNames.List() {
-		listener, ok := actual[name]
-		if !ok {
-			return nil, nil, fmt.Errorf("could not find listener with name %q", name)
+		if err != nil {
+			// TODO(horwitz): check for retryable errors
+			return err
 		}
-		removals = append(removals, listener)
+
+		_, err = cp.client.AwaitWorkRequest(workRequestID)
+		if err != nil {
+			// TODO(horwitz): check for retryable errors
+			return err
+		}
 	}
 
-	return additions, removals, nil
+	return nil
 }
 
 // UpdateLoadBalancer : TODO find out where this is called
@@ -652,25 +365,24 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(clusterName string, service *
 			nodeIPs.Insert(backend.IPAddress)
 		}
 	}
+
 	spec, err := NewLBSpec(cp, service, nodeIPs.List())
 	if err != nil {
 		return err
 	}
 
-	// Remove related SecurityList rules.
-	secListMngr, err := newSecurityListManagerFromLBSpec(cp.config, cp.client, &spec)
+	sslConfigMap, err := spec.GetSSLConfig(getCertificateName(lb))
 	if err != nil {
 		return err
 	}
-	for _, backendSet := range lb.BackendSets {
-		err = secListMngr.EnsureRulesRemoved(uint64(backendSet.Backends[0].Port))
+
+	for _, listener := range spec.GetListeners(sslConfigMap) {
+		backends := spec.GetBackendSets()[listener.DefaultBackendSetName].Backends
+
+		err := cp.securityListManager.Delete(spec.Subnets, &listener, backends)
 		if err != nil {
 			return err
 		}
-	}
-	err = secListMngr.Save()
-	if err != nil {
-		return err
 	}
 
 	glog.Infof("Deleting load balancer '%s' (OCID: '%s')", lb.DisplayName, lb.ID)
@@ -695,15 +407,4 @@ func loadBalancerToStatus(lb *baremetal.LoadBalancer) (*api.LoadBalancerStatus, 
 		ingress = append(ingress, api.LoadBalancerIngress{IP: ip.IPAddress})
 	}
 	return &api.LoadBalancerStatus{Ingress: ingress}, nil
-}
-
-// validateProtocols validates that BMCS supports the protocol of all
-// ServicePorts defined by a service.
-func validateProtocols(servicePorts []api.ServicePort) error {
-	for _, servicePort := range servicePorts {
-		if servicePort.Protocol == api.ProtocolUDP {
-			return fmt.Errorf("BMCS load balancers do not support UDP")
-		}
-	}
-	return nil
 }
