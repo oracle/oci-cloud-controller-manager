@@ -68,7 +68,7 @@ func TestBasicLoadBalancerSecurityListRuleCreation(t *testing.T) {
 
 	securityList := &baremetal.SecurityList{}
 
-	mngr := newSecurityListManager(nil, backendSubnets, lbSubnets)
+	mngr := newSecurityListManager(nil, backendSubnets, lbSubnets).(*securityListManagerImpl)
 	mngr.addSecurityListForSubnet(securityList, backendSubnets[0].ID)
 	mngr.addSecurityListForSubnet(securityList, lbSubnets[0].ID)
 	mngr.addSecurityListForSubnet(securityList, lbSubnets[1].ID)
