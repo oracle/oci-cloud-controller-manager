@@ -24,6 +24,7 @@ import (
 
 	api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	k8sports "k8s.io/kubernetes/pkg/master/ports"
 
@@ -123,14 +124,10 @@ func (s *LBSpec) GetBackendSets() map[string]baremetal.BackendSet {
 	for _, servicePort := range s.Service.Spec.Ports {
 		name := fmt.Sprintf("%v-%d", servicePort.Protocol, servicePort.Port)
 		backendSet := baremetal.BackendSet{
-			Name:     name,
-			Policy:   client.DefaultLoadBalancerPolicy,
-			Backends: []baremetal.Backend{},
-			HealthChecker: &baremetal.HealthChecker{
-				Protocol: lbNodesHealthCheckProto,
-				URLPath:  lbNodesHealthCheckPath,
-				Port:     lbNodesHealthCheckPort,
-			},
+			Name:          name,
+			Policy:        client.DefaultLoadBalancerPolicy,
+			Backends:      []baremetal.Backend{},
+			HealthChecker: s.getHealthChecker(),
 		}
 		for _, ip := range s.NodeIPs {
 			backendSet.Backends = append(backendSet.Backends, baremetal.Backend{
@@ -142,6 +139,23 @@ func (s *LBSpec) GetBackendSets() map[string]baremetal.BackendSet {
 		backendSets[name] = backendSet
 	}
 	return backendSets
+}
+
+func (s *LBSpec) getHealthChecker() *baremetal.HealthChecker {
+	path, port := apiservice.GetServiceHealthCheckPathPort(s.Service)
+	if path != "" {
+		return &baremetal.HealthChecker{
+			Protocol: lbNodesHealthCheckProto,
+			URLPath:  path,
+			Port:     int(port),
+		}
+	}
+
+	return &baremetal.HealthChecker{
+		Protocol: lbNodesHealthCheckProto,
+		URLPath:  lbNodesHealthCheckPath,
+		Port:     lbNodesHealthCheckPort,
+	}
 }
 
 // GetListeners builds a map of listeners based on the LBSpec.
