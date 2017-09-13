@@ -250,7 +250,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(clusterName string, service *api.Ser
 	desiredBackendSets := spec.GetBackendSets()
 	desiredListeners := spec.GetListeners()
 
-	secListMngr, err := newSecurityListManagerFromLBSpec(cp.client, &spec)
+	secListMngr, err := newSecurityListManagerFromLBSpec(cp.config, cp.client, &spec)
 	if err != nil {
 		return nil, err
 	}
@@ -499,7 +499,7 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(clusterName string, service *
 	}
 
 	// Remove related SecurityList rules.
-	secListMngr, err := newSecurityListManagerFromLBSpec(cp.client, &spec)
+	secListMngr, err := newSecurityListManagerFromLBSpec(cp.config, cp.client, &spec)
 	if err != nil {
 		return err
 	}

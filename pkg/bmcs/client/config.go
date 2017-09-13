@@ -31,6 +31,14 @@ type Config struct {
 		Fingerprint     string `gcfg:"fingerprint"`
 		PrivateKeyFile  string `gcfg:"key-file"`
 		Region          string `gcfg:"region"`
+		// DisableSecurityListManagement disables the automatic creation of ingress
+		// rules for the node subnets and egress rules for the load balancers to the node subnets.
+		//
+		// If security list management is disabled, then it requires that the user
+		// has setup a rule that allows inbound traffic to the appropriate ports
+		// for kube proxy health port, node port ranges, and health check port ranges.
+		// E.g. 10.82.0.0/16 30000-32000
+		DisableSecurityListManagement bool `gcfg:"disableSecurityListManagement"`
 	}
 	LoadBalancer struct {
 		Subnet1 string `gcfg:"subnet1"`
