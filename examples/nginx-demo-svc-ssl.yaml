@@ -1,0 +1,37 @@
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: nginx-service
+  annotations:
+    service.beta.kubernetes.io/oracle-load-balancer-ssl-ports: "443"
+    service.beta.kubernetes.io/oracle-load-balancer-ssl-certificate: ssl-certificate-secret
+    service.beta.kubernetes.io/oracle-load-balancer-ssl-private-key: ssl-private-key-secret
+spec:
+  selector:
+    app: nginx
+  type: LoadBalancer
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+  - name: https
+    port: 443
+    targetPort: 80

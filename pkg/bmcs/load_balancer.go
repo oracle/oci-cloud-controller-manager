@@ -17,14 +17,18 @@ package bmcs
 import (
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/oracle/kubernetes-cloud-controller-manager/pkg/bmcs/client"
 
 	"github.com/golang/glog"
 
 	api "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	k8sports "k8s.io/kubernetes/pkg/master/ports"
 
@@ -44,6 +48,15 @@ const (
 	// ServiceAnnotationLoadBalancerSubnet2 is a Service annotation for
 	// specifying the second subnet of a load balancer.
 	ServiceAnnotationLoadBalancerSubnet2 = "service.beta.kubernetes.io/bmcs-load-balancer-subnet2"
+	// ServiceAnnotationLoadBalancerSSLPorts is a Service annotation for
+	// specifying the ports to enable SSL termination on the corresponding load balancer listener.
+	ServiceAnnotationLoadBalancerSSLPorts = "service.beta.kubernetes.io/oracle-load-balancer-ssl-ports"
+	// ServiceAnnotationLoadBalancerSSLCertificate is a Service annotation for
+	// specifying the SSL certificate to install on the load balancer listeners which have ssl is enabled.
+	ServiceAnnotationLoadBalancerSSLCertificate = "service.beta.kubernetes.io/oracle-load-balancer-ssl-certificate"
+	// ServiceAnnotationLoadBalancerSSLPrivateKey is a Service annotation for
+	// specifying the SSL private key to install on the load balancer listeners which have ssl enabled.
+	ServiceAnnotationLoadBalancerSSLPrivateKey = "service.beta.kubernetes.io/oracle-load-balancer-ssl-private-key"
 )
 
 const (
@@ -53,6 +66,11 @@ const (
 	lbNodesHealthCheckPath  = "/healthz"
 	lbNodesHealthCheckPort  = k8sports.ProxyHealthzPort
 	lbNodesHealthCheckProto = "HTTP"
+)
+
+const (
+	sslCertificateFileName = "cert.pem"
+	sslPrivateKeyFileName  = "key.pem"
 )
 
 // LBSpec holds the data required to build a BMCS load balancer from a
@@ -115,6 +133,10 @@ func NewLBSpec(cp *CloudProvider, service *api.Service, nodeIPs []string) (LBSpe
 	}, nil
 }
 
+func getBackendSetName(protocol string, port int) string {
+	return fmt.Sprintf("%s-%d", protocol, port)
+}
+
 // GetBackendSets builds a map of BackendSets based on the LBSpec.
 // TODO (apryde): Can/should we support SSL config here?
 // NOTE (apryde): Currently adds a node health-check per service port as
@@ -122,7 +144,7 @@ func NewLBSpec(cp *CloudProvider, service *api.Service, nodeIPs []string) (LBSpe
 func (s *LBSpec) GetBackendSets() map[string]baremetal.BackendSet {
 	backendSets := make(map[string]baremetal.BackendSet)
 	for _, servicePort := range s.Service.Spec.Ports {
-		name := fmt.Sprintf("%v-%d", servicePort.Protocol, servicePort.Port)
+		name := getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
 		backendSet := baremetal.BackendSet{
 			Name:          name,
 			Policy:        client.DefaultLoadBalancerPolicy,
@@ -158,16 +180,131 @@ func (s *LBSpec) getHealthChecker() *baremetal.HealthChecker {
 	}
 }
 
+// getSSLEnabledPorts returns a set (implemented as a map) of port numbers for
+// which we need to enable SSL on the corresponding listener.
+func getSSLEnabledPorts(annotations map[string]string) (map[int]bool, error) {
+	sslPorts := make(map[int]bool)
+	sslPortsAnnotation, ok := annotations[ServiceAnnotationLoadBalancerSSLPorts]
+	if ok {
+		for _, sslPort := range strings.Split(sslPortsAnnotation, ",") {
+			i, err := strconv.Atoi(strings.TrimSpace(sslPort))
+			if err != nil {
+				glog.Errorf("Failed to parse SSL port in annotation: '%s'", sslPortsAnnotation)
+				return sslPorts, err
+			}
+			sslPorts[i] = true
+		}
+	}
+	return sslPorts, nil
+}
+
+// parseSecretString returns the secret name and secret namespace from the
+// given secret string (taken from the ssl annotation value).
+func parseSecretString(secretString string, serviceNamespace string) (string, string) {
+	fields := strings.Split(secretString, "/")
+	if len(fields) >= 2 {
+		return fields[0], fields[1]
+	}
+	return serviceNamespace, secretString
+}
+
+// getSecretFromAnnotations returns the corresponding Kubernetes secret given
+// the annotations map and a specific key.
+func getSecretFromAnnotations(kubeclient clientset.Interface, annotations map[string]string,
+	annotation string, secretKey string, serviceNamespace string) (string, error) {
+	secretString, found := annotations[annotation]
+	if found {
+		secretNamespace, secretName := parseSecretString(secretString, serviceNamespace)
+		secret, err := kubeclient.CoreV1().Secrets(secretNamespace).Get(secretName, metav1.GetOptions{})
+		if err != nil {
+			return "", err
+		}
+		return string(secret.Data[secretKey]), nil
+	}
+	return "", fmt.Errorf("SSL port(s) are specified, but no '%s' annotation found", annotation)
+}
+
+// ensureSSLCertificate creates a BMC SSL certificate to the given load
+// balancer, if it doesn't already exist
+func ensureSSLCertificate(certificateName string, annotations map[string]string, serviceNamespace string,
+	bmcsClient client.Interface, kubeclient clientset.Interface, lb *baremetal.LoadBalancer) error {
+
+	_, err := bmcsClient.GetCertificateByName(lb.ID, certificateName)
+	if err == nil {
+		glog.V(4).Infof("Certificate: '%s' already exists on load balancer: '%s'", certificateName, lb.DisplayName)
+		return nil
+	}
+
+	sslCertificate, err := getSecretFromAnnotations(kubeclient, annotations,
+		ServiceAnnotationLoadBalancerSSLCertificate, sslCertificateFileName, serviceNamespace)
+	if err != nil {
+		return err
+	}
+
+	sslPrivateKey, err := getSecretFromAnnotations(kubeclient, annotations,
+		ServiceAnnotationLoadBalancerSSLPrivateKey, sslPrivateKeyFileName, serviceNamespace)
+	if err != nil {
+		return err
+	}
+
+	err = bmcsClient.CreateAndAwaitCertificate(lb, certificateName, sslCertificate, sslPrivateKey)
+	if err != nil {
+		return err
+	}
+
+	glog.V(4).Infof("Created certificate '%s' on load balancer '%s'", certificateName, lb.DisplayName)
+	return nil
+}
+
+// GetSSLConfig builds a map of SSL configuration per listener port based on
+// the LBSpec.
+func (s *LBSpec) GetSSLConfig(certificateName string) (map[int]*baremetal.SSLConfiguration, error) {
+	sslConfigMap := make(map[int]*baremetal.SSLConfiguration)
+
+	sslEnabledPorts, err := getSSLEnabledPorts(s.Service.ObjectMeta.Annotations)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(sslEnabledPorts) == 0 {
+		glog.V(4).Infof("No SSL enabled ports found")
+		return sslConfigMap, nil
+	}
+
+	for _, servicePort := range s.Service.Spec.Ports {
+		port := int(servicePort.Port)
+		if _, ok := sslEnabledPorts[port]; ok {
+			sslConfigMap[port] = &baremetal.SSLConfiguration{certificateName, 0, false}
+		}
+	}
+	return sslConfigMap, nil
+}
+
+func sslEnabled(sslConfigMap map[int]*baremetal.SSLConfiguration) bool {
+	return len(sslConfigMap) > 0
+}
+
+func getListenerName(protocol string, port int, sslConfig *baremetal.SSLConfiguration) string {
+	if sslConfig != nil {
+		return fmt.Sprintf("%s-%d-%s", protocol, port, sslConfig.CertificateName)
+	}
+	return fmt.Sprintf("%s-%d", protocol, port)
+}
+
 // GetListeners builds a map of listeners based on the LBSpec.
-func (s *LBSpec) GetListeners() map[string]baremetal.Listener {
+func (s *LBSpec) GetListeners(sslConfigMap map[int]*baremetal.SSLConfiguration) map[string]baremetal.Listener {
 	listeners := make(map[string]baremetal.Listener)
 	for _, servicePort := range s.Service.Spec.Ports {
-		name := fmt.Sprintf("%v-%d", servicePort.Protocol, servicePort.Port)
+		protocol := string(servicePort.Protocol)
+		port := int(servicePort.Port)
+		sslConfig := sslConfigMap[port]
+		name := getListenerName(protocol, port, sslConfig)
 		listener := baremetal.Listener{
 			Name: name,
-			DefaultBackendSetName: name,
-			Protocol:              string(servicePort.Protocol),
-			Port:                  int(servicePort.Port),
+			DefaultBackendSetName: getBackendSetName(string(servicePort.Protocol), int(servicePort.Port)),
+			Protocol:              protocol,
+			Port:                  port,
+			SSLConfig:             sslConfig,
 		}
 		listeners[name] = listener
 	}
@@ -247,8 +384,25 @@ func (cp *CloudProvider) EnsureLoadBalancer(clusterName string, service *api.Ser
 		}
 	}
 
+	certificateName := lb.DisplayName
+
+	sslConfigMap, err := spec.GetSSLConfig(certificateName)
+	if err != nil {
+		return nil, err
+	}
+
+	if sslEnabled(sslConfigMap) {
+		err := ensureSSLCertificate(certificateName,
+			spec.Service.ObjectMeta.Annotations,
+			spec.Service.ObjectMeta.Namespace,
+			cp.client, cp.kubeclient, lb)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	desiredBackendSets := spec.GetBackendSets()
-	desiredListeners := spec.GetListeners()
+	desiredListeners := spec.GetListeners(sslConfigMap)
 
 	secListMngr, err := newSecurityListManagerFromLBSpec(cp.config, cp.client, &spec)
 	if err != nil {
@@ -266,7 +420,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(clusterName string, service *api.Ser
 			glog.V(4).Infof("Adding %d listeners", len(additions))
 			for _, listener := range additions {
 				// Create a backend set for this listener
-				key := listener.Name
+				key := getBackendSetName(listener.Protocol, listener.Port)
 				bes, ok := desiredBackendSets[key]
 				if !ok {
 					return nil, fmt.Errorf("Cannot create backend set with name %s", key)
@@ -426,16 +580,14 @@ func getBackendModifications(desired, actual baremetal.BackendSet) (additions, r
 // getListenerModifications returns the load balancer Listeners that need to be
 // added/removed for the actual state to converge with the desired state.
 func getListenerModifications(desired, actual map[string]baremetal.Listener) (additions, removals []baremetal.Listener, err error) {
-	nameFormat := "%s-%d"
-
 	desiredSet := sets.NewString()
 	for _, listener := range desired {
-		desiredSet.Insert(fmt.Sprintf(nameFormat, listener.Protocol, listener.Port))
+		desiredSet.Insert(getListenerName(listener.Protocol, listener.Port, listener.SSLConfig))
 	}
 
 	actualSet := sets.NewString()
 	for _, listener := range actual {
-		actualSet.Insert(fmt.Sprintf(nameFormat, listener.Protocol, listener.Port))
+		actualSet.Insert(getListenerName(listener.Protocol, listener.Port, listener.SSLConfig))
 	}
 
 	additionNames := desiredSet.Difference(actualSet)

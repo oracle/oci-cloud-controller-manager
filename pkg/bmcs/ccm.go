@@ -17,10 +17,13 @@
 package bmcs
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/golang/glog"
 
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/controller"
 
@@ -33,9 +36,9 @@ const ProviderName = "bmcs"
 
 // CloudProvider is an implementation of the cloud-provider interface for BMCS.
 type CloudProvider struct {
-	client client.Interface
-
-	config *client.Config
+	client     client.Interface
+	config     *client.Config
+	kubeclient clientset.Interface
 }
 
 // Compile time check that CloudProvider implements the cloudprovider.Interface
@@ -71,7 +74,13 @@ func init() {
 }
 
 // Initialize passes a Kubernetes clientBuilder interface to the cloud provider.
-func (cp *CloudProvider) Initialize(clientBuilder controller.ControllerClientBuilder) {}
+func (cp *CloudProvider) Initialize(clientBuilder controller.ControllerClientBuilder) {
+	var err error
+	cp.kubeclient, err = clientBuilder.Client("bmcs-ccm")
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("failed to create kubeclient: %v", err))
+	}
+}
 
 // ProviderName returns the cloud-provider ID.
 func (cp *CloudProvider) ProviderName() string {

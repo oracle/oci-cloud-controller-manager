@@ -66,12 +66,17 @@ type Interface interface {
 	CreateAndAwaitLoadBalancer(name, shape string, subnets []string) (*baremetal.LoadBalancer, error)
 	// GetLoadBalancerByName gets a load balancer by its DisplayName.
 	GetLoadBalancerByName(name string) (*baremetal.LoadBalancer, error)
+	// GetCertificateByName gets a certificate by its name.
+	GetCertificateByName(loadBalancerID string, name string) (*baremetal.Certificate, error)
 	// CreateAndAwaitBackendSet creates the given BackendSet for the given
 	// LoadBalancer.
 	CreateAndAwaitBackendSet(lb *baremetal.LoadBalancer, bs baremetal.BackendSet) (*baremetal.BackendSet, error)
 	// CreateAndAwaitListener creates the given Listener for the given
 	// LoadBalancer.
 	CreateAndAwaitListener(lb *baremetal.LoadBalancer, listener baremetal.Listener) error
+	// CreateAndAwaitCertificate creates a certificate for the given
+	// LoadBalancer.
+	CreateAndAwaitCertificate(lb *baremetal.LoadBalancer, name string, certificate string, key string) error
 	AwaitWorkRequest(id string) (*baremetal.WorkRequest, error)
 
 	// GetSubnets returns the Subnets corresponding to the given OCIDs.
@@ -420,6 +425,24 @@ func (c *client) GetLoadBalancerByName(name string) (*baremetal.LoadBalancer, er
 	}
 }
 
+// GetCertificateByName gets a certificate by its name.
+func (c *client) GetCertificateByName(loadBalancerID string, name string) (*baremetal.Certificate, error) {
+	opts := &baremetal.ClientRequestOptions{}
+	r, err := c.ListCertificates(loadBalancerID, opts)
+	if err != nil {
+		return nil, err
+	}
+	for _, cert := range r.Certificates {
+		if cert.CertificateName == name {
+			return &cert, nil
+		}
+	}
+	return nil, &SearchError{
+		Err:      fmt.Sprintf("could not find certificate with name '%s'", name),
+		NotFound: true,
+	}
+}
+
 // CreateAndAwaitBackendSet creates the given BackendSet for the given
 // LoadBalancer.
 func (c *client) CreateAndAwaitBackendSet(lb *baremetal.LoadBalancer, bs baremetal.BackendSet) (*baremetal.BackendSet, error) {
@@ -456,6 +479,20 @@ func (c *client) CreateAndAwaitListener(lb *baremetal.LoadBalancer, listener bar
 		listener.Port,
 		listener.SSLConfig,
 		nil)
+	if err != nil {
+		return err
+	}
+	_, err = c.AwaitWorkRequest(wr)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// CreateAndAwaitCertificate creates a certificate for the given LoadBalancer.
+func (c *client) CreateAndAwaitCertificate(lb *baremetal.LoadBalancer, name string, certificate string, key string) error {
+	glog.V(4).Infof("Creating Certificate '%s' for load balancer '%s'", name, lb.DisplayName)
+	wr, err := c.CreateCertificate(lb.ID, name, "", key, "", certificate, nil)
 	if err != nil {
 		return err
 	}
