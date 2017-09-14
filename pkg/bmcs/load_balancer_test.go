@@ -234,71 +234,80 @@ func TestGetListenerModifications(t *testing.T) {
 	}
 }
 
-var getSSLEnabledPortsTestCases = []struct {
-	annotations map[string]string
-	expected    map[int]bool
-}{
-	{
-		annotations: map[string]string{},
-		expected:    map[int]bool{},
-	}, {
-		annotations: map[string]string{"service.beta.kubernetes.io/oracle-load-balancer-ssl-ports": ""},
-		expected:    map[int]bool{},
-	}, {
-		annotations: map[string]string{"service.beta.kubernetes.io/oracle-load-balancer-ssl-ports": "443"},
-		expected:    map[int]bool{443: true},
-	}, {
-		annotations: map[string]string{"service.beta.kubernetes.io/oracle-load-balancer-ssl-ports": "1,2,3"},
-		expected:    map[int]bool{1: true, 2: true, 3: true},
-	}, {
-		annotations: map[string]string{"service.beta.kubernetes.io/oracle-load-balancer-ssl-ports": "1, 2, 3"},
-		expected:    map[int]bool{1: true, 2: true, 3: true},
-	}, {
-		annotations: map[string]string{"service.beta.kubernetes.io/oracle-load-balancer-ssl-ports": "not-an-integer"},
-		expected:    map[int]bool{},
-	},
-}
-
 func TestGetSSLEnabledPorts(t *testing.T) {
-	for _, tt := range getSSLEnabledPortsTestCases {
-		sslEnabledPorts, _ := getSSLEnabledPorts(tt.annotations)
-		if !reflect.DeepEqual(sslEnabledPorts, tt.expected) {
-			t.Errorf("getSSLEnabledPorts(%v) => (%v), expected (%v)",
-				tt.annotations, sslEnabledPorts, tt.expected)
-		}
+	testCases := []struct {
+		name        string
+		annotations map[string]string
+		expected    map[int]bool
+	}{
+		{
+			name:        "empty",
+			annotations: map[string]string{},
+			expected:    nil,
+		}, {
+			name:        "empty string",
+			annotations: map[string]string{"service.beta.kubernetes.io/bmcs-load-balancer-ssl-ports": ""},
+			expected:    nil,
+		}, {
+			name:        "443",
+			annotations: map[string]string{"service.beta.kubernetes.io/bmcs-load-balancer-ssl-ports": "443"},
+			expected:    map[int]bool{443: true},
+		}, {
+			name:        "1,2,3",
+			annotations: map[string]string{"service.beta.kubernetes.io/bmcs-load-balancer-ssl-ports": "1,2,3"},
+			expected:    map[int]bool{1: true, 2: true, 3: true},
+		}, {
+			name:        "1, 2, 3",
+			annotations: map[string]string{"service.beta.kubernetes.io/bmcs-load-balancer-ssl-ports": "1, 2, 3"},
+			expected:    map[int]bool{1: true, 2: true, 3: true},
+		}, {
+			name:        "not-an-integer",
+			annotations: map[string]string{"service.beta.kubernetes.io/bmcs-load-balancer-ssl-ports": "not-an-integer"},
+			expected:    nil,
+		},
+	}
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			sslEnabledPorts, _ := getSSLEnabledPorts(tt.annotations)
+			if !reflect.DeepEqual(sslEnabledPorts, tt.expected) {
+				t.Errorf("getSSLEnabledPorts(%#v) => (%#v), expected (%#v)",
+					tt.annotations, sslEnabledPorts, tt.expected)
+			}
+		})
 	}
 }
 
-var parseSecretStringTestCases = []struct {
-	secretName        string
-	servcieNamespace  string
-	expectedName      string
-	expectedNamespace string
-}{
-	{
-		secretName:        "secret-name",
-		servcieNamespace:  "service-namespace",
-		expectedName:      "secret-name",
-		expectedNamespace: "service-namespace",
-	}, {
-		secretName:        "secret-namespace/secret-name",
-		servcieNamespace:  "service-namespace",
-		expectedName:      "secret-name",
-		expectedNamespace: "secret-namespace",
-	}, {
-		secretName:        "secret-namespace/secret-name/some-extra-stuff",
-		servcieNamespace:  "service-namespace",
-		expectedName:      "secret-name",
-		expectedNamespace: "secret-namespace",
-	},
-}
-
 func TestParseSeceretString(t *testing.T) {
-	for _, tt := range parseSecretStringTestCases {
-		secretNamespace, secretName := parseSecretString(tt.secretName, tt.servcieNamespace)
-		if secretNamespace != tt.expectedNamespace || secretName != tt.expectedName {
-			t.Errorf("parseSecretString(%s, %s) => (%s, %s), expected (%s, %s)",
-				tt.secretName, tt.servcieNamespace, secretNamespace, secretName, tt.expectedNamespace, tt.expectedName)
-		}
+	testCases := []struct {
+		secretName        string
+		servcieNamespace  string
+		expectedName      string
+		expectedNamespace string
+	}{
+		{
+			secretName:        "secret-name",
+			servcieNamespace:  "service-namespace",
+			expectedName:      "secret-name",
+			expectedNamespace: "service-namespace",
+		}, {
+			secretName:        "secret-namespace/secret-name",
+			servcieNamespace:  "service-namespace",
+			expectedName:      "secret-name",
+			expectedNamespace: "secret-namespace",
+		}, {
+			secretName:        "secret-namespace/secret-name/some-extra-stuff",
+			servcieNamespace:  "service-namespace",
+			expectedName:      "secret-name",
+			expectedNamespace: "secret-namespace",
+		},
+	}
+	for _, tt := range testCases {
+		t.Run(tt.secretName, func(t *testing.T) {
+			secretNamespace, secretName := parseSecretString(tt.secretName, tt.servcieNamespace)
+			if secretNamespace != tt.expectedNamespace || secretName != tt.expectedName {
+				t.Errorf("parseSecretString(%s, %s) => (%s, %s), expected (%s, %s)",
+					tt.secretName, tt.servcieNamespace, secretNamespace, secretName, tt.expectedNamespace, tt.expectedName)
+			}
+		})
 	}
 }

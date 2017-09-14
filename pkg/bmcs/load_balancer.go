@@ -50,13 +50,13 @@ const (
 	ServiceAnnotationLoadBalancerSubnet2 = "service.beta.kubernetes.io/bmcs-load-balancer-subnet2"
 	// ServiceAnnotationLoadBalancerSSLPorts is a Service annotation for
 	// specifying the ports to enable SSL termination on the corresponding load balancer listener.
-	ServiceAnnotationLoadBalancerSSLPorts = "service.beta.kubernetes.io/oracle-load-balancer-ssl-ports"
+	ServiceAnnotationLoadBalancerSSLPorts = "service.beta.kubernetes.io/bmcs-load-balancer-ssl-ports"
 	// ServiceAnnotationLoadBalancerSSLCertificate is a Service annotation for
 	// specifying the SSL certificate to install on the load balancer listeners which have ssl is enabled.
-	ServiceAnnotationLoadBalancerSSLCertificate = "service.beta.kubernetes.io/oracle-load-balancer-ssl-certificate"
+	ServiceAnnotationLoadBalancerSSLCertificate = "service.beta.kubernetes.io/bmcs-load-balancer-ssl-certificate"
 	// ServiceAnnotationLoadBalancerSSLPrivateKey is a Service annotation for
 	// specifying the SSL private key to install on the load balancer listeners which have ssl enabled.
-	ServiceAnnotationLoadBalancerSSLPrivateKey = "service.beta.kubernetes.io/oracle-load-balancer-ssl-private-key"
+	ServiceAnnotationLoadBalancerSSLPrivateKey = "service.beta.kubernetes.io/bmcs-load-balancer-ssl-private-key"
 )
 
 const (
@@ -183,17 +183,18 @@ func (s *LBSpec) getHealthChecker() *baremetal.HealthChecker {
 // getSSLEnabledPorts returns a set (implemented as a map) of port numbers for
 // which we need to enable SSL on the corresponding listener.
 func getSSLEnabledPorts(annotations map[string]string) (map[int]bool, error) {
-	sslPorts := make(map[int]bool)
 	sslPortsAnnotation, ok := annotations[ServiceAnnotationLoadBalancerSSLPorts]
-	if ok {
-		for _, sslPort := range strings.Split(sslPortsAnnotation, ",") {
-			i, err := strconv.Atoi(strings.TrimSpace(sslPort))
-			if err != nil {
-				glog.Errorf("Failed to parse SSL port in annotation: '%s'", sslPortsAnnotation)
-				return sslPorts, err
-			}
-			sslPorts[i] = true
+	if !ok {
+		return nil, nil
+	}
+
+	sslPorts := make(map[int]bool)
+	for _, sslPort := range strings.Split(sslPortsAnnotation, ",") {
+		i, err := strconv.Atoi(strings.TrimSpace(sslPort))
+		if err != nil {
+			return nil, fmt.Errorf("parse SSL port: %v", err)
 		}
+		sslPorts[i] = true
 	}
 	return sslPorts, nil
 }
@@ -252,7 +253,7 @@ func ensureSSLCertificate(certificateName string, annotations map[string]string,
 		return err
 	}
 
-	glog.V(4).Infof("Created certificate '%s' on load balancer '%s'", certificateName, lb.DisplayName)
+	glog.V(2).Infof("Created certificate '%s' on load balancer '%s'", certificateName, lb.DisplayName)
 	return nil
 }
 
@@ -274,7 +275,11 @@ func (s *LBSpec) GetSSLConfig(certificateName string) (map[int]*baremetal.SSLCon
 	for _, servicePort := range s.Service.Spec.Ports {
 		port := int(servicePort.Port)
 		if _, ok := sslEnabledPorts[port]; ok {
-			sslConfigMap[port] = &baremetal.SSLConfiguration{certificateName, 0, false}
+			sslConfigMap[port] = &baremetal.SSLConfiguration{
+				CertificateName:       certificateName,
+				VerifyDepth:           0,
+				VerifyPeerCertificate: false,
+			}
 		}
 	}
 	return sslConfigMap, nil

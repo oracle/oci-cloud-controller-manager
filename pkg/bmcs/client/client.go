@@ -438,7 +438,7 @@ func (c *client) GetCertificateByName(loadBalancerID string, name string) (*bare
 		}
 	}
 	return nil, &SearchError{
-		Err:      fmt.Sprintf("could not find certificate with name '%s'", name),
+		Err:      fmt.Sprintf("certificate with name %q for load balancer %q not found", name, loadBalancerID),
 		NotFound: true,
 	}
 }
