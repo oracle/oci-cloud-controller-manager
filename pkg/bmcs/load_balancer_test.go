@@ -286,24 +286,21 @@ func TestParseSeceretString(t *testing.T) {
 	}{
 		{
 			secretName:        "secret-name",
-			servcieNamespace:  "service-namespace",
 			expectedName:      "secret-name",
-			expectedNamespace: "service-namespace",
+			expectedNamespace: "",
 		}, {
 			secretName:        "secret-namespace/secret-name",
-			servcieNamespace:  "service-namespace",
 			expectedName:      "secret-name",
 			expectedNamespace: "secret-namespace",
 		}, {
 			secretName:        "secret-namespace/secret-name/some-extra-stuff",
-			servcieNamespace:  "service-namespace",
 			expectedName:      "secret-name",
 			expectedNamespace: "secret-namespace",
 		},
 	}
 	for _, tt := range testCases {
 		t.Run(tt.secretName, func(t *testing.T) {
-			secretNamespace, secretName := parseSecretString(tt.secretName, tt.servcieNamespace)
+			secretNamespace, secretName := parseSecretString(tt.secretName)
 			if secretNamespace != tt.expectedNamespace || secretName != tt.expectedName {
 				t.Errorf("parseSecretString(%s, %s) => (%s, %s), expected (%s, %s)",
 					tt.secretName, tt.servcieNamespace, secretNamespace, secretName, tt.expectedNamespace, tt.expectedName)

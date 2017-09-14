@@ -28,7 +28,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	k8sports "k8s.io/kubernetes/pkg/master/ports"
 
@@ -49,14 +48,14 @@ const (
 	// specifying the second subnet of a load balancer.
 	ServiceAnnotationLoadBalancerSubnet2 = "service.beta.kubernetes.io/bmcs-load-balancer-subnet2"
 	// ServiceAnnotationLoadBalancerSSLPorts is a Service annotation for
-	// specifying the ports to enable SSL termination on the corresponding load balancer listener.
+	// specifying the ports to enable SSL termination on the corresponding load
+	// balancer listener.
 	ServiceAnnotationLoadBalancerSSLPorts = "service.beta.kubernetes.io/bmcs-load-balancer-ssl-ports"
-	// ServiceAnnotationLoadBalancerSSLCertificate is a Service annotation for
-	// specifying the SSL certificate to install on the load balancer listeners which have ssl is enabled.
-	ServiceAnnotationLoadBalancerSSLCertificate = "service.beta.kubernetes.io/bmcs-load-balancer-ssl-certificate"
-	// ServiceAnnotationLoadBalancerSSLPrivateKey is a Service annotation for
-	// specifying the SSL private key to install on the load balancer listeners which have ssl enabled.
-	ServiceAnnotationLoadBalancerSSLPrivateKey = "service.beta.kubernetes.io/bmcs-load-balancer-ssl-private-key"
+	// ServiceAnnotationLoadBalancerTLSSecret is a Service annotation for
+	// specifying the TLS secret ti install on the load balancer listeners which
+	// have SSL enabled.
+	// See: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
+	ServiceAnnotationLoadBalancerTLSSecret = "service.beta.kubernetes.io/bmcs-load-balancer-tls-secret"
 )
 
 const (
@@ -69,8 +68,8 @@ const (
 )
 
 const (
-	sslCertificateFileName = "cert.pem"
-	sslPrivateKeyFileName  = "key.pem"
+	sslCertificateFileName = "tls.crt"
+	sslPrivateKeyFileName  = "tls.key"
 )
 
 // LBSpec holds the data required to build a BMCS load balancer from a
@@ -201,59 +200,66 @@ func getSSLEnabledPorts(annotations map[string]string) (map[int]bool, error) {
 
 // parseSecretString returns the secret name and secret namespace from the
 // given secret string (taken from the ssl annotation value).
-func parseSecretString(secretString string, serviceNamespace string) (string, string) {
+func parseSecretString(secretString string) (string, string) {
 	fields := strings.Split(secretString, "/")
 	if len(fields) >= 2 {
 		return fields[0], fields[1]
 	}
-	return serviceNamespace, secretString
+	return "", secretString
 }
 
-// getSecretFromAnnotations returns the corresponding Kubernetes secret given
-// the annotations map and a specific key.
-func getSecretFromAnnotations(kubeclient clientset.Interface, annotations map[string]string,
-	annotation string, secretKey string, serviceNamespace string) (string, error) {
-	secretString, found := annotations[annotation]
-	if found {
-		secretNamespace, secretName := parseSecretString(secretString, serviceNamespace)
-		secret, err := kubeclient.CoreV1().Secrets(secretNamespace).Get(secretName, metav1.GetOptions{})
-		if err != nil {
-			return "", err
-		}
-		return string(secret.Data[secretKey]), nil
+func (cp *CloudProvider) readTLSSecret(secretString, serviceNS string) (cert, key string, err error) {
+	ns, name := parseSecretString(secretString)
+	if ns == "" {
+		ns = serviceNS
 	}
-	return "", fmt.Errorf("SSL port(s) are specified, but no '%s' annotation found", annotation)
+	secret, err := cp.kubeclient.CoreV1().Secrets(ns).Get(name, metav1.GetOptions{})
+	if err != nil {
+		return cert, key, err
+	}
+
+	certBytes, ok := secret.Data[sslCertificateFileName]
+	if !ok {
+		err = fmt.Errorf("%s not found in secret %s/%s", sslCertificateFileName, ns, name)
+		return
+	}
+	keyBytes, ok := secret.Data[sslPrivateKeyFileName]
+	if !ok {
+		err = fmt.Errorf("%s not found in secret %s/%s", sslCertificateFileName, ns, name)
+		return
+	}
+
+	return string(certBytes), string(keyBytes), nil
 }
 
 // ensureSSLCertificate creates a BMC SSL certificate to the given load
 // balancer, if it doesn't already exist
-func ensureSSLCertificate(certificateName string, annotations map[string]string, serviceNamespace string,
-	bmcsClient client.Interface, kubeclient clientset.Interface, lb *baremetal.LoadBalancer) error {
-
-	_, err := bmcsClient.GetCertificateByName(lb.ID, certificateName)
+func (cp *CloudProvider) ensureSSLCertificate(name string, svc *api.Service, lb *baremetal.LoadBalancer) error {
+	_, err := cp.client.GetCertificateByName(lb.ID, name)
 	if err == nil {
-		glog.V(4).Infof("Certificate: '%s' already exists on load balancer: '%s'", certificateName, lb.DisplayName)
+		glog.V(4).Infof("Certificate: %q already exists on load balancer: %q", name, lb.DisplayName)
 		return nil
 	}
+	if _, ok := err.(*client.SearchError); !ok {
+		return err
+	}
 
-	sslCertificate, err := getSecretFromAnnotations(kubeclient, annotations,
-		ServiceAnnotationLoadBalancerSSLCertificate, sslCertificateFileName, serviceNamespace)
+	secretString, ok := svc.Annotations[ServiceAnnotationLoadBalancerTLSSecret]
+	if !ok {
+		return fmt.Errorf("no %s annotation found", ServiceAnnotationLoadBalancerTLSSecret)
+	}
+
+	cert, key, err := cp.readTLSSecret(secretString, svc.Namespace)
 	if err != nil {
 		return err
 	}
 
-	sslPrivateKey, err := getSecretFromAnnotations(kubeclient, annotations,
-		ServiceAnnotationLoadBalancerSSLPrivateKey, sslPrivateKeyFileName, serviceNamespace)
+	err = cp.client.CreateAndAwaitCertificate(lb, name, cert, key)
 	if err != nil {
 		return err
 	}
 
-	err = bmcsClient.CreateAndAwaitCertificate(lb, certificateName, sslCertificate, sslPrivateKey)
-	if err != nil {
-		return err
-	}
-
-	glog.V(2).Infof("Created certificate '%s' on load balancer '%s'", certificateName, lb.DisplayName)
+	glog.V(2).Infof("Created certificate %q on load balancer %q", name, lb.DisplayName)
 	return nil
 }
 
@@ -397,11 +403,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(clusterName string, service *api.Ser
 	}
 
 	if sslEnabled(sslConfigMap) {
-		err := ensureSSLCertificate(certificateName,
-			spec.Service.ObjectMeta.Annotations,
-			spec.Service.ObjectMeta.Namespace,
-			cp.client, cp.kubeclient, lb)
-		if err != nil {
+		if err = cp.ensureSSLCertificate(certificateName, spec.Service, lb); err != nil {
 			return nil, err
 		}
 	}

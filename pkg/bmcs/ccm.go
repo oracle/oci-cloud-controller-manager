@@ -76,7 +76,7 @@ func init() {
 // Initialize passes a Kubernetes clientBuilder interface to the cloud provider.
 func (cp *CloudProvider) Initialize(clientBuilder controller.ControllerClientBuilder) {
 	var err error
-	cp.kubeclient, err = clientBuilder.Client("bmcs-ccm")
+	cp.kubeclient, err = clientBuilder.Client("cloud-controller-manager")
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("failed to create kubeclient: %v", err))
 	}
