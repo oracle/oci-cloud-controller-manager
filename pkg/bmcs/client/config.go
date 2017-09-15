@@ -53,7 +53,6 @@ func ReadConfig(r io.Reader) (*Config, error) {
 	}
 
 	cfg := &Config{}
-	cfg.Global.Region = "us-phoenix-1"
 
 	err := gcfg.ReadInto(cfg, r)
 	if err != nil {
