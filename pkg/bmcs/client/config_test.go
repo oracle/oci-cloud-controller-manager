@@ -51,13 +51,13 @@ func TestReadConfigShouldSucceedWhenProvidedValidConfig(t *testing.T) {
 	}
 }
 
-func TestReadConfigShouldHaveDefaultRegionIfNoneSpecified(t *testing.T) {
+func TestReadConfigShouldHaveNoDefaultRegionIfNoneSpecified(t *testing.T) {
 	config, err := ReadConfig(strings.NewReader(validConfigNoRegion))
 	if err != nil {
 		t.Fatalf("expected no error but got '%+v'", err)
 	}
-	if config.Global.Region != "us-phoenix-1" {
-		t.Fatal("expected a default region of us-phoenix-1")
+	if config.Global.Region != "" {
+		t.Errorf("expected no region but got %s", config.Global.Region)
 	}
 }
 
