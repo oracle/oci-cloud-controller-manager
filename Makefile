@@ -55,8 +55,8 @@ build: dist/bin/$(ARCH)/$(BIN)
 dist: build-dirs
 	@echo "Building manifests"
 	@cp -a manifests/* dist
-	@find dist/ -type f -exec sed ${SED_INPLACE} 's#{{VERSION}}#${VERSION}#g' {} +
-	@find dist/ -type f -exec sed ${SED_INPLACE} 's#{{REGISTRY}}#${REGISTRY}#g' {} +
+	@find dist/ -type f -name '*.yaml' -exec sed ${SED_INPLACE} 's#{{VERSION}}#${VERSION}#g' {} +
+	@find dist/ -type f -name '*.yaml' -exec  sed ${SED_INPLACE} 's#{{REGISTRY}}#${REGISTRY}#g' {} +
 
 dist/bin/$(ARCH)/$(BIN): build-dirs
 	echo "building: $@"
