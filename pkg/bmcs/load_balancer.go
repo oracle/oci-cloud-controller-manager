@@ -214,7 +214,7 @@ func (cp *CloudProvider) updateBackendSets(lb *baremetal.LoadBalancer, spec LBSp
 
 		be := action.BackendSet
 
-		glog.V(2).Infof("Applying %s action backend set `%s` for lb `%s`", action.Type, be.Name, lbOCID)
+		glog.V(2).Infof("Applying `%s` action on backend set `%s` for lb `%s`", action.Type, be.Name, lbOCID)
 
 		switch action.Type {
 		case Create:
@@ -239,13 +239,11 @@ func (cp *CloudProvider) updateBackendSets(lb *baremetal.LoadBalancer, spec LBSp
 		}
 
 		if err != nil {
-			// TODO(horwitz): check for retryable errors
 			return err
 		}
 
 		_, err = cp.client.AwaitWorkRequest(workRequestID)
 		if err != nil {
-			// TODO(horwitz): check for retryable errors
 			return err
 		}
 	}
@@ -263,7 +261,7 @@ func (cp *CloudProvider) updateListeners(lb *baremetal.LoadBalancer, spec LBSpec
 		var err error
 		l := action.Listener
 
-		glog.V(2).Infof("Applying %s action listener `%s` for lb `%s`", action.Type, l.Name, lbOCID)
+		glog.V(2).Infof("Applying `%s` action on listener `%s` for lb `%s`", action.Type, l.Name, lbOCID)
 
 		backends := spec.GetBackendSets()[l.DefaultBackendSetName].Backends
 
@@ -305,13 +303,11 @@ func (cp *CloudProvider) updateListeners(lb *baremetal.LoadBalancer, spec LBSpec
 		}
 
 		if err != nil {
-			// TODO(horwitz): check for retryable errors
 			return err
 		}
 
 		_, err = cp.client.AwaitWorkRequest(workRequestID)
 		if err != nil {
-			// TODO(horwitz): check for retryable errors
 			return err
 		}
 	}

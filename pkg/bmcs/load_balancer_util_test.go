@@ -295,7 +295,7 @@ func TestGetListenerChanges(t *testing.T) {
 			expected: []ListenerAction{},
 		},
 		{
-			name: "ssl config chnage",
+			name: "ssl config change",
 			desired: map[string]baremetal.Listener{
 				"TCP-80": baremetal.Listener{
 					Name: "TCP-80",
@@ -318,7 +318,20 @@ func TestGetListenerChanges(t *testing.T) {
 					},
 				},
 			},
-			expected: []ListenerAction{},
+			expected: []ListenerAction{
+				{
+					Type: Update,
+					Listener: baremetal.Listener{
+						Name: "TCP-80",
+						DefaultBackendSetName: "TCP-80",
+						Protocol:              "TCP",
+						Port:                  80,
+						SSLConfig: &baremetal.SSLConfiguration{
+							CertificateName: "desired",
+						},
+					},
+				},
+			},
 		},
 	}
 
@@ -330,6 +343,81 @@ func TestGetListenerChanges(t *testing.T) {
 			}
 			if !reflect.DeepEqual(changes, tt.expected) {
 				t.Errorf("expected ListenerActions\n%+v\nbut got\n%+v", tt.expected, changes)
+			}
+		})
+	}
+}
+
+func TestGetSSLEnabledPorts(t *testing.T) {
+	testCases := []struct {
+		name        string
+		annotations map[string]string
+		expected    map[int]bool
+	}{
+		{
+			name:        "empty",
+			annotations: map[string]string{},
+			expected:    nil,
+		}, {
+			name:        "empty string",
+			annotations: map[string]string{"service.beta.kubernetes.io/bmcs-load-balancer-ssl-ports": ""},
+			expected:    nil,
+		}, {
+			name:        "443",
+			annotations: map[string]string{"service.beta.kubernetes.io/bmcs-load-balancer-ssl-ports": "443"},
+			expected:    map[int]bool{443: true},
+		}, {
+			name:        "1,2,3",
+			annotations: map[string]string{"service.beta.kubernetes.io/bmcs-load-balancer-ssl-ports": "1,2,3"},
+			expected:    map[int]bool{1: true, 2: true, 3: true},
+		}, {
+			name:        "1, 2, 3",
+			annotations: map[string]string{"service.beta.kubernetes.io/bmcs-load-balancer-ssl-ports": "1, 2, 3"},
+			expected:    map[int]bool{1: true, 2: true, 3: true},
+		}, {
+			name:        "not-an-integer",
+			annotations: map[string]string{"service.beta.kubernetes.io/bmcs-load-balancer-ssl-ports": "not-an-integer"},
+			expected:    nil,
+		},
+	}
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			sslEnabledPorts, _ := getSSLEnabledPorts(tt.annotations)
+			if !reflect.DeepEqual(sslEnabledPorts, tt.expected) {
+				t.Errorf("getSSLEnabledPorts(%#v) => (%#v), expected (%#v)",
+					tt.annotations, sslEnabledPorts, tt.expected)
+			}
+		})
+	}
+}
+
+func TestParseSeceretString(t *testing.T) {
+	testCases := []struct {
+		secretName        string
+		servcieNamespace  string
+		expectedName      string
+		expectedNamespace string
+	}{
+		{
+			secretName:        "secret-name",
+			expectedName:      "secret-name",
+			expectedNamespace: "",
+		}, {
+			secretName:        "secret-namespace/secret-name",
+			expectedName:      "secret-name",
+			expectedNamespace: "secret-namespace",
+		}, {
+			secretName:        "secret-namespace/secret-name/some-extra-stuff",
+			expectedName:      "secret-name",
+			expectedNamespace: "secret-namespace",
+		},
+	}
+	for _, tt := range testCases {
+		t.Run(tt.secretName, func(t *testing.T) {
+			secretNamespace, secretName := parseSecretString(tt.secretName)
+			if secretNamespace != tt.expectedNamespace || secretName != tt.expectedName {
+				t.Errorf("parseSecretString(%s, %s) => (%s, %s), expected (%s, %s)",
+					tt.secretName, tt.servcieNamespace, secretNamespace, secretName, tt.expectedNamespace, tt.expectedName)
 			}
 		})
 	}

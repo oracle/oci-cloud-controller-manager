@@ -19,28 +19,28 @@ const (
 	sslPrivateKeyFileName  = "tls.key"
 )
 
-type ActionType int
+// ActionType specifies what action should be taken on the resource
+type ActionType string
 
 const (
-	Create ActionType = iota
-	Update
-	Delete
+	// Create the resource as it doesn't exist yet
+	Create = "create"
+	// Update the resource
+	Update = "update"
+	// Delete the resource
+	Delete = "delete"
 )
 
-func (c ActionType) String() string {
-	return []string{"create", "update", "delete"}[c]
-}
-
+// BackendSetAction denotes the action that should be taken on the given backend set.
 type BackendSetAction struct {
+	Type       ActionType
 	BackendSet baremetal.BackendSet
-	// create, update or delete
-	Type ActionType
 }
 
+// ListenerAction denotes the action that should be taken on the given listener.
 type ListenerAction struct {
+	Type     ActionType
 	Listener baremetal.Listener
-	// create, update or delete
-	Type ActionType
 }
 
 // TODO(horwitz): this doesn't check weight which we may want in the future to evenly distribute Local traffic policy load.
