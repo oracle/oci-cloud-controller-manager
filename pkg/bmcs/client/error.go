@@ -31,3 +31,8 @@ func (e *SearchError) Error() string {
 	}
 	return e.Err
 }
+
+func IsNotFoundError(err error) bool {
+	se, ok := err.(*SearchError)
+	return ok && se.NotFound
+}

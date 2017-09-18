@@ -94,7 +94,7 @@ func (cp *CloudProvider) ensureSSLCertificate(name string, svc *api.Service, lb 
 		glog.V(4).Infof("Certificate: %q already exists on load balancer: %q", name, lb.DisplayName)
 		return nil
 	}
-	if _, ok := err.(*client.SearchError); !ok {
+	if !client.IsNotFoundError(err) {
 		return err
 	}
 
@@ -125,12 +125,11 @@ func (cp *CloudProvider) GetLoadBalancer(clusterName string, service *api.Servic
 
 	lb, err := cp.client.GetLoadBalancerByName(name)
 	if err != nil {
-		if err, ok := err.(*client.SearchError); ok {
-			if err.NotFound {
-				glog.V(2).Infof("Load balancer '%s' does not exist", name)
-				return nil, false, nil
-			}
+		if client.IsNotFoundError(err) {
+			glog.V(2).Infof("Load balancer '%s' does not exist", name)
+			return nil, false, nil
 		}
+
 		return nil, false, err
 	}
 
@@ -160,17 +159,15 @@ func (cp *CloudProvider) EnsureLoadBalancer(clusterName string, service *api.Ser
 	var lb *baremetal.LoadBalancer
 	lb, err = cp.client.GetLoadBalancerByName(spec.Name)
 	if err != nil {
-		if err, ok := err.(*client.SearchError); ok {
-			if err.NotFound {
-				glog.Infof("Attempting to create a load balancer with name '%s'", spec.Name)
-				var cerr error
-				lb, cerr = cp.client.CreateAndAwaitLoadBalancer(spec.Name, spec.Shape, spec.Subnets)
-				if cerr != nil {
-					glog.Errorf("Failed to create load balancer: %s", err)
-					return nil, cerr
-				}
-				glog.Infof("Created load balancer '%s' with OCID '%s'", lb.DisplayName, lb.ID)
+		if client.IsNotFoundError(err) {
+			glog.Infof("Attempting to create a load balancer with name '%s'", spec.Name)
+			var cerr error
+			lb, cerr = cp.client.CreateAndAwaitLoadBalancer(spec.Name, spec.Shape, spec.Subnets)
+			if cerr != nil {
+				glog.Errorf("Failed to create load balancer: %s", err)
+				return nil, cerr
 			}
+			glog.Infof("Created load balancer '%s' with OCID '%s'", lb.DisplayName, lb.ID)
 		} else {
 			return nil, err
 		}
@@ -185,14 +182,9 @@ func (cp *CloudProvider) EnsureLoadBalancer(clusterName string, service *api.Ser
 		}
 	}
 
-	sourceRanges, err := apiservice.GetLoadBalancerSourceRanges(service)
+	sourceCIDRs, err := getLoadBalancerSourceRanges(service)
 	if err != nil {
 		return nil, err
-	}
-
-	sourceCIDRs := make([]string, 0, len(sourceRanges))
-	for _, sourceRange := range sourceRanges {
-		sourceCIDRs = append(sourceCIDRs, sourceRange.String())
 	}
 
 	err = cp.updateListeners(lb, spec, sslConfigMap, sourceCIDRs)
@@ -206,11 +198,6 @@ func (cp *CloudProvider) EnsureLoadBalancer(clusterName string, service *api.Ser
 	}
 
 	return loadBalancerToStatus(lb)
-}
-
-func (cp *CloudProvider) updateSecurityRules(backendSets map[string]baremetal.BackendSet) error {
-
-	return nil
 }
 
 func (cp *CloudProvider) updateBackendSets(lb *baremetal.LoadBalancer, spec LBSpec) error {
@@ -350,12 +337,11 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(clusterName string, service *
 	glog.Infof("Attempting to delete load balancer with name '%s'", name)
 	lb, err := cp.client.GetLoadBalancerByName(name)
 	if err != nil {
-		if err, ok := err.(*client.SearchError); ok {
-			if err.NotFound {
-				glog.Infof("Could not find load balancer with name '%s'. Nothing to do.", name)
-				return nil
-			}
+		if client.IsNotFoundError(err) {
+			glog.Infof("Could not find load balancer with name '%s'. Nothing to do.", name)
+			return nil
 		}
+
 		return err
 	}
 
@@ -407,4 +393,18 @@ func loadBalancerToStatus(lb *baremetal.LoadBalancer) (*api.LoadBalancerStatus, 
 		ingress = append(ingress, api.LoadBalancerIngress{IP: ip.IPAddress})
 	}
 	return &api.LoadBalancerStatus{Ingress: ingress}, nil
+}
+
+func getLoadBalancerSourceRanges(service *api.Service) ([]string, error) {
+	sourceRanges, err := apiservice.GetLoadBalancerSourceRanges(service)
+	if err != nil {
+		return []string{}, err
+	}
+
+	sourceCIDRs := make([]string, 0, len(sourceRanges))
+	for _, sourceRange := range sourceRanges {
+		sourceCIDRs = append(sourceCIDRs, sourceRange.String())
+	}
+
+	return sourceCIDRs, nil
 }

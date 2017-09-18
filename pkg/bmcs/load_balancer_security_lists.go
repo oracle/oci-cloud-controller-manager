@@ -24,23 +24,6 @@ type securityListManager interface {
 	Delete(lbSubnetIDs []string, listener *baremetal.Listener, backends []baremetal.Backend) error
 }
 
-// securityListManagerNOOP implements the securityListManager interface but does
-// no logic, so that it can be used to not handle security lists if the user doesn't wish
-// to use that feature.
-type securityListManagerNOOP struct {
-}
-
-func (s *securityListManagerNOOP) Update(lbSubnetIDs []string, sourceCIDRs []string, listener *baremetal.Listener, backends []baremetal.Backend) error {
-	return nil
-}
-func (s *securityListManagerNOOP) Delete(lbSubnetIDs []string, listener *baremetal.Listener, backends []baremetal.Backend) error {
-	return nil
-}
-
-func newSecurityListManagerNOOP() securityListManager {
-	return &securityListManagerNOOP{}
-}
-
 type securityListManagerImpl struct {
 	securityListCache cache.Store
 	subnetCache       cache.Store
@@ -97,7 +80,7 @@ func (s *securityListManagerImpl) Update(lbSubnetIDs []string, sourceCIDRs []str
 			return err
 		}
 
-		lbEgressRules := getLoadBalancerEgressRules(subnets, lbSecurityList, backendPort)
+		lbEgressRules := getLoadBalancerEgressRules(lbSecurityList, subnets, backendPort)
 		lbIngressRules := getLoadBalancerIngressRules(lbSecurityList, sourceCIDRs, uint64(listener.Port))
 
 		err = s.updateSecurityListRules(lbSecurityList.ID, lbIngressRules, lbEgressRules)
@@ -147,7 +130,7 @@ func (s *securityListManagerImpl) Delete(lbSubnetIDs []string, listener *baremet
 		}
 
 		var noSubnets []*baremetal.Subnet
-		lbEgressRules := getLoadBalancerEgressRules(noSubnets, lbSecurityList, backendPort)
+		lbEgressRules := getLoadBalancerEgressRules(lbSecurityList, noSubnets, backendPort)
 
 		var noSourceCIDRs []string
 		lbIngressRules := getLoadBalancerIngressRules(lbSecurityList, noSourceCIDRs, uint64(listener.Port))
@@ -311,7 +294,7 @@ func getLoadBalancerIngressRules(lbSecurityList *baremetal.SecurityList, sourceC
 	return ingressRules
 }
 
-func getLoadBalancerEgressRules(nodeSubnets []*baremetal.Subnet, lbSecurityList *baremetal.SecurityList, port uint64) []baremetal.EgressSecurityRule {
+func getLoadBalancerEgressRules(lbSecurityList *baremetal.SecurityList, nodeSubnets []*baremetal.Subnet, port uint64) []baremetal.EgressSecurityRule {
 
 	nodeCIDRs := sets.NewString()
 	for _, subnet := range nodeSubnets {
@@ -380,4 +363,21 @@ func makeIngressSecurityRule(cidrBlock string, port uint64) baremetal.IngressSec
 		},
 		IsStateless: false,
 	}
+}
+
+// securityListManagerNOOP implements the securityListManager interface but does
+// no logic, so that it can be used to not handle security lists if the user doesn't wish
+// to use that feature.
+type securityListManagerNOOP struct {
+}
+
+func (s *securityListManagerNOOP) Update(lbSubnetIDs []string, sourceCIDRs []string, listener *baremetal.Listener, backends []baremetal.Backend) error {
+	return nil
+}
+func (s *securityListManagerNOOP) Delete(lbSubnetIDs []string, listener *baremetal.Listener, backends []baremetal.Backend) error {
+	return nil
+}
+
+func newSecurityListManagerNOOP() securityListManager {
+	return &securityListManagerNOOP{}
 }

@@ -78,11 +78,6 @@ type Interface interface {
 	// LoadBalancer.
 	CreateAndAwaitCertificate(lb *baremetal.LoadBalancer, name string, certificate string, key string) error
 	AwaitWorkRequest(id string) (*baremetal.WorkRequest, error)
-
-	GetSubnet(ocid string) (*baremetal.Subnet, error)
-
-	// GetSubnets returns the Subnets corresponding to the given OCIDs.
-	GetSubnets(ocids []string) ([]*baremetal.Subnet, error)
 	// GetSubnetsForInternalIPs returns the deduplicated subnets in which the
 	// given internal IP addresses reside.
 	GetSubnetsForInternalIPs(ips []string) ([]*baremetal.Subnet, error)
@@ -97,6 +92,8 @@ type Interface interface {
 type BaremetalInterface interface {
 	Validate() error
 	GetInstance(id string) (*baremetal.Instance, error)
+
+	GetSubnet(ocid string) (*baremetal.Subnet, error)
 
 	UpdateSecurityList(id string, opts *baremetal.UpdateSecurityListOptions) (*baremetal.SecurityList, error)
 

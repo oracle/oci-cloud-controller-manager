@@ -15,10 +15,305 @@
 package bmcs
 
 import (
+	"reflect"
 	"testing"
 
 	baremetal "github.com/oracle/bmcs-go-sdk"
+	"github.com/oracle/kubernetes-cloud-controller-manager/pkg/bmcs/client"
 )
+
+func TestGetBackendPort(t *testing.T) {
+	backends := []baremetal.Backend{
+		{Port: 80},
+	}
+
+	port := getBackendPort(backends)
+	if port != 80 {
+		t.Errorf("expected port 80 but got %d", port)
+	}
+}
+
+func TestGetNodeIngressRules(t *testing.T) {
+	testCases := []struct {
+		name         string
+		securityList *baremetal.SecurityList
+		lbSubnets    []*baremetal.Subnet
+		port         uint64
+		expected     []baremetal.IngressSecurityRule
+	}{
+		{
+			name: "new ingress",
+			securityList: &baremetal.SecurityList{
+				IngressSecurityRules: []baremetal.IngressSecurityRule{
+					makeIngressSecurityRule("existing", 9000),
+				},
+			},
+			lbSubnets: []*baremetal.Subnet{
+				{CIDRBlock: "1"},
+				{CIDRBlock: "2"},
+			},
+			port: 80,
+			expected: []baremetal.IngressSecurityRule{
+				makeIngressSecurityRule("existing", 9000),
+				makeIngressSecurityRule("1", 80),
+				makeIngressSecurityRule("2", 80),
+			},
+		}, {
+			name: "no change",
+			securityList: &baremetal.SecurityList{
+				IngressSecurityRules: []baremetal.IngressSecurityRule{
+					makeIngressSecurityRule("existing", 9000),
+					makeIngressSecurityRule("1", 80),
+					makeIngressSecurityRule("2", 80),
+				},
+			},
+			lbSubnets: []*baremetal.Subnet{
+				{CIDRBlock: "1"},
+				{CIDRBlock: "2"},
+			},
+			port: 80,
+			expected: []baremetal.IngressSecurityRule{
+				makeIngressSecurityRule("existing", 9000),
+				makeIngressSecurityRule("1", 80),
+				makeIngressSecurityRule("2", 80),
+			},
+		}, {
+			name: "change lb subnet",
+			securityList: &baremetal.SecurityList{
+				IngressSecurityRules: []baremetal.IngressSecurityRule{
+					makeIngressSecurityRule("existing", 9000),
+					makeIngressSecurityRule("1", 80),
+					makeIngressSecurityRule("2", 80),
+					makeIngressSecurityRule("existing", 9001),
+				},
+			},
+			lbSubnets: []*baremetal.Subnet{
+				{CIDRBlock: "1"},
+				{CIDRBlock: "3"},
+			},
+			port: 80,
+			expected: []baremetal.IngressSecurityRule{
+				makeIngressSecurityRule("existing", 9000),
+				makeIngressSecurityRule("1", 80),
+				makeIngressSecurityRule("existing", 9001),
+				makeIngressSecurityRule("3", 80),
+			},
+		}, {
+			name: "remove lb subnets",
+			securityList: &baremetal.SecurityList{
+				IngressSecurityRules: []baremetal.IngressSecurityRule{
+					makeIngressSecurityRule("existing", 9000),
+					makeIngressSecurityRule("1", 80),
+					makeIngressSecurityRule("2", 80),
+					makeIngressSecurityRule("existing", 9001),
+				},
+			},
+			lbSubnets: []*baremetal.Subnet{},
+			port:      80,
+			expected: []baremetal.IngressSecurityRule{
+				makeIngressSecurityRule("existing", 9000),
+				makeIngressSecurityRule("existing", 9001),
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			rules := getNodeIngressRules(tc.securityList, tc.lbSubnets, tc.port)
+			if !reflect.DeepEqual(rules, tc.expected) {
+				t.Errorf("expected rules\n%+v\nbut got\n%+v", tc.expected, rules)
+			}
+		})
+	}
+}
+
+func TestGetLoadBalancerIngressRules(t *testing.T) {
+	testCases := []struct {
+		name         string
+		securityList *baremetal.SecurityList
+		sourceCIDRs  []string
+		port         uint64
+		expected     []baremetal.IngressSecurityRule
+	}{
+		{
+			name: "new source cidrs",
+			securityList: &baremetal.SecurityList{
+				IngressSecurityRules: []baremetal.IngressSecurityRule{
+					makeIngressSecurityRule("existing", 9000),
+				},
+			},
+			sourceCIDRs: []string{
+				"1",
+				"2",
+			},
+			port: 80,
+			expected: []baremetal.IngressSecurityRule{
+				makeIngressSecurityRule("existing", 9000),
+				makeIngressSecurityRule("1", 80),
+				makeIngressSecurityRule("2", 80),
+			},
+		}, {
+			name: "no change",
+			securityList: &baremetal.SecurityList{
+				IngressSecurityRules: []baremetal.IngressSecurityRule{
+					makeIngressSecurityRule("existing", 9000),
+					makeIngressSecurityRule("1", 80),
+					makeIngressSecurityRule("2", 80),
+				},
+			},
+			sourceCIDRs: []string{
+				"1",
+				"2",
+			},
+			port: 80,
+			expected: []baremetal.IngressSecurityRule{
+				makeIngressSecurityRule("existing", 9000),
+				makeIngressSecurityRule("1", 80),
+				makeIngressSecurityRule("2", 80),
+			},
+		}, {
+			name: "change source cidr",
+			securityList: &baremetal.SecurityList{
+				IngressSecurityRules: []baremetal.IngressSecurityRule{
+					makeIngressSecurityRule("existing", 9000),
+					makeIngressSecurityRule("1", 80),
+					makeIngressSecurityRule("2", 80),
+					makeIngressSecurityRule("existing", 9001),
+				},
+			},
+			sourceCIDRs: []string{
+				"1",
+				"3",
+			},
+			port: 80,
+			expected: []baremetal.IngressSecurityRule{
+				makeIngressSecurityRule("existing", 9000),
+				makeIngressSecurityRule("1", 80),
+				makeIngressSecurityRule("existing", 9001),
+				makeIngressSecurityRule("3", 80),
+			},
+		}, {
+			name: "remove source cidrs",
+			securityList: &baremetal.SecurityList{
+				IngressSecurityRules: []baremetal.IngressSecurityRule{
+					makeIngressSecurityRule("existing", 9000),
+					makeIngressSecurityRule("1", 80),
+					makeIngressSecurityRule("2", 80),
+					makeIngressSecurityRule("existing", 9001),
+				},
+			},
+			sourceCIDRs: []string{},
+			port:        80,
+			expected: []baremetal.IngressSecurityRule{
+				makeIngressSecurityRule("existing", 9000),
+				makeIngressSecurityRule("existing", 9001),
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			rules := getLoadBalancerIngressRules(tc.securityList, tc.sourceCIDRs, tc.port)
+			if !reflect.DeepEqual(rules, tc.expected) {
+				t.Errorf("expected rules\n%+v\nbut got\n%+v", tc.expected, rules)
+			}
+		})
+	}
+}
+
+func TestGetLoadBalancerEgressRules(t *testing.T) {
+	testCases := []struct {
+		name         string
+		securityList *baremetal.SecurityList
+		subnets      []*baremetal.Subnet
+		port         uint64
+		expected     []baremetal.EgressSecurityRule
+	}{
+		{
+			name: "new egress",
+			securityList: &baremetal.SecurityList{
+				EgressSecurityRules: []baremetal.EgressSecurityRule{
+					makeEgressSecurityRule("existing", 9000),
+				},
+			},
+			subnets: []*baremetal.Subnet{
+				{CIDRBlock: "1"},
+				{CIDRBlock: "2"},
+			},
+			port: 80,
+			expected: []baremetal.EgressSecurityRule{
+				makeEgressSecurityRule("existing", 9000),
+				makeEgressSecurityRule("1", 80),
+				makeEgressSecurityRule("2", 80),
+			},
+		}, {
+			name: "no change",
+			securityList: &baremetal.SecurityList{
+				EgressSecurityRules: []baremetal.EgressSecurityRule{
+					makeEgressSecurityRule("existing", 9000),
+					makeEgressSecurityRule("1", 80),
+					makeEgressSecurityRule("2", 80),
+				},
+			},
+			subnets: []*baremetal.Subnet{
+				{CIDRBlock: "1"},
+				{CIDRBlock: "2"},
+			},
+			port: 80,
+			expected: []baremetal.EgressSecurityRule{
+				makeEgressSecurityRule("existing", 9000),
+				makeEgressSecurityRule("1", 80),
+				makeEgressSecurityRule("2", 80),
+			},
+		}, {
+			name: "change node subnet",
+			securityList: &baremetal.SecurityList{
+				EgressSecurityRules: []baremetal.EgressSecurityRule{
+					makeEgressSecurityRule("existing", 9000),
+					makeEgressSecurityRule("1", 80),
+					makeEgressSecurityRule("2", 80),
+					makeEgressSecurityRule("existing", 9001),
+				},
+			},
+			subnets: []*baremetal.Subnet{
+				{CIDRBlock: "1"},
+				{CIDRBlock: "3"},
+			},
+			port: 80,
+			expected: []baremetal.EgressSecurityRule{
+				makeEgressSecurityRule("existing", 9000),
+				makeEgressSecurityRule("1", 80),
+				makeEgressSecurityRule("existing", 9001),
+				makeEgressSecurityRule("3", 80),
+			},
+		}, {
+			name: "remove node subnets",
+			securityList: &baremetal.SecurityList{
+				EgressSecurityRules: []baremetal.EgressSecurityRule{
+					makeEgressSecurityRule("existing", 9000),
+					makeEgressSecurityRule("1", 80),
+					makeEgressSecurityRule("2", 80),
+					makeEgressSecurityRule("existing", 9001),
+				},
+			},
+			subnets: []*baremetal.Subnet{},
+			port:    80,
+			expected: []baremetal.EgressSecurityRule{
+				makeEgressSecurityRule("existing", 9000),
+				makeEgressSecurityRule("existing", 9001),
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			rules := getLoadBalancerEgressRules(tc.securityList, tc.subnets, tc.port)
+			if !reflect.DeepEqual(rules, tc.expected) {
+				t.Errorf("expected rules\n%+v\nbut got\n%+v", tc.expected, rules)
+			}
+		})
+	}
+}
 
 func TestMakeIngressSecurityRuleHasProtocolOptions(t *testing.T) {
 	cdirRange := "10.0.0.0/16"
@@ -40,72 +335,117 @@ func TestMakeEgressSecurityRuleHasProtocolOptions(t *testing.T) {
 	}
 }
 
-func TestBasicLoadBalancerSecurityListRuleCreation(t *testing.T) {
-	backendSubnetCDIR := "10.0.0.0/16"
-	backendSubnets := []*baremetal.Subnet{{
-		ID:        "ocid1.subnet.oc1.phx.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-		CIDRBlock: backendSubnetCDIR,
-		SecurityListIDs: []string{
-			"ocid1.securitylist.oc1.phx.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+func TestGetSecurityList(t *testing.T) {
+
+	testCases := []struct {
+		name     string
+		calls    []string
+		subnet   *baremetal.Subnet
+		cache    *baremetal.SecurityList
+		client   *baremetal.SecurityList
+		expected *baremetal.SecurityList
+	}{
+		{
+			name:  "cache hit",
+			calls: []string{},
+			subnet: &baremetal.Subnet{
+				SecurityListIDs: []string{"list"},
+			},
+			cache: &baremetal.SecurityList{
+				ID:          "list",
+				DisplayName: "cache",
+			},
+			client: nil,
+			expected: &baremetal.SecurityList{
+				ID:          "list",
+				DisplayName: "cache",
+			},
+		}, {
+			name:  "cache miss",
+			calls: []string{"get-default-security-list"},
+			subnet: &baremetal.Subnet{
+				SecurityListIDs: []string{"list"},
+			},
+			cache: nil,
+			client: &baremetal.SecurityList{
+				ID:          "list",
+				DisplayName: "client",
+			},
+			expected: &baremetal.SecurityList{
+				ID:          "list",
+				DisplayName: "client",
+			},
 		},
-	}}
-
-	lb1CDIR := "10.1.0.0/16"
-	lb2CDIR := "10.2.0.0/16"
-	lbSubnets := []*baremetal.Subnet{{
-		ID:        "ocid1.subnet.oc1.phx.bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-		CIDRBlock: lb1CDIR,
-		SecurityListIDs: []string{
-			"ocid1.securitylist.oc1.phx.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-		},
-	}, {
-		ID:        "ocid1.subnet.oc1.phx.cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-		CIDRBlock: lb2CDIR,
-		SecurityListIDs: []string{
-			"ocid1.securitylist.oc1.phx.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-		},
-	}}
-
-	securityList := &baremetal.SecurityList{}
-
-	mngr := newSecurityListManager(nil, backendSubnets, lbSubnets).(*securityListManagerImpl)
-	mngr.addSecurityListForSubnet(securityList, backendSubnets[0].ID)
-	mngr.addSecurityListForSubnet(securityList, lbSubnets[0].ID)
-	mngr.addSecurityListForSubnet(securityList, lbSubnets[1].ID)
-
-	port := uint64(80)
-	err := mngr.EnsureRulesAdded(port)
-	if err != nil {
-		t.Fatalf("EnsureRulesAdded(%d) => error: %v", port, err)
 	}
 
-	// Check we have 1 EgressSecurityRule
-	if len(securityList.EgressSecurityRules) != 1 {
-		t.Errorf("Got %d EgressSecurityRules, expected 1", len(securityList.EgressSecurityRules))
-	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			fakeClient := client.NewFakeClient()
+			mgr := newSecurityListManager(fakeClient).(*securityListManagerImpl)
+			if tc.cache != nil {
+				mgr.securityListCache.Add(tc.cache)
+			}
 
-	// Check that this rule allows traffic destined for our backend subnet
-	if len(securityList.EgressSecurityRules) > 0 && securityList.EgressSecurityRules[0].Destination != backendSubnetCDIR {
-		t.Errorf("Expected EgressSecurityRule with Destination: %q, got %q",
-			backendSubnetCDIR, securityList.EgressSecurityRules[0].Destination)
-	}
+			if tc.client != nil {
+				fakeClient.DefaultSecurityLists[tc.client.ID] = tc.client
+			}
 
-	// Check that we have two ingress rules
-	if len(securityList.IngressSecurityRules) != 2 {
-		t.Errorf("Got %d IngressSecurityRules, expected 2", len(securityList.IngressSecurityRules))
+			result, err := mgr.getSecurityList(tc.subnet)
+			if err != nil {
+				t.Error(err)
+			}
+			if !reflect.DeepEqual(tc.calls, fakeClient.Calls) {
+				t.Errorf("expected fake client calls\n%+v\nbut got\n%+v", tc.calls, fakeClient.Calls)
+			}
+			if !reflect.DeepEqual(result, tc.expected) {
+				t.Errorf("expected security list\n%+v\nbut got\n%+v", tc.expected, result)
+			}
+		})
 	}
+}
 
-	// Check the first of these allows traffic from the first load balancer
-	// subnet
-	if len(securityList.IngressSecurityRules) > 0 && securityList.IngressSecurityRules[0].Source != lb1CDIR {
-		t.Errorf("Expected IngressSecurityRules with Source: %q, got %q",
-			lb1CDIR, securityList.IngressSecurityRules[0].Source)
-	}
+func TestUpdate(t *testing.T) {
 
-	// Check the second of these allows traffic from the second load
-	// balancer subnet
-	if len(securityList.IngressSecurityRules) > 0 && securityList.IngressSecurityRules[1].Source != lb2CDIR {
-		t.Errorf("Expected IngressSecurityRules with Source: %q, got %q",
-			lb1CDIR, securityList.IngressSecurityRules[1].Source)
-	}
+}
+func TestDelete(t *testing.T) {
+	// TODO: add more tests instead of a basic acceptance test
+
+	// fakeClient := client.NewFakeClient()
+	// mgr := newSecurityListManager(fakeClient).(*securityListManagerImpl)
+
+	// lbSubnetIDs := []string{
+	// 	"lb-subnet-1",
+	// 	"lb-subnet-2",
+	// }
+	// lbSubnets := []*baremetal.Subnet{
+	// 	{
+	// 		ID:        "lb-subnet-1",
+	// 		CIDRBlock: "lb-subnet-1",
+	// 	},
+	// 	{
+	// 		ID:        "lb-subnet-2",
+	// 		CIDRBlock: "lb-subnet-2",
+	// 	},
+	// }
+	// lbSecurityLists := []*baremetal.SecurityList{
+	// 	{
+	// 		ID:                   "lb-subnet-1",
+	// 		IngressSecurityRules: []baremetal.IngressSecurityRule{},
+	// 		EgressSecurityRules:  []baremetal.EgressSecurityRule{},
+	// 	},
+	// 	{
+	// 		ID:                   "lb-subnet-2",
+	// 		IngressSecurityRules: []baremetal.IngressSecurityRule{},
+	// 		EgressSecurityRules:  []baremetal.EgressSecurityRule{},
+	// 	},
+	// }
+
+	// for _, s := range lbSubnets {
+	// 	mgr.subnetCache.Add(s)
+	// }
+
+	// for _, s := range lbSecurityLists {
+	// 	mgr.securityListCache.Add(s)
+	// }
+
 }
