@@ -77,6 +77,7 @@ type Interface interface {
 	// CreateAndAwaitCertificate creates a certificate for the given
 	// LoadBalancer.
 	CreateAndAwaitCertificate(lb *baremetal.LoadBalancer, name string, certificate string, key string) error
+	// AwaitWorkRequest blocks until the work request succeeds, fails or if it timesout after exponential backoff.
 	AwaitWorkRequest(id string) (*baremetal.WorkRequest, error)
 	// GetSubnetsForInternalIPs returns the deduplicated subnets in which the
 	// given internal IP addresses reside.
@@ -104,7 +105,7 @@ type BaremetalInterface interface {
 
 	TerminateInstance(id string, opts *baremetal.IfMatchOptions) error
 
-	GetSubnet(ocid string) (*baremetal.Subnet, error)
+	GetSubnet(oc string) (*baremetal.Subnet, error)
 
 	UpdateSecurityList(id string, opts *baremetal.UpdateSecurityListOptions) (*baremetal.SecurityList, error)
 
@@ -118,7 +119,9 @@ type BaremetalInterface interface {
 		sessionPersistenceConfig *baremetal.SessionPersistenceConfiguration,
 		opts *baremetal.LoadBalancerOptions,
 	) (workRequestID string, e error)
+
 	UpdateBackendSet(loadBalancerID string, backendSetName string, opts *baremetal.UpdateLoadBalancerBackendSetOptions) (workRequestID string, e error)
+
 	DeleteBackendSet(loadBalancerID string, backendSetName string, opts *baremetal.ClientRequestOptions) (string, error)
 
 	CreateListener(

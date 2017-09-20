@@ -1,3 +1,17 @@
+// Copyright 2017 The Oracle Kubernetes Cloud Controller Manager Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package client
 
 import (
@@ -6,14 +20,14 @@ import (
 	baremetal "github.com/oracle/bmcs-go-sdk"
 )
 
-// FakeClient that should be used for testing
+// FakeClient that should be used for testing.
 type FakeClient struct {
 	Err                  error
 	Calls                []string
 	DefaultSecurityLists map[string]*baremetal.SecurityList
 }
 
-// NewFakeClient creates a new fake client for testing
+// NewFakeClient creates a new fake client for testing.
 func NewFakeClient() *FakeClient {
 	return &FakeClient{
 		Calls:                []string{},
@@ -41,6 +55,12 @@ func (f *FakeClient) LaunchInstance(
 	opts *baremetal.LaunchInstanceOptions) (*baremetal.Instance, error) {
 	f.call("launch-instance")
 	return nil, f.Err
+}
+
+// TerminateInstance fake
+func (f *FakeClient) TerminateInstance(id string, opts *baremetal.IfMatchOptions) error {
+	f.call("terminate-instance")
+	return f.Err
 }
 
 // GetInstanceByNodeName fake

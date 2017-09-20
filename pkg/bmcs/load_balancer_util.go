@@ -18,15 +18,15 @@ const (
 	sslPrivateKeyFileName  = "tls.key"
 )
 
-// ActionType specifies what action should be taken on the resource
+// ActionType specifies what action should be taken on the resource.
 type ActionType string
 
 const (
-	// Create the resource as it doesn't exist yet
+	// Create the resource as it doesn't exist yet.
 	Create = "create"
-	// Update the resource
+	// Update the resource.
 	Update = "update"
-	// Delete the resource
+	// Delete the resource.
 	Delete = "delete"
 )
 
@@ -100,8 +100,7 @@ func getBackendSetChanges(actual, desired map[string]baremetal.BackendSet) []Bac
 
 	// Now check if any need to be created.
 	for name, desiredBackendSet := range desired {
-		_, ok := actual[name]
-		if !ok {
+		if _, ok := actual[name]; !ok {
 			// doesn't exist so lets create it
 			backendSetActions = append(backendSetActions, BackendSetAction{
 				BackendSet: desiredBackendSet,
@@ -122,7 +121,6 @@ func getListenerChanges(actual, desired map[string]baremetal.Listener) []Listene
 	// First check to see if any listeners need to be deleted or updated.
 	for name, actualListener := range actual {
 		desiredListener, ok := desired[name]
-
 		if !ok {
 			// no longer exists
 			listenerActions = append(listenerActions, ListenerAction{
@@ -142,8 +140,7 @@ func getListenerChanges(actual, desired map[string]baremetal.Listener) []Listene
 
 	// Now check if any need to be created.
 	for name, desiredListener := range desired {
-		_, ok := actual[name]
-		if !ok {
+		if _, ok := actual[name]; !ok {
 			// doesn't exist so lets create it
 			listenerActions = append(listenerActions, ListenerAction{
 				Listener: desiredListener,
