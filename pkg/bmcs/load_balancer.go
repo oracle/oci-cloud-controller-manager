@@ -17,16 +17,15 @@ package bmcs
 import (
 	"fmt"
 
-	"github.com/oracle/kubernetes-cloud-controller-manager/pkg/bmcs/client"
-
 	"github.com/golang/glog"
-
 	baremetal "github.com/oracle/bmcs-go-sdk"
+	"github.com/oracle/kubernetes-cloud-controller-manager/pkg/bmcs/client"
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
-	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
 	k8sports "k8s.io/kubernetes/pkg/master/ports"
+
+	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
 )
 
 const (
@@ -94,7 +93,7 @@ func (cp *CloudProvider) ensureSSLCertificate(name string, svc *api.Service, lb 
 		glog.V(4).Infof("Certificate: %q already exists on load balancer: %q", name, lb.DisplayName)
 		return nil
 	}
-	if !client.IsNotFoundError(err) {
+	if !client.IsNotFound(err) {
 		return err
 	}
 
@@ -120,12 +119,12 @@ func (cp *CloudProvider) ensureSSLCertificate(name string, svc *api.Service, lb 
 // GetLoadBalancer returns whether the specified load balancer exists, and if
 // so, what its status is.
 func (cp *CloudProvider) GetLoadBalancer(clusterName string, service *api.Service) (status *api.LoadBalancerStatus, exists bool, retErr error) {
-	name := deriveLoadBalancerName(service)
+	name := GetLoadBalancerName(service)
 	glog.V(4).Infof("Fetching load balancer with name '%s'", name)
 
 	lb, err := cp.client.GetLoadBalancerByName(name)
 	if err != nil {
-		if client.IsNotFoundError(err) {
+		if client.IsNotFound(err) {
 			glog.V(2).Infof("Load balancer '%s' does not exist", name)
 			return nil, false, nil
 		}
@@ -159,7 +158,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(clusterName string, service *api.Ser
 	var lb *baremetal.LoadBalancer
 	lb, err = cp.client.GetLoadBalancerByName(spec.Name)
 	if err != nil {
-		if client.IsNotFoundError(err) {
+		if client.IsNotFound(err) {
 			glog.Infof("Attempting to create a load balancer with name '%s'", spec.Name)
 			var cerr error
 			lb, cerr = cp.client.CreateAndAwaitLoadBalancer(spec.Name, spec.Shape, spec.Subnets)
@@ -187,14 +186,14 @@ func (cp *CloudProvider) EnsureLoadBalancer(clusterName string, service *api.Ser
 		return nil, err
 	}
 
-	err = cp.updateListeners(lb, spec, sslConfigMap, sourceCIDRs)
-	if err != nil {
-		return nil, fmt.Errorf("udpate listeners: %v", err)
-	}
-
 	err = cp.updateBackendSets(lb, spec)
 	if err != nil {
 		return nil, fmt.Errorf("update backendsets: %v", err)
+	}
+
+	err = cp.updateListeners(lb, spec, sslConfigMap, sourceCIDRs)
+	if err != nil {
+		return nil, fmt.Errorf("udpate listeners: %v", err)
 	}
 
 	return loadBalancerToStatus(lb)
@@ -317,7 +316,7 @@ func (cp *CloudProvider) updateListeners(lb *baremetal.LoadBalancer, spec LBSpec
 
 // UpdateLoadBalancer : TODO find out where this is called
 func (cp *CloudProvider) UpdateLoadBalancer(clusterName string, service *api.Service, nodes []*api.Node) error {
-	name := deriveLoadBalancerName(service)
+	name := GetLoadBalancerName(service)
 	glog.Infof("Attempting to update load balancer '%s'", name)
 
 	_, err := cp.EnsureLoadBalancer(clusterName, service, nodes)
@@ -328,17 +327,17 @@ func (cp *CloudProvider) UpdateLoadBalancer(clusterName string, service *api.Ser
 // exists, returning nil if the load balancer specified either didn't exist or
 // was successfully deleted.
 func (cp *CloudProvider) EnsureLoadBalancerDeleted(clusterName string, service *api.Service) error {
-	name := deriveLoadBalancerName(service)
+	name := GetLoadBalancerName(service)
 
 	glog.Infof("Attempting to delete load balancer with name '%s'", name)
 	lb, err := cp.client.GetLoadBalancerByName(name)
 	if err != nil {
-		if client.IsNotFoundError(err) {
+		if client.IsNotFound(err) {
 			glog.Infof("Could not find load balancer with name '%s'. Nothing to do.", name)
 			return nil
 		}
 
-		return err
+		return fmt.Errorf("get load balancer by name %s: %v", name, err)
 	}
 
 	nodeIPs := sets.NewString()
@@ -350,20 +349,23 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(clusterName string, service *
 
 	spec, err := NewLBSpec(cp, service, nodeIPs.List())
 	if err != nil {
-		return err
+		return fmt.Errorf("new lb spec: %v", err)
 	}
 
 	sslConfigMap, err := spec.GetSSLConfig(getCertificateName(lb))
 	if err != nil {
-		return err
+		return fmt.Errorf("get ssl config: %v", err)
 	}
 
 	for _, listener := range spec.GetListeners(sslConfigMap) {
+		glog.V(4).Infof("Deleting security rules for listener `%s` for load balancer `%s`", listener.Name, lb.ID)
+
 		backends := spec.GetBackendSets()[listener.DefaultBackendSetName].Backends
 
 		err := cp.securityListManager.Delete(spec.Subnets, &listener, backends)
+
 		if err != nil {
-			return err
+			return fmt.Errorf("delete security rules for listener %s: %v", listener.Name, err)
 		}
 	}
 
@@ -371,7 +373,7 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(clusterName string, service *
 
 	workReqID, err := cp.client.DeleteLoadBalancer(lb.ID, &baremetal.ClientRequestOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("delete load balancer: %v", err)
 	}
 
 	_, err = cp.client.AwaitWorkRequest(workReqID)

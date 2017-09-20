@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestIsNotFoundError(t *testing.T) {
+func TestIsNotFound(t *testing.T) {
 	testCases := []struct {
 		name     string
 		err      error
@@ -30,9 +30,9 @@ func TestIsNotFoundError(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			isNotFoundErr := IsNotFoundError(tt.err)
+			isNotFoundErr := IsNotFound(tt.err)
 			if isNotFoundErr != tt.expected {
-				t.Errorf("IsNotFoundError(%+v) => %t, wanted %t", tt.err, isNotFoundErr, tt.expected)
+				t.Errorf("IsNotFound(%+v) => %t, wanted %t", tt.err, isNotFoundErr, tt.expected)
 			}
 		})
 	}

@@ -31,6 +31,18 @@ func (f *FakeClient) Compartment(id string) Interface {
 	return nil
 }
 
+// LaunchInstance fake
+func (f *FakeClient) LaunchInstance(
+	availabilityDomain,
+	compartmentID,
+	image,
+	shape,
+	subnetID string,
+	opts *baremetal.LaunchInstanceOptions) (*baremetal.Instance, error) {
+	f.call("launch-instance")
+	return nil, f.Err
+}
+
 // GetInstanceByNodeName fake
 func (f *FakeClient) GetInstanceByNodeName(name string) (*baremetal.Instance, error) {
 	f.call("get-instance-by-node-name")

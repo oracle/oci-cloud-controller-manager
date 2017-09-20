@@ -7,11 +7,10 @@ import (
 	"strings"
 
 	baremetal "github.com/oracle/bmcs-go-sdk"
-	"k8s.io/apimachinery/pkg/util/sets"
-
-	"k8s.io/kubernetes/pkg/cloudprovider"
 
 	api "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/kubernetes/pkg/cloudprovider"
 )
 
 const (
@@ -167,7 +166,8 @@ func getListenerName(protocol string, port int, sslConfig *baremetal.SSLConfigur
 	return fmt.Sprintf("%s-%d", protocol, port)
 }
 
-func deriveLoadBalancerName(service *api.Service) string {
+// GetLoadBalancerName gets the name of the load balancer based on the service
+func GetLoadBalancerName(service *api.Service) string {
 	return fmt.Sprintf("%s-%s", service.Name, cloudprovider.GetLoadBalancerName(service))
 }
 

@@ -18,12 +18,12 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
+
+	baremetal "github.com/oracle/bmcs-go-sdk"
 	"github.com/oracle/kubernetes-cloud-controller-manager/pkg/bmcs/client"
 
 	api "k8s.io/api/core/v1"
 	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
-
-	baremetal "github.com/oracle/bmcs-go-sdk"
 )
 
 // LBSpec holds the data required to build a BMCS load balancer from a
@@ -78,7 +78,7 @@ func NewLBSpec(cp *CloudProvider, service *api.Service, nodeIPs []string) (LBSpe
 	}
 
 	return LBSpec{
-		Name:    deriveLoadBalancerName(service),
+		Name:    GetLoadBalancerName(service),
 		Shape:   lbShape,
 		Service: service,
 		NodeIPs: nodeIPs,

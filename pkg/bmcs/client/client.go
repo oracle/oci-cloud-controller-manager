@@ -91,7 +91,18 @@ type Interface interface {
 // client. It is composed into Interface.
 type BaremetalInterface interface {
 	Validate() error
+
+	LaunchInstance(
+		availabilityDomain,
+		compartmentID,
+		image,
+		shape,
+		subnetID string,
+		opts *baremetal.LaunchInstanceOptions) (*baremetal.Instance, error)
+
 	GetInstance(id string) (*baremetal.Instance, error)
+
+	TerminateInstance(id string, opts *baremetal.IfMatchOptions) error
 
 	GetSubnet(ocid string) (*baremetal.Subnet, error)
 
@@ -279,7 +290,7 @@ func (c *client) GetNodeAddressesForInstance(id string) ([]api.NodeAddress, erro
 
 	vnics, err := c.GetAttachedVnicsForInstance(id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get attached vnics for instance `%s`: %v", id, err)
 	}
 
 	addresses := []api.NodeAddress{}
@@ -341,22 +352,25 @@ func (c *client) GetAttachedVnicsForInstance(id string) ([]*baremetal.Vnic, erro
 	for {
 		r, err := c.ListVnicAttachments(c.compartmentOCID, opts)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("list vnic attachments: %v", err)
 		}
 
 		for _, att := range r.Attachments {
 			if att.State != baremetal.ResourceAttached {
+				glog.Warningf("instance `%s` vnic attachment `%s` is in state %s", id, att.ID, att.State)
 				continue
 			}
 
 			v, err := c.GetVnic(att.VnicID)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("get vnic %s: %v", att.VnicID, err)
 			}
 
 			if v.State != baremetal.ResourceAvailable {
+				glog.Warningf("instance `%s` vnic `%s` is in state %s", id, att.VnicID, v.State)
 				continue
 			}
+
 			vnics = append(vnics, v)
 		}
 

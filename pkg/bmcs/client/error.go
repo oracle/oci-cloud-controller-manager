@@ -14,7 +14,11 @@
 
 package client
 
-import "fmt"
+import (
+	"fmt"
+
+	baremetal "github.com/oracle/bmcs-go-sdk"
+)
 
 // SearchError represents an error searching the API.
 type SearchError struct {
@@ -32,7 +36,15 @@ func (e *SearchError) Error() string {
 	return e.Err
 }
 
-func IsNotFoundError(err error) bool {
+// IsNotFound checks if the error is the not found error returned from BMC
+func IsNotFound(err error) bool {
+	// TODO(horwitz): This is temporary until we remove SearchError in
+	// favor of just using the BMCS client errors directly.
+	ociErr, ok := err.(*baremetal.Error)
+	if ok {
+		return ociErr.Status == "404"
+	}
+
 	se, ok := err.(*SearchError)
 	return ok && se.NotFound
 }

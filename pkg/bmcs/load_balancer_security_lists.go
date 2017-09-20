@@ -18,8 +18,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang/glog"
 	baremetal "github.com/oracle/bmcs-go-sdk"
 	"github.com/oracle/kubernetes-cloud-controller-manager/pkg/bmcs/client"
+
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/cache"
 )
@@ -81,6 +83,7 @@ func (s *securityListManagerImpl) Update(lbSubnetIDs []string, sourceCIDRs []str
 
 	// First lets update the security rules for ingress/egress of the load balancer subnet
 	for _, lbSubnetID := range lbSubnetIDs {
+
 		lbSubnet, err := s.getSubnet(lbSubnetID)
 		if err != nil {
 			return err
@@ -97,6 +100,8 @@ func (s *securityListManagerImpl) Update(lbSubnetIDs []string, sourceCIDRs []str
 		lbEgressRules := getLoadBalancerEgressRules(lbSecurityList, subnets, backendPort)
 		lbIngressRules := getLoadBalancerIngressRules(lbSecurityList, sourceCIDRs, uint64(listener.Port))
 
+		glog.V(4).Infof("Updating lb security list `%s` with %d ingress rules & %d egress rules", lbSecurityList.ID, len(lbIngressRules), len(lbEgressRules))
+
 		err = s.updateSecurityListRules(lbSecurityList.ID, lbIngressRules, lbEgressRules)
 		if err != nil {
 			return err
@@ -111,6 +116,9 @@ func (s *securityListManagerImpl) Update(lbSubnetIDs []string, sourceCIDRs []str
 		}
 
 		ingressRules := getNodeIngressRules(securityList, lbSunets, backendPort)
+
+		glog.V(4).Infof("Updating node subnet security list `%s` with %d ingress rules", securityList.ID, len(ingressRules))
+
 		err = s.updateSecurityListRules(securityList.ID, ingressRules, securityList.EgressSecurityRules)
 		if err != nil {
 			return err
@@ -240,8 +248,9 @@ func getNodeIngressRules(securityList *baremetal.SecurityList, lbSubnets []*bare
 	var ingressRules []baremetal.IngressSecurityRule
 
 	for _, rule := range securityList.IngressSecurityRules {
-		if rule.TCPOptions.DestinationPortRange.Min != port &&
-			rule.TCPOptions.DestinationPortRange.Max != port {
+		if rule.TCPOptions == nil ||
+			(rule.TCPOptions.DestinationPortRange.Min != port &&
+				rule.TCPOptions.DestinationPortRange.Max != port) {
 			// this rule doesn't apply to this service so nothing to do but keep it
 			ingressRules = append(ingressRules, rule)
 			continue
@@ -277,8 +286,9 @@ func getLoadBalancerIngressRules(lbSecurityList *baremetal.SecurityList, sourceC
 	var ingressRules []baremetal.IngressSecurityRule
 	for _, rule := range lbSecurityList.IngressSecurityRules {
 
-		if rule.TCPOptions.DestinationPortRange.Min != port &&
-			rule.TCPOptions.DestinationPortRange.Max != port {
+		if rule.TCPOptions == nil ||
+			(rule.TCPOptions.DestinationPortRange.Min != port &&
+				rule.TCPOptions.DestinationPortRange.Max != port) {
 			// this rule doesn't apply to this service so nothing to do but keep it
 			ingressRules = append(ingressRules, rule)
 			continue
@@ -318,8 +328,9 @@ func getLoadBalancerEgressRules(lbSecurityList *baremetal.SecurityList, nodeSubn
 	var egressRules []baremetal.EgressSecurityRule
 
 	for _, rule := range lbSecurityList.EgressSecurityRules {
-		if rule.TCPOptions.DestinationPortRange.Min != port &&
-			rule.TCPOptions.DestinationPortRange.Max != port {
+		if rule.TCPOptions == nil ||
+			(rule.TCPOptions.DestinationPortRange.Min != port &&
+				rule.TCPOptions.DestinationPortRange.Max != port) {
 			// this rule doesn't apply to this service so nothing to do but keep it
 			egressRules = append(egressRules, rule)
 			continue
