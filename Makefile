@@ -55,8 +55,7 @@ build: dist/bin/$(ARCH)/$(BIN)
 dist: build-dirs
 	@echo "Building manifests"
 	@cp -a manifests/* dist
-	@find dist/ -type f -name '*.yaml' -exec sed ${SED_INPLACE} 's#{{VERSION}}#${VERSION}#g' {} +
-	@find dist/ -type f -name '*.yaml' -exec  sed ${SED_INPLACE} 's#{{REGISTRY}}#${REGISTRY}#g' {} +
+	@sed ${SED_INPLACE} 's#${IMAGE}:[0-9]\+.[0-9]\+.[0-9]\+#${IMAGE}#g' dist/oci-cloud-controller-manager.yaml
 
 dist/bin/$(ARCH)/$(BIN): build-dirs
 	echo "building: $@"
@@ -170,7 +169,7 @@ bin-clean:
 
 .PHONY: deploy
 deploy: push
-	kubectl -n bmcs set image ds/${BIN}-ds ${BIN}=${IMAGE}:${VERSION}
+	kubectl -n kube-system set image ds/${BIN} ${BIN}=${IMAGE}:${VERSION}
 
 .PHONY: run-dev
 run-dev:

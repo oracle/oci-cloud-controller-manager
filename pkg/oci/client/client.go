@@ -38,13 +38,13 @@ const (
 	DefaultLoadBalancerPolicy = "ROUND_ROBIN"
 )
 
-// ociHostnameTemplate is a template for a BMCS instance FQDN.
+// ociHostnameTemplate is a template for a OCI instance FQDN.
 // hostnameLabel.dnsLabel.vcnDomainName
 // e.g. worker-1.ad1.k8sdns.oraclevcn.com
 const ociHostnameTemplate = "%s.%s.%s"
 
-// Interface abstracts the BMCS SDK and application specific convenience
-// methods for interacting with the BMCS API.
+// Interface abstracts the OCI SDK and application specific convenience
+// methods for interacting with the OCI API.
 type Interface interface {
 	BaremetalInterface
 
@@ -141,11 +141,11 @@ type BaremetalInterface interface {
 	DeleteLoadBalancer(id string, opts *baremetal.ClientRequestOptions) (string, error)
 }
 
-// New creates a new BMCS API client.
+// New creates a new OCI API client.
 func New(cfg *Config) (Interface, error) {
 	privateKeyFile := baremetal.PrivateKeyFilePath(cfg.Global.PrivateKeyFile)
 	region := baremetal.Region(cfg.Global.Region)
-	bmcsClient, err := baremetal.NewClient(
+	ociClient, err := baremetal.NewClient(
 		cfg.Global.UserOCID,
 		cfg.Global.TenancyOCID,
 		cfg.Global.Fingerprint,
@@ -155,7 +155,7 @@ func New(cfg *Config) (Interface, error) {
 		return nil, err
 	}
 
-	return &client{Client: bmcsClient}, nil
+	return &client{Client: ociClient}, nil
 }
 
 // client is a wrapped baremetal.Client with additional methods/props for
@@ -227,7 +227,7 @@ func getRunningInstances(instances []baremetal.Instance) []baremetal.Instance {
 	return result
 }
 
-// findInstanceByNodeNameIsVnic tries to find the BMC Instance for a given node
+// findInstanceByNodeNameIsVnic tries to find the OCI Instance for a given node
 // name. It makes the assumption that he node name is resolvable.
 // https://kubernetes.io/docs/concepts/architecture/nodes/#management
 // So if the displayname doesn't match the nodename then:
@@ -392,7 +392,7 @@ var backoff = wait.Backoff{
 	Jitter:   0.1,
 }
 
-// AwaitWorkRequest keeps polling a BMCS work request until it succeeds. If it
+// AwaitWorkRequest keeps polling a OCI work request until it succeeds. If it
 // does not succeeded after N retries then return an error.
 func (c *client) AwaitWorkRequest(id string) (*baremetal.WorkRequest, error) {
 	glog.V(4).Infof("Polling WorkRequest %q...", id)

@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package bmcs implements an external Kubernetes cloud-provider for Oracle Bare
-// Metal Cloud.
-package bmcs
+// Package oci implements an external Kubernetes cloud-provider for Oracle Cloud
+// Infrastructure.
+package oci
 
 import (
 	"fmt"
@@ -28,14 +28,14 @@ import (
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/controller"
 
-	"github.com/oracle/kubernetes-cloud-controller-manager/pkg/bmcs/client"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 )
 
-// ProviderName uniquely identifies the Oracle Bare Metal Cloud Services (BMCS)
+// ProviderName uniquely identifies the Oracle Bare Metal Cloud Services (OCI)
 // cloud-provider.
-const ProviderName = "bmcs"
+const ProviderName = "oci"
 
-// CloudProvider is an implementation of the cloud-provider interface for BMCS.
+// CloudProvider is an implementation of the cloud-provider interface for OCI.
 type CloudProvider struct {
 	client              client.Interface
 	kubeclient          clientset.Interface
@@ -58,7 +58,7 @@ func NewCloudProvider(cfg *client.Config) (cloudprovider.Interface, error) {
 
 	err = c.Validate()
 	if err != nil {
-		glog.Errorf("Validate failed to communicate with bmc: %v", err)
+		glog.Errorf("cloudprovider.Validate() failed to communicate with OCI: %v", err)
 		return nil, err
 	}
 

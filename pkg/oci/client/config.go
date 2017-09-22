@@ -21,7 +21,7 @@ import (
 	gcfg "gopkg.in/gcfg.v1"
 )
 
-// Config holds the BMCS cloud-provider config passed to Kubernetes compontents
+// Config holds the OCI cloud-provider config passed to Kubernetes compontents
 // via the --cloud-config option.
 type Config struct {
 	Global struct {

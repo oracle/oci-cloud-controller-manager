@@ -5,7 +5,7 @@ metadata:
   labels:
     app: echoheaders
   annotations:
-    service.beta.kubernetes.io/bmcs-load-balancer-shape: 400Mbps
+    service.beta.kubernetes.io/oci-load-balancer-shape: 400Mbps
 spec:
   type: LoadBalancer
   ports:

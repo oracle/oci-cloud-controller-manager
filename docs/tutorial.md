@@ -5,7 +5,7 @@ LoadBalancer.
 
 ### Load balancer example
 
-When you create a service with --type=LoadBalancer a BMCS load balancer will be
+When you create a service with --type=LoadBalancer a OCI load balancer will be
 created.
 
 The example below will create an NGINX deployment and expose it via a load

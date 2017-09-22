@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package bmcs
+package oci
 
 import (
 	"fmt"
@@ -20,7 +20,7 @@ import (
 
 	"github.com/golang/glog"
 	baremetal "github.com/oracle/bmcs-go-sdk"
-	"github.com/oracle/kubernetes-cloud-controller-manager/pkg/bmcs/client"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/cache"

@@ -1,15 +1,9 @@
 ---
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: cloud-controller-manager
-  namespace: bmcs
----
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: Role
 metadata:
   name: system::leader-locking-cloud-controller-manager
-  namespace: bmcs
+  namespace: kube-system
 rules:
 - apiGroups:
   - ""
@@ -34,7 +28,7 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: RoleBinding
 metadata:
   name: system::leader-locking-cloud-controller-manager
-  namespace: bmcs
+  namespace: kube-system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -42,12 +36,12 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: cloud-controller-manager
-  namespace: bmcs
+  namespace: kube-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRole
 metadata:
-  name: bmcs-cloud-controller-manager
+  name: oci-cloud-controller-manager
 rules:
 - apiGroups:
   - ""
@@ -59,12 +53,12 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: bmcs-cloud-controller-manager
+  name: oci-cloud-controller-manager
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: bmcs-cloud-controller-manager
+  name: oci-cloud-controller-manager
 subjects:
 - kind: ServiceAccount
   name: cloud-controller-manager
-  namespace: bmcs
+  namespace: kube-system
