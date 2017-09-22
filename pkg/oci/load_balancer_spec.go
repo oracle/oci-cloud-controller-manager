@@ -91,9 +91,6 @@ func getBackendSetName(protocol string, port int) string {
 }
 
 // GetBackendSets builds a map of BackendSets based on the LBSpec.
-// TODO (apryde): Can/should we support SSL config here?
-// NOTE (apryde): Currently adds a node health-check per service port as
-// BackendSets and HealthCheckers are coupled.
 func (s *LBSpec) GetBackendSets() map[string]baremetal.BackendSet {
 	backendSets := make(map[string]baremetal.BackendSet)
 	for _, servicePort := range s.Service.Spec.Ports {

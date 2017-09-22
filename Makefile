@@ -55,7 +55,7 @@ build: dist/bin/$(ARCH)/$(BIN)
 dist: build-dirs
 	@echo "Building manifests"
 	@cp -a manifests/* dist
-	@sed ${SED_INPLACE} 's#${IMAGE}:[0-9]\+.[0-9]\+.[0-9]\+#${IMAGE}#g' dist/oci-cloud-controller-manager.yaml
+	@sed ${SED_INPLACE} 's#${IMAGE}:[0-9]\+.[0-9]\+.[0-9]\+#${IMAGE}:${VERSION}#g' dist/oci-cloud-controller-manager.yaml
 
 dist/bin/$(ARCH)/$(BIN): build-dirs
 	echo "building: $@"
