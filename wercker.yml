@@ -1,0 +1,8 @@
+box:
+  id: golang
+build:
+  steps:
+  - script:
+      name: noop
+      code: |
+        echo "OK"

@@ -3,6 +3,8 @@
 This project is an exernal Kubernetes cloud provider for Oracle's Bare Metal
 Cloud (BMCS).
 
+[![wercker status](https://app.wercker.com/status/17a52304e0309d138ad41f7ae9f9ea49/s/master "wercker status")](https://app.wercker.com/project/byKey/17a52304e0309d138ad41f7ae9f9ea49)
+
 ## Introduction
 
 External cloud providers were introduced as an _Alpha_ feature in Kubernetes
