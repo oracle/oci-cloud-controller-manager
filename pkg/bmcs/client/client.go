@@ -77,10 +77,8 @@ type Interface interface {
 	// CreateAndAwaitCertificate creates a certificate for the given
 	// LoadBalancer.
 	CreateAndAwaitCertificate(lb *baremetal.LoadBalancer, name string, certificate string, key string) error
+	// AwaitWorkRequest blocks until the work request succeeds, fails or if it timesout after exponential backoff.
 	AwaitWorkRequest(id string) (*baremetal.WorkRequest, error)
-
-	// GetSubnets returns the Subnets corresponding to the given OCIDs.
-	GetSubnets(ocids []string) ([]*baremetal.Subnet, error)
 	// GetSubnetsForInternalIPs returns the deduplicated subnets in which the
 	// given internal IP addresses reside.
 	GetSubnetsForInternalIPs(ips []string) ([]*baremetal.Subnet, error)
@@ -94,12 +92,52 @@ type Interface interface {
 // client. It is composed into Interface.
 type BaremetalInterface interface {
 	Validate() error
+
+	LaunchInstance(
+		availabilityDomain,
+		compartmentID,
+		image,
+		shape,
+		subnetID string,
+		opts *baremetal.LaunchInstanceOptions) (*baremetal.Instance, error)
+
 	GetInstance(id string) (*baremetal.Instance, error)
-	CreateBackend(loadBalancerID string, backendSetName string, ipAddr string, port int, opts *baremetal.CreateLoadBalancerBackendOptions) (string, error)
+
+	TerminateInstance(id string, opts *baremetal.IfMatchOptions) error
+
+	GetSubnet(oc string) (*baremetal.Subnet, error)
+
 	UpdateSecurityList(id string, opts *baremetal.UpdateSecurityListOptions) (*baremetal.SecurityList, error)
+
+	CreateBackendSet(
+		loadBalancerID string,
+		name string,
+		policy string,
+		backends []baremetal.Backend,
+		healthChecker *baremetal.HealthChecker,
+		sslConfig *baremetal.SSLConfiguration,
+		sessionPersistenceConfig *baremetal.SessionPersistenceConfiguration,
+		opts *baremetal.LoadBalancerOptions,
+	) (workRequestID string, e error)
+
+	UpdateBackendSet(loadBalancerID string, backendSetName string, opts *baremetal.UpdateLoadBalancerBackendSetOptions) (workRequestID string, e error)
+
 	DeleteBackendSet(loadBalancerID string, backendSetName string, opts *baremetal.ClientRequestOptions) (string, error)
-	DeleteBackend(loadBalancerID string, backendSetName string, backendName string, opts *baremetal.ClientRequestOptions) (string, error)
-	DeleteListener(loadBalancerID string, listenerName string, opts *baremetal.ClientRequestOptions) (string, error)
+
+	CreateListener(
+		loadBalancerID string,
+		name string,
+		defaultBackendSetName string,
+		protocol string,
+		port int,
+		sslConfig *baremetal.SSLConfiguration,
+		opts *baremetal.LoadBalancerOptions,
+	) (workRequestID string, e error)
+
+	UpdateListener(loadBalancerID string, listenerName string, opts *baremetal.UpdateLoadBalancerListenerOptions) (workRequestID string, e error)
+
+	DeleteListener(loadBalancerID string, listenerName string, opts *baremetal.ClientRequestOptions) (workRequestID string, e error)
+
 	DeleteLoadBalancer(id string, opts *baremetal.ClientRequestOptions) (string, error)
 }
 
@@ -157,36 +195,36 @@ func (c *client) GetInstanceByNodeName(nodeName string) (*baremetal.Instance, er
 			DisplayName: nodeName,
 		},
 	}
-	var running []baremetal.Instance
-	for {
-		r, err := c.ListInstances(c.compartmentOCID, opts)
-		if err != nil {
-			return nil, err
-		}
 
-		for _, i := range r.Instances {
-			if i.State == baremetal.ResourceRunning {
-				running = append(running, i)
-			}
-		}
-
-		if hasNexPage := SetNextPageOption(r.NextPage, &opts.ListOptions.PageListOptions); !hasNexPage {
-			break
-		}
+	r, err := c.ListInstances(c.compartmentOCID, opts)
+	if err != nil {
+		return nil, err
 	}
 
-	count := len(running)
+	instances := getRunningInstances(r.Instances)
+	count := len(instances)
+
 	switch {
 	case count == 0:
 		// If we can't find an instance by display name fall back to the more
 		// expensive search method.
 		return c.findInstanceByNodeNameIsVnic(nodeName)
-	case count > 1:
+	case count == 1:
+		glog.V(4).Infof("getInstanceByNodeName(%q): Got instance %s", nodeName, instances[0].ID)
+		return &instances[0], nil
+	default:
 		return nil, fmt.Errorf("expected one instance with display name '%s' but got %d", nodeName, count)
 	}
+}
 
-	glog.V(4).Infof("getInstanceByNodeName(%q): Got instance %s", nodeName, running[0].ID)
-	return &running[0], nil
+func getRunningInstances(instances []baremetal.Instance) []baremetal.Instance {
+	var result []baremetal.Instance
+	for _, instance := range instances {
+		if instance.State == baremetal.ResourceRunning {
+			result = append(result, instance)
+		}
+	}
+	return result
 }
 
 // findInstanceByNodeNameIsVnic tries to find the BMC Instance for a given node
@@ -255,7 +293,7 @@ func (c *client) GetNodeAddressesForInstance(id string) ([]api.NodeAddress, erro
 
 	vnics, err := c.GetAttachedVnicsForInstance(id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get attached vnics for instance `%s`: %v", id, err)
 	}
 
 	addresses := []api.NodeAddress{}
@@ -289,7 +327,6 @@ func (c *client) extractNodeAddressesFromVnic(vnic *baremetal.Vnic) ([]api.NodeA
 		addresses = append(addresses, api.NodeAddress{Type: api.NodeInternalIP, Address: ip.String()})
 	}
 
-	// What if the instance isn't public?
 	if vnic.PublicIPAddress != "" {
 		ip = net.ParseIP(vnic.PublicIPAddress)
 		if ip == nil {
@@ -298,7 +335,7 @@ func (c *client) extractNodeAddressesFromVnic(vnic *baremetal.Vnic) ([]api.NodeA
 		addresses = append(addresses, api.NodeAddress{Type: api.NodeExternalIP, Address: ip.String()})
 	}
 
-	glog.V(4).Infof("NodeAddresses: %v ", addresses)
+	glog.V(4).Infof("NodeAddresses: %+v ", addresses)
 
 	return addresses, nil
 }
@@ -318,22 +355,25 @@ func (c *client) GetAttachedVnicsForInstance(id string) ([]*baremetal.Vnic, erro
 	for {
 		r, err := c.ListVnicAttachments(c.compartmentOCID, opts)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("list vnic attachments: %v", err)
 		}
 
 		for _, att := range r.Attachments {
 			if att.State != baremetal.ResourceAttached {
+				glog.Warningf("instance `%s` vnic attachment `%s` is in state %s", id, att.ID, att.State)
 				continue
 			}
 
 			v, err := c.GetVnic(att.VnicID)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("get vnic %s: %v", att.VnicID, err)
 			}
 
 			if v.State != baremetal.ResourceAvailable {
+				glog.Warningf("instance `%s` vnic `%s` is in state %s", id, att.VnicID, v.State)
 				continue
 			}
+
 			vnics = append(vnics, v)
 		}
 
