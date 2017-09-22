@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package bmcs
+package oci
 
 import (
 	"errors"
@@ -20,13 +20,13 @@ import (
 	"github.com/golang/glog"
 
 	baremetal "github.com/oracle/bmcs-go-sdk"
-	"github.com/oracle/kubernetes-cloud-controller-manager/pkg/bmcs/client"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 
 	api "k8s.io/api/core/v1"
 	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
 )
 
-// LBSpec holds the data required to build a BMCS load balancer from a
+// LBSpec holds the data required to build a OCI load balancer from a
 // kubernetes service.
 type LBSpec struct {
 	Name    string
@@ -43,11 +43,11 @@ func NewLBSpec(cp *CloudProvider, service *api.Service, nodeIPs []string) (LBSpe
 	}
 
 	if service.Spec.SessionAffinity != api.ServiceAffinityNone {
-		return LBSpec{}, errors.New("BMCS only supports SessionAffinity `None` currently")
+		return LBSpec{}, errors.New("OCI only supports SessionAffinity `None` currently")
 	}
 
 	if service.Spec.LoadBalancerIP != "" {
-		return LBSpec{}, errors.New("BMCS does not support setting the LoadBalancerIP")
+		return LBSpec{}, errors.New("OCI does not support setting the LoadBalancerIP")
 	}
 
 	internalLB := false
@@ -57,7 +57,7 @@ func NewLBSpec(cp *CloudProvider, service *api.Service, nodeIPs []string) (LBSpe
 	}
 
 	if internalLB {
-		return LBSpec{}, errors.New("BMCS does not currently support internal load balancers")
+		return LBSpec{}, errors.New("OCI does not currently support internal load balancers")
 	}
 
 	// TODO (apryde): We should detect when this changes and WARN as we don't

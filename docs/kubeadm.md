@@ -8,7 +8,7 @@ traffic. Flannel requires UDP access.**
 
 ### Prerequisites
 
- - Create two (or more) BMCS ubuntu 16.04 instances. One master, N nodes.
+ - Create two (or more) OCI Ubuntu 16.04 instances. One master, N nodes.
 
 ## Install Kubernetes with kubeadm
 

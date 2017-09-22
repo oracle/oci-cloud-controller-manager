@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package bmcs
+package oci
 
 import (
 	"errors"
@@ -28,13 +28,13 @@ import (
 
 var _ cloudprovider.Instances = &CloudProvider{}
 
-// mapNodeNameToInstanceName maps a kube NodeName to a BMCS instance display
+// mapNodeNameToInstanceName maps a kube NodeName to a OCI instance display
 // name.
 func mapNodeNameToInstanceName(nodeName types.NodeName) string {
 	return string(nodeName)
 }
 
-// mapInstanceToNodeName maps a BMCS instance display name to a kube NodeName.
+// mapInstanceToNodeName maps a OCI instance display name to a kube NodeName.
 func mapInstanceNameToNodeName(displayName string) types.NodeName {
 	// Node names are always lowercase
 	return types.NodeName(strings.ToLower(displayName))

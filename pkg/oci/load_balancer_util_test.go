@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package bmcs
+package oci
 
 import (
 	"reflect"
@@ -360,23 +360,23 @@ func TestGetSSLEnabledPorts(t *testing.T) {
 			expected:    nil,
 		}, {
 			name:        "empty string",
-			annotations: map[string]string{"service.beta.kubernetes.io/bmcs-load-balancer-ssl-ports": ""},
+			annotations: map[string]string{"service.beta.kubernetes.io/oci-load-balancer-ssl-ports": ""},
 			expected:    nil,
 		}, {
 			name:        "443",
-			annotations: map[string]string{"service.beta.kubernetes.io/bmcs-load-balancer-ssl-ports": "443"},
+			annotations: map[string]string{"service.beta.kubernetes.io/oci-load-balancer-ssl-ports": "443"},
 			expected:    map[int]bool{443: true},
 		}, {
 			name:        "1,2,3",
-			annotations: map[string]string{"service.beta.kubernetes.io/bmcs-load-balancer-ssl-ports": "1,2,3"},
+			annotations: map[string]string{"service.beta.kubernetes.io/oci-load-balancer-ssl-ports": "1,2,3"},
 			expected:    map[int]bool{1: true, 2: true, 3: true},
 		}, {
 			name:        "1, 2, 3",
-			annotations: map[string]string{"service.beta.kubernetes.io/bmcs-load-balancer-ssl-ports": "1, 2, 3"},
+			annotations: map[string]string{"service.beta.kubernetes.io/oci-load-balancer-ssl-ports": "1, 2, 3"},
 			expected:    map[int]bool{1: true, 2: true, 3: true},
 		}, {
 			name:        "not-an-integer",
-			annotations: map[string]string{"service.beta.kubernetes.io/bmcs-load-balancer-ssl-ports": "not-an-integer"},
+			annotations: map[string]string{"service.beta.kubernetes.io/oci-load-balancer-ssl-ports": "not-an-integer"},
 			expected:    nil,
 		},
 	}

@@ -1,4 +1,4 @@
-package: github.com/oracle/kubernetes-cloud-controller-manager
+package: github.com/oracle/oci-cloud-controller-manager
 import:
 - package: k8s.io/kubernetes
   version: master

@@ -12,44 +12,50 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package bmcs
+package oci
 
 import (
 	"fmt"
 
-	"github.com/golang/glog"
-	baremetal "github.com/oracle/bmcs-go-sdk"
-	"github.com/oracle/kubernetes-cloud-controller-manager/pkg/bmcs/client"
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
 	k8sports "k8s.io/kubernetes/pkg/master/ports"
 
-	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
+	"github.com/golang/glog"
+	baremetal "github.com/oracle/bmcs-go-sdk"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 )
 
 const (
 	// ServiceAnnotationLoadBalancerInternal is a service annotation for
 	// specifying that a load balancer should be internal.
-	ServiceAnnotationLoadBalancerInternal = "service.beta.kubernetes.io/bmcs-load-balancer-internal"
+	ServiceAnnotationLoadBalancerInternal = "service.beta.kubernetes.io/oci-load-balancer-internal"
+
 	// ServiceAnnotationLoadBalancerShape is a Service annotation for
 	// specifying the Shape of a load balancer.
-	ServiceAnnotationLoadBalancerShape = "service.beta.kubernetes.io/bmcs-load-balancer-shape"
+	ServiceAnnotationLoadBalancerShape = "service.beta.kubernetes.io/oci-load-balancer-shape"
+
 	// ServiceAnnotationLoadBalancerSubnet1 is a Service annotation for
 	// specifying the first subnet of a load balancer.
-	ServiceAnnotationLoadBalancerSubnet1 = "service.beta.kubernetes.io/bmcs-load-balancer-subnet1"
+	ServiceAnnotationLoadBalancerSubnet1 = "service.beta.kubernetes.io/oci-load-balancer-subnet1"
+
 	// ServiceAnnotationLoadBalancerSubnet2 is a Service annotation for
 	// specifying the second subnet of a load balancer.
-	ServiceAnnotationLoadBalancerSubnet2 = "service.beta.kubernetes.io/bmcs-load-balancer-subnet2"
+	ServiceAnnotationLoadBalancerSubnet2 = "service.beta.kubernetes.io/oci-load-balancer-subnet2"
+
 	// ServiceAnnotationLoadBalancerSSLPorts is a Service annotation for
 	// specifying the ports to enable SSL termination on the corresponding load
 	// balancer listener.
-	ServiceAnnotationLoadBalancerSSLPorts = "service.beta.kubernetes.io/bmcs-load-balancer-ssl-ports"
+	ServiceAnnotationLoadBalancerSSLPorts = "service.beta.kubernetes.io/oci-load-balancer-ssl-ports"
+
 	// ServiceAnnotationLoadBalancerTLSSecret is a Service annotation for
 	// specifying the TLS secret ti install on the load balancer listeners which
 	// have SSL enabled.
 	// See: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
-	ServiceAnnotationLoadBalancerTLSSecret = "service.beta.kubernetes.io/bmcs-load-balancer-tls-secret"
+	ServiceAnnotationLoadBalancerTLSSecret = "service.beta.kubernetes.io/oci-load-balancer-tls-secret"
 )
 
 const (
@@ -85,8 +91,8 @@ func (cp *CloudProvider) readTLSSecret(secretString, serviceNS string) (cert, ke
 	return string(certBytes), string(keyBytes), nil
 }
 
-// ensureSSLCertificate creates a BMC SSL certificate to the given load
-// balancer, if it doesn't already exist
+// ensureSSLCertificate creates a OCI SSL certificate to the given load
+// balancer, if it doesn't already exist.
 func (cp *CloudProvider) ensureSSLCertificate(name string, svc *api.Service, lb *baremetal.LoadBalancer) error {
 	_, err := cp.client.GetCertificateByName(lb.ID, name)
 	if err == nil {
@@ -380,7 +386,7 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(clusterName string, service *
 	return err
 }
 
-// Given an BMCS load balancer, return a LoadBalancerStatus
+// Given an OCI load balancer, return a LoadBalancerStatus
 func loadBalancerToStatus(lb *baremetal.LoadBalancer) (*api.LoadBalancerStatus, error) {
 	if len(lb.IPAddresses) == 0 {
 		return nil, fmt.Errorf("no IPAddresses found for load balancer '%s'", lb.DisplayName)

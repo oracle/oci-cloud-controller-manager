@@ -1,4 +1,4 @@
-package bmcs
+package oci
 
 import (
 	"fmt"
@@ -182,12 +182,12 @@ func extractNodeIPs(nodes []*api.Node) []string {
 	return nodeIPs
 }
 
-// validateProtocols validates that BMCS supports the protocol of all
+// validateProtocols validates that OCI supports the protocol of all
 // ServicePorts defined by a service.
 func validateProtocols(servicePorts []api.ServicePort) error {
 	for _, servicePort := range servicePorts {
 		if servicePort.Protocol == api.ProtocolUDP {
-			return fmt.Errorf("BMCS load balancers do not support UDP")
+			return fmt.Errorf("OCI load balancers do not support UDP")
 		}
 	}
 	return nil

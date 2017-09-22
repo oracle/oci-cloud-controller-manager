@@ -5,7 +5,7 @@ termination.
 
 ### Load balancer with SSL termination example
 
-When you create a service with --type=LoadBalancer a BMCS load balancer will be
+When you create a service with --type=LoadBalancer a OCI load balancer will be
 created.
 
 The example below will create an NGINX deployment and expose it via a load
@@ -36,8 +36,8 @@ apiVersion: v1
 metadata:
   name: nginx-service
   annotations:
-    service.beta.kubernetes.io/bmcs-load-balancer-ssl-ports: "443"
-    service.beta.kubernetes.io/bmcs-load-balancer-tls-secret: ssl-certificate-secret
+    service.beta.kubernetes.io/oci-load-balancer-ssl-ports: "443"
+    service.beta.kubernetes.io/oci-load-balancer-tls-secret: ssl-certificate-secret
 spec:
   selector:
     app: nginx

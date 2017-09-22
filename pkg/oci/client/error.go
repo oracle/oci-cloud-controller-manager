@@ -36,10 +36,10 @@ func (e *SearchError) Error() string {
 	return e.Err
 }
 
-// IsNotFound checks if the error is the not found error returned from BMC
+// IsNotFound checks if the error is the not found error returned from OCI.
 func IsNotFound(err error) bool {
 	// TODO(horwitz): This is temporary until we remove SearchError in
-	// favor of just using the BMCS client errors directly.
+	// favor of just using the OCI client errors directly.
 	ociErr, ok := err.(*baremetal.Error)
 	if ok {
 		return ociErr.Status == "404"

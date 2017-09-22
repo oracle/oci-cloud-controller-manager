@@ -1,7 +1,7 @@
 # Kubernetes Cloud Controller Manager (CCM)
 
-This project is an exernal Kubernetes cloud provider for Oracle's Bare Metal
-Cloud (BMCS).
+This project is an exernal Kubernetes cloud provider for [Oracle Cloud
+Infrastucture][1].
 
 [![wercker status](https://app.wercker.com/status/17a52304e0309d138ad41f7ae9f9ea49/s/master "wercker status")](https://app.wercker.com/project/byKey/17a52304e0309d138ad41f7ae9f9ea49)
 
@@ -47,6 +47,7 @@ See [DEVELOPMENT.md](docs/development.md).
 ## Support
 
 If you need support, start with the documentation. If you still have problems
-[raise an issue][1] or contact odx_kubernetes_gb_grp@oracle.com.
+[raise an issue][2] or contact odx_kubernetes_gb_grp@oracle.com.
 
-[1]: https://github.com/oracle/kubernetes-cloud-controller-manager/issues/new?issue%5Bassignee_id%5D=&issue%5Bmilestone_id%5D=
+[1]: https://cloud.oracle.com/iaas
+[2]: https://github.com/oracle/oci-cloud-controller-manager/issues/new

@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package bmcs
+package oci
 
 import (
 	"reflect"
 	"testing"
 
 	baremetal "github.com/oracle/bmcs-go-sdk"
-	"github.com/oracle/kubernetes-cloud-controller-manager/pkg/bmcs/client"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 )
 
 func TestGetBackendPort(t *testing.T) {

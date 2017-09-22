@@ -1,12 +1,14 @@
 # Install
 
-A guide to installing the kubernetes-cloud-controller-manager. To get the CCM
-running in your Kubernetes cluster you will need to do the following:
+A guide to installing the `oci-cloud-controller-manager`.
+
+To get the CCM running in your Kubernetes cluster you will need to do the
+following:
 
  1. Prepare your Kubernetes cluster for running an external cloud provider.
  2. Configure the authentication information (secrets etc.) needed to access the
-    BMCS API.
- 3. Deploy the CCM as a [daemon set][1]
+    OCI API.
+ 3. Deploy the CCM as a [DaemonSet][1].
 
 ## Preparing Your Cluster
 
@@ -35,63 +37,64 @@ already be applied. See [kubernetes/kubernetes#49017][2] for details.
 
 Remember to restart any components that you have reconfigured before continuing.
 
-## Cloud Controller Manager
+## Authentication and Configuration
 
-The following steps will configure the CCM to run in your cluster
+First create a Kubernetes secret containing the OCI API signing key associated
+with the OCI identity the controller manager will use to communicate with the
+cloud.
 
-### Create namespace
-
+```bash
+$ kubectl -n kube-system create secret generic oci-api-key --from-file="$HOME/.oci/oci_api_key.pem"
 ```
-$ kubectl create namespace bmcs
-```
 
-#### Create authentication and configuration
+We publish the `oci-cloud-controller-mananger` to a private Docker registry. You
+will need a [Docker registry secret][4] to pull images from it.
 
-```
-$ kubectl -n bmcs create secret generic bmcs-api-key --from-file="$HOME/.oraclebmc/bmcs_api_key.pem"
-
-# We publish the kubernetes-cloud-controller-mananger to a private Docker registry.
-# You will need a secret to pull images from it.
-$ kubectl -n bmcs create secret docker-registry odx-docker-pull-secret \
+```bash
+$ kubectl -n kube-system create secret docker-registry odx-docker-pull-secret \
     --docker-server="registry.oracledx.com" \
     --docker-username="agent" \
-    --docker-password="$REGISTRY_PASSWORD" \
+    --docker-password="$DOCKER_REGISTRY_PASSWORD" \
     --docker-email="k8s@oracle.com"
-
-$ kubectl create -f manifests/kubernetes-cloud-controller-manager-config.yaml
 ```
 
-### Deploy the Kubernetes Cloud Controller Manager
+An example configuration file can be found [here][3]. Download this file and
+populate it with values specific to your chosen OCI identity and tenancy and
+then create the Kubernetes ConfigMap with the following command:
 
-We publish tagged builds of the CCM in the ODX registry. The cloud controller manager runs as a daemonset and uses leader election to
-ensure that only one instance of the controller is running at a given time.
+```bash
+$ kubectl create -f oci-config.yaml
+```
+
+## Deployment
+
+Lastly deploy the controller manager and associated RBAC rules if your cluster
+is configured to use RBAC:
+
+```bash
+$ kubectl apply -f https://raw.githubusercontent.com/oracle/oci-cloud-controller-manager/master/manifests/oci-cloud-controller-manager.yaml
+$ kubectl apply -f https://raw.githubusercontent.com/oracle/oci-cloud-controller-manager/master/manifests/oci-cloud-controller-manager-rbac.yaml
+```
+
+Check the CCM logs to ensure it's running correctly:
 
 ```
-$ kubectl apply -f manifests/kubernetes-cloud-controller-manager.yaml
-```
+$ kubectl -n kube-system get po | grep oci
+oci-cloud-controller-manager-ds-k2txq   1/1       Running   0          19s
 
-Check the CCM logs to ensure it's running correctly
-
-```
-$ kubectl get po -n bmcs
-NAME                                     READY     STATUS    RESTARTS   AGE
-bmcs-cloud-controller-manager-ds-k2txq   1/1       Running   0          19s
-
-$ kubectl logs bmcs-cloud-controller-manager-ds-k2txq -n bmcs
+$ kubectl -n kube-system logs oci-cloud-controller-manager-ds-k2txq
 I0905 13:44:51.785964       7 flags.go:52] FLAG: --address="0.0.0.0"
 I0905 13:44:51.786063       7 flags.go:52] FLAG: --allocate-node-cidrs="false"
 I0905 13:44:51.786074       7 flags.go:52] FLAG: --alsologtostderr="false"
-I0905 13:44:51.786078       7 flags.go:52] FLAG: --cloud-config="/etc/bmcs/cloud-config.cfg"
-I0905 13:44:51.786083       7 flags.go:52] FLAG: --cloud-provider="external"
+I0905 13:44:51.786078       7 flags.go:52] FLAG: --cloud-config="/etc/oci/cloud-config.cfg"
+I0905 13:44:51.786083       7 flags.go:52] FLAG: --cloud-provider="oci"
 ```
 
 # Uninstall
 
-To uninstall everything simply delete the bmcs namespace
-
-```
-kubectl delete ns bmcs
-```
+TODO
 
 [1]: https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/
 [2]: https://github.com/kubernetes/kubernetes/pull/49017
+[3]: https://github.com/oracle/oci-cloud-controller-manager/tree/master/manifests/config-example.yaml
+[4]: https://kubernetes.io/docs/concepts/containers/images/#creating-a-secret-with-a-docker-config

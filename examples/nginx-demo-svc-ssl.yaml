@@ -21,8 +21,8 @@ apiVersion: v1
 metadata:
   name: nginx-service
   annotations:
-    service.beta.kubernetes.io/bmcs-load-balancer-ssl-ports: "443"
-    service.beta.kubernetes.io/bmcs-load-balancer-tls-secret: ssl-certificate-secret
+    service.beta.kubernetes.io/oci-load-balancer-ssl-ports: "443"
+    service.beta.kubernetes.io/oci-load-balancer-tls-secret: ssl-certificate-secret
 spec:
   selector:
     app: nginx

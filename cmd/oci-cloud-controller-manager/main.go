@@ -30,7 +30,7 @@ import (
 	_ "k8s.io/kubernetes/pkg/version/prometheus" // for version metric registration
 	"k8s.io/kubernetes/pkg/version/verflag"
 
-	"github.com/oracle/kubernetes-cloud-controller-manager/pkg/bmcs"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci"
 
 	"github.com/golang/glog"
 	"github.com/spf13/pflag"
@@ -51,11 +51,11 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	glog.V(1).Infof("BMC Cloud Controller Manager Version %s", version)
+	glog.V(1).Infof("oci-cloud-controller-manager version: %s", version)
 
 	verflag.PrintAndExitIfRequested()
 
-	cloud, err := cloudprovider.InitCloudProvider(bmcs.ProviderName, s.CloudConfigFile)
+	cloud, err := cloudprovider.InitCloudProvider(oci.ProviderName, s.CloudConfigFile)
 	if err != nil {
 		glog.Fatalf("Cloud provider could not be initialized: %v", err)
 	}
