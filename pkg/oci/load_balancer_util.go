@@ -2,6 +2,7 @@ package oci
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -17,6 +18,8 @@ const (
 	sslCertificateFileName = "tls.crt"
 	sslPrivateKeyFileName  = "tls.key"
 )
+
+const lbNamePrefixEnvVar = "LOAD_BALANCER_PREFIX"
 
 // ActionType specifies what action should be taken on the resource.
 type ActionType string
@@ -165,7 +168,8 @@ func getListenerName(protocol string, port int, sslConfig *baremetal.SSLConfigur
 
 // GetLoadBalancerName gets the name of the load balancer based on the service
 func GetLoadBalancerName(service *api.Service) string {
-	return fmt.Sprintf("%s-%s", service.Name, cloudprovider.GetLoadBalancerName(service))
+	return os.Getenv(lbNamePrefixEnvVar) +
+		fmt.Sprintf("%s-%s", service.Name, cloudprovider.GetLoadBalancerName(service))
 }
 
 // Extract a list of all the external IP addresses for the available Kubernetes nodes
