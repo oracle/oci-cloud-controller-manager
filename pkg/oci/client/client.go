@@ -48,9 +48,6 @@ const ociHostnameTemplate = "%s.%s.%s"
 type Interface interface {
 	BaremetalInterface
 
-	// Compartment sets the compartment associated with the client instance.
-	Compartment(id string) Interface
-
 	// GetInstanceByNodeName retrieves the baremetal.Instance corresponding or
 	// a SearchError if no instance matching the node name is found.
 	GetInstanceByNodeName(name string) (*baremetal.Instance, error)
@@ -143,19 +140,24 @@ type BaremetalInterface interface {
 
 // New creates a new OCI API client.
 func New(cfg *Config) (Interface, error) {
-	privateKeyFile := baremetal.PrivateKeyFilePath(cfg.Global.PrivateKeyFile)
-	region := baremetal.Region(cfg.Global.Region)
 	ociClient, err := baremetal.NewClient(
 		cfg.Global.UserOCID,
 		cfg.Global.TenancyOCID,
 		cfg.Global.Fingerprint,
-		privateKeyFile,
-		region)
+		baremetal.PrivateKeyFilePath(cfg.Global.PrivateKeyFile),
+		baremetal.Region(cfg.Global.Region),
+		// Kubernetes will handle retries.
+		// The current go client will retry requests that are not retryable.
+		baremetal.DisableAutoRetries(true),
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	return &client{Client: ociClient}, nil
+	return &client{
+		Client:          ociClient,
+		compartmentOCID: cfg.Global.CompartmentOCID,
+	}, nil
 }
 
 // client is a wrapped baremetal.Client with additional methods/props for
@@ -172,12 +174,6 @@ type client struct {
 func (c *client) Validate() error {
 	_, err := c.Client.ListAvailabilityDomains(c.compartmentOCID)
 	return err
-}
-
-// Compartment sets the compartment associated with the client instance.
-func (c *client) Compartment(id string) Interface {
-	c.compartmentOCID = id
-	return c
 }
 
 // GetInstanceByNodeName gets the OCID of instance with a display name equal to

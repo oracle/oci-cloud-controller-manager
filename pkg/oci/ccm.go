@@ -54,8 +54,6 @@ func NewCloudProvider(cfg *client.Config) (cloudprovider.Interface, error) {
 		return nil, err
 	}
 
-	c = c.Compartment(cfg.Global.CompartmentOCID)
-
 	err = c.Validate()
 	if err != nil {
 		glog.Errorf("cloudprovider.Validate() failed to communicate with OCI: %v", err)
