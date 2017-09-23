@@ -15,36 +15,32 @@
 package client
 
 import (
-	"fmt"
-
 	baremetal "github.com/oracle/bmcs-go-sdk"
 )
 
-// SearchError represents an error searching the API.
-type SearchError struct {
-	Err      string
-	NotFound bool
-}
+const (
+	notFoundStatus = "404"
+)
 
-func (e *SearchError) Error() string {
-	if e == nil {
-		return "<nil>"
+// NewNotFoundError creates a new baremetal error with the correct
+// status and code. The message of the error is set to the message passed in.
+func NewNotFoundError(msg string) error {
+	return &baremetal.Error{
+		Status:  notFoundStatus,
+		Code:    baremetal.NotAuthorizedOrNotFound,
+		Message: msg,
 	}
-	if e.NotFound {
-		return fmt.Sprintf("no matches: %s", e.Err)
-	}
-	return e.Err
 }
 
 // IsNotFound checks if the error is the not found error returned from OCI.
 func IsNotFound(err error) bool {
-	// TODO(horwitz): This is temporary until we remove SearchError in
-	// favor of just using the OCI client errors directly.
-	ociErr, ok := err.(*baremetal.Error)
-	if ok {
-		return ociErr.Status == "404"
-	}
+	return IsStatus(err, notFoundStatus)
+}
 
-	se, ok := err.(*SearchError)
-	return ok && se.NotFound
+// IsStatus is a helper function that ensures the error is an OCI
+// client error and that the status is what is expected.
+// https://docs.us-phoenix-1.oraclecloud.com/Content/API/References/apierrors.htm
+func IsStatus(err error, status string) bool {
+	ociErr, ok := err.(*baremetal.Error)
+	return ok && ociErr.Status == status
 }
