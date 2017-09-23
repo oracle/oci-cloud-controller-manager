@@ -17,6 +17,8 @@ package client
 import (
 	"errors"
 	"testing"
+
+	baremetal "github.com/oracle/bmcs-go-sdk"
 )
 
 func TestIsNotFound(t *testing.T) {
@@ -26,13 +28,17 @@ func TestIsNotFound(t *testing.T) {
 		expected bool
 	}{
 		{
-			name:     "search-error-not-found",
-			err:      &SearchError{NotFound: true},
+			name:     "api-not-found",
+			err:      NewNotFoundError("it was not found :("),
 			expected: true,
 		},
 		{
-			name:     "search-error-found",
-			err:      &SearchError{NotFound: false},
+			name: "random-api-error",
+			err: &baremetal.Error{
+				Status:  "500",
+				Code:    "500",
+				Message: "unrelated internal server error",
+			},
 			expected: false,
 		},
 		{

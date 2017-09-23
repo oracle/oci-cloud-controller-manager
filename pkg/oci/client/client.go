@@ -242,22 +242,29 @@ func (c *client) findInstanceByNodeNameIsVnic(nodeName string) (*baremetal.Insta
 			return nil, err
 		}
 		for _, attachment := range vnicAttachments.Attachments {
-			if attachment.State == baremetal.ResourceAttached {
-				vnic, err := c.GetVnic(attachment.VnicID)
+			if attachment.State != baremetal.ResourceAttached {
+				glog.Warningf("VNIC attachment `%s` for instance `%s` has a state of `%s`", attachment.ID, nodeName, attachment.State)
+				continue
+			}
+			vnic, err := c.GetVnic(attachment.VnicID)
+			if err != nil {
+				return nil, err
+			}
+
+			// TOOD(horwitz): why is this checking if the node name is the public ip address?!
+			if vnic.PublicIPAddress == nodeName ||
+				(vnic.HostnameLabel != "" && strings.HasPrefix(nodeName, vnic.HostnameLabel)) {
+				instance, err := c.GetInstance(attachment.InstanceID)
 				if err != nil {
 					return nil, err
 				}
 
-				if vnic.PublicIPAddress == nodeName ||
-					(vnic.HostnameLabel != "" && strings.HasPrefix(nodeName, vnic.HostnameLabel)) {
-					instance, err := c.GetInstance(attachment.InstanceID)
-					if err != nil {
-						return nil, err
-					}
-					if instance.State == baremetal.ResourceRunning {
-						running = append(running, *instance)
-					}
+				if instance.State != baremetal.ResourceRunning {
+					glog.Warningf("Instance `%s` is state `%s` is not running", instance.ID, instance.State)
+					continue
 				}
+
+				running = append(running, *instance)
 			}
 		}
 		if hasNextPage := SetNextPageOption(vnicAttachments.NextPage, &opts.ListOptions.PageListOptions); !hasNextPage {
@@ -268,10 +275,7 @@ func (c *client) findInstanceByNodeNameIsVnic(nodeName string) (*baremetal.Insta
 	count := len(running)
 	switch {
 	case count == 0:
-		return nil, &SearchError{
-			Err:      fmt.Sprintf("could not find instance for node name %q", nodeName),
-			NotFound: true,
-		}
+		return nil, NewNotFoundError(fmt.Sprintf("could not find instance for node name %q", nodeName))
 	case count > 1:
 		return nil, fmt.Errorf("expected one instance vnic ip/hostname %q but got %d", nodeName, count)
 	}
@@ -455,10 +459,8 @@ func (c *client) GetLoadBalancerByName(name string) (*baremetal.LoadBalancer, er
 			break
 		}
 	}
-	return nil, &SearchError{
-		Err:      fmt.Sprintf("could not find load balancer with name '%s'", name),
-		NotFound: true,
-	}
+
+	return nil, NewNotFoundError(fmt.Sprintf("could not find load balancer with name '%s'", name))
 }
 
 // GetCertificateByName gets a certificate by its name.
@@ -468,15 +470,14 @@ func (c *client) GetCertificateByName(loadBalancerID string, name string) (*bare
 	if err != nil {
 		return nil, err
 	}
+
 	for _, cert := range r.Certificates {
 		if cert.CertificateName == name {
 			return &cert, nil
 		}
 	}
-	return nil, &SearchError{
-		Err:      fmt.Sprintf("certificate with name %q for load balancer %q not found", name, loadBalancerID),
-		NotFound: true,
-	}
+
+	return nil, NewNotFoundError(fmt.Sprintf("certificate with name %q for load balancer %q not found", name, loadBalancerID))
 }
 
 // CreateAndAwaitBackendSet creates the given BackendSet for the given
@@ -553,20 +554,23 @@ func (c *client) GetSubnetsForInternalIPs(ips []string) ([]*baremetal.Subnet, er
 			return nil, err
 		}
 		for _, attachment := range r.Attachments {
-			if attachment.State == baremetal.ResourceAttached {
-				vnic, err := c.GetVnic(attachment.VnicID)
+			if attachment.State != baremetal.ResourceAttached {
+				glog.Warningf("VNIC attachment `%s` for instance `%s` has a state and not attached", attachment.ID, attachment.InstanceID, attachment.State)
+				continue
+			}
+
+			vnic, err := c.GetVnic(attachment.VnicID)
+			if err != nil {
+				return nil, err
+			}
+			if vnic.PrivateIPAddress != "" && ipSet.Has(vnic.PrivateIPAddress) &&
+				!subnetOCIDs.Has(vnic.SubnetID) {
+				subnet, err := c.GetSubnet(vnic.SubnetID)
 				if err != nil {
 					return nil, err
 				}
-				if vnic.PrivateIPAddress != "" && ipSet.Has(vnic.PrivateIPAddress) &&
-					!subnetOCIDs.Has(vnic.SubnetID) {
-					subnet, err := c.GetSubnet(vnic.SubnetID)
-					if err != nil {
-						return nil, err
-					}
-					subnets = append(subnets, subnet)
-					subnetOCIDs.Insert(vnic.SubnetID)
-				}
+				subnets = append(subnets, subnet)
+				subnetOCIDs.Insert(vnic.SubnetID)
 			}
 		}
 		if hasNexPage := SetNextPageOption(r.NextPage, &opts.PageListOptions); !hasNexPage {
