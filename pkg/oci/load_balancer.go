@@ -178,6 +178,13 @@ func (cp *CloudProvider) EnsureLoadBalancer(clusterName string, service *api.Ser
 		}
 	}
 
+	// Existing load balancers cannot change subnets. This ensures that the spec matches
+	// what the actual load balancer has listed as the subnet ids. If the load balancer
+	// was just created then these values would be equal; however, if the load balancer
+	// already existed and the default subnet ids changed, then this would ensure
+	// we are setting the security rules on the correct subnets.
+	spec.Subnets = lb.SubnetIDs
+
 	certificateName := getCertificateName(lb)
 
 	sslConfigMap, err := spec.GetSSLConfig(certificateName)
