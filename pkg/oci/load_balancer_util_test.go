@@ -14,8 +14,12 @@
 package oci
 
 import (
+	"os"
 	"reflect"
 	"testing"
+
+	api "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	baremetal "github.com/oracle/bmcs-go-sdk"
 )
@@ -418,6 +422,59 @@ func TestParseSeceretString(t *testing.T) {
 			if secretNamespace != tt.expectedNamespace || secretName != tt.expectedName {
 				t.Errorf("parseSecretString(%s, %s) => (%s, %s), expected (%s, %s)",
 					tt.secretName, tt.servcieNamespace, secretNamespace, secretName, tt.expectedNamespace, tt.expectedName)
+			}
+		})
+	}
+}
+
+func TestGetLoadBalancerName(t *testing.T) {
+	testCases := map[string]struct {
+		prefix   string
+		service  *api.Service
+		expected string
+	}{
+		"no prefix": {
+			prefix: "",
+			service: &api.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "servicename",
+					UID:  "fakeuid",
+				},
+			},
+			expected: "servicename-afakeuid",
+		},
+		"prefix without hyphen": {
+			prefix: "testprefix",
+			service: &api.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "servicename",
+					UID:  "fakeuid",
+				},
+			},
+			expected: "testprefix-servicename-afakeuid",
+		},
+		"prefix with hyphen": {
+			prefix: "testprefix-",
+			service: &api.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "servicename",
+					UID:  "fakeuid",
+				},
+			},
+			expected: "testprefix-servicename-afakeuid",
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			err := os.Setenv(lbNamePrefixEnvVar, tc.prefix)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			result := GetLoadBalancerName(tc.service)
+			if result != tc.expected {
+				t.Errorf("Expected load balancer name `%s` but got `%s`", tc.expected, result)
 			}
 		})
 	}
