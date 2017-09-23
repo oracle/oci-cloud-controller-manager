@@ -168,8 +168,12 @@ func getListenerName(protocol string, port int, sslConfig *baremetal.SSLConfigur
 
 // GetLoadBalancerName gets the name of the load balancer based on the service
 func GetLoadBalancerName(service *api.Service) string {
-	return os.Getenv(lbNamePrefixEnvVar) +
-		fmt.Sprintf("%s-%s", service.Name, cloudprovider.GetLoadBalancerName(service))
+	prefix := os.Getenv(lbNamePrefixEnvVar)
+	if prefix != "" && !strings.HasSuffix(prefix, "-") {
+		// Add the trailing hyphen if it's missing
+		prefix += "-"
+	}
+	return fmt.Sprintf("%s%s-%s", prefix, service.Name, cloudprovider.GetLoadBalancerName(service))
 }
 
 // Extract a list of all the external IP addresses for the available Kubernetes nodes
