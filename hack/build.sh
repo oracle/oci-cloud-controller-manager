@@ -38,4 +38,4 @@ go install                                        \
    -v                                             \
     -installsuffix "static"                       \
     -ldflags "-X main.version=${VERSION}"         \
-    ./...
+    ./cmd/oci-cloud-controller-manager
