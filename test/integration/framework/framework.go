@@ -29,7 +29,7 @@ type Framework struct {
 
 func New() *Framework {
 	return &Framework{
-		configFile: path.Join(os.Getenv("HOME"), ".oraclebmc", "cloud-provider.cfg"),
+		configFile: path.Join(os.Getenv("HOME"), ".oci", "cloud-provider.cfg"),
 	}
 }
 
