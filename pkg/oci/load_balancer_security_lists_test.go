@@ -404,6 +404,90 @@ func TestGetSecurityList(t *testing.T) {
 	}
 }
 
+func TestSecurityListRulesChanged(t *testing.T) {
+	testCases := map[string]struct {
+		list     *baremetal.SecurityList
+		ingress  []baremetal.IngressSecurityRule
+		egress   []baremetal.EgressSecurityRule
+		expected bool
+	}{
+		"no change": {
+			list: &baremetal.SecurityList{
+				IngressSecurityRules: []baremetal.IngressSecurityRule{
+					makeIngressSecurityRule("1", 80),
+				},
+				EgressSecurityRules: []baremetal.EgressSecurityRule{
+					makeEgressSecurityRule("1", 80),
+				},
+			},
+			ingress: []baremetal.IngressSecurityRule{
+				makeIngressSecurityRule("1", 80),
+			},
+			egress: []baremetal.EgressSecurityRule{
+				makeEgressSecurityRule("1", 80),
+			},
+			expected: false,
+		},
+		"change ingress - add": {
+			list: &baremetal.SecurityList{
+				IngressSecurityRules: []baremetal.IngressSecurityRule{
+					makeIngressSecurityRule("1", 80),
+				},
+			},
+			ingress: []baremetal.IngressSecurityRule{
+				makeIngressSecurityRule("1", 80),
+				makeIngressSecurityRule("2", 81),
+			},
+			expected: true,
+		},
+		"change ingress - remove": {
+			list: &baremetal.SecurityList{
+				IngressSecurityRules: []baremetal.IngressSecurityRule{
+					makeIngressSecurityRule("1", 80),
+					makeIngressSecurityRule("2", 81),
+				},
+			},
+			ingress: []baremetal.IngressSecurityRule{
+				makeIngressSecurityRule("1", 80),
+			},
+			expected: true,
+		},
+		"change egress - add": {
+			list: &baremetal.SecurityList{
+				EgressSecurityRules: []baremetal.EgressSecurityRule{
+					makeEgressSecurityRule("1", 80),
+				},
+			},
+			egress: []baremetal.EgressSecurityRule{
+				makeEgressSecurityRule("1", 80),
+				makeEgressSecurityRule("2", 81),
+			},
+			expected: true,
+		},
+		"change egress - remove": {
+			list: &baremetal.SecurityList{
+				EgressSecurityRules: []baremetal.EgressSecurityRule{
+					makeEgressSecurityRule("1", 80),
+					makeEgressSecurityRule("2", 81),
+				},
+			},
+			egress: []baremetal.EgressSecurityRule{
+				makeEgressSecurityRule("1", 80),
+			},
+			expected: true,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			result := securityListRulesChanged(tc.list, tc.ingress, tc.egress)
+			if result != tc.expected {
+				t.Errorf("Expected security rules changed to be `%t` but got `%t`", tc.expected, result)
+			}
+		})
+	}
+}
+
 func TestUpdate(t *testing.T) {
 
 }
