@@ -1,4 +1,4 @@
-// Copyright 2017 The Oracle Kubernetes Cloud Controller Manager Authors
+// Copyright 2017 The OCI Cloud Controller Manager Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
