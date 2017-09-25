@@ -225,11 +225,15 @@ func (cp *CloudProvider) updateBackendSets(lb *baremetal.LoadBalancer, spec LBSp
 		var err error
 
 		be := action.BackendSet
-
 		glog.V(2).Infof("Applying `%s` action on backend set `%s` for lb `%s`", action.Type, be.Name, lbOCID)
 
 		switch action.Type {
 		case Create:
+			err = cp.securityListManager.Update(spec.Subnets, []string{}, nil, be.Backends)
+			if err != nil {
+				return err
+			}
+
 			workRequestID, err = cp.client.CreateBackendSet(
 				lbOCID,
 				be.Name,
@@ -241,12 +245,22 @@ func (cp *CloudProvider) updateBackendSets(lb *baremetal.LoadBalancer, spec LBSp
 				nil, // create opts
 			)
 		case Update:
+			err = cp.securityListManager.Update(spec.Subnets, []string{}, nil, be.Backends)
+			if err != nil {
+				return err
+			}
+
 			workRequestID, err = cp.client.UpdateBackendSet(lbOCID, be.Name, &baremetal.UpdateLoadBalancerBackendSetOptions{
 				Policy:        be.Policy,
 				HealthChecker: be.HealthChecker,
 				Backends:      be.Backends,
 			})
 		case Delete:
+			err = cp.securityListManager.Delete(spec.Subnets, nil, be.Backends)
+			if err != nil {
+				return err
+			}
+
 			workRequestID, err = cp.client.DeleteBackendSet(lbOCID, be.Name, nil)
 		}
 
@@ -342,15 +356,16 @@ func (cp *CloudProvider) UpdateLoadBalancer(clusterName string, service *api.Ser
 func (cp *CloudProvider) EnsureLoadBalancerDeleted(clusterName string, service *api.Service) error {
 	name := GetLoadBalancerName(service)
 
-	glog.Infof("Attempting to delete load balancer with name '%s'", name)
+	glog.Infof("Attempting to delete load balancer with name `%s`", name)
+
 	lb, err := cp.client.GetLoadBalancerByName(name)
 	if err != nil {
 		if client.IsNotFound(err) {
-			glog.Infof("Could not find load balancer with name '%s'. Nothing to do.", name)
+			glog.Infof("Could not find load balancer with name `%s`. Nothing to do.", name)
 			return nil
 		}
 
-		return fmt.Errorf("get load balancer by name %s: %v", name, err)
+		return fmt.Errorf("get load balancer by name `%s`: %v", name, err)
 	}
 
 	nodeIPs := sets.NewString()
@@ -376,21 +391,25 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(clusterName string, service *
 		backends := spec.GetBackendSets()[listener.DefaultBackendSetName].Backends
 
 		err := cp.securityListManager.Delete(spec.Subnets, &listener, backends)
-
 		if err != nil {
 			return fmt.Errorf("delete security rules for listener %s: %v", listener.Name, err)
 		}
 	}
 
-	glog.Infof("Deleting load balancer '%s' (OCID: '%s')", lb.DisplayName, lb.ID)
+	glog.Infof("Deleting load balancer `%s` (OCID: `%s`)", lb.DisplayName, lb.ID)
 
 	workReqID, err := cp.client.DeleteLoadBalancer(lb.ID, &baremetal.ClientRequestOptions{})
 	if err != nil {
-		return fmt.Errorf("delete load balancer: %v", err)
+		return fmt.Errorf("delete load balancer `%s`: %v", lb.ID, err)
 	}
 
 	_, err = cp.client.AwaitWorkRequest(workReqID)
-	return err
+	if err != nil {
+		return err
+	}
+
+	glog.Infof("Deleted load balancer `%s` (OCID: `%s`)", lb.DisplayName, lb.ID)
+	return nil
 }
 
 // Given an OCI load balancer, return a LoadBalancerStatus
