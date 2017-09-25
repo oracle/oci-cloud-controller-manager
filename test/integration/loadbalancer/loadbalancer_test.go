@@ -56,7 +56,7 @@ func TestLoadBalancer(t *testing.T) {
 
 		err = fw.WaitForInstance(instance.ID)
 		if err != nil {
-			t.Error(err)
+			t.Fatal(err)
 		}
 
 		addresses, err := fw.Client.GetNodeAddressesForInstance(instance.ID)
@@ -77,7 +77,7 @@ func TestLoadBalancer(t *testing.T) {
 	loadbalancers, _ := cp.LoadBalancer()
 	status, err := loadbalancers.EnsureLoadBalancer("foo", service, nodes)
 	if err != nil {
-		t.Errorf("Unable to ensure the load balancer: %v", err)
+		t.Fatalf("Unable to ensure the load balancer: %v", err)
 	}
 
 	defer func() {
@@ -85,7 +85,7 @@ func TestLoadBalancer(t *testing.T) {
 
 		err := loadbalancers.EnsureLoadBalancerDeleted("foo", service)
 		if err != nil {
-			t.Errorf("Unable to delete the load balancer during cleanup: %v", err)
+			t.Fatalf("Unable to delete the load balancer during cleanup: %v", err)
 		}
 	}()
 
@@ -93,30 +93,30 @@ func TestLoadBalancer(t *testing.T) {
 
 	err = validateLoadBalancer(fw.Client, service, nodes)
 	if err != nil {
-		t.Errorf("validation error: %v", err)
+		t.Fatalf("validation error: %v", err)
 	}
 
 	// Decrease the number of backends to 1
 	lessNodes := []*api.Node{nodes[0]}
 	status, err = loadbalancers.EnsureLoadBalancer("foo", service, lessNodes)
 	if err != nil {
-		t.Errorf("Unable to ensure load balancer: %v", err)
+		t.Fatalf("Unable to ensure load balancer: %v", err)
 	}
 
 	err = validateLoadBalancer(fw.Client, service, lessNodes)
 	if err != nil {
-		t.Errorf("validation error: %v", err)
+		t.Fatalf("validation error: %v", err)
 	}
 
 	// Go back to 2 nodes
 	status, err = loadbalancers.EnsureLoadBalancer("foo", service, nodes)
 	if err != nil {
-		t.Errorf("Unable to ensure the load balancer: %v", err)
+		t.Fatalf("Unable to ensure the load balancer: %v", err)
 	}
 
 	err = validateLoadBalancer(fw.Client, service, nodes)
 	if err != nil {
-		t.Errorf("validation error: %v", err)
+		t.Fatalf("validation error: %v", err)
 	}
 }
 

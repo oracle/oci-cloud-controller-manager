@@ -554,23 +554,20 @@ func (c *client) GetSubnetsForInternalIPs(ips []string) ([]*baremetal.Subnet, er
 			return nil, err
 		}
 		for _, attachment := range r.Attachments {
-			if attachment.State != baremetal.ResourceAttached {
-				glog.Warningf("VNIC attachment `%s` for instance `%s` has a state and not attached", attachment.ID, attachment.InstanceID, attachment.State)
-				continue
-			}
-
-			vnic, err := c.GetVnic(attachment.VnicID)
-			if err != nil {
-				return nil, err
-			}
-			if vnic.PrivateIPAddress != "" && ipSet.Has(vnic.PrivateIPAddress) &&
-				!subnetOCIDs.Has(vnic.SubnetID) {
-				subnet, err := c.GetSubnet(vnic.SubnetID)
+			if attachment.State == baremetal.ResourceAttached {
+				vnic, err := c.GetVnic(attachment.VnicID)
 				if err != nil {
 					return nil, err
 				}
-				subnets = append(subnets, subnet)
-				subnetOCIDs.Insert(vnic.SubnetID)
+				if vnic.PrivateIPAddress != "" && ipSet.Has(vnic.PrivateIPAddress) &&
+					!subnetOCIDs.Has(vnic.SubnetID) {
+					subnet, err := c.GetSubnet(vnic.SubnetID)
+					if err != nil {
+						return nil, err
+					}
+					subnets = append(subnets, subnet)
+					subnetOCIDs.Insert(vnic.SubnetID)
+				}
 			}
 		}
 		if hasNexPage := SetNextPageOption(r.NextPage, &opts.PageListOptions); !hasNexPage {
@@ -607,7 +604,7 @@ func (c *client) GetDefaultSecurityList(subnet *baremetal.Subnet) (*baremetal.Se
 	}
 
 	if len(lists) < 1 {
-		return nil, fmt.Errorf("no SecurityLists found for Subnet '%s'", subnet.ID)
+		return nil, NewNotFoundError(fmt.Sprintf("no SecurityLists found for Subnet '%s'", subnet.ID))
 	}
 
 	sort.Slice(lists, func(i, j int) bool {

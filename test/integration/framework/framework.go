@@ -53,8 +53,6 @@ func (f *Framework) Init() error {
 		return err
 	}
 
-	f.Client = f.Client.Compartment(f.Config.Global.CompartmentOCID)
-
 	f.nodeSubnetOne = os.Getenv("NODE_SUBNET_ONE")
 	if f.nodeSubnetOne == "" {
 		return errors.New("env var `NODE_SUBNET_ONE` is required")
@@ -77,6 +75,8 @@ func (f *Framework) NodeSubnets() []string {
 }
 
 func (f *Framework) WaitForInstance(id string) error {
+	glog.Infof("Waiting for instance `%s` to be running", id)
+
 	sleepTime := 30 * time.Second
 	for {
 		instance, err := f.Client.GetInstance(id)
@@ -110,7 +110,9 @@ func (f *Framework) CreateInstance(availabilityDomain string, subnetID string) (
 }
 
 func (f *Framework) Cleanup() {
+	glog.Info("Running instance cleanup")
 	for _, instance := range f.Instances {
+		glog.Infof("Terminating instance for cleanup `%s`", instance.ID)
 		err := f.Client.TerminateInstance(instance.ID, nil)
 		if client.IsNotFound(err) {
 			continue
@@ -120,4 +122,5 @@ func (f *Framework) Cleanup() {
 		}
 	}
 	f.Instances = []*baremetal.Instance{}
+	glog.Info("Instance cleanup is done")
 }
