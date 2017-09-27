@@ -290,10 +290,10 @@
   revision = "eb3733d160e74a9c7e442f435eb3bea458e1d19f"
 
 [[projects]]
-  branch = "master"
+  branch = "release-1.8"
   name = "k8s.io/api"
   packages = ["admissionregistration/v1alpha1","apps/v1beta1","apps/v1beta2","authentication/v1","authentication/v1beta1","authorization/v1","authorization/v1beta1","autoscaling/v1","autoscaling/v2beta1","batch/v1","batch/v1beta1","batch/v2alpha1","certificates/v1beta1","core/v1","extensions/v1beta1","networking/v1","policy/v1beta1","rbac/v1","rbac/v1alpha1","rbac/v1beta1","scheduling/v1alpha1","settings/v1alpha1","storage/v1","storage/v1beta1"]
-  revision = "81aa34336d28aadc3a8e8da7dfd9258c5157e5e4"
+  revision = "fe29995db37613b9c5b2a647544cf627bfa8d299"
 
 [[projects]]
   branch = "master"
@@ -302,16 +302,16 @@
   revision = "e15e93d7733a51122160e13ddb510a23f72bbe09"
 
 [[projects]]
-  branch = "master"
+  branch = "release-1.8"
   name = "k8s.io/apimachinery"
   packages = ["pkg/api/equality","pkg/api/errors","pkg/api/meta","pkg/api/resource","pkg/api/validation","pkg/apimachinery","pkg/apimachinery/announced","pkg/apimachinery/registered","pkg/apis/meta/internalversion","pkg/apis/meta/v1","pkg/apis/meta/v1/unstructured","pkg/apis/meta/v1/validation","pkg/apis/meta/v1alpha1","pkg/conversion","pkg/conversion/queryparams","pkg/conversion/unstructured","pkg/fields","pkg/labels","pkg/runtime","pkg/runtime/schema","pkg/runtime/serializer","pkg/runtime/serializer/json","pkg/runtime/serializer/protobuf","pkg/runtime/serializer/recognizer","pkg/runtime/serializer/streaming","pkg/runtime/serializer/versioning","pkg/selection","pkg/types","pkg/util/cache","pkg/util/clock","pkg/util/diff","pkg/util/errors","pkg/util/framer","pkg/util/intstr","pkg/util/json","pkg/util/mergepatch","pkg/util/net","pkg/util/rand","pkg/util/runtime","pkg/util/sets","pkg/util/strategicpatch","pkg/util/validation","pkg/util/validation/field","pkg/util/wait","pkg/util/yaml","pkg/version","pkg/watch","third_party/forked/golang/json","third_party/forked/golang/reflect"]
-  revision = "3b05bbfa0a45413bfa184edbf9af617e277962fb"
+  revision = "9d38e20d609d27e00d4ec18f7b9db67105a2bde0"
 
 [[projects]]
-  branch = "master"
+  branch = "release-1.8"
   name = "k8s.io/apiserver"
   packages = ["pkg/authentication/authenticator","pkg/authentication/serviceaccount","pkg/authentication/user","pkg/features","pkg/server/healthz","pkg/util/feature","pkg/util/flag","pkg/util/logs"]
-  revision = "c1e53d745d0fe45bf7d5d44697e6eface25fceca"
+  revision = "f9b476d61dbdf6474e3d42cc5e854d0d8b7f759e"
 
 [[projects]]
   branch = "master"
@@ -334,6 +334,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "6a96320a5faa993eb78d43593db10adb0ada81bb9a55fc257989c952cd73ba14"
+  inputs-digest = "5c8668c17c3d755b0ea6a7f1a5286a2ab9083e9e0aadcb5c2da70d45e6ae3840"
   solver-name = "gps-cdcl"
   solver-version = 1

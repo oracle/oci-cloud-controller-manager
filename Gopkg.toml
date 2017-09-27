@@ -20,6 +20,9 @@
 #  name = "github.com/x/y"
 #  version = "2.4.0"
 
+[[override]]
+  branch = "master"
+  name = "github.com/docker/distribution"
 
 [[constraint]]
   branch = "master"
@@ -38,26 +41,21 @@
   version = "1.2.0"
 
 [[constraint]]
-  branch = "master"
+  branch = "release-1.8"
   name = "k8s.io/api"
 
 [[constraint]]
-  branch = "master"
+  branch = "release-1.8"
   name = "k8s.io/apimachinery"
 
 [[constraint]]
-  branch = "master"
+  branch = "release-1.8"
   name = "k8s.io/apiserver"
 
 [[constraint]]
-  name = "k8s.io/client-go"
   branch = "master"
-
+  name = "k8s.io/client-go"
 
 [[constraint]]
-  name = "k8s.io/kubernetes"
   branch = "release-1.8"
-
-[[override]]
-  name = "github.com/docker/distribution"
-  branch = "master"
+  name = "k8s.io/kubernetes"
