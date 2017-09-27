@@ -1,9 +1,13 @@
-include Makefile.include
+REGISTRY := registry.oracledx.com/skeppare
+PKG := github.com/oracle/oci-cloud-controller-manager
+BIN := oci-cloud-controller-manager
+IMAGE := $(REGISTRY)/$(BIN)
+VERSION := $(shell git describe --always --long --dirty)
 
 GOOS ?= linux
 ARCH ?= amd64
 
-VERSION := $(shell git describe --always --long --dirty)
+SRC_DIRS := cmd pkg # directories which hold app source (not vendored)
 
 RETURN_CODE := $(shell sed --version >/dev/null 2>&1; echo $$?)
 ifeq ($(RETURN_CODE),1)
@@ -11,10 +15,6 @@ ifeq ($(RETURN_CODE),1)
 else
     SED_INPLACE = -i
 endif
-
-SRC_DIRS := cmd pkg # directories which hold app source (not vendored)
-
-IMAGE := $(REGISTRY)/$(BIN)
 
 .PHONY: all
 all: build
@@ -33,7 +33,7 @@ govet:
 
 .PHONY: build-dirs
 build-dirs:
-	@mkdir -p dist/bin/
+	@mkdir -p dist/
 
 .PHONY: build
 build: build-dirs
@@ -44,15 +44,15 @@ build: build-dirs
 	    -ldflags "-X main.version=${VERSION}" \
 	    ./cmd/oci-cloud-controller-manager
 
-.PHONY: dist
-dist: build-dirs
+.PHONY: manifests
+manifests: build-dirs
 	@cp -a manifests/* dist
 	@sed ${SED_INPLACE}                                            \
 	    's#${IMAGE}:[0-9]\+.[0-9]\+.[0-9]\+#${IMAGE}:${VERSION}#g' \
 	    dist/oci-cloud-controller-manager.yaml
 
 .PHONY: test
-test: build-dirs
+test:
 	@./hack/test.sh $(SRC_DIRS)
 
 .PHONY: clean
