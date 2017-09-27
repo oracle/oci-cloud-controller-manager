@@ -16,6 +16,19 @@ for _existing_ cloud-providers (e.g. AWS, GCE, etc.), however, in-tree
 cloud-providers have entered maintenance mode and _no additional providers will
 be accepted_.
 
+## Compatibility matrix
+
+|                                  | Kubernetes < 1.7.6 | Kubernetes 1.7.6 |
+|----------------------------------|--------------------|------------------|
+| oci-cloud-controller-manager 0.1 | †                  | ✓                |
+
+Key:
+
+* `✓` oci-cloud-controller-manager is fully compatible.
+* `†` oci-cloud-controller-manager is compatible but requires the
+      `--provider-id` flag to be set on the kubelet of all nodes in the
+      cluster.
+
 ## Cloud Controller Manager
 
 The cloud-controller-manager allows cloud vendors code and the Kubernetes core
