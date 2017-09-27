@@ -8,7 +8,7 @@ build:
     - script:
       name: write VERSION.txt
       code: |
-        git describe --always --long --dirty > ${WERCKER_OUTPUT_DIR}/VERSION.txt
+        git describe --always --dirty > ${WERCKER_OUTPUT_DIR}/VERSION.txt
         cat ${WERCKER_OUTPUT_DIR}/VERSION.txt
 
     - script:

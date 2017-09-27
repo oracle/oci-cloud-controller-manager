@@ -2,7 +2,7 @@ REGISTRY := registry.oracledx.com/skeppare
 PKG := github.com/oracle/oci-cloud-controller-manager
 BIN := oci-cloud-controller-manager
 IMAGE := $(REGISTRY)/$(BIN)
-VERSION := $(shell git describe --always --long --dirty)
+VERSION := $(shell git describe --always --dirty)
 
 GOOS ?= linux
 ARCH ?= amd64
