@@ -9,6 +9,7 @@ build:
       name: write VERSION.txt
       code: |
         git describe --always --long --dirty > ${WERCKER_OUTPUT_DIR}/VERSION.txt
+        cat ${WERCKER_OUTPUT_DIR}/VERSION.txt
 
     - script:
       name: go fmt
@@ -45,6 +46,7 @@ push:
         name: set ENV vars
         code: |
           export VERSION=$(cat VERSION.txt)
+          echo "${VERSION}"
 
     - script:
         name: prepare
