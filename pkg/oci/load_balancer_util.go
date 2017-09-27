@@ -25,7 +25,6 @@ import (
 
 	api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/kubernetes/pkg/cloudprovider"
 )
 
 const (
@@ -187,7 +186,15 @@ func GetLoadBalancerName(service *api.Service) string {
 		// Add the trailing hyphen if it's missing
 		prefix += "-"
 	}
-	return fmt.Sprintf("%s%s-%s", prefix, service.Name, cloudprovider.GetLoadBalancerName(service))
+
+	name := fmt.Sprintf("%s%s", prefix, service.UID)
+	if len(name) > 1024 {
+		// 1024 is the max length for display name
+		// https://docs.us-phoenix-1.oraclecloud.com/api/#/en/loadbalancer/20170115/requests/UpdateLoadBalancerDetails
+		name = name[:1024]
+	}
+
+	return name
 }
 
 // Extract a list of all the external IP addresses for the available Kubernetes nodes
