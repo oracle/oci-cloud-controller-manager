@@ -5,9 +5,6 @@ dev:
 build:
   base-path: "/go/src/github.com/oracle/oci-cloud-controller-manager"
   steps:
-#   - install-packages:
-#     packages: rsync
-
     - script:
       name: write VERSION.txt
       code: |
@@ -16,16 +13,6 @@ build:
     - script:
       name: go fmt
       code: make gofmt
-
-#   - script:
-#     name: Populate cache
-#     code: |
-#       if [[ -d "$WERCKER_CACHE_DIR/go-pkg-cache" ]]; then
-#           mkdir -p "$GOPATH/pkg/linux_amd64_static"
-#           rsync -avzvt                           \
-#               "$WERCKER_CACHE_DIR/go-pkg-cache/" \
-#               "$GOPATH/pkg/linux_amd64_static"
-#       fi
 
     - script:
       name: golint
@@ -40,13 +27,6 @@ build:
     - script:
       name: build
       code: make build
-
-#   - script:
-#     name: Store cache
-#     code: |
-#       rsync -azt                          \
-#         "$GOPATH/pkg/linux_amd64_static"  \
-#         "$WERCKER_CACHE_DIR/go-pkg-cache/"
 
     - script:
       name: unit tests
