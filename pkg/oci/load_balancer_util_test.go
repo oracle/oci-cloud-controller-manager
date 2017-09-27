@@ -437,31 +437,28 @@ func TestGetLoadBalancerName(t *testing.T) {
 			prefix: "",
 			service: &api.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "servicename",
-					UID:  "fakeuid",
+					UID: "fakeuid",
 				},
 			},
-			expected: "servicename-afakeuid",
+			expected: "fakeuid",
 		},
 		"prefix without hyphen": {
 			prefix: "testprefix",
 			service: &api.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "servicename",
-					UID:  "fakeuid",
+					UID: "fakeuid",
 				},
 			},
-			expected: "testprefix-servicename-afakeuid",
+			expected: "testprefix-fakeuid",
 		},
 		"prefix with hyphen": {
 			prefix: "testprefix-",
 			service: &api.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "servicename",
-					UID:  "fakeuid",
+					UID: "fakeuid",
 				},
 			},
-			expected: "testprefix-servicename-afakeuid",
+			expected: "testprefix-fakeuid",
 		},
 	}
 
