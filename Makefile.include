@@ -1,3 +1,0 @@
-BIN := oci-cloud-controller-manager
-PKG := github.com/oracle/oci-cloud-controller-manager
-REGISTRY := registry.oracledx.com/skeppare
