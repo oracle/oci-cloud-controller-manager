@@ -34,3 +34,6 @@ vendors.txt
 
 # OSX
 .DS_Store
+
+# Wercker
+.wercker/
