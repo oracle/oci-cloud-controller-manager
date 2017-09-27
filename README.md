@@ -18,16 +18,18 @@ be accepted_.
 
 ## Compatibility matrix
 
-|                                  | Kubernetes < 1.7.6 | Kubernetes 1.7.6 |
-|----------------------------------|--------------------|------------------|
-| oci-cloud-controller-manager 0.1 | †                  | ✓                |
+|       | Kubernetes < 1.7.2 | Kubernetes 1.7.{2..5} | Kubernetes 1.7.6 |
+|-------|--------------------|-----------------------|------------------|
+| v 0.1 | ✗                  | †                     | ✓                |
 
 Key:
 
-* `✓` oci-cloud-controller-manager is fully compatible.
-* `†` oci-cloud-controller-manager is compatible but requires the
-      `--provider-id` flag to be set on the kubelet of all nodes in the
-      cluster.
+ * `✓` oci-cloud-controller-manager is fully compatible.
+ * `†` oci-cloud-controller-manager is compatible but requires the
+       `--provider-id` flag to be set on the kubelet of all nodes in the
+       cluster.
+ * `✗` oci-cloud-controller-manager is not compatible.
+
 
 ## Cloud Controller Manager
 
