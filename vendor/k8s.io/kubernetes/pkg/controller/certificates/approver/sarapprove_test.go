@@ -31,9 +31,9 @@ import (
 	capi "k8s.io/api/certificates/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/kubernetes/fake"
 	testclient "k8s.io/client-go/testing"
 	k8s_certificates_v1beta1 "k8s.io/kubernetes/pkg/apis/certificates/v1beta1"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset/fake"
 )
 
 func TestHasKubeletUsages(t *testing.T) {
@@ -89,6 +89,7 @@ func TestHandle(t *testing.T) {
 		message    string
 		allowed    bool
 		recognized bool
+		err        bool
 		verify     func(*testing.T, []testclient.Action)
 	}{
 		{
@@ -119,6 +120,7 @@ func TestHandle(t *testing.T) {
 				}
 				_ = as[0].(testclient.CreateActionImpl)
 			},
+			err: true,
 		},
 		{
 			recognized: true,
@@ -155,7 +157,7 @@ func TestHandle(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		t.Run(fmt.Sprintf("recognized:%v,allowed: %v", c.recognized, c.allowed), func(t *testing.T) {
+		t.Run(fmt.Sprintf("recognized:%v,allowed: %v,err: %v", c.recognized, c.allowed, c.err), func(t *testing.T) {
 			client := &fake.Clientset{}
 			client.AddReactor("create", "subjectaccessreviews", func(action testclient.Action) (handled bool, ret runtime.Object, err error) {
 				return true, &authorization.SubjectAccessReview{
@@ -177,7 +179,7 @@ func TestHandle(t *testing.T) {
 				},
 			}
 			csr := makeTestCsr()
-			if err := approver.handle(csr); err != nil {
+			if err := approver.handle(csr); err != nil && !c.err {
 				t.Errorf("unexpected err: %v", err)
 			}
 			c.verify(t, client.Actions())

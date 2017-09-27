@@ -25,17 +25,16 @@ import (
 
 	"github.com/golang/glog"
 	"k8s.io/api/core/v1"
-	clientv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/runtime"
+	coreinformers "k8s.io/client-go/informers/core/v1"
+	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	kcache "k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
-	coreinformers "k8s.io/kubernetes/pkg/client/informers/informers_generated/externalversions/core/v1"
-	corelisters "k8s.io/kubernetes/pkg/client/listers/core/v1"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/volume/attachdetach/cache"
@@ -98,6 +97,7 @@ func NewAttachDetachController(
 	pvInformer coreinformers.PersistentVolumeInformer,
 	cloud cloudprovider.Interface,
 	plugins []volume.VolumePlugin,
+	prober volume.DynamicPluginProber,
 	disableReconciliationSync bool,
 	reconcilerSyncDuration time.Duration,
 	timerConfig TimerConfig) (AttachDetachController, error) {
@@ -128,14 +128,14 @@ func NewAttachDetachController(
 		cloud:       cloud,
 	}
 
-	if err := adc.volumePluginMgr.InitPlugins(plugins, adc); err != nil {
+	if err := adc.volumePluginMgr.InitPlugins(plugins, prober, adc); err != nil {
 		return nil, fmt.Errorf("Could not initialize volume plugins for Attach/Detach Controller: %+v", err)
 	}
 
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(glog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: v1core.New(kubeClient.Core().RESTClient()).Events("")})
-	recorder := eventBroadcaster.NewRecorder(api.Scheme, clientv1.EventSource{Component: "attachdetach"})
+	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "attachdetach"})
 
 	adc.desiredStateOfWorld = cache.NewDesiredStateOfWorld(&adc.volumePluginMgr)
 	adc.actualStateOfWorld = cache.NewActualStateOfWorld(&adc.volumePluginMgr)
@@ -540,7 +540,7 @@ func (adc *attachDetachController) GetCloudProvider() cloudprovider.Interface {
 	return adc.cloud
 }
 
-func (adc *attachDetachController) GetMounter() mount.Interface {
+func (adc *attachDetachController) GetMounter(pluginName string) mount.Interface {
 	return nil
 }
 
@@ -570,6 +570,10 @@ func (adc *attachDetachController) GetConfigMapFunc() func(namespace, name strin
 	return func(_, _ string) (*v1.ConfigMap, error) {
 		return nil, fmt.Errorf("GetConfigMap unsupported in attachDetachController")
 	}
+}
+
+func (adc *attachDetachController) GetExec(pluginName string) mount.Exec {
+	return mount.NewOsExec()
 }
 
 func (adc *attachDetachController) addNodeToDswp(node *v1.Node, nodeName types.NodeName) {

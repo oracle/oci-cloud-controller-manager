@@ -285,7 +285,7 @@ func ListResource(r rest.Lister, rw rest.Watcher, scope RequestScope, forceWatch
 		}
 
 		// Watches for single objects are routed to this function.
-		// Treat a /name parameter the same as a field selector entry.
+		// Treat a name parameter the same as a field selector entry.
 		hasName := true
 		_, name, err := scope.Namer.Name(req)
 		if err != nil {
@@ -968,6 +968,7 @@ func DeleteResource(r rest.GracefulDeleter, allowsOptions bool, scope RequestSco
 					return
 				}
 
+				trace.Step("About to record audit event")
 				ae := request.AuditEventFrom(ctx)
 				audit.LogRequestObject(ae, obj, scope.Resource, scope.Subresource, scope.Serializer)
 			} else {
@@ -982,6 +983,7 @@ func DeleteResource(r rest.GracefulDeleter, allowsOptions bool, scope RequestSco
 		}
 
 		if admit != nil && admit.Handles(admission.Delete) {
+			trace.Step("About to check admission control")
 			userInfo, _ := request.UserFrom(ctx)
 
 			err = admit.Admit(admission.NewAttributesRecord(nil, nil, scope.Kind, namespace, name, scope.Resource, scope.Subresource, admission.Delete, userInfo))
@@ -991,7 +993,7 @@ func DeleteResource(r rest.GracefulDeleter, allowsOptions bool, scope RequestSco
 			}
 		}
 
-		trace.Step("About do delete object from database")
+		trace.Step("About to delete object from database")
 		wasDeleted := true
 		result, err := finishRequest(timeout, func() (runtime.Object, error) {
 			obj, deleted, err := r.Delete(ctx, name, options)

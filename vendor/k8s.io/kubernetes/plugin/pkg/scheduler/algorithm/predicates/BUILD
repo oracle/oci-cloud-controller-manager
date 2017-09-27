@@ -1,7 +1,5 @@
 package(default_visibility = ["//visibility:public"])
 
-licenses(["notice"])
-
 load(
     "@io_bazel_rules_go//go:def.bzl",
     "go_library",
@@ -16,11 +14,9 @@ go_library(
         "predicates.go",
         "utils.go",
     ],
-    tags = ["automanaged"],
     deps = [
         "//pkg/api/v1/helper:go_default_library",
         "//pkg/api/v1/helper/qos:go_default_library",
-        "//pkg/client/listers/core/v1:go_default_library",
         "//pkg/features:go_default_library",
         "//pkg/kubelet/apis:go_default_library",
         "//pkg/volume/util:go_default_library",
@@ -33,8 +29,8 @@ go_library(
         "//vendor/k8s.io/apimachinery/pkg/api/errors:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/labels:go_default_library",
-        "//vendor/k8s.io/apimachinery/pkg/util/runtime:go_default_library",
         "//vendor/k8s.io/apiserver/pkg/util/feature:go_default_library",
+        "//vendor/k8s.io/client-go/listers/core/v1:go_default_library",
         "//vendor/k8s.io/client-go/util/workqueue:go_default_library",
         "//vendor/k8s.io/metrics/pkg/client/clientset_generated/clientset:go_default_library",
     ],
@@ -43,11 +39,11 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = [
+        "metadata_test.go",
         "predicates_test.go",
         "utils_test.go",
     ],
     library = ":go_default_library",
-    tags = ["automanaged"],
     deps = [
         "//pkg/api/v1/helper:go_default_library",
         "//pkg/kubelet/apis:go_default_library",

@@ -19,14 +19,11 @@ package statefulset
 import (
 	"fmt"
 
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
-
 	apps "k8s.io/api/apps/v1beta1"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
-	appslisters "k8s.io/kubernetes/pkg/client/listers/apps/v1beta1"
-
-	"k8s.io/kubernetes/pkg/client/retry"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientset "k8s.io/client-go/kubernetes"
+	appslisters "k8s.io/client-go/listers/apps/v1beta1"
+	"k8s.io/client-go/util/retry"
 )
 
 // StatefulSetStatusUpdaterInterface is an interface used to update the StatefulSetStatus associated with a StatefulSet.
@@ -62,11 +59,7 @@ func (ssu *realStatefulSetStatusUpdater) UpdateStatefulSetStatus(
 		}
 		if updated, err := ssu.setLister.StatefulSets(set.Namespace).Get(set.Name); err == nil {
 			// make a copy so we don't mutate the shared cache
-			if copy, err := scheme.Scheme.DeepCopy(updated); err == nil {
-				set = copy.(*apps.StatefulSet)
-			} else {
-				utilruntime.HandleError(fmt.Errorf("error copying updated StatefulSet: %v", err))
-			}
+			set = updated.DeepCopy()
 		} else {
 			utilruntime.HandleError(fmt.Errorf("error getting updated StatefulSet %s/%s from lister: %v", set.Namespace, set.Name, err))
 		}

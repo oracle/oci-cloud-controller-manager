@@ -49,6 +49,7 @@ type EditTestCase struct {
 	Args             []string `yaml:"args"`
 	Filename         string   `yaml:"filename"`
 	Output           string   `yaml:"outputFormat"`
+	OutputPatch      string   `yaml:"outputPatch"`
 	SaveConfig       string   `yaml:"saveConfig"`
 	Namespace        string   `yaml:"namespace"`
 	ExpectedStdout   []string `yaml:"expectedStdout"`
@@ -250,6 +251,9 @@ func TestEdit(t *testing.T) {
 		if len(testcase.Output) > 0 {
 			cmd.Flags().Set("output", testcase.Output)
 		}
+		if len(testcase.OutputPatch) > 0 {
+			cmd.Flags().Set("output-patch", testcase.OutputPatch)
+		}
 		if len(testcase.SaveConfig) > 0 {
 			cmd.Flags().Set("save-config", testcase.SaveConfig)
 		}
@@ -275,6 +279,9 @@ func TestEdit(t *testing.T) {
 			if !strings.Contains(stderr, s) {
 				t.Errorf("%s: expected to see '%s' in stderr\n\nstdout:\n%s\n\nstderr:\n%s", name, s, stdout, stderr)
 			}
+		}
+		if i < len(testcase.Steps) {
+			t.Errorf("%s: saw %d steps, testcase included %d additional steps that were not exercised", name, i, len(testcase.Steps)-i)
 		}
 	}
 }

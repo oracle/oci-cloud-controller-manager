@@ -16,9 +16,7 @@ type ObjectStorageTestSuite struct {
 }
 
 func (s *ObjectStorageTestSuite) SetupTest() {
-	s.requestor = new(mockRequestor)
-	s.requestor.Client = createClientForTest()
-	s.requestor.objectStorageApi = s.requestor
+	s.requestor = newMockRequestor(s)
 }
 
 func TestRunObjectStorageTests(t *testing.T) {

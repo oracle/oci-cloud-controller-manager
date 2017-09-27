@@ -31,7 +31,9 @@ import (
 	"k8s.io/kubernetes/pkg/api"
 	k8s_api_v1 "k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/kubelet/client"
-	"k8s.io/kubernetes/pkg/registry/cachesize"
+	"k8s.io/kubernetes/pkg/printers"
+	printersinternal "k8s.io/kubernetes/pkg/printers/internalversion"
+	printerstorage "k8s.io/kubernetes/pkg/printers/storage"
 	"k8s.io/kubernetes/pkg/registry/core/node"
 	noderest "k8s.io/kubernetes/pkg/registry/core/node/rest"
 )
@@ -73,17 +75,18 @@ func (r *StatusREST) Update(ctx genericapirequest.Context, name string, objInfo 
 // NewStorage returns a NodeStorage object that will work against nodes.
 func NewStorage(optsGetter generic.RESTOptionsGetter, kubeletClientConfig client.KubeletClientConfig, proxyTransport http.RoundTripper) (*NodeStorage, error) {
 	store := &genericregistry.Store{
-		Copier:            api.Scheme,
-		NewFunc:           func() runtime.Object { return &api.Node{} },
-		NewListFunc:       func() runtime.Object { return &api.NodeList{} },
-		PredicateFunc:     node.MatchNode,
-		QualifiedResource: api.Resource("nodes"),
-		WatchCacheSize:    cachesize.GetWatchCacheSizeByResource("nodes"),
+		Copier:                   api.Scheme,
+		NewFunc:                  func() runtime.Object { return &api.Node{} },
+		NewListFunc:              func() runtime.Object { return &api.NodeList{} },
+		PredicateFunc:            node.MatchNode,
+		DefaultQualifiedResource: api.Resource("nodes"),
 
 		CreateStrategy: node.Strategy,
 		UpdateStrategy: node.Strategy,
 		DeleteStrategy: node.Strategy,
 		ExportStrategy: node.Strategy,
+
+		TableConvertor: printerstorage.TableConvertor{TablePrinter: printers.NewTablePrinter().With(printersinternal.AddHandlers)},
 	}
 	options := &generic.StoreOptions{RESTOptions: optsGetter, AttrFunc: node.GetAttrs, TriggerFunc: node.NodeNameTriggerFunc}
 	if err := store.CompleteWithOptions(options); err != nil {

@@ -29,7 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stype "k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
+	clientset "k8s.io/client-go/kubernetes"
 	vsphere "k8s.io/kubernetes/pkg/cloudprovider/providers/vsphere"
 	"k8s.io/kubernetes/test/e2e/framework"
 )
@@ -52,7 +52,7 @@ import (
 	11. Delete PVC, PV and Storage Class
 */
 
-var _ = framework.KubeDescribe("Volume Disk Format [Volumes]", func() {
+var _ = SIGDescribe("Volume Disk Format", func() {
 	f := framework.NewDefaultFramework("volume-disk-format")
 	var (
 		client            clientset.Interface

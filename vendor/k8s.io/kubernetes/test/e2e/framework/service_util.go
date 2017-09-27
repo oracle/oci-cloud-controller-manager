@@ -35,11 +35,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/apimachinery/pkg/util/wait"
+	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
-	"k8s.io/kubernetes/pkg/client/retry"
+	azurecloud "k8s.io/kubernetes/pkg/cloudprovider/providers/azure"
+	gcecloud "k8s.io/kubernetes/pkg/cloudprovider/providers/gce"
 	testutils "k8s.io/kubernetes/test/utils"
+	imageutils "k8s.io/kubernetes/test/utils/image"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -307,6 +310,10 @@ func GetNodePublicIps(c clientset.Interface) ([]string, error) {
 	nodes := GetReadySchedulableNodesOrDie(c)
 
 	ips := CollectAddresses(nodes, v1.NodeExternalIP)
+	if len(ips) == 0 {
+		// If ExternalIP isn't set, assume the test programs can reach the InternalIP
+		ips = CollectAddresses(nodes, v1.NodeInternalIP)
+	}
 	return ips, nil
 }
 
@@ -477,6 +484,31 @@ func (j *ServiceTestJig) UpdateServiceOrFail(namespace, name string, update func
 	return svc
 }
 
+func (j *ServiceTestJig) WaitForNewIngressIPOrFail(namespace, name, existingIP string, timeout time.Duration) *v1.Service {
+	var service *v1.Service
+	Logf("Waiting up to %v for service %q to get a new ingress IP", timeout, name)
+	pollFunc := func() (bool, error) {
+		svc, err := j.Client.Core().Services(namespace).Get(name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		if len(svc.Status.LoadBalancer.Ingress) == 0 {
+			return false, nil
+		}
+		ip := svc.Status.LoadBalancer.Ingress[0].IP
+		if ip == "" || ip == existingIP {
+			return false, nil
+		}
+		// Got a new IP.
+		service = svc
+		return true, nil
+	}
+	if err := wait.PollImmediate(Poll, timeout, pollFunc); err != nil {
+		Failf("Timeout waiting for service %q to have a new ingress IP", name)
+	}
+	return service
+}
+
 func (j *ServiceTestJig) ChangeServiceNodePortOrFail(namespace, name string, initial int) *v1.Service {
 	var err error
 	var service *v1.Service
@@ -570,7 +602,7 @@ func (j *ServiceTestJig) newRCTemplate(namespace string) *v1.ReplicationControll
 					Containers: []v1.Container{
 						{
 							Name:  "netexec",
-							Image: "gcr.io/google_containers/netexec:1.7",
+							Image: imageutils.GetE2EImage(imageutils.Netexec),
 							Args:  []string{"--http-port=80", "--udp-port=80"},
 							ReadinessProbe: &v1.Probe{
 								PeriodSeconds: 3,
@@ -800,7 +832,13 @@ func (j *ServiceTestJig) LaunchEchoserverPodOnNode(f *Framework, nodeName, podNa
 }
 
 func (j *ServiceTestJig) TestReachableHTTP(host string, port int, timeout time.Duration) {
-	if err := wait.PollImmediate(Poll, timeout, func() (bool, error) { return TestReachableHTTP(host, port, "/echo?msg=hello", "hello") }); err != nil {
+	j.TestReachableHTTPWithRetriableErrorCodes(host, port, []int{}, timeout)
+}
+
+func (j *ServiceTestJig) TestReachableHTTPWithRetriableErrorCodes(host string, port int, retriableErrCodes []int, timeout time.Duration) {
+	if err := wait.PollImmediate(Poll, timeout, func() (bool, error) {
+		return TestReachableHTTPWithRetriableErrorCodes(host, port, "/echo?msg=hello", "hello", retriableErrCodes)
+	}); err != nil {
 		Failf("Could not reach HTTP service through %v:%v after %v: %v", host, port, timeout, err)
 	}
 }
@@ -917,7 +955,7 @@ func NewServerTest(client clientset.Interface, namespace string, serviceName str
 	t.services = make(map[string]bool)
 
 	t.Name = "webserver"
-	t.Image = "gcr.io/google_containers/test-webserver:e2e"
+	t.Image = imageutils.GetE2EImage(imageutils.TestWebserver)
 
 	return t
 }
@@ -1388,4 +1426,37 @@ func CreateServiceSpec(serviceName, externalName string, isHeadless bool, select
 		headlessService.Spec.ClusterIP = "None"
 	}
 	return headlessService
+}
+
+// EnableAndDisableInternalLB returns two functions for enabling and disabling the internal load balancer
+// setting for the supported cloud providers: GCE/GKE and Azure
+func EnableAndDisableInternalLB() (enable func(svc *v1.Service), disable func(svc *v1.Service)) {
+	enable = func(svc *v1.Service) {}
+	disable = func(svc *v1.Service) {}
+
+	switch TestContext.Provider {
+	case "gce", "gke":
+		enable = func(svc *v1.Service) {
+			svc.ObjectMeta.Annotations = map[string]string{gcecloud.ServiceAnnotationLoadBalancerType: string(gcecloud.LBTypeInternal)}
+		}
+		disable = func(svc *v1.Service) {
+			delete(svc.ObjectMeta.Annotations, gcecloud.ServiceAnnotationLoadBalancerType)
+		}
+	case "azure":
+		enable = func(svc *v1.Service) {
+			svc.ObjectMeta.Annotations = map[string]string{azurecloud.ServiceAnnotationLoadBalancerInternal: "true"}
+		}
+		disable = func(svc *v1.Service) {
+			svc.ObjectMeta.Annotations = map[string]string{azurecloud.ServiceAnnotationLoadBalancerInternal: "false"}
+		}
+	}
+
+	return
+}
+
+func GetServiceLoadBalancerCreationTimeout(cs clientset.Interface) time.Duration {
+	if nodes := GetReadySchedulableNodesOrDie(cs); len(nodes.Items) > LargeClusterMinNodesNumber {
+		return LoadBalancerCreateTimeoutLarge
+	}
+	return LoadBalancerCreateTimeoutDefault
 }

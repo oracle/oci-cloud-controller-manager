@@ -28,7 +28,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
+	clientset "k8s.io/client-go/kubernetes"
 )
 
 const (
@@ -78,7 +78,7 @@ var _ = framework.KubeDescribe("Kubelet Eviction Manager [Serial] [Disruptive]",
 						RestartPolicy: v1.RestartPolicyNever,
 						Containers: []v1.Container{
 							{
-								Image: "gcr.io/google_containers/busybox:1.24",
+								Image: busyboxImage,
 								Name:  busyPodName,
 								// Filling the disk
 								Command: []string{"sh", "-c",

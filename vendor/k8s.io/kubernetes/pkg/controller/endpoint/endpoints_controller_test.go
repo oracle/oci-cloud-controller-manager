@@ -27,15 +27,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/informers"
+	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	utiltesting "k8s.io/client-go/util/testing"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	endptspkg "k8s.io/kubernetes/pkg/api/v1/endpoints"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
-	informers "k8s.io/kubernetes/pkg/client/informers/informers_generated/externalversions"
 	"k8s.io/kubernetes/pkg/controller"
 )
 
@@ -67,6 +68,38 @@ func addPods(store cache.Store, namespace string, nPods int, nPorts int, nNotRea
 		}
 		if i >= nPods {
 			p.Status.Conditions[0].Status = v1.ConditionFalse
+		}
+		for j := 0; j < nPorts; j++ {
+			p.Spec.Containers[0].Ports = append(p.Spec.Containers[0].Ports,
+				v1.ContainerPort{Name: fmt.Sprintf("port%d", i), ContainerPort: int32(8080 + j)})
+		}
+		store.Add(p)
+	}
+}
+
+func addNotReadyPodsWithSpecifiedRestartPolicyAndPhase(store cache.Store, namespace string, nPods int, nPorts int, restartPolicy v1.RestartPolicy, podPhase v1.PodPhase) {
+	for i := 0; i < nPods; i++ {
+		p := &v1.Pod{
+			TypeMeta: metav1.TypeMeta{APIVersion: api.Registry.GroupOrDie(v1.GroupName).GroupVersion.String()},
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: namespace,
+				Name:      fmt.Sprintf("pod%d", i),
+				Labels:    map[string]string{"foo": "bar"},
+			},
+			Spec: v1.PodSpec{
+				RestartPolicy: restartPolicy,
+				Containers:    []v1.Container{{Ports: []v1.ContainerPort{}}},
+			},
+			Status: v1.PodStatus{
+				PodIP: fmt.Sprintf("1.2.3.%d", 4+i),
+				Phase: podPhase,
+				Conditions: []v1.PodCondition{
+					{
+						Type:   v1.PodReady,
+						Status: v1.ConditionFalse,
+					},
+				},
+			},
 		}
 		for j := 0; j < nPorts; j++ {
 			p.Spec.Containers[0].Ports = append(p.Spec.Containers[0].Ports,
@@ -141,6 +174,70 @@ func TestSyncEndpointsItemsPreserveNoSelector(t *testing.T) {
 	})
 	endpoints.syncService(ns + "/foo")
 	endpointsHandler.ValidateRequestCount(t, 0)
+}
+
+func TestSyncEndpointsExistingNilSubsets(t *testing.T) {
+	ns := metav1.NamespaceDefault
+	testServer, endpointsHandler := makeTestServer(t, ns)
+	defer testServer.Close()
+	endpoints := newController(testServer.URL)
+	endpoints.endpointsStore.Add(&v1.Endpoints{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "foo",
+			Namespace:       ns,
+			ResourceVersion: "1",
+		},
+		Subsets: nil,
+	})
+	endpoints.serviceStore.Add(&v1.Service{
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
+		Spec: v1.ServiceSpec{
+			Selector: map[string]string{"foo": "bar"},
+			Ports:    []v1.ServicePort{{Port: 80}},
+		},
+	})
+	endpoints.syncService(ns + "/foo")
+	endpointsHandler.ValidateRequestCount(t, 0)
+}
+
+func TestSyncEndpointsExistingEmptySubsets(t *testing.T) {
+	ns := metav1.NamespaceDefault
+	testServer, endpointsHandler := makeTestServer(t, ns)
+	defer testServer.Close()
+	endpoints := newController(testServer.URL)
+	endpoints.endpointsStore.Add(&v1.Endpoints{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "foo",
+			Namespace:       ns,
+			ResourceVersion: "1",
+		},
+		Subsets: []v1.EndpointSubset{},
+	})
+	endpoints.serviceStore.Add(&v1.Service{
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
+		Spec: v1.ServiceSpec{
+			Selector: map[string]string{"foo": "bar"},
+			Ports:    []v1.ServicePort{{Port: 80}},
+		},
+	})
+	endpoints.syncService(ns + "/foo")
+	endpointsHandler.ValidateRequestCount(t, 0)
+}
+
+func TestSyncEndpointsNewNoSubsets(t *testing.T) {
+	ns := metav1.NamespaceDefault
+	testServer, endpointsHandler := makeTestServer(t, ns)
+	defer testServer.Close()
+	endpoints := newController(testServer.URL)
+	endpoints.serviceStore.Add(&v1.Service{
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
+		Spec: v1.ServiceSpec{
+			Selector: map[string]string{"foo": "bar"},
+			Ports:    []v1.ServicePort{{Port: 80}},
+		},
+	})
+	endpoints.syncService(ns + "/foo")
+	endpointsHandler.ValidateRequestCount(t, 1)
 }
 
 func TestCheckLeftoverEndpoints(t *testing.T) {
@@ -660,4 +757,349 @@ func TestSyncEndpointsHeadlessService(t *testing.T) {
 	})
 	endpointsHandler.ValidateRequestCount(t, 1)
 	endpointsHandler.ValidateRequest(t, testapi.Default.ResourcePath("endpoints", ns, "foo"), "PUT", &data)
+}
+
+func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseFailed(t *testing.T) {
+	ns := "other"
+	testServer, endpointsHandler := makeTestServer(t, ns)
+	defer testServer.Close()
+	endpoints := newController(testServer.URL)
+	endpoints.endpointsStore.Add(&v1.Endpoints{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "foo",
+			Namespace:       ns,
+			ResourceVersion: "1",
+			Labels: map[string]string{
+				"foo": "bar",
+			},
+		},
+		Subsets: []v1.EndpointSubset{},
+	})
+	addNotReadyPodsWithSpecifiedRestartPolicyAndPhase(endpoints.podStore, ns, 1, 1, v1.RestartPolicyNever, v1.PodFailed)
+	endpoints.serviceStore.Add(&v1.Service{
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
+		Spec: v1.ServiceSpec{
+			Selector: map[string]string{"foo": "bar"},
+			Ports:    []v1.ServicePort{{Port: 80, Protocol: "TCP", TargetPort: intstr.FromInt(8080)}},
+		},
+	})
+	endpoints.syncService(ns + "/foo")
+	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "foo",
+			Namespace:       ns,
+			ResourceVersion: "1",
+		},
+		Subsets: []v1.EndpointSubset{},
+	})
+	endpointsHandler.ValidateRequest(t, testapi.Default.ResourcePath("endpoints", ns, "foo"), "PUT", &data)
+}
+
+func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyNeverAndPhaseSucceeded(t *testing.T) {
+	ns := "other"
+	testServer, endpointsHandler := makeTestServer(t, ns)
+	defer testServer.Close()
+	endpoints := newController(testServer.URL)
+	endpoints.endpointsStore.Add(&v1.Endpoints{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "foo",
+			Namespace:       ns,
+			ResourceVersion: "1",
+			Labels: map[string]string{
+				"foo": "bar",
+			},
+		},
+		Subsets: []v1.EndpointSubset{},
+	})
+	addNotReadyPodsWithSpecifiedRestartPolicyAndPhase(endpoints.podStore, ns, 1, 1, v1.RestartPolicyNever, v1.PodSucceeded)
+	endpoints.serviceStore.Add(&v1.Service{
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
+		Spec: v1.ServiceSpec{
+			Selector: map[string]string{"foo": "bar"},
+			Ports:    []v1.ServicePort{{Port: 80, Protocol: "TCP", TargetPort: intstr.FromInt(8080)}},
+		},
+	})
+	endpoints.syncService(ns + "/foo")
+	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "foo",
+			Namespace:       ns,
+			ResourceVersion: "1",
+		},
+		Subsets: []v1.EndpointSubset{},
+	})
+	endpointsHandler.ValidateRequest(t, testapi.Default.ResourcePath("endpoints", ns, "foo"), "PUT", &data)
+}
+
+func TestSyncEndpointsItemsExcludeNotReadyPodsWithRestartPolicyOnFailureAndPhaseSucceeded(t *testing.T) {
+	ns := "other"
+	testServer, endpointsHandler := makeTestServer(t, ns)
+	defer testServer.Close()
+	endpoints := newController(testServer.URL)
+	endpoints.endpointsStore.Add(&v1.Endpoints{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "foo",
+			Namespace:       ns,
+			ResourceVersion: "1",
+			Labels: map[string]string{
+				"foo": "bar",
+			},
+		},
+		Subsets: []v1.EndpointSubset{},
+	})
+	addNotReadyPodsWithSpecifiedRestartPolicyAndPhase(endpoints.podStore, ns, 1, 1, v1.RestartPolicyOnFailure, v1.PodSucceeded)
+	endpoints.serviceStore.Add(&v1.Service{
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: ns},
+		Spec: v1.ServiceSpec{
+			Selector: map[string]string{"foo": "bar"},
+			Ports:    []v1.ServicePort{{Port: 80, Protocol: "TCP", TargetPort: intstr.FromInt(8080)}},
+		},
+	})
+	endpoints.syncService(ns + "/foo")
+	data := runtime.EncodeOrDie(testapi.Default.Codec(), &v1.Endpoints{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "foo",
+			Namespace:       ns,
+			ResourceVersion: "1",
+		},
+		Subsets: []v1.EndpointSubset{},
+	})
+	endpointsHandler.ValidateRequest(t, testapi.Default.ResourcePath("endpoints", ns, "foo"), "PUT", &data)
+}
+
+// There are 3*5 possibilities(3 types of RestartPolicy by 5 types of PodPhase). Not list them all here.
+// Just list all of the 3 false cases and 3 of the 12 true cases.
+func TestShouldPodBeInEndpoints(t *testing.T) {
+	testCases := []struct {
+		name     string
+		pod      *v1.Pod
+		expected bool
+	}{
+		// Pod should not be in endpoints cases:
+		{
+			name: "Failed pod with Never RestartPolicy",
+			pod: &v1.Pod{
+				Spec: v1.PodSpec{
+					RestartPolicy: v1.RestartPolicyNever,
+				},
+				Status: v1.PodStatus{
+					Phase: v1.PodFailed,
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "Succeeded pod with Never RestartPolicy",
+			pod: &v1.Pod{
+				Spec: v1.PodSpec{
+					RestartPolicy: v1.RestartPolicyNever,
+				},
+				Status: v1.PodStatus{
+					Phase: v1.PodSucceeded,
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "Succeeded pod with OnFailure RestartPolicy",
+			pod: &v1.Pod{
+				Spec: v1.PodSpec{
+					RestartPolicy: v1.RestartPolicyOnFailure,
+				},
+				Status: v1.PodStatus{
+					Phase: v1.PodSucceeded,
+				},
+			},
+			expected: false,
+		},
+		// Pod should be in endpoints cases:
+		{
+			name: "Failed pod with Always RestartPolicy",
+			pod: &v1.Pod{
+				Spec: v1.PodSpec{
+					RestartPolicy: v1.RestartPolicyAlways,
+				},
+				Status: v1.PodStatus{
+					Phase: v1.PodFailed,
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "Pending pod with Never RestartPolicy",
+			pod: &v1.Pod{
+				Spec: v1.PodSpec{
+					RestartPolicy: v1.RestartPolicyNever,
+				},
+				Status: v1.PodStatus{
+					Phase: v1.PodPending,
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "Unknown pod with OnFailure RestartPolicy",
+			pod: &v1.Pod{
+				Spec: v1.PodSpec{
+					RestartPolicy: v1.RestartPolicyOnFailure,
+				},
+				Status: v1.PodStatus{
+					Phase: v1.PodUnknown,
+				},
+			},
+			expected: true,
+		},
+	}
+	for _, test := range testCases {
+		result := shouldPodBeInEndpoints(test.pod)
+		if result != test.expected {
+			t.Errorf("%s: expected : %t, got: %t", test.name, test.expected, result)
+		}
+	}
+}
+
+func TestPodToEndpointAddress(t *testing.T) {
+	podStore := cache.NewStore(cache.DeletionHandlingMetaNamespaceKeyFunc)
+	ns := "test"
+	addPods(podStore, ns, 1, 1, 0)
+	pods := podStore.List()
+	if len(pods) != 1 {
+		t.Errorf("podStore size: expected: %d, got: %d", 1, len(pods))
+		return
+	}
+	pod := pods[0].(*v1.Pod)
+	epa := podToEndpointAddress(pod)
+	if epa.IP != pod.Status.PodIP {
+		t.Errorf("IP: expected: %s, got: %s", pod.Status.PodIP, epa.IP)
+	}
+	if *(epa.NodeName) != pod.Spec.NodeName {
+		t.Errorf("NodeName: expected: %s, got: %s", pod.Spec.NodeName, *(epa.NodeName))
+	}
+	if epa.TargetRef.Kind != "Pod" {
+		t.Errorf("TargetRef.Kind: expected: %s, got: %s", "Pod", epa.TargetRef.Kind)
+	}
+	if epa.TargetRef.Namespace != pod.ObjectMeta.Namespace {
+		t.Errorf("TargetRef.Kind: expected: %s, got: %s", pod.ObjectMeta.Namespace, epa.TargetRef.Namespace)
+	}
+	if epa.TargetRef.Name != pod.ObjectMeta.Name {
+		t.Errorf("TargetRef.Kind: expected: %s, got: %s", pod.ObjectMeta.Name, epa.TargetRef.Name)
+	}
+	if epa.TargetRef.UID != pod.ObjectMeta.UID {
+		t.Errorf("TargetRef.Kind: expected: %s, got: %s", pod.ObjectMeta.UID, epa.TargetRef.UID)
+	}
+	if epa.TargetRef.ResourceVersion != pod.ObjectMeta.ResourceVersion {
+		t.Errorf("TargetRef.Kind: expected: %s, got: %s", pod.ObjectMeta.ResourceVersion, epa.TargetRef.ResourceVersion)
+	}
+}
+
+func TestPodChanged(t *testing.T) {
+	podStore := cache.NewStore(cache.DeletionHandlingMetaNamespaceKeyFunc)
+	ns := "test"
+	addPods(podStore, ns, 1, 1, 0)
+	pods := podStore.List()
+	if len(pods) != 1 {
+		t.Errorf("podStore size: expected: %d, got: %d", 1, len(pods))
+		return
+	}
+	oldPod := pods[0].(*v1.Pod)
+	newPod := oldPod.DeepCopy()
+
+	if podChanged(oldPod, newPod) {
+		t.Errorf("Expected pod to be unchanged for copied pod")
+	}
+
+	newPod.Spec.NodeName = "changed"
+	if !podChanged(oldPod, newPod) {
+		t.Errorf("Expected pod to be changed for pod with NodeName changed")
+	}
+	newPod.Spec.NodeName = oldPod.Spec.NodeName
+
+	newPod.ObjectMeta.ResourceVersion = "changed"
+	if podChanged(oldPod, newPod) {
+		t.Errorf("Expected pod to be unchanged for pod with only ResourceVersion changed")
+	}
+	newPod.ObjectMeta.ResourceVersion = oldPod.ObjectMeta.ResourceVersion
+
+	newPod.Status.PodIP = "1.2.3.1"
+	if !podChanged(oldPod, newPod) {
+		t.Errorf("Expected pod to be changed with pod IP address change")
+	}
+	newPod.Status.PodIP = oldPod.Status.PodIP
+
+	newPod.ObjectMeta.Name = "wrong-name"
+	if !podChanged(oldPod, newPod) {
+		t.Errorf("Expected pod to be changed with pod name change")
+	}
+	newPod.ObjectMeta.Name = oldPod.ObjectMeta.Name
+
+	saveConditions := oldPod.Status.Conditions
+	oldPod.Status.Conditions = nil
+	if !podChanged(oldPod, newPod) {
+		t.Errorf("Expected pod to be changed with pod readiness change")
+	}
+	oldPod.Status.Conditions = saveConditions
+}
+
+func TestDetermineNeededServiceUpdates(t *testing.T) {
+	testCases := []struct {
+		name  string
+		a     sets.String
+		b     sets.String
+		union sets.String
+		xor   sets.String
+	}{
+		{
+			name:  "no services changed",
+			a:     sets.NewString("a", "b", "c"),
+			b:     sets.NewString("a", "b", "c"),
+			xor:   sets.NewString(),
+			union: sets.NewString("a", "b", "c"),
+		},
+		{
+			name:  "all old services removed, new services added",
+			a:     sets.NewString("a", "b", "c"),
+			b:     sets.NewString("d", "e", "f"),
+			xor:   sets.NewString("a", "b", "c", "d", "e", "f"),
+			union: sets.NewString("a", "b", "c", "d", "e", "f"),
+		},
+		{
+			name:  "all old services removed, no new services added",
+			a:     sets.NewString("a", "b", "c"),
+			b:     sets.NewString(),
+			xor:   sets.NewString("a", "b", "c"),
+			union: sets.NewString("a", "b", "c"),
+		},
+		{
+			name:  "no old services, but new services added",
+			a:     sets.NewString(),
+			b:     sets.NewString("a", "b", "c"),
+			xor:   sets.NewString("a", "b", "c"),
+			union: sets.NewString("a", "b", "c"),
+		},
+		{
+			name:  "one service removed, one service added, two unchanged",
+			a:     sets.NewString("a", "b", "c"),
+			b:     sets.NewString("b", "c", "d"),
+			xor:   sets.NewString("a", "d"),
+			union: sets.NewString("a", "b", "c", "d"),
+		},
+		{
+			name:  "no services",
+			a:     sets.NewString(),
+			b:     sets.NewString(),
+			xor:   sets.NewString(),
+			union: sets.NewString(),
+		},
+	}
+	for _, testCase := range testCases {
+		retval := determineNeededServiceUpdates(testCase.a, testCase.b, false)
+		if !retval.Equal(testCase.xor) {
+			t.Errorf("%s (with podChanged=false): expected: %v  got: %v", testCase.name, testCase.xor.List(), retval.List())
+		}
+
+		retval = determineNeededServiceUpdates(testCase.a, testCase.b, true)
+		if !retval.Equal(testCase.union) {
+			t.Errorf("%s (with podChanged=true): expected: %v  got: %v", testCase.name, testCase.union.List(), retval.List())
+		}
+	}
 }

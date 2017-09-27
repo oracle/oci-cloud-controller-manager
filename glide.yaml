@@ -1,7 +1,0 @@
-package: github.com/oracle/oci-cloud-controller-manager
-import:
-- package: k8s.io/kubernetes
-  version: master
-- package: github.com/oracle/bmcs-go-sdk
-- package: gopkg.in/warnings.v0
-  version: ~0.1.1

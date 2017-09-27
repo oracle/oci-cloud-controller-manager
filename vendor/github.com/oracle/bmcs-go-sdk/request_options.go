@@ -62,6 +62,12 @@ type CreatePreauthenticatedRequestDetails struct {
 	TimeExpires Time          `header:"-" json:"timeExpires" url:"-"`
 }
 
+type CreatePrivateIPOptions struct {
+	CreateOptions
+	HostnameLabel string `header:"-" json:"hostnameLabel,omitempty" url:"-"`
+	IPAddress     string `header:"-" json:"ipAddress,omitempty" url:"-"`
+}
+
 type CreateVcnOptions struct {
 	CreateOptions
 	DnsLabel string `header:"-" json:"dnsLabel,omitempty" url:"-"`
@@ -74,6 +80,10 @@ type CreateSubnetOptions struct {
 	ProhibitPublicIpOnVnic bool     `header:"-" json:"prohibitPublicIpOnVnic,omitempty" url:"-"`
 	RouteTableID           string   `header:"-" json:"routeTableId,omitempty" url:"-"`
 	SecurityListIDs        []string `header:"-" json:"securityListIds,omitempty" url:"-"`
+}
+
+type AttachVnicOptions struct {
+	CreateOptions
 }
 
 type LoadBalancerOptions struct {
@@ -137,6 +147,18 @@ type UpdateLoadBalancerOptions struct {
 	DisplayNameOptions
 }
 
+type UpdatePrivateIPOptions struct {
+	UpdateOptions
+	HostnameLabel string `header:"-" json:"hostnameLabel,omitempty" url:"-"`
+	VnicID        string `header:"-" json:"vnicId,omitempty" url:"-"`
+}
+
+type UpdateVnicOptions struct {
+	UpdateOptions
+	HostnameLabel       string `header:"-" json:"hostnameLabel,omitempty" url:"-"`
+	SkipSourceDestCheck *bool  `header:"-" json:"skipSourceDestCheck,omitempty" url:"-"`
+}
+
 type CreateVolumeOptions struct {
 	CreateOptions
 	SizeInMBs      int    `header:"-" json:"sizeInMBs,omitempty" url:"-"`
@@ -149,19 +171,21 @@ type CreatePolicyOptions struct {
 }
 
 type CreateVnicOptions struct {
-	AssignPublicIp *bool  `header:"-" json:"assignPublicIp,omitempty" url:"-"`
-	DisplayName    string `header:"-" json:"displayName,omitempty" url:"-"`
-	HostnameLabel  string `header:"-" json:"hostnameLabel,omitempty" url:"-"`
-	PrivateIp      string `header:"-" json:"privateIp,omitempty" url:"-"`
-	SubnetID       string `header:"-" json:"subnetId,omitempty" url:"-"`
+	AssignPublicIp      *bool  `header:"-" json:"assignPublicIp,omitempty" url:"-"`
+	DisplayName         string `header:"-" json:"displayName,omitempty" url:"-"`
+	HostnameLabel       string `header:"-" json:"hostnameLabel,omitempty" url:"-"`
+	PrivateIp           string `header:"-" json:"privateIp,omitempty" url:"-"`
+	SkipSourceDestCheck *bool  `header:"-" json:"skipSourceDestCheck,omitempty" url:"-"`
+	SubnetID            string `header:"-" json:"subnetId,omitempty" url:"-"`
 }
 
 type LaunchInstanceOptions struct {
 	CreateOptions
-	CreateVnicOptions *CreateVnicOptions `header:"-" json:"createVnicDetails,omitempty" url:"-"`
-	HostnameLabel     string             `header:"-" json:"hostnameLabel,omitempty" url:"-"`
-	IpxeScript        string             `header:"-" json:"ipxeScript,omitempty" url:"-"`
-	Metadata          map[string]string  `header:"-" json:"metadata,omitempty" url:"-"`
+	CreateVnicOptions *CreateVnicOptions     `header:"-" json:"createVnicDetails,omitempty" url:"-"`
+	HostnameLabel     string                 `header:"-" json:"hostnameLabel,omitempty" url:"-"`
+	IpxeScript        string                 `header:"-" json:"ipxeScript,omitempty" url:"-"`
+	Metadata          map[string]string      `header:"-" json:"metadata,omitempty" url:"-"`
+	ExtendedMetadata  map[string]interface{} `header:"-" json:"extendedMetadata,omitempty" url:"-"`
 }
 
 type LaunchDBSystemOptions struct {
@@ -218,6 +242,11 @@ type UpdateIdentityOptions struct {
 	Description string `header:"-" json:"description,omitempty" url:"-"`
 }
 
+type UpdateCompartmentOptions struct {
+	UpdateIdentityOptions
+	Name string `header:"-" json:"name,omitempty" url:"-"`
+}
+
 type UpdateUserStateOptions struct {
 	IfMatchOptions
 	Blocked *bool `header:"-" json:"blocked,omitempty" url:"-"`
@@ -237,7 +266,7 @@ type UpdateDHCPDNSOptions struct {
 type UpdateGatewayOptions struct {
 	IfMatchOptions
 	DisplayNameOptions
-	IsEnabled bool `header:"-" json:"isEnabled,omitempty" url:"-"`
+	IsEnabled *bool `header:"-" json:"isEnabled,omitempty" url:"-"`
 }
 
 type UpdateRouteTableOptions struct {
@@ -330,6 +359,13 @@ type ListIPSecConnsOptions struct {
 	DrgIDListOptions
 	ListOptions
 	CpeID string `header:"-" json:"-" url:"cpeId,omitempty"`
+}
+
+type ListPrivateIPsOptions struct {
+	ListOptions
+	IPAddress string `header:"-" json:"-" url:"ipAddress,omitempty"`
+	SubnetID  string `header:"-" json:"-" url:"subnetId,omitempty"`
+	VnicID    string `header:"-" json:"-" url:"vnicId,omitempty"`
 }
 
 type ListShapesOptions struct {

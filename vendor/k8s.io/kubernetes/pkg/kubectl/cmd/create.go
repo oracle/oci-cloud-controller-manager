@@ -29,7 +29,7 @@ import (
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/util/editor"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
-	"k8s.io/kubernetes/pkg/util/i18n"
+	"k8s.io/kubernetes/pkg/kubectl/util/i18n"
 )
 
 type CreateOptions struct {
@@ -86,7 +86,7 @@ func NewCmdCreate(f cmdutil.Factory, out, errOut io.Writer) *cobra.Command {
 	cmdutil.AddRecordFlag(cmd)
 	cmdutil.AddDryRunFlag(cmd)
 	cmdutil.AddInclude3rdPartyFlags(cmd)
-	cmd.Flags().StringVarP(&options.Selector, "selector", "l", "", "Selector (label query) to filter on, supports '=', '==', and '!='.")
+	cmd.Flags().StringVarP(&options.Selector, "selector", "l", "", "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2)")
 
 	// create subcommands
 	cmd.AddCommand(NewCmdCreateNamespace(f, out))
@@ -115,7 +115,7 @@ func RunCreate(f cmdutil.Factory, cmd *cobra.Command, out, errOut io.Writer, opt
 	if options.EditBeforeCreate {
 		return RunEditOnCreate(f, out, errOut, cmd, &options.FilenameOptions)
 	}
-	schema, err := f.Validator(cmdutil.GetFlagBool(cmd, "validate"), cmdutil.GetFlagString(cmd, "schema-cache-dir"))
+	schema, err := f.Validator(cmdutil.GetFlagBool(cmd, "validate"), cmdutil.GetFlagBool(cmd, "openapi-validation"), cmdutil.GetFlagString(cmd, "schema-cache-dir"))
 	if err != nil {
 		return err
 	}
@@ -209,7 +209,7 @@ func RunEditOnCreate(f cmdutil.Factory, out, errOut io.Writer, cmd *cobra.Comman
 		ChangeCause:        f.Command(cmd, false),
 		Include3rdParty:    cmdutil.GetFlagBool(cmd, "include-extended-apis"),
 	}
-	err := editOptions.Complete(f, out, errOut, []string{})
+	err := editOptions.Complete(f, out, errOut, []string{}, cmd)
 	if err != nil {
 		return err
 	}
@@ -291,7 +291,7 @@ func RunCreateSubcommand(f cmdutil.Factory, cmd *cobra.Command, out io.Writer, o
 	}
 
 	if useShortOutput := options.OutputFormat == "name"; useShortOutput || len(options.OutputFormat) == 0 {
-		cmdutil.PrintSuccess(mapper, useShortOutput, out, mapping.Resource, options.Name, options.DryRun, "created")
+		cmdutil.PrintSuccess(mapper, useShortOutput, out, mapping.Resource, info.Name, options.DryRun, "created")
 		return nil
 	}
 

@@ -41,7 +41,7 @@ func (s *CoreTestSuite) TestCreateImage() {
 		header: http.Header{},
 		body:   marshalObjectForTest(res),
 	}
-	s.requestor.On("request", http.MethodPost, details).Return(resp, nil)
+	s.requestor.On("postRequest", details).Return(resp, nil)
 
 	actual, err := s.requestor.CreateImage(res.CompartmentID, "instance_id", opts)
 

@@ -48,7 +48,7 @@ func (s *ObjectStorageTestSuite) TestCreateBucket() {
 		header: http.Header{},
 		body:   marshalObjectForTest(bucket),
 	}
-	s.requestor.On("request", http.MethodPost, details).Return(resp, nil)
+	s.requestor.On("postRequest", details).Return(resp, nil)
 
 	actual, err := s.requestor.CreateBucket(
 		bucket.CompartmentID,
@@ -153,7 +153,7 @@ func (s *ObjectStorageTestSuite) TestUpdateBucket() {
 		body:   marshalObjectForTest(bucket_updated),
 	}
 
-	s.requestor.On("request", http.MethodPost, details).Return(resp, nil)
+	s.requestor.On("postRequest", details).Return(resp, nil)
 
 	actual, err := s.requestor.UpdateBucket(
 		bucket.CompartmentID,

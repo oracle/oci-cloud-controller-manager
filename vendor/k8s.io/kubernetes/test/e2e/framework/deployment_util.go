@@ -27,37 +27,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
+	clientset "k8s.io/client-go/kubernetes"
 	extensionsinternal "k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
 	labelsutil "k8s.io/kubernetes/pkg/util/labels"
 	testutils "k8s.io/kubernetes/test/utils"
 )
 
-type updateDeploymentFunc func(d *extensions.Deployment)
-
-func UpdateDeploymentWithRetries(c clientset.Interface, namespace, name string, applyUpdate updateDeploymentFunc) (*extensions.Deployment, error) {
-	var deployment *extensions.Deployment
-	var updateErr error
-	pollErr := wait.PollImmediate(1*time.Second, 1*time.Minute, func() (bool, error) {
-		var err error
-		if deployment, err = c.Extensions().Deployments(namespace).Get(name, metav1.GetOptions{}); err != nil {
-			return false, err
-		}
-		// Apply the update, then attempt to push it to the apiserver.
-		applyUpdate(deployment)
-		if deployment, err = c.Extensions().Deployments(namespace).Update(deployment); err == nil {
-			Logf("Updating deployment %s", name)
-			return true, nil
-		}
-		updateErr = err
-		return false, nil
-	})
-	if pollErr == wait.ErrWaitTimeout {
-		pollErr = fmt.Errorf("couldn't apply the provided updated to deployment %q: %v", name, updateErr)
-	}
-	return deployment, pollErr
+func UpdateDeploymentWithRetries(c clientset.Interface, namespace, name string, applyUpdate testutils.UpdateDeploymentFunc) (*extensions.Deployment, error) {
+	return testutils.UpdateDeploymentWithRetries(c, namespace, name, applyUpdate, Logf)
 }
 
 // Waits for the deployment to clean up old rcs.
@@ -72,7 +51,7 @@ func WaitForDeploymentOldRSsNum(c clientset.Interface, ns, deploymentName string
 		}
 		d = deployment
 
-		_, oldRSs, err = deploymentutil.GetOldReplicaSets(deployment, c)
+		_, oldRSs, err = deploymentutil.GetOldReplicaSets(deployment, c.ExtensionsV1beta1())
 		if err != nil {
 			return false, err
 		}
@@ -90,9 +69,7 @@ func logReplicaSetsOfDeployment(deployment *extensions.Deployment, allOldRSs []*
 }
 
 func WaitForObservedDeployment(c clientset.Interface, ns, deploymentName string, desiredGeneration int64) error {
-	return deploymentutil.WaitForObservedDeployment(func() (*extensions.Deployment, error) {
-		return c.Extensions().Deployments(ns).Get(deploymentName, metav1.GetOptions{})
-	}, desiredGeneration, Poll, 1*time.Minute)
+	return testutils.WaitForObservedDeployment(c, ns, deploymentName, desiredGeneration)
 }
 
 func WaitForDeploymentWithCondition(c clientset.Interface, ns, deploymentName, reason string, condType extensions.DeploymentConditionType) error {
@@ -108,7 +85,7 @@ func WaitForDeploymentWithCondition(c clientset.Interface, ns, deploymentName, r
 	})
 	if pollErr == wait.ErrWaitTimeout {
 		pollErr = fmt.Errorf("deployment %q never updated with the desired condition and reason: %v", deployment.Name, deployment.Status.Conditions)
-		_, allOldRSs, newRS, err := deploymentutil.GetAllReplicaSets(deployment, c)
+		_, allOldRSs, newRS, err := deploymentutil.GetAllReplicaSets(deployment, c.ExtensionsV1beta1())
 		if err == nil {
 			logReplicaSetsOfDeployment(deployment, allOldRSs, newRS)
 			logPodsOfDeployment(c, deployment, append(allOldRSs, newRS))
@@ -176,7 +153,7 @@ func WaitForDeploymentStatus(c clientset.Interface, d *extensions.Deployment) er
 		if err != nil {
 			return false, err
 		}
-		oldRSs, allOldRSs, newRS, err = deploymentutil.GetAllReplicaSets(deployment, c)
+		oldRSs, allOldRSs, newRS, err = deploymentutil.GetAllReplicaSets(deployment, c.ExtensionsV1beta1())
 		if err != nil {
 			return false, err
 		}
@@ -276,8 +253,8 @@ func WatchRecreateDeployment(c clientset.Interface, d *extensions.Deployment) er
 		status = d.Status
 
 		if d.Status.UpdatedReplicas > 0 && d.Status.Replicas != d.Status.UpdatedReplicas {
-			_, allOldRSs, err := deploymentutil.GetOldReplicaSets(d, c)
-			newRS, nerr := deploymentutil.GetNewReplicaSet(d, c)
+			_, allOldRSs, err := deploymentutil.GetOldReplicaSets(d, c.ExtensionsV1beta1())
+			newRS, nerr := deploymentutil.GetNewReplicaSet(d, c.ExtensionsV1beta1())
 			if err == nil && nerr == nil {
 				Logf("%+v", d)
 				logReplicaSetsOfDeployment(d, allOldRSs, newRS)

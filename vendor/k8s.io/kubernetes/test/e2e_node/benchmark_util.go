@@ -26,6 +26,7 @@ import (
 	"strconv"
 	"time"
 
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/perftype"
@@ -156,12 +157,12 @@ func getTestNodeInfo(f *framework.Framework, testName, testDesc string) map[stri
 	node, err := f.ClientSet.Core().Nodes().Get(nodeName, metav1.GetOptions{})
 	Expect(err).NotTo(HaveOccurred())
 
-	cpu, ok := node.Status.Capacity["cpu"]
+	cpu, ok := node.Status.Capacity[v1.ResourceCPU]
 	if !ok {
 		framework.Failf("Fail to fetch CPU capacity value of test node.")
 	}
 
-	memory, ok := node.Status.Capacity["memory"]
+	memory, ok := node.Status.Capacity[v1.ResourceMemory]
 	if !ok {
 		framework.Failf("Fail to fetch Memory capacity value of test node.")
 	}
@@ -176,10 +177,14 @@ func getTestNodeInfo(f *framework.Framework, testName, testDesc string) map[stri
 		framework.Failf("Fail to fetch Memory capacity value as Int64.")
 	}
 
+	image := node.Status.NodeInfo.OSImage
+	if framework.TestContext.ImageDescription != "" {
+		image = fmt.Sprintf("%s (%s)", image, framework.TestContext.ImageDescription)
+	}
 	return map[string]string{
 		"node":    nodeName,
 		"test":    testName,
-		"image":   node.Status.NodeInfo.OSImage,
+		"image":   image,
 		"machine": fmt.Sprintf("cpu:%dcore,memory:%.1fGB", cpuValue, float32(memoryValue)/(1024*1024*1024)),
 		"desc":    testDesc,
 	}

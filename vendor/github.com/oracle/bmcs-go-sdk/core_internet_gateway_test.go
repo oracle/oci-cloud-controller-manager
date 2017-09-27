@@ -48,7 +48,7 @@ func (s *CoreTestSuite) TestCreateInternetGateway() {
 		header: http.Header{},
 		body:   marshalObjectForTest(res),
 	}
-	s.requestor.On("request", http.MethodPost, details).Return(resp, nil)
+	s.requestor.On("postRequest", details).Return(resp, nil)
 
 	actual, err := s.requestor.CreateInternetGateway(
 		res.CompartmentID,
@@ -92,7 +92,8 @@ func (s *CoreTestSuite) TestUpdateInternetGateway() {
 	res := getTestInternetGateway("id")
 
 	opts := &UpdateGatewayOptions{}
-	opts.IsEnabled = true
+	opts.IsEnabled = new(bool)
+	*opts.IsEnabled = true
 	opts.IfMatch = "etag"
 
 	details := &requestDetails{

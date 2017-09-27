@@ -126,6 +126,21 @@ verify: verify_generated_files
 	KUBE_VERIFY_GIT_BRANCH=$(BRANCH) hack/make-rules/verify.sh -v
 endif
 
+define QUICK_VERIFY_HELP_INFO
+# Runs only the presubmission verifications that aren't slow.
+#
+# Example:
+#   make quick-verify
+endef
+.PHONY: quick-verify
+ifeq ($(PRINT_HELP),y)
+quick-verify:
+	@echo "$$QUICK_VERIFY_HELP_INFO"
+else
+quick-verify: verify_generated_files
+	hack/make-rules/verify.sh -v -Q
+endif
+
 define UPDATE_HELP_INFO
 # Runs all the generated updates.
 #
@@ -148,6 +163,7 @@ define CHECK_TEST_HELP_INFO
 #   WHAT: Directory names to test.  All *_test.go files under these
 #     directories will be run.  If not specified, "everything" will be tested.
 #   TESTS: Same as WHAT.
+#   KUBE_COVER: Whether to run tests with code coverage. Set to 'y' to enable coverage collection.
 #   GOFLAGS: Extra flags to pass to 'go' when building.
 #   GOLDFLAGS: Extra linking flags to pass to 'go' when building.
 #   GOGCFLAGS: Additional go compile flags passed to 'go' when building.
@@ -240,6 +256,11 @@ define TEST_E2E_NODE_HELP_INFO
 #  IMAGE_SERVICE_ENDPOINT: remote image endpoint to connect to, to prepull images.
 #   Used when RUNTIME is set to "remote".
 #  IMAGE_CONFIG_FILE: path to a file containing image configuration.
+#  SYSTEM_SPEC_NAME: The name of the system spec to be used for validating the
+#    image in the node conformance test. The specs are located at
+#    test/e2e_node/system/specs/. For example, "SYSTEM_SPEC_NAME=gke" will use
+#    the spec at test/e2e_node/system/specs/gke.yaml. If unspecified, the
+#    default built-in spec (system.DefaultSpec) will be used.
 #
 # Example:
 #   make test-e2e-node FOCUS=Kubelet SKIP=container
@@ -288,10 +309,7 @@ clean:
 else
 clean: clean_meta
 	build/make-clean.sh
-	rm -rf $(OUT_DIR)
-	rm -rf Godeps/_workspace # Just until we are sure it is gone
-	# TODO(thockin): Remove this when we call clean_generated.
-	rm -f pkg/generated/openapi/zz_generated.openapi.go
+	git clean -Xdf
 endif
 
 define CLEAN_META_HELP_INFO
@@ -405,8 +423,7 @@ define CMD_HELP_INFO
 #   make kubectl kube-proxy
 endef
 #TODO: make EXCLUDE_TARGET auto-generated when there are other files in cmd/
-#TODO: should we exclude the target "libs" but include "cmd/libs/go2idl/*"?
-EXCLUDE_TARGET=OWNERS
+EXCLUDE_TARGET=BUILD OWNERS
 .PHONY: $(filter-out %$(EXCLUDE_TARGET),$(notdir $(abspath $(wildcard cmd/*/))))
 ifeq ($(PRINT_HELP),y)
 $(filter-out %$(EXCLUDE_TARGET),$(notdir $(abspath $(wildcard cmd/*/)))):
@@ -505,7 +522,7 @@ bazel-build:
 	@echo "$$BAZEL_BUILD_HELP_INFO"
 else
 bazel-build:
-	bazel build //cmd/... //pkg/... //federation/... //plugin/... //third_party/... //examples/... //test/... //vendor/k8s.io/...
+	bazel build //cmd/... //hack/... //pkg/... //federation/... //plugin/... //third_party/... //examples/... //test/... //vendor/k8s.io/...
 endif
 
 
@@ -524,14 +541,28 @@ bazel-test:
 endif
 
 ifeq ($(PRINT_HELP),y)
-define BAZEL_BUILD_HELP_INFO
+define BAZEL_TEST_INTEGRATION_HELP_INFO
+# Integration test with bazel
+#
+# Example:
+# make bazel-test-integration
+endef
+bazel-test-integration:
+	@echo "$$BAZEL_TEST_INTEGRATION_HELP_INFO"
+else
+bazel-test-integration:
+	bazel test //test/integration/...
+endif
+
+ifeq ($(PRINT_HELP),y)
+define BAZEL_RELEASE_HELP_INFO
 # Build release tars with bazel
 #
 # Example:
 # make bazel-release
 endef
 bazel-release:
-	@echo "$$BAZEL_BUILD_HELP_INFO"
+	@echo "$$BAZEL_RELEASE_HELP_INFO"
 else
 bazel-release:
 	bazel build //build/release-tars

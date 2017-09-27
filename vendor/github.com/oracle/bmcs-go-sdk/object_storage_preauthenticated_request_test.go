@@ -48,7 +48,7 @@ func (s *ObjectStorageTestSuite) TestCreatePreauthenticatedFailure() {
 	}
 
 	e := errors.New("fake error")
-	s.requestor.On("request", http.MethodPost, details).Return(&response{}, e)
+	s.requestor.On("postRequest", details).Return(&response{}, e)
 
 	actual, err := s.requestor.CreatePreauthenticatedRequest(
 		namesp,
@@ -93,7 +93,7 @@ func (s *ObjectStorageTestSuite) TestCreatePreauthenticatedRequest() {
 		header: http.Header{},
 		body:   marshalObjectForTest(par),
 	}
-	s.requestor.On("request", http.MethodPost, details).Return(resp, nil)
+	s.requestor.On("postRequest", details).Return(resp, nil)
 
 	actual, err := s.requestor.CreatePreauthenticatedRequest(
 		namesp,

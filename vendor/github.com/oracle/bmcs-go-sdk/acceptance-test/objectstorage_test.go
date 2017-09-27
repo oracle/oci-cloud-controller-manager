@@ -1,7 +1,5 @@
 // Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
 
-// +build recording,objectstorage recording,all !recording
-
 package acceptance
 
 import (
@@ -11,30 +9,41 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/MustWin/baremetal-sdk-go/acceptance-test/helpers"
+	"github.com/oracle/bmcs-go-sdk/acceptance-test/helpers"
 )
 
-func TestObjectStorageBucket(t *testing.T) {
-	client := helpers.GetClient("fixtures/objectstorage/bucket")
+func TestBucketCrud(t *testing.T) {
+	client := helpers.GetClient("fixtures/bucket")
 	defer client.Stop()
 	// get a compartment, any compartment
 	compartmentID, err := helpers.FindOrCreateCompartmentID(client)
-	require.NoError(t, err)
-	bucket, err := client.CreateBucket(compartmentID, "bucketname", "mustwin", nil)
-	require.NoError(t, err)
-	defer func() {
-		err := client.DeleteBucket("bucketname", "mustwin", nil)
-		assert.NoError(t, err)
-	}()
-	assert.NotNil(t, bucket)
+	require.NoError(t, err, "Setup Compartment")
+
+	// Create Bucket
+	bucket, err := client.CreateBucket(compartmentID, "bucketname", "mynamespace", nil)
+	assert.NoError(t, err, "Create Bucket")
+	assert.NotNil(t, bucket, "Create Bucket")
 
 	helpers.Sleep(10 * time.Second)
-	obj, err := client.PutObject("mustwin", "bucketname", "objectName", []byte("{\"content\": \"SomeContent\"}"), nil)
-	require.NoError(t, err)
-	defer func() {
-		_, err := client.DeleteObject("mustwin", "bucketname", "objectName", nil)
-		assert.NoError(t, err)
-	}()
-	assert.NotNil(t, obj)
 
+	// TODO: Get Bucket
+	// TODO: Update Bucket
+	// TODO: Head Bucket
+
+	// Put Object
+	obj, err := client.PutObject("mynamespace", "bucketname", "objectName", []byte("{\"content\": \"SomeContent\"}"), nil)
+	assert.NoError(t, err, "Put Object")
+	assert.NotNil(t, obj, "Put Object")
+
+	// TODO: List Objects
+	// TODO: Get Object
+	// TODO: Head Object
+
+	// Delete Object
+	_, err = client.DeleteObject("mynamespace", "bucketname", "objectName", nil)
+	assert.NoError(t, err, "Delete Object")
+
+	// Delete Bucket
+	err = client.DeleteBucket("bucketname", "mynamespace", nil)
+	assert.NoError(t, err, "Delete Bucket")
 }

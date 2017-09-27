@@ -33,7 +33,7 @@ func (s *IdentityTestSuite) TestCreateCompartment() {
 		header: respHeaders,
 	}
 
-	s.requestor.On("request", http.MethodPost, details).Return(resp, nil)
+	s.requestor.On("postRequest", details).Return(resp, nil)
 
 	actual, e := s.requestor.CreateCompartment(res.Name, res.Description, opts)
 
@@ -76,7 +76,8 @@ func (s *IdentityTestSuite) TestUpdateCompartment() {
 		Description: "desc",
 	}
 
-	opts := &UpdateIdentityOptions{}
+	opts := &UpdateCompartmentOptions{}
+	opts.Name = "name"
 	opts.Description = "desc"
 
 	details := &requestDetails{
@@ -99,6 +100,7 @@ func (s *IdentityTestSuite) TestUpdateCompartment() {
 	s.requestor.AssertExpectations(s.T())
 	s.Nil(e)
 	s.NotNil(actual)
+	s.Equal(res.Name, actual.Name)
 	s.Equal(res.Description, actual.Description)
 	s.Equal("ETAG!", actual.ETag)
 }

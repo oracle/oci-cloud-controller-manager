@@ -16,9 +16,7 @@ type LoadbalancerTestSuite struct {
 }
 
 func (s *LoadbalancerTestSuite) SetupTest() {
-	s.requestor = new(mockRequestor)
-	s.requestor.Client = createClientForTest()
-	s.requestor.loadBalancerApi = s.requestor
+	s.requestor = newMockRequestor(s)
 }
 
 func TestRunLoadbalancerTests(t *testing.T) {

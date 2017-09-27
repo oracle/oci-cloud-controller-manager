@@ -42,7 +42,7 @@ func (s *LoadbalancerTestSuite) TestCreateLoadbalancer() {
 	resp := &response{
 		header: header,
 	}
-	s.requestor.On("request", http.MethodPost, details).Return(resp, nil)
+	s.requestor.On("postRequest", details).Return(resp, nil)
 
 	actual, err := s.requestor.CreateLoadBalancer(
 		nil,

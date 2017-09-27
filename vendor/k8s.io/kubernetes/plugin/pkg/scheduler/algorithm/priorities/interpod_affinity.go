@@ -20,7 +20,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/golang/glog"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
@@ -30,6 +29,8 @@ import (
 	priorityutil "k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/priorities/util"
 	schedulerapi "k8s.io/kubernetes/plugin/pkg/scheduler/api"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/schedulercache"
+
+	"github.com/golang/glog"
 )
 
 type InterPodAffinity struct {
@@ -111,7 +112,7 @@ func (p *podAffinityPriorityMap) processTerms(terms []v1.WeightedPodAffinityTerm
 	}
 }
 
-// compute a sum by iterating through the elements of weightedPodAffinityTerm and adding
+// CalculateInterPodAffinityPriority compute a sum by iterating through the elements of weightedPodAffinityTerm and adding
 // "weight" to the sum if the corresponding PodAffinityTerm is satisfied for
 // that node; the node(s) with the highest sum are the most preferred.
 // Symmetry need to be considered for preferredDuringSchedulingIgnoredDuringExecution from podAffinity & podAntiAffinity,
@@ -224,7 +225,7 @@ func (ipa *InterPodAffinity) CalculateInterPodAffinityPriority(pod *v1.Pod, node
 	for _, node := range nodes {
 		fScore := float64(0)
 		if (maxCount - minCount) > 0 {
-			fScore = 10 * ((pm.counts[node.Name] - minCount) / (maxCount - minCount))
+			fScore = float64(schedulerapi.MaxPriority) * ((pm.counts[node.Name] - minCount) / (maxCount - minCount))
 		}
 		result = append(result, schedulerapi.HostPriority{Host: node.Name, Score: int(fScore)})
 		if glog.V(10) {

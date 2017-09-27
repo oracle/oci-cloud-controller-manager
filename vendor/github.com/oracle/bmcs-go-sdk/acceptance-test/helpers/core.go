@@ -1,12 +1,9 @@
 // Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
 
-// +build recording !recording
-
 package helpers
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
@@ -15,8 +12,9 @@ import (
 	"sync"
 	"time"
 
-	bm "github.com/MustWin/baremetal-sdk-go"
 	"github.com/dnaeon/go-vcr/recorder"
+
+	bm "github.com/oracle/bmcs-go-sdk"
 )
 
 type Runmode string
@@ -103,7 +101,7 @@ type commandFunc func(c chan<- resourceCommandResult) (finished bool)
 func resourceApply(f commandFunc) (id string, err error) {
 	idChan := make(chan resourceCommandResult)
 	go func(c chan<- resourceCommandResult) {
-		log.Println("RUNMODE: " + RUNMODE)
+		log.Println("[DEBUG] RUNMODE: " + RUNMODE)
 		// linear backoff
 		waitDuration := 1
 		for {
@@ -111,7 +109,7 @@ func resourceApply(f commandFunc) (id string, err error) {
 				return
 			}
 			if RUNMODE == RunmodeRecord {
-				log.Printf("Waiting %d second(s)\n", waitDuration)
+				log.Printf("[DEBUG] Waiting %d second(s)\n", waitDuration)
 				Sleep(time.Duration(waitDuration) * time.Second)
 				waitDuration += 1
 			}
@@ -177,7 +175,6 @@ func isResourceGoneOrTerminated(resource interface{}, err error) (bool, error) {
 func getCreateFn(err error, resource interface{}, completedState string, resourceFetchFn func() (interface{}, error)) commandFunc {
 	id := getID(resource) // This wont be used if err != nil
 	return func(c chan<- resourceCommandResult) bool {
-		fmt.Println("-----------------------------")
 		if err != nil {
 			c <- resourceCommandResult{"", err}
 			return true

@@ -27,7 +27,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/util/i18n"
+	"k8s.io/kubernetes/pkg/kubectl/util/i18n"
 )
 
 var (
@@ -103,16 +103,22 @@ func generatorFromName(
 
 	switch generatorName {
 	case cmdutil.DeploymentBasicAppsV1Beta1GeneratorName:
-		return &kubectl.DeploymentBasicAppsGeneratorV1{
-			Name:   deploymentName,
-			Images: imageNames,
-		}, true
+		generator := &kubectl.DeploymentBasicAppsGeneratorV1{
+			BaseDeploymentGenerator: kubectl.BaseDeploymentGenerator{
+				Name:   deploymentName,
+				Images: imageNames,
+			},
+		}
+		return generator, true
 
 	case cmdutil.DeploymentBasicV1Beta1GeneratorName:
-		return &kubectl.DeploymentBasicGeneratorV1{
-			Name:   deploymentName,
-			Images: imageNames,
-		}, true
+		generator := &kubectl.DeploymentBasicGeneratorV1{
+			BaseDeploymentGenerator: kubectl.BaseDeploymentGenerator{
+				Name:   deploymentName,
+				Images: imageNames,
+			},
+		}
+		return generator, true
 	}
 
 	return nil, false

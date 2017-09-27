@@ -43,7 +43,7 @@ func (s *IdentityTestSuite) TestCreatePolicy() {
 		header: headers,
 	}
 
-	s.requestor.On("request", http.MethodPost, details).Return(resp, nil)
+	s.requestor.On("postRequest", details).Return(resp, nil)
 
 	actual, e := s.requestor.CreatePolicy(res.Name, res.Description, compartmentID, res.Statements, opts)
 

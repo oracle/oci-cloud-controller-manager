@@ -69,6 +69,7 @@ func (kl *Kubelet) newVolumeMounterFromPlugins(spec *volume.Spec, pod *v1.Pod, o
 	if err != nil {
 		return nil, fmt.Errorf("can't use volume plugins for %s: %v", spec.Name(), err)
 	}
+	opts.Containerized = kl.kubeletConfiguration.Containerized
 	physicalMounter, err := plugin.NewMounter(spec, pod, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to instantiate mounter for volume: %s using plugin: %s with a root cause: %v", spec.Name(), plugin.GetPluginName(), err)
@@ -113,7 +114,7 @@ func (kl *Kubelet) cleanupOrphanedPodDirs(pods []*v1.Pod, runningPods []*kubecon
 			continue
 		}
 		if len(volumePaths) > 0 {
-			orphanVolumeErrors = append(orphanVolumeErrors, fmt.Errorf("Orphaned pod %q found, but volume paths are still present on disk.", uid))
+			orphanVolumeErrors = append(orphanVolumeErrors, fmt.Errorf("Orphaned pod %q found, but volume paths are still present on disk", uid))
 			continue
 		}
 		glog.V(3).Infof("Orphaned pod %q found, removing", uid)
@@ -125,7 +126,7 @@ func (kl *Kubelet) cleanupOrphanedPodDirs(pods []*v1.Pod, runningPods []*kubecon
 
 	logSpew := func(errs []error) {
 		if len(errs) > 0 {
-			glog.Errorf("%v : There were a total of %v errors similar to this.  Turn up verbosity to see them.", errs[0], len(errs))
+			glog.Errorf("%v : There were a total of %v errors similar to this. Turn up verbosity to see them.", errs[0], len(errs))
 			for _, err := range errs {
 				glog.V(5).Infof("Orphan pod: %v", err)
 			}

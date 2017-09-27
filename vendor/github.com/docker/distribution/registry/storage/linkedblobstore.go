@@ -1,17 +1,18 @@
 package storage
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"path"
 	"time"
 
 	"github.com/docker/distribution"
-	"github.com/docker/distribution/context"
-	"github.com/docker/distribution/digest"
+	dcontext "github.com/docker/distribution/context"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/storage/driver"
 	"github.com/docker/distribution/uuid"
+	"github.com/opencontainers/go-digest"
 )
 
 // linkPathFunc describes a function that can resolve a link based on the
@@ -35,7 +36,7 @@ type linkedBlobStore struct {
 	// control the repository blob link set to which the blob store
 	// dispatches. This is required because manifest and layer blobs have not
 	// yet been fully merged. At some point, this functionality should be
-	// removed an the blob links folder should be merged. The first entry is
+	// removed the blob links folder should be merged. The first entry is
 	// treated as the "canonical" link location and will be used for writes.
 	linkPathFns []linkPathFunc
 
@@ -86,7 +87,7 @@ func (lbs *linkedBlobStore) Put(ctx context.Context, mediaType string, p []byte)
 	// Place the data in the blob store first.
 	desc, err := lbs.blobStore.Put(ctx, mediaType, p)
 	if err != nil {
-		context.GetLogger(ctx).Errorf("error putting into main store: %v", err)
+		dcontext.GetLogger(ctx).Errorf("error putting into main store: %v", err)
 		return distribution.Descriptor{}, err
 	}
 
@@ -101,15 +102,6 @@ func (lbs *linkedBlobStore) Put(ctx context.Context, mediaType string, p []byte)
 	return desc, lbs.linkBlob(ctx, desc)
 }
 
-// createOptions is a collection of blob creation modifiers relevant to general
-// blob storage intended to be configured by the BlobCreateOption.Apply method.
-type createOptions struct {
-	Mount struct {
-		ShouldMount bool
-		From        reference.Canonical
-	}
-}
-
 type optionFunc func(interface{}) error
 
 func (f optionFunc) Apply(v interface{}) error {
@@ -120,7 +112,7 @@ func (f optionFunc) Apply(v interface{}) error {
 // mounted from the given canonical reference.
 func WithMountFrom(ref reference.Canonical) distribution.BlobCreateOption {
 	return optionFunc(func(v interface{}) error {
-		opts, ok := v.(*createOptions)
+		opts, ok := v.(*distribution.CreateOptions)
 		if !ok {
 			return fmt.Errorf("unexpected options type: %T", v)
 		}
@@ -134,9 +126,9 @@ func WithMountFrom(ref reference.Canonical) distribution.BlobCreateOption {
 
 // Writer begins a blob write session, returning a handle.
 func (lbs *linkedBlobStore) Create(ctx context.Context, options ...distribution.BlobCreateOption) (distribution.BlobWriter, error) {
-	context.GetLogger(ctx).Debug("(*linkedBlobStore).Writer")
+	dcontext.GetLogger(ctx).Debug("(*linkedBlobStore).Writer")
 
-	var opts createOptions
+	var opts distribution.CreateOptions
 
 	for _, option := range options {
 		err := option.Apply(&opts)
@@ -146,7 +138,7 @@ func (lbs *linkedBlobStore) Create(ctx context.Context, options ...distribution.
 	}
 
 	if opts.Mount.ShouldMount {
-		desc, err := lbs.mount(ctx, opts.Mount.From, opts.Mount.From.Digest())
+		desc, err := lbs.mount(ctx, opts.Mount.From, opts.Mount.From.Digest(), opts.Mount.Stat)
 		if err == nil {
 			// Mount successful, no need to initiate an upload session
 			return nil, distribution.ErrBlobMounted{From: opts.Mount.From, Descriptor: desc}
@@ -183,7 +175,7 @@ func (lbs *linkedBlobStore) Create(ctx context.Context, options ...distribution.
 }
 
 func (lbs *linkedBlobStore) Resume(ctx context.Context, id string) (distribution.BlobWriter, error) {
-	context.GetLogger(ctx).Debug("(*linkedBlobStore).Resume")
+	dcontext.GetLogger(ctx).Debug("(*linkedBlobStore).Resume")
 
 	startedAtPath, err := pathFor(uploadStartedAtPathSpec{
 		name: lbs.repository.Named().Name(),
@@ -289,14 +281,21 @@ func (lbs *linkedBlobStore) Enumerate(ctx context.Context, ingestor func(digest.
 	return nil
 }
 
-func (lbs *linkedBlobStore) mount(ctx context.Context, sourceRepo reference.Named, dgst digest.Digest) (distribution.Descriptor, error) {
-	repo, err := lbs.registry.Repository(ctx, sourceRepo)
-	if err != nil {
-		return distribution.Descriptor{}, err
-	}
-	stat, err := repo.Blobs(ctx).Stat(ctx, dgst)
-	if err != nil {
-		return distribution.Descriptor{}, err
+func (lbs *linkedBlobStore) mount(ctx context.Context, sourceRepo reference.Named, dgst digest.Digest, sourceStat *distribution.Descriptor) (distribution.Descriptor, error) {
+	var stat distribution.Descriptor
+	if sourceStat == nil {
+		// look up the blob info from the sourceRepo if not already provided
+		repo, err := lbs.registry.Repository(ctx, sourceRepo)
+		if err != nil {
+			return distribution.Descriptor{}, err
+		}
+		stat, err = repo.Blobs(ctx).Stat(ctx, dgst)
+		if err != nil {
+			return distribution.Descriptor{}, err
+		}
+	} else {
+		// use the provided blob info
+		stat = *sourceStat
 	}
 
 	desc := distribution.Descriptor{
@@ -323,7 +322,7 @@ func (lbs *linkedBlobStore) newBlobUpload(ctx context.Context, uuid, path string
 		blobStore:  lbs,
 		id:         uuid,
 		startedAt:  startedAt,
-		digester:   digest.Canonical.New(),
+		digester:   digest.Canonical.Digester(),
 		fileWriter: fw,
 		driver:     lbs.driver,
 		path:       path,
@@ -413,7 +412,7 @@ func (lbs *linkedBlobStatter) Stat(ctx context.Context, dgst digest.Digest) (dis
 
 	if target != dgst {
 		// Track when we are doing cross-digest domain lookups. ie, sha512 to sha256.
-		context.GetLogger(ctx).Warnf("looking up blob with canonical target: %v -> %v", dgst, target)
+		dcontext.GetLogger(ctx).Warnf("looking up blob with canonical target: %v -> %v", dgst, target)
 	}
 
 	// TODO(stevvooe): Look up repository local mediatype and replace that on

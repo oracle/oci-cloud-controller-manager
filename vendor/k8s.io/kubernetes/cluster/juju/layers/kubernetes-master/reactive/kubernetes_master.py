@@ -22,6 +22,7 @@ import shutil
 import socket
 import string
 import json
+import ipaddress
 
 import charms.leadership
 
@@ -45,6 +46,7 @@ from charms.kubernetes.flagmanager import FlagManager
 from charmhelpers.core import hookenv
 from charmhelpers.core import host
 from charmhelpers.core import unitdata
+from charmhelpers.core.host import service_stop
 from charmhelpers.core.templating import render
 from charmhelpers.fetch import apt_install
 from charmhelpers.contrib.charmsupport import nrpe
@@ -155,6 +157,7 @@ def install_snaps():
     hookenv.status_set('maintenance', 'Installing cdk-addons snap')
     snap.install('cdk-addons', channel=channel)
     set_state('kubernetes-master.snaps.installed')
+    remove_state('kubernetes-master.components.started')
 
 
 @when('config.changed.channel')
@@ -247,7 +250,9 @@ def setup_non_leader_authentication():
     known_tokens = '/root/cdk/known_tokens.csv'
 
     keys = [service_key, basic_auth, known_tokens]
-    if not get_keys_from_leader(keys):
+    # The source of truth for non-leaders is the leader.
+    # Therefore we overwrite_local with whatever the leader has.
+    if not get_keys_from_leader(keys, overwrite_local=True):
         # the keys were not retrieved. Non-leaders have to retry.
         return
 
@@ -268,7 +273,7 @@ def setup_non_leader_authentication():
     set_state('authentication.setup')
 
 
-def get_keys_from_leader(keys):
+def get_keys_from_leader(keys, overwrite_local=False):
     """
     Gets the broadcasted keys from the leader and stores them in
     the corresponding files.
@@ -285,7 +290,7 @@ def get_keys_from_leader(keys):
 
     for k in keys:
         # If the path does not exist, assume we need it
-        if not os.path.exists(k):
+        if not os.path.exists(k) or overwrite_local:
             # Fetch data from leadership broadcast
             contents = charms.leadership.leader_get(k)
             # Default to logging the warning and wait for leader data to be set
@@ -318,7 +323,28 @@ def idle_status(kube_api, kube_control):
         msg = 'WARN: cannot change service-cidr, still using ' + service_cidr()
         hookenv.status_set('active', msg)
     else:
-        hookenv.status_set('active', 'Kubernetes master running.')
+        # All services should be up and running at this point. Double-check...
+        failing_services = master_services_down()
+        if len(failing_services) == 0:
+            hookenv.status_set('active', 'Kubernetes master running.')
+        else:
+            msg = 'Stopped services: {}'.format(','.join(failing_services))
+            hookenv.status_set('blocked', msg)
+
+
+def master_services_down():
+    """Ensure master services are up and running.
+
+    Return: list of failing services"""
+    services = ['kube-apiserver',
+                'kube-controller-manager',
+                'kube-scheduler']
+    failing_services = []
+    for service in services:
+        daemon = 'snap.{}.daemon'.format(service)
+        if not host.service_running(daemon):
+            failing_services.append(service)
+    return failing_services
 
 
 @when('etcd.available', 'tls_client.server.certificate.saved',
@@ -393,17 +419,14 @@ def send_tokens(kube_control):
 
 @when_not('kube-control.connected')
 def missing_kube_control():
-    """Inform the operator they need to add the kube-control relation.
+    """Inform the operator master is waiting for a relation to workers.
 
     If deploying via bundle this won't happen, but if operator is upgrading a
     a charm in a deployment that pre-dates the kube-control relation, it'll be
     missing.
 
     """
-    hookenv.status_set(
-        'blocked',
-        'Relate {}:kube-control kubernetes-worker:kube-control'.format(
-            hookenv.service_name()))
+    hookenv.status_set('blocked', 'Waiting for workers.')
 
 
 @when('kube-api-endpoint.available')
@@ -440,15 +463,6 @@ def send_data(tls):
     certificate_name = hookenv.local_unit().replace('/', '_')
     # Request a server cert with this information.
     tls.request_server_cert(common_name, sans, certificate_name)
-
-
-@when('kube-api.connected')
-def push_api_data(kube_api):
-    ''' Send configuration to remote consumer.'''
-    # Since all relations already have the private ip address, only
-    # send the port on the relation object to all consumers.
-    # The kubernetes api-server uses 6443 for the default secure port.
-    kube_api.set_api_port('6443')
 
 
 @when('kubernetes-master.components.started')
@@ -692,6 +706,16 @@ def disable_gpu_mode():
     remove_state('kubernetes-master.gpu.enabled')
 
 
+@hook('stop')
+def shutdown():
+    """ Stop the kubernetes master services
+
+    """
+    service_stop('snap.kube-apiserver.daemon')
+    service_stop('snap.kube-controller-manager.daemon')
+    service_stop('snap.kube-scheduler.daemon')
+
+
 def arch():
     '''Return the package architecture as a string. Raise an exception if the
     architecture is not supported by kubernetes.'''
@@ -769,18 +793,18 @@ def create_kubeconfig(kubeconfig, server, ca, key=None, certificate=None,
 
 def get_dns_ip():
     '''Get an IP address for the DNS server on the provided cidr.'''
-    # Remove the range from the cidr.
-    ip = service_cidr().split('/')[0]
-    # Take the last octet off the IP address and replace it with 10.
-    return '.'.join(ip.split('.')[0:-1]) + '.10'
+    interface = ipaddress.IPv4Interface(service_cidr())
+    # Add .10 at the end of the network
+    ip = interface.network.network_address + 10
+    return ip.exploded
 
 
 def get_kubernetes_service_ip():
     '''Get the IP address for the kubernetes service based on the cidr.'''
-    # Remove the range from the cidr.
-    ip = service_cidr().split('/')[0]
-    # Remove the last octet and replace it with 1.
-    return '.'.join(ip.split('.')[0:-1]) + '.1'
+    interface = ipaddress.IPv4Interface(service_cidr())
+    # Add .1 at the end of the network
+    ip = interface.network.network_address + 1
+    return ip.exploded
 
 
 def handle_etcd_relation(reldata):
@@ -920,9 +944,9 @@ def setup_tokens(token, username, user):
 def get_password(csv_fname, user):
     '''Get the password of user within the csv file provided.'''
     root_cdk = '/root/cdk'
-    if not os.path.isdir(root_cdk):
-        return None
     tokens_fname = os.path.join(root_cdk, csv_fname)
+    if not os.path.isfile(tokens_fname):
+        return None
     with open(tokens_fname, 'r') as stream:
         for line in stream:
             record = line.split(',')

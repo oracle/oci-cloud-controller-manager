@@ -36,7 +36,7 @@ func (s *IdentityTestSuite) TestCreateSwiftPassword() {
 		header: respHeaders,
 	}
 
-	s.requestor.On("request", http.MethodPost, details).Return(resp, nil)
+	s.requestor.On("postRequest", details).Return(resp, nil)
 
 	actual, e := s.requestor.CreateSwiftPassword(res.UserID, desc, opts)
 

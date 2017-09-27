@@ -25,7 +25,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
-	"k8s.io/kubernetes/pkg/util/i18n"
+	"k8s.io/kubernetes/pkg/kubectl/util/i18n"
 	"k8s.io/kubernetes/pkg/util/interrupt"
 
 	"github.com/spf13/cobra"
@@ -50,7 +50,7 @@ var (
 func NewCmdRolloutStatus(f cmdutil.Factory, out io.Writer) *cobra.Command {
 	options := &resource.FilenameOptions{}
 
-	validArgs := []string{"deployment", "daemonset"}
+	validArgs := []string{"deployment", "daemonset", "statefulset"}
 	argAliases := kubectl.ResourceAliases(validArgs)
 
 	cmd := &cobra.Command{

@@ -17,6 +17,8 @@
 import os
 import random
 import shutil
+import subprocess
+import time
 
 from shlex import split
 from subprocess import check_call, check_output
@@ -149,6 +151,7 @@ def install_snaps():
     hookenv.status_set('maintenance', 'Installing kube-proxy snap')
     snap.install('kube-proxy', channel=channel, classic=True)
     set_state('kubernetes-worker.snaps.installed')
+    set_state('kubernetes-worker.restart-needed')
     remove_state('kubernetes-worker.snaps.upgrade-needed')
     remove_state('kubernetes-worker.snaps.upgrade-specified')
 
@@ -157,15 +160,15 @@ def install_snaps():
 def shutdown():
     ''' When this unit is destroyed:
         - delete the current node
-        - stop the kubelet service
-        - stop the kube-proxy service
-        - remove the 'kubernetes-worker.cni-plugins.installed' state
+        - stop the worker services
     '''
-    if os.path.isfile(kubeconfig_path):
-        kubectl('delete', 'node', gethostname())
-    service_stop('kubelet')
-    service_stop('kube-proxy')
-    remove_state('kubernetes-worker.cni-plugins.installed')
+    try:
+        if os.path.isfile(kubeconfig_path):
+            kubectl('delete', 'node', gethostname())
+    except CalledProcessError:
+        hookenv.log('Failed to unregister node.')
+    service_stop('snap.kubelet.daemon')
+    service_stop('snap.kube-proxy.daemon')
 
 
 @when('docker.available')
@@ -256,11 +259,21 @@ def update_kubelet_status():
     ''' There are different states that the kubelet can be in, where we are
     waiting for dns, waiting for cluster turnup, or ready to serve
     applications.'''
-    if (_systemctl_is_active('snap.kubelet.daemon')):
+    services = [
+        'kubelet',
+        'kube-proxy'
+    ]
+    failing_services = []
+    for service in services:
+        daemon = 'snap.{}.daemon'.format(service)
+        if not _systemctl_is_active(daemon):
+            failing_services.append(service)
+
+    if len(failing_services) == 0:
         hookenv.status_set('active', 'Kubernetes worker running.')
-    # if kubelet is not running, we're waiting on something else to converge
-    elif (not _systemctl_is_active('snap.kubelet.daemon')):
-        hookenv.status_set('waiting', 'Waiting for kubelet to start.')
+    else:
+        msg = 'Waiting for {} to start.'.format(','.join(failing_services))
+        hookenv.status_set('waiting', msg)
 
 
 @when('certificates.available')
@@ -411,10 +424,7 @@ def apply_node_labels():
     for label in previous_labels:
         if label not in user_labels:
             hookenv.log('Deleting node label {}'.format(label))
-            try:
-                _apply_node_label(label, delete=True)
-            except CalledProcessError:
-                hookenv.log('Error removing node label {}'.format(label))
+            _apply_node_label(label, delete=True)
         # if the label is in user labels we do nothing here, it will get set
         # during the atomic update below.
 
@@ -483,6 +493,9 @@ def configure_worker_services(api_servers, dns, cluster_cidr):
     kube_proxy_opts.add('logtostderr', 'true')
     kube_proxy_opts.add('v', '0')
     kube_proxy_opts.add('master', random.choice(api_servers), strict=True)
+
+    if b'lxc' in check_output('virt-what', shell=True):
+        kube_proxy_opts.add('conntrack-max-per-core', '0')
 
     cmd = ['snap', 'set', 'kubelet'] + kubelet_opts.to_s().split(' ')
     check_call(cmd)
@@ -830,6 +843,10 @@ def _systemctl_is_active(application):
         return False
 
 
+class ApplyNodeLabelFailed(Exception):
+    pass
+
+
 def _apply_node_label(label, delete=False, overwrite=False):
     ''' Invoke kubectl to apply node label changes '''
 
@@ -845,7 +862,19 @@ def _apply_node_label(label, delete=False, overwrite=False):
         cmd = cmd_base.format(kubeconfig_path, hostname, label)
         if overwrite:
             cmd = '{} --overwrite'.format(cmd)
-    check_call(split(cmd))
+    cmd = cmd.split()
+
+    deadline = time.time() + 60
+    while time.time() < deadline:
+        code = subprocess.call(cmd)
+        if code == 0:
+            break
+        hookenv.log('Failed to apply label %s, exit code %d. Will retry.' % (
+            label, code))
+        time.sleep(1)
+    else:
+        msg = 'Failed to apply label %s' % label
+        raise ApplyNodeLabelFailed(msg)
 
 
 def _parse_labels(labels):
