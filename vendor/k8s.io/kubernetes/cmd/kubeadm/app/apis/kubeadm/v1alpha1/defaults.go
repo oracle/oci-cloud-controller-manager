@@ -20,6 +20,7 @@ import (
 	"net/url"
 	"strings"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/kubernetes/cmd/kubeadm/app/constants"
 )
@@ -27,12 +28,13 @@ import (
 const (
 	DefaultServiceDNSDomain   = "cluster.local"
 	DefaultServicesSubnet     = "10.96.0.0/12"
-	DefaultKubernetesVersion  = "stable-1.7"
+	DefaultKubernetesVersion  = "stable-1.8"
 	DefaultAPIBindPort        = 6443
 	DefaultAuthorizationModes = "Node,RBAC"
 	DefaultCACertPath         = "/etc/kubernetes/pki/ca.crt"
 	DefaultCertificatesDir    = "/etc/kubernetes/pki"
 	DefaultEtcdDataDir        = "/var/lib/etcd"
+	DefaultImageRepository    = "gcr.io/google_containers"
 )
 
 func addDefaultingFuncs(scheme *runtime.Scheme) error {
@@ -64,8 +66,14 @@ func SetDefaults_MasterConfiguration(obj *MasterConfiguration) {
 		obj.CertificatesDir = DefaultCertificatesDir
 	}
 
-	if obj.TokenTTL == 0 {
-		obj.TokenTTL = constants.DefaultTokenDuration
+	if obj.TokenTTL.Duration == 0 {
+		obj.TokenTTL = metav1.Duration{
+			Duration: constants.DefaultTokenDuration,
+		}
+	}
+
+	if obj.ImageRepository == "" {
+		obj.ImageRepository = DefaultImageRepository
 	}
 
 	if obj.Etcd.DataDir == "" {

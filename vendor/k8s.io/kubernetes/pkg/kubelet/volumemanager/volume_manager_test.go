@@ -26,10 +26,10 @@ import (
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/record"
 	utiltesting "k8s.io/client-go/util/testing"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset/fake"
 	"k8s.io/kubernetes/pkg/kubelet/config"
 	"k8s.io/kubernetes/pkg/kubelet/configmap"
 	containertest "k8s.io/kubernetes/pkg/kubelet/container/testing"
@@ -90,6 +90,44 @@ func TestGetMountedVolumesForPodAndGetVolumesInUse(t *testing.T) {
 	if !reflect.DeepEqual(expectedInUse, actualInUse) {
 		t.Errorf("Expected %v to be in use but got %v", expectedInUse, actualInUse)
 	}
+}
+
+func TestInitialPendingVolumesForPodAndGetVolumesInUse(t *testing.T) {
+	tmpDir, err := utiltesting.MkTmpdir("volumeManagerTest")
+	if err != nil {
+		t.Fatalf("can't make a temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+	podManager := kubepod.NewBasicPodManager(podtest.NewFakeMirrorClient(), secret.NewFakeManager(), configmap.NewFakeManager())
+
+	node, pod, pv, claim := createObjects()
+	claim.Status = v1.PersistentVolumeClaimStatus{
+		Phase: v1.ClaimPending,
+	}
+
+	kubeClient := fake.NewSimpleClientset(node, pod, pv, claim)
+
+	manager := newTestVolumeManager(tmpDir, podManager, kubeClient)
+
+	stopCh := runVolumeManager(manager)
+	defer close(stopCh)
+
+	podManager.SetPods([]*v1.Pod{pod})
+
+	// Fake node status update
+	go simulateVolumeInUseUpdate(
+		v1.UniqueVolumeName(node.Status.VolumesAttached[0].Name),
+		stopCh,
+		manager)
+
+	// delayed claim binding
+	go delayClaimBecomesBound(kubeClient, claim.GetNamespace(), claim.ObjectMeta.Name)
+
+	err = manager.WaitForAttachAndMount(pod)
+	if err != nil {
+		t.Errorf("Expected success: %v", err)
+	}
+
 }
 
 func TestGetExtraSupplementalGroupsForPod(t *testing.T) {
@@ -179,7 +217,8 @@ func newTestVolumeManager(tmpDir string, podManager pod.Manager, kubeClient clie
 	plug := &volumetest.FakeVolumePlugin{PluginName: "fake", Host: nil}
 	fakeRecorder := &record.FakeRecorder{}
 	plugMgr := &volume.VolumePluginMgr{}
-	plugMgr.InitPlugins([]volume.VolumePlugin{plug}, volumetest.NewFakeVolumeHost(tmpDir, kubeClient, nil))
+	// TODO (#51147) inject mock prober
+	plugMgr.InitPlugins([]volume.VolumePlugin{plug}, nil /* prober */, volumetest.NewFakeVolumeHost(tmpDir, kubeClient, nil))
 	statusManager := status.NewManager(kubeClient, podManager, &statustest.FakePodDeletionSafetyProvider{})
 
 	vm := NewVolumeManager(
@@ -277,6 +316,20 @@ func simulateVolumeInUseUpdate(volumeName v1.UniqueVolumeName, stopCh <-chan str
 			return
 		}
 	}
+}
+
+func delayClaimBecomesBound(
+	kubeClient clientset.Interface,
+	namespace, claimName string,
+) {
+	time.Sleep(500 * time.Millisecond)
+	volumeClaim, _ :=
+		kubeClient.Core().PersistentVolumeClaims(namespace).Get(claimName, metav1.GetOptions{})
+	volumeClaim.Status = v1.PersistentVolumeClaimStatus{
+		Phase: v1.ClaimBound,
+	}
+	kubeClient.Core().PersistentVolumeClaims(namespace).Update(volumeClaim)
+	return
 }
 
 func runVolumeManager(manager VolumeManager) chan struct{} {

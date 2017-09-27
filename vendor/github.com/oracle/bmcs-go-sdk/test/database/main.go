@@ -8,8 +8,8 @@ import (
 	"os"
 	"time"
 
-	baremetal "github.com/MustWin/baremetal-sdk-go"
-	tt "github.com/MustWin/baremetal-sdk-go/test/shared"
+	baremetal "github.com/oracle/bmcs-go-sdk"
+	tt "github.com/oracle/bmcs-go-sdk/test/shared"
 )
 
 func main() {

@@ -32,7 +32,7 @@ func (s *IdentityTestSuite) TestCreateUIPassword() {
 		body:   marshalObjectForTest(res),
 	}
 
-	s.requestor.On("request", http.MethodPost, details).Return(resp, nil)
+	s.requestor.On("postRequest", details).Return(resp, nil)
 
 	actual, e := s.requestor.CreateOrResetUIPassword(res.UserID, opts)
 

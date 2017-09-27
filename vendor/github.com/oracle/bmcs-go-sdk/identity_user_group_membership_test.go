@@ -35,7 +35,7 @@ func (s *IdentityTestSuite) TestAddUserToGroup() {
 		header: header,
 	}
 
-	s.requestor.On("request", http.MethodPost, details).Return(resp, nil)
+	s.requestor.On("postRequest", details).Return(resp, nil)
 
 	actual, e := s.requestor.AddUserToGroup(res.UserID, res.GroupID, opts)
 	s.Nil(e)

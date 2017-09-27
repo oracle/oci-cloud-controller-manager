@@ -45,16 +45,16 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/kubectl"
 	"k8s.io/kubernetes/pkg/kubectl/resource"
 	"k8s.io/kubernetes/pkg/printers"
-	utilexec "k8s.io/kubernetes/pkg/util/exec"
+	utilexec "k8s.io/utils/exec"
 )
 
 const (
-	ApplyAnnotationsFlag = "save-config"
-	DefaultErrorExitCode = 1
+	ApplyAnnotationsFlag     = "save-config"
+	DefaultErrorExitCode     = 1
+	IncludeUninitializedFlag = "include-uninitialized"
 )
 
 type debugError interface {
@@ -167,8 +167,7 @@ func checkErr(err error, handleErr func(string, int)) {
 		case utilerrors.Aggregate:
 			handleErr(MultipleErrors(``, err.Errors()), DefaultErrorExitCode)
 		case utilexec.ExitError:
-			// do not print anything, only terminate with given error
-			handleErr("", err.ExitStatus())
+			handleErr(err.Error(), err.ExitStatus())
 		default: // for any other error type
 			msg, ok := StandardErrorMessage(err)
 			if !ok {
@@ -397,26 +396,19 @@ func GetPodRunningTimeoutFlag(cmd *cobra.Command) (time.Duration, error) {
 func AddValidateFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("validate", true, "If true, use a schema to validate the input before sending it")
 	cmd.Flags().String("schema-cache-dir", fmt.Sprintf("~/%s/%s", clientcmd.RecommendedHomeDir, clientcmd.RecommendedSchemaName), fmt.Sprintf("If non-empty, load/store cached API schemas in this directory, default is '$HOME/%s/%s'", clientcmd.RecommendedHomeDir, clientcmd.RecommendedSchemaName))
+	cmd.Flags().Bool("openapi-validation", true, "If true, use openapi rather than swagger for validation.")
 	cmd.MarkFlagFilename("schema-cache-dir")
 }
 
 func AddValidateOptionFlags(cmd *cobra.Command, options *ValidateOptions) {
 	cmd.Flags().BoolVar(&options.EnableValidation, "validate", true, "If true, use a schema to validate the input before sending it")
 	cmd.Flags().StringVar(&options.SchemaCacheDir, "schema-cache-dir", fmt.Sprintf("~/%s/%s", clientcmd.RecommendedHomeDir, clientcmd.RecommendedSchemaName), fmt.Sprintf("If non-empty, load/store cached API schemas in this directory, default is '$HOME/%s/%s'", clientcmd.RecommendedHomeDir, clientcmd.RecommendedSchemaName))
+	cmd.Flags().BoolVar(&options.UseOpenAPI, "openapi-validation", true, "If true, use openapi rather than swagger for validation")
 	cmd.MarkFlagFilename("schema-cache-dir")
 }
 
 func AddOpenAPIFlags(cmd *cobra.Command) {
-	cmd.Flags().String("schema-cache-dir",
-		fmt.Sprintf("~/%s/%s", clientcmd.RecommendedHomeDir, clientcmd.RecommendedSchemaName),
-		fmt.Sprintf("If non-empty, load/store cached API schemas in this directory, default is '$HOME/%s/%s'",
-			clientcmd.RecommendedHomeDir, clientcmd.RecommendedSchemaName),
-	)
-	cmd.MarkFlagFilename("schema-cache-dir")
-}
-
-func GetOpenAPICacheDir(cmd *cobra.Command) string {
-	return GetFlagString(cmd, "schema-cache-dir")
+	cmd.Flags().Bool("openapi-validation", true, "If true, use openapi rather than swagger for validation")
 }
 
 func AddFilenameOptionFlags(cmd *cobra.Command, options *resource.FilenameOptions, usage string) {
@@ -427,6 +419,10 @@ func AddFilenameOptionFlags(cmd *cobra.Command, options *resource.FilenameOption
 // AddDryRunFlag adds dry-run flag to a command. Usually used by mutations.
 func AddDryRunFlag(cmd *cobra.Command) {
 	cmd.Flags().Bool("dry-run", false, "If true, only print the object that would be sent, without sending it.")
+}
+
+func AddIncludeUninitializedFlag(cmd *cobra.Command) {
+	cmd.Flags().Bool(IncludeUninitializedFlag, false, `If true, the kubectl command applies to uninitialized objects. If explicitly set to false, this flag overrides other flags that make the kubectl commands apply to uninitialized objects, e.g., "--all". Objects with empty metadata.initializers are regarded as initialized.`)
 }
 
 func AddPodRunningTimeoutFlag(cmd *cobra.Command, defaultTimeout time.Duration) {
@@ -450,6 +446,7 @@ func AddGeneratorFlags(cmd *cobra.Command, defaultGenerator string) {
 
 type ValidateOptions struct {
 	EnableValidation bool
+	UseOpenAPI       bool
 	SchemaCacheDir   string
 }
 
@@ -621,7 +618,7 @@ func AddInclude3rdPartyVarFlags(cmd *cobra.Command, include3rdParty *bool) {
 func GetResourcesAndPairs(args []string, pairType string) (resources []string, pairArgs []string, err error) {
 	foundPair := false
 	for _, s := range args {
-		nonResource := strings.Contains(s, "=") || strings.HasSuffix(s, "-")
+		nonResource := (strings.Contains(s, "=") && s[0] != '=') || (strings.HasSuffix(s, "-") && s != "-")
 		switch {
 		case !foundPair && nonResource:
 			foundPair = true
@@ -647,7 +644,7 @@ func ParsePairs(pairArgs []string, pairType string, supportRemove bool) (newPair
 	var invalidBuf bytes.Buffer
 	var invalidBufNonEmpty bool
 	for _, pairArg := range pairArgs {
-		if strings.Contains(pairArg, "=") {
+		if strings.Contains(pairArg, "=") && pairArg[0] != '=' {
 			parts := strings.SplitN(pairArg, "=", 2)
 			if len(parts) != 2 {
 				if invalidBufNonEmpty {
@@ -658,7 +655,7 @@ func ParsePairs(pairArgs []string, pairType string, supportRemove bool) (newPair
 			} else {
 				newPairs[parts[0]] = parts[1]
 			}
-		} else if supportRemove && strings.HasSuffix(pairArg, "-") {
+		} else if supportRemove && strings.HasSuffix(pairArg, "-") && pairArg != "-" {
 			removePairs = append(removePairs, pairArg[:len(pairArg)-1])
 		} else {
 			if invalidBufNonEmpty {
@@ -674,18 +671,6 @@ func ParsePairs(pairArgs []string, pairType string, supportRemove bool) (newPair
 	}
 
 	return
-}
-
-// MaybeConvertObject attempts to convert an object to a specific group/version.  If the object is
-// a third party resource it is simply passed through.
-func MaybeConvertObject(obj runtime.Object, gv schema.GroupVersion, converter runtime.ObjectConvertor) (runtime.Object, error) {
-	switch obj.(type) {
-	case *extensions.ThirdPartyResourceData:
-		// conversion is not supported for 3rd party objects
-		return obj, nil
-	default:
-		return converter.ConvertToVersion(obj, gv)
-	}
 }
 
 // MustPrintWithKinds determines if printer is dealing
@@ -845,4 +830,26 @@ func ManualStrip(file []byte) []byte {
 		}
 	}
 	return stripped
+}
+
+// ShouldIncludeUninitialized identifies whether to include uninitialized objects.
+// includeUninitialized is the default value.
+// Assume we can parse `all` and `selector` from cmd.
+func ShouldIncludeUninitialized(cmd *cobra.Command, includeUninitialized bool) bool {
+	shouldIncludeUninitialized := includeUninitialized
+	if cmd.Flags().Lookup("all") != nil && GetFlagBool(cmd, "all") {
+		// include the uninitialized objects by default
+		// unless explicitly set --include-uninitialized=false
+		shouldIncludeUninitialized = true
+	}
+	if cmd.Flags().Lookup("selector") != nil && GetFlagString(cmd, "selector") != "" {
+		// does not include the uninitialized objects by default
+		// unless explicitly set --include-uninitialized=true
+		shouldIncludeUninitialized = false
+	}
+	if cmd.Flags().Changed(IncludeUninitializedFlag) {
+		// get explicit value
+		shouldIncludeUninitialized = GetFlagBool(cmd, IncludeUninitializedFlag)
+	}
+	return shouldIncludeUninitialized
 }

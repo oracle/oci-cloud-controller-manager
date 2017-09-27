@@ -17,6 +17,7 @@ import (
 type requestor interface {
 	request(method string, reqOpts request) (r *response, e error)
 	getRequest(reqOpts request) (resp *response, e error)
+	postRequest(reqOpts request) (resp *response, e error)
 	deleteRequest(reqOpts request) (e error)
 }
 
@@ -125,6 +126,13 @@ func (api *apiRequestor) deleteRequest(reqOpts request) (e error) {
 
 func (api *apiRequestor) getRequest(reqOpts request) (getResp *response, e error) {
 	if getResp, e = api.request(http.MethodGet, reqOpts); e != nil {
+		return
+	}
+	return
+}
+
+func (api *apiRequestor) postRequest(reqOpts request) (postResp *response, e error) {
+	if postResp, e = api.request(http.MethodPost, reqOpts); e != nil {
 		return
 	}
 	return
@@ -277,7 +285,7 @@ func getMaxRetryTimeInSeconds(api *apiRequestor, e Error, requestURL string, met
 			return api.longRetryTime
 		}
 	case "409":
-		if e.Code == "InvalidatedRetryToken" {
+		if e.Code == "InvalidatedRetryToken" || e.Code == "CompartmentAlreadyExists" {
 			return 0
 		} else if e.Code == "NotAuthorizedOrResourceAlreadyExists" {
 			if requestServiceCheck(requestURL, identityServiceAPI) ||

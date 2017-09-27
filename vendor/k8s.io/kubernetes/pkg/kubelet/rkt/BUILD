@@ -1,7 +1,5 @@
 package(default_visibility = ["//visibility:public"])
 
-licenses(["notice"])
-
 load(
     "@io_bazel_rules_go//go:def.bzl",
     "go_library",
@@ -21,7 +19,6 @@ go_library(
         "systemd.go",
         "version.go",
     ],
-    tags = ["automanaged"],
     deps = [
         "//pkg/credentialprovider:go_default_library",
         "//pkg/kubelet/container:go_default_library",
@@ -35,7 +32,6 @@ go_library(
         "//pkg/kubelet/types:go_default_library",
         "//pkg/kubelet/util/format:go_default_library",
         "//pkg/securitycontext:go_default_library",
-        "//pkg/util/exec:go_default_library",
         "//pkg/util/parsers:go_default_library",
         "//pkg/util/selinux:go_default_library",
         "//pkg/util/strings:go_default_library",
@@ -46,7 +42,7 @@ go_library(
         "//vendor/github.com/coreos/go-systemd/dbus:go_default_library",
         "//vendor/github.com/coreos/go-systemd/unit:go_default_library",
         "//vendor/github.com/coreos/rkt/api/v1alpha:go_default_library",
-        "//vendor/github.com/docker/engine-api/types:go_default_library",
+        "//vendor/github.com/docker/docker/api/types:go_default_library",
         "//vendor/github.com/golang/glog:go_default_library",
         "//vendor/golang.org/x/net/context:go_default_library",
         "//vendor/google.golang.org/grpc:go_default_library",
@@ -59,6 +55,7 @@ go_library(
         "//vendor/k8s.io/client-go/tools/record:go_default_library",
         "//vendor/k8s.io/client-go/tools/remotecommand:go_default_library",
         "//vendor/k8s.io/client-go/util/flowcontrol:go_default_library",
+        "//vendor/k8s.io/utils/exec:go_default_library",
     ],
 )
 
@@ -69,7 +66,6 @@ go_test(
         "rkt_test.go",
     ],
     library = ":go_default_library",
-    tags = ["automanaged"],
     deps = [
         "//pkg/kubelet/container:go_default_library",
         "//pkg/kubelet/container/testing:go_default_library",
@@ -78,10 +74,10 @@ go_test(
         "//pkg/kubelet/network/kubenet:go_default_library",
         "//pkg/kubelet/network/testing:go_default_library",
         "//pkg/kubelet/types:go_default_library",
-        "//pkg/util/exec:go_default_library",
         "//vendor/github.com/appc/spec/schema:go_default_library",
         "//vendor/github.com/appc/spec/schema/types:go_default_library",
         "//vendor/github.com/coreos/go-systemd/dbus:go_default_library",
+        "//vendor/github.com/coreos/go-systemd/unit:go_default_library",
         "//vendor/github.com/coreos/rkt/api/v1alpha:go_default_library",
         "//vendor/github.com/golang/mock/gomock:go_default_library",
         "//vendor/github.com/stretchr/testify/assert:go_default_library",
@@ -93,6 +89,8 @@ go_test(
         "//vendor/k8s.io/apimachinery/pkg/types:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/util/errors:go_default_library",
         "//vendor/k8s.io/client-go/util/testing:go_default_library",
+        "//vendor/k8s.io/utils/exec:go_default_library",
+        "//vendor/k8s.io/utils/exec/testing:go_default_library",
     ],
 )
 

@@ -16,9 +16,7 @@ type CoreTestSuite struct {
 }
 
 func (s *CoreTestSuite) SetupTest() {
-	s.requestor = new(mockRequestor)
-	s.requestor.Client = createClientForTest()
-	s.requestor.coreApi = s.requestor
+	s.requestor = newMockRequestor(s)
 }
 
 func TestRunCoreTests(t *testing.T) {

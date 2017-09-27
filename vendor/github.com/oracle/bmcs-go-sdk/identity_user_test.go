@@ -33,7 +33,7 @@ func (s *IdentityTestSuite) TestCreateUser() {
 		header: respHeaders,
 	}
 
-	s.requestor.On("request", http.MethodPost, details).Return(resp, nil)
+	s.requestor.On("postRequest", details).Return(resp, nil)
 
 	actual, e := s.requestor.CreateUser(res.Name, res.Description, opts)
 

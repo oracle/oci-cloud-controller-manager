@@ -7,11 +7,12 @@ package helpers
 import (
 	"fmt"
 	"net/http"
+	"regexp"
 
 	"github.com/dnaeon/go-vcr/cassette"
 	"github.com/dnaeon/go-vcr/recorder"
 
-	bm "github.com/MustWin/baremetal-sdk-go"
+	bm "github.com/oracle/bmcs-go-sdk"
 )
 
 const RUNMODE = RunmodeReplay
@@ -55,13 +56,27 @@ cMuGz30TqwTxIXNqqtKzz94jAigz3YWtJbWgBuphTqZ9xTWhPeipRw==
 	fingerprint = "3a:09:91:bb:d1:66:a0:13:12:f1:bf:3e:f6:ea:16:09"
 )
 
-var mockKeyPass = "supersecret"
+var re = regexp.MustCompile(`(.*compartmentId=)ocid[a-zA-Z0-9.%]+(&?.*)`)
 
 func GetClient(cassetteName string) *TestClient {
 	rec, err := recorder.NewAsMode(cassetteName, recorder.ModeReplaying, nil)
 
+	// Since the default matcher only matches by url, we inject a header with a sequential request number
+	// so we can find the appropriate request when we replay
 	rec.SetMatcher(func(r *http.Request, cr cassette.Request) bool {
-		return cassette.DefaultMatcher(r, cr) && (r.Header.Get("Request-Number") == cr.Headers.Get("Request-Number"))
+
+		// maybe it's an exact match, return early
+		if cassette.DefaultMatcher(r, cr) && (r.Header.Get("Request-Number") == cr.Headers.Get("Request-Number")) {
+			return true
+		}
+
+		// matching by url might not work if the user who recorded the test data had a different config from
+		// the user who is running the tests. Stripping compartmentId from the url accommodates that.
+		// Tripping hazard: theoretical cross-compartment acceptance could fail to replay due to this but
+		// most likely not due to the additional Request-Number provision.
+		subStr := re.ReplaceAllLiteralString(r.URL.String(), `$1$2`)
+		recStr := re.ReplaceAllLiteralString(cr.URL, `$1$2`)
+		return (recStr == subStr) && (r.Header.Get("Request-Number") == cr.Headers.Get("Request-Number"))
 	})
 
 	if err != nil {
@@ -87,12 +102,5 @@ func GetClient(cassetteName string) *TestClient {
 		recorder: rec,
 	}
 
-	// Since the default matcher only matches by url, we inject a header with a sequentail request number
-	// so we can find the appropriate request when we replay
-	rec.SetMatcher(func(r *http.Request, cr cassette.Request) bool {
-		return cassette.DefaultMatcher(r, cr) && (r.Header.Get("Request-Number") == cr.Headers.Get("Request-Number"))
-	})
-
 	return tc
-
 }

@@ -20,11 +20,10 @@ import (
 	"fmt"
 	"io"
 
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
-
 	"github.com/golang/glog"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/controller"
 

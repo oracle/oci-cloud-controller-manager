@@ -61,42 +61,9 @@ var _ = framework.KubeDescribe("Federation namespace [Feature:Federation]", func
 				f.FederationClientset.Core().Namespaces().Delete)
 			for _, cluster := range clusters {
 				deleteNamespace(nil, nsName,
-					cluster.Core().Namespaces().Get,
-					cluster.Core().Namespaces().Delete)
+					cluster.CoreV1().Namespaces().Get,
+					cluster.CoreV1().Namespaces().Delete)
 			}
-		})
-
-		It("should be created and deleted successfully", func() {
-			fedframework.SkipUnlessFederated(f.ClientSet)
-
-			nsName = createNamespace(f.FederationClientset.Core().Namespaces())
-
-			By(fmt.Sprintf("Deleting namespace %s", nsName))
-			deleteNamespace(nil, nsName,
-				f.FederationClientset.Core().Namespaces().Get,
-				f.FederationClientset.Core().Namespaces().Delete)
-			By(fmt.Sprintf("Verified that deletion succeeded"))
-		})
-
-		It("should be deleted from underlying clusters when OrphanDependents is false", func() {
-			fedframework.SkipUnlessFederated(f.ClientSet)
-			orphanDependents := false
-			nsName = verifyNsCascadingDeletion(f.FederationClientset.Core().Namespaces(), clusters, &orphanDependents)
-			By(fmt.Sprintf("Verified that namespaces were deleted from underlying clusters"))
-		})
-
-		It("should not be deleted from underlying clusters when OrphanDependents is true", func() {
-			fedframework.SkipUnlessFederated(f.ClientSet)
-			orphanDependents := true
-			nsName = verifyNsCascadingDeletion(f.FederationClientset.Core().Namespaces(), clusters, &orphanDependents)
-			By(fmt.Sprintf("Verified that namespaces were not deleted from underlying clusters"))
-		})
-
-		It("should not be deleted from underlying clusters when OrphanDependents is nil", func() {
-			fedframework.SkipUnlessFederated(f.ClientSet)
-
-			nsName = verifyNsCascadingDeletion(f.FederationClientset.Core().Namespaces(), clusters, nil)
-			By(fmt.Sprintf("Verified that namespaces were not deleted from underlying clusters"))
 		})
 
 		// See https://github.com/kubernetes/kubernetes/issues/38225
@@ -195,7 +162,7 @@ func verifyNsCascadingDeletion(nsClient clientset.NamespaceInterface, clusters f
 	By(fmt.Sprintf("Waiting for namespace %s to be created in all underlying clusters", nsName))
 	err := wait.Poll(5*time.Second, 2*time.Minute, func() (bool, error) {
 		for _, cluster := range clusters {
-			_, err := cluster.Core().Namespaces().Get(nsName, metav1.GetOptions{})
+			_, err := cluster.CoreV1().Namespaces().Get(nsName, metav1.GetOptions{})
 			if err != nil && !errors.IsNotFound(err) {
 				return false, err
 			}
@@ -216,7 +183,7 @@ func verifyNsCascadingDeletion(nsClient clientset.NamespaceInterface, clusters f
 	shouldExist := orphanDependents == nil || *orphanDependents == true
 	for _, cluster := range clusters {
 		clusterName := cluster.Name
-		_, err := cluster.Core().Namespaces().Get(nsName, metav1.GetOptions{})
+		_, err := cluster.CoreV1().Namespaces().Get(nsName, metav1.GetOptions{})
 		if shouldExist && errors.IsNotFound(err) {
 			errMessages = append(errMessages, fmt.Sprintf("unexpected NotFound error for namespace %s in cluster %s, expected namespace to exist", nsName, clusterName))
 		} else if !shouldExist && !errors.IsNotFound(err) {

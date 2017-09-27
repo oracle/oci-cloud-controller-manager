@@ -783,7 +783,7 @@ func fakeInitHostFactory(apiserverServiceType v1.ServiceType, federationName, na
 	role := rbacv1beta1.Role{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Role",
-			APIVersion: testapi.Rbac.GroupVersion().String(),
+			APIVersion: rbacv1beta1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "federation-system:federation-controller-manager",
@@ -805,7 +805,7 @@ func fakeInitHostFactory(apiserverServiceType v1.ServiceType, federationName, na
 	rolebinding := rbacv1beta1.RoleBinding{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "RoleBinding",
-			APIVersion: testapi.Rbac.GroupVersion().String(),
+			APIVersion: rbacv1beta1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "federation-system:federation-controller-manager",
@@ -1444,7 +1444,11 @@ func tlsHandshake(t *testing.T, sCfg, cCfg *tls.Config) error {
 		}
 	}()
 
-	c, err := tls.Dial("tcp", s.Addr().String(), cCfg)
+	// workaround [::] not working in ipv4 only systems (https://github.com/golang/go/issues/18806)
+	// TODO: remove with Golang 1.9 with https://go-review.googlesource.com/c/45088/
+	addr := strings.TrimPrefix(s.Addr().String(), "[::]")
+
+	c, err := tls.Dial("tcp", addr, cCfg)
 	if err != nil {
 		// Intentionally not serializing the error received because we want to
 		// test for the failure case in the caller test function.

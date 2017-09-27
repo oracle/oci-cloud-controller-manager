@@ -22,11 +22,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	pkgruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
+	kubeclientset "k8s.io/client-go/kubernetes"
+	restclient "k8s.io/client-go/rest"
 	federationclientset "k8s.io/kubernetes/federation/client/clientset_generated/federation_clientset"
 	fedutil "k8s.io/kubernetes/federation/pkg/federation-controller/util"
-	kubeclientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 )
 
 const (
@@ -40,22 +40,23 @@ func init() {
 }
 
 type ReplicaSetAdapter struct {
-	*schedulingAdapter
+	*replicaSchedulingAdapter
 	client federationclientset.Interface
 }
 
-func NewReplicaSetAdapter(client federationclientset.Interface) FederatedTypeAdapter {
-	schedulingAdapter := schedulingAdapter{
+func NewReplicaSetAdapter(client federationclientset.Interface, config *restclient.Config, adapterSpecificArgs map[string]interface{}) FederatedTypeAdapter {
+	replicaSchedulingAdapter := replicaSchedulingAdapter{
 		preferencesAnnotationName: FedReplicaSetPreferencesAnnotation,
-		updateStatusFunc: func(obj pkgruntime.Object, status SchedulingStatus) error {
+		updateStatusFunc: func(obj pkgruntime.Object, schedulingInfo interface{}) error {
 			rs := obj.(*extensionsv1.ReplicaSet)
-			if status.Replicas != rs.Status.Replicas || status.FullyLabeledReplicas != rs.Status.FullyLabeledReplicas ||
-				status.ReadyReplicas != rs.Status.ReadyReplicas || status.AvailableReplicas != rs.Status.AvailableReplicas {
+			typedStatus := schedulingInfo.(*ReplicaSchedulingInfo).Status
+			if typedStatus.Replicas != rs.Status.Replicas || typedStatus.FullyLabeledReplicas != rs.Status.FullyLabeledReplicas ||
+				typedStatus.ReadyReplicas != rs.Status.ReadyReplicas || typedStatus.AvailableReplicas != rs.Status.AvailableReplicas {
 				rs.Status = extensionsv1.ReplicaSetStatus{
-					Replicas:             status.Replicas,
-					FullyLabeledReplicas: status.Replicas,
-					ReadyReplicas:        status.ReadyReplicas,
-					AvailableReplicas:    status.AvailableReplicas,
+					Replicas:             typedStatus.Replicas,
+					FullyLabeledReplicas: typedStatus.Replicas,
+					ReadyReplicas:        typedStatus.ReadyReplicas,
+					AvailableReplicas:    typedStatus.AvailableReplicas,
 				}
 				_, err := client.Extensions().ReplicaSets(rs.Namespace).UpdateStatus(rs)
 				return err
@@ -63,7 +64,7 @@ func NewReplicaSetAdapter(client federationclientset.Interface) FederatedTypeAda
 			return nil
 		},
 	}
-	return &ReplicaSetAdapter{&schedulingAdapter, client}
+	return &ReplicaSetAdapter{&replicaSchedulingAdapter, client}
 }
 
 func (a *ReplicaSetAdapter) Kind() string {
@@ -91,9 +92,9 @@ func (a *ReplicaSetAdapter) Equivalent(obj1, obj2 pkgruntime.Object) bool {
 	return fedutil.ObjectMetaAndSpecEquivalent(obj1, obj2)
 }
 
-func (a *ReplicaSetAdapter) NamespacedName(obj pkgruntime.Object) types.NamespacedName {
+func (a *ReplicaSetAdapter) QualifiedName(obj pkgruntime.Object) QualifiedName {
 	replicaset := obj.(*extensionsv1.ReplicaSet)
-	return types.NamespacedName{Namespace: replicaset.Namespace, Name: replicaset.Name}
+	return QualifiedName{Namespace: replicaset.Namespace, Name: replicaset.Name}
 }
 
 func (a *ReplicaSetAdapter) ObjectMeta(obj pkgruntime.Object) *metav1.ObjectMeta {
@@ -105,12 +106,12 @@ func (a *ReplicaSetAdapter) FedCreate(obj pkgruntime.Object) (pkgruntime.Object,
 	return a.client.Extensions().ReplicaSets(replicaset.Namespace).Create(replicaset)
 }
 
-func (a *ReplicaSetAdapter) FedDelete(namespacedName types.NamespacedName, options *metav1.DeleteOptions) error {
-	return a.client.Extensions().ReplicaSets(namespacedName.Namespace).Delete(namespacedName.Name, options)
+func (a *ReplicaSetAdapter) FedDelete(qualifiedName QualifiedName, options *metav1.DeleteOptions) error {
+	return a.client.Extensions().ReplicaSets(qualifiedName.Namespace).Delete(qualifiedName.Name, options)
 }
 
-func (a *ReplicaSetAdapter) FedGet(namespacedName types.NamespacedName) (pkgruntime.Object, error) {
-	return a.client.Extensions().ReplicaSets(namespacedName.Namespace).Get(namespacedName.Name, metav1.GetOptions{})
+func (a *ReplicaSetAdapter) FedGet(qualifiedName QualifiedName) (pkgruntime.Object, error) {
+	return a.client.Extensions().ReplicaSets(qualifiedName.Namespace).Get(qualifiedName.Name, metav1.GetOptions{})
 }
 
 func (a *ReplicaSetAdapter) FedList(namespace string, options metav1.ListOptions) (pkgruntime.Object, error) {
@@ -131,12 +132,12 @@ func (a *ReplicaSetAdapter) ClusterCreate(client kubeclientset.Interface, obj pk
 	return client.Extensions().ReplicaSets(replicaset.Namespace).Create(replicaset)
 }
 
-func (a *ReplicaSetAdapter) ClusterDelete(client kubeclientset.Interface, nsName types.NamespacedName, options *metav1.DeleteOptions) error {
-	return client.Extensions().ReplicaSets(nsName.Namespace).Delete(nsName.Name, options)
+func (a *ReplicaSetAdapter) ClusterDelete(client kubeclientset.Interface, qualifiedName QualifiedName, options *metav1.DeleteOptions) error {
+	return client.Extensions().ReplicaSets(qualifiedName.Namespace).Delete(qualifiedName.Name, options)
 }
 
-func (a *ReplicaSetAdapter) ClusterGet(client kubeclientset.Interface, namespacedName types.NamespacedName) (pkgruntime.Object, error) {
-	return client.Extensions().ReplicaSets(namespacedName.Namespace).Get(namespacedName.Name, metav1.GetOptions{})
+func (a *ReplicaSetAdapter) ClusterGet(client kubeclientset.Interface, qualifiedName QualifiedName) (pkgruntime.Object, error) {
+	return client.Extensions().ReplicaSets(qualifiedName.Namespace).Get(qualifiedName.Name, metav1.GetOptions{})
 }
 
 func (a *ReplicaSetAdapter) ClusterList(client kubeclientset.Interface, namespace string, options metav1.ListOptions) (pkgruntime.Object, error) {

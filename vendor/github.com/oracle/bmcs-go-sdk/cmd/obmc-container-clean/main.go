@@ -10,7 +10,7 @@ import (
 
 	"github.com/joho/godotenv"
 
-	bm "github.com/MustWin/baremetal-sdk-go"
+	bm "github.com/oracle/bmcs-go-sdk"
 )
 
 var compartmentID string

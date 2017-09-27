@@ -22,11 +22,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	pkgruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
+	kubeclientset "k8s.io/client-go/kubernetes"
+	restclient "k8s.io/client-go/rest"
 	federationclientset "k8s.io/kubernetes/federation/client/clientset_generated/federation_clientset"
 	fedutil "k8s.io/kubernetes/federation/pkg/federation-controller/util"
-	kubeclientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
 )
 
 const (
@@ -40,22 +40,23 @@ func init() {
 }
 
 type DeploymentAdapter struct {
-	*schedulingAdapter
+	*replicaSchedulingAdapter
 	client federationclientset.Interface
 }
 
-func NewDeploymentAdapter(client federationclientset.Interface) FederatedTypeAdapter {
-	schedulingAdapter := schedulingAdapter{
+func NewDeploymentAdapter(client federationclientset.Interface, config *restclient.Config, adapterSpecificArgs map[string]interface{}) FederatedTypeAdapter {
+	schedulingAdapter := replicaSchedulingAdapter{
 		preferencesAnnotationName: FedDeploymentPreferencesAnnotation,
-		updateStatusFunc: func(obj pkgruntime.Object, status SchedulingStatus) error {
+		updateStatusFunc: func(obj pkgruntime.Object, schedulingInfo interface{}) error {
 			deployment := obj.(*extensionsv1.Deployment)
-			if status.Replicas != deployment.Status.Replicas || status.UpdatedReplicas != deployment.Status.UpdatedReplicas ||
-				status.ReadyReplicas != deployment.Status.ReadyReplicas || status.AvailableReplicas != deployment.Status.AvailableReplicas {
+			typedStatus := schedulingInfo.(*ReplicaSchedulingInfo).Status
+			if typedStatus.Replicas != deployment.Status.Replicas || typedStatus.UpdatedReplicas != deployment.Status.UpdatedReplicas ||
+				typedStatus.ReadyReplicas != deployment.Status.ReadyReplicas || typedStatus.AvailableReplicas != deployment.Status.AvailableReplicas {
 				deployment.Status = extensionsv1.DeploymentStatus{
-					Replicas:          status.Replicas,
-					UpdatedReplicas:   status.UpdatedReplicas,
-					ReadyReplicas:     status.ReadyReplicas,
-					AvailableReplicas: status.AvailableReplicas,
+					Replicas:          typedStatus.Replicas,
+					UpdatedReplicas:   typedStatus.UpdatedReplicas,
+					ReadyReplicas:     typedStatus.ReadyReplicas,
+					AvailableReplicas: typedStatus.AvailableReplicas,
 				}
 				_, err := client.Extensions().Deployments(deployment.Namespace).UpdateStatus(deployment)
 				return err
@@ -91,9 +92,9 @@ func (a *DeploymentAdapter) Equivalent(obj1, obj2 pkgruntime.Object) bool {
 	return fedutil.DeploymentEquivalent(deployment1, deployment2)
 }
 
-func (a *DeploymentAdapter) NamespacedName(obj pkgruntime.Object) types.NamespacedName {
+func (a *DeploymentAdapter) QualifiedName(obj pkgruntime.Object) QualifiedName {
 	deployment := obj.(*extensionsv1.Deployment)
-	return types.NamespacedName{Namespace: deployment.Namespace, Name: deployment.Name}
+	return QualifiedName{Namespace: deployment.Namespace, Name: deployment.Name}
 }
 
 func (a *DeploymentAdapter) ObjectMeta(obj pkgruntime.Object) *metav1.ObjectMeta {
@@ -105,12 +106,12 @@ func (a *DeploymentAdapter) FedCreate(obj pkgruntime.Object) (pkgruntime.Object,
 	return a.client.Extensions().Deployments(deployment.Namespace).Create(deployment)
 }
 
-func (a *DeploymentAdapter) FedDelete(namespacedName types.NamespacedName, options *metav1.DeleteOptions) error {
-	return a.client.Extensions().Deployments(namespacedName.Namespace).Delete(namespacedName.Name, options)
+func (a *DeploymentAdapter) FedDelete(qualifiedName QualifiedName, options *metav1.DeleteOptions) error {
+	return a.client.Extensions().Deployments(qualifiedName.Namespace).Delete(qualifiedName.Name, options)
 }
 
-func (a *DeploymentAdapter) FedGet(namespacedName types.NamespacedName) (pkgruntime.Object, error) {
-	return a.client.Extensions().Deployments(namespacedName.Namespace).Get(namespacedName.Name, metav1.GetOptions{})
+func (a *DeploymentAdapter) FedGet(qualifiedName QualifiedName) (pkgruntime.Object, error) {
+	return a.client.Extensions().Deployments(qualifiedName.Namespace).Get(qualifiedName.Name, metav1.GetOptions{})
 }
 
 func (a *DeploymentAdapter) FedList(namespace string, options metav1.ListOptions) (pkgruntime.Object, error) {
@@ -131,12 +132,12 @@ func (a *DeploymentAdapter) ClusterCreate(client kubeclientset.Interface, obj pk
 	return client.Extensions().Deployments(deployment.Namespace).Create(deployment)
 }
 
-func (a *DeploymentAdapter) ClusterDelete(client kubeclientset.Interface, nsName types.NamespacedName, options *metav1.DeleteOptions) error {
-	return client.Extensions().Deployments(nsName.Namespace).Delete(nsName.Name, options)
+func (a *DeploymentAdapter) ClusterDelete(client kubeclientset.Interface, qualifiedName QualifiedName, options *metav1.DeleteOptions) error {
+	return client.Extensions().Deployments(qualifiedName.Namespace).Delete(qualifiedName.Name, options)
 }
 
-func (a *DeploymentAdapter) ClusterGet(client kubeclientset.Interface, namespacedName types.NamespacedName) (pkgruntime.Object, error) {
-	return client.Extensions().Deployments(namespacedName.Namespace).Get(namespacedName.Name, metav1.GetOptions{})
+func (a *DeploymentAdapter) ClusterGet(client kubeclientset.Interface, qualifiedName QualifiedName) (pkgruntime.Object, error) {
+	return client.Extensions().Deployments(qualifiedName.Namespace).Get(qualifiedName.Name, metav1.GetOptions{})
 }
 
 func (a *DeploymentAdapter) ClusterList(client kubeclientset.Interface, namespace string, options metav1.ListOptions) (pkgruntime.Object, error) {

@@ -11,7 +11,7 @@ import (
 	"github.com/dnaeon/go-vcr/recorder"
 	"github.com/joho/godotenv"
 
-	bm "github.com/MustWin/baremetal-sdk-go"
+	bm "github.com/oracle/bmcs-go-sdk"
 )
 
 const RUNMODE = RunmodeRecord

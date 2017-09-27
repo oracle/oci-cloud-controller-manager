@@ -41,7 +41,7 @@ func (s *CoreTestSuite) TestCreateDHCPOptions() {
 		header: http.Header{},
 		body:   marshalObjectForTest(res),
 	}
-	s.requestor.On("request", http.MethodPost, details).Return(resp, nil)
+	s.requestor.On("postRequest", details).Return(resp, nil)
 
 	actual, err := s.requestor.CreateDHCPOptions(res.CompartmentID, "vcn_id", res.Options, opts)
 

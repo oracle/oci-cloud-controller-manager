@@ -33,7 +33,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/util"
-	"k8s.io/kubernetes/pkg/util/i18n"
+	"k8s.io/kubernetes/pkg/kubectl/util/i18n"
 )
 
 var (
@@ -85,7 +85,7 @@ type LogsOptions struct {
 	Out io.Writer
 }
 
-// NewCmdLog creates a new pod logs command
+// NewCmdLogs creates a new pod logs command
 func NewCmdLogs(f cmdutil.Factory, out io.Writer) *cobra.Command {
 	o := &LogsOptions{}
 	cmd := &cobra.Command{
@@ -165,7 +165,8 @@ func (o *LogsOptions) Complete(f cmdutil.Factory, out io.Writer, cmd *cobra.Comm
 	if limit := cmdutil.GetFlagInt64(cmd, "limit-bytes"); limit != 0 {
 		logOptions.LimitBytes = &limit
 	}
-	if tail := cmdutil.GetFlagInt64(cmd, "tail"); tail != -1 {
+	tail := cmdutil.GetFlagInt64(cmd, "tail")
+	if tail != -1 {
 		logOptions.TailLines = &tail
 	}
 	if sinceSeconds := cmdutil.GetFlagDuration(cmd, "since"); sinceSeconds != 0 {
@@ -185,7 +186,7 @@ func (o *LogsOptions) Complete(f cmdutil.Factory, out io.Writer, cmd *cobra.Comm
 		if logOptions.Follow {
 			return cmdutil.UsageErrorf(cmd, "only one of follow (-f) or selector (-l) is allowed")
 		}
-		if logOptions.TailLines == nil {
+		if logOptions.TailLines == nil && tail != -1 {
 			logOptions.TailLines = &selectorTail
 		}
 	}

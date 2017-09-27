@@ -1,26 +1,27 @@
 package storage
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 
-	"encoding/json"
 	"github.com/docker/distribution"
-	"github.com/docker/distribution/context"
-	"github.com/docker/distribution/digest"
+	dcontext "github.com/docker/distribution/context"
 	"github.com/docker/distribution/manifest/manifestlist"
+	"github.com/opencontainers/go-digest"
 )
 
 // manifestListHandler is a ManifestHandler that covers schema2 manifest lists.
 type manifestListHandler struct {
-	repository *repository
-	blobStore  *linkedBlobStore
+	repository distribution.Repository
+	blobStore  distribution.BlobStore
 	ctx        context.Context
 }
 
 var _ ManifestHandler = &manifestListHandler{}
 
 func (ms *manifestListHandler) Unmarshal(ctx context.Context, dgst digest.Digest, content []byte) (distribution.Manifest, error) {
-	context.GetLogger(ms.ctx).Debug("(*manifestListHandler).Unmarshal")
+	dcontext.GetLogger(ms.ctx).Debug("(*manifestListHandler).Unmarshal")
 
 	var m manifestlist.DeserializedManifestList
 	if err := json.Unmarshal(content, &m); err != nil {
@@ -31,7 +32,7 @@ func (ms *manifestListHandler) Unmarshal(ctx context.Context, dgst digest.Digest
 }
 
 func (ms *manifestListHandler) Put(ctx context.Context, manifestList distribution.Manifest, skipDependencyVerification bool) (digest.Digest, error) {
-	context.GetLogger(ms.ctx).Debug("(*manifestListHandler).Put")
+	dcontext.GetLogger(ms.ctx).Debug("(*manifestListHandler).Put")
 
 	m, ok := manifestList.(*manifestlist.DeserializedManifestList)
 	if !ok {
@@ -49,12 +50,7 @@ func (ms *manifestListHandler) Put(ctx context.Context, manifestList distributio
 
 	revision, err := ms.blobStore.Put(ctx, mt, payload)
 	if err != nil {
-		context.GetLogger(ctx).Errorf("error putting payload into blobstore: %v", err)
-		return "", err
-	}
-
-	// Link the revision into the repository.
-	if err := ms.blobStore.linkBlob(ctx, revision); err != nil {
+		dcontext.GetLogger(ctx).Errorf("error putting payload into blobstore: %v", err)
 		return "", err
 	}
 
@@ -72,6 +68,7 @@ func (ms *manifestListHandler) verifyManifest(ctx context.Context, mnfst manifes
 		// This manifest service is different from the blob service
 		// returned by Blob. It uses a linked blob store to ensure that
 		// only manifests are accessible.
+
 		manifestService, err := ms.repository.Manifests(ctx)
 		if err != nil {
 			return err

@@ -26,9 +26,9 @@ import (
 	authorization "k8s.io/api/authorization/v1beta1"
 	capi "k8s.io/api/certificates/v1beta1"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	certificatesinformers "k8s.io/client-go/informers/certificates/v1beta1"
+	clientset "k8s.io/client-go/kubernetes"
 	k8s_certificates_v1beta1 "k8s.io/kubernetes/pkg/apis/certificates/v1beta1"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
-	certificatesinformers "k8s.io/kubernetes/pkg/client/informers/informers_generated/externalversions/certificates/v1beta1"
 	"k8s.io/kubernetes/pkg/controller/certificates"
 	"k8s.io/kubernetes/pkg/features"
 )
@@ -91,10 +91,15 @@ func (a *sarApprover) handle(csr *capi.CertificateSigningRequest) error {
 		return fmt.Errorf("unable to parse csr %q: %v", csr.Name, err)
 	}
 
+	tried := []string{}
+
 	for _, r := range a.recognizers {
 		if !r.recognize(csr, x509cr) {
 			continue
 		}
+
+		tried = append(tried, r.permission.Subresource)
+
 		approved, err := a.authorize(csr, r.permission)
 		if err != nil {
 			return err
@@ -108,6 +113,11 @@ func (a *sarApprover) handle(csr *capi.CertificateSigningRequest) error {
 			return nil
 		}
 	}
+
+	if len(tried) != 0 {
+		return fmt.Errorf("recognized csr %q as %v but subject access review was not approved", csr.Name, tried)
+	}
+
 	return nil
 }
 
@@ -120,6 +130,7 @@ func (a *sarApprover) authorize(csr *capi.CertificateSigningRequest, rattrs auth
 	sar := &authorization.SubjectAccessReview{
 		Spec: authorization.SubjectAccessReviewSpec{
 			User:               csr.Spec.Username,
+			UID:                csr.Spec.UID,
 			Groups:             csr.Spec.Groups,
 			Extra:              extra,
 			ResourceAttributes: &rattrs,

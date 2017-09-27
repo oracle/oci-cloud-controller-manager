@@ -9,6 +9,8 @@ import (
 
 func (s *CoreTestSuite) TestLaunchInstance() {
 	metadata := map[string]string{"foo": "bar"}
+	extendedMetadata := make(map[string]interface{})
+	extendedMetadata["key"] = map[string]string{"key1": "value1"}
 	created := Time{Time: time.Now()}
 	ipxeScript := "#!ipxe\nchain http://boot.ipxe.org/demo/boot.php"
 
@@ -19,6 +21,7 @@ func (s *CoreTestSuite) TestLaunchInstance() {
 		ID:                 "id1",
 		ImageID:            "image1",
 		Metadata:           metadata,
+		ExtendedMetadata:   extendedMetadata,
 		IpxeScript:         ipxeScript,
 		Region:             "Perth",
 		Shape:              "x5-2.36.512.nvme-6.4",
@@ -29,6 +32,7 @@ func (s *CoreTestSuite) TestLaunchInstance() {
 	opts := &LaunchInstanceOptions{}
 	opts.DisplayName = res.DisplayName
 	opts.Metadata = res.Metadata
+	opts.ExtendedMetadata = res.ExtendedMetadata
 	opts.IpxeScript = res.IpxeScript
 
 	required := struct {
@@ -55,7 +59,7 @@ func (s *CoreTestSuite) TestLaunchInstance() {
 		header: http.Header{},
 		body:   marshalObjectForTest(res),
 	}
-	s.requestor.On("request", http.MethodPost, details).Return(resp, nil)
+	s.requestor.On("postRequest", details).Return(resp, nil)
 
 	actual, err := s.requestor.LaunchInstance(
 		res.AvailabilityDomain,
@@ -151,7 +155,7 @@ func (s *CoreTestSuite) TestInstanceAction() {
 		header: headers,
 	}
 
-	s.requestor.On("request", http.MethodPost, details).Return(resp, nil)
+	s.requestor.On("postRequest", details).Return(resp, nil)
 
 	actual, e := s.requestor.InstanceAction(res.ID, actionStart, nil)
 	s.Nil(e)

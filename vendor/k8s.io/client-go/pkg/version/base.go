@@ -51,8 +51,8 @@ var (
 	// semantic version is a git hash, but the version itself is no
 	// longer the direct output of "git describe", but a slight
 	// translation to be semver compliant.
-	gitVersion   string = "v0.0.0-master+e0ed1456"
-	gitCommit    string = "e0ed1456dfde0a049d10f89f7ef86aeed85ddf4d"    // sha1 from git, output of $(git rev-parse HEAD)
+	gitVersion   string = "v0.0.0-master+$Format:%h$"
+	gitCommit    string = "$Format:%H$"    // sha1 from git, output of $(git rev-parse HEAD)
 	gitTreeState string = "not a git tree" // state of git tree, either "clean" or "dirty"
 
 	buildDate string = "1970-01-01T00:00:00Z" // build date in ISO8601 format, output of $(date -u +'%Y-%m-%dT%H:%M:%SZ')

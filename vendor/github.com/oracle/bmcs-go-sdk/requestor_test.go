@@ -454,7 +454,7 @@ func (s *RequestorTestSuite) TestGetMaxRetryTimeInSeconds() {
 	testGetMaxRetryTimeForStatus(s, status, codes, noRetryServices, defaultRetryServices, longRetryServices, methods)
 
 	status = "409"
-	codes = []string{"InvalidatedRetryToken"}
+	codes = []string{"InvalidatedRetryToken", "CompartmentAlreadyExists"}
 	noRetryServices = allServices
 	defaultRetryServices = []string{}
 	longRetryServices = []string{}

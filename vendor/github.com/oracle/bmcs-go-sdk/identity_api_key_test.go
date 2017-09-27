@@ -74,7 +74,7 @@ func (s *IdentityTestSuite) TestUploadAPIKey() {
 
 	expected := APIKey{UserID: userID, KeyID: "2"}
 	resp := &response{body: marshalObjectForTest(expected)}
-	s.requestor.On("request", http.MethodPost, details).Return(resp, nil)
+	s.requestor.On("postRequest", details).Return(resp, nil)
 
 	actual, e := s.requestor.UploadAPIKey(userID, key, opts)
 	s.Nil(e)

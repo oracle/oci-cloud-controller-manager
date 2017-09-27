@@ -70,7 +70,7 @@ func (s *DatabaseTestSuite) TestDBNodeAction() {
 		header: headers,
 	}
 
-	s.requestor.On("request", http.MethodPost, details).Return(resp, nil)
+	s.requestor.On("postRequest", details).Return(resp, nil)
 
 	actual, e := s.requestor.DBNodeAction(res.ID, DBNodeActionStart, nil)
 	s.Nil(e)

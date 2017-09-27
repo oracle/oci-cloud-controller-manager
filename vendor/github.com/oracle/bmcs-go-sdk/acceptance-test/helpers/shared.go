@@ -1,14 +1,12 @@
 // Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
 
-// +build recording !recording
-
 package helpers
 
 import (
 	"log"
 	"time"
 
-	bm "github.com/MustWin/baremetal-sdk-go"
+	bm "github.com/oracle/bmcs-go-sdk"
 )
 
 func Sleep(d time.Duration) {
@@ -17,8 +15,18 @@ func Sleep(d time.Duration) {
 	}
 }
 
-func CreateVCN(client *TestClient, cidr, compartmentID string) (string, error) {
+func CreateVCNWithOptions(client *TestClient, cidr, compartmentID string, opts *bm.CreateVcnOptions) (string, error) {
 	log.Printf("[DEBUG] Create VCN with CIDR:%v", cidr)
+	if opts == nil {
+		opts = &bm.CreateVcnOptions{}
+	}
+	vcn, err := client.CreateVirtualNetwork(cidr, compartmentID, opts)
+	return resourceApply(getCreateFn(err, vcn, bm.ResourceAvailable, func() (interface{}, error) {
+		return client.GetVirtualNetwork(vcn.ID)
+	}))
+}
+
+func CreateVCN(client *TestClient, cidr, compartmentID string) (string, error) {
 	unique := RandomText(8)
 	displayName := "vcn_" + unique
 	retryToken := "retry_token_" + unique
@@ -28,10 +36,7 @@ func CreateVCN(client *TestClient, cidr, compartmentID string) (string, error) {
 			RetryTokenOptions:  bm.RetryTokenOptions{RetryToken: retryToken},
 		},
 	}
-	vcn, err := client.CreateVirtualNetwork(cidr, compartmentID, opts)
-	return resourceApply(getCreateFn(err, vcn, bm.ResourceAvailable, func() (interface{}, error) {
-		return client.GetVirtualNetwork(vcn.ID)
-	}))
+	return CreateVCNWithOptions(client, cidr, compartmentID, opts)
 }
 
 func DeleteVCN(client *TestClient, id string) (string, error) {
@@ -44,10 +49,12 @@ func DeleteVCN(client *TestClient, id string) (string, error) {
 	}))
 }
 
-func CreateSubnetWithCIDR(client *TestClient, compartmentID, availabilityDomainName, vcnID, cidr string) (string, error) {
+func CreateSubnetWithOptions(client *TestClient, compartmentID, availabilityDomainName, vcnID, cidr string, opts *bm.CreateSubnetOptions) (string, error) {
 	log.Printf("[DEBUG] Create Subnet with CIDR:%v", cidr)
-	subOpts := &bm.CreateSubnetOptions{}
-	subnet, err := client.CreateSubnet(availabilityDomainName, cidr, compartmentID, vcnID, subOpts)
+	if opts == nil {
+		opts = &bm.CreateSubnetOptions{}
+	}
+	subnet, err := client.CreateSubnet(availabilityDomainName, cidr, compartmentID, vcnID, opts)
 	return resourceApply(getCreateFn(err, subnet, bm.ResourceAvailable, func() (interface{}, error) {
 		log.Printf("[DEBUG] Get Subnet.State for Create")
 		return client.GetSubnet(subnet.ID)
@@ -56,7 +63,7 @@ func CreateSubnetWithCIDR(client *TestClient, compartmentID, availabilityDomainN
 
 func CreateSubnet(client *TestClient, compartmentID, availabilityDomainName, vcnID string) (string, error) {
 	cidr := "172.16.0.0/16"
-	return CreateSubnetWithCIDR(client, compartmentID, availabilityDomainName, vcnID, cidr)
+	return CreateSubnetWithOptions(client, compartmentID, availabilityDomainName, vcnID, cidr, nil)
 }
 
 func DeleteSubnet(client *TestClient, subnetID string) (string, error) {
@@ -67,7 +74,7 @@ func DeleteSubnet(client *TestClient, subnetID string) (string, error) {
 		log.Printf("[DEBUG] Get Subnet.State for Delete")
 		s, err := client.GetSubnet(subnetID)
 		if err == nil {
-			log.Printf("Subnet state: %v", s.State)
+			log.Printf("[WARN] Subnet state: %v", s.State)
 		}
 		return s, err
 	}))

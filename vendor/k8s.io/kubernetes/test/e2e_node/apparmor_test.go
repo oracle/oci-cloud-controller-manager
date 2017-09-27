@@ -182,7 +182,7 @@ func createPodWithAppArmor(f *framework.Framework, profile string) *v1.Pod {
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{{
 				Name:    "test",
-				Image:   "gcr.io/google_containers/busybox:1.24",
+				Image:   busyboxImage,
 				Command: []string{"touch", "foo"},
 			}},
 			RestartPolicy: v1.RestartPolicyNever,
@@ -200,7 +200,7 @@ func expectSoftRejection(status v1.PodStatus) {
 }
 
 func isAppArmorEnabled() bool {
-	// TODO(timstclair): Pass this through the image setup rather than hardcoding.
+	// TODO(tallclair): Pass this through the image setup rather than hardcoding.
 	if strings.Contains(framework.TestContext.NodeName, "-gci-dev-") {
 		gciVersionRe := regexp.MustCompile("-gci-dev-([0-9]+)-")
 		matches := gciVersionRe.FindStringSubmatch(framework.TestContext.NodeName)

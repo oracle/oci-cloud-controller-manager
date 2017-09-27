@@ -17,9 +17,7 @@ type DatabaseTestSuite struct {
 }
 
 func (s *DatabaseTestSuite) SetupTest() {
-	s.requestor = new(mockRequestor)
-	s.requestor.Client = createClientForTest()
-	s.requestor.databaseApi = s.requestor
+	s.requestor = newMockRequestor(s)
 }
 
 func (s *DatabaseTestSuite) testDeleteResource(name resourceName, id string, funcUnderTest func(string, *IfMatchOptions) error) {

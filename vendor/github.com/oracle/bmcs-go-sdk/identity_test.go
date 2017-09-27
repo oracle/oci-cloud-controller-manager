@@ -17,9 +17,7 @@ type IdentityTestSuite struct {
 }
 
 func (s *IdentityTestSuite) SetupTest() {
-	s.requestor = new(mockRequestor)
-	s.requestor.Client = createClientForTest()
-	s.requestor.identityApi = s.requestor
+	s.requestor = newMockRequestor(s)
 }
 
 func (s *IdentityTestSuite) testDeleteResource(name resourceName, id string, funcUnderTest func(string, *IfMatchOptions) error) {

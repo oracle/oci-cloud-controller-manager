@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/docker/distribution/registry/client"
+	"github.com/docker/distribution/registry/client/auth/challenge"
 	"github.com/docker/distribution/registry/client/transport"
 )
 
@@ -58,7 +58,7 @@ type CredentialStore interface {
 // schemes. The handlers are tried in order, the higher priority authentication
 // methods should be first. The challengeMap holds a list of challenges for
 // a given root API endpoint (for example "https://registry-1.docker.io/v2/").
-func NewAuthorizer(manager ChallengeManager, handlers ...AuthenticationHandler) transport.RequestModifier {
+func NewAuthorizer(manager challenge.Manager, handlers ...AuthenticationHandler) transport.RequestModifier {
 	return &endpointAuthorizer{
 		challenges: manager,
 		handlers:   handlers,
@@ -66,21 +66,25 @@ func NewAuthorizer(manager ChallengeManager, handlers ...AuthenticationHandler) 
 }
 
 type endpointAuthorizer struct {
-	challenges ChallengeManager
+	challenges challenge.Manager
 	handlers   []AuthenticationHandler
 	transport  http.RoundTripper
 }
 
 func (ea *endpointAuthorizer) ModifyRequest(req *http.Request) error {
-	v2Root := strings.Index(req.URL.Path, "/v2/")
-	if v2Root == -1 {
+	pingPath := req.URL.Path
+	if v2Root := strings.Index(req.URL.Path, "/v2/"); v2Root != -1 {
+		pingPath = pingPath[:v2Root+4]
+	} else if v1Root := strings.Index(req.URL.Path, "/v1/"); v1Root != -1 {
+		pingPath = pingPath[:v1Root] + "/v2/"
+	} else {
 		return nil
 	}
 
 	ping := url.URL{
 		Host:   req.URL.Host,
 		Scheme: req.URL.Scheme,
-		Path:   req.URL.Path[:v2Root+4],
+		Path:   pingPath,
 	}
 
 	challenges, err := ea.challenges.GetChallenges(ping)
@@ -90,11 +94,11 @@ func (ea *endpointAuthorizer) ModifyRequest(req *http.Request) error {
 
 	if len(challenges) > 0 {
 		for _, handler := range ea.handlers {
-			for _, challenge := range challenges {
-				if challenge.Scheme != handler.Scheme() {
+			for _, c := range challenges {
+				if c.Scheme != handler.Scheme() {
 					continue
 				}
-				if err := handler.AuthorizeRequest(req, challenge.Parameters); err != nil {
+				if err := handler.AuthorizeRequest(req, c.Parameters); err != nil {
 					return err
 				}
 			}
@@ -130,6 +134,8 @@ type tokenHandler struct {
 	tokenLock       sync.Mutex
 	tokenCache      string
 	tokenExpiration time.Time
+
+	logger Logger
 }
 
 // Scope is a type which is serializable to a string
@@ -142,13 +148,45 @@ type Scope interface {
 // to a repository.
 type RepositoryScope struct {
 	Repository string
+	Class      string
 	Actions    []string
 }
 
 // String returns the string representation of the repository
 // using the scope grammar
 func (rs RepositoryScope) String() string {
-	return fmt.Sprintf("repository:%s:%s", rs.Repository, strings.Join(rs.Actions, ","))
+	repoType := "repository"
+	// Keep existing format for image class to maintain backwards compatibility
+	// with authorization servers which do not support the expanded grammar.
+	if rs.Class != "" && rs.Class != "image" {
+		repoType = fmt.Sprintf("%s(%s)", repoType, rs.Class)
+	}
+	return fmt.Sprintf("%s:%s:%s", repoType, rs.Repository, strings.Join(rs.Actions, ","))
+}
+
+// RegistryScope represents a token scope for access
+// to resources in the registry.
+type RegistryScope struct {
+	Name    string
+	Actions []string
+}
+
+// String returns the string representation of the user
+// using the scope grammar
+func (rs RegistryScope) String() string {
+	return fmt.Sprintf("registry:%s:%s", rs.Name, strings.Join(rs.Actions, ","))
+}
+
+// Logger defines the injectable logging interface, used on TokenHandlers.
+type Logger interface {
+	Debugf(format string, args ...interface{})
+}
+
+func logDebugf(logger Logger, format string, args ...interface{}) {
+	if logger == nil {
+		return
+	}
+	logger.Debugf(format, args...)
 }
 
 // TokenHandlerOptions is used to configure a new token handler
@@ -160,6 +198,7 @@ type TokenHandlerOptions struct {
 	ForceOAuth    bool
 	ClientID      string
 	Scopes        []Scope
+	Logger        Logger
 }
 
 // An implementation of clock for providing real time data.
@@ -195,6 +234,7 @@ func NewTokenHandlerWithOptions(options TokenHandlerOptions) AuthenticationHandl
 		clientID:      options.ClientID,
 		scopes:        options.Scopes,
 		clock:         realClock{},
+		logger:        options.Logger,
 	}
 
 	return handler
@@ -239,6 +279,9 @@ func (th *tokenHandler) getToken(params map[string]string, additionalScopes ...s
 	}
 	var addedScopes bool
 	for _, scope := range additionalScopes {
+		if hasScope(scopes, scope) {
+			continue
+		}
 		scopes = append(scopes, scope)
 		addedScopes = true
 	}
@@ -260,6 +303,15 @@ func (th *tokenHandler) getToken(params map[string]string, additionalScopes ...s
 	}
 
 	return th.tokenCache, nil
+}
+
+func hasScope(scopes []string, scope string) bool {
+	for _, s := range scopes {
+		if s == scope {
+			return true
+		}
+	}
+	return false
 }
 
 type postTokenResponse struct {
@@ -323,7 +375,7 @@ func (th *tokenHandler) fetchTokenWithOAuth(realm *url.URL, refreshToken, servic
 	if tr.ExpiresIn < minimumTokenLifetimeSeconds {
 		// The default/minimum lifetime.
 		tr.ExpiresIn = minimumTokenLifetimeSeconds
-		logrus.Debugf("Increasing token expiration to: %d seconds", tr.ExpiresIn)
+		logDebugf(th.logger, "Increasing token expiration to: %d seconds", tr.ExpiresIn)
 	}
 
 	if tr.IssuedAt.IsZero() {
@@ -414,7 +466,7 @@ func (th *tokenHandler) fetchTokenWithBasicAuth(realm *url.URL, service string, 
 	if tr.ExpiresIn < minimumTokenLifetimeSeconds {
 		// The default/minimum lifetime.
 		tr.ExpiresIn = minimumTokenLifetimeSeconds
-		logrus.Debugf("Increasing token expiration to: %d seconds", tr.ExpiresIn)
+		logDebugf(th.logger, "Increasing token expiration to: %d seconds", tr.ExpiresIn)
 	}
 
 	if tr.IssuedAt.IsZero() {

@@ -19,6 +19,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
@@ -28,12 +29,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
-	"k8s.io/client-go/tools/remotecommand"
+	"k8s.io/client-go/transport/spdy"
 	"k8s.io/kubernetes/pkg/api"
 	coreclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
-	"k8s.io/kubernetes/pkg/util/i18n"
+	"k8s.io/kubernetes/pkg/kubectl/util/i18n"
 )
 
 // PortForwardOptions contains all the options for running the port-forward cli command.
@@ -58,10 +59,7 @@ var (
 		kubectl port-forward mypod 8888:5000
 
 		# Listen on a random port locally, forwarding to 5000 in the pod
-		kubectl port-forward mypod :5000
-
-		# Listen on a random port locally, forwarding to 5000 in the pod
-		kubectl port-forward mypod 0:5000`))
+		kubectl port-forward mypod :5000`))
 )
 
 func NewCmdPortForward(f cmdutil.Factory, cmdOut, cmdErr io.Writer) *cobra.Command {
@@ -102,10 +100,11 @@ type defaultPortForwarder struct {
 }
 
 func (f *defaultPortForwarder) ForwardPorts(method string, url *url.URL, opts PortForwardOptions) error {
-	dialer, err := remotecommand.NewExecutor(opts.Config, method, url)
+	transport, upgrader, err := spdy.RoundTripperFor(opts.Config)
 	if err != nil {
 		return err
 	}
+	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, method, url)
 	fw, err := portforward.New(dialer, opts.Ports, opts.StopChannel, opts.ReadyChannel, f.cmdOut, f.cmdErr)
 	if err != nil {
 		return err

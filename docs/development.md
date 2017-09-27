@@ -1,7 +1,7 @@
 # Development documentation
 
-The CCM has a build system based on `make` and [Docker][1]. Dependencies are
-managed using [Glide][2].
+The CCM has a simple build system based on `make`. Dependencies are managed
+using [`dep`][2].
 
 ## Running locally
  1. Ensure you have the aforementioned development tools installed as well as
@@ -27,7 +27,20 @@ managed using [Glide][2].
 
  4. Execute `make run-dev`
 
+## DaemonSet manifests
+
+You can template `manifests/oci-cloud-controller-manager.yaml` using
+`make manifests`. This enables running specific versions of the CCM with the
+proviso that the version has been pushed to Github, the CI pipeline has
+passed, and `HEAD` is pointed to the commit in question. You can then execute
+the following to run the CCM as a DaemonSet (RBAC optional):
+
+```
+$ kubectl apply -f dist/oci-cloud-controller-manager.yaml
+$ kubectl apply -f dist/oci-cloud-controller-manager-rbac.yaml
+```
+
 [1]: https://www.docker.com/
-[2]: https://glide.sh/
+[2]: https://github.com/golang/dep
 [3]: https://golang.org/
 [4]: https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/

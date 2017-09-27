@@ -33,7 +33,26 @@ func (mr *mockRequestor) getRequest(reqOpts request) (resp *response, e error) {
 
 }
 
+func (mr *mockRequestor) postRequest(reqOpts request) (resp *response, e error) {
+	args := mr.Called(reqOpts)
+	return args.Get(0).(*response), args.Error(1)
+
+}
+
 func (mr *mockRequestor) deleteRequest(reqOpts request) (e error) {
 	args := mr.Called(reqOpts)
 	return args.Error(0)
+}
+
+func newMockRequestor(s interface{}) (m *mockRequestor) {
+	m = new(mockRequestor)
+
+	m.Client = createClientForTest()
+	m.coreApi = m
+	m.objectStorageApi = m
+	m.databaseApi = m
+	m.identityApi = m
+	m.loadBalancerApi = m
+
+	return
 }

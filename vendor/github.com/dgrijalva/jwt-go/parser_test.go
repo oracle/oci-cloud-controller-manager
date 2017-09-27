@@ -172,15 +172,6 @@ var jwtTestData = []struct {
 		jwt.ValidationErrorNotValidYet | jwt.ValidationErrorExpired,
 		&jwt.Parser{UseJSONNumber: true},
 	},
-	{
-		"SkipClaimsValidation during token parsing",
-		"", // autogen
-		defaultKeyFunc,
-		jwt.MapClaims{"foo": "bar", "nbf": json.Number(fmt.Sprintf("%v", time.Now().Unix()+100))},
-		true,
-		0,
-		&jwt.Parser{UseJSONNumber: true, SkipClaimsValidation: true},
-	},
 }
 
 func TestParser_Parse(t *testing.T) {

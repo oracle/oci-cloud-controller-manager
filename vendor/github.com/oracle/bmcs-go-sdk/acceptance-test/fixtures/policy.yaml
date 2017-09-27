@@ -1,0 +1,647 @@
+---
+version: 1
+rwmutex: {}
+interactions:
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="ELdoUn/r1Vg5Oij7sJdFwwja4GX4DYF9m8AAHi0x44jRnS4Vtc2MPvyAV3AQgguB4Ymd/mpS7C623GJw875y406++plOQcynlnP2S7FioSg/QQzwan1nYHwgD3mkWOIbzBT4PaxYu3Gk/hkH6vmvjw0Ee5ZM1CSwmC0Z1nLMQQJht5B1U/bsjpHsxaqaxnLHmgeegrYzpuQRRU0wAzD17FYdbcesvy4Se65RYu4Wd/p2OVVIYERxinaxpMQ6mLyUyBTbHYgWzIsdkILtAFefsvP9KMhgj/63ENGuqRY8Yp22AMshWHzXnCYIuklCdVRFfZwxNlx+rExVKFiXeosLLQ=="
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Jul 2017 20:48:25 GMT
+      Request-Number:
+      - "0"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://identity.us-phoenix-1.oraclecloud.com/20160918/compartments?compartmentId=ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta&limit=1
+    method: GET
+  response:
+    body: |-
+      [ {
+        "id" : "ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka",
+        "compartmentId" : "ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta",
+        "name" : "core-test-compartment",
+        "description" : "new desc",
+        "lifecycleState" : "ACTIVE",
+        "timeCreated" : "2017-02-03T10:12:54.513Z"
+      } ]
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - "348"
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Jul 2017 20:48:25 GMT
+      Opc-Limit:
+      - "1"
+      Opc-Next-Page:
+      - AAAAAAAAAAEVrX_83lqrLRJgMOmaQj2Eerxy5_mnJMTuDCwPyPeoi7BvJttdtJmv8aRKUUxxznZM9rDj44j-AwTl2keP3FTPaWQUGiQMrBnxJ78ds023gztClxjIAqNHtza6AIEANad1ZGD4KlbS-_3E7HaW7kOy6MCs_snFTXmeoB786uxRO_NCXTU1MvM9VaU1G_a39LFDILwcCICOFTUYGux1ik8u-os8otjYHULWtXO-z8dkiHZ6Aj_j8AHUb2YEH0JGZu7I4HGzzomFQSuBeiBbkXknk5AWY3EqGFzuvh2R_xuy9p5RT_6yt8H3L_4xN6NFaHZr-FloSZUiA9tDFtKlJJGpJnFcABrfh9L4SsUM4m47O-fnbpnESCCJSt76hvziXZnnd5GaIbMhvOe19Mnpzbx9SumZGsR0NDNCmNz_HaB8_53bStSwBzK5Pf6XC73Ot_lWUwQxdJaqLHClEFQxVTh_2WbJ4PqYfLbYbiO5vpvti0GjtRj0l3ArXZPSY2Wehz_efxCjrlcYvrKrM9x8PxA4tFTEm-PyRR7v3w2Y1hi0HbnkvGD9zEuSk9JUQoEeCF8p7K8Y3ILCmWit2g==
+      Opc-Request-Id:
+      - /7CCBEF7836E349A2A8C999AECDF9D8DD/10941B4F54A54E24A7A16A02D489DB20
+    status: 200 OK
+    code: 200
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="Sw1t3HCqabrDvMv9A5iStUgLhT1PjmUGNaIbJ3JQ+jmE1zBsJvU+YsvOPvDFcac062N6BLgh6NWPsOHcNWbGOyzrUsSsQ1QiTjY/DnleJq3eA2R+VfcSBod19YWEgrKj2A4ImVoD7wH6o5wYgmXvcJFZ8WnXyfp8yVjmG96YFRgL0+mzj5LkULLXC/pPwpHaaBnjclGSGuT0/FWSnWlQsYXIMF2z22BQlnaQi0AhstMc087nq7ivqAF1JbAPySnkyivpxk7+TDUFJCIeQ5bficDGPoIvfCrwzqpYGb3ZBUQu/sfGTUwRs8EBJZQCn6aw0MdU3rAdrDmF73o1Jn0aZQ=="
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Jul 2017 20:48:25 GMT
+      Request-Number:
+      - "1"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://identity.us-phoenix-1.oraclecloud.com/20160918/compartments/ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka
+    method: GET
+  response:
+    body: |-
+      {
+        "id" : "ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka",
+        "compartmentId" : "ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta",
+        "name" : "core-test-compartment",
+        "description" : "new desc",
+        "lifecycleState" : "ACTIVE",
+        "timeCreated" : "2017-02-03T10:12:54.513Z"
+      }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - "344"
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Jul 2017 20:48:25 GMT
+      Etag:
+      - 681c009218af804f7abb6b09badd0b1d30df4c99
+      Opc-Request-Id:
+      - /89BB3C09A40A43CD873E3DFF4D759E86/20DB5FC528D8482F82D433C0B40E1CFC
+    status: 200 OK
+    code: 200
+- request:
+    body: '{"compartmentId":"ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta","description":"test
+      group","name":"test_group_WeJ2q3fL"}'
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target) content-length content-type x-content-sha256",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="qOBon4sRXqCzvGe1VOcY50h55C7/U7msXmaGtj+VuORGcNWQXjVzMpui65HhE+6vnhf7d5J3LxTPmBncOsBCxg4IXI9vV5Qhc5ixawGhhilyuKFB/uolVM24d1Fojb9qeR7qmCg4FTLuQd4REmQJ8OTBn1rxrZiQVoVgf5jftKN/1d5zxany/hgG+svnq9DEV1050HZlbXh3TX9CCDhAzDF2jilHH3JIf+SNJrnhK1QTCB+oz1ru77lSLiZIk//ORAGXh5ub5PL9c+p0BmZ8XgQT4Stx6T2LVMD6YML1AtIWuQZM2qkXXVmsO0aXg0ZWT74gPfmWnGx1EZfoiv9X3g=="
+      Content-Length:
+      - "155"
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Jul 2017 20:48:25 GMT
+      Opc-Retry-Token:
+      - retry_token_WeJ2q3fL
+      Request-Number:
+      - "2"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+      X-Content-Sha256:
+      - BIv5k5HXansfyPJm9U2PAur1ilf6cjbFY5lZi9t5HXc=
+      opc-retry-token:
+      - EvIBJ8Zkf3fFdFDS5xGJe19u0CRe1Y
+    url: https://identity.us-phoenix-1.oraclecloud.com/20160918/groups
+    method: POST
+  response:
+    body: |-
+      {
+        "id" : "ocid1.group.oc1..aaaaaaaaepo4kodjgq3bphtwbtu2izkcnlxxozhrielkwimicakf5kx3gjma",
+        "compartmentId" : "ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta",
+        "name" : "test_group_WeJ2q3fL",
+        "description" : "test group",
+        "lifecycleState" : "ACTIVE",
+        "timeCreated" : "2017-07-26T20:48:25.664Z"
+      }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - "338"
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Jul 2017 20:48:25 GMT
+      Etag:
+      - b9fa8c9df7c4faf1b39200685d9eb12ea42d9168
+      Location:
+      - https://identity.us-phoenix-1.oraclecloud.com/20160918/groups/ocid1.group.oc1..aaaaaaaaepo4kodjgq3bphtwbtu2izkcnlxxozhrielkwimicakf5kx3gjma
+      Opc-Request-Id:
+      - /8C2212A4E989441CB128FD9AA7B3B742/5D39E58CDC2E4D5988531B452918965D
+    status: 200 OK
+    code: 200
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="RtnAI2KBDkuHsP+tfl14gg5wjVhthrvX/qMpdk59tBS9QCZgI693Ar/BRn22l3DNvxs5sDXvP2CEbID2tjgrmZtAGgyq5WIfG/seU8VD684DRwrZPwuhie47EX2vGcehfXh8XFV9lGUVABTXq2lzcfG0qiQXNmwlztRYsq1rXJezl9LviBBA0+r5i3MkG8mZE+y7BnSH67pyqs5DD1IOPPRpu/SANPEeTmSR7pSGiFtvkpXhMEv0O2uW8FuE/DGSffLvnEyI9cKZpJozw6r7gvRcXAs7FDYF6QPrKq37ydRPlQucao/MGF0I5Ow+o49EDn1VZoZdrpDEuUHAHNn24Q=="
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Jul 2017 20:48:26 GMT
+      Request-Number:
+      - "3"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://identity.us-phoenix-1.oraclecloud.com/20160918/groups/ocid1.group.oc1..aaaaaaaaepo4kodjgq3bphtwbtu2izkcnlxxozhrielkwimicakf5kx3gjma
+    method: GET
+  response:
+    body: |-
+      {
+        "id" : "ocid1.group.oc1..aaaaaaaaepo4kodjgq3bphtwbtu2izkcnlxxozhrielkwimicakf5kx3gjma",
+        "compartmentId" : "ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta",
+        "name" : "test_group_WeJ2q3fL",
+        "description" : "test group",
+        "lifecycleState" : "ACTIVE",
+        "timeCreated" : "2017-07-26T20:48:25.664Z"
+      }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - "338"
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Jul 2017 20:48:26 GMT
+      Etag:
+      - b9fa8c9df7c4faf1b39200685d9eb12ea42d9168
+      Opc-Request-Id:
+      - /3433FB632C5C4EAE8A3336920835DE52/E9F02A3CFB3B47649B06FB603DCE91D1
+    status: 200 OK
+    code: 200
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="RtnAI2KBDkuHsP+tfl14gg5wjVhthrvX/qMpdk59tBS9QCZgI693Ar/BRn22l3DNvxs5sDXvP2CEbID2tjgrmZtAGgyq5WIfG/seU8VD684DRwrZPwuhie47EX2vGcehfXh8XFV9lGUVABTXq2lzcfG0qiQXNmwlztRYsq1rXJezl9LviBBA0+r5i3MkG8mZE+y7BnSH67pyqs5DD1IOPPRpu/SANPEeTmSR7pSGiFtvkpXhMEv0O2uW8FuE/DGSffLvnEyI9cKZpJozw6r7gvRcXAs7FDYF6QPrKq37ydRPlQucao/MGF0I5Ow+o49EDn1VZoZdrpDEuUHAHNn24Q=="
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Jul 2017 20:48:26 GMT
+      Request-Number:
+      - "4"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://identity.us-phoenix-1.oraclecloud.com/20160918/groups/ocid1.group.oc1..aaaaaaaaepo4kodjgq3bphtwbtu2izkcnlxxozhrielkwimicakf5kx3gjma
+    method: GET
+  response:
+    body: |-
+      {
+        "id" : "ocid1.group.oc1..aaaaaaaaepo4kodjgq3bphtwbtu2izkcnlxxozhrielkwimicakf5kx3gjma",
+        "compartmentId" : "ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta",
+        "name" : "test_group_WeJ2q3fL",
+        "description" : "test group",
+        "lifecycleState" : "ACTIVE",
+        "timeCreated" : "2017-07-26T20:48:25.664Z"
+      }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - "338"
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Jul 2017 20:48:26 GMT
+      Etag:
+      - b9fa8c9df7c4faf1b39200685d9eb12ea42d9168
+      Opc-Request-Id:
+      - /2C7D2B2B22CE433A8490DE0EBB2B4031/C45FD1333C2E476DA6DC7803E7D2CAF4
+    status: 200 OK
+    code: 200
+- request:
+    body: '{"compartmentId":"ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka","description":"desc","name":"test_policy_AeeeiaYj","statements":["Allow
+      group test_group_WeJ2q3fL to manage users in compartment core-test-compartment"]}'
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target) content-length content-type x-content-sha256",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="FjfegTTnLvVAWXeCpPyGHdXOZZTqVIezMuMuDBpSH8SZeqpOdBE5Lz3T0Ut/6v0o9roomR7/nKRhnz/AOeUKvCayjhDkbstJdVfvy5H5oFYNShedYERH40A5oweUhYv8lgky47tqR6fUIHyoe878em3LW/SQ7j6JjuQUJcE+fmy5T/uTglVVX26yqQRZmuey0YGXMx/q9OI9KTNc21t87xVc20wrUvCv3X6LPV/rDWycB9Ncj8LJtiMJawREH+LFGKORvwSsSGuvI7P8P5mpmkxVjFllukBGCgnjrfrTwMWQkh3ckqNDqArtEssVuRe5Cs5eB1eS5X7/0KnOZgIwsQ=="
+      Content-Length:
+      - "256"
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Jul 2017 20:48:26 GMT
+      Opc-Retry-Token:
+      - retry_tokey_AeeeiaYj
+      Request-Number:
+      - "5"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+      X-Content-Sha256:
+      - GP76l0d38Kd4UYQ1nBa7uq5Wsga+uGpxFETroKdhR6I=
+      opc-retry-token:
+      - kKTBtm8pLDGa6FQDowfFxkQ6LE16Jf
+    url: https://identity.us-phoenix-1.oraclecloud.com/20160918/policies
+    method: POST
+  response:
+    body: |-
+      {
+        "statements" : [ "Allow group test_group_WeJ2q3fL to manage users in compartment core-test-compartment" ],
+        "id" : "ocid1.policy.oc1..aaaaaaaapesus5sktqk34v23rqanmnctnqrupvvqahfy7gmzwn5xvrefzhpa",
+        "compartmentId" : "ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka",
+        "name" : "test_policy_AeeeiaYj",
+        "description" : "desc",
+        "lifecycleState" : "ACTIVE",
+        "timeCreated" : "2017-07-26T20:48:27.064Z"
+      }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - "447"
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Jul 2017 20:48:27 GMT
+      Etag:
+      - d2e4dbcc6cc81f4a62d290bca3a5ca35cac0e12f
+      Location:
+      - https://identity.us-phoenix-1.oraclecloud.com/20160918/policies/ocid1.policy.oc1..aaaaaaaapesus5sktqk34v23rqanmnctnqrupvvqahfy7gmzwn5xvrefzhpa
+      Opc-Request-Id:
+      - /30B8CB9324BF4CAF923B67A5706730CA/C40BEF35C26A40EA8B8ECF75E7B4545E
+    status: 200 OK
+    code: 200
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="DdFiDpCxJu36URY8j4ls8VFS+VTtiBHvnTBIuirOTzoa12DWSv0isqxqUywXN7QjWkjP2eD+M5xhqX7qB+irzD4IMAs6i/wC0ab7bnoZBCYsy7Ea3nYrsmKrVF4ZrEREa3BdhNgOmkh6dD/lBblFV/5uEjP1FLM4Z8st3dmSqls2Nz/7gQUq1e8KWvKG6TclA3OS1GzGoRj6B4urXafA64+EQI5LQjPg9qAiPT6G10ExcGMxiVmcTjhlhmurTOnSqkrR8frm+1jpmRMZNH9yEscGovn9pwYuwNTt7e6YKT3/BNEHHzEV3ZHZJTXemReYucoT/Zrt+73nBE51TLWf+Q=="
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Jul 2017 20:48:27 GMT
+      Request-Number:
+      - "6"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://identity.us-phoenix-1.oraclecloud.com/20160918/policies/ocid1.policy.oc1..aaaaaaaapesus5sktqk34v23rqanmnctnqrupvvqahfy7gmzwn5xvrefzhpa
+    method: GET
+  response:
+    body: |-
+      {
+        "statements" : [ "Allow group test_group_WeJ2q3fL to manage users in compartment core-test-compartment" ],
+        "id" : "ocid1.policy.oc1..aaaaaaaapesus5sktqk34v23rqanmnctnqrupvvqahfy7gmzwn5xvrefzhpa",
+        "compartmentId" : "ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka",
+        "name" : "test_policy_AeeeiaYj",
+        "description" : "desc",
+        "lifecycleState" : "ACTIVE",
+        "timeCreated" : "2017-07-26T20:48:27.064Z"
+      }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - "447"
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Jul 2017 20:48:27 GMT
+      Etag:
+      - d2e4dbcc6cc81f4a62d290bca3a5ca35cac0e12f
+      Opc-Request-Id:
+      - /DA1660161F9B4732B39E52DCEA5A46DF/5BA7486B741846A283658E5699FB231B
+    status: 200 OK
+    code: 200
+- request:
+    body: '{"compartmentId":"ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka","description":"desc","name":"test_policy_nuB6D_kS","statements":["Allow
+      group test_group_WeJ2q3fL to inspect all-resources in compartment core-test-compartment"]}'
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target) content-length content-type x-content-sha256",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="WQrA06745iS7fCMeFHJUDfomndYh4XqRzUSb0cml7CtIk3J50HfYF01cfjnRobwDwAjx8LRFQB2PwKbJWoMIrx4uDLumM+W86j1PubU557tEZVx3WGXfWKQoKm9BQtISs0mcLSfjkVv54GAcwvMS+R/rQlnCkupmXjzAFFAgjAOztWeECIBK7YzkNPWWk0HST9xPXb94N7kfiftWqHMvfoJoM6dk1WynYXaSfqtokebJ3avdBF/SR6LH+nKorDf03z5H+1CXjqRMzwMq5jaBpppmpVHAA2vg/jn9ubfSzBkfzwzuDyzO3Vqi7i9aW5e+XBDbPbjju+LTxzXCrVuj4w=="
+      Content-Length:
+      - "265"
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Jul 2017 20:48:27 GMT
+      Opc-Retry-Token:
+      - retry_tokey_nuB6D_kS
+      Request-Number:
+      - "7"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+      X-Content-Sha256:
+      - IvzC0vrjgnuoCcMZvLxoKRqbTt+ib2X2kyYd5jQuVSo=
+      opc-retry-token:
+      - mWLLTM6w6pVMIVDtdFMJeG1fBtlbtY
+    url: https://identity.us-phoenix-1.oraclecloud.com/20160918/policies
+    method: POST
+  response:
+    body: |-
+      {
+        "statements" : [ "Allow group test_group_WeJ2q3fL to inspect all-resources in compartment core-test-compartment" ],
+        "id" : "ocid1.policy.oc1..aaaaaaaa6wqm4dvpgezqke43h42motyywtwssjdvj227glk75t5gvcoux27a",
+        "compartmentId" : "ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka",
+        "name" : "test_policy_nuB6D_kS",
+        "description" : "desc",
+        "lifecycleState" : "ACTIVE",
+        "timeCreated" : "2017-07-26T20:48:27.685Z"
+      }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - "456"
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Jul 2017 20:48:27 GMT
+      Etag:
+      - 1518ef48e5ab6b109a75a03384912282f1074f02
+      Location:
+      - https://identity.us-phoenix-1.oraclecloud.com/20160918/policies/ocid1.policy.oc1..aaaaaaaa6wqm4dvpgezqke43h42motyywtwssjdvj227glk75t5gvcoux27a
+      Opc-Request-Id:
+      - /4F69CF284CCF48D6A7FA398206F0BE4E/877BAE61EC12461F8F17451151F29E7F
+    status: 200 OK
+    code: 200
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="Cv2WAfDegh7p8lWN4tUM9w2KxQIYwwD1ETweS8u6qzN0vSw4Jh+QUY2kY6+RZJ5npjZvzshGK+XmQ52X7Kr4prrCJnhyEVhGhUnqdSSnIidqyYA0lmw3Th/TZyjoZVvhRxhOitkvkkxK03SAmWceqXS526yGmgy72NuXxJ15FmBRqd8q4ikK3rJZLLlydbVgYgXP3yzeAeJZ+lrtsoEisRN4fRuKO7EJvpr6rSSEcX2z3qqiY0Kt3gJhP8aI0mP2qqKqARYW9Ht+CXE8h++fe08epCmFXyQDHnTn86410hE74jGINRlegf00Q1cTjIiNOksTcPQ9xNamwIKNqZ4r+g=="
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Jul 2017 20:48:27 GMT
+      Request-Number:
+      - "8"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://identity.us-phoenix-1.oraclecloud.com/20160918/policies/ocid1.policy.oc1..aaaaaaaa6wqm4dvpgezqke43h42motyywtwssjdvj227glk75t5gvcoux27a
+    method: GET
+  response:
+    body: |-
+      {
+        "statements" : [ "Allow group test_group_WeJ2q3fL to inspect all-resources in compartment core-test-compartment" ],
+        "id" : "ocid1.policy.oc1..aaaaaaaa6wqm4dvpgezqke43h42motyywtwssjdvj227glk75t5gvcoux27a",
+        "compartmentId" : "ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka",
+        "name" : "test_policy_nuB6D_kS",
+        "description" : "desc",
+        "lifecycleState" : "ACTIVE",
+        "timeCreated" : "2017-07-26T20:48:27.685Z"
+      }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - "456"
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Jul 2017 20:48:27 GMT
+      Etag:
+      - 1518ef48e5ab6b109a75a03384912282f1074f02
+      Opc-Request-Id:
+      - /83D9D186CA5548BC916C440211B835EC/39DFE11DB8894D05BD2505FF24A7E112
+    status: 200 OK
+    code: 200
+- request:
+    body: '{"description":"new desc","statements":["Allow group test_group_WeJ2q3fL
+      to manage users in compartment core-test-compartment","Allow group test_group_WeJ2q3fL
+      to inspect all-resources in compartment core-test-compartment"]}'
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target) content-length content-type x-content-sha256",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="lzd0RIdkoup8X/scDiuuss0RDVSu47aKP+0C42PxXyp/YAkQqwgQMk9dj/gGHC/yovT5OVbYL796rKSa56gBUsjvmrafLpM+sQsHupCqPTrKq9wfz7o/FbfCaMYWnxYuAeo8sqsUQ2uU+w5nziN3QzLQlh/hpO2abzobiG6xEYYr+QPx3hvlItm8UfKmNCJclnwYHWKUnCyE7+HS99c7nNtCPV825GBbTUcVyFTmXtzcIQKSLGNC6+Vyz6nGcb+6q04pFcoygj/m83a99azBSX/QljhC10tCaxgsHfdYzw7TXo7OMlxUOFD/259PzVrmfumQg2SJLz9Xmhm7C6Ohgg=="
+      Content-Length:
+      - "224"
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Jul 2017 20:48:28 GMT
+      Request-Number:
+      - "9"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+      X-Content-Sha256:
+      - S1cIWiOYZgRE2GR+4sJXBVp4wOzw4dnGvwn0oHkz4QY=
+      opc-retry-token:
+      - z7tRFSCqrS87isg7W1PLgO4O2jsG8y
+    url: https://identity.us-phoenix-1.oraclecloud.com/20160918/policies/ocid1.policy.oc1..aaaaaaaapesus5sktqk34v23rqanmnctnqrupvvqahfy7gmzwn5xvrefzhpa
+    method: PUT
+  response:
+    body: |-
+      {
+        "statements" : [ "Allow group test_group_WeJ2q3fL to manage users in compartment core-test-compartment", "Allow group test_group_WeJ2q3fL to inspect all-resources in compartment core-test-compartment" ],
+        "id" : "ocid1.policy.oc1..aaaaaaaapesus5sktqk34v23rqanmnctnqrupvvqahfy7gmzwn5xvrefzhpa",
+        "compartmentId" : "ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka",
+        "name" : "test_policy_AeeeiaYj",
+        "description" : "new desc",
+        "lifecycleState" : "ACTIVE",
+        "timeCreated" : "2017-07-26T20:48:27.064Z"
+      }
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - "548"
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Jul 2017 20:48:28 GMT
+      Etag:
+      - ffed5304202028f2b9df951d87774e0d0da96906
+      Opc-Request-Id:
+      - /57BB00B6FC804BF6B0D834393529EA60/6747E93D8E5C4AA7B0C4C1C1EC03FB1C
+    status: 200 OK
+    code: 200
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="Kfsmu8xPZkZwYwZq8C0Z+im9lO3fgF2nn1DLbKDA4bhJtKuNUVPjr85L4FcSfoPVRsC14vxYySkRz52Si1P/9UZZMijuzVVka3xHCz1/6RDWH8l7iWAfHKcVCELHSIznp9y0IuAUIvFKNOrJrCvBZwPK8hLLQkizMoi0UIRRjm9TBEx/v7wXHBNId9UFWw8aIvRMgRdGZbce7I015Iibsv0L9dnRhy9HmqqD9Kg4KLRh9c5EcL1WnBGZ70LHkKxolWTgC9ZUvIiGvmZu9EM0zq0UgsocB6yPD8Fg163YfmbjmKNVPpcflo105PJlrSfNbUBWhdnyvHMcNmGzAonOFw=="
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Jul 2017 20:48:29 GMT
+      Request-Number:
+      - "10"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://identity.us-phoenix-1.oraclecloud.com/20160918/policies?compartmentId=ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka
+    method: GET
+  response:
+    body: |-
+      [ {
+        "statements" : [ "Allow group test_group_cgjEPNs- to manage users in compartment core-test-compartment", "Allow group test_group_cgjEPNs- to inspect all-resources in compartment core-test-compartment" ],
+        "id" : "ocid1.policy.oc1..aaaaaaaa6asr7xacduaqhxmexxhg6ujx5lwr2qojusgpeexviytkmvwszxfq",
+        "compartmentId" : "ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka",
+        "name" : "test_policy_7esJ-3Ei",
+        "description" : "new desc",
+        "lifecycleState" : "ACTIVE",
+        "timeCreated" : "2017-05-12T20:17:14.366Z"
+      }, {
+        "statements" : [ "Allow group test_group_WeJ2q3fL to manage users in compartment core-test-compartment", "Allow group test_group_WeJ2q3fL to inspect all-resources in compartment core-test-compartment" ],
+        "id" : "ocid1.policy.oc1..aaaaaaaapesus5sktqk34v23rqanmnctnqrupvvqahfy7gmzwn5xvrefzhpa",
+        "compartmentId" : "ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka",
+        "name" : "test_policy_AeeeiaYj",
+        "description" : "new desc",
+        "lifecycleState" : "ACTIVE",
+        "timeCreated" : "2017-07-26T20:48:27.064Z"
+      }, {
+        "statements" : [ "Allow group test_group_EZ3iOlbH to inspect all-resources in compartment core-test-compartment" ],
+        "id" : "ocid1.policy.oc1..aaaaaaaanrflezxc4mu4vbblkixcftn7at62fyn5zl6btdp5yx7q66vumw5a",
+        "compartmentId" : "ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka",
+        "name" : "test_policy_GC3Qsf4A",
+        "description" : "desc",
+        "lifecycleState" : "ACTIVE",
+        "timeCreated" : "2017-02-13T10:03:58.511Z"
+      }, {
+        "statements" : [ "Allow group test_group_WeJ2q3fL to inspect all-resources in compartment core-test-compartment" ],
+        "id" : "ocid1.policy.oc1..aaaaaaaa6wqm4dvpgezqke43h42motyywtwssjdvj227glk75t5gvcoux27a",
+        "compartmentId" : "ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka",
+        "name" : "test_policy_nuB6D_kS",
+        "description" : "desc",
+        "lifecycleState" : "ACTIVE",
+        "timeCreated" : "2017-07-26T20:48:27.685Z"
+      }, {
+        "statements" : [ "Allow group test_group_jhRDBNuo to inspect all-resources in compartment core-test-compartment" ],
+        "id" : "ocid1.policy.oc1..aaaaaaaadavhwmk75t5reuoa62tyys2mwvfy5ctcvp2g5xiobalzx5pkrdza",
+        "compartmentId" : "ocid1.compartment.oc1..aaaaaaaa7fmlfdrijyitx52cwpnmlwkw6c4d4marhemu4edybhqpngl2vnka",
+        "name" : "test_policy_xLjHb6cm",
+        "description" : "desc",
+        "lifecycleState" : "ACTIVE",
+        "timeCreated" : "2017-02-13T10:01:50.552Z"
+      } ]
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - "2476"
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Jul 2017 20:48:29 GMT
+      Opc-Limit:
+      - "25"
+      Opc-Next-Page:
+      - AAAAAAAAAAFuYpfmozMslpiVyycJ8lvPSl-n2EzpHaAfryHgJxzG_IswW4S3DllBTbUef1LIZiZWih13GgBfzCXUs_pRy0oDl9y_RAXs4-9nbaIAX1gRfPs1k-EChhLKB9tyuAXetkYZRk74ZahAlTAdRXzIrg4fl7PMzjLSAbPEpEkRzYkosLMqsPbqJI9jvKbpIwyneS0mX5iKw1sC4MB61KKNCfAQs5JBsW-FFpXaYRl0N7vbail3MkP44sljmrJZZTwV8AzT7Li-k-VQ8mj2PqppP2SYbUW1BraW0F9IHRsp24Va3RuLE1eLaefMM0FNxVVPEyZcTjQmD-t9ZyWgRxXjjIIS7IjTXEaPpwSO8MCx4gF0KGGpmQH9QtarwqsxGzVipTzRgQhHWlXLxE9Zj52jXdCggfRpNwD8cm1-uSr6At0JGYaUifYdWfbhV2NX2GBgYrDw8TayFzr0EznWErLkW6orVdp3_gmknEFDhZoFkC6joWmtTzr5RBCOPjIy_H97M01Kz4O9QvpwXz8XlKPIC3SHymrv0hSQ0ay5TVIuFciR2LmND51caWFalA5Xh-oFTKRtQDxsAqONW_0k4gk0sRxZ_J1vPmg=
+      Opc-Request-Id:
+      - /0C4BE53E951E4655BC397064644D1750/0F5622A9559D4A49908DDF39A1CE18AB
+    status: 200 OK
+    code: 200
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="E6syZXx7yhAVICl3ersFmgNcJrBEaai6N6NJt1owhrQHjnRluymVkk8ETJmVQQjeBuf9vK6y6Tg4aCbAERZELRvg0LQmtZ4kD5P4crl7YwNqe34guECPUUVJoSv9LMUzNREhkD8DCKr8Jz0A2GLj4aPA9+dqYCqgnwy0q35tPObkfNnX37AfZWiF9FUFbxuSA/CR0cVdNrr7ZyTj+UxGGTGJVe0X4zZBg1rjf+fL6YlC8PHL3kxRedfX/37tCSqgMCWiDASjce+/wZiAbj9jc3+LeTqiuKjd0Pf6bPlxxantLWWMQbRShS88ENJZQmajzSRx9RoL+Ia2hVQfgFOOjQ=="
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Jul 2017 20:48:29 GMT
+      Request-Number:
+      - "11"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://identity.us-phoenix-1.oraclecloud.com/20160918/policies/ocid1.policy.oc1..aaaaaaaapesus5sktqk34v23rqanmnctnqrupvvqahfy7gmzwn5xvrefzhpa
+    method: DELETE
+  response:
+    body: ""
+    headers:
+      Connection:
+      - keep-alive
+      Date:
+      - Wed, 26 Jul 2017 20:48:29 GMT
+      Opc-Request-Id:
+      - /EFC92D621A4B42B88C4801B0BD99C4BD/A930C1E9D43B41CC94AECE2AE7CD22D0
+    status: 204 No Content
+    code: 204
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="pyKpOOKPJaGwjnYIbK4h53Uzd9z+T4jgz2SUznIheKzJjvFkRPJch5BsIGrvI5BMGUS/u3ejWn75SQDeNyx8Qt0bvjZP9qbIQ2WgxGGhHNrzikFbTJSa2KrNOUkw0m9zI0kYEnjUYISMzD2mqB7kisRQzR40QX5q9wnHVxAcObnlqNtJHuBxB/Do3EfSb8OTuUlLzvlLzpusWJtUSK5H4jXxzj5qPDNaA1iVCTC5oDvwEB1bJ3wLgETxJlSWwP4Ksqb2ddyJfZvc62Ei1Nv8o+9p50ck6mim2pSCIQLBw02HnKKN/U/Hy26js2aY+ZgVNq/8DWuzn3CeGe+eWILwXQ=="
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Jul 2017 20:48:29 GMT
+      Request-Number:
+      - "12"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://identity.us-phoenix-1.oraclecloud.com/20160918/policies/ocid1.policy.oc1..aaaaaaaa6wqm4dvpgezqke43h42motyywtwssjdvj227glk75t5gvcoux27a
+    method: DELETE
+  response:
+    body: ""
+    headers:
+      Connection:
+      - keep-alive
+      Date:
+      - Wed, 26 Jul 2017 20:48:29 GMT
+      Opc-Request-Id:
+      - /A3319F4E53D74B0F9A134FC6B87E8220/8C787679F63048ABB4983C73FF058E89
+    status: 204 No Content
+    code: 204
+- request:
+    body: ""
+    form: {}
+    headers:
+      Accept:
+      - '*/*'
+      Authorization:
+      - Signature headers="date (request-target)",keyId="ocid1.tenancy.oc1..aaaaaaaayfzsknabeptheebqsaicjddtlubq7dnwz5izbvs3vfs4xmkargta/ocid1.user.oc1..aaaaaaaa5hpflij6krygermpeuugy2bawg25pralmnw7v4xdveysdpoxkkpq/46:08:e3:7b:95:0a:d6:5f:78:24:60:87:23:3f:56:31",algorithm="rsa-sha256",signature="eyIw0qo2ejJyn6YddgrXvH4FoU+v3B83lyPLr/N+/n8RXV6GfoutLASaIz0AV2/O7XwWRKnjKh4je671Zlk5fM4NKLstNgTugLBYD3Lot2WcOQhWmVOveUCuPyiKzgdbxGA3umweE8vBNNrPFpURUamIcEmiWjp8MS5Po+nDkbWBxMQtkC2LV2BCTgsyYrRJZB93LWW6X5Tt2XgYiY8XNMSds/LtuGppM8OztdLC2ECeHgwKZBPiM+XhnNiUu3vHYGgJcqgxtPMt0d7VVfIGHcEIoiz7JjXUif/bXmje3b0FQ3vbUpw5Yqxuep7Nx0DddohMPREadTQo7v6Z1UoEig=="
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 26 Jul 2017 20:48:29 GMT
+      Request-Number:
+      - "13"
+      User-Agent:
+      - baremetal-sdk-go-v20160918
+    url: https://identity.us-phoenix-1.oraclecloud.com/20160918/groups/ocid1.group.oc1..aaaaaaaaepo4kodjgq3bphtwbtu2izkcnlxxozhrielkwimicakf5kx3gjma
+    method: DELETE
+  response:
+    body: ""
+    headers:
+      Connection:
+      - keep-alive
+      Date:
+      - Wed, 26 Jul 2017 20:48:30 GMT
+      Opc-Request-Id:
+      - /CFAD49136811425D83F0711F41B2E362/E5E5B1A36F8B45AE95C7CA6053345DAF
+    status: 204 No Content
+    code: 204

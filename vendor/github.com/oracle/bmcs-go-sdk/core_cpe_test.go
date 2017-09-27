@@ -89,7 +89,7 @@ func (s *CoreTestSuite) TestCreateCpe() {
 		required: required,
 	}
 
-	s.requestor.On("request", http.MethodPost, details).Return(
+	s.requestor.On("postRequest", details).Return(
 		&response{
 			header: http.Header{},
 			body:   marshalObjectForTest(cpe),
