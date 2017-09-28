@@ -9,6 +9,10 @@ ARCH ?= amd64
 
 SRC_DIRS := cmd pkg # directories which hold app source (not vendored)
 
+# Allows overriding where the CCM should look for the cloud provider config
+# when running via make run-dev.
+CLOUD_PROVIDER_CFG ?= $$(pwd)/cloud-provider.yaml
+
 RETURN_CODE := $(shell sed --version >/dev/null 2>&1; echo $$?)
 ifeq ($(RETURN_CODE),1)
     SED_INPLACE = -i ''
@@ -67,8 +71,7 @@ deploy:
 run-dev:
 	@go run cmd/$(BIN)/main.go                    \
 	    --kubeconfig=${KUBECONFIG}                \
-	    --v=4                                     \
-	    --cloud-config=$$(pwd)/cloud-provider.cfg \
+	    --cloud-config=${CLOUD_PROVIDER_CFG}      \
 	    --cluster-cidr=10.244.0.0/16              \
 	    --cloud-provider=external                 \
 	    -v=4

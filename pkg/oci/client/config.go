@@ -17,33 +17,42 @@ package client
 import (
 	"errors"
 	"io"
+	"io/ioutil"
 
-	gcfg "gopkg.in/gcfg.v1"
+	"gopkg.in/yaml.v2"
 )
+
+// AuthConfig holds the configuration required for communicating with the OCI
+// API.
+type AuthConfig struct {
+	Region          string `yaml:"region"`
+	TenancyOCID     string `yaml:"tenancy"`
+	CompartmentOCID string `yaml:"compartment"`
+	UserOCID        string `yaml:"user"`
+	PrivateKey      string `yaml:"key"`
+	Fingerprint     string `yaml:"fingerprint"`
+}
+
+// LoadBalancerConfig holds the configuration options for OCI load balancers.
+type LoadBalancerConfig struct {
+	// DisableSecurityListManagement disables the automatic creation of ingress
+	// rules for the node subnets and egress rules for the load balancers to the node subnets.
+	//
+	// If security list management is disabled, then it requires that the user
+	// has setup a rule that allows inbound traffic to the appropriate ports
+	// for kube proxy health port, node port ranges, and health check port ranges.
+	// E.g. 10.82.0.0/16 30000-32000
+	DisableSecurityListManagement bool `gcfg:"disableSecurityListManagement,omitempty"`
+
+	Subnet1 string `yaml:"subnet1"`
+	Subnet2 string `yaml:"subnet2"`
+}
 
 // Config holds the OCI cloud-provider config passed to Kubernetes compontents
 // via the --cloud-config option.
 type Config struct {
-	Global struct {
-		UserOCID        string `gcfg:"user"`
-		CompartmentOCID string `gcfg:"compartment"`
-		TenancyOCID     string `gcfg:"tenancy"`
-		Fingerprint     string `gcfg:"fingerprint"`
-		PrivateKeyFile  string `gcfg:"key-file"`
-		Region          string `gcfg:"region"`
-		// DisableSecurityListManagement disables the automatic creation of ingress
-		// rules for the node subnets and egress rules for the load balancers to the node subnets.
-		//
-		// If security list management is disabled, then it requires that the user
-		// has setup a rule that allows inbound traffic to the appropriate ports
-		// for kube proxy health port, node port ranges, and health check port ranges.
-		// E.g. 10.82.0.0/16 30000-32000
-		DisableSecurityListManagement bool `gcfg:"disableSecurityListManagement"`
-	}
-	LoadBalancer struct {
-		Subnet1 string `gcfg:"subnet1"`
-		Subnet2 string `gcfg:"subnet2"`
-	}
+	Auth         AuthConfig         `yaml:"auth"`
+	LoadBalancer LoadBalancerConfig `yaml:"loadBalancer"`
 }
 
 // ReadConfig consumes the config Reader and constructs a Config object.
@@ -54,7 +63,11 @@ func ReadConfig(r io.Reader) (*Config, error) {
 
 	cfg := &Config{}
 
-	err := gcfg.ReadInto(cfg, r)
+	b, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+	err = yaml.Unmarshal(b, &cfg)
 	if err != nil {
 		return nil, err
 	}

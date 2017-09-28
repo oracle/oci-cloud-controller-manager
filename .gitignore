@@ -26,6 +26,7 @@ bin/
 .glide/
 
 cloud-provider.cfg
+cloud-provider.yaml
 manifests/bmcs-config.yaml
 manifests/bmcs-secret.yaml
 vendors.txt
