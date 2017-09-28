@@ -276,44 +276,12 @@ func (c *client) GetNodeAddressesForInstance(id string) ([]api.NodeAddress, erro
 
 	addresses := []api.NodeAddress{}
 	for _, vnic := range vnics {
-		addrs, err := c.extractNodeAddressesFromVnic(vnic)
+		addrs, err := extractNodeAddressesFromVNIC(vnic)
 		if err != nil {
 			return nil, err
 		}
 		addresses = append(addresses, addrs...)
 	}
-
-	return addresses, nil
-}
-
-// extractNodeAddressesFromVnic extracts Kuberenetes NodeAddresses from a given
-// Vnic.
-// TODO: Remove fqdn lookup and then make a pure function.
-func (c *client) extractNodeAddressesFromVnic(vnic *baremetal.Vnic) ([]api.NodeAddress, error) {
-	glog.V(4).Infof("extractNodeAddressesFromVnic(%v) called", vnic)
-	if vnic == nil {
-		return nil, fmt.Errorf("nil Vnic passed to extractNodeAddressesFromVnic()")
-	}
-
-	addresses := []api.NodeAddress{}
-
-	ip := net.ParseIP(vnic.PrivateIPAddress)
-	if vnic.PrivateIPAddress != "" {
-		if ip == nil {
-			return nil, fmt.Errorf("instance has invalid private address: %q", vnic.PrivateIPAddress)
-		}
-		addresses = append(addresses, api.NodeAddress{Type: api.NodeInternalIP, Address: ip.String()})
-	}
-
-	if vnic.PublicIPAddress != "" {
-		ip = net.ParseIP(vnic.PublicIPAddress)
-		if ip == nil {
-			return nil, fmt.Errorf("instance has invalid public address: %q", vnic.PublicIPAddress)
-		}
-		addresses = append(addresses, api.NodeAddress{Type: api.NodeExternalIP, Address: ip.String()})
-	}
-
-	glog.V(4).Infof("NodeAddresses: %+v ", addresses)
 
 	return addresses, nil
 }
@@ -589,4 +557,35 @@ func (c *client) GetDefaultSecurityList(subnet *baremetal.Subnet) (*baremetal.Se
 		return lists[i].TimeCreated.Before(lists[j].TimeCreated.Time)
 	})
 	return lists[0], nil
+}
+
+// extractNodeAddressesFromVNIC extracts Kuberenetes NodeAddresses from a given
+// Vnic.
+func extractNodeAddressesFromVNIC(vnic *baremetal.Vnic) ([]api.NodeAddress, error) {
+	glog.V(4).Infof("extractNodeAddressesFromVNIC() called for %q", vnic.ID)
+	if vnic == nil {
+		return nil, fmt.Errorf("nil VNIC passed to extractNodeAddressesFromVNIC()")
+	}
+
+	addresses := []api.NodeAddress{}
+
+	ip := net.ParseIP(vnic.PrivateIPAddress)
+	if vnic.PrivateIPAddress != "" {
+		if ip == nil {
+			return nil, fmt.Errorf("instance has invalid private address: %q", vnic.PrivateIPAddress)
+		}
+		addresses = append(addresses, api.NodeAddress{Type: api.NodeInternalIP, Address: ip.String()})
+	}
+
+	if vnic.PublicIPAddress != "" {
+		ip = net.ParseIP(vnic.PublicIPAddress)
+		if ip == nil {
+			return nil, fmt.Errorf("instance has invalid public address: %q", vnic.PublicIPAddress)
+		}
+		addresses = append(addresses, api.NodeAddress{Type: api.NodeExternalIP, Address: ip.String()})
+	}
+
+	glog.V(4).Infof("NodeAddresses: %+v ", addresses)
+
+	return addresses, nil
 }
