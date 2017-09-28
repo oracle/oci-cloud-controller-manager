@@ -59,17 +59,17 @@ func NewCloudProvider(cfg *client.Config) (cloudprovider.Interface, error) {
 		return nil, err
 	}
 
-	var securityListManager securityListManager
+	var secListMgr securityListManager
 	if cfg.Global.DisableSecurityListManagement {
-		securityListManager = newSecurityListManagerNOOP()
+		secListMgr = newSecurityListManagerNOOP()
 	} else {
-		securityListManager = newSecurityListManager(c)
+		secListMgr = newSecurityListManager(c)
 	}
 
 	return &CloudProvider{
 		client:              c,
 		config:              cfg,
-		securityListManager: securityListManager,
+		securityListManager: secListMgr,
 	}, nil
 }
 

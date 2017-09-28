@@ -30,21 +30,13 @@ import (
 )
 
 const (
-	// WorkRequestMaxRetries is the number of times a work request should be polled
-	WorkRequestMaxRetries = 120
-	// WorkRequestWaitInterval is the interval between polling a work request
-	WorkRequestWaitInterval = 1 * time.Second
-	// DefaultLoadBalancerPolicy is the default load balancing selection when creating a backend set
+	// DefaultLoadBalancerPolicy is the default load balancing algorithm when
+	// creating a BackendSet.
 	DefaultLoadBalancerPolicy = "ROUND_ROBIN"
 )
 
-// ociHostnameTemplate is a template for a OCI instance FQDN.
-// hostnameLabel.dnsLabel.vcnDomainName
-// e.g. worker-1.ad1.k8sdns.oraclevcn.com
-const ociHostnameTemplate = "%s.%s.%s"
-
-// Interface abstracts the OCI SDK and application specific convenience
-// methods for interacting with the OCI API.
+// Interface abstracts the OCI SDK and application specific convenience methods
+// for interacting with the OCI API.
 type Interface interface {
 	BaremetalInterface
 
@@ -74,7 +66,8 @@ type Interface interface {
 	// CreateAndAwaitCertificate creates a certificate for the given
 	// LoadBalancer.
 	CreateAndAwaitCertificate(lb *baremetal.LoadBalancer, name string, certificate string, key string) error
-	// AwaitWorkRequest blocks until the work request succeeds, fails or if it timesout after exponential backoff.
+	// AwaitWorkRequest blocks until the work request succeeds, fails or if it
+	// timesout after exponential backoff.
 	AwaitWorkRequest(id string) (*baremetal.WorkRequest, error)
 	// GetSubnetsForInternalIPs returns the deduplicated subnets in which the
 	// given internal IP addresses reside.
@@ -97,9 +90,7 @@ type BaremetalInterface interface {
 		shape,
 		subnetID string,
 		opts *baremetal.LaunchInstanceOptions) (*baremetal.Instance, error)
-
 	GetInstance(id string) (*baremetal.Instance, error)
-
 	TerminateInstance(id string, opts *baremetal.IfMatchOptions) error
 
 	GetSubnet(oc string) (*baremetal.Subnet, error)
@@ -116,9 +107,7 @@ type BaremetalInterface interface {
 		sessionPersistenceConfig *baremetal.SessionPersistenceConfiguration,
 		opts *baremetal.LoadBalancerOptions,
 	) (workRequestID string, e error)
-
 	UpdateBackendSet(loadBalancerID string, backendSetName string, opts *baremetal.UpdateLoadBalancerBackendSetOptions) (workRequestID string, e error)
-
 	DeleteBackendSet(loadBalancerID string, backendSetName string, opts *baremetal.ClientRequestOptions) (string, error)
 
 	CreateListener(
@@ -130,9 +119,7 @@ type BaremetalInterface interface {
 		sslConfig *baremetal.SSLConfiguration,
 		opts *baremetal.LoadBalancerOptions,
 	) (workRequestID string, e error)
-
 	UpdateListener(loadBalancerID string, listenerName string, opts *baremetal.UpdateLoadBalancerListenerOptions) (workRequestID string, e error)
-
 	DeleteListener(loadBalancerID string, listenerName string, opts *baremetal.ClientRequestOptions) (workRequestID string, e error)
 
 	DeleteLoadBalancer(id string, opts *baremetal.ClientRequestOptions) (string, error)
@@ -155,8 +142,8 @@ func New(cfg *Config) (Interface, error) {
 	}
 
 	return &client{
-		Client:          ociClient,
-		compartmentOCID: cfg.Global.CompartmentOCID,
+		Client:        ociClient,
+		compartmentID: cfg.Global.CompartmentOCID,
 	}, nil
 }
 
@@ -165,21 +152,20 @@ func New(cfg *Config) (Interface, error) {
 type client struct {
 	*baremetal.Client
 
-	// OCID of the compartment of the instance the CCM is executing on.
-	compartmentOCID string
+	// compartmentID is OCID of the compartment in which the Kuberenetes cluster
+	// resides.
+	compartmentID string
 }
 
 // Just check we can talk to baremetal before doing anything else (failfast)
 // Maybe do some more things like check the compartment we are give is valid....
 func (c *client) Validate() error {
-	_, err := c.Client.ListAvailabilityDomains(c.compartmentOCID)
+	_, err := c.Client.ListAvailabilityDomains(c.compartmentID)
 	return err
 }
 
 // GetInstanceByNodeName gets the OCID of instance with a display name equal to
 // the given node name.
-// FIXME (apryde): Would be better to use vnic hostnameLabel but it would
-// require a ton of queries.
 func (c *client) GetInstanceByNodeName(nodeName string) (*baremetal.Instance, error) {
 	glog.V(4).Infof("getInstanceByNodeName(%q) called", nodeName)
 	if nodeName == "" {
@@ -192,7 +178,7 @@ func (c *client) GetInstanceByNodeName(nodeName string) (*baremetal.Instance, er
 		},
 	}
 
-	r, err := c.ListInstances(c.compartmentOCID, opts)
+	r, err := c.ListInstances(c.compartmentID, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -225,19 +211,12 @@ func getRunningInstances(instances []baremetal.Instance) []baremetal.Instance {
 
 // findInstanceByNodeNameIsVnic tries to find the OCI Instance for a given node
 // name. It makes the assumption that he node name is resolvable.
-// https://kubernetes.io/docs/concepts/architecture/nodes/#management
-// So if the displayname doesn't match the nodename then:
-//  1) Get the IP of the node name doing a reverse lookup and see if we can
-//     find it.
-//     NOTE(gbushell): I'm leaving the DNS lookup till later as the options
-//     below fix/ the OKE issue.
-//  2) See if the nodename is equal to the hostname label.
-//  3) See if the nodename is an IP.
+// See: https://kubernetes.io/docs/concepts/architecture/nodes/#management
 func (c *client) findInstanceByNodeNameIsVnic(nodeName string) (*baremetal.Instance, error) {
 	var running []baremetal.Instance
 	opts := &baremetal.ListVnicAttachmentsOptions{}
 	for {
-		vnicAttachments, err := c.ListVnicAttachments(c.compartmentOCID, opts)
+		vnicAttachments, err := c.ListVnicAttachments(c.compartmentID, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -251,7 +230,6 @@ func (c *client) findInstanceByNodeNameIsVnic(nodeName string) (*baremetal.Insta
 				return nil, err
 			}
 
-			// TOOD(horwitz): why is this checking if the node name is the public ip address?!
 			if vnic.PublicIPAddress == nodeName ||
 				(vnic.HostnameLabel != "" && strings.HasPrefix(nodeName, vnic.HostnameLabel)) {
 				instance, err := c.GetInstance(attachment.InstanceID)
@@ -340,8 +318,8 @@ func (c *client) extractNodeAddressesFromVnic(vnic *baremetal.Vnic) ([]api.NodeA
 	return addresses, nil
 }
 
-// GetAttachedVnicsForInstance returns a slice of AVAILABLE Vnics for a
-// given instance ocid.
+// GetAttachedVnicsForInstance returns a slice of AVAILABLE VNICs for a given
+// instance OCID.
 func (c *client) GetAttachedVnicsForInstance(id string) ([]*baremetal.Vnic, error) {
 	glog.V(4).Infof("getAttachedVnicsForInstance(%q) called", id)
 	if id == "" {
@@ -353,7 +331,7 @@ func (c *client) GetAttachedVnicsForInstance(id string) ([]*baremetal.Vnic, erro
 	}
 	var vnics []*baremetal.Vnic
 	for {
-		r, err := c.ListVnicAttachments(c.compartmentOCID, opts)
+		r, err := c.ListVnicAttachments(c.compartmentID, opts)
 		if err != nil {
 			return nil, fmt.Errorf("list vnic attachments: %v", err)
 		}
@@ -429,7 +407,7 @@ func (c *client) CreateAndAwaitLoadBalancer(name, shape string, subnets []string
 		},
 	}
 
-	req, err := c.CreateLoadBalancer(nil, nil, c.compartmentOCID, nil, shape, subnets, opts)
+	req, err := c.CreateLoadBalancer(nil, nil, c.compartmentID, nil, shape, subnets, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -446,7 +424,7 @@ func (c *client) CreateAndAwaitLoadBalancer(name, shape string, subnets []string
 func (c *client) GetLoadBalancerByName(name string) (*baremetal.LoadBalancer, error) {
 	opts := &baremetal.ListOptions{}
 	for {
-		r, err := c.ListLoadBalancers(c.compartmentOCID, opts)
+		r, err := c.ListLoadBalancers(c.compartmentID, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -464,9 +442,9 @@ func (c *client) GetLoadBalancerByName(name string) (*baremetal.LoadBalancer, er
 }
 
 // GetCertificateByName gets a certificate by its name.
-func (c *client) GetCertificateByName(loadBalancerID string, name string) (*baremetal.Certificate, error) {
+func (c *client) GetCertificateByName(lbID, name string) (*baremetal.Certificate, error) {
 	opts := &baremetal.ClientRequestOptions{}
-	r, err := c.ListCertificates(loadBalancerID, opts)
+	r, err := c.ListCertificates(lbID, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -477,13 +455,13 @@ func (c *client) GetCertificateByName(loadBalancerID string, name string) (*bare
 		}
 	}
 
-	return nil, NewNotFoundError(fmt.Sprintf("certificate with name %q for load balancer %q not found", name, loadBalancerID))
+	return nil, NewNotFoundError(fmt.Sprintf("certificate with name %q for load balancer %q not found", name, lbID))
 }
 
 // CreateAndAwaitBackendSet creates the given BackendSet for the given
 // LoadBalancer.
 func (c *client) CreateAndAwaitBackendSet(lb *baremetal.LoadBalancer, bs baremetal.BackendSet) (*baremetal.BackendSet, error) {
-	glog.V(2).Infof("Creating BackendSet '%s' for load balancer '%s'", bs.Name, lb.DisplayName)
+	glog.V(2).Infof("Creating BackendSet `%s` for load balancer `%s`", bs.Name, lb.DisplayName)
 	wr, err := c.CreateBackendSet(
 		lb.ID,
 		bs.Name,
@@ -507,7 +485,7 @@ func (c *client) CreateAndAwaitBackendSet(lb *baremetal.LoadBalancer, bs baremet
 
 // CreateAndAwaitListener creates the given Listener for the given LoadBalancer.
 func (c *client) CreateAndAwaitListener(lb *baremetal.LoadBalancer, listener baremetal.Listener) error {
-	glog.V(2).Infof("Creating Listener '%s' for load balancer '%s'", listener.Name, lb.DisplayName)
+	glog.V(2).Infof("Creating Listener `%s` for load balancer `%s`", listener.Name, lb.DisplayName)
 	wr, err := c.CreateListener(
 		lb.ID,
 		listener.Name,
@@ -549,7 +527,7 @@ func (c *client) GetSubnetsForInternalIPs(ips []string) ([]*baremetal.Subnet, er
 	subnetOCIDs := sets.NewString()
 	var subnets []*baremetal.Subnet
 	for {
-		r, err := c.ListVnicAttachments(c.compartmentOCID, nil)
+		r, err := c.ListVnicAttachments(c.compartmentID, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -590,9 +568,9 @@ func (c *client) GetSubnets(ocids []string) ([]*baremetal.Subnet, error) {
 	return subnets, nil
 }
 
-// GetDefaultSecurityList gets the default SecurityList for the given Subnet
-// by assuming that the default SecurityList is always the oldest (as it is
-// created automatically when the Subnet is created and cannot be deleted).
+// GetDefaultSecurityList gets the default SecurityList for the given Subnet by
+// assuming that the default SecurityList is always the oldest (as it is created
+// automatically when the Subnet is created and cannot be deleted).
 func (c *client) GetDefaultSecurityList(subnet *baremetal.Subnet) (*baremetal.SecurityList, error) {
 	var lists []*baremetal.SecurityList
 	for _, id := range subnet.SecurityListIDs {
