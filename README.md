@@ -1,7 +1,7 @@
-# Kubernetes Cloud Controller Manager (CCM)
+# OCI Cloud Controller Manager (CCM)
 
-This project is an exernal Kubernetes cloud provider for [Oracle Cloud
-Infrastucture][1].
+This project is an Kubernetes Cloud Controller Manager (or out-of-tree
+cloud-provider) for [Oracle Cloud Infrastucture][1] (OCI).
 
 [![wercker status](https://app.wercker.com/status/17a52304e0309d138ad41f7ae9f9ea49/s/master "wercker status")](https://app.wercker.com/project/byKey/17a52304e0309d138ad41f7ae9f9ea49)
 
@@ -18,9 +18,9 @@ be accepted_.
 
 ## Compatibility matrix
 
-|       | Kubernetes < 1.7.2 | Kubernetes 1.7.{2..5} | Kubernetes 1.7.6 |
-|-------|--------------------|-----------------------|------------------|
-| v 0.1 | ✗                  | †                     | ✓                |
+|       | Kubernetes &lt; 1.7.2 | Kubernetes 1.7.{2..5} | Kubernetes 1.7.6 |
+|-------|-----------------------|-----------------------|------------------|
+| v 0.1 | ✗                     | †                     | ✓                |
 
 Key:
 
@@ -30,6 +30,18 @@ Key:
        cluster.
  * `✗` oci-cloud-controller-manager is not compatible.
 
+## Setup and Installation
+
+See [INSTALL.md](docs/install.md).
+
+## Development
+
+See [DEVELOPMENT.md](docs/development.md).
+
+## Support
+
+If you need support, start with the documentation. If you still have problems
+[raise an issue][2] or contact odx_kubernetes_gb_grp@oracle.com.
 
 ## Cloud Controller Manager
 
@@ -48,21 +60,6 @@ The following controllers have cloud provider dependencies:
   infrastructure.
 - **Service Controller**: For creating, updating and deleting cloud provider
   load balancers.
-- **Volume Controller**: For creating, attaching, and mounting volumes, and
-  interacting with the cloud provider to orchestrate volumes.
-
-## Setup and Installation
-
-See [INSTALL.md](docs/install.md).
-
-## Development
-
-See [DEVELOPMENT.md](docs/development.md).
-
-## Support
-
-If you need support, start with the documentation. If you still have problems
-[raise an issue][2] or contact odx_kubernetes_gb_grp@oracle.com.
 
 [1]: https://cloud.oracle.com/iaas
 [2]: https://github.com/oracle/oci-cloud-controller-manager/issues/new
