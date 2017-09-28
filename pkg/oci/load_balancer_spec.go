@@ -68,7 +68,8 @@ func NewLBSpec(cp *CloudProvider, service *api.Service, nodeIPs []string) (LBSpe
 		lbShape = lbDefaultShape
 	}
 
-	// TODO (apryde): What happens if this changes?
+	// NOTE: These will be overridden for existing load balancers as load
+	// balancer subnets cannot be modified.
 	subnet1, ok := service.Annotations[ServiceAnnotationLoadBalancerSubnet1]
 	if !ok {
 		subnet1 = cp.config.LoadBalancer.Subnet1
