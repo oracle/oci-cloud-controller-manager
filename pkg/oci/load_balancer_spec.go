@@ -30,11 +30,12 @@ import (
 // LBSpec holds the data required to build a OCI load balancer from a
 // kubernetes service.
 type LBSpec struct {
-	Name    string
-	Shape   string
-	Service *api.Service
-	Nodes   []*api.Node
-	Subnets []string
+	Name     string
+	Shape    string
+	Service  *api.Service
+	Nodes    []*api.Node
+	Subnets  []string
+	Internal bool
 }
 
 // NewLBSpec creates a LB Spec from a kubernetes service and a slice of nodes.
@@ -48,24 +49,31 @@ func NewLBSpec(cp *CloudProvider, service *api.Service, nodes []*api.Node) (LBSp
 	}
 
 	if service.Spec.LoadBalancerIP != "" {
+		// TODO(horwitz): We need to figure out in the WG if this should actually log or error.
+		// The docs say: If the loadBalancerIP is specified, but the cloud provider does not support the feature, the field will be ignored.
+		// But no one does that...
+		// https://kubernetes.io/docs/concepts/services-networking/service/#type-loadbalancer
 		return LBSpec{}, errors.New("OCI does not support setting the LoadBalancerIP")
 	}
 
-	internalLB := false
-	internalAnnotation := service.Annotations[ServiceAnnotationLoadBalancerInternal]
-	if internalAnnotation != "" {
-		internalLB = true
+	spec := LBSpec{
+		Name:     GetLoadBalancerName(service),
+		Shape:    lbDefaultShape,
+		Service:  service,
+		Nodes:    nodes,
+		Internal: false,
 	}
 
-	if internalLB {
-		return LBSpec{}, errors.New("OCI does not currently support internal load balancers")
+	_, ok := service.Annotations[ServiceAnnotationLoadBalancerInternal]
+	if ok {
+		spec.Internal = true
 	}
 
 	// TODO (apryde): We should detect when this changes and WARN as we don't
 	// support updating a load balancer's Shape.
-	lbShape := service.Annotations[ServiceAnnotationLoadBalancerShape]
-	if lbShape == "" {
-		lbShape = lbDefaultShape
+	lbShape, ok := service.Annotations[ServiceAnnotationLoadBalancerShape]
+	if ok {
+		spec.Shape = lbShape
 	}
 
 	// NOTE: These will be overridden for existing load balancers as load
@@ -74,18 +82,20 @@ func NewLBSpec(cp *CloudProvider, service *api.Service, nodes []*api.Node) (LBSp
 	if !ok {
 		subnet1 = cp.config.LoadBalancer.Subnet1
 	}
+	spec.Subnets = append(spec.Subnets, subnet1)
+
 	subnet2, ok := service.Annotations[ServiceAnnotationLoadBalancerSubnet2]
 	if !ok {
 		subnet2 = cp.config.LoadBalancer.Subnet2
 	}
 
-	return LBSpec{
-		Name:    GetLoadBalancerName(service),
-		Shape:   lbShape,
-		Service: service,
-		Nodes:   nodes,
-		Subnets: []string{subnet1, subnet2},
-	}, nil
+	if !spec.Internal {
+		// Only public load balancers need two subnets.
+		// Internal load balancers will always use the first subnet
+		spec.Subnets = append(spec.Subnets, subnet2)
+	}
+
+	return spec, nil
 }
 
 func getBackendSetName(protocol string, port int) string {

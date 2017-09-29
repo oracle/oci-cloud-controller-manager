@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package framework
 
 import (
@@ -30,6 +31,7 @@ const (
 	instanceShape   = "VM.Standard1.1"
 )
 
+// Framework used to help with integration testing.
 type Framework struct {
 	configFile    string
 	nodeSubnetOne string
@@ -40,12 +42,14 @@ type Framework struct {
 	Instances []*baremetal.Instance
 }
 
+// New testing framework.
 func New() *Framework {
 	return &Framework{
-		configFile: path.Join(os.Getenv("HOME"), ".oci", "cloud-provider.cfg"),
+		configFile: path.Join(os.Getenv("HOME"), ".oci", "cloud-provider.yaml"),
 	}
 }
 
+// Init the framework which validates the configuration & env vars.
 func (f *Framework) Init() error {
 	if os.Getenv("OCI_CONFIG_FILE") != "" {
 		f.configFile = os.Getenv("OCI_CONFIG_FILE")
@@ -79,14 +83,17 @@ func (f *Framework) Init() error {
 	return nil
 }
 
+// Run the tests and exit with the status code
 func (f *Framework) Run(run func() int) {
 	os.Exit(run())
 }
 
+// NodeSubnets returns the node subnets that should be used for testing.
 func (f *Framework) NodeSubnets() []string {
 	return []string{f.nodeSubnetOne, f.nodeSubnetTwo}
 }
 
+// WaitForInstance waits until the instance has a state of RUNNING.
 func (f *Framework) WaitForInstance(id string) error {
 	glog.Infof("Waiting for instance `%s` to be running", id)
 
@@ -105,10 +112,11 @@ func (f *Framework) WaitForInstance(id string) error {
 	}
 }
 
+// CreateInstance creates an instance and stores a reference for cleanup.
 func (f *Framework) CreateInstance(availabilityDomain string, subnetID string) (*baremetal.Instance, error) {
 	instance, err := f.Client.LaunchInstance(
 		availabilityDomain,
-		f.Config.Global.CompartmentOCID,
+		f.Config.Auth.CompartmentOCID,
 		instanceImageID,
 		instanceShape,
 		subnetID,
@@ -122,6 +130,7 @@ func (f *Framework) CreateInstance(availabilityDomain string, subnetID string) (
 	return instance, nil
 }
 
+// Cleanup all the instances created by the test framework.
 func (f *Framework) Cleanup() {
 	glog.Info("Running instance cleanup")
 	for _, instance := range f.Instances {
