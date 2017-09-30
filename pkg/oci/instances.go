@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 
 	api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -72,12 +73,16 @@ func (cp *CloudProvider) ExternalID(nodeName types.NodeName) (string, error) {
 
 	instName := mapNodeNameToInstanceName(nodeName)
 	inst, err := cp.client.GetInstanceByNodeName(instName)
-	if err != nil {
-		glog.Errorf("Failed to get External id of %s: %v", nodeName, err)
+	if client.IsNotFound(err) {
+		glog.Infof("Instance %q was not found. Unable to get ExternalID: %v", instName, err)
 		return "", cloudprovider.InstanceNotFound
 	}
+	if err != nil {
+		glog.Errorf("Failed to get ExternalID of %s: %v", nodeName, err)
+		return "", err
+	}
 
-	glog.V(4).Infof("Got id %s for %s", inst.ID, nodeName)
+	glog.V(4).Infof("Got ExternalID %s for %s", inst.ID, nodeName)
 	return inst.ID, nil
 }
 
@@ -86,9 +91,10 @@ func (cp *CloudProvider) ExternalID(nodeName types.NodeName) (string, error) {
 func (cp *CloudProvider) InstanceID(nodeName types.NodeName) (string, error) {
 	glog.V(4).Infof("InstanceID(%q) called", nodeName)
 
-	inst, err := cp.client.GetInstanceByNodeName(mapNodeNameToInstanceName(nodeName))
+	name := mapNodeNameToInstanceName(nodeName)
+	inst, err := cp.client.GetInstanceByNodeName(name)
 	if err != nil {
-
+		return "", fmt.Errorf("unable to fetch InstanceID for %q: %v", name, err)
 	}
 	return inst.ID, nil
 }
