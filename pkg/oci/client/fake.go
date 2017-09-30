@@ -20,6 +20,8 @@ import (
 	baremetal "github.com/oracle/bmcs-go-sdk"
 )
 
+var _ Interface = &FakeClient{}
+
 // FakeClient that should be used for testing.
 type FakeClient struct {
 	Err                  error
@@ -61,6 +63,12 @@ func (f *FakeClient) LaunchInstance(
 func (f *FakeClient) TerminateInstance(id string, opts *baremetal.IfMatchOptions) error {
 	f.call("terminate-instance")
 	return f.Err
+}
+
+// GetSubnets fake
+func (f *FakeClient) GetSubnets(ids []string) ([]*baremetal.Subnet, error) {
+	f.call("get-subnets")
+	return nil, f.Err
 }
 
 // GetInstanceByNodeName fake
@@ -123,9 +131,9 @@ func (f *FakeClient) AwaitWorkRequest(id string) (*baremetal.WorkRequest, error)
 	return nil, f.Err
 }
 
-// GetSubnetsForInternalIPs fake
-func (f *FakeClient) GetSubnetsForInternalIPs(ips []string) ([]*baremetal.Subnet, error) {
-	f.call("get-subnets-for-internal-ips")
+// GetSubnetsForNodes fake
+func (f *FakeClient) GetSubnetsForNodes(nodes []*api.Node) ([]*baremetal.Subnet, error) {
+	f.call("get-subnets-for-nodes")
 	return nil, f.Err
 }
 

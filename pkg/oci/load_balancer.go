@@ -19,6 +19,7 @@ import (
 
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
 	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
 	k8sports "k8s.io/kubernetes/pkg/master/ports"
@@ -27,6 +28,7 @@ import (
 	baremetal "github.com/oracle/bmcs-go-sdk"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/util"
 )
 
 const (
@@ -153,7 +155,7 @@ func getCertificateName(lb *baremetal.LoadBalancer) string {
 // EnsureLoadBalancer creates a new load balancer or updates the existing one.
 // Returns the status of the balancer (i.e it's public IP address if one exists).
 func (cp *CloudProvider) EnsureLoadBalancer(clusterName string, service *api.Service, nodes []*api.Node) (*api.LoadBalancerStatus, error) {
-	spec, err := NewLBSpec(cp, service, extractNodeIPs(nodes))
+	spec, err := NewLBSpec(cp, service, nodes)
 	if err != nil {
 		glog.Errorf("Failed to create LBSpec: %v", err)
 		return nil, err
@@ -209,7 +211,13 @@ func (cp *CloudProvider) EnsureLoadBalancer(clusterName string, service *api.Ser
 		return nil, fmt.Errorf("udpate listeners: %v", err)
 	}
 
-	return loadBalancerToStatus(lb)
+	status, err := loadBalancerToStatus(lb)
+	if err != nil {
+		return nil, err
+	}
+
+	glog.V(2).Infof("Successfully ensured load balancer %q", lb.DisplayName)
+	return status, nil
 }
 
 func (cp *CloudProvider) updateBackendSets(lb *baremetal.LoadBalancer, spec LBSpec) error {
@@ -219,6 +227,22 @@ func (cp *CloudProvider) updateBackendSets(lb *baremetal.LoadBalancer, spec LBSp
 	desired := spec.GetBackendSets()
 
 	actions := getBackendSetChanges(actual, desired)
+	if len(actions) == 0 {
+		return nil
+	}
+
+	lbSubnets, err := cp.client.GetSubnets(spec.Subnets)
+	if err != nil {
+		return fmt.Errorf("get subnets for lbs: %v", err)
+	}
+
+	nodeSubnets, err := cp.client.GetSubnetsForNodes(spec.Nodes)
+	if err != nil {
+		return fmt.Errorf("get subnets for nodes: %v", err)
+	}
+
+	sourceCIDRs := []string{}
+	listenerPort := uint64(0)
 
 	for _, action := range actions {
 		var workRequestID string
@@ -227,9 +251,11 @@ func (cp *CloudProvider) updateBackendSets(lb *baremetal.LoadBalancer, spec LBSp
 		be := action.BackendSet
 		glog.V(2).Infof("Applying `%s` action on backend set `%s` for lb `%s`", action.Type, be.Name, lbOCID)
 
+		backendPort := uint64(getBackendPort(be.Backends))
+
 		switch action.Type {
 		case Create:
-			err = cp.securityListManager.Update(spec.Subnets, []string{}, nil, be.Backends)
+			err = cp.securityListManager.Update(lbSubnets, nodeSubnets, sourceCIDRs, listenerPort, backendPort)
 			if err != nil {
 				return err
 			}
@@ -245,7 +271,7 @@ func (cp *CloudProvider) updateBackendSets(lb *baremetal.LoadBalancer, spec LBSp
 				nil, // create opts
 			)
 		case Update:
-			err = cp.securityListManager.Update(spec.Subnets, []string{}, nil, be.Backends)
+			err = cp.securityListManager.Update(lbSubnets, nodeSubnets, sourceCIDRs, listenerPort, backendPort)
 			if err != nil {
 				return err
 			}
@@ -256,7 +282,7 @@ func (cp *CloudProvider) updateBackendSets(lb *baremetal.LoadBalancer, spec LBSp
 				Backends:      be.Backends,
 			})
 		case Delete:
-			err = cp.securityListManager.Delete(spec.Subnets, nil, be.Backends)
+			err = cp.securityListManager.Delete(lbSubnets, nodeSubnets, listenerPort, backendPort)
 			if err != nil {
 				return err
 			}
@@ -282,18 +308,34 @@ func (cp *CloudProvider) updateListeners(lb *baremetal.LoadBalancer, spec LBSpec
 
 	desired := spec.GetListeners(sslConfigMap)
 	actions := getListenerChanges(lb.Listeners, desired)
+	if len(actions) == 0 {
+		return nil
+	}
+
+	lbSubnets, err := cp.client.GetSubnets(spec.Subnets)
+	if err != nil {
+		return fmt.Errorf("get subnets for lbs: %v", err)
+	}
+
+	nodeSubnets, err := cp.client.GetSubnetsForNodes(spec.Nodes)
+	if err != nil {
+		return fmt.Errorf("get subnets for nodes: %v", err)
+	}
+
 	for _, action := range actions {
 		var workRequestID string
 		var err error
 		l := action.Listener
+		listenerPort := uint64(l.Port)
+
+		backends := spec.GetBackendSets()[l.DefaultBackendSetName].Backends
+		backendPort := uint64(getBackendPort(backends))
 
 		glog.V(2).Infof("Applying `%s` action on listener `%s` for lb `%s`", action.Type, l.Name, lbOCID)
 
-		backends := spec.GetBackendSets()[l.DefaultBackendSetName].Backends
-
 		switch action.Type {
 		case Create:
-			err = cp.securityListManager.Update(spec.Subnets, sourceCIDRs, &l, backends)
+			err = cp.securityListManager.Update(lbSubnets, nodeSubnets, sourceCIDRs, listenerPort, backendPort)
 			if err != nil {
 				return err
 			}
@@ -308,7 +350,7 @@ func (cp *CloudProvider) updateListeners(lb *baremetal.LoadBalancer, spec LBSpec
 				nil, // create opts
 			)
 		case Update:
-			err = cp.securityListManager.Update(spec.Subnets, sourceCIDRs, &l, backends)
+			err = cp.securityListManager.Update(lbSubnets, nodeSubnets, sourceCIDRs, listenerPort, backendPort)
 			if err != nil {
 				return err
 			}
@@ -320,7 +362,7 @@ func (cp *CloudProvider) updateListeners(lb *baremetal.LoadBalancer, spec LBSpec
 				SSLConfig: l.SSLConfig,
 			})
 		case Delete:
-			err = cp.securityListManager.Delete(spec.Subnets, &l, backends)
+			err = cp.securityListManager.Delete(lbSubnets, nodeSubnets, listenerPort, backendPort)
 			if err != nil {
 				return err
 			}
@@ -350,6 +392,30 @@ func (cp *CloudProvider) UpdateLoadBalancer(clusterName string, service *api.Ser
 	return err
 }
 
+func (cp *CloudProvider) getNodesByIPs(backendIPs []string) ([]*api.Node, error) {
+	nodeList, err := cp.NodeLister.List(labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+
+	ipToNodeLookup := make(map[string]*api.Node)
+	for _, node := range nodeList {
+		ip := util.NodeInternalIP(node)
+		ipToNodeLookup[ip] = node
+	}
+
+	var nodes []*api.Node
+	for _, ip := range backendIPs {
+		node, ok := ipToNodeLookup[ip]
+		if !ok {
+			return nil, fmt.Errorf("node %q was not found by IP %q", node.Name, ip)
+		}
+		nodes = append(nodes, node)
+	}
+
+	return nodes, nil
+}
+
 // EnsureLoadBalancerDeleted deletes the specified load balancer if it
 // exists, returning nil if the load balancer specified either didn't exist or
 // was successfully deleted.
@@ -375,7 +441,12 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(clusterName string, service *
 		}
 	}
 
-	spec, err := NewLBSpec(cp, service, nodeIPs.List())
+	nodes, err := cp.getNodesByIPs(nodeIPs.List())
+	if err != nil {
+		return fmt.Errorf("error fetching nodes by internal ips: %v", err)
+	}
+
+	spec, err := NewLBSpec(cp, service, nodes)
 	if err != nil {
 		return fmt.Errorf("new lb spec: %v", err)
 	}
@@ -385,12 +456,23 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(clusterName string, service *
 		return fmt.Errorf("get ssl config: %v", err)
 	}
 
+	lbSubnets, err := cp.client.GetSubnets(spec.Subnets)
+	if err != nil {
+		return fmt.Errorf("get subnets for lbs: %v", err)
+	}
+
+	nodeSubnets, err := cp.client.GetSubnetsForNodes(spec.Nodes)
+	if err != nil {
+		return fmt.Errorf("get subnets for nodes: %v", err)
+	}
+
 	for _, listener := range spec.GetListeners(sslConfigMap) {
 		glog.V(4).Infof("Deleting security rules for listener `%s` for load balancer `%s`", listener.Name, lb.ID)
 
 		backends := spec.GetBackendSets()[listener.DefaultBackendSetName].Backends
+		backendPort := uint64(getBackendPort(backends))
 
-		err := cp.securityListManager.Delete(spec.Subnets, &listener, backends)
+		err := cp.securityListManager.Delete(lbSubnets, nodeSubnets, uint64(listener.Port), backendPort)
 		if err != nil {
 			return fmt.Errorf("delete security rules for listener %s: %v", listener.Name, err)
 		}
