@@ -126,8 +126,8 @@ func (cp *CloudProvider) Instances() (cloudprovider.Instances, bool) {
 // Zones returns a zones interface. Also returns true if the interface is
 // supported, false otherwise.
 func (cp *CloudProvider) Zones() (cloudprovider.Zones, bool) {
-	glog.V(6).Info("Claiming *not* to support Zones")
-	return cp, false
+	glog.V(6).Info("Claiming to support Zones")
+	return cp, true
 }
 
 // Clusters returns a clusters interface.  Also returns true if the interface is
