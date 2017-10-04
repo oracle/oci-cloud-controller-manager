@@ -266,22 +266,10 @@
   revision = "1cbadb444a806fd9430d14ad08967ed91da4fa0a"
 
 [[projects]]
-  name = "gopkg.in/gcfg.v1"
-  packages = [".","scanner","token","types"]
-  revision = "27e4946190b4a327b539185f2b5b1f7c84730728"
-  version = "v1.2.0"
-
-[[projects]]
   name = "gopkg.in/inf.v0"
   packages = ["."]
   revision = "3887ee99ecf07df5b447e9b00d9c0b2adaa9f3e4"
   version = "v0.9.0"
-
-[[projects]]
-  name = "gopkg.in/warnings.v0"
-  packages = ["."]
-  revision = "8a331561fe74dadba6edfc59f3be66c22c3b065d"
-  version = "v0.1.1"
 
 [[projects]]
   branch = "v2"
@@ -334,6 +322,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "5c8668c17c3d755b0ea6a7f1a5286a2ab9083e9e0aadcb5c2da70d45e6ae3840"
+  inputs-digest = "f5b2edf426da6a6f47e746c05fdfa863b31e304a15ddced67c4382675eebd345"
   solver-name = "gps-cdcl"
   solver-version = 1

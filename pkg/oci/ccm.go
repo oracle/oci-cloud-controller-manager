@@ -60,7 +60,7 @@ func NewCloudProvider(cfg *client.Config) (cloudprovider.Interface, error) {
 	}
 
 	var secListMgr securityListManager
-	if cfg.Global.DisableSecurityListManagement {
+	if cfg.LoadBalancer.DisableSecurityListManagement {
 		secListMgr = newSecurityListManagerNOOP()
 	} else {
 		secListMgr = newSecurityListManager(c)

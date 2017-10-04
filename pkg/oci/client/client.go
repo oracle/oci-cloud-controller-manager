@@ -128,11 +128,11 @@ type BaremetalInterface interface {
 // New creates a new OCI API client.
 func New(cfg *Config) (Interface, error) {
 	ociClient, err := baremetal.NewClient(
-		cfg.Global.UserOCID,
-		cfg.Global.TenancyOCID,
-		cfg.Global.Fingerprint,
-		baremetal.PrivateKeyFilePath(cfg.Global.PrivateKeyFile),
-		baremetal.Region(cfg.Global.Region),
+		cfg.Auth.UserOCID,
+		cfg.Auth.TenancyOCID,
+		cfg.Auth.Fingerprint,
+		baremetal.PrivateKeyBytes([]byte(cfg.Auth.PrivateKey)),
+		baremetal.Region(cfg.Auth.Region),
 		// Kubernetes will handle retries.
 		// The current go client will retry requests that are not retryable.
 		baremetal.DisableAutoRetries(true),
@@ -143,7 +143,7 @@ func New(cfg *Config) (Interface, error) {
 
 	return &client{
 		Client:        ociClient,
-		compartmentID: cfg.Global.CompartmentOCID,
+		compartmentID: cfg.Auth.CompartmentOCID,
 	}, nil
 }
 

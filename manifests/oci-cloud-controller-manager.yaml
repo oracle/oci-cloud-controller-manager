@@ -40,7 +40,7 @@ spec:
           imagePullPolicy: "Always"
           image: registry.oracledx.com/skeppare/oci-cloud-controller-manager:0.1.0
           args:
-            - --cloud-config=/etc/oci/cloud-config.cfg
+            - --cloud-config=/etc/oci/cloud-provider.yaml
             - --cloud-provider=oci
             - --cluster-cidr=10.244.0.0/16
             - -v=4
@@ -54,19 +54,13 @@ spec:
             - name: kubernetes
               mountPath: /etc/kubernetes
               readOnly: true
-            - name: secret
-              mountPath: /etc/pem
-              readOnly: true
       volumes:
         - name: etcssl
           hostPath:
             path: /etc/ssl
         - name: cfg
-          configMap:
-            name: oci-cloud-controller-manager
+          secret:
+            secretName: oci-cloud-controller-manager
         - name: kubernetes
           hostPath:
             path: /etc/kubernetes
-        - name: secret
-          secret:
-            secretName: oci-api-key
