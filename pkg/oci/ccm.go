@@ -19,6 +19,7 @@ package oci
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/golang/glog"
 
@@ -30,9 +31,20 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 )
 
-// ProviderName uniquely identifies the Oracle Bare Metal Cloud Services (OCI)
-// cloud-provider.
-const ProviderName = "oci"
+const (
+	// ProviderName uniquely identifies the Oracle Bare Metal Cloud Services (OCI)
+	// cloud-provider.
+	ProviderName   = "oci"
+	providerPrefix = ProviderName + "://"
+)
+
+// mapProviderIDToInstanceID parses the provider id and returns the instance ocid.
+func mapProviderIDToInstanceID(providerID string) string {
+	if strings.HasPrefix(providerID, providerPrefix) {
+		return strings.TrimPrefix(providerID, providerPrefix)
+	}
+	return providerID
+}
 
 // CloudProvider is an implementation of the cloud-provider interface for OCI.
 type CloudProvider struct {

@@ -62,7 +62,8 @@ func (cp *CloudProvider) NodeAddresses(name types.NodeName) ([]api.NodeAddress, 
 // in this method to obtain nodeaddresses.
 func (cp *CloudProvider) NodeAddressesByProviderID(providerID string) ([]api.NodeAddress, error) {
 	glog.V(4).Infof("NodeAddressesByProviderID(%q) called", providerID)
-	return cp.client.GetNodeAddressesForInstance(providerID)
+	instanceID := mapProviderIDToInstanceID(providerID)
+	return cp.client.GetNodeAddressesForInstance(instanceID)
 }
 
 // ExternalID returns the cloud provider ID of the node with the specified NodeName.
@@ -114,7 +115,8 @@ func (cp *CloudProvider) InstanceType(name types.NodeName) (string, error) {
 func (cp *CloudProvider) InstanceTypeByProviderID(providerID string) (string, error) {
 	glog.V(4).Infof("InstanceTypeByProviderID(%q) called", providerID)
 
-	inst, err := cp.client.GetInstance(providerID)
+	instanceID := mapProviderIDToInstanceID(providerID)
+	inst, err := cp.client.GetInstance(instanceID)
 	if err != nil {
 		return "", err
 	}
@@ -139,6 +141,7 @@ func (cp *CloudProvider) CurrentNodeName(hostname string) (types.NodeName, error
 // instance will be immediately deleted by the cloud controller manager.
 func (cp *CloudProvider) InstanceExistsByProviderID(providerID string) (bool, error) {
 	glog.V(4).Infof("InstanceExistsByProviderID(%q) called", providerID)
-	r, err := cp.client.GetInstance(providerID)
+	instanceID := mapProviderIDToInstanceID(providerID)
+	r, err := cp.client.GetInstance(instanceID)
 	return (r != nil), err
 }
