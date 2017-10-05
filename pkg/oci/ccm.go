@@ -24,10 +24,9 @@ import (
 
 	"github.com/golang/glog"
 
-	api "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/fields"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/kubernetes/pkg/cloudprovider"
@@ -107,15 +106,15 @@ func (cp *CloudProvider) Initialize(clientBuilder controller.ControllerClientBui
 		utilruntime.HandleError(fmt.Errorf("failed to create kubeclient: %v", err))
 	}
 
-	nodeLW := cache.NewListWatchFromClient(cp.kubeclient.CoreV1().RESTClient(), "nodes", api.NamespaceAll, fields.Everything())
-	indexer, informer := cache.NewIndexerInformer(nodeLW, &api.Node{}, 5*time.Minute, cache.ResourceEventHandlerFuncs{}, cache.Indexers{})
-	go informer.Run(wait.NeverStop)
+	factory := informers.NewSharedInformerFactory(cp.kubeclient, 5*time.Minute)
+	nodeInformer := factory.Core().V1().Nodes()
+	go nodeInformer.Informer().Run(wait.NeverStop)
 	glog.Info("Waiting for node informer cache to sync")
-	if !cache.WaitForCacheSync(wait.NeverStop, informer.HasSynced) {
+	if !cache.WaitForCacheSync(wait.NeverStop, nodeInformer.Informer().HasSynced) {
 		utilruntime.HandleError(fmt.Errorf("Timed out waiting for node informer to sync"))
 	}
 
-	cp.NodeLister = listersv1.NewNodeLister(indexer)
+	cp.NodeLister = nodeInformer.Lister()
 }
 
 // ProviderName returns the cloud-provider ID.
