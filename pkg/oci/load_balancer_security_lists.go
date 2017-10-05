@@ -189,6 +189,11 @@ func securityListRulesChanged(securityList *baremetal.SecurityList, ingressRules
 // updateSecurityListRules updates the security list rules and saves the security list in the cache upon successful update.
 func (s *securityListManagerImpl) updateSecurityListRules(securityListID string, etag string, ingressRules []baremetal.IngressSecurityRule, egressRules []baremetal.EgressSecurityRule) error {
 	_, err := s.client.UpdateSecurityList(securityListID, &baremetal.UpdateSecurityListOptions{
+		IfMatchDisplayNameOptions: baremetal.IfMatchDisplayNameOptions{
+			IfMatchOptions: baremetal.IfMatchOptions{
+				IfMatch: etag,
+			},
+		},
 		EgressRules:  egressRules,
 		IngressRules: ingressRules,
 	})

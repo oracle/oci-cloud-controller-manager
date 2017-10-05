@@ -18,11 +18,8 @@ import (
 	baremetal "github.com/oracle/bmcs-go-sdk"
 )
 
-type statusCode string
-
 const (
-	// https://docs.us-phoenix-1.oraclecloud.com/Content/API/References/apierrors.htm
-	notFoundStatus statusCode = "404"
+	notFoundStatus = "404"
 )
 
 // NewNotFoundError creates a new baremetal error with the correct
@@ -35,15 +32,35 @@ func NewNotFoundError(msg string) error {
 	}
 }
 
+// IsConflict checks if the error is due to a conflict caused by etag mismatch.
+func IsConflict(err error) bool {
+	// TODO(horwitz): This is supposed to be fixed soon. It's a bug in the OCI API that causes a 409 to
+	// be returned instead of a 412.
+	return IsError(err, "409", "Conflict") || IsError(err, "412", "NoEtagMatch")
+}
+
 // IsNotFound checks if the error is the not found error returned from OCI.
 func IsNotFound(err error) bool {
 	return IsStatus(err, notFoundStatus)
 }
 
+// IsError checks that the error is an OCI error and that the status & code match.
+// https://docs.us-phoenix-1.oraclecloud.com/Content/API/References/apierrors.htm
+func IsError(err error, status string, code string) bool {
+	return IsStatus(err, status) && IsCode(err, code)
+}
+
 // IsStatus is a helper function that ensures the error is an OCI
 // client error and that the status is what is expected.
 // https://docs.us-phoenix-1.oraclecloud.com/Content/API/References/apierrors.htm
-func IsStatus(err error, status statusCode) bool {
+func IsStatus(err error, status string) bool {
 	ociErr, ok := err.(*baremetal.Error)
-	return ok && ociErr.Status == string(status)
+	return ok && ociErr.Status == status
+}
+
+// IsCode ensures that the error is an OCI error and that the code matches.
+// https://docs.us-phoenix-1.oraclecloud.com/Content/API/References/apierrors.htm
+func IsCode(err error, code string) bool {
+	ociErr, ok := err.(*baremetal.Error)
+	return ok && ociErr.Code == code
 }
