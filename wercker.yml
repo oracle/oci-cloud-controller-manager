@@ -61,4 +61,4 @@ push:
         password: $DOCKER_REGISTRY_PASSWORD
         tag: $VERSION
         entrypoint: /oci-cloud-controller-manager
-        user: 0
+        user: 65534 # nobody
