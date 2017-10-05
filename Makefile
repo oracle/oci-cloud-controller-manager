@@ -1,8 +1,8 @@
-REGISTRY := registry.oracledx.com/skeppare
+REGISTRY ?= registry.oracledx.com/skeppare
 PKG := github.com/oracle/oci-cloud-controller-manager
 BIN := oci-cloud-controller-manager
 IMAGE := $(REGISTRY)/$(BIN)
-VERSION := $(shell git describe --always --dirty)
+VERSION ?= $(shell git describe --always --dirty)
 
 GOOS ?= linux
 ARCH ?= amd64
@@ -54,6 +54,17 @@ manifests: build-dirs
 	@sed ${SED_INPLACE}                                            \
 	    's#${IMAGE}:[0-9]\+.[0-9]\+.[0-9]\+#${IMAGE}:${VERSION}#g' \
 	    dist/oci-cloud-controller-manager.yaml
+
+container-name:
+	@echo "container: $(IMAGE):$(VERSION)"
+
+.PHONY: container
+container: build
+	@docker build -t $(IMAGE):$(VERSION) .
+
+.PHONY: push
+push:
+	@docker push $(IMAGE):$(VERSION)
 
 .PHONY: test
 test:
