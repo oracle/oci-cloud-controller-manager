@@ -1,4 +1,4 @@
-package oci
+package util
 
 import "testing"
 
@@ -19,7 +19,7 @@ func TestMapProviderIDToInstanceID(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			result := mapProviderIDToInstanceID(tc.providerID)
+			result := MapProviderIDToInstanceID(tc.providerID)
 			if result != tc.expected {
 				t.Errorf("Expected instance id %q, but got %q", tc.expected, result)
 			}

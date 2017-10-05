@@ -18,6 +18,8 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/util"
+
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 )
@@ -45,7 +47,7 @@ func (cp *CloudProvider) GetZone() (zone cloudprovider.Zone, err error) {
 // particularly used in the context of external cloud providers where node
 // initialization must be down outside the kubelets.
 func (cp *CloudProvider) GetZoneByProviderID(providerID string) (cloudprovider.Zone, error) {
-	instanceID := mapProviderIDToInstanceID(providerID)
+	instanceID := util.MapProviderIDToInstanceID(providerID)
 	instance, err := cp.client.GetInstance(instanceID)
 	if err != nil {
 		return cloudprovider.Zone{}, err

@@ -25,8 +25,10 @@ import (
 	api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/tools/cache"
 
 	baremetal "github.com/oracle/bmcs-go-sdk"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/util"
 )
 
 const (
@@ -49,7 +51,6 @@ type Interface interface {
 	// GetAttachedVnicsForInstance returns a slice of AVAILABLE Vnics for a
 	// given instance ocid.
 	GetAttachedVnicsForInstance(id string) ([]*baremetal.Vnic, error)
-
 	// CreateAndAwaitLoadBalancer creates a load balancer and blocks until data
 	// is available or timeout is reached.
 	CreateAndAwaitLoadBalancer(name, shape string, subnets []string) (*baremetal.LoadBalancer, error)
@@ -69,9 +70,11 @@ type Interface interface {
 	// AwaitWorkRequest blocks until the work request succeeds, fails or if it
 	// timesout after exponential backoff.
 	AwaitWorkRequest(id string) (*baremetal.WorkRequest, error)
-	// GetSubnetsForInternalIPs returns the deduplicated subnets in which the
+	// GetSubnetsForNodes returns the deduplicated subnets in which the
 	// given internal IP addresses reside.
-	GetSubnetsForInternalIPs(ips []string) ([]*baremetal.Subnet, error)
+	GetSubnetsForNodes([]*api.Node) ([]*baremetal.Subnet, error)
+	// GetSubnets returns the subnets for the given ocids.
+	GetSubnets(ocids []string) ([]*baremetal.Subnet, error)
 	// GetDefaultSecurityList gets the default SecurityList for the given Subnet
 	// by assuming that the default SecurityList is always the oldest (as it is
 	// created automatically when the Subnet is created and cannot be deleted).
@@ -82,7 +85,8 @@ type Interface interface {
 // client. It is composed into Interface.
 type BaremetalInterface interface {
 	Validate() error
-
+	// LaunchInstance creates an instance
+	// THIS SHOULD ONLY BE USED FOR INTEGRATION TESTING
 	LaunchInstance(
 		availabilityDomain,
 		compartmentID,
@@ -90,10 +94,13 @@ type BaremetalInterface interface {
 		shape,
 		subnetID string,
 		opts *baremetal.LaunchInstanceOptions) (*baremetal.Instance, error)
-	GetInstance(id string) (*baremetal.Instance, error)
+	// TerminateInstance terminates the given instance.
+	// THIS SHOULD ONLY BE USED FOR INTEGRATION TESTING
 	TerminateInstance(id string, opts *baremetal.IfMatchOptions) error
 
-	GetSubnet(oc string) (*baremetal.Subnet, error)
+	GetInstance(id string) (*baremetal.Instance, error)
+
+	GetSubnet(id string) (*baremetal.Subnet, error)
 
 	UpdateSecurityList(id string, opts *baremetal.UpdateSecurityListOptions) (*baremetal.SecurityList, error)
 
@@ -142,8 +149,10 @@ func New(cfg *Config) (Interface, error) {
 	}
 
 	return &client{
-		Client:        ociClient,
-		compartmentID: cfg.Auth.CompartmentOCID,
+		Client:            ociClient,
+		compartmentID:     cfg.Auth.CompartmentOCID,
+		subnetCache:       cache.NewTTLStore(subnetCacheKeyFn, time.Duration(24)*time.Hour),
+		securityListCache: cache.NewTTLStore(securityListKeyFn, time.Duration(24)*time.Hour),
 	}, nil
 }
 
@@ -155,6 +164,9 @@ type client struct {
 	// compartmentID is OCID of the compartment in which the Kuberenetes cluster
 	// resides.
 	compartmentID string
+
+	subnetCache       cache.Store
+	securityListCache cache.Store
 }
 
 // Just check we can talk to baremetal before doing anything else (failfast)
@@ -486,41 +498,96 @@ func (c *client) CreateAndAwaitCertificate(lb *baremetal.LoadBalancer, name stri
 	return nil
 }
 
-// GetSubnetsForInternalIPs returns the deduplicated subnets in which the given
-// internal IP addresses reside.
-func (c *client) GetSubnetsForInternalIPs(ips []string) ([]*baremetal.Subnet, error) {
-	ipSet := sets.NewString(ips...)
+// getSubnetFromCacheByIP checks to see if the given IP is contained by any subnet CIDR block in the subnet cache
+// If no hits were found then no subnet and no error will be returned (nil, nil)
+func (c *client) getSubnetFromCacheByIP(ip string) (*baremetal.Subnet, error) {
+	ipAddr := net.ParseIP(ip)
+	for _, subnetItem := range c.subnetCache.List() {
+		subnet := subnetItem.(*baremetal.Subnet)
+		_, cidr, err := net.ParseCIDR(subnet.CIDRBlock)
+		if err != nil {
+			// This should never actually error but just in case
+			return nil, fmt.Errorf("unable to parse CIDR block %q for subnet %q: %v", subnet.CIDRBlock, subnet.ID, err)
+		}
 
-	opts := &baremetal.ListVnicAttachmentsOptions{}
+		if cidr.Contains(ipAddr) {
+			return subnet, nil
+		}
+	}
+	return nil, nil
+}
+
+// GetSubnetsForNodes returns the deduplicated subnets in which the given
+// internal IP addresses reside.
+func (c *client) GetSubnetsForNodes(nodes []*api.Node) ([]*baremetal.Subnet, error) {
 	subnetOCIDs := sets.NewString()
 	var subnets []*baremetal.Subnet
-	for {
-		r, err := c.ListVnicAttachments(c.compartmentID, nil)
+
+	ipSet := sets.NewString()
+	for _, node := range nodes {
+		ipSet.Insert(util.NodeInternalIP(node))
+	}
+
+	for _, node := range nodes {
+		// First see if the ip of the node belongs to a subnet in the cache
+		ip := util.NodeInternalIP(node)
+		subnet, err := c.getSubnetFromCacheByIP(ip)
 		if err != nil {
 			return nil, err
 		}
-		for _, attachment := range r.Attachments {
-			if attachment.State == baremetal.ResourceAttached {
-				vnic, err := c.GetVnic(attachment.VnicID)
+		if subnet != nil {
+			// cache hit
+			if !subnetOCIDs.Has(subnet.ID) {
+				subnetOCIDs.Insert(subnet.ID)
+				subnets = append(subnets, subnet)
+			}
+			// Since we got a cache hit we don't need to do the expensive query to find the subnet
+			continue
+		}
+
+		id := util.MapProviderIDToInstanceID(node.Spec.ProviderID)
+		vnics, err := c.GetAttachedVnicsForInstance(id)
+		if err != nil {
+			glog.Errorf("Unable to get vnics for instance %q: %v", id, err)
+			return nil, err
+		}
+
+		for _, vnic := range vnics {
+			if vnic.PrivateIPAddress != "" && ipSet.Has(vnic.PrivateIPAddress) &&
+				!subnetOCIDs.Has(vnic.SubnetID) {
+				subnet, err := c.GetSubnet(vnic.SubnetID)
 				if err != nil {
+					glog.Errorf("Unable to get subnet %q for instance %q: %v", vnic.SubnetID, id, err)
 					return nil, err
 				}
-				if vnic.PrivateIPAddress != "" && ipSet.Has(vnic.PrivateIPAddress) &&
-					!subnetOCIDs.Has(vnic.SubnetID) {
-					subnet, err := c.GetSubnet(vnic.SubnetID)
-					if err != nil {
-						return nil, err
-					}
-					subnets = append(subnets, subnet)
-					subnetOCIDs.Insert(vnic.SubnetID)
-				}
+
+				subnets = append(subnets, subnet)
+				subnetOCIDs.Insert(vnic.SubnetID)
 			}
 		}
-		if hasNexPage := SetNextPageOption(r.NextPage, &opts.PageListOptions); !hasNexPage {
-			break
-		}
 	}
+
 	return subnets, nil
+}
+
+// GetSubnet returns the subnet for the given ocid from either the cache
+// or the API. If there is a cache miss the subnet will be added to the cache.
+func (c *client) GetSubnet(id string) (*baremetal.Subnet, error) {
+	item, exists, err := c.subnetCache.GetByKey(id)
+	if err != nil {
+		return nil, err
+	}
+	if exists {
+		return item.(*baremetal.Subnet), nil
+	}
+
+	subnet, err := c.Client.GetSubnet(id)
+	if err != nil {
+		return nil, err
+	}
+
+	c.subnetCache.Add(subnet)
+	return subnet, err
 }
 
 // GetSubnets returns the Subnets corresponding to the given OCIDs.
@@ -534,6 +601,37 @@ func (c *client) GetSubnets(ocids []string) ([]*baremetal.Subnet, error) {
 		subnets = append(subnets, subnet)
 	}
 	return subnets, nil
+}
+
+// GetSecurityList returns the security list for the given ocid from either the cache
+// or the API. If there is a cache miss the security list will be added to the cache.
+func (c *client) GetSecurityList(id string) (*baremetal.SecurityList, error) {
+	// Since we do leader election, the CCM leader should be the only CCM updating the security list.
+	item, exists, err := c.securityListCache.GetByKey(id)
+	if err != nil {
+		return nil, err
+	}
+	if exists {
+		return item.(*baremetal.SecurityList), nil
+	}
+
+	secList, err := c.Client.GetSecurityList(id)
+	if err != nil {
+		return nil, err
+	}
+
+	c.securityListCache.Add(secList)
+	return secList, err
+}
+
+func (c *client) UpdateSecurityList(id string, opts *baremetal.UpdateSecurityListOptions) (*baremetal.SecurityList, error) {
+	sl, err := c.Client.UpdateSecurityList(id, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	c.securityListCache.Add(sl)
+	return sl, nil
 }
 
 // GetDefaultSecurityList gets the default SecurityList for the given Subnet by
@@ -588,4 +686,12 @@ func extractNodeAddressesFromVNIC(vnic *baremetal.Vnic) ([]api.NodeAddress, erro
 	glog.V(4).Infof("NodeAddresses: %+v ", addresses)
 
 	return addresses, nil
+}
+
+func subnetCacheKeyFn(obj interface{}) (string, error) {
+	return obj.(*baremetal.Subnet).ID, nil
+}
+
+func securityListKeyFn(obj interface{}) (string, error) {
+	return obj.(*baremetal.SecurityList).ID, nil
 }

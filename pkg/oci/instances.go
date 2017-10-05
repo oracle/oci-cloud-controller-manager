@@ -21,6 +21,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/util"
 
 	api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -62,7 +63,7 @@ func (cp *CloudProvider) NodeAddresses(name types.NodeName) ([]api.NodeAddress, 
 // in this method to obtain nodeaddresses.
 func (cp *CloudProvider) NodeAddressesByProviderID(providerID string) ([]api.NodeAddress, error) {
 	glog.V(4).Infof("NodeAddressesByProviderID(%q) called", providerID)
-	instanceID := mapProviderIDToInstanceID(providerID)
+	instanceID := util.MapProviderIDToInstanceID(providerID)
 	return cp.client.GetNodeAddressesForInstance(instanceID)
 }
 
@@ -115,7 +116,7 @@ func (cp *CloudProvider) InstanceType(name types.NodeName) (string, error) {
 func (cp *CloudProvider) InstanceTypeByProviderID(providerID string) (string, error) {
 	glog.V(4).Infof("InstanceTypeByProviderID(%q) called", providerID)
 
-	instanceID := mapProviderIDToInstanceID(providerID)
+	instanceID := util.MapProviderIDToInstanceID(providerID)
 	inst, err := cp.client.GetInstance(instanceID)
 	if err != nil {
 		return "", err
@@ -141,7 +142,7 @@ func (cp *CloudProvider) CurrentNodeName(hostname string) (types.NodeName, error
 // instance will be immediately deleted by the cloud controller manager.
 func (cp *CloudProvider) InstanceExistsByProviderID(providerID string) (bool, error) {
 	glog.V(4).Infof("InstanceExistsByProviderID(%q) called", providerID)
-	instanceID := mapProviderIDToInstanceID(providerID)
+	instanceID := util.MapProviderIDToInstanceID(providerID)
 	r, err := cp.client.GetInstance(instanceID)
 	return (r != nil), err
 }

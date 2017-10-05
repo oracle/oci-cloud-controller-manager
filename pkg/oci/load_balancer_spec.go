@@ -22,7 +22,7 @@ import (
 
 	baremetal "github.com/oracle/bmcs-go-sdk"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/util"
 	api "k8s.io/api/core/v1"
 	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
 )
@@ -33,12 +33,12 @@ type LBSpec struct {
 	Name    string
 	Shape   string
 	Service *api.Service
-	NodeIPs []string
+	Nodes   []*api.Node
 	Subnets []string
 }
 
 // NewLBSpec creates a LB Spec from a kubernetes service and a slice of nodes.
-func NewLBSpec(cp *CloudProvider, service *api.Service, nodeIPs []string) (LBSpec, error) {
+func NewLBSpec(cp *CloudProvider, service *api.Service, nodes []*api.Node) (LBSpec, error) {
 	if err := validateProtocols(service.Spec.Ports); err != nil {
 		return LBSpec{}, err
 	}
@@ -83,7 +83,7 @@ func NewLBSpec(cp *CloudProvider, service *api.Service, nodeIPs []string) (LBSpe
 		Name:    GetLoadBalancerName(service),
 		Shape:   lbShape,
 		Service: service,
-		NodeIPs: nodeIPs,
+		Nodes:   nodes,
 		Subnets: []string{subnet1, subnet2},
 	}, nil
 }
@@ -103,9 +103,9 @@ func (s *LBSpec) GetBackendSets() map[string]baremetal.BackendSet {
 			Backends:      []baremetal.Backend{},
 			HealthChecker: s.getHealthChecker(),
 		}
-		for _, ip := range s.NodeIPs {
+		for _, node := range s.Nodes {
 			backendSet.Backends = append(backendSet.Backends, baremetal.Backend{
-				IPAddress: ip,
+				IPAddress: util.NodeInternalIP(node),
 				Port:      int(servicePort.NodePort),
 				Weight:    1,
 			})
@@ -143,7 +143,7 @@ func (s *LBSpec) GetSSLConfig(certificateName string) (map[int]*baremetal.SSLCon
 	}
 
 	if len(sslEnabledPorts) == 0 {
-		glog.V(4).Infof("No SSL enabled ports found")
+		glog.V(4).Infof("No SSL enabled ports found for service %q", s.Service.Name)
 		return sslConfigMap, nil
 	}
 

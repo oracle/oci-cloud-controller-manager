@@ -17,14 +17,12 @@ package oci
 import (
 	"fmt"
 	"reflect"
-	"time"
 
 	"github.com/golang/glog"
 	baremetal "github.com/oracle/bmcs-go-sdk"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/client-go/tools/cache"
 )
 
 const (
@@ -44,110 +42,75 @@ type securityListManager interface {
 	// 		from LB subnets to backend subnets on the backend port
 	// Egress rules added:
 	// 		from LB subnets to backend subnets on the backend port
-	Update(lbSubnetIDs []string, sourceCIDRs []string, listener *baremetal.Listener, backends []baremetal.Backend) error
+	Update(lbSubnets []*baremetal.Subnet, backendSubnets []*baremetal.Subnet, sourceCIDRs []string, listenerPort uint64, backendPort uint64) error
 	// Delete the security list rules associated with the listener & backends.
 	//
 	// If the listener is nil, then only the egress rules from the LB's to the backends and the
 	// ingress rules from the LB's to the backends will be cleaned up.
 	// If the listener is not nil, then the ingress rules to the LB's will be cleaned up.
-	Delete(lbSubnetIDs []string, listener *baremetal.Listener, backends []baremetal.Backend) error
+	Delete(lbSubnets []*baremetal.Subnet, backendSubnets []*baremetal.Subnet, listenerPort uint64, backendPort uint64) error
 }
 
 type securityListManagerImpl struct {
-	securityListCache cache.Store
-	subnetCache       cache.Store
-	client            client.Interface
-}
-
-func subnetCache(obj interface{}) (string, error) {
-	return obj.(*baremetal.Subnet).ID, nil
-}
-
-func securityListKeyFunc(obj interface{}) (string, error) {
-	return obj.(*baremetal.SecurityList).ID, nil
+	client client.Interface
 }
 
 func newSecurityListManager(client client.Interface) securityListManager {
 	return &securityListManagerImpl{
-		client:            client,
-		subnetCache:       cache.NewTTLStore(subnetCache, time.Duration(24)*time.Hour),
-		securityListCache: cache.NewTTLStore(securityListKeyFunc, time.Duration(24)*time.Hour),
+		client: client,
 	}
 }
 
-func (s *securityListManagerImpl) getSubnetsForBackends(backends []baremetal.Backend) ([]*baremetal.Subnet, error) {
-	ips := make([]string, 0, len(backends))
-	for _, backend := range backends {
-		ips = append(ips, backend.IPAddress)
-	}
+func (s *securityListManagerImpl) Update(
+	lbSubnets []*baremetal.Subnet,
+	backendSubnets []*baremetal.Subnet,
+	sourceCIDRs []string,
+	listenerPort uint64,
+	backendPort uint64) error {
 
-	return s.client.GetSubnetsForInternalIPs(ips)
-}
-
-func (s *securityListManagerImpl) Update(lbSubnetIDs []string, sourceCIDRs []string, listener *baremetal.Listener, backends []baremetal.Backend) error {
-
-	nodeSubnets, err := s.getSubnetsForBackends(backends)
-	if err != nil {
-		return fmt.Errorf("get subnets for backends: %v", err)
-	}
-
-	lbSubnets, err := s.getLoadBalancerSubnets(lbSubnetIDs)
+	err := s.updateLoadBalancerRules(lbSubnets, backendSubnets, sourceCIDRs, listenerPort, backendPort)
 	if err != nil {
 		return err
 	}
 
-	backendPort := getBackendPort(backends)
-
-	err = s.updateLoadBalancerRules(lbSubnets, nodeSubnets, sourceCIDRs, listener, backendPort)
-	if err != nil {
-		return err
-	}
-
-	return s.updateBackendRules(lbSubnets, nodeSubnets, backendPort)
+	return s.updateBackendRules(lbSubnets, backendSubnets, backendPort)
 }
 
-func (s *securityListManagerImpl) Delete(lbSubnetIDs []string, listener *baremetal.Listener, backends []baremetal.Backend) error {
-	nodeSubnets, err := s.getSubnetsForBackends(backends)
-	if err != nil {
-		return fmt.Errorf("get subnets for backends: %v", err)
-	}
-
-	lbSubnets, err := s.getLoadBalancerSubnets(lbSubnetIDs)
-	if err != nil {
-		return err
-	}
+func (s *securityListManagerImpl) Delete(
+	lbSubnets []*baremetal.Subnet,
+	backendSubnets []*baremetal.Subnet,
+	listenerPort uint64,
+	backendPort uint64) error {
 
 	noSubnets := []*baremetal.Subnet{}
 	noSourceCIDRs := []string{}
 
-	backendPort := getBackendPort(backends)
-
-	err = s.updateLoadBalancerRules(lbSubnets, noSubnets, noSourceCIDRs, listener, backendPort)
+	err := s.updateLoadBalancerRules(lbSubnets, noSubnets, noSourceCIDRs, listenerPort, backendPort)
 	if err != nil {
 		return err
 	}
 
-	return s.updateBackendRules(noSubnets, nodeSubnets, backendPort)
+	return s.updateBackendRules(noSubnets, backendSubnets, backendPort)
 }
 
 // updateBackendRules handles adding ingress rules to the backend subnets from the load balancer subnets.
 func (s *securityListManagerImpl) updateBackendRules(lbSubnets []*baremetal.Subnet, nodeSubnets []*baremetal.Subnet, backendPort uint64) error {
 	for _, subnet := range nodeSubnets {
-		securityList, err := s.getSecurityList(subnet)
+		secList, err := s.client.GetDefaultSecurityList(subnet)
 		if err != nil {
 			return fmt.Errorf("get security list for subnet `%s`: %v", subnet.ID, err)
 		}
 
-		ingressRules := getNodeIngressRules(securityList, lbSubnets, backendPort)
+		ingressRules := getNodeIngressRules(secList, lbSubnets, backendPort)
 
-		if !securityListRulesChanged(securityList, ingressRules, securityList.EgressSecurityRules) {
-			glog.V(4).Infof("No changes for node subnet security list `%s`", securityList.ID)
+		if !securityListRulesChanged(secList, ingressRules, secList.EgressSecurityRules) {
+			glog.V(4).Infof("No changes for node subnet security list `%s`", secList.ID)
 			continue
 		}
 
-		err = s.updateSecurityListRules(securityList.ID, ingressRules, securityList.EgressSecurityRules)
+		err = s.updateSecurityListRules(secList.ID, secList.ETag, ingressRules, secList.EgressSecurityRules)
 		if err != nil {
-			return fmt.Errorf("update security list rules `%s` for subnet `%s: %v", securityList.ID, subnet.ID, err)
+			return fmt.Errorf("update security list rules `%s` for subnet `%s: %v", secList.ID, subnet.ID, err)
 		}
 	}
 
@@ -156,9 +119,9 @@ func (s *securityListManagerImpl) updateBackendRules(lbSubnets []*baremetal.Subn
 
 // updateLoadBalancerRules handles updating the ingress and egress rules for the load balance subnets.
 // If the listener is nil, then only egress rules from the load balancer to the backend subnets will be checked.
-func (s *securityListManagerImpl) updateLoadBalancerRules(lbSubnets []*baremetal.Subnet, nodeSubnets []*baremetal.Subnet, sourceCIDRs []string, listener *baremetal.Listener, backendPort uint64) error {
+func (s *securityListManagerImpl) updateLoadBalancerRules(lbSubnets []*baremetal.Subnet, nodeSubnets []*baremetal.Subnet, sourceCIDRs []string, listenerPort uint64, backendPort uint64) error {
 	for _, lbSubnet := range lbSubnets {
-		lbSecurityList, err := s.getSecurityList(lbSubnet)
+		lbSecurityList, err := s.client.GetDefaultSecurityList(lbSubnet)
 		if err != nil {
 			return fmt.Errorf("get lb security list for subnet `%s`: %v", lbSubnet.ID, err)
 		}
@@ -166,8 +129,8 @@ func (s *securityListManagerImpl) updateLoadBalancerRules(lbSubnets []*baremetal
 		lbEgressRules := getLoadBalancerEgressRules(lbSecurityList, nodeSubnets, backendPort)
 
 		lbIngressRules := lbSecurityList.IngressSecurityRules
-		if listener != nil {
-			lbIngressRules = getLoadBalancerIngressRules(lbSecurityList, sourceCIDRs, uint64(listener.Port))
+		if listenerPort != 0 {
+			lbIngressRules = getLoadBalancerIngressRules(lbSecurityList, sourceCIDRs, listenerPort)
 		}
 
 		if !securityListRulesChanged(lbSecurityList, lbIngressRules, lbEgressRules) {
@@ -175,7 +138,7 @@ func (s *securityListManagerImpl) updateLoadBalancerRules(lbSubnets []*baremetal
 			continue
 		}
 
-		err = s.updateSecurityListRules(lbSecurityList.ID, lbIngressRules, lbEgressRules)
+		err = s.updateSecurityListRules(lbSecurityList.ID, lbSecurityList.ETag, lbIngressRules, lbEgressRules)
 		if err != nil {
 			return fmt.Errorf("update lb security list rules `%s` for subnet `%s: %v", lbSecurityList.ID, lbSubnet.ID, err)
 		}
@@ -223,64 +186,13 @@ func securityListRulesChanged(securityList *baremetal.SecurityList, ingressRules
 	return false
 }
 
-// getSecurityList checks if the security list already exists in the cache. If it does not yet exist in the cache
-// then it fetches the security list and puts it into the cache.
-func (s *securityListManagerImpl) getSecurityList(subnet *baremetal.Subnet) (*baremetal.SecurityList, error) {
-	for _, id := range subnet.SecurityListIDs {
-		item, exists, err := s.securityListCache.GetByKey(id)
-		if err != nil {
-			return nil, err
-		}
-
-		if exists {
-			// If it exists then we can assume it's the default security list
-			// since we only use the default security list.
-			return item.(*baremetal.SecurityList), nil
-		}
-	}
-
-	securityList, err := s.client.GetDefaultSecurityList(subnet)
-	if err != nil {
-		return nil, err
-	}
-
-	s.securityListCache.Add(securityList)
-	return securityList, nil
-}
-
 // updateSecurityListRules updates the security list rules and saves the security list in the cache upon successful update.
-func (s *securityListManagerImpl) updateSecurityListRules(securityListID string, ingressRules []baremetal.IngressSecurityRule, egressRules []baremetal.EgressSecurityRule) error {
-	updatedList, err := s.client.UpdateSecurityList(securityListID, &baremetal.UpdateSecurityListOptions{
+func (s *securityListManagerImpl) updateSecurityListRules(securityListID string, etag string, ingressRules []baremetal.IngressSecurityRule, egressRules []baremetal.EgressSecurityRule) error {
+	_, err := s.client.UpdateSecurityList(securityListID, &baremetal.UpdateSecurityListOptions{
 		EgressRules:  egressRules,
 		IngressRules: ingressRules,
 	})
-	if err != nil {
-		return err
-	}
-
-	// Update the cache since everything was updated successfully
-	return s.securityListCache.Update(updatedList)
-}
-
-// getSubnet checks if the subnet already exists in the cache. If it does not yet exist in the cache
-// then it fetches the subnet and puts it into the cache.
-func (s *securityListManagerImpl) getSubnet(id string) (*baremetal.Subnet, error) {
-	item, exists, err := s.subnetCache.GetByKey(id)
-	if err != nil {
-		return nil, err
-	}
-
-	if exists {
-		return item.(*baremetal.Subnet), nil
-	}
-
-	subnet, err := s.client.GetSubnet(id)
-	if err != nil {
-		return nil, err
-	}
-
-	s.subnetCache.Add(subnet)
-	return subnet, nil
+	return err
 }
 
 func getBackendPort(backends []baremetal.Backend) uint64 {
@@ -437,31 +349,17 @@ func makeIngressSecurityRule(cidrBlock string, port uint64) baremetal.IngressSec
 	}
 }
 
-func (s *securityListManagerImpl) getLoadBalancerSubnets(ids []string) ([]*baremetal.Subnet, error) {
-	lbSubnets := make([]*baremetal.Subnet, 0, len(ids))
-
-	for _, lbSubnetID := range ids {
-		lbSubnet, err := s.getSubnet(lbSubnetID)
-		if err != nil {
-			return lbSubnets, fmt.Errorf("get lb subnet `%s`: %v", lbSubnetID, err)
-		}
-
-		lbSubnets = append(lbSubnets, lbSubnet)
-	}
-
-	return lbSubnets, nil
-}
-
 // securityListManagerNOOP implements the securityListManager interface but does
 // no logic, so that it can be used to not handle security lists if the user doesn't wish
 // to use that feature.
 type securityListManagerNOOP struct {
 }
 
-func (s *securityListManagerNOOP) Update(lbSubnetIDs []string, sourceCIDRs []string, listener *baremetal.Listener, backends []baremetal.Backend) error {
+func (s *securityListManagerNOOP) Update(lbSubnets []*baremetal.Subnet, backendSubnets []*baremetal.Subnet, sourceCIDRs []string, listenerPort uint64, backendPort uint64) error {
 	return nil
 }
-func (s *securityListManagerNOOP) Delete(lbSubnetIDs []string, listener *baremetal.Listener, backends []baremetal.Backend) error {
+
+func (s *securityListManagerNOOP) Delete(lbSubnets []*baremetal.Subnet, backendSubnets []*baremetal.Subnet, listenerPort uint64, backendPort uint64) error {
 	return nil
 }
 

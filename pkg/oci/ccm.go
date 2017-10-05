@@ -19,37 +19,40 @@ package oci
 import (
 	"fmt"
 	"io"
-	"strings"
+
+	"time"
 
 	"github.com/golang/glog"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/controller"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/util"
+	listersv1 "k8s.io/client-go/listers/core/v1"
 )
 
-const (
-	// ProviderName uniquely identifies the Oracle Bare Metal Cloud Services (OCI)
-	// cloud-provider.
-	ProviderName   = "oci"
-	providerPrefix = ProviderName + "://"
-)
-
-// mapProviderIDToInstanceID parses the provider id and returns the instance ocid.
-func mapProviderIDToInstanceID(providerID string) string {
-	if strings.HasPrefix(providerID, providerPrefix) {
-		return strings.TrimPrefix(providerID, providerPrefix)
-	}
-	return providerID
+// ProviderName uniquely identifies the Oracle Bare Metal Cloud Services (OCI)
+// cloud-provider.
+func ProviderName() string {
+	return util.ProviderName
 }
 
 // CloudProvider is an implementation of the cloud-provider interface for OCI.
 type CloudProvider struct {
-	client              client.Interface
-	kubeclient          clientset.Interface
+	// NodeLister provides a cache to lookup nodes for deleting a load balancer.
+	// Due to limitations in the OCI API around going from an IP to a subnet
+	// we use the node lister to go from IP -> node / provider id -> ... -> subnet
+	NodeLister listersv1.NodeLister
+
+	client     client.Interface
+	kubeclient clientset.Interface
+
 	securityListManager securityListManager
 	config              *client.Config
 }
@@ -86,7 +89,7 @@ func NewCloudProvider(cfg *client.Config) (cloudprovider.Interface, error) {
 }
 
 func init() {
-	cloudprovider.RegisterCloudProvider(ProviderName, func(config io.Reader) (cloudprovider.Interface, error) {
+	cloudprovider.RegisterCloudProvider(ProviderName(), func(config io.Reader) (cloudprovider.Interface, error) {
 		cfg, err := client.ReadConfig(config)
 		if err != nil {
 			return nil, err
@@ -105,11 +108,21 @@ func (cp *CloudProvider) Initialize(clientBuilder controller.ControllerClientBui
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("failed to create kubeclient: %v", err))
 	}
+
+	factory := informers.NewSharedInformerFactory(cp.kubeclient, 5*time.Minute)
+	nodeInformer := factory.Core().V1().Nodes()
+	go nodeInformer.Informer().Run(wait.NeverStop)
+	glog.Info("Waiting for node informer cache to sync")
+	if !cache.WaitForCacheSync(wait.NeverStop, nodeInformer.Informer().HasSynced) {
+		utilruntime.HandleError(fmt.Errorf("Timed out waiting for node informer to sync"))
+	}
+
+	cp.NodeLister = nodeInformer.Lister()
 }
 
 // ProviderName returns the cloud-provider ID.
 func (cp *CloudProvider) ProviderName() string {
-	return ProviderName
+	return ProviderName()
 }
 
 // LoadBalancer returns a balancer interface. Also returns true if the interface

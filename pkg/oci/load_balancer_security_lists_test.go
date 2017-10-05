@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	baremetal "github.com/oracle/bmcs-go-sdk"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 )
 
 func TestGetBackendPort(t *testing.T) {
@@ -332,75 +331,6 @@ func TestMakeEgressSecurityRuleHasProtocolOptions(t *testing.T) {
 	if rule.TCPOptions == nil && rule.UDPOptions == nil {
 		t.Errorf("makeEgressSecurityRule(%q, %d) did not set protocol options",
 			cdirRange, port)
-	}
-}
-
-func TestGetSecurityList(t *testing.T) {
-
-	testCases := []struct {
-		name     string
-		calls    []string
-		subnet   *baremetal.Subnet
-		cache    *baremetal.SecurityList
-		client   *baremetal.SecurityList
-		expected *baremetal.SecurityList
-	}{
-		{
-			name:  "cache hit",
-			calls: []string{},
-			subnet: &baremetal.Subnet{
-				SecurityListIDs: []string{"list"},
-			},
-			cache: &baremetal.SecurityList{
-				ID:          "list",
-				DisplayName: "cache",
-			},
-			client: nil,
-			expected: &baremetal.SecurityList{
-				ID:          "list",
-				DisplayName: "cache",
-			},
-		}, {
-			name:  "cache miss",
-			calls: []string{"get-default-security-list"},
-			subnet: &baremetal.Subnet{
-				SecurityListIDs: []string{"list"},
-			},
-			cache: nil,
-			client: &baremetal.SecurityList{
-				ID:          "list",
-				DisplayName: "client",
-			},
-			expected: &baremetal.SecurityList{
-				ID:          "list",
-				DisplayName: "client",
-			},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			fakeClient := client.NewFakeClient()
-			mgr := newSecurityListManager(fakeClient).(*securityListManagerImpl)
-			if tc.cache != nil {
-				mgr.securityListCache.Add(tc.cache)
-			}
-
-			if tc.client != nil {
-				fakeClient.DefaultSecurityLists[tc.client.ID] = tc.client
-			}
-
-			result, err := mgr.getSecurityList(tc.subnet)
-			if err != nil {
-				t.Error(err)
-			}
-			if !reflect.DeepEqual(tc.calls, fakeClient.Calls) {
-				t.Errorf("expected fake client calls\n%+v\nbut got\n%+v", tc.calls, fakeClient.Calls)
-			}
-			if !reflect.DeepEqual(result, tc.expected) {
-				t.Errorf("expected security list\n%+v\nbut got\n%+v", tc.expected, result)
-			}
-		})
 	}
 }
 

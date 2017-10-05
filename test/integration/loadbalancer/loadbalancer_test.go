@@ -21,9 +21,10 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	api "k8s.io/api/core/v1"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	listersv1 "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/cache"
 )
 
 func TestLoadBalancer(t *testing.T) {
@@ -33,10 +34,14 @@ func TestLoadBalancer(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
+	cp.(*oci.CloudProvider).NodeLister = listersv1.NewNodeLister(indexer)
+
 	service := &api.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "kube-system",
 			Name:      "testservice",
+			UID:       "testservice",
 		},
 		Spec: api.ServiceSpec{
 			Type: api.ServiceTypeLoadBalancer,
@@ -53,6 +58,22 @@ func TestLoadBalancer(t *testing.T) {
 			LoadBalancerSourceRanges: []string{"0.0.0.0/0"},
 		},
 	}
+
+	loadbalancers, enabled := cp.LoadBalancer()
+	if !enabled {
+		t.Fatal("the LoadBalancer interface is not enabled on the CCM")
+	}
+
+	// Always call cleanup before any api calls are made since then otherwise we may
+	// get to an error state and some objects won't be cleaned up.
+	defer func() {
+		fw.Cleanup()
+
+		err := loadbalancers.EnsureLoadBalancerDeleted("foo", service)
+		if err != nil {
+			t.Fatalf("Unable to delete the load balancer during cleanup: %v", err)
+		}
+	}()
 
 	nodes := []*api.Node{}
 	for _, subnetID := range fw.NodeSubnets() {
@@ -77,30 +98,25 @@ func TestLoadBalancer(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		nodes = append(nodes, &api.Node{
+		node := &api.Node{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: instance.ID,
+			},
+			Spec: api.NodeSpec{
+				ProviderID: instance.ID,
 			},
 			Status: api.NodeStatus{
 				Addresses: addresses,
 			},
-		})
+		}
+		indexer.Add(node)
+		nodes = append(nodes, node)
 	}
 
-	loadbalancers, _ := cp.LoadBalancer()
 	status, err := loadbalancers.EnsureLoadBalancer("foo", service, nodes)
 	if err != nil {
 		t.Fatalf("Unable to ensure the load balancer: %v", err)
 	}
-
-	defer func() {
-		fw.Cleanup()
-
-		err := loadbalancers.EnsureLoadBalancerDeleted("foo", service)
-		if err != nil {
-			t.Fatalf("Unable to delete the load balancer during cleanup: %v", err)
-		}
-	}()
 
 	glog.Infof("Load Balancer Status: %+v", status)
 

@@ -197,20 +197,6 @@ func GetLoadBalancerName(service *api.Service) string {
 	return name
 }
 
-// Extract a list of all the external IP addresses for the available Kubernetes nodes
-// Each node IP address must be added to the backend set
-func extractNodeIPs(nodes []*api.Node) []string {
-	nodeIPs := []string{}
-	for _, node := range nodes {
-		for _, nodeAddr := range node.Status.Addresses {
-			if nodeAddr.Type == api.NodeInternalIP {
-				nodeIPs = append(nodeIPs, nodeAddr.Address)
-			}
-		}
-	}
-	return nodeIPs
-}
-
 // validateProtocols validates that OCI supports the protocol of all
 // ServicePorts defined by a service.
 func validateProtocols(servicePorts []api.ServicePort) error {

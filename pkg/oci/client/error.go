@@ -18,15 +18,18 @@ import (
 	baremetal "github.com/oracle/bmcs-go-sdk"
 )
 
+type statusCode string
+
 const (
-	notFoundStatus = "404"
+	// https://docs.us-phoenix-1.oraclecloud.com/Content/API/References/apierrors.htm
+	notFoundStatus statusCode = "404"
 )
 
 // NewNotFoundError creates a new baremetal error with the correct
 // status and code. The message of the error is set to the message passed in.
 func NewNotFoundError(msg string) error {
 	return &baremetal.Error{
-		Status:  notFoundStatus,
+		Status:  string(notFoundStatus),
 		Code:    baremetal.NotAuthorizedOrNotFound,
 		Message: msg,
 	}
@@ -40,7 +43,7 @@ func IsNotFound(err error) bool {
 // IsStatus is a helper function that ensures the error is an OCI
 // client error and that the status is what is expected.
 // https://docs.us-phoenix-1.oraclecloud.com/Content/API/References/apierrors.htm
-func IsStatus(err error, status string) bool {
+func IsStatus(err error, status statusCode) bool {
 	ociErr, ok := err.(*baremetal.Error)
-	return ok && ociErr.Status == status
+	return ok && ociErr.Status == string(status)
 }
