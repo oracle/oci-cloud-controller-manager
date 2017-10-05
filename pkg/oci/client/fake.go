@@ -90,7 +90,7 @@ func (f *FakeClient) GetAttachedVnicsForInstance(id string) ([]*baremetal.Vnic, 
 }
 
 // CreateAndAwaitLoadBalancer fake
-func (f *FakeClient) CreateAndAwaitLoadBalancer(name, shape string, subnets []string) (*baremetal.LoadBalancer, error) {
+func (f *FakeClient) CreateAndAwaitLoadBalancer(name, shape string, subnets []string, internal bool) (*baremetal.LoadBalancer, error) {
 	f.call("create-and-await-load-balancer")
 	return nil, f.Err
 }

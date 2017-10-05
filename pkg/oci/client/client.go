@@ -53,7 +53,7 @@ type Interface interface {
 	GetAttachedVnicsForInstance(id string) ([]*baremetal.Vnic, error)
 	// CreateAndAwaitLoadBalancer creates a load balancer and blocks until data
 	// is available or timeout is reached.
-	CreateAndAwaitLoadBalancer(name, shape string, subnets []string) (*baremetal.LoadBalancer, error)
+	CreateAndAwaitLoadBalancer(name, shape string, subnets []string, internal bool) (*baremetal.LoadBalancer, error)
 	// GetLoadBalancerByName gets a load balancer by its DisplayName.
 	GetLoadBalancerByName(name string) (*baremetal.LoadBalancer, error)
 	// GetCertificateByName gets a certificate by its name.
@@ -380,11 +380,12 @@ func (c *client) AwaitWorkRequest(id string) (*baremetal.WorkRequest, error) {
 
 // CreateAndAwaitLoadBalancer creates a load balancer and blocks until data is
 // available or timeout is reached.
-func (c *client) CreateAndAwaitLoadBalancer(name, shape string, subnets []string) (*baremetal.LoadBalancer, error) {
+func (c *client) CreateAndAwaitLoadBalancer(name, shape string, subnets []string, internal bool) (*baremetal.LoadBalancer, error) {
 	opts := &baremetal.CreateLoadBalancerOptions{
 		DisplayNameOptions: baremetal.DisplayNameOptions{
 			DisplayName: name,
 		},
+		IsPrivate: internal,
 	}
 
 	req, err := c.CreateLoadBalancer(nil, nil, c.compartmentID, nil, shape, subnets, opts)

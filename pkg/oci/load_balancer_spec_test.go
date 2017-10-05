@@ -1,0 +1,207 @@
+package oci
+
+import (
+	"reflect"
+	"testing"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	api "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+func TestNewLBSpecSuccess(t *testing.T) {
+	testCases := map[string]struct {
+		defaultSubnetOne string
+		defaultSubnetTwo string
+		nodes            []*api.Node
+		service          *api.Service
+		expected         LBSpec
+	}{
+		"defaults": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &api.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace:   "kube-system",
+					Name:        "testservice",
+					UID:         "test-uid",
+					Annotations: map[string]string{},
+				},
+				Spec: api.ServiceSpec{
+					SessionAffinity: api.ServiceAffinityNone,
+					Ports: []api.ServicePort{
+						{Protocol: api.ProtocolTCP},
+					},
+				},
+			},
+			expected: LBSpec{
+				Name:     "test-uid",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"one", "two"},
+			},
+		},
+		"internal": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &api.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInternal: "",
+					},
+				},
+				Spec: api.ServiceSpec{
+					SessionAffinity: api.ServiceAffinityNone,
+					Ports: []api.ServicePort{
+						{Protocol: api.ProtocolTCP},
+					},
+				},
+			},
+			expected: LBSpec{
+				Name:     "test-uid",
+				Shape:    "100Mbps",
+				Internal: true,
+				Subnets:  []string{"one"},
+			},
+		},
+		"subnet annotations": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &api.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSubnet1: "annotation-one",
+						ServiceAnnotationLoadBalancerSubnet2: "annotation-two",
+					},
+				},
+				Spec: api.ServiceSpec{
+					SessionAffinity: api.ServiceAffinityNone,
+					Ports: []api.ServicePort{
+						{Protocol: api.ProtocolTCP},
+					},
+				},
+			},
+			expected: LBSpec{
+				Name:     "test-uid",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"annotation-one", "annotation-two"},
+			},
+		},
+		"custom shape": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &api.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerShape: "8000Mbps",
+					},
+				},
+				Spec: api.ServiceSpec{
+					SessionAffinity: api.ServiceAffinityNone,
+					Ports: []api.ServicePort{
+						{Protocol: api.ProtocolTCP},
+					},
+				},
+			},
+			expected: LBSpec{
+				Name:     "test-uid",
+				Shape:    "8000Mbps",
+				Internal: false,
+				Subnets:  []string{"one", "two"},
+			},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			// we expect the service to be unchanged
+			tc.expected.Service = tc.service
+			cp := &CloudProvider{
+				config: &client.Config{
+					LoadBalancer: client.LoadBalancerConfig{
+						Subnet1: tc.defaultSubnetOne,
+						Subnet2: tc.defaultSubnetTwo,
+					},
+				},
+			}
+			result, err := NewLBSpec(cp, tc.service, tc.nodes)
+			if err != nil {
+				t.Error(err)
+			}
+
+			if !reflect.DeepEqual(result, tc.expected) {
+				t.Errorf("Expected load balancer spec\n%+v\nbut got\n%+v", tc.expected, result)
+			}
+		})
+	}
+}
+func TestNewLBSpecFailure(t *testing.T) {
+	testCases := map[string]struct {
+		defaultSubnetOne string
+		defaultSubnetTwo string
+		nodes            []*api.Node
+		service          *api.Service
+		expectedErrMsg   string
+	}{
+		"unsupported udp protocol": {
+			service: &api.Service{
+				Spec: api.ServiceSpec{
+					Ports: []api.ServicePort{
+						{Protocol: api.ProtocolUDP},
+					},
+				},
+			},
+			expectedErrMsg: "OCI load balancers do not support UDP",
+		},
+		"unsupported LB IP": {
+			service: &api.Service{
+				Spec: api.ServiceSpec{
+					LoadBalancerIP:  "127.0.0.1",
+					SessionAffinity: api.ServiceAffinityNone,
+					Ports: []api.ServicePort{
+						{Protocol: api.ProtocolTCP},
+					},
+				},
+			},
+			expectedErrMsg: "OCI does not support setting the LoadBalancerIP",
+		},
+		"unsupported session affinity": {
+			service: &api.Service{
+				Spec: api.ServiceSpec{
+					SessionAffinity: api.ServiceAffinityClientIP,
+					Ports: []api.ServicePort{
+						{Protocol: api.ProtocolTCP},
+					},
+				},
+			},
+			expectedErrMsg: "OCI only supports SessionAffinity `None` currently",
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			cp := &CloudProvider{
+				config: &client.Config{
+					LoadBalancer: client.LoadBalancerConfig{
+						Subnet1: tc.defaultSubnetOne,
+						Subnet2: tc.defaultSubnetTwo,
+					},
+				},
+			}
+			_, err := NewLBSpec(cp, tc.service, tc.nodes)
+			if err == nil || err.Error() != tc.expectedErrMsg {
+				t.Errorf("Expected error with message %q but got `%v`", tc.expectedErrMsg, err)
+			}
+		})
+	}
+}

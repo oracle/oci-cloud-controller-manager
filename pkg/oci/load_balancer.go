@@ -169,7 +169,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(clusterName string, service *api.Ser
 		if client.IsNotFound(err) {
 			glog.Infof("Attempting to create a load balancer with name '%s'", spec.Name)
 			var cerr error
-			lb, cerr = cp.client.CreateAndAwaitLoadBalancer(spec.Name, spec.Shape, spec.Subnets)
+			lb, cerr = cp.client.CreateAndAwaitLoadBalancer(spec.Name, spec.Shape, spec.Subnets, spec.Internal)
 			if cerr != nil {
 				glog.Errorf("Failed to create load balancer: %s", err)
 				return nil, cerr

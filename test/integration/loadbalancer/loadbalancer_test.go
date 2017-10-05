@@ -27,8 +27,15 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-func TestLoadBalancer(t *testing.T) {
+func TestPublicLoadBalancer(t *testing.T) {
+	testLoadBalancer(t, false)
+}
 
+func TestInternalLoadBalancer(t *testing.T) {
+	testLoadBalancer(t, true)
+}
+
+func testLoadBalancer(t *testing.T, internal bool) {
 	cp, err := oci.NewCloudProvider(fw.Config)
 	if err != nil {
 		t.Fatal(err)
@@ -39,9 +46,10 @@ func TestLoadBalancer(t *testing.T) {
 
 	service := &api.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "kube-system",
-			Name:      "testservice",
-			UID:       "testservice",
+			Namespace:   "kube-system",
+			Name:        "testservice",
+			UID:         "integration-test-uid",
+			Annotations: map[string]string{},
 		},
 		Spec: api.ServiceSpec{
 			Type: api.ServiceTypeLoadBalancer,
@@ -57,6 +65,10 @@ func TestLoadBalancer(t *testing.T) {
 			SessionAffinity:          api.ServiceAffinityNone,
 			LoadBalancerSourceRanges: []string{"0.0.0.0/0"},
 		},
+	}
+
+	if internal {
+		service.Annotations[oci.ServiceAnnotationLoadBalancerInternal] = ""
 	}
 
 	loadbalancers, enabled := cp.LoadBalancer()
