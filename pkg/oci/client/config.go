@@ -55,6 +55,11 @@ type Config struct {
 	LoadBalancer LoadBalancerConfig `yaml:"loadBalancer"`
 }
 
+// Validate validates the OCI cloud-provider config.
+func (c *Config) Validate() error {
+	return ValidateConfig(c).ToAggregate()
+}
+
 // ReadConfig consumes the config Reader and constructs a Config object.
 func ReadConfig(r io.Reader) (*Config, error) {
 	if r == nil {

@@ -91,6 +91,9 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
+		if err = cfg.Validate(); err != nil {
+			return nil, err
+		}
 		return NewCloudProvider(cfg)
 	})
 }
