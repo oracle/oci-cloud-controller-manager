@@ -1,54 +1,76 @@
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
-kind: Role
+kind: ClusterRole
 metadata:
-  name: system::leader-locking-cloud-controller-manager
-  namespace: kube-system
+  name: system:cloud-controller-manager
+  labels:
+    kubernetes.io/cluster-service: "true"
 rules:
 - apiGroups:
   - ""
   resources:
-  - configmaps
+  - nodes
+  verbs:
+  - '*'
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - list
+  - watch
+  - patch
+
+- apiGroups:
+  - ""
+  resources:
+  - services/status
+  verbs:
+  - update
+
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+  - update
+
+# For leader election
+- apiGroups:
+  - ""
+  resources:
   - endpoints
   verbs:
   - create
+  - get
+  - list
   - watch
+  - update
 - apiGroups:
   - ""
-  resourceNames:
-  - cloud-controller-manager
   resources:
-  - configmaps
-  - endpoints
+  - serviceaccounts
+  verbs:
+  - create
+- apiGroups:
+  - ""
+  resources:
+  - secrets
   verbs:
   - get
-  - update
----
-apiVersion: rbac.authorization.k8s.io/v1beta1
-kind: RoleBinding
-metadata:
-  name: system::leader-locking-cloud-controller-manager
-  namespace: kube-system
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: system::leader-locking-cloud-controller-manager
-subjects:
-- kind: ServiceAccount
-  name: cloud-controller-manager
-  namespace: kube-system
----
-apiVersion: rbac.authorization.k8s.io/v1beta1
-kind: ClusterRole
-metadata:
-  name: oci-cloud-controller-manager
-rules:
+  - list
+
+# For the PVL
 - apiGroups:
   - ""
   resources:
-  - "*"
+  - persistentvolumes
   verbs:
-  - "*"
+  - list
+  - watch
+  - patch
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -57,7 +79,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: oci-cloud-controller-manager
+  name: system:cloud-controller-manager
 subjects:
 - kind: ServiceAccount
   name: cloud-controller-manager
