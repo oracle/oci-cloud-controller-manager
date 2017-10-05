@@ -110,9 +110,9 @@ func (cp *CloudProvider) Initialize(clientBuilder controller.ControllerClientBui
 	nodeLW := cache.NewListWatchFromClient(cp.kubeclient.CoreV1().RESTClient(), "nodes", api.NamespaceAll, fields.Everything())
 	indexer, informer := cache.NewIndexerInformer(nodeLW, &api.Node{}, 5*time.Minute, cache.ResourceEventHandlerFuncs{}, cache.Indexers{})
 	go informer.Run(wait.NeverStop)
-	glog.Info("Waiting for node infrmer cache to sync")
+	glog.Info("Waiting for node informer cache to sync")
 	if !cache.WaitForCacheSync(wait.NeverStop, informer.HasSynced) {
-		utilruntime.HandleError(fmt.Errorf("Timed out waiting for caches to sync"))
+		utilruntime.HandleError(fmt.Errorf("Timed out waiting for node informer to sync"))
 	}
 
 	cp.NodeLister = listersv1.NewNodeLister(indexer)

@@ -23,7 +23,6 @@ type statusCode string
 const (
 	// https://docs.us-phoenix-1.oraclecloud.com/Content/API/References/apierrors.htm
 	notFoundStatus statusCode = "404"
-	noETagMatch               = "412"
 )
 
 // NewNotFoundError creates a new baremetal error with the correct

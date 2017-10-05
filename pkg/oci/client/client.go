@@ -151,7 +151,7 @@ func New(cfg *Config) (Interface, error) {
 	return &client{
 		Client:            ociClient,
 		compartmentID:     cfg.Auth.CompartmentOCID,
-		subnetCache:       cache.NewTTLStore(subnetCacheFn, time.Duration(24)*time.Hour),
+		subnetCache:       cache.NewTTLStore(subnetCacheKeyFn, time.Duration(24)*time.Hour),
 		securityListCache: cache.NewTTLStore(securityListKeyFn, time.Duration(24)*time.Hour),
 	}, nil
 }
@@ -507,7 +507,7 @@ func (c *client) getSubnetFromCacheByIP(ip string) (*baremetal.Subnet, error) {
 		_, cidr, err := net.ParseCIDR(subnet.CIDRBlock)
 		if err != nil {
 			// This should never actually error but just in case
-			return nil, fmt.Errorf("Unable to parse CIDR block %q for subnet %q: %v", subnet.CIDRBlock, subnet.ID, err)
+			return nil, fmt.Errorf("unable to parse CIDR block %q for subnet %q: %v", subnet.CIDRBlock, subnet.ID, err)
 		}
 
 		if cidr.Contains(ipAddr) {
@@ -570,6 +570,8 @@ func (c *client) GetSubnetsForNodes(nodes []*api.Node) ([]*baremetal.Subnet, err
 	return subnets, nil
 }
 
+// GetSubnet returns the subnet for the given ocid from either the cache
+// or the API. If there is a cache miss the subnet will be added to the cache.
 func (c *client) GetSubnet(id string) (*baremetal.Subnet, error) {
 	item, exists, err := c.subnetCache.GetByKey(id)
 	if err != nil {
@@ -601,7 +603,10 @@ func (c *client) GetSubnets(ocids []string) ([]*baremetal.Subnet, error) {
 	return subnets, nil
 }
 
+// GetSecurityList returns the security list for the given ocid from either the cache
+// or the API. If there is a cache miss the security list will be added to the cache.
 func (c *client) GetSecurityList(id string) (*baremetal.SecurityList, error) {
+	// Since we do leader election, the CCM leader should be the only CCM updating the security list.
 	item, exists, err := c.securityListCache.GetByKey(id)
 	if err != nil {
 		return nil, err
@@ -683,7 +688,7 @@ func extractNodeAddressesFromVNIC(vnic *baremetal.Vnic) ([]api.NodeAddress, erro
 	return addresses, nil
 }
 
-func subnetCacheFn(obj interface{}) (string, error) {
+func subnetCacheKeyFn(obj interface{}) (string, error) {
 	return obj.(*baremetal.Subnet).ID, nil
 }
 
