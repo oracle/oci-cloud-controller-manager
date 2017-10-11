@@ -613,7 +613,8 @@ func (c *client) GetSecurityList(id string) (*baremetal.SecurityList, error) {
 		return nil, err
 	}
 	if exists {
-		return item.(*baremetal.SecurityList), nil
+		secList := item.(*baremetal.SecurityList)
+		return secList, nil
 	}
 
 	secList, err := c.Client.GetSecurityList(id)
@@ -627,6 +628,14 @@ func (c *client) GetSecurityList(id string) (*baremetal.SecurityList, error) {
 
 func (c *client) UpdateSecurityList(id string, opts *baremetal.UpdateSecurityListOptions) (*baremetal.SecurityList, error) {
 	sl, err := c.Client.UpdateSecurityList(id, opts)
+	if IsConflict(err) {
+		secList, getErr := c.Client.GetSecurityList(id)
+		if getErr != nil {
+			return nil, fmt.Errorf("unable to get sec list %q after conflict: %v", id, getErr)
+		}
+		c.securityListCache.Add(secList)
+		return nil, err
+	}
 	if err != nil {
 		return nil, err
 	}
