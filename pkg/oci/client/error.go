@@ -26,7 +26,7 @@ const (
 // status and code. The message of the error is set to the message passed in.
 func NewNotFoundError(msg string) error {
 	return &baremetal.Error{
-		Status:  string(notFoundStatus),
+		Status:  notFoundStatus,
 		Code:    baremetal.NotAuthorizedOrNotFound,
 		Message: msg,
 	}
