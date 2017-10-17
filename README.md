@@ -40,8 +40,7 @@ See [DEVELOPMENT.md](docs/development.md).
 
 ## Support
 
-If you need support, start with the documentation. If you still have problems
-[raise an issue][2] or contact odx_kubernetes_gb_grp@oracle.com.
+If you think you've found a bug, please [raise an issue][2].
 
 ## Cloud Controller Manager
 
