@@ -148,9 +148,19 @@ func New(cfg *Config) (Interface, error) {
 		return nil, err
 	}
 
+	compartmentOCID := cfg.Auth.CompartmentOCID
+	if compartmentOCID == "" {
+		glog.Info("Compartment not supplied in config - attempting to infer from instance metadata")
+		metadata, err := util.InstanceMetadataFromAPI()
+		if err != nil {
+			return nil, err
+		}
+		compartmentOCID = metadata.CompartmentOCID
+	}
+
 	return &client{
 		Client:            ociClient,
-		compartmentID:     cfg.Auth.CompartmentOCID,
+		compartmentID:     compartmentOCID,
 		subnetCache:       cache.NewTTLStore(subnetCacheKeyFn, time.Duration(24)*time.Hour),
 		securityListCache: cache.NewTTLStore(securityListKeyFn, time.Duration(24)*time.Hour),
 	}, nil
