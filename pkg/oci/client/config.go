@@ -42,7 +42,7 @@ type LoadBalancerConfig struct {
 	// has setup a rule that allows inbound traffic to the appropriate ports
 	// for kube proxy health port, node port ranges, and health check port ranges.
 	// E.g. 10.82.0.0/16 30000-32000
-	DisableSecurityListManagement bool `gcfg:"disableSecurityListManagement,omitempty"`
+	DisableSecurityListManagement bool `yaml:"disableSecurityListManagement"`
 
 	Subnet1 string `yaml:"subnet1"`
 	Subnet2 string `yaml:"subnet2"`
