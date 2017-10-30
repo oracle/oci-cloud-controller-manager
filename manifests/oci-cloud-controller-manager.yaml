@@ -35,20 +35,16 @@ spec:
         effect: NoSchedule
       serviceAccountName: cloud-controller-manager
       imagePullSecrets:
-        - name: odx-docker-pull-secret
+        - name: wcr-docker-pull-secret
       containers:
         - name: oci-cloud-controller-manager
-          imagePullPolicy: "Always"
           image: wcr.io/oracle/oci-cloud-controller-manager:0.1.0
           args:
             - --cloud-config=/etc/oci/cloud-provider.yaml
             - --cloud-provider=oci
             - --cluster-cidr=10.244.0.0/16
-            - -v=4
+            - -v=2
           volumeMounts:
-            - name: etcssl
-              mountPath: /etc/ssl
-              readOnly: true
             - name: cfg
               mountPath: /etc/oci
               readOnly: true
@@ -56,9 +52,6 @@ spec:
               mountPath: /etc/kubernetes
               readOnly: true
       volumes:
-        - name: etcssl
-          hostPath:
-            path: /etc/ssl
         - name: cfg
           secret:
             secretName: oci-cloud-controller-manager
