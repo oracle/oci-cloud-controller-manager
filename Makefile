@@ -2,7 +2,8 @@ REGISTRY := wcr.io/oracle
 PKG := github.com/oracle/oci-cloud-controller-manager
 BIN := oci-cloud-controller-manager
 IMAGE := $(REGISTRY)/$(BIN)
-VERSION := $(shell git describe --always --dirty)
+VERSION := $(shell git describe --exact-match 2> /dev/null || \
+	git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
 
 GOOS ?= linux
 ARCH ?= amd64
@@ -75,3 +76,7 @@ run-dev:
 	    --cluster-cidr=10.244.0.0/16              \
 	    --cloud-provider=external                 \
 	    -v=4
+
+.PHONY: version
+version:
+	@echo ${VERSION}
