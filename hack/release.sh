@@ -1,6 +1,6 @@
 #!/bin/bash
 
-RELEASE=0.1.0
+RELEASE=${RELEASE:=0.1.0}
 
 IMAGE=wcr.io/oracle/oci-cloud-controller-manager
 
