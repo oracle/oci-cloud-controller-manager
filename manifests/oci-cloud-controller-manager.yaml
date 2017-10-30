@@ -39,7 +39,7 @@ spec:
       containers:
         - name: oci-cloud-controller-manager
           imagePullPolicy: "Always"
-          image: registry.oracledx.com/skeppare/oci-cloud-controller-manager:0.1.0
+          image: wcr.io/oracle/oci-cloud-controller-manager:0.1.0
           args:
             - --cloud-config=/etc/oci/cloud-provider.yaml
             - --cloud-provider=oci

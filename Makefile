@@ -1,4 +1,4 @@
-REGISTRY := registry.oracledx.com/skeppare
+REGISTRY := wcr.io/oracle
 PKG := github.com/oracle/oci-cloud-controller-manager
 BIN := oci-cloud-controller-manager
 IMAGE := $(REGISTRY)/$(BIN)
