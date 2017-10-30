@@ -42,7 +42,7 @@ We publish the `oci-cloud-controller-mananger` to a private Docker registry. You
 will need a [Docker registry secret][4] to pull images from it.
 
 ```bash
-$ kubectl -n kube-system create secret docker-registry odx-docker-pull-secret \
+$ kubectl -n kube-system create secret docker-registry wcr-docker-pull-secret \
     --docker-server="wcr.io" \
     --docker-username="$DOCKER_REGISTRY_USERNAME" \
     --docker-password="$DOCKER_REGISTRY_PASSWORD" \
