@@ -76,3 +76,7 @@ run-dev:
 	    --cluster-cidr=10.244.0.0/16              \
 	    --cloud-provider=external                 \
 	    -v=4
+
+.PHONY: version
+version:
+	@echo ${VERSION}
