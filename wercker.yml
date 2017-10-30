@@ -55,10 +55,7 @@ push:
           chmod +x /oci-cloud-controller-manager
 
     - internal/docker-push:
-        repository: registry.oracledx.com/skeppare/oci-cloud-controller-manager
-        registry: https://registry.oracledx.com/v2
-        username: $DOCKER_REGISTRY_USERNAME
-        password: $DOCKER_REGISTRY_PASSWORD
+        repository: wcr.io/oracle/oci-cloud-controller-manager
         tag: $VERSION
         entrypoint: /oci-cloud-controller-manager
         user: 65534 # nobody

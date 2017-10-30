@@ -43,8 +43,8 @@ will need a [Docker registry secret][4] to pull images from it.
 
 ```bash
 $ kubectl -n kube-system create secret docker-registry odx-docker-pull-secret \
-    --docker-server="registry.oracledx.com" \
-    --docker-username="agent" \
+    --docker-server="wcr.io" \
+    --docker-username="$DOCKER_REGISTRY_USERNAME" \
     --docker-password="$DOCKER_REGISTRY_PASSWORD" \
     --docker-email="k8s@oracle.com"
 ```
