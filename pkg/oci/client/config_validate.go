@@ -13,9 +13,6 @@ func validateAuthConfig(c AuthConfig, fldPath *field.Path) field.ErrorList {
 	if c.TenancyOCID == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("tenancy"), ""))
 	}
-	if c.CompartmentOCID == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child("compartment"), ""))
-	}
 	if c.UserOCID == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("user"), ""))
 	}

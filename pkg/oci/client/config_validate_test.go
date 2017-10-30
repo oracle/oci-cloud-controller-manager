@@ -81,9 +81,7 @@ func TestValidateConfig(t *testing.T) {
 					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
 				},
 			},
-			errs: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeRequired, Field: "auth.compartment", BadValue: ""},
-			},
+			errs: field.ErrorList{},
 		}, {
 			name: "missing_user",
 			in: &Config{
