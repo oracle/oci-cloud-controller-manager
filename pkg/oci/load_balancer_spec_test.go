@@ -30,6 +30,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 		defaultSubnetOne string
 		defaultSubnetTwo string
 		nodes            []*v1.Node
+		config           *Config
 		service          *v1.Service
 		expected         *LBSpec
 	}{
@@ -53,6 +54,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 			},
+			config: &Config{},
 			expected: &LBSpec{
 				Name:     "test-uid",
 				Shape:    "100Mbps",
@@ -107,6 +109,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 			},
+			config: &Config{},
 			expected: &LBSpec{
 				Name:     "test-uid",
 				Shape:    "100Mbps",
@@ -162,6 +165,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 			},
+			config: &Config{},
 			expected: &LBSpec{
 				Name:     "test-uid",
 				Shape:    "100Mbps",
@@ -216,6 +220,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 			},
+			config: &Config{},
 			expected: &LBSpec{
 				Name:     "test-uid",
 				Shape:    "8000Mbps",
@@ -270,6 +275,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 			},
+			config: &Config{},
 			expected: &LBSpec{
 				Name:     "test-uid",
 				Shape:    "100Mbps",
@@ -312,7 +318,11 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			// we expect the service to be unchanged
 			tc.expected.service = tc.service
 			subnets := []string{tc.defaultSubnetOne, tc.defaultSubnetTwo}
-			result, err := NewLBSpec(tc.service, tc.nodes, subnets, nil)
+			sourceCIDRs, err := getLoadBalancerSourceRanges(tc.config, tc.service)
+			if err != nil {
+				t.Error(err)
+			}
+			result, err := NewLBSpec(tc.service, tc.nodes, subnets, nil, sourceCIDRs)
 			if err != nil {
 				t.Error(err)
 			}
@@ -330,6 +340,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 		defaultSubnetTwo string
 		nodes            []*v1.Node
 		service          *v1.Service
+		config           *Config
 		expectedErrMsg   string
 	}{
 		"unsupported udp protocol": {
@@ -341,6 +352,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 				},
 			},
 			expectedErrMsg: "invalid service: OCI load balancers do not support UDP",
+			config:         &Config{},
 		},
 		"unsupported LB IP": {
 			service: &v1.Service{
@@ -353,6 +365,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 				},
 			},
 			expectedErrMsg: "invalid service: OCI does not support setting LoadBalancerIP",
+			config:         &Config{},
 		},
 		"unsupported session affinity": {
 			service: &v1.Service{
@@ -364,6 +377,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 				},
 			},
 			expectedErrMsg: "invalid service: OCI only supports SessionAffinity \"None\" currently",
+			config:         &Config{},
 		},
 		"invalid idle connection timeout": {
 			service: &v1.Service{
@@ -383,13 +397,18 @@ func TestNewLBSpecFailure(t *testing.T) {
 				},
 			},
 			expectedErrMsg: "error parsing service annotation: service.beta.kubernetes.io/oci-load-balancer-connection-idle-timeout=whoops",
+			config:         &Config{},
 		},
 	}
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			subnets := []string{tc.defaultSubnetOne, tc.defaultSubnetTwo}
-			_, err := NewLBSpec(tc.service, tc.nodes, subnets, nil)
+			sourceCIDRs, err := getLoadBalancerSourceRanges(tc.config, tc.service)
+			if err != nil {
+				t.Error(err)
+			}
+			_, err = NewLBSpec(tc.service, tc.nodes, subnets, nil, sourceCIDRs)
 			if err == nil || err.Error() != tc.expectedErrMsg {
 				t.Errorf("Expected error with message %q but got %q", tc.expectedErrMsg, err)
 			}
