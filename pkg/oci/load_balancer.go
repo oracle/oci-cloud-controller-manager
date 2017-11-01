@@ -37,7 +37,10 @@ const (
 	ServiceAnnotationLoadBalancerInternal = "service.beta.kubernetes.io/oci-load-balancer-internal"
 
 	// ServiceAnnotationLoadBalancerShape is a Service annotation for
-	// specifying the Shape of a load balancer.
+	// specifying the Shape of a load balancer. The shape is a template that
+	// determines the load balancer's total pre-provisioned maximum capacity
+	// (bandwidth) for ingress plus egress traffic. Available shapes include
+	// "100Mbps", "400Mbps", and "8000Mbps".
 	ServiceAnnotationLoadBalancerShape = "service.beta.kubernetes.io/oci-load-balancer-shape"
 
 	// ServiceAnnotationLoadBalancerSubnet1 is a Service annotation for
