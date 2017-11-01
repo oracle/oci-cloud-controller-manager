@@ -25,6 +25,7 @@ import (
 
 	api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
 )
 
 const (
@@ -235,4 +236,18 @@ func parseSecretString(secretString string) (string, string) {
 		return fields[0], fields[1]
 	}
 	return "", secretString
+}
+
+func getLoadBalancerSourceRanges(service *api.Service) ([]string, error) {
+	sourceRanges, err := apiservice.GetLoadBalancerSourceRanges(service)
+	if err != nil {
+		return []string{}, err
+	}
+
+	sourceCIDRs := make([]string, 0, len(sourceRanges))
+	for _, sourceRange := range sourceRanges {
+		sourceCIDRs = append(sourceCIDRs, sourceRange.String())
+	}
+
+	return sourceCIDRs, nil
 }

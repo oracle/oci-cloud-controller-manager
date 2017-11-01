@@ -21,7 +21,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
-	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
 	k8sports "k8s.io/kubernetes/pkg/master/ports"
 
 	"github.com/golang/glog"
@@ -508,18 +507,4 @@ func loadBalancerToStatus(lb *baremetal.LoadBalancer) (*api.LoadBalancerStatus, 
 		ingress = append(ingress, api.LoadBalancerIngress{IP: ip.IPAddress})
 	}
 	return &api.LoadBalancerStatus{Ingress: ingress}, nil
-}
-
-func getLoadBalancerSourceRanges(service *api.Service) ([]string, error) {
-	sourceRanges, err := apiservice.GetLoadBalancerSourceRanges(service)
-	if err != nil {
-		return []string{}, err
-	}
-
-	sourceCIDRs := make([]string, 0, len(sourceRanges))
-	for _, sourceRange := range sourceRanges {
-		sourceCIDRs = append(sourceCIDRs, sourceRange.String())
-	}
-
-	return sourceCIDRs, nil
 }
