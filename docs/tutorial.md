@@ -1,12 +1,12 @@
 # Tutorial
 
-This example will show you how to use the CCM to create a service of type
-LoadBalancer.
+This example will show you how to use the CCM to create a service of `type:
+LoadBalancer`.
 
 ### Load balancer example
 
-When you create a service with --type=LoadBalancer a OCI load balancer will be
-created.
+When you create a service with `type: LoadBalancer` an OCI load balancer will
+be created.
 
 The example below will create an NGINX deployment and expose it via a load
 balancer. Note that the service **type** is set to **LoadBalancer**.
@@ -46,14 +46,14 @@ spec:
 
 Create it
 
-```
+```bash
 $ kubectl create -f examples/nginx-demo-svc.yaml
 ```
 
 Watch the service and await a public IP address. This will be the load balancer
 IP which you can use to connect to your service.
 
-```
+```bash
 $ kubectl get svc --watch
 NAME            CLUSTER-IP     EXTERNAL-IP      PORT(S)        AGE
 nginx-service   10.96.97.137   129.213.12.174   80:30274/TCP   5m
@@ -61,6 +61,6 @@ nginx-service   10.96.97.137   129.213.12.174   80:30274/TCP   5m
 
 You can now access your service via the provisioned load balancer
 
-```
-curl -i http://129.213.12.174
+```bash
+$ curl -i http://129.213.12.174
 ```
