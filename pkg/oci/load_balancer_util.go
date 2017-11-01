@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	baremetal "github.com/oracle/bmcs-go-sdk"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 
 	api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -238,10 +239,17 @@ func parseSecretString(secretString string) (string, string) {
 	return "", secretString
 }
 
-func getLoadBalancerSourceRanges(service *api.Service) ([]string, error) {
+func getLoadBalancerSourceRanges(config *client.Config, service *api.Service) ([]string, error) {
 	sourceRanges, err := apiservice.GetLoadBalancerSourceRanges(service)
 	if err != nil {
 		return []string{}, err
+	}
+
+	// NOTE: This means that if DefaultSourceCIDRs are set a user cannot set
+	// a source CIDR range of allow all (i.e. 0.0.0.0/0).
+	if len(sourceRanges) == 1 && apiservice.IsAllowAll(sourceRanges) &&
+		len(config.LoadBalancer.DefaultSourceCIDRs) > 0 {
+		return config.LoadBalancer.DefaultSourceCIDRs, nil
 	}
 
 	sourceCIDRs := make([]string, 0, len(sourceRanges))

@@ -44,6 +44,10 @@ type LoadBalancerConfig struct {
 	// E.g. 10.82.0.0/16 30000-32000
 	DisableSecurityListManagement bool `yaml:"disableSecurityListManagement"`
 
+	// DefaultSourceCIDRs configures the default permitted source CIDR range(s)
+	// for load balancers. Defaults to allow all (0.0.0.0/0) if not provided.
+	DefaultSourceCIDRs []string `yaml:"defaultSourceCIDRs"`
+
 	Subnet1 string `yaml:"subnet1"`
 	Subnet2 string `yaml:"subnet2"`
 }

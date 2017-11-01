@@ -2,6 +2,7 @@ package client
 
 import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	netsets "k8s.io/kubernetes/pkg/util/net/sets"
 )
 
 // validateAuthConfig provides basic validation of AuthConfig instances.
@@ -34,6 +35,16 @@ func validateLoadBalancerConfig(c LoadBalancerConfig, fldPath *field.Path) field
 	}
 	if c.Subnet2 == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("subnet2"), ""))
+	}
+	if len(c.DefaultSourceCIDRs) > 0 {
+		_, err := netsets.ParseIPNets(c.DefaultSourceCIDRs...)
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(
+				fldPath.Child("defaultSourceCIDRs"),
+				c.DefaultSourceCIDRs,
+				"expecting a list of IP ranges. For example, 10.0.0.0/24.",
+			))
+		}
 	}
 	return allErrs
 }

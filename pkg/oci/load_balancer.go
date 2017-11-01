@@ -198,7 +198,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(clusterName string, service *api.Ser
 		}
 	}
 
-	sourceCIDRs, err := getLoadBalancerSourceRanges(service)
+	sourceCIDRs, err := getLoadBalancerSourceRanges(cp.config, service)
 	if err != nil {
 		return nil, err
 	}

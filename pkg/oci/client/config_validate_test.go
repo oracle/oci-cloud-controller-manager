@@ -172,6 +172,31 @@ func TestValidateConfig(t *testing.T) {
 			errs: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeRequired, Field: "loadBalancer.subnet2", BadValue: ""},
 			},
+		}, {
+			name: "invalid-default-src-cidr",
+			in: &Config{
+				Auth: AuthConfig{
+					Region:          "us-phoenix-1",
+					TenancyOCID:     "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
+					CompartmentOCID: "ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq",
+					UserOCID:        "ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q",
+					PrivateKey:      "-----BEGIN RSA PRIVATE KEY----- (etc)",
+					Fingerprint:     "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
+				},
+				LoadBalancer: LoadBalancerConfig{
+					Subnet1:            "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
+					Subnet2:            "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
+					DefaultSourceCIDRs: []string{"10.0.0.0.0/-1"},
+				},
+			},
+			errs: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "loadBalancer.defaultSourceCIDRs",
+					BadValue: []string{"10.0.0.0.0/-1"},
+					Detail:   "expecting a list of IP ranges. For example, 10.0.0.0/24.",
+				},
+			},
 		},
 	}
 
