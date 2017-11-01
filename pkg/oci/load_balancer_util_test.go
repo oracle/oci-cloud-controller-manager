@@ -24,12 +24,150 @@ import (
 	baremetal "github.com/oracle/bmcs-go-sdk"
 )
 
+func TestSortAndCombineActions(t *testing.T) {
+	testCases := map[string]struct {
+		backendSetActions []Action
+		listenerActions   []Action
+		expected          []Action
+	}{
+		"create": {
+			backendSetActions: []Action{
+				&BackendSetAction{
+					actionType: Create,
+					BackendSet: baremetal.BackendSet{Name: "TCP-80"},
+				},
+				&BackendSetAction{
+					actionType: Create,
+					BackendSet: baremetal.BackendSet{Name: "TCP-443"},
+				},
+			},
+			listenerActions: []Action{
+				&ListenerAction{
+					actionType: Create,
+					Listener:   baremetal.Listener{Name: "TCP-443"},
+				},
+				&ListenerAction{
+					actionType: Create,
+					Listener:   baremetal.Listener{Name: "TCP-80"},
+				},
+			},
+			expected: []Action{
+				&BackendSetAction{
+					actionType: Create,
+					BackendSet: baremetal.BackendSet{Name: "TCP-443"},
+				},
+				&ListenerAction{
+					actionType: Create,
+					Listener:   baremetal.Listener{Name: "TCP-443"},
+				},
+				&BackendSetAction{
+					actionType: Create,
+					BackendSet: baremetal.BackendSet{Name: "TCP-80"},
+				},
+				&ListenerAction{
+					actionType: Create,
+					Listener:   baremetal.Listener{Name: "TCP-80"},
+				},
+			},
+		},
+		"update": {
+			backendSetActions: []Action{
+				&BackendSetAction{
+					actionType: Update,
+					BackendSet: baremetal.BackendSet{Name: "TCP-80"},
+				},
+				&BackendSetAction{
+					actionType: Update,
+					BackendSet: baremetal.BackendSet{Name: "TCP-443"},
+				},
+			},
+			listenerActions: []Action{
+				&ListenerAction{
+					actionType: Update,
+					Listener:   baremetal.Listener{Name: "TCP-443"},
+				},
+				&ListenerAction{
+					actionType: Update,
+					Listener:   baremetal.Listener{Name: "TCP-80"},
+				},
+			},
+			expected: []Action{
+				&ListenerAction{
+					actionType: Update,
+					Listener:   baremetal.Listener{Name: "TCP-443"},
+				},
+				&BackendSetAction{
+					actionType: Update,
+					BackendSet: baremetal.BackendSet{Name: "TCP-443"},
+				},
+				&ListenerAction{
+					actionType: Update,
+					Listener:   baremetal.Listener{Name: "TCP-80"},
+				},
+				&BackendSetAction{
+					actionType: Update,
+					BackendSet: baremetal.BackendSet{Name: "TCP-80"},
+				},
+			},
+		},
+		"delete": {
+			backendSetActions: []Action{
+				&BackendSetAction{
+					actionType: Delete,
+					BackendSet: baremetal.BackendSet{Name: "TCP-80"},
+				},
+				&BackendSetAction{
+					actionType: Delete,
+					BackendSet: baremetal.BackendSet{Name: "TCP-443"},
+				},
+			},
+			listenerActions: []Action{
+				&ListenerAction{
+					actionType: Delete,
+					Listener:   baremetal.Listener{Name: "TCP-443"},
+				},
+				&ListenerAction{
+					actionType: Delete,
+					Listener:   baremetal.Listener{Name: "TCP-80"},
+				},
+			},
+			expected: []Action{
+				&ListenerAction{
+					actionType: Delete,
+					Listener:   baremetal.Listener{Name: "TCP-443"},
+				},
+				&BackendSetAction{
+					actionType: Delete,
+					BackendSet: baremetal.BackendSet{Name: "TCP-443"},
+				},
+				&ListenerAction{
+					actionType: Delete,
+					Listener:   baremetal.Listener{Name: "TCP-80"},
+				},
+				&BackendSetAction{
+					actionType: Delete,
+					BackendSet: baremetal.BackendSet{Name: "TCP-80"},
+				},
+			},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			result := sortAndCombineActions(tc.backendSetActions, tc.listenerActions)
+			if !reflect.DeepEqual(result, tc.expected) {
+				t.Errorf("expected\n%+v\nbut got\n%+v", tc.expected, result)
+			}
+		})
+	}
+}
+
 func TestGetBackendSetChanges(t *testing.T) {
 	var testCases = []struct {
 		name     string
 		desired  map[string]baremetal.BackendSet
 		actual   map[string]baremetal.BackendSet
-		expected []BackendSetAction
+		expected []Action
 	}{
 		{
 			name: "create backendset",
@@ -54,9 +192,9 @@ func TestGetBackendSetChanges(t *testing.T) {
 					},
 				},
 			},
-			expected: []BackendSetAction{
-				{
-					Type: Create,
+			expected: []Action{
+				&BackendSetAction{
+					actionType: Create,
 					BackendSet: baremetal.BackendSet{
 						Name: "two",
 						Backends: []baremetal.Backend{
@@ -84,9 +222,9 @@ func TestGetBackendSetChanges(t *testing.T) {
 					},
 				},
 			},
-			expected: []BackendSetAction{
-				{
-					Type: Update,
+			expected: []Action{
+				&BackendSetAction{
+					actionType: Update,
 					BackendSet: baremetal.BackendSet{
 						Backends: []baremetal.Backend{
 							{IPAddress: "0.0.0.0", Port: 80},
@@ -113,9 +251,9 @@ func TestGetBackendSetChanges(t *testing.T) {
 					},
 				},
 			},
-			expected: []BackendSetAction{
-				{
-					Type: Update,
+			expected: []Action{
+				&BackendSetAction{
+					actionType: Update,
 					BackendSet: baremetal.BackendSet{
 						Backends: []baremetal.Backend{
 							{IPAddress: "0.0.0.0", Port: 80},
@@ -134,9 +272,9 @@ func TestGetBackendSetChanges(t *testing.T) {
 					},
 				},
 			},
-			expected: []BackendSetAction{
-				{
-					Type: Delete,
+			expected: []Action{
+				&BackendSetAction{
+					actionType: Delete,
 					BackendSet: baremetal.BackendSet{
 						Backends: []baremetal.Backend{
 							{IPAddress: "0.0.0.0", Port: 80},
@@ -161,7 +299,7 @@ func TestGetBackendSetChanges(t *testing.T) {
 					},
 				},
 			},
-			expected: []BackendSetAction{},
+			expected: []Action{},
 		},
 	}
 
@@ -183,7 +321,7 @@ func TestGetListenerChanges(t *testing.T) {
 		name     string
 		desired  map[string]baremetal.Listener
 		actual   map[string]baremetal.Listener
-		expected []ListenerAction
+		expected []Action
 	}{
 		{
 			name: "create listener",
@@ -194,9 +332,9 @@ func TestGetListenerChanges(t *testing.T) {
 				Port:                  443,
 			}},
 			actual: map[string]baremetal.Listener{},
-			expected: []ListenerAction{
-				{
-					Type: Create,
+			expected: []Action{
+				&ListenerAction{
+					actionType: Create,
 					Listener: baremetal.Listener{
 						Name: "TCP-443",
 						DefaultBackendSetName: "TCP-443",
@@ -230,9 +368,9 @@ func TestGetListenerChanges(t *testing.T) {
 					Port:                  80,
 				},
 			},
-			expected: []ListenerAction{
-				{
-					Type: Create,
+			expected: []Action{
+				&ListenerAction{
+					actionType: Create,
 					Listener: baremetal.Listener{
 						Name: "TCP-443",
 						DefaultBackendSetName: "TCP-443",
@@ -266,9 +404,9 @@ func TestGetListenerChanges(t *testing.T) {
 					Port:                  80,
 				},
 			},
-			expected: []ListenerAction{
-				{
-					Type: Delete,
+			expected: []Action{
+				&ListenerAction{
+					actionType: Delete,
 					Listener: baremetal.Listener{
 						Name: "TCP-443",
 						DefaultBackendSetName: "TCP-443",
@@ -296,7 +434,7 @@ func TestGetListenerChanges(t *testing.T) {
 					Port:                  80,
 				},
 			},
-			expected: []ListenerAction{},
+			expected: []Action{},
 		},
 		{
 			name: "ssl config change",
@@ -322,9 +460,9 @@ func TestGetListenerChanges(t *testing.T) {
 					},
 				},
 			},
-			expected: []ListenerAction{
-				{
-					Type: Update,
+			expected: []Action{
+				&ListenerAction{
+					actionType: Update,
 					Listener: baremetal.Listener{
 						Name: "TCP-80",
 						DefaultBackendSetName: "TCP-80",
