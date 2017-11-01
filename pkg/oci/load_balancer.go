@@ -337,6 +337,11 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		return nil, err
 	}
 
+	sourceCIDRs, err = getLoadBalancerSourceRanges(cp.config, service)
+	if err != nil {
+		return nil, err
+	}
+
 	return loadBalancerToStatus(lb)
 }
 

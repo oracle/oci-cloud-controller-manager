@@ -670,11 +670,13 @@ func TestGetLoadBalancerSourceRanges(t *testing.T) {
 		err          error
 	}{
 		"not-specified": {
+			config:       &Config{},
 			service:      &api.Service{},
 			sourceRanges: []string{"0.0.0.0/0"},
 			err:          nil,
 		},
 		"spec-field-basic": {
+			config: &Config{},
 			service: &api.Service{
 				Spec: api.ServiceSpec{
 					LoadBalancerSourceRanges: []string{"10.0.0.0/24"},
@@ -684,6 +686,7 @@ func TestGetLoadBalancerSourceRanges(t *testing.T) {
 			err:          nil,
 		},
 		"annotation-basic": {
+			config: &Config{},
 			service: &api.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
@@ -695,6 +698,7 @@ func TestGetLoadBalancerSourceRanges(t *testing.T) {
 			err:          nil,
 		},
 		"spec-field-and-annotation": {
+			config: &Config{},
 			service: &api.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
@@ -708,17 +712,65 @@ func TestGetLoadBalancerSourceRanges(t *testing.T) {
 			sourceRanges: []string{"10.1.0.0/16"}, // field supersedes annotation
 			err:          nil,
 		},
+		"empty-default": {
+			config: &Config{
+				LoadBalancer: LoadBalancerConfig{
+					DefaultSourceCIDRs: []string{},
+				},
+			},
+			service:      &api.Service{},
+			sourceRanges: []string{"0.0.0.0/0"},
+			err:          nil,
+		},
+		"default-only": {
+			config: &Config{
+				LoadBalancer: LoadBalancerConfig{
+					DefaultSourceCIDRs: []string{"10.0.0.0/24"},
+				},
+			},
+			service:      &api.Service{},
+			sourceRanges: []string{"10.0.0.0/24"},
+			err:          nil,
+		},
+		"default-overridden-field": {
+			config: &Config{
+				LoadBalancer: LoadBalancerConfig{
+					DefaultSourceCIDRs: []string{"10.1.0.0/24"},
+				},
+			},
+			service: &api.Service{
+				Spec: api.ServiceSpec{
+					LoadBalancerSourceRanges: []string{"10.0.0.0/24"},
+				},
+			},
+			sourceRanges: []string{"10.0.0.0/24"},
+			err:          nil,
+		},
+		"default-overridden-annotation": {
+			config: &Config{
+				LoadBalancer: LoadBalancerConfig{
+					DefaultSourceCIDRs: []string{"10.1.0.0/24"},
+				},
+			},
+			service: &api.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						api.AnnotationLoadBalancerSourceRangesKey: "10.0.0.0/24",
+					},
+				},
+			},
+			sourceRanges: []string{"10.0.0.0/24"},
+			err:          nil,
+		},
 	}
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			sourceRanges, err := getLoadBalancerSourceRanges(tc.config, tc.service)
 			if err != tc.err {
-				t.Errorf("getLoadBalancerSourceRanges(%+v) returned error %v, expected %v",
-					tc.service, err, tc.err)
+				t.Errorf("getLoadBalancerSourceRanges() returned error %v, expected %v", err, tc.err)
 			}
 			if !reflect.DeepEqual(sourceRanges, tc.sourceRanges) {
-				t.Errorf("getLoadBalancerSourceRanges(%+v) => %v, expected %v",
-					tc.service, sourceRanges, tc.sourceRanges)
+				t.Errorf("getLoadBalancerSourceRanges() => %v, expected %v", sourceRanges, tc.sourceRanges)
 			}
 		})
 	}
