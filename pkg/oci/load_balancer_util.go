@@ -18,9 +18,11 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/golang/glog"
 	baremetal "github.com/oracle/bmcs-go-sdk"
 
 	api "k8s.io/api/core/v1"
@@ -46,19 +48,59 @@ const (
 	Delete = "delete"
 )
 
-// BackendSetAction denotes the action that should be taken on the given backend set.
+// Action that should take place on the resource.
+type Action interface {
+	Type() ActionType
+	Name() string
+}
+
+// BackendSetAction denotes the action that should be taken on the given
+// BackendSet.
 type BackendSetAction struct {
-	Type       ActionType
+	Action
+
+	actionType ActionType
 	BackendSet baremetal.BackendSet
 }
 
-// ListenerAction denotes the action that should be taken on the given listener.
-type ListenerAction struct {
-	Type     ActionType
-	Listener baremetal.Listener
+// Type of the Action.
+func (b *BackendSetAction) Type() ActionType {
+	return b.actionType
 }
 
-// TODO(horwitz): this doesn't check weight which we may want in the future to evenly distribute Local traffic policy load.
+// Name of the action's object.
+func (b *BackendSetAction) Name() string {
+	return b.BackendSet.Name
+}
+
+func (b *BackendSetAction) String() string {
+	return fmt.Sprintf("BackendSetAction:{Name: %s, Type: %v }", b.Name(), b.actionType)
+}
+
+// ListenerAction denotes the action that should be taken on the given Listener.
+type ListenerAction struct {
+	Action
+
+	actionType ActionType
+	Listener   baremetal.Listener
+}
+
+// Type of the Action.
+func (l *ListenerAction) Type() ActionType {
+	return l.actionType
+}
+
+// Name of the action's object.
+func (l *ListenerAction) Name() string {
+	return l.Listener.Name
+}
+
+func (l *ListenerAction) String() string {
+	return fmt.Sprintf("ListenerAction:{Name: %s, Type: %v }", l.Name(), l.actionType)
+}
+
+// TODO(horwitz): this doesn't check weight which we may want in the future to
+// evenly distribute Local traffic policy load.
 func hasBackendSetChanged(actual, desired baremetal.BackendSet) bool {
 	if !reflect.DeepEqual(actual.HealthChecker, desired.HealthChecker) {
 		return true
@@ -74,8 +116,8 @@ func hasBackendSetChanged(actual, desired baremetal.BackendSet) bool {
 
 	nameFormat := "%s:%d"
 
-	// Since the lengths are equal that means the membership must be the same else
-	// there has been change.
+	// Since the lengths are equal that means the membership must be the same
+	// else there has been change.
 	desiredSet := sets.NewString()
 	for _, backend := range desired.Backends {
 		name := fmt.Sprintf(nameFormat, backend.IPAddress, backend.Port)
@@ -92,24 +134,24 @@ func hasBackendSetChanged(actual, desired baremetal.BackendSet) bool {
 	return false
 }
 
-func getBackendSetChanges(actual, desired map[string]baremetal.BackendSet) []BackendSetAction {
-	var backendSetActions []BackendSetAction
+func getBackendSetChanges(actual, desired map[string]baremetal.BackendSet) []Action {
+	var backendSetActions []Action
 	// First check to see if any backendsets need to be deleted or updated.
 	for name, actualBackendSet := range actual {
 		desiredBackendSet, ok := desired[name]
 		if !ok {
-			// no longer exists
-			backendSetActions = append(backendSetActions, BackendSetAction{
+			// No longer exists.
+			backendSetActions = append(backendSetActions, &BackendSetAction{
 				BackendSet: actualBackendSet,
-				Type:       Delete,
+				actionType: Delete,
 			})
 			continue
 		}
 
 		if hasBackendSetChanged(actualBackendSet, desiredBackendSet) {
-			backendSetActions = append(backendSetActions, BackendSetAction{
+			backendSetActions = append(backendSetActions, &BackendSetAction{
 				BackendSet: desiredBackendSet,
-				Type:       Update,
+				actionType: Update,
 			})
 		}
 	}
@@ -117,10 +159,10 @@ func getBackendSetChanges(actual, desired map[string]baremetal.BackendSet) []Bac
 	// Now check if any need to be created.
 	for name, desiredBackendSet := range desired {
 		if _, ok := actual[name]; !ok {
-			// doesn't exist so lets create it
-			backendSetActions = append(backendSetActions, BackendSetAction{
+			// Doesn't exist so lets create it.
+			backendSetActions = append(backendSetActions, &BackendSetAction{
 				BackendSet: desiredBackendSet,
-				Type:       Create,
+				actionType: Create,
 			})
 		}
 	}
@@ -132,24 +174,24 @@ func hasListenerChanged(actual, desired baremetal.Listener) bool {
 	return !reflect.DeepEqual(actual, desired)
 }
 
-func getListenerChanges(actual, desired map[string]baremetal.Listener) []ListenerAction {
-	var listenerActions []ListenerAction
+func getListenerChanges(actual, desired map[string]baremetal.Listener) []Action {
+	var listenerActions []Action
 	// First check to see if any listeners need to be deleted or updated.
 	for name, actualListener := range actual {
 		desiredListener, ok := desired[name]
 		if !ok {
 			// no longer exists
-			listenerActions = append(listenerActions, ListenerAction{
-				Listener: actualListener,
-				Type:     Delete,
+			listenerActions = append(listenerActions, &ListenerAction{
+				Listener:   actualListener,
+				actionType: Delete,
 			})
 			continue
 		}
 
 		if hasListenerChanged(actualListener, desiredListener) {
-			listenerActions = append(listenerActions, ListenerAction{
-				Listener: desiredListener,
-				Type:     Update,
+			listenerActions = append(listenerActions, &ListenerAction{
+				Listener:   desiredListener,
+				actionType: Update,
 			})
 		}
 	}
@@ -158,9 +200,9 @@ func getListenerChanges(actual, desired map[string]baremetal.Listener) []Listene
 	for name, desiredListener := range desired {
 		if _, ok := actual[name]; !ok {
 			// doesn't exist so lets create it
-			listenerActions = append(listenerActions, ListenerAction{
-				Listener: desiredListener,
-				Type:     Create,
+			listenerActions = append(listenerActions, &ListenerAction{
+				Listener:   desiredListener,
+				actionType: Create,
 			})
 		}
 	}
@@ -235,4 +277,49 @@ func parseSecretString(secretString string) (string, string) {
 		return fields[0], fields[1]
 	}
 	return "", secretString
+}
+
+// sortAndCombineActions combines two slices of Actions and then sorts them to
+// ensure that BackendSets are created prior to their associated Listeners but
+// deleted after their associated Listeners.
+func sortAndCombineActions(backendSetActions []Action, listenerActions []Action) []Action {
+	actions := append(backendSetActions, listenerActions...)
+	sort.Slice(actions, func(i, j int) bool {
+		a1 := actions[i]
+		a2 := actions[j]
+
+		// Sort by the name until we get to the point a1 and a2 are Actions upon
+		// an associated Listener and BackendSet (which share the same name).
+		if a1.Name() != a2.Name() {
+			return a1.Name() < a2.Name()
+		}
+
+		// For Create and Delete (which is what we really care about) the
+		// ActionType will always be the same so we can get away with just
+		// checking the type of the first action.
+		switch a1.Type() {
+		case Create:
+			// Create the BackendSet then Listener.
+			_, ok := a1.(*BackendSetAction)
+			return ok
+		case Update:
+			// Doesn't matter.
+			return true
+		case Delete:
+			// Delete the Listener then BackendSet.
+			_, ok := a2.(*BackendSetAction)
+			return ok
+		default:
+			// Should never be reachable.
+			glog.Errorf("Unknown action type received: %+v", a1)
+			return true
+		}
+	})
+	return actions
+}
+
+func getBackendPort(backends []baremetal.Backend) uint64 {
+	// TODO: what happens if this is 0? e.g. we scale the pods to 0 for a
+	// deployment.
+	return uint64(backends[0].Port)
 }

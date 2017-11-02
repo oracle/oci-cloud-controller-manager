@@ -204,14 +204,9 @@ func (cp *CloudProvider) EnsureLoadBalancer(clusterName string, service *api.Ser
 		return nil, err
 	}
 
-	err = cp.updateBackendSets(lb, spec)
+	err = cp.updateLoadBalancer(lb, spec, sslConfigMap, sourceCIDRs)
 	if err != nil {
-		return nil, fmt.Errorf("update backendsets: %v", err)
-	}
-
-	err = cp.updateListeners(lb, spec, sslConfigMap, sourceCIDRs)
-	if err != nil {
-		return nil, fmt.Errorf("udpate listeners: %v", err)
+		return nil, err
 	}
 
 	status, err := loadBalancerToStatus(lb)
@@ -223,15 +218,24 @@ func (cp *CloudProvider) EnsureLoadBalancer(clusterName string, service *api.Ser
 	return status, nil
 }
 
-func (cp *CloudProvider) updateBackendSets(lb *baremetal.LoadBalancer, spec LBSpec) error {
+func (cp *CloudProvider) updateLoadBalancer(
+	lb *baremetal.LoadBalancer,
+	spec LBSpec,
+	sslConfigMap map[int]*baremetal.SSLConfiguration,
+	sourceCIDRs []string) error {
 	lbOCID := lb.ID
 
-	actual := lb.BackendSets
-	desired := spec.GetBackendSets()
+	actualBackendSets := lb.BackendSets
+	desiredBackendSets := spec.GetBackendSets()
 
-	actions := getBackendSetChanges(actual, desired)
-	if len(actions) == 0 {
-		return nil
+	backendSetActions := getBackendSetChanges(actualBackendSets, desiredBackendSets)
+
+	actualListeners := lb.Listeners
+	desiredListeners := spec.GetListeners(sslConfigMap)
+	listenerActions := getListenerChanges(actualListeners, desiredListeners)
+
+	if len(backendSetActions) == 0 && len(listenerActions) == 0 {
+		return nil // Nothing to do.
 	}
 
 	lbSubnets, err := cp.client.GetSubnets(spec.Subnets)
@@ -244,143 +248,153 @@ func (cp *CloudProvider) updateBackendSets(lb *baremetal.LoadBalancer, spec LBSp
 		return fmt.Errorf("get subnets for nodes: %v", err)
 	}
 
+	actions := sortAndCombineActions(backendSetActions, listenerActions)
+	for _, action := range actions {
+		switch a := action.(type) {
+		case *BackendSetAction:
+			err := cp.updateBackendSet(lbOCID, a, lbSubnets, nodeSubnets)
+			if err != nil {
+				return fmt.Errorf("error updating BackendSet: %v", err)
+			}
+		case *ListenerAction:
+			backendSet := spec.GetBackendSets()[a.Listener.DefaultBackendSetName]
+			if a.Type() == Delete {
+				// If we need to delete the backendset then it'll no longer be
+				// present in the spec since that's what is desired, so we need
+				// to fetch it from the load balancer object.
+				backendSet = lb.BackendSets[a.Listener.DefaultBackendSetName]
+			}
+
+			backendPort := uint64(getBackendPort(backendSet.Backends))
+			err := cp.updateListener(lbOCID, a, backendPort, lbSubnets, nodeSubnets, sslConfigMap, sourceCIDRs)
+			if err != nil {
+				return fmt.Errorf("error updating Listener: %v", err)
+			}
+		}
+	}
+	return nil
+}
+
+func (cp *CloudProvider) updateBackendSet(lbOCID string, action *BackendSetAction, lbSubnets, nodeSubnets []*baremetal.Subnet) error {
 	sourceCIDRs := []string{}
 	listenerPort := uint64(0)
 
-	for _, action := range actions {
-		var workRequestID string
-		var err error
+	var workRequestID string
+	var err error
 
-		be := action.BackendSet
-		glog.V(2).Infof("Applying `%s` action on backend set `%s` for lb `%s`", action.Type, be.Name, lbOCID)
+	be := action.BackendSet
+	glog.V(2).Infof("Applying %q action on backend set `%s` for lb `%s`", action.Type(), be.Name, lbOCID)
 
-		backendPort := uint64(getBackendPort(be.Backends))
+	backendPort := uint64(getBackendPort(be.Backends))
 
-		switch action.Type {
-		case Create:
-			err = cp.securityListManager.Update(lbSubnets, nodeSubnets, sourceCIDRs, listenerPort, backendPort)
-			if err != nil {
-				return err
-			}
-
-			workRequestID, err = cp.client.CreateBackendSet(
-				lbOCID,
-				be.Name,
-				be.Policy,
-				be.Backends,
-				be.HealthChecker,
-				nil, // ssl config
-				nil, // session persistence
-				nil, // create opts
-			)
-		case Update:
-			err = cp.securityListManager.Update(lbSubnets, nodeSubnets, sourceCIDRs, listenerPort, backendPort)
-			if err != nil {
-				return err
-			}
-
-			workRequestID, err = cp.client.UpdateBackendSet(lbOCID, be.Name, &baremetal.UpdateLoadBalancerBackendSetOptions{
-				Policy:        be.Policy,
-				HealthChecker: be.HealthChecker,
-				Backends:      be.Backends,
-			})
-		case Delete:
-			err = cp.securityListManager.Delete(lbSubnets, nodeSubnets, listenerPort, backendPort)
-			if err != nil {
-				return err
-			}
-
-			workRequestID, err = cp.client.DeleteBackendSet(lbOCID, be.Name, nil)
-		}
-
+	switch action.Type() {
+	case Create:
+		err = cp.securityListManager.Update(lbSubnets, nodeSubnets, sourceCIDRs, listenerPort, backendPort)
 		if err != nil {
 			return err
 		}
 
-		_, err = cp.client.AwaitWorkRequest(workRequestID)
+		workRequestID, err = cp.client.CreateBackendSet(
+			lbOCID,
+			be.Name,
+			be.Policy,
+			be.Backends,
+			be.HealthChecker,
+			nil, // ssl config
+			nil, // session persistence
+			nil, // create opts
+		)
+	case Update:
+		err = cp.securityListManager.Update(lbSubnets, nodeSubnets, sourceCIDRs, listenerPort, backendPort)
 		if err != nil {
 			return err
 		}
+
+		workRequestID, err = cp.client.UpdateBackendSet(lbOCID, be.Name, &baremetal.UpdateLoadBalancerBackendSetOptions{
+			Policy:        be.Policy,
+			HealthChecker: be.HealthChecker,
+			Backends:      be.Backends,
+		})
+	case Delete:
+		err = cp.securityListManager.Delete(lbSubnets, nodeSubnets, listenerPort, backendPort)
+		if err != nil {
+			return err
+		}
+
+		workRequestID, err = cp.client.DeleteBackendSet(lbOCID, be.Name, nil)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	_, err = cp.client.AwaitWorkRequest(workRequestID)
+	if err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func (cp *CloudProvider) updateListeners(lb *baremetal.LoadBalancer, spec LBSpec, sslConfigMap map[int]*baremetal.SSLConfiguration, sourceCIDRs []string) error {
-	lbOCID := lb.ID
+func (cp *CloudProvider) updateListener(lbOCID string,
+	action *ListenerAction,
+	backendPort uint64,
+	lbSubnets []*baremetal.Subnet,
+	nodeSubnets []*baremetal.Subnet,
+	sslConfigMap map[int]*baremetal.SSLConfiguration,
+	sourceCIDRs []string) error {
 
-	desired := spec.GetListeners(sslConfigMap)
-	actions := getListenerChanges(lb.Listeners, desired)
-	if len(actions) == 0 {
-		return nil
-	}
+	var workRequestID string
+	var err error
+	l := action.Listener
+	listenerPort := uint64(l.Port)
 
-	lbSubnets, err := cp.client.GetSubnets(spec.Subnets)
-	if err != nil {
-		return fmt.Errorf("get subnets for lbs: %v", err)
-	}
+	glog.V(2).Infof("Applying %q action on listener `%s` for lb `%s`", action.Type(), l.Name, lbOCID)
 
-	nodeSubnets, err := cp.client.GetSubnetsForNodes(spec.Nodes)
-	if err != nil {
-		return fmt.Errorf("get subnets for nodes: %v", err)
-	}
-
-	for _, action := range actions {
-		var workRequestID string
-		var err error
-		l := action.Listener
-		listenerPort := uint64(l.Port)
-
-		backends := spec.GetBackendSets()[l.DefaultBackendSetName].Backends
-		backendPort := uint64(getBackendPort(backends))
-
-		glog.V(2).Infof("Applying `%s` action on listener `%s` for lb `%s`", action.Type, l.Name, lbOCID)
-
-		switch action.Type {
-		case Create:
-			err = cp.securityListManager.Update(lbSubnets, nodeSubnets, sourceCIDRs, listenerPort, backendPort)
-			if err != nil {
-				return err
-			}
-
-			workRequestID, err = cp.client.CreateListener(
-				lbOCID,
-				l.Name,
-				l.DefaultBackendSetName,
-				l.Protocol,
-				l.Port,
-				l.SSLConfig,
-				nil, // create opts
-			)
-		case Update:
-			err = cp.securityListManager.Update(lbSubnets, nodeSubnets, sourceCIDRs, listenerPort, backendPort)
-			if err != nil {
-				return err
-			}
-
-			workRequestID, err = cp.client.UpdateListener(lbOCID, l.Name, &baremetal.UpdateLoadBalancerListenerOptions{
-				DefaultBackendSetName: l.DefaultBackendSetName,
-				Port:      l.Port,
-				Protocol:  l.Protocol,
-				SSLConfig: l.SSLConfig,
-			})
-		case Delete:
-			err = cp.securityListManager.Delete(lbSubnets, nodeSubnets, listenerPort, backendPort)
-			if err != nil {
-				return err
-			}
-
-			workRequestID, err = cp.client.DeleteListener(lbOCID, l.Name, nil)
-		}
-
+	switch action.Type() {
+	case Create:
+		err = cp.securityListManager.Update(lbSubnets, nodeSubnets, sourceCIDRs, listenerPort, backendPort)
 		if err != nil {
 			return err
 		}
 
-		_, err = cp.client.AwaitWorkRequest(workRequestID)
+		workRequestID, err = cp.client.CreateListener(
+			lbOCID,
+			l.Name,
+			l.DefaultBackendSetName,
+			l.Protocol,
+			l.Port,
+			l.SSLConfig,
+			nil, // create opts
+		)
+	case Update:
+		err = cp.securityListManager.Update(lbSubnets, nodeSubnets, sourceCIDRs, listenerPort, backendPort)
 		if err != nil {
 			return err
 		}
+
+		workRequestID, err = cp.client.UpdateListener(lbOCID, l.Name, &baremetal.UpdateLoadBalancerListenerOptions{
+			DefaultBackendSetName: l.DefaultBackendSetName,
+			Port:      l.Port,
+			Protocol:  l.Protocol,
+			SSLConfig: l.SSLConfig,
+		})
+	case Delete:
+		err = cp.securityListManager.Delete(lbSubnets, nodeSubnets, listenerPort, backendPort)
+		if err != nil {
+			return err
+		}
+
+		workRequestID, err = cp.client.DeleteListener(lbOCID, l.Name, nil)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	_, err = cp.client.AwaitWorkRequest(workRequestID)
+	if err != nil {
+		return err
 	}
 
 	return nil
