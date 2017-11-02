@@ -218,7 +218,11 @@ func (cp *CloudProvider) EnsureLoadBalancer(clusterName string, service *api.Ser
 	return status, nil
 }
 
-func (cp *CloudProvider) updateLoadBalancer(lb *baremetal.LoadBalancer, spec LBSpec, sslConfigMap map[int]*baremetal.SSLConfiguration, sourceCIDRs []string) error {
+func (cp *CloudProvider) updateLoadBalancer(
+	lb *baremetal.LoadBalancer,
+	spec LBSpec,
+	sslConfigMap map[int]*baremetal.SSLConfiguration,
+	sourceCIDRs []string) error {
 	lbOCID := lb.ID
 
 	actualBackendSets := lb.BackendSets
@@ -231,8 +235,7 @@ func (cp *CloudProvider) updateLoadBalancer(lb *baremetal.LoadBalancer, spec LBS
 	listenerActions := getListenerChanges(actualListeners, desiredListeners)
 
 	if len(backendSetActions) == 0 && len(listenerActions) == 0 {
-		// Nothing to do
-		return nil
+		return nil // Nothing to do.
 	}
 
 	lbSubnets, err := cp.client.GetSubnets(spec.Subnets)
@@ -256,9 +259,9 @@ func (cp *CloudProvider) updateLoadBalancer(lb *baremetal.LoadBalancer, spec LBS
 		case *ListenerAction:
 			backendSet := spec.GetBackendSets()[a.Listener.DefaultBackendSetName]
 			if a.Type() == Delete {
-				// If we need to delete the backendset then it'll no longer be present
-				// in the spec since that's what is desired, so we need to fetch it
-				// from the load balancer object.
+				// If we need to delete the backendset then it'll no longer be
+				// present in the spec since that's what is desired, so we need
+				// to fetch it from the load balancer object.
 				backendSet = lb.BackendSets[a.Listener.DefaultBackendSetName]
 			}
 
