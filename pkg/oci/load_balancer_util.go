@@ -310,3 +310,8 @@ func sortAndCombineActions(backendSetActions []Action, listenerActions []Action)
 	})
 	return actions
 }
+
+func getBackendPort(backends []baremetal.Backend) uint64 {
+	// TODO: what happens if this is 0? e.g. we scale the pods to 0 for a deployment
+	return uint64(backends[0].Port)
+}

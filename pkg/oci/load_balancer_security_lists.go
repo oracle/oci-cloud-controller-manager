@@ -200,11 +200,6 @@ func (s *securityListManagerImpl) updateSecurityListRules(securityListID string,
 	return err
 }
 
-func getBackendPort(backends []baremetal.Backend) uint64 {
-	// TODO: what happens if this is 0? e.g. we scale the pods to 0 for a deployment
-	return uint64(backends[0].Port)
-}
-
 func getNodeIngressRules(securityList *baremetal.SecurityList, lbSubnets []*baremetal.Subnet, port uint64) []baremetal.IngressSecurityRule {
 	desired := sets.NewString()
 	for _, lbSubnet := range lbSubnets {

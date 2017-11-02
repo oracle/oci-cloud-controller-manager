@@ -254,9 +254,18 @@ func (cp *CloudProvider) updateLoadBalancer(lb *baremetal.LoadBalancer, spec LBS
 				return fmt.Errorf("error updating BackendSet: %v", err)
 			}
 		case *ListenerAction:
-			err := cp.updateListener(lbOCID, spec, a, lbSubnets, nodeSubnets, sslConfigMap, sourceCIDRs)
+			backendSet := spec.GetBackendSets()[a.Listener.DefaultBackendSetName]
+			if a.Type() == Delete {
+				// If we need to delete the backendset then it'll no longer be present
+				// in the spec since that's what is desired, so we need to fetch it
+				// from the load balancer object.
+				backendSet = lb.BackendSets[a.Listener.DefaultBackendSetName]
+			}
+
+			backendPort := uint64(getBackendPort(backendSet.Backends))
+			err := cp.updateListener(lbOCID, a, backendPort, lbSubnets, nodeSubnets, sslConfigMap, sourceCIDRs)
 			if err != nil {
-				return fmt.Errorf("error updating BackendSet: %v", err)
+				return fmt.Errorf("error updating Listener: %v", err)
 			}
 		}
 	}
@@ -271,7 +280,7 @@ func (cp *CloudProvider) updateBackendSet(lbOCID string, action *BackendSetActio
 	var err error
 
 	be := action.BackendSet
-	glog.V(2).Infof("Applying `%s` action on backend set `%s` for lb `%s`", action.Type, be.Name, lbOCID)
+	glog.V(2).Infof("Applying %q action on backend set `%s` for lb `%s`", action.Type(), be.Name, lbOCID)
 
 	backendPort := uint64(getBackendPort(be.Backends))
 
@@ -325,8 +334,8 @@ func (cp *CloudProvider) updateBackendSet(lbOCID string, action *BackendSetActio
 }
 
 func (cp *CloudProvider) updateListener(lbOCID string,
-	spec LBSpec,
 	action *ListenerAction,
+	backendPort uint64,
 	lbSubnets []*baremetal.Subnet,
 	nodeSubnets []*baremetal.Subnet,
 	sslConfigMap map[int]*baremetal.SSLConfiguration,
@@ -337,10 +346,7 @@ func (cp *CloudProvider) updateListener(lbOCID string,
 	l := action.Listener
 	listenerPort := uint64(l.Port)
 
-	backends := spec.GetBackendSets()[l.DefaultBackendSetName].Backends
-	backendPort := uint64(getBackendPort(backends))
-
-	glog.V(2).Infof("Applying `%s` action on listener `%s` for lb `%s`", action.Type, l.Name, lbOCID)
+	glog.V(2).Infof("Applying %q action on listener `%s` for lb `%s`", action.Type(), l.Name, lbOCID)
 
 	switch action.Type() {
 	case Create:

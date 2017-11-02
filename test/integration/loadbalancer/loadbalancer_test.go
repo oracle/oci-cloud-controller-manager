@@ -125,6 +125,8 @@ func testLoadBalancer(t *testing.T, internal bool) {
 		nodes = append(nodes, node)
 	}
 
+	glog.Info("Stating test on creating initial load balancer")
+
 	status, err := loadbalancers.EnsureLoadBalancer("foo", service, nodes)
 	if err != nil {
 		t.Fatalf("Unable to ensure the load balancer: %v", err)
@@ -136,6 +138,8 @@ func testLoadBalancer(t *testing.T, internal bool) {
 	if err != nil {
 		t.Fatalf("validation error: %v", err)
 	}
+
+	glog.Info("Stating test on decreasing node count to 1")
 
 	// Decrease the number of backends to 1
 	lessNodes := []*api.Node{nodes[0]}
@@ -149,7 +153,36 @@ func testLoadBalancer(t *testing.T, internal bool) {
 		t.Fatalf("validation error: %v", err)
 	}
 
+	glog.Info("Stating test on increasing node count back to 2")
+
 	// Go back to 2 nodes
+	status, err = loadbalancers.EnsureLoadBalancer("foo", service, nodes)
+	if err != nil {
+		t.Fatalf("Unable to ensure the load balancer: %v", err)
+	}
+
+	err = validateLoadBalancer(fw.Client, service, nodes)
+	if err != nil {
+		t.Fatalf("validation error: %v", err)
+	}
+
+	glog.Info("Stating test on changing service port")
+
+	// Validate changing the service port.
+	service.Spec.Ports[0].Port = 81
+	status, err = loadbalancers.EnsureLoadBalancer("foo", service, nodes)
+	if err != nil {
+		t.Fatalf("Unable to ensure the load balancer: %v", err)
+	}
+
+	err = validateLoadBalancer(fw.Client, service, nodes)
+	if err != nil {
+		t.Fatalf("validation error: %v", err)
+	}
+
+	glog.Info("Stating test on changing node port")
+	// Validate changing the node port.
+	service.Spec.Ports[0].NodePort = 8081
 	status, err = loadbalancers.EnsureLoadBalancer("foo", service, nodes)
 	if err != nil {
 		t.Fatalf("Unable to ensure the load balancer: %v", err)
@@ -171,20 +204,27 @@ func validateLoadBalancer(client client.Interface, service *api.Service, nodes [
 	}
 
 	if len(lb.Listeners) != 1 {
-		return fmt.Errorf("Expected 1 Listener but got %d", len(lb.Listeners))
+		return fmt.Errorf("expected 1 Listener but got %d", len(lb.Listeners))
 	}
 
 	if len(lb.BackendSets) != 1 {
-		return fmt.Errorf("Expected 1 BackendSet but got %d", len(lb.BackendSets))
+		return fmt.Errorf("expected 1 BackendSet but got %d", len(lb.BackendSets))
 	}
 
-	backendSet, ok := lb.BackendSets["TCP-80"]
+	name := fmt.Sprintf("TCP-%d", service.Spec.Ports[0].Port)
+	backendSet, ok := lb.BackendSets[name]
 	if !ok {
-		return fmt.Errorf("Expected BackendSet with name `TCP-80` to exist but it doesn't")
+		return fmt.Errorf("expected BackendSet with name %q to exist but it doesn't", name)
 	}
 
 	if len(backendSet.Backends) != len(nodes) {
-		return fmt.Errorf("Expected %d backends but got %d", len(nodes), len(backendSet.Backends))
+		return fmt.Errorf("expected %d backends but got %d", len(nodes), len(backendSet.Backends))
+	}
+
+	expectedBackendPort := service.Spec.Ports[0].NodePort
+	actualBackendPort := backendSet.Backends[0].Port
+	if int(expectedBackendPort) != int(actualBackendPort) {
+		return fmt.Errorf("expected backend port %d but got %d", expectedBackendPort, actualBackendPort)
 	}
 
 	return nil
