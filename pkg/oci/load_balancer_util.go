@@ -48,6 +48,7 @@ const (
 	Delete = "delete"
 )
 
+// Action that should take place on the resource
 type Action interface {
 	Type() ActionType
 	Name() string
