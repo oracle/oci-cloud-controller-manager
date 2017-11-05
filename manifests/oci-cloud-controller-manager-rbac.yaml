@@ -12,6 +12,14 @@ rules:
   - nodes
   verbs:
   - '*'
+ 
+- apiGroups:
+  - ""
+  resources:
+  - nodes/status
+  verbs:
+  - patch
+  
 - apiGroups:
   - ""
   resources:
