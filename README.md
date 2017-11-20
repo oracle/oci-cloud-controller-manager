@@ -144,6 +144,22 @@ See [DEVELOPMENT.md](docs/development.md).
 
 If you think you've found a bug, please [raise an issue][3].
 
+## Contributing
+
+`oci-cloud-controller-manager` is an open source project. See [CONTRIBUTING](CONTRIBUTING.md) for
+details.
+
+Oracle gratefully acknowledges the contributions to this project that have been made
+by the community.
+
+## License
+
+Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+
+`oci-cloud-controller-manager` is licensed under the Apache License 2.0.
+
+See [LICENSE](LICENSE) for more details.
+
 [1]: https://cloud.oracle.com/iaas
 [2]: https://kubernetes.io/docs/tasks/administer-cluster/running-cloud-controller/
 [3]: https://github.com/oracle/oci-cloud-controller-manager/issues/new
