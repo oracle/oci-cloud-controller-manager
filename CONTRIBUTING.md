@@ -18,7 +18,7 @@ This can be automatically added to pull requests by committing with:
 
 ```
 git commit --signoff
-````
+```
 
 Only pull requests from committers that can be verified as having
 signed the OCA can be accepted.
