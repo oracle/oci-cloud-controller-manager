@@ -6,8 +6,7 @@ Infrastucture][1] (OCI).
 
 [![wercker status](https://app.wercker.com/status/17a52304e0309d138ad41f7ae9f9ea49/s/master "wercker status")](https://app.wercker.com/project/byKey/17a52304e0309d138ad41f7ae9f9ea49)
 
-**WARNING**: this project is under active development and may not be production
-ready.
+**WARNING**: this project is under active development and should be considered alpha.
 
 ## Introduction
 
@@ -82,17 +81,6 @@ already be applied. See [kubernetes/kubernetes#49017][5] for details.
 Remember to restart any components that you have reconfigured before continuing.
 
 ### Authentication and Configuration
-
-We publish the `oci-cloud-controller-mananger` to a private Docker registry. You
-will need a [Docker registry secret][6] to pull images from it.
-
-```bash
-$ kubectl -n kube-system create secret docker-registry wcr-docker-pull-secret \
-    --docker-server="wcr.io" \
-    --docker-username="$DOCKER_REGISTRY_USERNAME" \
-    --docker-password="$DOCKER_REGISTRY_PASSWORD" \
-    --docker-email="k8s@oracle.com"
-```
 
 An example configuration file can be found [here][7]. Download this file and
 populate it with values specific to your chosen OCI identity and tenancy.
