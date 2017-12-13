@@ -34,8 +34,6 @@ spec:
         operator: Exists
         effect: NoSchedule
       serviceAccountName: cloud-controller-manager
-      imagePullSecrets:
-        - name: wcr-docker-pull-secret
       containers:
         - name: oci-cloud-controller-manager
           image: wcr.io/oracle/oci-cloud-controller-manager:0.1.1
