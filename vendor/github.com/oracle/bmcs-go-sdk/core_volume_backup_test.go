@@ -12,11 +12,11 @@ func (s *CoreTestSuite) TestCreateVolumeBackup() {
 		CompartmentID:       "compartmentID",
 		DisplayName:         "displayName",
 		ID:                  "id1",
-		SizeInMBs:           1,
+		SizeInGBs:           50,
 		State:               ResourceProvisioning,
 		TimeCreated:         Time{Time: time.Now()},
 		TimeRequestReceived: Time{Time: time.Now()},
-		UniqueSizeInMBs:     1,
+		UniqueSizeInGBs:     49,
 		VolumeID:            "volumd_id",
 	}
 

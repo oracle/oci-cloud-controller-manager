@@ -13,7 +13,7 @@ func (s *CoreTestSuite) TestCreateVolume() {
 		CompartmentID:      "compartmentID",
 		DisplayName:        "displayName",
 		ID:                 "id1",
-		SizeInMBs:          123,
+		SizeInGBs:          50,
 		State:              ResourceProvisioning,
 		TimeCreated:        Time{Time: time.Now()},
 	}

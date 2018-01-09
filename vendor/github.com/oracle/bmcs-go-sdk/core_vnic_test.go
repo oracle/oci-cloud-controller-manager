@@ -10,18 +10,18 @@ import (
 func (s *CoreTestSuite) TestGetVnic() {
 	vnicID := "vnicid"
 	res := &Vnic{
-		AvailabilityDomain: 	"availabilitydomain",
-		CompartmentID:      	"compartmentid",
-		DisplayName:        	"displayname",
-		ID:                 	vnicID,
-		IsPrimary:          	true,
-		MacAddress:         	"00:00:17:B6:4D:DD",
-		State:              	ResourceAvailable,
-		PrivateIPAddress:   	"10.10.10.10",
-		PublicIPAddress:    	"54.55.56.57",
-		SkipSourceDestCheck:	false,
-		SubnetID:           	"subnetid",
-		TimeCreated:        	Time{Time: time.Now()},
+		AvailabilityDomain:  "availabilitydomain",
+		CompartmentID:       "compartmentid",
+		DisplayName:         "displayname",
+		ID:                  vnicID,
+		IsPrimary:           true,
+		MacAddress:          "00:00:17:B6:4D:DD",
+		State:               ResourceAvailable,
+		PrivateIPAddress:    "10.10.10.10",
+		PublicIPAddress:     "54.55.56.57",
+		SkipSourceDestCheck: false,
+		SubnetID:            "subnetid",
+		TimeCreated:         Time{Time: time.Now()},
 	}
 
 	details := &requestDetails{
@@ -45,18 +45,18 @@ func (s *CoreTestSuite) TestGetVnic() {
 func (s *CoreTestSuite) TestUpdateVnic() {
 	vnicID := "vnicid"
 	res := &Vnic{
-		AvailabilityDomain: 	"availabilitydomain",
-		CompartmentID:      	"compartmentid",
-		DisplayName:        	"displayname",
-		ID:                 	vnicID,
-		IsPrimary:          	true,
-		MacAddress:         	"00:00:17:B6:4D:DD",
-		State:              	ResourceAvailable,
-		PrivateIPAddress:   	"10.10.10.10",
-		PublicIPAddress:    	"54.55.56.57",
-		SkipSourceDestCheck:	true,
-		SubnetID:           	"subnetid",
-		TimeCreated:        	Time{Time: time.Now()},
+		AvailabilityDomain:  "availabilitydomain",
+		CompartmentID:       "compartmentid",
+		DisplayName:         "displayname",
+		ID:                  vnicID,
+		IsPrimary:           true,
+		MacAddress:          "00:00:17:B6:4D:DD",
+		State:               ResourceAvailable,
+		PrivateIPAddress:    "10.10.10.10",
+		PublicIPAddress:     "54.55.56.57",
+		SkipSourceDestCheck: true,
+		SubnetID:            "subnetid",
+		TimeCreated:         Time{Time: time.Now()},
 	}
 
 	opts := &UpdateVnicOptions{}

@@ -19,10 +19,12 @@ var testSecurityList = SecurityList{
 			},
 			Protocol: "protocol",
 			TCPOptions: &TCPOptions{
-				DestinationPortRange: PortRange{Max: 2, Min: 1},
+				DestinationPortRange: &PortRange{Max: 2, Min: 1},
+				SourcePortRange:      &PortRange{Max: 4, Min: 3},
 			},
 			UDPOptions: &UDPOptions{
-				DestinationPortRange: PortRange{Max: 2, Min: 1},
+				DestinationPortRange: &PortRange{Max: 2, Min: 1},
+				SourcePortRange:      &PortRange{Max: 4, Min: 3},
 			},
 		},
 	},
@@ -36,10 +38,10 @@ var testSecurityList = SecurityList{
 			Protocol: "protocol",
 			Source:   "source",
 			TCPOptions: &TCPOptions{
-				DestinationPortRange: PortRange{Max: 2, Min: 1},
+				DestinationPortRange: &PortRange{Max: 2, Min: 1},
 			},
 			UDPOptions: &UDPOptions{
-				DestinationPortRange: PortRange{Max: 2, Min: 1},
+				DestinationPortRange: &PortRange{Max: 2, Min: 1},
 			},
 		},
 	},
