@@ -11,7 +11,7 @@ spec:
     effect: NoSchedule
   containers:
     - name: oci-cloud-controller-manager
-      image: wcr.io/oracle/oci-cloud-controller-manager:0.1.1
+      image: wcr.io/oracle/oci-cloud-controller-manager:0.1.2
       args:
         - --cloud-config=/etc/oci/cloud-provider.yaml
         - --cloud-provider=oci
