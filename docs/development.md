@@ -69,6 +69,19 @@ $ kubectl apply -f dist/oci-cloud-controller-manager.yaml
 $ kubectl apply -f dist/oci-cloud-controller-manager-rbac.yaml
 ```
 
+## Running the integration tests
+
+Create a `cloud-provider.yaml` as detailed above, select two separate
+subnets for nodes, and execute the following (substituting in the node subnet
+OCIDs):
+
+```
+$ OCI_CONFIG_FILE=cloud-provider.yaml \
+   NODE_SUBNET_ONE=ocid1.subnet.oc1.phx.aa... \
+   NODE_SUBNET_TWO=ocid1.subnet.oc1.phx.aa... \
+   go test -timeout 45m -v ./test/integration/loadbalancer
+```
+
 [1]: https://www.docker.com/
 [2]: https://github.com/golang/dep
 [3]: https://golang.org/
