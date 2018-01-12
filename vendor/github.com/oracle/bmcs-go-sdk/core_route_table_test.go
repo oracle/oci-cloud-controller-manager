@@ -14,7 +14,7 @@ func (s *CoreTestSuite) TestCreateRouteTable() {
 		NetworkEntityID: "network_entity_id",
 	}
 
-	res := &RouteTable{
+	expectedResponse := &RouteTable{
 		CompartmentID: "compartmentID",
 		DisplayName:   "displayName",
 		ID:            "id1",
@@ -22,17 +22,18 @@ func (s *CoreTestSuite) TestCreateRouteTable() {
 		RouteRules:    []RouteRule{rule},
 		State:         ResourceProvisioning,
 		TimeCreated:   t,
+		VcnID:         "vcn_id",
 	}
 
 	opts := &CreateOptions{}
-	opts.DisplayName = res.DisplayName
+	opts.DisplayName = expectedResponse.DisplayName
 
 	required := struct {
 		ocidRequirement
 		RouteRules []RouteRule `header:"-" json:"routeRules" url:"-"`
 		VcnID      string      `header:"-" json:"vcnId" url:"-"`
 	}{
-		RouteRules: res.RouteRules,
+		RouteRules: expectedResponse.RouteRules,
 		VcnID:      "vcnID",
 	}
 	required.CompartmentID = "compartmentID"
@@ -45,49 +46,52 @@ func (s *CoreTestSuite) TestCreateRouteTable() {
 
 	resp := &response{
 		header: http.Header{},
-		body:   marshalObjectForTest(res),
+		body:   marshalObjectForTest(expectedResponse),
 	}
 	s.requestor.On("postRequest", details).Return(resp, nil)
 
-	actual, err := s.requestor.CreateRouteTable(
-		res.CompartmentID,
+	actualResponse, err := s.requestor.CreateRouteTable(
+		expectedResponse.CompartmentID,
 		"vcnID",
-		res.RouteRules,
+		expectedResponse.RouteRules,
 		opts,
 	)
 
 	s.Nil(err)
-	s.NotNil(actual)
-	s.Equal(res.CompartmentID, actual.CompartmentID)
+	s.NotNil(actualResponse)
+	s.Equal(expectedResponse.CompartmentID, actualResponse.CompartmentID)
+	s.Equal(expectedResponse.VcnID, actualResponse.VcnID)
 }
 
 func (s *CoreTestSuite) TestGetRouteTable() {
-	res := &RouteTable{
+	expectedResponse := &RouteTable{
 		ID:          "id",
 		TimeCreated: Time{Time: time.Now()},
+		VcnID:       "vcn_id",
 	}
 
 	details := &requestDetails{
 		name: resourceRouteTables,
-		ids:  urlParts{res.ID},
+		ids:  urlParts{expectedResponse.ID},
 	}
 
 	headers := http.Header{}
 	headers.Set(headerETag, "ETAG")
 	resp := &response{
-		body:   marshalObjectForTest(res),
+		body:   marshalObjectForTest(expectedResponse),
 		header: headers,
 	}
 
 	s.requestor.On("getRequest", details).Return(resp, nil)
 
-	actual, e := s.requestor.GetRouteTable(res.ID)
+	actualResponse, e := s.requestor.GetRouteTable(expectedResponse.ID)
 
 	s.requestor.AssertExpectations(s.T())
 	s.Nil(e)
-	s.NotNil(actual)
-	s.Equal(res.ID, actual.ID)
-	s.Equal("ETAG", actual.ETag)
+	s.NotNil(actualResponse)
+	s.Equal(expectedResponse.ID, actualResponse.ID)
+	s.Equal(expectedResponse.VcnID, actualResponse.VcnID)
+	s.Equal("ETAG", actualResponse.ETag)
 }
 
 func (s *CoreTestSuite) TestUpdateRouteTable() {
@@ -99,16 +103,17 @@ func (s *CoreTestSuite) TestUpdateRouteTable() {
 		},
 	}
 
-	res := &RouteTable{
+	expectedResponse := &RouteTable{
 		ID:          "id",
 		RouteRules:  rules,
 		TimeCreated: t,
+		VcnID:       "vcn_id",
 	}
 
 	opts := &UpdateRouteTableOptions{RouteRules: rules}
 
 	details := &requestDetails{
-		ids:      urlParts{res.ID},
+		ids:      urlParts{expectedResponse.ID},
 		name:     resourceRouteTables,
 		optional: opts,
 	}
@@ -116,20 +121,21 @@ func (s *CoreTestSuite) TestUpdateRouteTable() {
 	headers := http.Header{}
 	headers.Set(headerETag, "ETAG!")
 	resp := &response{
-		body:   marshalObjectForTest(res),
+		body:   marshalObjectForTest(expectedResponse),
 		header: headers,
 	}
 
 	s.requestor.On("request", http.MethodPut, details).Return(resp, nil)
 
-	actual, e := s.requestor.UpdateRouteTable(res.ID, opts)
+	actualResponse, e := s.requestor.UpdateRouteTable(expectedResponse.ID, opts)
 
 	s.requestor.AssertExpectations(s.T())
 	s.Nil(e)
-	s.NotNil(actual)
-	s.Equal(1, len(actual.RouteRules))
-	s.Equal("cidr_block", actual.RouteRules[0].CidrBlock)
-	s.Equal("ETAG!", actual.ETag)
+	s.NotNil(actualResponse)
+	s.Equal(1, len(actualResponse.RouteRules))
+	s.Equal("cidr_block", actualResponse.RouteRules[0].CidrBlock)
+	s.Equal("ETAG!", actualResponse.ETag)
+	s.Equal(expectedResponse.VcnID, actualResponse.VcnID)
 }
 
 func (s *CoreTestSuite) TestDeleteRouteTable() {
@@ -157,18 +163,20 @@ func (s *CoreTestSuite) TestListRouteTables() {
 		required: required,
 	}
 
-	expected := []RouteTable{
+	expectedResponse := []RouteTable{
 		{
 			ID:            "id1",
 			CompartmentID: compartmentID,
 			DisplayName:   "res1",
 			TimeCreated:   created,
+			VcnID:         "vcnId",
 		},
 		{
 			ID:            "id2",
 			CompartmentID: compartmentID,
 			DisplayName:   "res2",
 			TimeCreated:   created,
+			VcnID:         "vcnId",
 		},
 	}
 
@@ -179,13 +187,15 @@ func (s *CoreTestSuite) TestListRouteTables() {
 	s.requestor.On("getRequest", details).Return(
 		&response{
 			header: headers,
-			body:   marshalObjectForTest(expected),
+			body:   marshalObjectForTest(expectedResponse),
 		},
 		nil,
 	)
 
-	actual, e := s.requestor.ListRouteTables(compartmentID, "vcnId", opts)
+	actualResponse, e := s.requestor.ListRouteTables(compartmentID, "vcnId", opts)
 	s.Nil(e)
-	s.NotNil(actual)
-	s.Equal(len(expected), len(actual.RouteTables))
+	s.NotNil(actualResponse)
+	s.Equal(len(expectedResponse), len(actualResponse.RouteTables))
+	s.Equal(expectedResponse[0].VcnID, actualResponse.RouteTables[0].VcnID)
+	s.Equal(expectedResponse[1].VcnID, actualResponse.RouteTables[1].VcnID)
 }

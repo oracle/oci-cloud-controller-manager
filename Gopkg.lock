@@ -191,7 +191,7 @@
   branch = "master"
   name = "github.com/oracle/bmcs-go-sdk"
   packages = ["."]
-  revision = "c58f2bfda490d2e87610265d056aea0716d94c87"
+  revision = "1461ec54db86b0cbec11b2730d0ae31a26a7e73d"
 
 [[projects]]
   branch = "master"
@@ -322,6 +322,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f5b2edf426da6a6f47e746c05fdfa863b31e304a15ddced67c4382675eebd345"
+  inputs-digest = "2d5008c0bb927e88fcf0f0992c7b3a37ee2e91cdd203327559930b2b796226f7"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -96,26 +96,6 @@ func DeleteInternetGateway(client *TestClient, id string) (string, error) {
 	}))
 }
 
-func CreateSecurityList(client *TestClient, compartmentID, vcnID string) (string, error) {
-	log.Printf("[DEBUG] Create SecurityList")
-	ingressRules := []bm.IngressSecurityRule{
-		{
-			Source:   "0.0.0.0/0",
-			Protocol: "all",
-		},
-	}
-	egressRules := []bm.EgressSecurityRule{
-		{
-			Destination: "0.0.0.0/0",
-			Protocol:    "all",
-		},
-	}
-	sl, err := client.CreateSecurityList(compartmentID, vcnID, egressRules, ingressRules, nil)
-	return resourceApply(getCreateFn(err, sl, bm.ResourceAvailable, func() (interface{}, error) {
-		return client.GetSecurityList(sl.ID)
-	}))
-}
-
 func DeleteSecurityList(client *TestClient, id string) (string, error) {
 	log.Printf("[DEBUG] Delete SecurityList")
 	err := client.DeleteSecurityList(id, nil)
@@ -312,12 +292,15 @@ func FindOrCreateCompartmentID(client *TestClient) (string, error) {
 		return "", err
 	}
 	if len(list.Compartments) == 1 {
-		return list.Compartments[0].ID, nil
+		compartment := list.Compartments[0]
+		log.Printf("[DEBUG] Compartment (name: %v, id: %v)", compartment.Name, compartment.ID)
+		return compartment.ID, nil
 	} else {
 		id, err := CreateCompartment(client)
 		if err != nil {
 			return "", err
 		}
+		log.Printf("[DEBUG] Created a new compartment (id: %v)", id)
 		return id, nil
 	}
 }

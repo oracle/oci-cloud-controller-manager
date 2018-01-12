@@ -80,8 +80,8 @@ func (s *securityListManagerImpl) Delete(
 	lbSubnets []*baremetal.Subnet,
 	backendSubnets []*baremetal.Subnet,
 	listenerPort uint64,
-	backendPort uint64) error {
-
+	backendPort uint64,
+) error {
 	noSubnets := []*baremetal.Subnet{}
 	noSourceCIDRs := []string{}
 
@@ -209,7 +209,7 @@ func getNodeIngressRules(securityList *baremetal.SecurityList, lbSubnets []*bare
 	ingressRules := []baremetal.IngressSecurityRule{}
 
 	for _, rule := range securityList.IngressSecurityRules {
-		if rule.TCPOptions == nil ||
+		if rule.TCPOptions == nil || rule.TCPOptions.SourcePortRange != nil || rule.TCPOptions.DestinationPortRange == nil ||
 			(rule.TCPOptions.DestinationPortRange.Min != port &&
 				rule.TCPOptions.DestinationPortRange.Max != port) {
 			// this rule doesn't apply to this service so nothing to do but keep it
@@ -246,8 +246,7 @@ func getLoadBalancerIngressRules(lbSecurityList *baremetal.SecurityList, sourceC
 
 	ingressRules := []baremetal.IngressSecurityRule{}
 	for _, rule := range lbSecurityList.IngressSecurityRules {
-
-		if rule.TCPOptions == nil ||
+		if rule.TCPOptions == nil || rule.TCPOptions.SourcePortRange != nil || rule.TCPOptions.DestinationPortRange == nil ||
 			(rule.TCPOptions.DestinationPortRange.Min != port &&
 				rule.TCPOptions.DestinationPortRange.Max != port) {
 			// this rule doesn't apply to this service so nothing to do but keep it
@@ -287,7 +286,7 @@ func getLoadBalancerEgressRules(lbSecurityList *baremetal.SecurityList, nodeSubn
 
 	egressRules := []baremetal.EgressSecurityRule{}
 	for _, rule := range lbSecurityList.EgressSecurityRules {
-		if rule.TCPOptions == nil ||
+		if rule.TCPOptions == nil || rule.TCPOptions.SourcePortRange != nil || rule.TCPOptions.DestinationPortRange == nil ||
 			(rule.TCPOptions.DestinationPortRange.Min != port &&
 				rule.TCPOptions.DestinationPortRange.Max != port) {
 			// this rule doesn't apply to this service so nothing to do but keep it
@@ -325,7 +324,7 @@ func makeEgressSecurityRule(cidrBlock string, port uint64) baremetal.EgressSecur
 		Destination: cidrBlock,
 		Protocol:    fmt.Sprintf("%d", ProtocolTCP),
 		TCPOptions: &baremetal.TCPOptions{
-			DestinationPortRange: baremetal.PortRange{
+			DestinationPortRange: &baremetal.PortRange{
 				Min: port,
 				Max: port,
 			},
@@ -340,7 +339,7 @@ func makeIngressSecurityRule(cidrBlock string, port uint64) baremetal.IngressSec
 		Source:   cidrBlock,
 		Protocol: fmt.Sprintf("%d", ProtocolTCP),
 		TCPOptions: &baremetal.TCPOptions{
-			DestinationPortRange: baremetal.PortRange{
+			DestinationPortRange: &baremetal.PortRange{
 				Min: port,
 				Max: port,
 			},
@@ -352,8 +351,7 @@ func makeIngressSecurityRule(cidrBlock string, port uint64) baremetal.IngressSec
 // securityListManagerNOOP implements the securityListManager interface but does
 // no logic, so that it can be used to not handle security lists if the user doesn't wish
 // to use that feature.
-type securityListManagerNOOP struct {
-}
+type securityListManagerNOOP struct{}
 
 func (s *securityListManagerNOOP) Update(lbSubnets []*baremetal.Subnet, backendSubnets []*baremetal.Subnet, sourceCIDRs []string, listenerPort uint64, backendPort uint64) error {
 	return nil

@@ -40,8 +40,8 @@ func (s *RequestorTestSuite) SetupTest() {
 	}
 }
 
-func buildTestURL(urlTemplate string, region string, resource resourceName, query url.Values, ids ...interface{}) string {
-	return "url!"
+func buildTestURL(urlTemplate string, region string, resource resourceName, query url.Values, ids ...interface{}) (string, error) {
+	return "url!", nil
 }
 
 func newTestAPIRequestor(authInfo *authenticationInfo, nco *NewClientOptions) (r *apiRequestor) {
@@ -390,17 +390,17 @@ func testGetMaxRetryTimeForStatus(s *RequestorTestSuite, status string, codes []
 		for _, method := range methods {
 			for _, service = range noRetryServices {
 				testUrl = fmt.Sprintf(baseUrlTemplate, service, us_phoenix_1)
-				waitTime = getMaxRetryTimeInSeconds(api, err, testUrl, method)
+				waitTime = getMaxRetryTimeInSeconds(api, err, testUrl, method, false)
 				s.Equal(waitTime, time.Duration(0))
 			}
 			for _, service = range defaultRetryServices {
 				testUrl = fmt.Sprintf(baseUrlTemplate, service, us_phoenix_1)
-				waitTime = getMaxRetryTimeInSeconds(api, err, testUrl, method)
+				waitTime = getMaxRetryTimeInSeconds(api, err, testUrl, method, false)
 				s.Equal(waitTime, api.shortRetryTime)
 			}
 			for _, service = range longRetryServices {
 				testUrl = fmt.Sprintf(baseUrlTemplate, service, us_phoenix_1)
-				waitTime = getMaxRetryTimeInSeconds(api, err, testUrl, method)
+				waitTime = getMaxRetryTimeInSeconds(api, err, testUrl, method, false)
 				s.Equal(waitTime, api.longRetryTime)
 			}
 		}

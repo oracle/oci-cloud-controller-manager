@@ -70,6 +70,7 @@ func (s *ObjectStorageTestSuite) TestGetObject() {
 
 	headers := http.Header{}
 	headers.Set(headerETag, "ETAG")
+	headers.Set(headerContentLength, "")
 	resp := &response{
 		body:   object.Body,
 		header: headers,
@@ -133,6 +134,7 @@ func (s *ObjectStorageTestSuite) TestHeadObject() {
 
 	headers := http.Header{}
 	headers.Set(headerETag, "ETAG")
+	headers.Set(headerContentLength, "0")
 	resp := &response{
 		body:   marshalObjectForTest(object),
 		header: headers,
@@ -176,6 +178,7 @@ func (s *ObjectStorageTestSuite) TestPutObject() {
 
 	headers := http.Header{}
 	headers.Set(headerETag, "ETAG")
+	headers.Set(headerContentLength, "8")
 	resp := &response{
 		body:   required.Body,
 		header: headers,

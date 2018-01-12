@@ -8,8 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/oracle/bmcs-go-sdk/acceptance-test/helpers"
 	"time"
+
+	"github.com/oracle/bmcs-go-sdk/acceptance-test/helpers"
 
 	bm "github.com/oracle/bmcs-go-sdk"
 )
@@ -105,7 +106,7 @@ func VnicAttachmentCRUDTest(t *testing.T, client *helpers.TestClient, compartmen
 	assert.NotEmpty(t, vnicAttachment.VnicID, "Get: VnicID")
 
 	// Get VNIC
-	vnic, err:= client.GetVnic(vnicAttachment.VnicID)
+	vnic, err := client.GetVnic(vnicAttachment.VnicID)
 	require.NoError(t, err, "Get VNIC")
 
 	assert.NotEmpty(t, vnic.AvailabilityDomain, "Get: AvailabilityDomain")
@@ -190,7 +191,7 @@ func MinParamVnicAttachmentTest(t *testing.T, client *helpers.TestClient, compar
 	assert.NotEmpty(t, vnicAttachment.VnicID, "Get: VnicID")
 
 	// Get VNIC
-	vnic, err:= client.GetVnic(vnicAttachment.VnicID)
+	vnic, err := client.GetVnic(vnicAttachment.VnicID)
 	require.NoError(t, err, "Get VNIC")
 
 	assert.NotEmpty(t, vnic.AvailabilityDomain, "Get: AvailabilityDomain")

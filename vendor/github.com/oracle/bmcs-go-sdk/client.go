@@ -16,7 +16,10 @@ import (
 	"math/rand"
 	"net/http"
 	"time"
+	"sync/atomic"
 )
+
+var clientCounter int64
 
 // Client is used to access Oracle BareMetal Services
 type Client struct {
@@ -31,17 +34,18 @@ type Client struct {
 }
 
 type NewClientOptions struct {
-	Region             string
-	Transport          http.RoundTripper
-	UrlTemplate        string
-	UserAgent          string
-	keyPassword        *string
-	keyPath            *string
-	keyBytes           []byte
-	ShortRetryTime     time.Duration
-	LongRetryTime      time.Duration
-	RandGen            *rand.Rand
-	DisableAutoRetries bool
+	Region                 string
+	Transport              http.RoundTripper
+	UrlTemplate            string
+	UserAgent              string
+	keyPassword            *string
+	keyPath                *string
+	keyBytes               []byte
+	ShortRetryTime         time.Duration
+	LongRetryTime          time.Duration
+	RandGen                *rand.Rand
+	DisableAutoRetries     bool
+	DisableNotFoundRetries bool
 }
 
 type NewClientOptionsFunc func(o *NewClientOptions)
@@ -116,6 +120,12 @@ func DisableAutoRetries(disableAutoRetries bool) NewClientOptionsFunc {
 	}
 }
 
+func DisableNotFoundRetries(disableNotFoundRetries bool) NewClientOptionsFunc {
+	return func(o *NewClientOptions) {
+		o.DisableNotFoundRetries = disableNotFoundRetries
+	}
+}
+
 // NewClient creates and authenticates a BareMetal API client
 func NewClient(userOCID, tenancyOCID, keyFingerprint string, opts ...NewClientOptionsFunc) (*Client, error) {
 	var err error
@@ -125,8 +135,13 @@ func NewClient(userOCID, tenancyOCID, keyFingerprint string, opts ...NewClientOp
 		keyFingerPrint: keyFingerprint,
 	}
 
-	//create random number generator for creating Retry Tokens
-	randGen := rand.New(rand.NewSource(time.Now().UnixNano()))
+	/* Create random number generator for creating Retry Tokens
+	 * Terraform operations create multiple clients.
+	 * We need the clientCounter because some customers were seeing issues with using the same retry token for multiple requests (time granularity issue in env)
+	*/
+	newClientCounterValue := atomic.AddInt64(&clientCounter, 1)
+	seed := newClientCounterValue + time.Now().UnixNano()
+	randGen := rand.New(rand.NewSource(seed))
 
 	nco := &NewClientOptions{
 		Transport:      &http.Transport{},

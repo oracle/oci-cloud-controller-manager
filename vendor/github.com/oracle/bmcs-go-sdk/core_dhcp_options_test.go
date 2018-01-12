@@ -8,30 +8,31 @@ import (
 )
 
 func (s *CoreTestSuite) TestCreateDHCPOptions() {
-	dhcpOptions := []DHCPDNSOption{{}}
-	res := &DHCPOptions{
+	dhcpDnsOptions := []DHCPDNSOption{{}}
+	expectedResponse := &DHCPOptions{
 		CompartmentID: "compartmentID",
 		DisplayName:   "displayName",
 		ID:            "id1",
-		Options:       dhcpOptions,
+		Options:       dhcpDnsOptions,
 		State:         ResourceAvailable,
 		TimeCreated:   Time{Time: time.Now()},
+		VcnID:         "vcn_id",
 	}
 
 	opts := &CreateOptions{}
-	opts.DisplayName = res.DisplayName
+	opts.DisplayName = expectedResponse.DisplayName
 
 	required := struct {
 		ocidRequirement
 		Options []DHCPDNSOption `header:"-" json:"options" url:"-"`
 		VcnID   string          `header:"-" json:"vcnId" url:"-"`
 	}{
-		Options: res.Options,
+		Options: expectedResponse.Options,
 		VcnID:   "vcn_id",
 	}
 	required.CompartmentID = "compartmentID"
 
-	details := &requestDetails{
+	reqDetails := &requestDetails{
 		name:     resourceDHCPOptions,
 		optional: opts,
 		required: required,
@@ -39,80 +40,87 @@ func (s *CoreTestSuite) TestCreateDHCPOptions() {
 
 	resp := &response{
 		header: http.Header{},
-		body:   marshalObjectForTest(res),
+		body:   marshalObjectForTest(expectedResponse),
 	}
-	s.requestor.On("postRequest", details).Return(resp, nil)
+	s.requestor.On("postRequest", reqDetails).Return(resp, nil)
 
-	actual, err := s.requestor.CreateDHCPOptions(res.CompartmentID, "vcn_id", res.Options, opts)
+	actualResponse, err := s.requestor.CreateDHCPOptions(expectedResponse.CompartmentID, expectedResponse.VcnID, expectedResponse.Options, opts)
 
 	s.Nil(err)
-	s.NotNil(actual)
-	s.Equal(res.CompartmentID, actual.CompartmentID)
+	s.NotNil(actualResponse)
+	s.Equal(expectedResponse.CompartmentID, actualResponse.CompartmentID)
+	s.Equal(expectedResponse.VcnID, actualResponse.VcnID)
+	s.Equal(expectedResponse.ID, actualResponse.ID)
+	s.Equal(expectedResponse.DisplayName, actualResponse.DisplayName)
 }
 
 func (s *CoreTestSuite) TestGetDHCPOptions() {
-	res := &DHCPOptions{
+	expectedResponse := &DHCPOptions{
 		ID:          "id",
 		TimeCreated: Time{Time: time.Now()},
+		VcnID:       "vcn_id",
 	}
 
-	details := &requestDetails{
+	reqDetails := &requestDetails{
 		name: resourceDHCPOptions,
-		ids:  urlParts{res.ID},
+		ids:  urlParts{expectedResponse.ID},
 	}
 
 	headers := http.Header{}
 	headers.Set(headerETag, "ETAG")
 	resp := &response{
-		body:   marshalObjectForTest(res),
+		body:   marshalObjectForTest(expectedResponse),
 		header: headers,
 	}
 
-	s.requestor.On("getRequest", details).Return(resp, nil)
+	s.requestor.On("getRequest", reqDetails).Return(resp, nil)
 
-	actual, e := s.requestor.GetDHCPOptions(res.ID)
+	actualResponse, e := s.requestor.GetDHCPOptions(expectedResponse.ID)
 
 	s.requestor.AssertExpectations(s.T())
 	s.Nil(e)
-	s.NotNil(actual)
-	s.Equal(res.ID, actual.ID)
-	s.Equal("ETAG", actual.ETag)
+	s.NotNil(actualResponse)
+	s.Equal(expectedResponse.ID, actualResponse.ID)
+	s.Equal(expectedResponse.VcnID, actualResponse.VcnID)
+	s.Equal("ETAG", actualResponse.ETag)
 }
 
 func (s *CoreTestSuite) TestUpdateDHCPOptions() {
-	dhcpOptions := []DHCPDNSOption{{}}
-	res := &DHCPOptions{
+	dhcpDnsOptions := []DHCPDNSOption{{}}
+	expectedResponse := &DHCPOptions{
 		ID:          "id",
-		Options:     dhcpOptions,
+		Options:     dhcpDnsOptions,
 		TimeCreated: Time{Time: time.Now()},
+		VcnID:       "vcn_id",
 	}
 
 	opts := &UpdateDHCPDNSOptions{
-		Options: res.Options,
+		Options: expectedResponse.Options,
 	}
 
-	details := &requestDetails{
+	reqDetails := &requestDetails{
 		name:     resourceDHCPOptions,
-		ids:      urlParts{res.ID},
+		ids:      urlParts{expectedResponse.ID},
 		optional: opts,
 	}
 
 	headers := http.Header{}
 	headers.Set(headerETag, "ETAG!")
 	resp := &response{
-		body:   marshalObjectForTest(res),
+		body:   marshalObjectForTest(expectedResponse),
 		header: headers,
 	}
 
-	s.requestor.On("request", http.MethodPut, details).Return(resp, nil)
+	s.requestor.On("request", http.MethodPut, reqDetails).Return(resp, nil)
 
-	actual, e := s.requestor.UpdateDHCPOptions(res.ID, opts)
+	actualResponse, e := s.requestor.UpdateDHCPOptions(expectedResponse.ID, opts)
 
 	s.requestor.AssertExpectations(s.T())
 	s.Nil(e)
-	s.NotNil(actual)
-	s.Equal(res.Options, actual.Options)
-	s.Equal("ETAG!", actual.ETag)
+	s.NotNil(actualResponse)
+	s.Equal(expectedResponse.Options, actualResponse.Options)
+	s.Equal("ETAG!", actualResponse.ETag)
+	s.Equal(expectedResponse.VcnID, actualResponse.VcnID)
 }
 
 func (s *CoreTestSuite) TestDeleteDHCPOptions() {
