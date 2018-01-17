@@ -82,6 +82,16 @@ $ OCI_CONFIG_FILE=cloud-provider.yaml \
    go test -timeout 45m -v ./test/integration/loadbalancer
 ```
 
+
+## Running the e2e tests
+
+The e2e test suite requires the version of the CCM under test to be installed in
+the cluster referenced via the `--kubeconfig` flag.
+
+```
+$ go test -timeout 45m -v ./test/e2e/ --kubeconfig="$HOME/.kube/config"
+```
+
 [1]: https://www.docker.com/
 [2]: https://github.com/golang/dep
 [3]: https://golang.org/
