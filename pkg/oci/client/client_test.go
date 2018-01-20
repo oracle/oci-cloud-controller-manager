@@ -24,6 +24,45 @@ import (
 	api "k8s.io/api/core/v1"
 )
 
+func TestInstanceTerminalState(t *testing.T) {
+	testCases := map[string]struct {
+		state    string
+		expected bool
+	}{
+		"not terminal - running": {
+			state:    baremetal.ResourceRunning,
+			expected: false,
+		},
+		"not terminal - stopped": {
+			state:    baremetal.ResourceStopped,
+			expected: false,
+		},
+		"is terminal - terminating": {
+			state:    baremetal.ResourceTerminating,
+			expected: true,
+		},
+		"is terminal - terminated": {
+			state:    baremetal.ResourceTerminated,
+			expected: true,
+		},
+		"is terminal - unknown": {
+			state:    "UNKNOWN",
+			expected: true,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			result := isInstanceInTerminalState(&baremetal.Instance{
+				State: tc.state,
+			})
+			if result != tc.expected {
+				t.Errorf("isInstanceInTerminalState(%q) = %v ; wanted %v", tc.state, result, tc.expected)
+			}
+		})
+	}
+}
+
 func TestExtractNodeAddressesFromVNIC(t *testing.T) {
 	testCases := []struct {
 		name string
