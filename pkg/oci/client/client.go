@@ -293,9 +293,9 @@ func (c *client) findInstanceByNodeNameIsVnic(nodeName string) (*baremetal.Insta
 // GetNodeAddressesForInstance gets the NodeAddress's of a given instance by
 // OCID.
 func (c *client) GetNodeAddressesForInstance(id string) ([]api.NodeAddress, error) {
-	glog.V(4).Infof("getNodeAddressesForInstance(%q) called", id)
+	glog.V(4).Infof("GetNodeAddressesForInstance(%q) called", id)
 	if id == "" {
-		return nil, fmt.Errorf("blank id passed to getNodeAddressesForInstance()")
+		return nil, fmt.Errorf("blank id passed to GetNodeAddressesForInstance()")
 	}
 
 	vnics, err := c.GetAttachedVnicsForInstance(id)
@@ -318,9 +318,9 @@ func (c *client) GetNodeAddressesForInstance(id string) ([]api.NodeAddress, erro
 // GetAttachedVnicsForInstance returns a slice of AVAILABLE VNICs for a given
 // instance OCID.
 func (c *client) GetAttachedVnicsForInstance(id string) ([]*baremetal.Vnic, error) {
-	glog.V(4).Infof("getAttachedVnicsForInstance(%q) called", id)
+	glog.V(4).Infof("GetAttachedVnicsForInstance(%q) called", id)
 	if id == "" {
-		return nil, fmt.Errorf("blank instance id passed to getVincesForAttachedInstance()")
+		return nil, fmt.Errorf("blank instance id passed to GetAttachedVnicsForInstance()")
 	}
 
 	opts := &baremetal.ListVnicAttachmentsOptions{
