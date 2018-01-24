@@ -279,7 +279,7 @@ func getLoadBalancerIngressRules(lbSecurityList *baremetal.SecurityList, sourceC
 			if inUse {
 				// This rule is no longer needed for this service, but is still used
 				// by another service, so we must still keep it.
-				glog.V(4).Infof("Port %d still inuse by another service.", port)
+				glog.V(4).Infof("Port %d still in use by another service.", port)
 				ingressRules = append(ingressRules, rule)
 				continue
 			}
