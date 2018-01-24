@@ -22,7 +22,10 @@ import (
 	baremetal "github.com/oracle/bmcs-go-sdk"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 
+	api "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
+	listersv1 "k8s.io/client-go/listers/core/v1"
 )
 
 const (
@@ -52,12 +55,14 @@ type securityListManager interface {
 }
 
 type securityListManagerImpl struct {
-	client client.Interface
+	client        client.Interface
+	serviceLister listersv1.ServiceLister
 }
 
-func newSecurityListManager(client client.Interface) securityListManager {
+func newSecurityListManager(client client.Interface, serviceLister listersv1.ServiceLister) securityListManager {
 	return &securityListManagerImpl{
-		client: client,
+		client:        client,
+		serviceLister: serviceLister,
 	}
 }
 
@@ -130,7 +135,7 @@ func (s *securityListManagerImpl) updateLoadBalancerRules(lbSubnets []*baremetal
 
 		lbIngressRules := lbSecurityList.IngressSecurityRules
 		if listenerPort != 0 {
-			lbIngressRules = getLoadBalancerIngressRules(lbSecurityList, sourceCIDRs, listenerPort)
+			lbIngressRules = getLoadBalancerIngressRules(lbSecurityList, sourceCIDRs, listenerPort, s.serviceLister)
 		}
 
 		if !securityListRulesChanged(lbSecurityList, lbIngressRules, lbEgressRules) {
@@ -241,7 +246,7 @@ func getNodeIngressRules(securityList *baremetal.SecurityList, lbSubnets []*bare
 	return ingressRules
 }
 
-func getLoadBalancerIngressRules(lbSecurityList *baremetal.SecurityList, sourceCIDRs []string, port uint64) []baremetal.IngressSecurityRule {
+func getLoadBalancerIngressRules(lbSecurityList *baremetal.SecurityList, sourceCIDRs []string, port uint64, serviceLister listersv1.ServiceLister) []baremetal.IngressSecurityRule {
 	desired := sets.NewString(sourceCIDRs...)
 
 	ingressRules := []baremetal.IngressSecurityRule{}
@@ -260,6 +265,26 @@ func getLoadBalancerIngressRules(lbSecurityList *baremetal.SecurityList, sourceC
 			desired.Delete(rule.Source)
 			continue
 		}
+
+		if rule.TCPOptions.DestinationPortRange.Min == port && rule.TCPOptions.DestinationPortRange.Max == port {
+			inUse, err := portInUse(serviceLister, int32(port))
+			if err != nil {
+				// Unable to determine if this port is in use by another service, so I guess
+				// we better err on the safe side and keep the rule.
+				glog.Errorf("failed to determine if port: %d is still in use: %v", port, err)
+				ingressRules = append(ingressRules, rule)
+				continue
+			}
+
+			if inUse {
+				// This rule is no longer needed for this service, but is still used
+				// by another service, so we must still keep it.
+				glog.V(4).Infof("Port %d still inuse by another service.", port)
+				ingressRules = append(ingressRules, rule)
+				continue
+			}
+		}
+
 		// else the actual cidr no longer exists so we don't need to do
 		// anything but ignore / delete it.
 	}
@@ -346,6 +371,23 @@ func makeIngressSecurityRule(cidrBlock string, port uint64) baremetal.IngressSec
 		},
 		IsStateless: false,
 	}
+}
+
+func portInUse(serviceLister listersv1.ServiceLister, port int32) (bool, error) {
+	serviceList, err := serviceLister.List(labels.Everything())
+	if err != nil {
+		return false, err
+	}
+	for _, service := range serviceList {
+		if service.Spec.Type == api.ServiceTypeLoadBalancer {
+			for _, p := range service.Spec.Ports {
+				if p.Port == port {
+					return true, nil
+				}
+			}
+		}
+	}
+	return false, nil
 }
 
 // securityListManagerNOOP implements the securityListManager interface but does

@@ -74,17 +74,9 @@ func NewCloudProvider(cfg *client.Config) (cloudprovider.Interface, error) {
 		return nil, err
 	}
 
-	var secListMgr securityListManager
-	if cfg.LoadBalancer.DisableSecurityListManagement {
-		secListMgr = newSecurityListManagerNOOP()
-	} else {
-		secListMgr = newSecurityListManager(c)
-	}
-
 	return &CloudProvider{
-		client:              c,
-		config:              cfg,
-		securityListManager: secListMgr,
+		client: c,
+		config: cfg,
 	}, nil
 }
 
@@ -110,14 +102,27 @@ func (cp *CloudProvider) Initialize(clientBuilder controller.ControllerClientBui
 	}
 
 	factory := informers.NewSharedInformerFactory(cp.kubeclient, 5*time.Minute)
+
 	nodeInformer := factory.Core().V1().Nodes()
 	go nodeInformer.Informer().Run(wait.NeverStop)
 	glog.Info("Waiting for node informer cache to sync")
 	if !cache.WaitForCacheSync(wait.NeverStop, nodeInformer.Informer().HasSynced) {
 		utilruntime.HandleError(fmt.Errorf("Timed out waiting for node informer to sync"))
 	}
-
 	cp.NodeLister = nodeInformer.Lister()
+
+	if cp.config.LoadBalancer.DisableSecurityListManagement {
+		cp.securityListManager = newSecurityListManagerNOOP()
+
+	} else {
+		serviceInformer := factory.Core().V1().Services()
+		go serviceInformer.Informer().Run(wait.NeverStop)
+		glog.Info("Waiting for service informer cache to sync")
+		if !cache.WaitForCacheSync(wait.NeverStop, serviceInformer.Informer().HasSynced) {
+			utilruntime.HandleError(fmt.Errorf("Timed out waiting for service informer to sync"))
+		}
+		cp.securityListManager = newSecurityListManager(cp.client, serviceInformer.Lister())
+	}
 }
 
 // ProviderName returns the cloud-provider ID.
