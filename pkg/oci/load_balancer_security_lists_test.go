@@ -19,6 +19,11 @@ import (
 	"testing"
 
 	baremetal "github.com/oracle/bmcs-go-sdk"
+
+	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1listers "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/cache"
 )
 
 func TestGetBackendPort(t *testing.T) {
@@ -132,6 +137,7 @@ func TestGetLoadBalancerIngressRules(t *testing.T) {
 		securityList *baremetal.SecurityList
 		sourceCIDRs  []string
 		port         uint64
+		services     []*v1.Service
 		expected     []baremetal.IngressSecurityRule
 	}{
 		{
@@ -145,7 +151,8 @@ func TestGetLoadBalancerIngressRules(t *testing.T) {
 				"1",
 				"2",
 			},
-			port: 80,
+			port:     80,
+			services: []*v1.Service{},
 			expected: []baremetal.IngressSecurityRule{
 				makeIngressSecurityRule("existing", 9000),
 				makeIngressSecurityRule("1", 80),
@@ -164,7 +171,8 @@ func TestGetLoadBalancerIngressRules(t *testing.T) {
 				"1",
 				"2",
 			},
-			port: 80,
+			port:     80,
+			services: []*v1.Service{},
 			expected: []baremetal.IngressSecurityRule{
 				makeIngressSecurityRule("existing", 9000),
 				makeIngressSecurityRule("1", 80),
@@ -184,7 +192,8 @@ func TestGetLoadBalancerIngressRules(t *testing.T) {
 				"1",
 				"3",
 			},
-			port: 80,
+			port:     80,
+			services: []*v1.Service{},
 			expected: []baremetal.IngressSecurityRule{
 				makeIngressSecurityRule("existing", 9000),
 				makeIngressSecurityRule("1", 80),
@@ -203,16 +212,45 @@ func TestGetLoadBalancerIngressRules(t *testing.T) {
 			},
 			sourceCIDRs: []string{},
 			port:        80,
+			services:    []*v1.Service{},
 			expected: []baremetal.IngressSecurityRule{
 				makeIngressSecurityRule("existing", 9000),
 				makeIngressSecurityRule("existing", 9001),
+			},
+		}, {
+			name: "do not delete a port rule which is in use by another service",
+			securityList: &baremetal.SecurityList{
+				IngressSecurityRules: []baremetal.IngressSecurityRule{
+					makeIngressSecurityRule("0.0.0.0/0", 80),
+				},
+			},
+			sourceCIDRs: []string{},
+			port:        80,
+			services: []*v1.Service{
+				{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-port-80"},
+					Spec: v1.ServiceSpec{
+						Type:  v1.ServiceTypeLoadBalancer,
+						Ports: []v1.ServicePort{{Port: 80}},
+					},
+				},
+			},
+			expected: []baremetal.IngressSecurityRule{
+				makeIngressSecurityRule("0.0.0.0/0", 80),
 			},
 		},
 	}
 
 	for _, tc := range testCases {
+		serviceCache := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+		serviceLister := v1listers.NewServiceLister(serviceCache)
+		for i := range tc.services {
+			if err := serviceCache.Add(tc.services[i]); err != nil {
+				t.Fatalf("%s unexpected service add error: %v", tc.name, err)
+			}
+		}
 		t.Run(tc.name, func(t *testing.T) {
-			rules := getLoadBalancerIngressRules(tc.securityList, tc.sourceCIDRs, tc.port)
+			rules := getLoadBalancerIngressRules(tc.securityList, tc.sourceCIDRs, tc.port, serviceLister)
 			if !reflect.DeepEqual(rules, tc.expected) {
 				t.Errorf("expected rules\n%+v\nbut got\n%+v", tc.expected, rules)
 			}
