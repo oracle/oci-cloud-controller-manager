@@ -222,7 +222,8 @@ func (c *client) GetInstanceByNodeName(nodeName string) (*baremetal.Instance, er
 	}
 }
 
-func isInstanceInTerminalState(instance *baremetal.Instance) bool {
+// IsInstanceInTerminalState returns true if the instance is in a terminal state, false otherwise.
+func IsInstanceInTerminalState(instance *baremetal.Instance) bool {
 	return instance.State == baremetal.ResourceTerminated ||
 		instance.State == baremetal.ResourceTerminating ||
 		instance.State == "UNKNOWN"
@@ -231,7 +232,7 @@ func isInstanceInTerminalState(instance *baremetal.Instance) bool {
 func getNonTerminalInstances(instances []baremetal.Instance) []baremetal.Instance {
 	var result []baremetal.Instance
 	for _, instance := range instances {
-		if !isInstanceInTerminalState(&instance) {
+		if !IsInstanceInTerminalState(&instance) {
 			result = append(result, instance)
 		}
 	}
@@ -266,7 +267,7 @@ func (c *client) findInstanceByNodeNameIsVnic(nodeName string) (*baremetal.Insta
 					return nil, err
 				}
 
-				if isInstanceInTerminalState(instance) {
+				if IsInstanceInTerminalState(instance) {
 					glog.Warningf("Instance %q is in state %q which is a terminal state", instance.ID, instance.State)
 					continue
 				}

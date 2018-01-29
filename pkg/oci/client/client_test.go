@@ -53,11 +53,11 @@ func TestInstanceTerminalState(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			result := isInstanceInTerminalState(&baremetal.Instance{
+			result := IsInstanceInTerminalState(&baremetal.Instance{
 				State: tc.state,
 			})
 			if result != tc.expected {
-				t.Errorf("isInstanceInTerminalState(%q) = %v ; wanted %v", tc.state, result, tc.expected)
+				t.Errorf("IsInstanceInTerminalState(%q) = %v ; wanted %v", tc.state, result, tc.expected)
 			}
 		})
 	}

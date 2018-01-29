@@ -143,6 +143,13 @@ func (cp *CloudProvider) CurrentNodeName(hostname string) (types.NodeName, error
 func (cp *CloudProvider) InstanceExistsByProviderID(providerID string) (bool, error) {
 	glog.V(4).Infof("InstanceExistsByProviderID(%q) called", providerID)
 	instanceID := util.MapProviderIDToInstanceID(providerID)
-	r, err := cp.client.GetInstance(instanceID)
-	return (r != nil), err
+	instance, err := cp.client.GetInstance(instanceID)
+	if client.IsNotFound(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+
+	return !client.IsInstanceInTerminalState(instance), nil
 }
