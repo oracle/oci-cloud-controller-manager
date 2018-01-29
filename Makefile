@@ -48,7 +48,7 @@ build-dirs:
 
 .PHONY: build
 build: build-dirs manifests
-	@GOOS=${GOOS} GOARCH=${ARCH} go build     \
+	@GOOS=${GOOS} GOARCH=${ARCH} go build -v  \
 	    -i                                    \
 	    -o dist/oci-cloud-controller-manager  \
 	    -installsuffix "static"               \
