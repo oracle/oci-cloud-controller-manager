@@ -139,7 +139,7 @@ func New(cfg *Config) (Interface, error) {
 		baremetal.Region(cfg.Auth.Region),
 		// Kubernetes will handle retries.
 		// The current go client will retry requests that are not retryable.
-		baremetal.DisableAutoRetries(true),}
+		baremetal.DisableAutoRetries(true)}
 
 	if cfg.Auth.PrivateKeyPassphrase != "" {
 		opts = append(opts, baremetal.PrivateKeyPassword(cfg.Auth.PrivateKeyPassphrase))
@@ -149,7 +149,7 @@ func New(cfg *Config) (Interface, error) {
 		cfg.Auth.UserOCID,
 		cfg.Auth.TenancyOCID,
 		cfg.Auth.Fingerprint,
-		opts...
+		opts...,
 	)
 	if err != nil {
 		return nil, err
