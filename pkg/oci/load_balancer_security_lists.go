@@ -220,8 +220,8 @@ func getNodeIngressRules(rules []baremetal.IngressSecurityRule, lbSubnets []*bar
 
 	for _, rule := range rules {
 		if rule.TCPOptions == nil || rule.TCPOptions.SourcePortRange != nil || rule.TCPOptions.DestinationPortRange == nil ||
-			(rule.TCPOptions.DestinationPortRange.Min != port &&
-				rule.TCPOptions.DestinationPortRange.Max != port) {
+			rule.TCPOptions.DestinationPortRange.Min != port ||
+			rule.TCPOptions.DestinationPortRange.Max != port {
 			// this rule doesn't apply to this service so nothing to do but keep it
 			ingressRules = append(ingressRules, rule)
 			continue
@@ -234,23 +234,21 @@ func getNodeIngressRules(rules []baremetal.IngressSecurityRule, lbSubnets []*bar
 			continue
 		}
 
-		if rule.TCPOptions.DestinationPortRange.Min == port && rule.TCPOptions.DestinationPortRange.Max == port {
-			inUse, err := healthCheckPortInUse(serviceLister, int32(port))
-			if err != nil {
-				// Unable to determine if this port is in use by another service, so I guess
-				// we better err on the safe side and keep the rule.
-				glog.Errorf("failed to determine if port: %d is still in use: %v", port, err)
-				ingressRules = append(ingressRules, rule)
-				continue
-			}
+		inUse, err := healthCheckPortInUse(serviceLister, int32(port))
+		if err != nil {
+			// Unable to determine if this port is in use by another service, so I guess
+			// we better err on the safe side and keep the rule.
+			glog.Errorf("failed to determine if port: %d is still in use: %v", port, err)
+			ingressRules = append(ingressRules, rule)
+			continue
+		}
 
-			if inUse {
-				// This rule is no longer needed for this service, but is still used
-				// by another service, so we must still keep it.
-				glog.V(4).Infof("Port %d still in use by another service.", port)
-				ingressRules = append(ingressRules, rule)
-				continue
-			}
+		if inUse {
+			// This rule is no longer needed for this service, but is still used
+			// by another service, so we must still keep it.
+			glog.V(4).Infof("Port %d still in use by another service.", port)
+			ingressRules = append(ingressRules, rule)
+			continue
 		}
 
 		// else the actual cidr no longer exists so we don't need to do
@@ -277,8 +275,8 @@ func getLoadBalancerIngressRules(rules []baremetal.IngressSecurityRule, sourceCI
 	ingressRules := []baremetal.IngressSecurityRule{}
 	for _, rule := range rules {
 		if rule.TCPOptions == nil || rule.TCPOptions.SourcePortRange != nil || rule.TCPOptions.DestinationPortRange == nil ||
-			(rule.TCPOptions.DestinationPortRange.Min != port &&
-				rule.TCPOptions.DestinationPortRange.Max != port) {
+			rule.TCPOptions.DestinationPortRange.Min != port ||
+			rule.TCPOptions.DestinationPortRange.Max != port {
 			// this rule doesn't apply to this service so nothing to do but keep it
 			ingressRules = append(ingressRules, rule)
 			continue
@@ -291,23 +289,21 @@ func getLoadBalancerIngressRules(rules []baremetal.IngressSecurityRule, sourceCI
 			continue
 		}
 
-		if rule.TCPOptions.DestinationPortRange.Min == port && rule.TCPOptions.DestinationPortRange.Max == port {
-			inUse, err := portInUse(serviceLister, int32(port))
-			if err != nil {
-				// Unable to determine if this port is in use by another service, so I guess
-				// we better err on the safe side and keep the rule.
-				glog.Errorf("failed to determine if port: %d is still in use: %v", port, err)
-				ingressRules = append(ingressRules, rule)
-				continue
-			}
+		inUse, err := portInUse(serviceLister, int32(port))
+		if err != nil {
+			// Unable to determine if this port is in use by another service, so I guess
+			// we better err on the safe side and keep the rule.
+			glog.Errorf("failed to determine if port: %d is still in use: %v", port, err)
+			ingressRules = append(ingressRules, rule)
+			continue
+		}
 
-			if inUse {
-				// This rule is no longer needed for this service, but is still used
-				// by another service, so we must still keep it.
-				glog.V(4).Infof("Port %d still in use by another service.", port)
-				ingressRules = append(ingressRules, rule)
-				continue
-			}
+		if inUse {
+			// This rule is no longer needed for this service, but is still used
+			// by another service, so we must still keep it.
+			glog.V(4).Infof("Port %d still in use by another service.", port)
+			ingressRules = append(ingressRules, rule)
+			continue
 		}
 
 		// else the actual cidr no longer exists so we don't need to do
@@ -337,8 +333,8 @@ func getLoadBalancerEgressRules(rules []baremetal.EgressSecurityRule, nodeSubnet
 	egressRules := []baremetal.EgressSecurityRule{}
 	for _, rule := range rules {
 		if rule.TCPOptions == nil || rule.TCPOptions.SourcePortRange != nil || rule.TCPOptions.DestinationPortRange == nil ||
-			(rule.TCPOptions.DestinationPortRange.Min != port &&
-				rule.TCPOptions.DestinationPortRange.Max != port) {
+			rule.TCPOptions.DestinationPortRange.Min != port ||
+			rule.TCPOptions.DestinationPortRange.Max != port {
 			// this rule doesn't apply to this service so nothing to do but keep it
 			egressRules = append(egressRules, rule)
 			continue
@@ -351,23 +347,21 @@ func getLoadBalancerEgressRules(rules []baremetal.EgressSecurityRule, nodeSubnet
 			continue
 		}
 
-		if rule.TCPOptions.DestinationPortRange.Min == port && rule.TCPOptions.DestinationPortRange.Max == port {
-			inUse, err := healthCheckPortInUse(serviceLister, int32(port))
-			if err != nil {
-				// Unable to determine if this port is in use by another service, so I guess
-				// we better err on the safe side and keep the rule.
-				glog.Errorf("failed to determine if port: %d is still in use: %v", port, err)
-				egressRules = append(egressRules, rule)
-				continue
-			}
+		inUse, err := healthCheckPortInUse(serviceLister, int32(port))
+		if err != nil {
+			// Unable to determine if this port is in use by another service, so I guess
+			// we better err on the safe side and keep the rule.
+			glog.Errorf("failed to determine if port: %d is still in use: %v", port, err)
+			egressRules = append(egressRules, rule)
+			continue
+		}
 
-			if inUse {
-				// This rule is no longer needed for this service, but is still used
-				// by another service, so we must still keep it.
-				glog.V(4).Infof("Port %d still in use by another service.", port)
-				egressRules = append(egressRules, rule)
-				continue
-			}
+		if inUse {
+			// This rule is no longer needed for this service, but is still used
+			// by another service, so we must still keep it.
+			glog.V(4).Infof("Port %d still in use by another service.", port)
+			egressRules = append(egressRules, rule)
+			continue
 		}
 
 		// else the actual cidr no longer exists so we don't need to do
