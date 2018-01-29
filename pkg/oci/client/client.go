@@ -141,8 +141,8 @@ func New(cfg *Config) (Interface, error) {
 		// The current go client will retry requests that are not retryable.
 		baremetal.DisableAutoRetries(true),}
 
-	if cfg.Auth.PrivateKeyPassword != "" {
-		opts = append(opts, baremetal.PrivateKeyPassword(cfg.Auth.PrivateKeyPassword))
+	if cfg.Auth.PrivateKeyPassphrase != "" {
+		opts = append(opts, baremetal.PrivateKeyPassword(cfg.Auth.PrivateKeyPassphrase))
 	}
 
 	ociClient, err := baremetal.NewClient(

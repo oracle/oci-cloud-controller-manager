@@ -8,7 +8,7 @@ auth:
     <snip>
     -----END RSA PRIVATE KEY-----
   # Omit if there is not a password for the key
-  key_password: supersecretpassword
+  key_passphrase: supersecretpassword
   fingerprint: 8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74
 
 loadBalancer:
