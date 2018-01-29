@@ -135,15 +135,21 @@ type BaremetalInterface interface {
 
 // New creates a new OCI API client.
 func New(cfg *Config) (Interface, error) {
+	var opts = []baremetal.NewClientOptionsFunc{baremetal.PrivateKeyBytes([]byte(cfg.Auth.PrivateKey)),
+		baremetal.Region(cfg.Auth.Region),
+		// Kubernetes will handle retries.
+		// The current go client will retry requests that are not retryable.
+		baremetal.DisableAutoRetries(true),}
+
+	if cfg.Auth.PrivateKeyPassword != "" {
+		opts = append(opts, baremetal.PrivateKeyPassword(cfg.Auth.PrivateKeyPassword))
+	}
+
 	ociClient, err := baremetal.NewClient(
 		cfg.Auth.UserOCID,
 		cfg.Auth.TenancyOCID,
 		cfg.Auth.Fingerprint,
-		baremetal.PrivateKeyBytes([]byte(cfg.Auth.PrivateKey)),
-		baremetal.Region(cfg.Auth.Region),
-		// Kubernetes will handle retries.
-		// The current go client will retry requests that are not retryable.
-		baremetal.DisableAutoRetries(true),
+		opts...
 	)
 	if err != nil {
 		return nil, err

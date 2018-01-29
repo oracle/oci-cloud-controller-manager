@@ -25,12 +25,13 @@ import (
 // AuthConfig holds the configuration required for communicating with the OCI
 // API.
 type AuthConfig struct {
-	Region          string `yaml:"region"`
-	TenancyOCID     string `yaml:"tenancy"`
-	CompartmentOCID string `yaml:"compartment"`
-	UserOCID        string `yaml:"user"`
-	PrivateKey      string `yaml:"key"`
-	Fingerprint     string `yaml:"fingerprint"`
+	Region              string `yaml:"region"`
+	TenancyOCID         string `yaml:"tenancy"`
+	CompartmentOCID     string `yaml:"compartment"`
+	UserOCID            string `yaml:"user"`
+	PrivateKey          string `yaml:"key"`
+	Fingerprint         string `yaml:"fingerprint"`
+	PrivateKeyPassword  string `yaml:"key_password"`
 }
 
 // LoadBalancerConfig holds the configuration options for OCI load balancers.
