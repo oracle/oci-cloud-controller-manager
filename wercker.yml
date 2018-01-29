@@ -26,17 +26,21 @@ build:
       code: make govet
 
     - script:
-      name: build
-      code: make build
-
-    - script:
       name: unit tests
       code: make test
 
     - script:
-      name: copy binary
+      name: build
+      code: make build
+
+    - script:
+      name: manifests
+      code: make manifests
+      
+    - script:
+      name: copy output
       code: |
-        cp dist/oci-cloud-controller-manager ${WERCKER_OUTPUT_DIR}
+        cp -a dist/* ${WERCKER_OUTPUT_DIR}
 
 push:
   box:
@@ -59,3 +63,24 @@ push:
         tag: $VERSION
         entrypoint: /oci-cloud-controller-manager
         user: 65534 # nobody
+
+release:
+  steps:
+    - github-create-release:
+      token: $GITHUB_TOKEN
+      tag: $GITHUB_RELEASE_VERSION
+      title: Application $GITHUB_RELEASE_VERSION
+      draft: false
+
+    - github-upload-asset:
+      token: $GITHUB_TOKEN
+      file: $WERCKER_OUTPUT_DIR/oci-cloud-controller-manager.yaml
+      filename: oci-cloud-controller-manager.yaml
+
+    - github-upload-asset:
+      token: $GITHUB_TOKEN
+      file: $WERCKER_OUTPUT_DIR/oci-cloud-controller-manager-rbac.yaml
+      filename: oci-cloud-controller-manager-rbac.yaml
+      
+        
+      
