@@ -43,7 +43,7 @@ build:
         cp -a dist/* ${WERCKER_OUTPUT_DIR}
 
 push:
-   box:
+  box:
     id: oraclelinux:7-slim
   steps:
     - script:
