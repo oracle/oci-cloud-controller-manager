@@ -430,21 +430,25 @@ func portInUse(serviceLister listersv1.ServiceLister, port int32) (bool, error) 
 }
 
 func healthCheckPortInUse(serviceLister listersv1.ServiceLister, port int32) (bool, error) {
+	if port != lbNodesHealthCheckPort {
+		// This service is using a custom healthcheck port (enabled through setting
+		// extenalTrafficPolicy=Local on the service). As this port is unique
+		// per service, we know no other service will be using this port too.
+		return false, nil
+	}
+
+	// This service is using the default healthcheck port, so we must check if
+	// any other service is also using this default healthcheck port.
 	serviceList, err := serviceLister.List(labels.Everything())
 	if err != nil {
 		return false, err
 	}
 	for _, service := range serviceList {
 		if service.Spec.Type == api.ServiceTypeLoadBalancer {
-			healthCheckPath, healthCheckPort := apiservice.GetServiceHealthCheckPathPort(service)
-			if healthCheckPath != "" {
-				if port == healthCheckPort {
-					return true, nil
-				}
-			} else {
-				if port == lbNodesHealthCheckPort {
-					return true, nil
-				}
+			healthCheckPath, _ := apiservice.GetServiceHealthCheckPathPort(service)
+			if healthCheckPath == "" {
+				// We have found another service using the default port.
+				return true, nil
 			}
 		}
 	}

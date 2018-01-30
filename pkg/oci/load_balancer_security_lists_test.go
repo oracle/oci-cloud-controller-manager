@@ -144,29 +144,6 @@ func TestGetNodeIngressRules(t *testing.T) {
 			expected: []baremetal.IngressSecurityRule{
 				makeIngressSecurityRule("0.0.0.0/0", lbNodesHealthCheckPort),
 			},
-		}, {
-			name: "do not delete a port rule which is used by another services (custom) health check",
-			securityList: &baremetal.SecurityList{
-				IngressSecurityRules: []baremetal.IngressSecurityRule{
-					makeIngressSecurityRule("0.0.0.0/0", 12345),
-				},
-			},
-			lbSubnets: []*baremetal.Subnet{},
-			port:      12345,
-			services: []*v1.Service{
-				{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-custom-health-check-port"},
-					Spec: v1.ServiceSpec{
-						Type:  v1.ServiceTypeLoadBalancer,
-						Ports: []v1.ServicePort{{Port: 80}},
-						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicyTypeLocal,
-						HealthCheckNodePort:   12345,
-					},
-				},
-			},
-			expected: []baremetal.IngressSecurityRule{
-				makeIngressSecurityRule("0.0.0.0/0", 12345),
-			},
 		},
 	}
 
@@ -420,29 +397,6 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 			},
 			expected: []baremetal.EgressSecurityRule{
 				makeEgressSecurityRule("0.0.0.0/0", lbNodesHealthCheckPort),
-			},
-		}, {
-			name: "do not delete a port rule which is used by another services (custom) health check",
-			securityList: &baremetal.SecurityList{
-				EgressSecurityRules: []baremetal.EgressSecurityRule{
-					makeEgressSecurityRule("0.0.0.0/0", 12345),
-				},
-			},
-			subnets: []*baremetal.Subnet{},
-			port:    12345,
-			services: []*v1.Service{
-				{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-custom-health-check-port"},
-					Spec: v1.ServiceSpec{
-						Type:  v1.ServiceTypeLoadBalancer,
-						Ports: []v1.ServicePort{{Port: 80}},
-						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicyTypeLocal,
-						HealthCheckNodePort:   12345,
-					},
-				},
-			},
-			expected: []baremetal.EgressSecurityRule{
-				makeEgressSecurityRule("0.0.0.0/0", 12345),
 			},
 		},
 	}
