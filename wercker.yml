@@ -65,7 +65,7 @@ push:
         user: 65534 # nobody
 
 release:
-   box:
+  box:
     id: oraclelinux:7-slim
   steps:
     - script:
