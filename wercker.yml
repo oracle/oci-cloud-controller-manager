@@ -43,7 +43,7 @@ build:
         cp -a dist/* ${WERCKER_OUTPUT_DIR}
 
 push:
-  box:
+   box:
     id: oraclelinux:7-slim
   steps:
     - script:
@@ -65,17 +65,20 @@ push:
         user: 65534 # nobody
 
 release:
+   box:
+    id: oraclelinux:7-slim
   steps:
     - script:
         name: set ENV vars
         code: |
           export VERSION=$(cat VERSION.txt)
           echo "${VERSION}"
+          
     - script:
-        name: tag release in docker repo
+        name: prepare
         code: |
-          docker pull wcr.io/oracle/oci-cloud-controller-manager:$VERSION
-          docker tag wcr.io/oracle/oci-cloud-controller-manager:$VERSION wcr.io/oracle/oci-cloud-controller-manager:$GITHUB_RELEASE_VERSION
+          mv ./oci-cloud-controller-manager /oci-cloud-controller-manager
+          chmod +x /oci-cloud-controller-manager
 
     - internal/docker-push:
         repository: wcr.io/oracle/oci-cloud-controller-manager
