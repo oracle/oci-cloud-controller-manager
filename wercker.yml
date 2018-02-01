@@ -36,7 +36,7 @@ build:
     - script:
       name: manifests
       code: make manifests
-      
+
     - script:
       name: copy output
       code: |
@@ -73,36 +73,21 @@ release:
         code: |
           export VERSION=$(cat VERSION.txt)
           echo "${VERSION}"
-          
-    - script:
-        name: prepare
-        code: |
-          mv ./oci-cloud-controller-manager /oci-cloud-controller-manager
-          chmod +x /oci-cloud-controller-manager
-
-    - internal/docker-push:
-        repository: wcr.io/oracle/oci-cloud-controller-manager
-        tag: $GITHUB_RELEASE_VERSION
-        entrypoint: /oci-cloud-controller-manager
-        user: 65534 # nobody
 
     - github-create-release:
       token: $GITHUB_TOKEN
-      tag: $GITHUB_RELEASE_VERSION
-      title: Application $GITHUB_RELEASE_VERSION
+      tag: $VERSION
+      title: $GITHUB_RELEASE_VERSION
       draft: false
 
     - github-upload-asset:
       token: $GITHUB_TOKEN
-      file: $WERCKER_OUTPUT_DIR/oci-cloud-controller-manager.yaml
+      file: ./oci-cloud-controller-manager.yaml
       filename: oci-cloud-controller-manager.yaml
       content-type: text/yaml
 
     - github-upload-asset:
       token: $GITHUB_TOKEN
-      file: $WERCKER_OUTPUT_DIR/oci-cloud-controller-manager-rbac.yaml
+      file: ./oci-cloud-controller-manager-rbac.yaml
       filename: oci-cloud-controller-manager-rbac.yaml
       content-type: text/yaml
-      
-        
-      
