@@ -2,9 +2,12 @@ REGISTRY := wcr.io/oracle
 PKG := github.com/oracle/oci-cloud-controller-manager
 BIN := oci-cloud-controller-manager
 IMAGE := $(REGISTRY)/$(BIN)
-VERSION := $(shell git describe --exact-match 2> /dev/null || \
-	git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
 
+
+BUILD := $(shell git describe --always --dirty)
+# Allow overriding for release versions
+# Else just equal the build (git hash)
+VERSION ?= ${BUILD}
 GOOS ?= linux
 ARCH ?= amd64
 
@@ -22,7 +25,7 @@ else
 endif
 
 .PHONY: all
-all: build
+all: check test build
 
 .PHONY: gofmt
 gofmt:
@@ -36,17 +39,20 @@ golint:
 govet:
 	@./hack/check-govet.sh ${SRC_DIRS}
 
+.PHONY: check
+check: gofmt govet golint
+
 .PHONY: build-dirs
 build-dirs:
 	@mkdir -p dist/
 
 .PHONY: build
-build: build-dirs
-	@GOOS=${GOOS} GOARCH=${ARCH} go build     \
+build: build-dirs manifests
+	@GOOS=${GOOS} GOARCH=${ARCH} go build -v  \
 	    -i                                    \
 	    -o dist/oci-cloud-controller-manager  \
 	    -installsuffix "static"               \
-	    -ldflags "-X main.version=${VERSION}" \
+	    -ldflags "-X main.version=${VERSION} -X main.build=${BUILD}" \
 	    ./cmd/oci-cloud-controller-manager
 
 .PHONY: manifests
@@ -62,15 +68,15 @@ test:
 
 .PHONY: clean
 clean:
-	@rm -rf dist/*
+	@rm -rf dist
 
 .PHONY: deploy
 deploy:
 	kubectl -n kube-system set image ds/${BIN} ${BIN}=${IMAGE}:${VERSION}
 
 .PHONY: run-dev
-run-dev:
-	@go run cmd/$(BIN)/main.go                    \
+run-dev: build
+	dist/oci-cloud-controller-manager             \
 	    --kubeconfig=${KUBECONFIG}                \
 	    --cloud-config=${CLOUD_PROVIDER_CFG}      \
 	    --cluster-cidr=10.244.0.0/16              \
