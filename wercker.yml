@@ -34,8 +34,8 @@ build:
     - script:
       name: write VERSION.txt
       code: |
-        make version > VERSION.txt
-        cat VERSION.txt
+        make version > dist/VERSION.txt
+        cat dist/VERSION.txt
       
 copy:
   steps:
