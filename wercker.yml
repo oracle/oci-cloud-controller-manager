@@ -8,8 +8,8 @@ build:
     - script:
       name: write VERSION.txt
       code: |
-        make version > ${WERCKER_OUTPUT_DIR}/VERSION.txt
-        cat ${WERCKER_OUTPUT_DIR}/VERSION.txt
+        make version > dist/VERSION.txt
+        cat dist/VERSION.txt
 
     - script:
       name: go fmt
@@ -51,7 +51,7 @@ push:
     - script:
         name: set ENV vars
         code: |
-          export VERSION=$(cat VERSION.txt)
+          export VERSION=$(cat dist/VERSION.txt)
           echo "${VERSION}"
 
     - script:
@@ -73,7 +73,7 @@ release:
     - script:
         name: set ENV vars
         code: |
-          export VERSION=$(cat VERSION.txt)
+          export VERSION=$(cat dist/VERSION.txt)
           echo "${VERSION}"
 
     - github-create-release:
