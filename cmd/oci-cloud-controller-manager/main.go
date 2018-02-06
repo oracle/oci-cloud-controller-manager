@@ -36,6 +36,7 @@ import (
 )
 
 var version string
+var build string
 
 func init() {
 	healthz.DefaultHealthz()
@@ -50,7 +51,7 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	glog.V(1).Infof("oci-cloud-controller-manager version: %s", version)
+	glog.V(1).Infof("oci-cloud-controller-manager version: %s (%s)", version, build)
 
 	verflag.PrintAndExitIfRequested()
 
