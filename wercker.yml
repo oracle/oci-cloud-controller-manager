@@ -37,6 +37,8 @@ build:
       name: manifests
       code: make manifests
 
+copy:
+  steps:
     - script:
       name: copy output
       code: |
