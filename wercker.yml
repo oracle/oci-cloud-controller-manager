@@ -79,7 +79,7 @@ release:
     - github-create-release:
       token: $GITHUB_TOKEN
       tag: $VERSION
-      title: $GITHUB_RELEASE_VERSION
+      title: $VERSION
       draft: false
 
     - github-upload-asset:
