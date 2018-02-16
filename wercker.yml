@@ -5,6 +5,11 @@ dev:
 build:
   base-path: "/go/src/github.com/oracle/oci-cloud-controller-manager"
   steps:
+
+    - script:
+      name: check boilerplate
+      code: ./hack/verify-boilerplate.sh
+
     - script:
       name: go fmt
       code: make gofmt
@@ -36,7 +41,7 @@ build:
       code: |
         make version > dist/VERSION.txt
         cat dist/VERSION.txt
-      
+
 copy:
   steps:
     - script:
