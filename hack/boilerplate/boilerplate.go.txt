@@ -1,4 +1,4 @@
-// Copyright 2017 Oracle and/or its affiliates. All rights reserved.
+// Copyright YEAR Oracle and/or its affiliates. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,3 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package client
-
-import baremetal "github.com/oracle/bmcs-go-sdk"
-
-// SetNextPageOption sets the next page option on a baremetal list page options
-// struct and returns true if there are more pages to fetch.
-func SetNextPageOption(nextPage string, opts *baremetal.PageListOptions) (hasNextPage bool) {
-	if nextPage == "" {
-		hasNextPage = false
-	} else {
-		hasNextPage = true
-		opts.Page = nextPage
-	}
-
-	return
-}
