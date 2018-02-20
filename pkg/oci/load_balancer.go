@@ -266,7 +266,8 @@ func (cp *CloudProvider) updateLoadBalancer(
 			}
 
 			backendPort := uint64(getBackendPort(backendSet.Backends))
-			err := cp.updateListener(lbOCID, a, backendPort, lbSubnets, nodeSubnets, sslConfigMap, sourceCIDRs)
+			healthCheckPort := uint64(backendSet.HealthChecker.Port)
+			err := cp.updateListener(lbOCID, a, backendPort, healthCheckPort, lbSubnets, nodeSubnets, sslConfigMap, sourceCIDRs)
 			if err != nil {
 				return fmt.Errorf("error updating Listener: %v", err)
 			}
@@ -286,10 +287,11 @@ func (cp *CloudProvider) updateBackendSet(lbOCID string, action *BackendSetActio
 	glog.V(2).Infof("Applying %q action on backend set `%s` for lb `%s`", action.Type(), be.Name, lbOCID)
 
 	backendPort := uint64(getBackendPort(be.Backends))
+	healthCheckPort := uint64(be.HealthChecker.Port)
 
 	switch action.Type() {
 	case Create:
-		err = cp.securityListManager.Update(lbSubnets, nodeSubnets, sourceCIDRs, listenerPort, backendPort)
+		err = cp.securityListManager.Update(lbSubnets, nodeSubnets, sourceCIDRs, listenerPort, backendPort, healthCheckPort)
 		if err != nil {
 			return err
 		}
@@ -305,7 +307,7 @@ func (cp *CloudProvider) updateBackendSet(lbOCID string, action *BackendSetActio
 			nil, // create opts
 		)
 	case Update:
-		err = cp.securityListManager.Update(lbSubnets, nodeSubnets, sourceCIDRs, listenerPort, backendPort)
+		err = cp.securityListManager.Update(lbSubnets, nodeSubnets, sourceCIDRs, listenerPort, backendPort, healthCheckPort)
 		if err != nil {
 			return err
 		}
@@ -316,7 +318,7 @@ func (cp *CloudProvider) updateBackendSet(lbOCID string, action *BackendSetActio
 			Backends:      be.Backends,
 		})
 	case Delete:
-		err = cp.securityListManager.Delete(lbSubnets, nodeSubnets, listenerPort, backendPort)
+		err = cp.securityListManager.Delete(lbSubnets, nodeSubnets, listenerPort, backendPort, healthCheckPort)
 		if err != nil {
 			return err
 		}
@@ -339,6 +341,7 @@ func (cp *CloudProvider) updateBackendSet(lbOCID string, action *BackendSetActio
 func (cp *CloudProvider) updateListener(lbOCID string,
 	action *ListenerAction,
 	backendPort uint64,
+	healthCheckPort uint64,
 	lbSubnets []*baremetal.Subnet,
 	nodeSubnets []*baremetal.Subnet,
 	sslConfigMap map[int]*baremetal.SSLConfiguration,
@@ -353,7 +356,7 @@ func (cp *CloudProvider) updateListener(lbOCID string,
 
 	switch action.Type() {
 	case Create:
-		err = cp.securityListManager.Update(lbSubnets, nodeSubnets, sourceCIDRs, listenerPort, backendPort)
+		err = cp.securityListManager.Update(lbSubnets, nodeSubnets, sourceCIDRs, listenerPort, backendPort, healthCheckPort)
 		if err != nil {
 			return err
 		}
@@ -368,7 +371,7 @@ func (cp *CloudProvider) updateListener(lbOCID string,
 			nil, // create opts
 		)
 	case Update:
-		err = cp.securityListManager.Update(lbSubnets, nodeSubnets, sourceCIDRs, listenerPort, backendPort)
+		err = cp.securityListManager.Update(lbSubnets, nodeSubnets, sourceCIDRs, listenerPort, backendPort, healthCheckPort)
 		if err != nil {
 			return err
 		}
@@ -380,7 +383,7 @@ func (cp *CloudProvider) updateListener(lbOCID string,
 			SSLConfig: l.SSLConfig,
 		})
 	case Delete:
-		err = cp.securityListManager.Delete(lbSubnets, nodeSubnets, listenerPort, backendPort)
+		err = cp.securityListManager.Delete(lbSubnets, nodeSubnets, listenerPort, backendPort, healthCheckPort)
 		if err != nil {
 			return err
 		}
@@ -486,10 +489,12 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(clusterName string, service *
 	for _, listener := range spec.GetListeners(sslConfigMap) {
 		glog.V(4).Infof("Deleting security rules for listener `%s` for load balancer `%s`", listener.Name, lb.ID)
 
-		backends := spec.GetBackendSets()[listener.DefaultBackendSetName].Backends
+		backendSet := spec.GetBackendSets()[listener.DefaultBackendSetName]
+		backends := backendSet.Backends
 		backendPort := uint64(getBackendPort(backends))
+		healthCheckPort := uint64(backendSet.HealthChecker.Port)
 
-		err := cp.securityListManager.Delete(lbSubnets, nodeSubnets, uint64(listener.Port), backendPort)
+		err := cp.securityListManager.Delete(lbSubnets, nodeSubnets, uint64(listener.Port), backendPort, healthCheckPort)
 		if err != nil {
 			return fmt.Errorf("delete security rules for listener %s: %v", listener.Name, err)
 		}

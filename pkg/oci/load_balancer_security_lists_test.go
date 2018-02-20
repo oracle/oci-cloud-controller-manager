@@ -43,6 +43,7 @@ func TestGetNodeIngressRules(t *testing.T) {
 		securityList *baremetal.SecurityList
 		lbSubnets    []*baremetal.Subnet
 		port         uint64
+		services     []*v1.Service
 		expected     []baremetal.IngressSecurityRule
 	}{
 		{
@@ -56,7 +57,8 @@ func TestGetNodeIngressRules(t *testing.T) {
 				{CIDRBlock: "1"},
 				{CIDRBlock: "2"},
 			},
-			port: 80,
+			port:     80,
+			services: []*v1.Service{},
 			expected: []baremetal.IngressSecurityRule{
 				makeIngressSecurityRule("existing", 9000),
 				makeIngressSecurityRule("1", 80),
@@ -75,7 +77,8 @@ func TestGetNodeIngressRules(t *testing.T) {
 				{CIDRBlock: "1"},
 				{CIDRBlock: "2"},
 			},
-			port: 80,
+			port:     80,
+			services: []*v1.Service{},
 			expected: []baremetal.IngressSecurityRule{
 				makeIngressSecurityRule("existing", 9000),
 				makeIngressSecurityRule("1", 80),
@@ -95,7 +98,8 @@ func TestGetNodeIngressRules(t *testing.T) {
 				{CIDRBlock: "1"},
 				{CIDRBlock: "3"},
 			},
-			port: 80,
+			port:     80,
+			services: []*v1.Service{},
 			expected: []baremetal.IngressSecurityRule{
 				makeIngressSecurityRule("existing", 9000),
 				makeIngressSecurityRule("1", 80),
@@ -114,16 +118,45 @@ func TestGetNodeIngressRules(t *testing.T) {
 			},
 			lbSubnets: []*baremetal.Subnet{},
 			port:      80,
+			services:  []*v1.Service{},
 			expected: []baremetal.IngressSecurityRule{
 				makeIngressSecurityRule("existing", 9000),
 				makeIngressSecurityRule("existing", 9001),
+			},
+		}, {
+			name: "do not delete a port rule which is used by another services (default) health check",
+			securityList: &baremetal.SecurityList{
+				IngressSecurityRules: []baremetal.IngressSecurityRule{
+					makeIngressSecurityRule("0.0.0.0/0", lbNodesHealthCheckPort),
+				},
+			},
+			lbSubnets: []*baremetal.Subnet{},
+			port:      lbNodesHealthCheckPort,
+			services: []*v1.Service{
+				{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-default-health-check-port"},
+					Spec: v1.ServiceSpec{
+						Type:  v1.ServiceTypeLoadBalancer,
+						Ports: []v1.ServicePort{{Port: 80}},
+					},
+				},
+			},
+			expected: []baremetal.IngressSecurityRule{
+				makeIngressSecurityRule("0.0.0.0/0", lbNodesHealthCheckPort),
 			},
 		},
 	}
 
 	for _, tc := range testCases {
+		serviceCache := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+		serviceLister := v1listers.NewServiceLister(serviceCache)
+		for i := range tc.services {
+			if err := serviceCache.Add(tc.services[i]); err != nil {
+				t.Fatalf("%s unexpected service add error: %v", tc.name, err)
+			}
+		}
 		t.Run(tc.name, func(t *testing.T) {
-			rules := getNodeIngressRules(tc.securityList, tc.lbSubnets, tc.port)
+			rules := getNodeIngressRules(tc.securityList.IngressSecurityRules, tc.lbSubnets, tc.port, serviceLister)
 			if !reflect.DeepEqual(rules, tc.expected) {
 				t.Errorf("expected rules\n%+v\nbut got\n%+v", tc.expected, rules)
 			}
@@ -250,7 +283,7 @@ func TestGetLoadBalancerIngressRules(t *testing.T) {
 			}
 		}
 		t.Run(tc.name, func(t *testing.T) {
-			rules := getLoadBalancerIngressRules(tc.securityList, tc.sourceCIDRs, tc.port, serviceLister)
+			rules := getLoadBalancerIngressRules(tc.securityList.IngressSecurityRules, tc.sourceCIDRs, tc.port, serviceLister)
 			if !reflect.DeepEqual(rules, tc.expected) {
 				t.Errorf("expected rules\n%+v\nbut got\n%+v", tc.expected, rules)
 			}
@@ -264,6 +297,7 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 		securityList *baremetal.SecurityList
 		subnets      []*baremetal.Subnet
 		port         uint64
+		services     []*v1.Service
 		expected     []baremetal.EgressSecurityRule
 	}{
 		{
@@ -277,7 +311,8 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 				{CIDRBlock: "1"},
 				{CIDRBlock: "2"},
 			},
-			port: 80,
+			port:     80,
+			services: []*v1.Service{},
 			expected: []baremetal.EgressSecurityRule{
 				makeEgressSecurityRule("existing", 9000),
 				makeEgressSecurityRule("1", 80),
@@ -296,7 +331,8 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 				{CIDRBlock: "1"},
 				{CIDRBlock: "2"},
 			},
-			port: 80,
+			port:     80,
+			services: []*v1.Service{},
 			expected: []baremetal.EgressSecurityRule{
 				makeEgressSecurityRule("existing", 9000),
 				makeEgressSecurityRule("1", 80),
@@ -316,7 +352,8 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 				{CIDRBlock: "1"},
 				{CIDRBlock: "3"},
 			},
-			port: 80,
+			port:     80,
+			services: []*v1.Service{},
 			expected: []baremetal.EgressSecurityRule{
 				makeEgressSecurityRule("existing", 9000),
 				makeEgressSecurityRule("1", 80),
@@ -333,18 +370,47 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 					makeEgressSecurityRule("existing", 9001),
 				},
 			},
-			subnets: []*baremetal.Subnet{},
-			port:    80,
+			subnets:  []*baremetal.Subnet{},
+			port:     80,
+			services: []*v1.Service{},
 			expected: []baremetal.EgressSecurityRule{
 				makeEgressSecurityRule("existing", 9000),
 				makeEgressSecurityRule("existing", 9001),
+			},
+		}, {
+			name: "do not delete a port rule which is used by another services (default) health check",
+			securityList: &baremetal.SecurityList{
+				EgressSecurityRules: []baremetal.EgressSecurityRule{
+					makeEgressSecurityRule("0.0.0.0/0", lbNodesHealthCheckPort),
+				},
+			},
+			subnets: []*baremetal.Subnet{},
+			port:    lbNodesHealthCheckPort,
+			services: []*v1.Service{
+				{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-default-health-check-port"},
+					Spec: v1.ServiceSpec{
+						Type:  v1.ServiceTypeLoadBalancer,
+						Ports: []v1.ServicePort{{Port: 80}},
+					},
+				},
+			},
+			expected: []baremetal.EgressSecurityRule{
+				makeEgressSecurityRule("0.0.0.0/0", lbNodesHealthCheckPort),
 			},
 		},
 	}
 
 	for _, tc := range testCases {
+		serviceCache := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+		serviceLister := v1listers.NewServiceLister(serviceCache)
+		for i := range tc.services {
+			if err := serviceCache.Add(tc.services[i]); err != nil {
+				t.Fatalf("%s unexpected service add error: %v", tc.name, err)
+			}
+		}
 		t.Run(tc.name, func(t *testing.T) {
-			rules := getLoadBalancerEgressRules(tc.securityList, tc.subnets, tc.port)
+			rules := getLoadBalancerEgressRules(tc.securityList.EgressSecurityRules, tc.subnets, tc.port, serviceLister)
 			if !reflect.DeepEqual(rules, tc.expected) {
 				t.Errorf("expected rules\n%+v\nbut got\n%+v", tc.expected, rules)
 			}
