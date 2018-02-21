@@ -152,10 +152,10 @@ func New(cfg *Config) (Interface, error) {
 	}
 
 	// Handles the case where we want to talk to OCI via a proxy.
-	servicePrincipalProxy := os.Getenv("OCI_PROXY")
+	ociProxy := os.Getenv("OCI_PROXY")
 	trustedCACertPath := os.Getenv("TRUSTED_CA_CERT_PATH")
-	if servicePrincipalProxy != "" && trustedCACertPath != "" {
-		glog.Infof("using oci proxy server: %s", servicePrincipalProxy)
+	if ociProxy != "" && trustedCACertPath != "" {
+		glog.Infof("using oci proxy server: %s", ociProxy)
 		glog.Infof("configuring oci client with a new trusted ca: %s", trustedCACertPath)
 		trustedCACert, err := ioutil.ReadFile(trustedCACertPath)
 		if err != nil {
@@ -166,9 +166,9 @@ func New(cfg *Config) (Interface, error) {
 		if !ok {
 			return nil, fmt.Errorf("failed to parse root certificate")
 		}
-		proxyURL, err := url.Parse(servicePrincipalProxy)
+		proxyURL, err := url.Parse(ociProxy)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse proxy url")
+			return nil, fmt.Errorf("failed to parse oci proxy url")
 		}
 		transport := http.Transport{
 			TLSClientConfig: &tls.Config{RootCAs: caCertPool},
