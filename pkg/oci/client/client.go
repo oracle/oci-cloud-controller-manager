@@ -15,8 +15,14 @@
 package client
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 	"net"
+	"net/http"
+	"net/url"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -143,6 +149,36 @@ func New(cfg *Config) (Interface, error) {
 
 	if cfg.Auth.PrivateKeyPassphrase != "" {
 		opts = append(opts, baremetal.PrivateKeyPassword(cfg.Auth.PrivateKeyPassphrase))
+	}
+
+	// Handles the case where we want to talk to OCI via a proxy.
+	servicePrincipalProxy := os.Getenv("OCI_PROXY")
+	trustedCACertPath := os.Getenv("TRUSTED_CA_CERT_PATH")
+	if servicePrincipalProxy != "" && trustedCACertPath != "" {
+		glog.Infof("using oci proxy server: %s", servicePrincipalProxy)
+		glog.Infof("configuring oci client with a new trusted ca: %s", trustedCACertPath)
+		trustedCACert, err := ioutil.ReadFile(trustedCACertPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read root certificate")
+		}
+		caCertPool := x509.NewCertPool()
+		ok := caCertPool.AppendCertsFromPEM(trustedCACert)
+		if !ok {
+			return nil, fmt.Errorf("failed to parse root certificate")
+		}
+		proxyURL, err := url.Parse(servicePrincipalProxy)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse proxy url")
+		}
+		transport := http.Transport{
+			TLSClientConfig: &tls.Config{RootCAs: caCertPool},
+			Proxy: func(req *http.Request) (*url.URL, error) {
+				return proxyURL, nil
+			},
+		}
+		opts = append(opts, func(o *baremetal.NewClientOptions) {
+			o.Transport = &transport
+		})
 	}
 
 	ociClient, err := baremetal.NewClient(
