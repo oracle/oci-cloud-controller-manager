@@ -154,28 +154,44 @@ func New(cfg *Config) (Interface, error) {
 	// Handles the case where we want to talk to OCI via a proxy.
 	ociProxy := os.Getenv("OCI_PROXY")
 	trustedCACertPath := os.Getenv("TRUSTED_CA_CERT_PATH")
-	if ociProxy != "" && trustedCACertPath != "" {
-		glog.Infof("using oci proxy server: %s", ociProxy)
-		glog.Infof("configuring oci client with a new trusted ca: %s", trustedCACertPath)
-		trustedCACert, err := ioutil.ReadFile(trustedCACertPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read root certificate")
-		}
-		caCertPool := x509.NewCertPool()
-		ok := caCertPool.AppendCertsFromPEM(trustedCACert)
-		if !ok {
-			return nil, fmt.Errorf("failed to parse root certificate")
-		}
-		proxyURL, err := url.Parse(ociProxy)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse oci proxy url")
-		}
+	if ociProxy != "" || trustedCACertPath != "" {
 		transport := http.Transport{
-			TLSClientConfig: &tls.Config{RootCAs: caCertPool},
-			Proxy: func(req *http.Request) (*url.URL, error) {
-				return proxyURL, nil
-			},
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+				DualStack: true,
+			}).DialContext,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
 		}
+
+		if ociProxy != "" {
+			glog.Infof("using oci proxy server: %s", ociProxy)
+			proxyURL, err := url.Parse(ociProxy)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse oci proxy url: %s, err: %v", ociProxy, err)
+			}
+			transport.Proxy = func(req *http.Request) (*url.URL, error) {
+				return proxyURL, nil
+			}
+		}
+
+		if trustedCACertPath != "" {
+			glog.Infof("configuring oci client with a new trusted ca: %s", trustedCACertPath)
+			trustedCACert, err := ioutil.ReadFile(trustedCACertPath)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read root certificate: %s, err: %v", trustedCACertPath, err)
+			}
+			caCertPool := x509.NewCertPool()
+			ok := caCertPool.AppendCertsFromPEM(trustedCACert)
+			if !ok {
+				return nil, fmt.Errorf("failed to parse root certificate: %s", trustedCACertPath)
+			}
+			transport.TLSClientConfig = &tls.Config{RootCAs: caCertPool}
+		}
+
 		opts = append(opts, func(o *baremetal.NewClientOptions) {
 			o.Transport = &transport
 		})
