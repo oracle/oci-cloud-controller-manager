@@ -407,6 +407,7 @@
   branch = "release-1.8"
   name = "k8s.io/api"
   packages = [
+    "admission/v1alpha1",
     "admissionregistration/v1alpha1",
     "apps/v1beta1",
     "apps/v1beta2",
@@ -422,6 +423,7 @@
     "certificates/v1beta1",
     "core/v1",
     "extensions/v1beta1",
+    "imagepolicy/v1alpha1",
     "networking/v1",
     "policy/v1beta1",
     "rbac/v1",
@@ -501,6 +503,10 @@
   branch = "release-1.8"
   name = "k8s.io/apiserver"
   packages = [
+    "pkg/admission",
+    "pkg/apis/apiserver",
+    "pkg/apis/apiserver/install",
+    "pkg/apis/apiserver/v1alpha1",
     "pkg/authentication/authenticator",
     "pkg/authentication/serviceaccount",
     "pkg/authentication/user",
@@ -636,11 +642,15 @@
     "cmd/cloud-controller-manager/app",
     "cmd/cloud-controller-manager/app/options",
     "cmd/kubeadm/app/constants",
+    "federation/apis/federation",
+    "federation/apis/federation/install",
+    "federation/apis/federation/v1beta1",
     "pkg/api",
     "pkg/api/helper",
     "pkg/api/install",
     "pkg/api/ref",
     "pkg/api/service",
+    "pkg/api/testapi",
     "pkg/api/util",
     "pkg/api/v1",
     "pkg/api/v1/helper",
@@ -649,6 +659,9 @@
     "pkg/api/v1/pod",
     "pkg/api/v1/service",
     "pkg/api/validation",
+    "pkg/apis/admission",
+    "pkg/apis/admission/install",
+    "pkg/apis/admission/v1alpha1",
     "pkg/apis/admissionregistration",
     "pkg/apis/admissionregistration/install",
     "pkg/apis/admissionregistration/v1alpha1",
@@ -682,6 +695,9 @@
     "pkg/apis/extensions",
     "pkg/apis/extensions/install",
     "pkg/apis/extensions/v1beta1",
+    "pkg/apis/imagepolicy",
+    "pkg/apis/imagepolicy/install",
+    "pkg/apis/imagepolicy/v1alpha1",
     "pkg/apis/networking",
     "pkg/apis/networking/install",
     "pkg/apis/networking/v1",
@@ -740,8 +756,10 @@
     "pkg/util/configz",
     "pkg/util/file",
     "pkg/util/hash",
+    "pkg/util/io",
     "pkg/util/labels",
     "pkg/util/metrics",
+    "pkg/util/mount",
     "pkg/util/net/sets",
     "pkg/util/node",
     "pkg/util/parsers",
@@ -751,7 +769,9 @@
     "pkg/version",
     "pkg/version/prometheus",
     "pkg/version/verflag",
+    "pkg/volume/util",
     "plugin/pkg/scheduler/algorithm",
+    "plugin/pkg/scheduler/algorithm/predicates",
     "plugin/pkg/scheduler/algorithm/priorities/util",
     "plugin/pkg/scheduler/api",
     "plugin/pkg/scheduler/schedulercache",
@@ -761,9 +781,29 @@
   ]
   revision = "a3ab97b7f395e1abd2d954cd9ada0386629d0411"
 
+[[projects]]
+  branch = "master"
+  name = "k8s.io/metrics"
+  packages = [
+    "pkg/apis/metrics",
+    "pkg/apis/metrics/v1alpha1",
+    "pkg/apis/metrics/v1beta1",
+    "pkg/client/clientset_generated/clientset",
+    "pkg/client/clientset_generated/clientset/scheme",
+    "pkg/client/clientset_generated/clientset/typed/metrics/v1alpha1",
+    "pkg/client/clientset_generated/clientset/typed/metrics/v1beta1"
+  ]
+  revision = "56681397367c271f0ee7c5e25d670f4384d0cf3f"
+
+[[projects]]
+  branch = "master"
+  name = "k8s.io/utils"
+  packages = ["exec"]
+  revision = "258e2a2fa64568210fbd6267cf1d8fd87c3cb86e"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "4ebaac990e99d8ef0e100adf7e6da31b57defb2d5de81591b83aa4d4a92c528a"
+  inputs-digest = "f821cca9ba0030ef0b4316a257e0e16f0641c7f59e2b1017fb623d70b0f28f3e"
   solver-name = "gps-cdcl"
   solver-version = 1

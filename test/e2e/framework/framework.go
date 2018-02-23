@@ -1,3 +1,19 @@
+/*
+Copyright 2015 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package framework
 
 import (
@@ -23,10 +39,14 @@ const (
 )
 
 // path to kubeconfig on disk.
-var kubeconfig string
+var (
+	kubeconfig      string
+	deleteNamespace bool
+)
 
 func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to Kubeconfig file with authorization and master location information.")
+	flag.BoolVar(&deleteNamespace, "delete-namespace", true, "If true tests will delete namespace after completion. It is only designed to make debugging easier, DO NOT turn it off by default.")
 }
 
 // Framework is used in the execution of e2e tests.
@@ -159,14 +179,16 @@ func (f *Framework) AfterEach() {
 	defer func() {
 		nsDeletionErrors := map[string]error{}
 
-		// TODO: skip namespace deletion
-		for _, ns := range f.namespacesToDelete {
-			By(fmt.Sprintf("Destroying namespace %q for this suite.", ns.Name))
-			if err := f.DeleteNamespace(ns.Name, 5*time.Minute); err != nil {
-				if !apierrors.IsNotFound(err) {
-					nsDeletionErrors[ns.Name] = err
-				} else {
-					Logf("Namespace %v was already deleted", ns.Name)
+		if deleteNamespace {
+			// TODO: skip namespace deletion
+			for _, ns := range f.namespacesToDelete {
+				By(fmt.Sprintf("Destroying namespace %q for this suite.", ns.Name))
+				if err := f.DeleteNamespace(ns.Name, 5*time.Minute); err != nil {
+					if !apierrors.IsNotFound(err) {
+						nsDeletionErrors[ns.Name] = err
+					} else {
+						Logf("Namespace %v was already deleted", ns.Name)
+					}
 				}
 			}
 		}

@@ -141,6 +141,15 @@ skipped_dirs = [
     "hack/boilerplate/boilerplate_test.py",
     "hack/boilerplate/test",
     "hack/verify-boilerplate.sh",
+
+    "test/e2e/e2e_test.go",
+    "test/e2e/load_balancer_test.go",
+    "test/e2e/framework/cleanup.go",
+    "test/e2e/framework/framework.go",
+    "test/e2e/framework/service_util.go",
+    "test/e2e/framework/util.go",
+    "test/e2e/framework/networking_utils.go",
+    "test/e2e/framework/ginkgowrapper/wrapper.go",
 ]
 
 
