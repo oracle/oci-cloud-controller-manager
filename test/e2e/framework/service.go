@@ -18,7 +18,6 @@ package framework
 
 import (
 	"fmt"
-	"testing"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -42,14 +41,11 @@ type ServiceTestJig struct {
 	Name   string
 	Client kubernetes.Interface
 	Labels map[string]string
-
-	t *testing.T
 }
 
 // NewServiceTestJig allocates and inits a new ServiceTestJig.
-func NewServiceTestJig(t *testing.T, client kubernetes.Interface, name string) *ServiceTestJig {
+func NewServiceTestJig(client kubernetes.Interface, name string) *ServiceTestJig {
 	j := &ServiceTestJig{}
-	j.t = t
 	j.Client = client
 	j.Name = name
 	j.ID = j.Name + "-" + string(uuid.NewUUID())
@@ -91,7 +87,7 @@ func (j *ServiceTestJig) CreateTCPServiceOrFail(namespace string, tweak func(svc
 	}
 	result, err := j.Client.CoreV1().Services(namespace).Create(svc)
 	if err != nil {
-		j.t.Fatalf("Failed to create TCP Service %q: %v", svc.Name, err)
+		Failf("Failed to create TCP Service %q: %v", svc.Name, err)
 	}
 	return result
 }
@@ -99,7 +95,7 @@ func (j *ServiceTestJig) CreateTCPServiceOrFail(namespace string, tweak func(svc
 // CreateLoadBalancerService creates a loadbalancer service and waits
 // for it to acquire an ingress IP.
 func (j *ServiceTestJig) CreateLoadBalancerService(namespace, serviceName string, timeout time.Duration, tweak func(svc *v1.Service)) *v1.Service {
-	j.t.Logf("Creating a service %s/%s with type=LoadBalancer", namespace, serviceName)
+	Logf("Creating a service %s/%s with type=LoadBalancer", namespace, serviceName)
 	svc := j.CreateTCPServiceOrFail(namespace, func(svc *v1.Service) {
 		svc.Spec.Type = v1.ServiceTypeLoadBalancer
 		if tweak != nil {
@@ -107,7 +103,7 @@ func (j *ServiceTestJig) CreateLoadBalancerService(namespace, serviceName string
 		}
 	})
 
-	j.t.Logf("Waiting for loadbalancer for service %s/%s", namespace, serviceName)
+	Logf("Waiting for loadbalancer for service %s/%s", namespace, serviceName)
 	svc = j.WaitForLoadBalancerOrFail(namespace, serviceName, timeout)
 	return svc
 }
@@ -126,7 +122,7 @@ func (j *ServiceTestJig) waitForConditionOrFail(namespace, name string, timeout 
 		return false, nil
 	}
 	if err := wait.PollImmediate(Poll, timeout, pollFunc); err != nil {
-		j.t.Fatalf("Timed out waiting for service %q to %s", name, message)
+		Failf("Timed out waiting for service %q to %s", name, message)
 	}
 	return service
 }
@@ -134,7 +130,7 @@ func (j *ServiceTestJig) waitForConditionOrFail(namespace, name string, timeout 
 // WaitForLoadBalancerOrFail waits for a Service type=LoadBalancer to be
 // assigned an ingress point by the cloudprovider.
 func (j *ServiceTestJig) WaitForLoadBalancerOrFail(namespace, name string, timeout time.Duration) *v1.Service {
-	j.t.Logf("Waiting up to %v for service %q to have a LoadBalancer", timeout, name)
+	Logf("Waiting up to %v for service %q to have a LoadBalancer", timeout, name)
 	service := j.waitForConditionOrFail(namespace, name, timeout, "have a load balancer", func(svc *v1.Service) bool {
 		if len(svc.Status.LoadBalancer.Ingress) > 0 {
 			return true
@@ -198,14 +194,14 @@ func (j *ServiceTestJig) RunOrFail(namespace string, tweak func(rc *v1.Replicati
 	}
 	result, err := j.Client.CoreV1().ReplicationControllers(namespace).Create(rc)
 	if err != nil {
-		j.t.Fatalf("Failed to create RC %q: %v", rc.Name, err)
+		Failf("Failed to create RC %q: %v", rc.Name, err)
 	}
 	pods, err := j.waitForPodsCreated(namespace, int(*(rc.Spec.Replicas)))
 	if err != nil {
-		j.t.Fatalf("Failed to create pods: %v", err)
+		Failf("Failed to create pods: %v", err)
 	}
 	if err := j.waitForPodsReady(namespace, pods); err != nil {
-		j.t.Fatalf("Failed waiting for pods to be running: %v", err)
+		Failf("Failed waiting for pods to be running: %v", err)
 	}
 	return result
 }
@@ -214,7 +210,7 @@ func (j *ServiceTestJig) waitForPodsCreated(namespace string, replicas int) ([]s
 	timeout := 2 * time.Minute
 	// List the pods, making sure we observe all the replicas.
 	label := labels.SelectorFromSet(labels.Set(j.Labels))
-	j.t.Logf("Waiting up to %v for %d pods to be created", timeout, replicas)
+	Logf("Waiting up to %v for %d pods to be created", timeout, replicas)
 	for start := time.Now(); time.Since(start) < timeout; time.Sleep(2 * time.Second) {
 		options := metav1.ListOptions{LabelSelector: label.String()}
 		pods, err := j.Client.CoreV1().Pods(namespace).List(options)
@@ -230,17 +226,17 @@ func (j *ServiceTestJig) waitForPodsCreated(namespace string, replicas int) ([]s
 			found = append(found, pod.Name)
 		}
 		if len(found) == replicas {
-			j.t.Logf("Found all %d pods", replicas)
+			Logf("Found all %d pods", replicas)
 			return found, nil
 		}
-		j.t.Logf("Found %d/%d pods - will retry", len(found), replicas)
+		Logf("Found %d/%d pods - will retry", len(found), replicas)
 	}
 	return nil, fmt.Errorf("Timeout waiting for %d pods to be created", replicas)
 }
 
 func (j *ServiceTestJig) waitForPodsReady(namespace string, pods []string) error {
 	timeout := 2 * time.Minute
-	if !CheckPodsRunningReady(j.t, j.Client, namespace, pods, timeout) {
+	if !CheckPodsRunningReady(j.Client, namespace, pods, timeout) {
 		return fmt.Errorf("Timeout waiting for %d pods to be ready", len(pods))
 	}
 	return nil
@@ -249,19 +245,19 @@ func (j *ServiceTestJig) waitForPodsReady(namespace string, pods []string) error
 // SanityCheckService sanity checks some basic properties of a given Service.
 func (j *ServiceTestJig) SanityCheckService(svc *v1.Service, svcType v1.ServiceType) {
 	if svc.Spec.Type != svcType {
-		j.t.Fatalf("Unexpected Spec.Type (%s) for service, expected %s", svc.Spec.Type, svcType)
+		Failf("Unexpected Spec.Type (%s) for service, expected %s", svc.Spec.Type, svcType)
 	}
 
 	if svcType != v1.ServiceTypeExternalName {
 		if svc.Spec.ExternalName != "" {
-			j.t.Fatalf("Unexpected Spec.ExternalName (%s) for service, expected empty", svc.Spec.ExternalName)
+			Failf("Unexpected Spec.ExternalName (%s) for service, expected empty", svc.Spec.ExternalName)
 		}
 		if svc.Spec.ClusterIP != api.ClusterIPNone && svc.Spec.ClusterIP == "" {
-			j.t.Fatal("Didn't get ClusterIP for non-ExternamName service")
+			Failf("Didn't get ClusterIP for non-ExternamName service")
 		}
 	} else {
 		if svc.Spec.ClusterIP != "" {
-			j.t.Fatalf("Unexpected Spec.ClusterIP (%s) for ExternamName service, expected empty", svc.Spec.ClusterIP)
+			Failf("Unexpected Spec.ClusterIP (%s) for ExternamName service, expected empty", svc.Spec.ClusterIP)
 		}
 	}
 
@@ -272,11 +268,11 @@ func (j *ServiceTestJig) SanityCheckService(svc *v1.Service, svcType v1.ServiceT
 	for i, port := range svc.Spec.Ports {
 		hasNodePort := (port.NodePort != 0)
 		if hasNodePort != expectNodePorts {
-			j.t.Fatalf("Unexpected Spec.Ports[%d].NodePort (%d) for service", i, port.NodePort)
+			Failf("Unexpected Spec.Ports[%d].NodePort (%d) for service", i, port.NodePort)
 		}
 		if hasNodePort {
 			if !ServiceNodePortRange.Contains(int(port.NodePort)) {
-				j.t.Fatalf("Out-of-range nodePort (%d) for service", port.NodePort)
+				Failf("Out-of-range nodePort (%d) for service", port.NodePort)
 			}
 		}
 	}
@@ -286,13 +282,29 @@ func (j *ServiceTestJig) SanityCheckService(svc *v1.Service, svcType v1.ServiceT
 	}
 	hasIngress := len(svc.Status.LoadBalancer.Ingress) != 0
 	if hasIngress != expectIngress {
-		j.t.Fatalf("Unexpected number of Status.LoadBalancer.Ingress (%d) for service", len(svc.Status.LoadBalancer.Ingress))
+		Failf("Unexpected number of Status.LoadBalancer.Ingress (%d) for service", len(svc.Status.LoadBalancer.Ingress))
 	}
 	if hasIngress {
 		for i, ing := range svc.Status.LoadBalancer.Ingress {
 			if ing.IP == "" && ing.Hostname == "" {
-				j.t.Fatalf("Unexpected Status.LoadBalancer.Ingress[%d] for service: %#v", i, ing)
+				Failf("Unexpected Status.LoadBalancer.Ingress[%d] for service: %#v", i, ing)
 			}
+		}
+	}
+}
+
+func (j *ServiceTestJig) TestReachableHTTP(host string, port int, timeout time.Duration) {
+	j.TestReachableHTTPWithRetriableErrorCodes(host, port, []int{}, timeout)
+}
+
+func (j *ServiceTestJig) TestReachableHTTPWithRetriableErrorCodes(host string, port int, retriableErrCodes []int, timeout time.Duration) {
+	if err := wait.PollImmediate(Poll, timeout, func() (bool, error) {
+		return TestReachableHTTPWithRetriableErrorCodes(host, port, "/echo?msg=hello", "hello", retriableErrCodes)
+	}); err != nil {
+		if err == wait.ErrWaitTimeout {
+			Failf("Could not reach HTTP service through %v:%v after %v", host, port, timeout)
+		} else {
+			Failf("Failed to reach HTTP service through %v:%v: %v", host, port, err)
 		}
 	}
 }

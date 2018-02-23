@@ -1,11 +1,20 @@
 package framework
 
 import (
-	"os"
+	"flag"
+	"fmt"
+	"strings"
 	"time"
 
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
+	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	wait "k8s.io/apimachinery/pkg/util/wait"
+	clientset "k8s.io/client-go/kubernetes"
+	clientcmd "k8s.io/client-go/tools/clientcmd"
 )
 
 const (
@@ -13,31 +22,167 @@ const (
 	Poll = 2 * time.Second
 )
 
-// Framework is used in the execution of e2e tests.
-type Framework struct {
-	Client kubernetes.Interface
+// path to kubeconfig on disk.
+var kubeconfig string
 
-	// Namespace in which test resources are created.
-	Namespace string
+func init() {
+	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to Kubeconfig file with authorization and master location information.")
 }
 
-// New constructs a new e2e test Framework.
-func New() *Framework { return &Framework{} }
+// Framework is used in the execution of e2e tests.
+type Framework struct {
+	BaseName string
 
-// Init initialises the e2e test framework.
-func (f *Framework) Init(kubeconfig, namespace string) error {
-	f.Namespace = namespace
+	ClientSet clientset.Interface
 
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	if err != nil {
+	// Namespace in which test resources are created.
+	Namespace          *v1.Namespace
+	namespacesToDelete []*v1.Namespace // Some tests have more than one.
+
+	// To make sure that this framework cleans up after itself, no matter what,
+	// we install a Cleanup action before each test and clear it after.  If we
+	// should abort, the AfterSuite hook should run all Cleanup actions.
+	cleanupHandle CleanupActionHandle
+}
+
+// NewDefaultFramework constructs a new e2e test Framework with default options.
+func NewDefaultFramework(baseName string) *Framework {
+	return NewFramework(baseName, nil)
+}
+
+// NewFramework constructs a new e2e test Framework.
+func NewFramework(baseName string, client clientset.Interface) *Framework {
+	f := &Framework{
+		BaseName:  baseName,
+		ClientSet: client,
+	}
+
+	BeforeEach(f.BeforeEach)
+	AfterEach(f.AfterEach)
+
+	return f
+}
+
+// CreateNamespace creates a e2e test namespace.
+func (f *Framework) CreateNamespace(baseName string, labels map[string]string) (*v1.Namespace, error) {
+	if labels == nil {
+		labels = map[string]string{}
+	}
+
+	namespaceObj := &v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: fmt.Sprintf("ccm-e2e-tests-%v-", baseName),
+			Namespace:    "",
+			Labels:       labels,
+		},
+		Status: v1.NamespaceStatus{},
+	}
+
+	// Be robust about making the namespace creation call.
+	var got *v1.Namespace
+	if err := wait.PollImmediate(Poll, 30*time.Second, func() (bool, error) {
+		var err error
+		got, err = f.ClientSet.CoreV1().Namespaces().Create(namespaceObj)
+		if err != nil {
+			Logf("Unexpected error while creating namespace: %v", err)
+			return false, nil
+		}
+		return true, nil
+	}); err != nil {
+		return nil, err
+	}
+
+	if got != nil {
+		f.namespacesToDelete = append(f.namespacesToDelete, got)
+	}
+
+	return got, nil
+}
+
+// DeleteNamespace deletes a given namespace and waits until its contents are
+// deleted.
+func (f *Framework) DeleteNamespace(namespace string, timeout time.Duration) error {
+	startTime := time.Now()
+	if err := f.ClientSet.CoreV1().Namespaces().Delete(namespace, nil); err != nil {
 		return err
 	}
 
-	f.Client, err = kubernetes.NewForConfig(config)
-	return err
+	// wait for namespace to delete or timeout.
+	err := wait.PollImmediate(Poll, timeout, func() (bool, error) {
+		if _, err := f.ClientSet.CoreV1().Namespaces().Get(namespace, metav1.GetOptions{}); err != nil {
+			if apierrors.IsNotFound(err) {
+				return true, nil
+			}
+			Logf("Error while waiting for namespace to be terminated: %v", err)
+			return false, nil
+		}
+		return false, nil
+	})
+
+	// Namespace deletion timed out.
+	if err != nil {
+		return fmt.Errorf("namespace %v was not deleted with limit: %v", namespace, err)
+	}
+
+	Logf("namespace %v deletion completed in %s", namespace, time.Now().Sub(startTime))
+	return nil
 }
 
-// Run the tests and exit with the status code
-func (f *Framework) Run(run func() int) {
-	os.Exit(run())
+// BeforeEach gets a client and makes a namespace.
+func (f *Framework) BeforeEach() {
+	// The fact that we need this feels like a bug in ginkgo.
+	// https://github.com/onsi/ginkgo/issues/222
+	f.cleanupHandle = AddCleanupAction(f.AfterEach)
+	if f.ClientSet == nil {
+		By("Creating a kubernetes client")
+		config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+		Expect(err).NotTo(HaveOccurred())
+		f.ClientSet, err = clientset.NewForConfig(config)
+		Expect(err).NotTo(HaveOccurred())
+	}
+
+	By("Building a namespace api object")
+	namespace, err := f.CreateNamespace(f.BaseName, map[string]string{
+		"e2e-framework": f.BaseName,
+	})
+	Expect(err).NotTo(HaveOccurred())
+
+	f.Namespace = namespace
+}
+
+// AfterEach deletes the namespace(s).
+func (f *Framework) AfterEach() {
+	RemoveCleanupAction(f.cleanupHandle)
+
+	// DeleteNamespace at the very end in defer, to avoid any expectation
+	// failures preventing deleting the namespace.
+	defer func() {
+		nsDeletionErrors := map[string]error{}
+
+		// TODO: skip namespace deletion
+		for _, ns := range f.namespacesToDelete {
+			By(fmt.Sprintf("Destroying namespace %q for this suite.", ns.Name))
+			if err := f.DeleteNamespace(ns.Name, 5*time.Minute); err != nil {
+				if !apierrors.IsNotFound(err) {
+					nsDeletionErrors[ns.Name] = err
+				} else {
+					Logf("Namespace %v was already deleted", ns.Name)
+				}
+			}
+		}
+
+		// Paranoia -- prevent reuse!
+		f.Namespace = nil
+		f.ClientSet = nil
+		f.namespacesToDelete = nil
+
+		// if we had errors deleting, report them now.
+		if len(nsDeletionErrors) != 0 {
+			messages := []string{}
+			for namespaceKey, namespaceErr := range nsDeletionErrors {
+				messages = append(messages, fmt.Sprintf("Couldn't delete ns: %q: %s (%#v)", namespaceKey, namespaceErr, namespaceErr))
+			}
+			Failf(strings.Join(messages, ","))
+		}
+	}()
 }
