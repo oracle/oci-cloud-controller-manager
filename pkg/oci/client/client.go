@@ -168,10 +168,10 @@ func New(cfg *Config) (Interface, error) {
 		}
 
 		if ociProxy != "" {
-			glog.Infof("using oci proxy server: %s", ociProxy)
+			glog.Infof("using OCI proxy server: %s", ociProxy)
 			proxyURL, err := url.Parse(ociProxy)
 			if err != nil {
-				return nil, fmt.Errorf("failed to parse oci proxy url: %s, err: %v", ociProxy, err)
+				return nil, fmt.Errorf("failed to parse OCI proxy url: %s, err: %v", ociProxy, err)
 			}
 			transport.Proxy = func(req *http.Request) (*url.URL, error) {
 				return proxyURL, nil
@@ -179,7 +179,7 @@ func New(cfg *Config) (Interface, error) {
 		}
 
 		if trustedCACertPath != "" {
-			glog.Infof("configuring oci client with a new trusted ca: %s", trustedCACertPath)
+			glog.Infof("configuring OCI client with a new trusted ca: %s", trustedCACertPath)
 			trustedCACert, err := ioutil.ReadFile(trustedCACertPath)
 			if err != nil {
 				return nil, fmt.Errorf("failed to read root certificate: %s, err: %v", trustedCACertPath, err)
