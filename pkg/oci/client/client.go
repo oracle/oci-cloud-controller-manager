@@ -15,8 +15,14 @@
 package client
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 	"net"
+	"net/http"
+	"net/url"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -143,6 +149,52 @@ func New(cfg *Config) (Interface, error) {
 
 	if cfg.Auth.PrivateKeyPassphrase != "" {
 		opts = append(opts, baremetal.PrivateKeyPassword(cfg.Auth.PrivateKeyPassphrase))
+	}
+
+	// Handles the case where we want to talk to OCI via a proxy.
+	ociProxy := os.Getenv("OCI_PROXY")
+	trustedCACertPath := os.Getenv("TRUSTED_CA_CERT_PATH")
+	if ociProxy != "" || trustedCACertPath != "" {
+		transport := http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+				DualStack: true,
+			}).DialContext,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		}
+
+		if ociProxy != "" {
+			glog.Infof("using OCI proxy server: %s", ociProxy)
+			proxyURL, err := url.Parse(ociProxy)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse OCI proxy url: %s, err: %v", ociProxy, err)
+			}
+			transport.Proxy = func(req *http.Request) (*url.URL, error) {
+				return proxyURL, nil
+			}
+		}
+
+		if trustedCACertPath != "" {
+			glog.Infof("configuring OCI client with a new trusted ca: %s", trustedCACertPath)
+			trustedCACert, err := ioutil.ReadFile(trustedCACertPath)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read root certificate: %s, err: %v", trustedCACertPath, err)
+			}
+			caCertPool := x509.NewCertPool()
+			ok := caCertPool.AppendCertsFromPEM(trustedCACert)
+			if !ok {
+				return nil, fmt.Errorf("failed to parse root certificate: %s", trustedCACertPath)
+			}
+			transport.TLSClientConfig = &tls.Config{RootCAs: caCertPool}
+		}
+
+		opts = append(opts, func(o *baremetal.NewClientOptions) {
+			o.Transport = &transport
+		})
 	}
 
 	ociClient, err := baremetal.NewClient(
