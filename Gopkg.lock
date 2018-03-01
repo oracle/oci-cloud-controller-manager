@@ -2,6 +2,23 @@
 
 
 [[projects]]
+  name = "cloud.google.com/go"
+  packages = ["compute/metadata"]
+  revision = "20d4028b8a750c2aca76bf9fefa8ed2d0109b573"
+  version = "v0.19.0"
+
+[[projects]]
+  name = "github.com/Azure/go-autorest"
+  packages = [
+    "autorest",
+    "autorest/adal",
+    "autorest/azure",
+    "autorest/date"
+  ]
+  revision = "fc3b03a2d2d1f43fad3007038bd16f044f870722"
+  version = "v9.10.0"
+
+[[projects]]
   name = "github.com/PuerkitoBio/purell"
   packages = ["."]
   revision = "0bcb03f4b4d0a9428594752bd2a3b9aa0a9d4bd4"
@@ -41,6 +58,35 @@
   revision = "5db89f0ca68677abc5eefce8f2a0a772c98ba52d"
 
 [[projects]]
+  name = "github.com/docker/docker"
+  packages = [
+    "api/types",
+    "api/types/blkiodev",
+    "api/types/container",
+    "api/types/filters",
+    "api/types/mount",
+    "api/types/network",
+    "api/types/registry",
+    "api/types/strslice",
+    "api/types/swarm",
+    "api/types/versions"
+  ]
+  revision = "092cba3727bb9b4a2f0e922cd6c0f93ea270e363"
+  version = "v1.13.1"
+
+[[projects]]
+  name = "github.com/docker/go-connections"
+  packages = ["nat"]
+  revision = "3ede32e2033de7505e6500d6c868c2b9ed9f169d"
+  version = "v0.3.0"
+
+[[projects]]
+  name = "github.com/docker/go-units"
+  packages = ["."]
+  revision = "0dadbb0345b35ec7ef35e228dabb8de89a65bf52"
+  version = "v0.3.2"
+
+[[projects]]
   name = "github.com/emicklei/go-restful"
   packages = [
     ".",
@@ -54,6 +100,18 @@
   packages = ["."]
   revision = "dcef7f55730566d41eae5db10e7d6981829720f6"
   version = "1.0.1"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/exponent-io/jsonpath"
+  packages = ["."]
+  revision = "d6023ce2651d8eafb5c75bb0c7167536102ec9f5"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/fatih/camelcase"
+  packages = ["."]
+  revision = "44e46d280b43ec1531bb25252440e34f1b800b65"
 
 [[projects]]
   name = "github.com/ghodss/yaml"
@@ -145,6 +203,20 @@
   ]
   revision = "ee43cbb60db7bd22502942cccbc39059117352ab"
   version = "v0.1.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/gophercloud/gophercloud"
+  packages = [
+    ".",
+    "openstack",
+    "openstack/identity/v2/tenants",
+    "openstack/identity/v2/tokens",
+    "openstack/identity/v3/tokens",
+    "openstack/utils",
+    "pagination"
+  ]
+  revision = "eedbafadaa1aecde95e4c14c3bebb401275b4d5d"
 
 [[projects]]
   branch = "master"
@@ -338,6 +410,7 @@
   name = "golang.org/x/net"
   packages = [
     "context",
+    "context/ctxhttp",
     "html",
     "html/atom",
     "html/charset",
@@ -347,6 +420,18 @@
     "lex/httplex"
   ]
   revision = "0a9397675ba34b2845f758fe3cd68828369c6517"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/oauth2"
+  packages = [
+    ".",
+    "google",
+    "internal",
+    "jws",
+    "jwt"
+  ]
+  revision = "d7d64896b5ff88e703f289390e3e98cd010a837e"
 
 [[projects]]
   branch = "master"
@@ -390,6 +475,23 @@
     "width"
   ]
   revision = "1cbadb444a806fd9430d14ad08967ed91da4fa0a"
+
+[[projects]]
+  name = "google.golang.org/appengine"
+  packages = [
+    ".",
+    "internal",
+    "internal/app_identity",
+    "internal/base",
+    "internal/datastore",
+    "internal/log",
+    "internal/modules",
+    "internal/remote_api",
+    "internal/urlfetch",
+    "urlfetch"
+  ]
+  revision = "150dc57a1b433e64154302bdc40b6bb8aefa313a"
+  version = "v1.0.0"
 
 [[projects]]
   name = "gopkg.in/inf.v0"
@@ -507,9 +609,11 @@
     "pkg/apis/apiserver",
     "pkg/apis/apiserver/install",
     "pkg/apis/apiserver/v1alpha1",
+    "pkg/apis/audit",
     "pkg/authentication/authenticator",
     "pkg/authentication/serviceaccount",
     "pkg/authentication/user",
+    "pkg/endpoints/request",
     "pkg/features",
     "pkg/server/healthz",
     "pkg/util/feature",
@@ -523,6 +627,7 @@
   name = "k8s.io/client-go"
   packages = [
     "discovery",
+    "dynamic",
     "informers",
     "informers/admissionregistration",
     "informers/admissionregistration/v1alpha1",
@@ -605,8 +710,14 @@
     "listers/storage/v1",
     "listers/storage/v1beta1",
     "pkg/version",
+    "plugin/pkg/client/auth",
+    "plugin/pkg/client/auth/azure",
+    "plugin/pkg/client/auth/gcp",
+    "plugin/pkg/client/auth/oidc",
+    "plugin/pkg/client/auth/openstack",
     "rest",
     "rest/watch",
+    "third_party/forked/golang/template",
     "tools/auth",
     "tools/cache",
     "tools/clientcmd",
@@ -624,6 +735,7 @@
     "util/flowcontrol",
     "util/homedir",
     "util/integer",
+    "util/jsonpath",
     "util/retry",
     "util/workqueue"
   ]
@@ -645,10 +757,21 @@
     "federation/apis/federation",
     "federation/apis/federation/install",
     "federation/apis/federation/v1beta1",
+    "federation/client/clientset_generated/federation_clientset",
+    "federation/client/clientset_generated/federation_clientset/scheme",
+    "federation/client/clientset_generated/federation_clientset/typed/autoscaling/v1",
+    "federation/client/clientset_generated/federation_clientset/typed/batch/v1",
+    "federation/client/clientset_generated/federation_clientset/typed/core/v1",
+    "federation/client/clientset_generated/federation_clientset/typed/extensions/v1beta1",
+    "federation/client/clientset_generated/federation_clientset/typed/federation/v1beta1",
     "pkg/api",
+    "pkg/api/events",
     "pkg/api/helper",
+    "pkg/api/helper/qos",
     "pkg/api/install",
+    "pkg/api/pod",
     "pkg/api/ref",
+    "pkg/api/resource",
     "pkg/api/service",
     "pkg/api/testapi",
     "pkg/api/util",
@@ -717,6 +840,7 @@
     "pkg/apis/settings/v1alpha1",
     "pkg/apis/storage",
     "pkg/apis/storage/install",
+    "pkg/apis/storage/util",
     "pkg/apis/storage/v1",
     "pkg/apis/storage/v1beta1",
     "pkg/capabilities",
@@ -740,17 +864,33 @@
     "pkg/client/leaderelectionconfig",
     "pkg/client/metrics",
     "pkg/client/metrics/prometheus",
+    "pkg/client/unversioned",
     "pkg/cloudprovider",
     "pkg/controller",
     "pkg/controller/cloud",
+    "pkg/controller/daemon",
+    "pkg/controller/daemon/util",
     "pkg/controller/deployment/util",
+    "pkg/controller/history",
     "pkg/controller/route",
     "pkg/controller/service",
+    "pkg/controller/statefulset",
+    "pkg/credentialprovider",
     "pkg/features",
+    "pkg/fieldpath",
+    "pkg/kubectl",
+    "pkg/kubectl/resource",
+    "pkg/kubectl/util",
+    "pkg/kubectl/util/hash",
+    "pkg/kubectl/util/slice",
+    "pkg/kubectl/validation",
     "pkg/kubelet/apis",
     "pkg/kubelet/qos",
     "pkg/kubelet/types",
     "pkg/master/ports",
+    "pkg/printers",
+    "pkg/printers/internalversion",
+    "pkg/registry/rbac/validation",
     "pkg/security/apparmor",
     "pkg/serviceaccount",
     "pkg/util/configz",
@@ -764,6 +904,7 @@
     "pkg/util/node",
     "pkg/util/parsers",
     "pkg/util/pointer",
+    "pkg/util/slice",
     "pkg/util/taints",
     "pkg/util/version",
     "pkg/version",
@@ -776,6 +917,7 @@
     "plugin/pkg/scheduler/api",
     "plugin/pkg/scheduler/schedulercache",
     "plugin/pkg/scheduler/util",
+    "staging/src/k8s.io/apimachinery/pkg/util/rand",
     "test/utils",
     "test/utils/image"
   ]
@@ -801,9 +943,15 @@
   packages = ["exec"]
   revision = "258e2a2fa64568210fbd6267cf1d8fd87c3cb86e"
 
+[[projects]]
+  branch = "master"
+  name = "vbom.ml/util"
+  packages = ["sortorder"]
+  revision = "256737ac55c46798123f754ab7d2c784e2c71783"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f821cca9ba0030ef0b4316a257e0e16f0641c7f59e2b1017fb623d70b0f28f3e"
+  inputs-digest = "a361296a244bf9eea35f52b4b1a51f4dc08ab30b4a98dc2d25b68cb9827603c7"
   solver-name = "gps-cdcl"
   solver-version = 1

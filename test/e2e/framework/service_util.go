@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
@@ -326,6 +327,72 @@ func PickNodeIP(c clientset.Interface) string {
 	}
 	ip := publicIps[0]
 	return ip
+}
+
+// GetEndpointNodes returns a map of nodenames:external-ip on which the
+// endpoints of the given Service are running.
+func (j *ServiceTestJig) GetEndpointNodes(svc *v1.Service) map[string][]string {
+	nodes := j.GetNodes(MaxNodesForEndpointsTests)
+	endpoints, err := j.Client.CoreV1().Endpoints(svc.Namespace).Get(svc.Name, metav1.GetOptions{})
+	if err != nil {
+		Failf("Get endpoints for service %s/%s failed (%s)", svc.Namespace, svc.Name, err)
+	}
+	if len(endpoints.Subsets) == 0 {
+		Failf("Endpoint has no subsets, cannot determine node addresses.")
+	}
+	epNodes := sets.NewString()
+	for _, ss := range endpoints.Subsets {
+		for _, e := range ss.Addresses {
+			if e.NodeName != nil {
+				epNodes.Insert(*e.NodeName)
+			}
+		}
+	}
+	nodeMap := map[string][]string{}
+	for _, n := range nodes.Items {
+		if epNodes.Has(n.Name) {
+			nodeMap[n.Name] = GetNodeAddresses(&n, v1.NodeExternalIP)
+		}
+	}
+	return nodeMap
+}
+
+// GetNodes returns the first maxNodesForTest nodes. Useful in large clusters
+// where we don't eg: want to create an endpoint per node.
+func (j *ServiceTestJig) GetNodes(maxNodesForTest int) (nodes *v1.NodeList) {
+	nodes = GetReadySchedulableNodesOrDie(j.Client)
+	if len(nodes.Items) <= maxNodesForTest {
+		maxNodesForTest = len(nodes.Items)
+	}
+	nodes.Items = nodes.Items[:maxNodesForTest]
+	return nodes
+}
+
+func (j *ServiceTestJig) WaitForEndpointOnNode(namespace, serviceName, nodeName string) {
+	err := wait.PollImmediate(Poll, LoadBalancerCreateTimeoutDefault, func() (bool, error) {
+		endpoints, err := j.Client.CoreV1().Endpoints(namespace).Get(serviceName, metav1.GetOptions{})
+		if err != nil {
+			Logf("Get endpoints for service %s/%s failed (%s)", namespace, serviceName, err)
+			return false, nil
+		}
+		if len(endpoints.Subsets) == 0 {
+			Logf("Expect endpoints with subsets, got none.")
+			return false, nil
+		}
+		// TODO: Handle multiple endpoints
+		if len(endpoints.Subsets[0].Addresses) == 0 {
+			Logf("Expected Ready endpoints - found none")
+			return false, nil
+		}
+		epHostName := *endpoints.Subsets[0].Addresses[0].NodeName
+		Logf("Pod for service %s/%s is on node %s", namespace, serviceName, epHostName)
+		if epHostName != nodeName {
+			Logf("Found endpoint on wrong node, expected %v, got %v", nodeName, epHostName)
+			return false, nil
+		}
+		return true, nil
+	})
+	ExpectNoError(err)
 }
 
 func (j *ServiceTestJig) SanityCheckService(svc *v1.Service, svcType v1.ServiceType) {

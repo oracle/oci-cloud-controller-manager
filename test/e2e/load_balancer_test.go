@@ -17,15 +17,25 @@ limitations under the License.
 package e2e
 
 import (
+	"fmt"
+	"net"
+	"strconv"
+	"strings"
+
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/wait"
+	clientset "k8s.io/client-go/kubernetes"
 
 	cloudprovider "github.com/oracle/oci-cloud-controller-manager/pkg/oci"
 	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
 )
 
-var _ = Describe("Service type:LoadBalancer", func() {
+var _ = Describe("Service [Slow]", func() {
 	f := framework.NewDefaultFramework("service")
 
 	It("should be possible to create and mutate a Service type:LoadBalancer", func() {
@@ -49,8 +59,6 @@ var _ = Describe("Service type:LoadBalancer", func() {
 		tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
 			s.Spec.Type = v1.ServiceTypeLoadBalancer
 			s.Spec.LoadBalancerIP = requestedIP // will be "" if not applicable
-			// TODO(apryde): Remove and use default shape (resources permitting)
-			s.Annotations = map[string]string{cloudprovider.ServiceAnnotationLoadBalancerShape: "400Mbps"}
 		})
 
 		svcPort := int(tcpService.Spec.Ports[0].Port)
@@ -147,5 +155,134 @@ var _ = Describe("Service type:LoadBalancer", func() {
 
 		By("checking the TCP LoadBalancer is closed")
 		jig.TestNotReachableHTTP(tcpIngressIP, svcPort, loadBalancerLagTimeout)
+	})
+})
+
+// NOTE: OCI LBaaS is not a passthrough load balancer so ESIPP (External Source IP
+// Presevation) is not possible, however, this test covers support for node-local
+// routing (i.e. avoidance of a second hop).
+var _ = Describe("ESIPP [Slow]", func() {
+	f := framework.NewDefaultFramework("esipp")
+	loadBalancerCreateTimeout := framework.LoadBalancerCreateTimeoutDefault
+
+	serviceLBNames := []string{}
+
+	var cs clientset.Interface
+
+	BeforeEach(func() {
+		cs = f.ClientSet
+	})
+
+	It("should only target nodes with endpoints", func() {
+		namespace := f.Namespace.Name
+		serviceName := "external-local"
+		jig := framework.NewServiceTestJig(cs, serviceName)
+		nodes := jig.GetNodes(framework.MaxNodesForEndpointsTests)
+
+		svc := jig.CreateOnlyLocalLoadBalancerService(namespace, serviceName, loadBalancerCreateTimeout, false,
+			func(svc *v1.Service) {
+				// Change service port to avoid collision with opened hostPorts
+				// in other tests that run in parallel.
+				if len(svc.Spec.Ports) != 0 {
+					svc.Spec.Ports[0].TargetPort = intstr.FromInt(int(svc.Spec.Ports[0].Port))
+					svc.Spec.Ports[0].Port = 8081
+				}
+
+			})
+		serviceLBNames = append(serviceLBNames, cloudprovider.GetLoadBalancerName(svc))
+		defer func() {
+			jig.ChangeServiceType(svc.Namespace, svc.Name, v1.ServiceTypeClusterIP, loadBalancerCreateTimeout)
+			Expect(cs.CoreV1().Services(svc.Namespace).Delete(svc.Name, nil)).NotTo(HaveOccurred())
+		}()
+
+		healthCheckNodePort := int(svc.Spec.HealthCheckNodePort)
+		if healthCheckNodePort == 0 {
+			framework.Failf("Service HealthCheck NodePort was not allocated")
+		}
+
+		ips := framework.CollectAddresses(nodes, v1.NodeExternalIP)
+
+		ingressIP := framework.GetIngressPoint(&svc.Status.LoadBalancer.Ingress[0])
+		svcTCPPort := int(svc.Spec.Ports[0].Port)
+
+		threshold := 2
+		path := "/healthz"
+		for i := 0; i < len(nodes.Items); i++ {
+			endpointNodeName := nodes.Items[i].Name
+
+			By("creating a pod to be part of the service " + serviceName + " on node " + endpointNodeName)
+			jig.RunOrFail(namespace, func(rc *v1.ReplicationController) {
+				rc.Name = serviceName
+				if endpointNodeName != "" {
+					rc.Spec.Template.Spec.NodeName = endpointNodeName
+				}
+			})
+
+			By(fmt.Sprintf("waiting for service endpoint on node %v", endpointNodeName))
+			jig.WaitForEndpointOnNode(namespace, serviceName, endpointNodeName)
+
+			// HealthCheck should pass only on the node where num(endpoints) > 0
+			// All other nodes should fail the healthcheck on the service healthCheckNodePort
+			for n, publicIP := range ips {
+				// Make sure the loadbalancer picked up the health check change.
+				// Confirm traffic can reach backend through LB before checking healthcheck nodeport.
+				jig.TestReachableHTTP(ingressIP, svcTCPPort, framework.KubeProxyLagTimeout)
+				expectedSuccess := nodes.Items[n].Name == endpointNodeName
+				port := strconv.Itoa(healthCheckNodePort)
+				ipPort := net.JoinHostPort(publicIP, port)
+				framework.Logf("Health checking %s, http://%s%s, expectedSuccess %v", nodes.Items[n].Name, ipPort, path, expectedSuccess)
+				Expect(jig.TestHTTPHealthCheckNodePort(publicIP, healthCheckNodePort, path, framework.KubeProxyEndpointLagTimeout, expectedSuccess, threshold)).NotTo(HaveOccurred())
+			}
+			framework.ExpectNoError(framework.DeleteRCAndPods(f.ClientSet, f.InternalClientset, namespace, serviceName))
+		}
+	})
+
+	It("should work from pods", func() {
+		namespace := f.Namespace.Name
+		serviceName := "external-local"
+		jig := framework.NewServiceTestJig(cs, serviceName)
+		nodes := jig.GetNodes(framework.MaxNodesForEndpointsTests)
+
+		svc := jig.CreateOnlyLocalLoadBalancerService(namespace, serviceName, loadBalancerCreateTimeout, true, nil)
+		serviceLBNames = append(serviceLBNames, cloudprovider.GetLoadBalancerName(svc))
+		defer func() {
+			jig.ChangeServiceType(svc.Namespace, svc.Name, v1.ServiceTypeClusterIP, loadBalancerCreateTimeout)
+			Expect(cs.CoreV1().Services(svc.Namespace).Delete(svc.Name, nil)).NotTo(HaveOccurred())
+		}()
+
+		ingressIP := framework.GetIngressPoint(&svc.Status.LoadBalancer.Ingress[0])
+		port := strconv.Itoa(int(svc.Spec.Ports[0].Port))
+		ipPort := net.JoinHostPort(ingressIP, port)
+		path := fmt.Sprintf("%s/clientip", ipPort)
+		nodeName := nodes.Items[0].Name
+		podName := "execpod-sourceip"
+
+		By(fmt.Sprintf("Creating %v on node %v", podName, nodeName))
+		execPodName := framework.CreateExecPodOrFail(f.ClientSet, namespace, podName, func(pod *v1.Pod) {
+			pod.Spec.NodeName = nodeName
+		})
+		defer func() {
+			err := cs.CoreV1().Pods(namespace).Delete(execPodName, nil)
+			Expect(err).NotTo(HaveOccurred())
+		}()
+		execPod, err := f.ClientSet.CoreV1().Pods(namespace).Get(execPodName, metav1.GetOptions{})
+		framework.ExpectNoError(err)
+
+		framework.Logf("Waiting up to %v wget %v", framework.KubeProxyLagTimeout, path)
+		cmd := fmt.Sprintf(`wget -T 30 -qO- %v`, path)
+
+		var srcIP string
+		By(fmt.Sprintf("Hitting external lb %v from pod %v on node %v", ingressIP, podName, nodeName))
+		if pollErr := wait.PollImmediate(framework.Poll, framework.LoadBalancerCreateTimeoutDefault, func() (bool, error) {
+			stdout, err := framework.RunHostCmd(execPod.Namespace, execPod.Name, cmd)
+			if err != nil {
+				framework.Logf("got err: %v, retry until timeout", err)
+				return false, nil
+			}
+			srcIP = strings.TrimSpace(strings.Split(stdout, ":")[0])
+			return srcIP == execPod.Status.PodIP, nil
+		}); pollErr != nil {
+			framework.Failf("Source IP not preserved from %v, expected '%v' got '%v'", podName, execPod.Status.PodIP, srcIP)
+		}
 	})
 })

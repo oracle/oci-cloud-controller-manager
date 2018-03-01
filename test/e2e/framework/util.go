@@ -17,24 +17,45 @@ limitations under the License.
 package framework
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"net"
+	"net/url"
+	"os/exec"
+	"strings"
+	"syscall"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	batch "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
+	extensions "k8s.io/api/extensions/v1beta1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
+	clientcmd "k8s.io/client-go/tools/clientcmd"
+	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
+	appsinternal "k8s.io/kubernetes/pkg/apis/apps"
+	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
+	extensionsinternal "k8s.io/kubernetes/pkg/apis/extensions"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
+	"k8s.io/kubernetes/pkg/controller"
+	"k8s.io/kubernetes/pkg/kubectl"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/predicates"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/schedulercache"
 	testutil "k8s.io/kubernetes/test/utils"
+	uexec "k8s.io/utils/exec"
 
 	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework/ginkgowrapper"
 )
@@ -44,6 +65,10 @@ const (
 	// transient failures from failing tests.
 	// TODO: client should not apply this timeout to Watch calls. Increased from 30s until that is fixed.
 	SingleCallTimeout = 5 * time.Minute
+)
+
+var (
+	BusyBoxImage = "busybox"
 )
 
 func nowStamp() string {
@@ -330,4 +355,358 @@ func GetReadySchedulableNodesOrDie(c clientset.Interface) (nodes *v1.NodeList) {
 		return isNodeSchedulable(&node) && isNodeUntainted(&node)
 	})
 	return nodes
+}
+
+func newExecPodSpec(ns, generateName string) *v1.Pod {
+	immediate := int64(0)
+	pod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: generateName,
+			Namespace:    ns,
+		},
+		Spec: v1.PodSpec{
+			TerminationGracePeriodSeconds: &immediate,
+			Containers: []v1.Container{
+				{
+					Name:    "exec",
+					Image:   BusyBoxImage,
+					Command: []string{"sh", "-c", "while true; do sleep 5; done"},
+				},
+			},
+		},
+	}
+	return pod
+}
+
+// CreateExecPodOrFail creates a simple busybox pod in a sleep loop used as a
+// vessel for kubectl exec commands.
+// Returns the name of the created pod.
+func CreateExecPodOrFail(client clientset.Interface, ns, generateName string, tweak func(*v1.Pod)) string {
+	Logf("Creating new exec pod")
+	execPod := newExecPodSpec(ns, generateName)
+	if tweak != nil {
+		tweak(execPod)
+	}
+	created, err := client.CoreV1().Pods(ns).Create(execPod)
+	Expect(err).NotTo(HaveOccurred())
+	err = wait.PollImmediate(Poll, 5*time.Minute, func() (bool, error) {
+		retrievedPod, err := client.CoreV1().Pods(execPod.Namespace).Get(created.Name, metav1.GetOptions{})
+		if err != nil {
+			if IsRetryableAPIError(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		return retrievedPod.Status.Phase == v1.PodRunning, nil
+	})
+	Expect(err).NotTo(HaveOccurred())
+	return created.Name
+}
+
+// KubectlCmd runs the kubectl executable through the wrapper script.
+func KubectlCmd(args ...string) *exec.Cmd {
+	defaultArgs := []string{}
+
+	if kubeconfig != "" {
+		defaultArgs = append(defaultArgs, "--"+clientcmd.RecommendedConfigPathFlag+"="+kubeconfig)
+	} else {
+		Fail("--kubeconfig not provided")
+	}
+	kubectlArgs := append(defaultArgs, args...)
+
+	//We allow users to specify path to kubectl, so you can test either "kubectl" or "cluster/kubectl.sh"
+	//and so on.
+	cmd := exec.Command("kubectl", kubectlArgs...)
+
+	//caller will invoke this and wait on it.
+	return cmd
+}
+
+// kubectlBuilder is used to build, customize and execute a kubectl Command.
+// Add more functions to customize the builder as needed.
+type kubectlBuilder struct {
+	cmd     *exec.Cmd
+	timeout <-chan time.Time
+}
+
+func NewKubectlCommand(args ...string) *kubectlBuilder {
+	b := new(kubectlBuilder)
+	b.cmd = KubectlCmd(args...)
+	return b
+}
+
+func (b *kubectlBuilder) WithEnv(env []string) *kubectlBuilder {
+	b.cmd.Env = env
+	return b
+}
+
+func (b *kubectlBuilder) WithTimeout(t <-chan time.Time) *kubectlBuilder {
+	b.timeout = t
+	return b
+}
+
+func (b kubectlBuilder) WithStdinData(data string) *kubectlBuilder {
+	b.cmd.Stdin = strings.NewReader(data)
+	return &b
+}
+
+func (b kubectlBuilder) WithStdinReader(reader io.Reader) *kubectlBuilder {
+	b.cmd.Stdin = reader
+	return &b
+}
+
+func (b kubectlBuilder) ExecOrDie() string {
+	str, err := b.Exec()
+	Logf("stdout: %q", str)
+	// In case of i/o timeout error, try talking to the apiserver again after 2s before dying.
+	// Note that we're still dying after retrying so that we can get visibility to triage it further.
+	if isTimeout(err) {
+		Logf("Hit i/o timeout error, talking to the server 2s later to see if it's temporary.")
+		time.Sleep(2 * time.Second)
+		retryStr, retryErr := RunKubectl("version")
+		Logf("stdout: %q", retryStr)
+		Logf("err: %v", retryErr)
+	}
+	Expect(err).NotTo(HaveOccurred())
+	return str
+}
+
+func isTimeout(err error) bool {
+	switch err := err.(type) {
+	case net.Error:
+		if err.Timeout() {
+			return true
+		}
+	case *url.Error:
+		if err, ok := err.Err.(net.Error); ok && err.Timeout() {
+			return true
+		}
+	}
+	return false
+}
+
+func (b kubectlBuilder) Exec() (string, error) {
+	var stdout, stderr bytes.Buffer
+	cmd := b.cmd
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+
+	Logf("Running '%s %s'", cmd.Path, strings.Join(cmd.Args[1:], " ")) // skip arg[0] as it is printed separately
+	if err := cmd.Start(); err != nil {
+		return "", fmt.Errorf("error starting %v:\nCommand stdout:\n%v\nstderr:\n%v\nerror:\n%v\n", cmd, cmd.Stdout, cmd.Stderr, err)
+	}
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- cmd.Wait()
+	}()
+	select {
+	case err := <-errCh:
+		if err != nil {
+			var rc int = 127
+			if ee, ok := err.(*exec.ExitError); ok {
+				rc = int(ee.Sys().(syscall.WaitStatus).ExitStatus())
+				Logf("rc: %d", rc)
+			}
+			return "", uexec.CodeExitError{
+				Err:  fmt.Errorf("error running %v:\nCommand stdout:\n%v\nstderr:\n%v\nerror:\n%v\n", cmd, cmd.Stdout, cmd.Stderr, err),
+				Code: rc,
+			}
+		}
+	case <-b.timeout:
+		b.cmd.Process.Kill()
+		return "", fmt.Errorf("timed out waiting for command %v:\nCommand stdout:\n%v\nstderr:\n%v\n", cmd, cmd.Stdout, cmd.Stderr)
+	}
+	Logf("stderr: %q", stderr.String())
+	return stdout.String(), nil
+}
+
+// RunKubectl is a convenience wrapper over kubectlBuilder
+func RunKubectl(args ...string) (string, error) {
+	return NewKubectlCommand(args...).Exec()
+}
+
+// RunHostCmd runs the given cmd in the context of the given pod using `kubectl exec`
+// inside of a shell.
+func RunHostCmd(ns, name, cmd string) (string, error) {
+	return RunKubectl("exec", fmt.Sprintf("--namespace=%v", ns), name, "--", "/bin/sh", "-c", cmd)
+}
+
+func getRuntimeObjectForKind(c clientset.Interface, kind schema.GroupKind, ns, name string) (runtime.Object, error) {
+	switch kind {
+	case api.Kind("ReplicationController"):
+		return c.CoreV1().ReplicationControllers(ns).Get(name, metav1.GetOptions{})
+	case extensionsinternal.Kind("ReplicaSet"), appsinternal.Kind("ReplicaSet"):
+		return c.ExtensionsV1beta1().ReplicaSets(ns).Get(name, metav1.GetOptions{})
+	case extensionsinternal.Kind("Deployment"), appsinternal.Kind("Deployment"):
+		return c.ExtensionsV1beta1().Deployments(ns).Get(name, metav1.GetOptions{})
+	case extensionsinternal.Kind("DaemonSet"):
+		return c.ExtensionsV1beta1().DaemonSets(ns).Get(name, metav1.GetOptions{})
+	case batchinternal.Kind("Job"):
+		return c.BatchV1().Jobs(ns).Get(name, metav1.GetOptions{})
+	default:
+		return nil, fmt.Errorf("Unsupported kind when getting runtime object: %v", kind)
+	}
+}
+
+func deleteResource(c clientset.Interface, kind schema.GroupKind, ns, name string, deleteOption *metav1.DeleteOptions) error {
+	switch kind {
+	case api.Kind("ReplicationController"):
+		return c.CoreV1().ReplicationControllers(ns).Delete(name, deleteOption)
+	case extensionsinternal.Kind("ReplicaSet"), appsinternal.Kind("ReplicaSet"):
+		return c.ExtensionsV1beta1().ReplicaSets(ns).Delete(name, deleteOption)
+	case extensionsinternal.Kind("Deployment"), appsinternal.Kind("Deployment"):
+		return c.ExtensionsV1beta1().Deployments(ns).Delete(name, deleteOption)
+	case extensionsinternal.Kind("DaemonSet"):
+		return c.ExtensionsV1beta1().DaemonSets(ns).Delete(name, deleteOption)
+	case batchinternal.Kind("Job"):
+		return c.BatchV1().Jobs(ns).Delete(name, deleteOption)
+	default:
+		return fmt.Errorf("Unsupported kind when deleting: %v", kind)
+	}
+}
+
+func getSelectorFromRuntimeObject(obj runtime.Object) (labels.Selector, error) {
+	switch typed := obj.(type) {
+	case *v1.ReplicationController:
+		return labels.SelectorFromSet(typed.Spec.Selector), nil
+	case *extensions.ReplicaSet:
+		return metav1.LabelSelectorAsSelector(typed.Spec.Selector)
+	case *extensions.Deployment:
+		return metav1.LabelSelectorAsSelector(typed.Spec.Selector)
+	case *extensions.DaemonSet:
+		return metav1.LabelSelectorAsSelector(typed.Spec.Selector)
+	case *batch.Job:
+		return metav1.LabelSelectorAsSelector(typed.Spec.Selector)
+	default:
+		return nil, fmt.Errorf("Unsupported kind when getting selector: %v", obj)
+	}
+}
+
+func getReplicasFromRuntimeObject(obj runtime.Object) (int32, error) {
+	switch typed := obj.(type) {
+	case *v1.ReplicationController:
+		if typed.Spec.Replicas != nil {
+			return *typed.Spec.Replicas, nil
+		}
+		return 0, nil
+	case *extensions.ReplicaSet:
+		if typed.Spec.Replicas != nil {
+			return *typed.Spec.Replicas, nil
+		}
+		return 0, nil
+	case *extensions.Deployment:
+		if typed.Spec.Replicas != nil {
+			return *typed.Spec.Replicas, nil
+		}
+		return 0, nil
+	case *batch.Job:
+		// TODO: currently we use pause pods so that's OK. When we'll want to switch to Pods
+		// that actually finish we need a better way to do this.
+		if typed.Spec.Parallelism != nil {
+			return *typed.Spec.Parallelism, nil
+		}
+		return 0, nil
+	default:
+		return -1, fmt.Errorf("Unsupported kind when getting number of replicas: %v", obj)
+	}
+}
+
+func getReaperForKind(internalClientset internalclientset.Interface, kind schema.GroupKind) (kubectl.Reaper, error) {
+	return kubectl.ReaperFor(kind, internalClientset)
+}
+
+// DeleteResourceAndPods deletes a given resource and all pods it spawned
+func DeleteResourceAndPods(clientset clientset.Interface, internalClientset internalclientset.Interface, kind schema.GroupKind, ns, name string) error {
+	By(fmt.Sprintf("deleting %v %s in namespace %s", kind, name, ns))
+
+	rtObject, err := getRuntimeObjectForKind(clientset, kind, ns, name)
+	if err != nil {
+		if apierrs.IsNotFound(err) {
+			Logf("%v %s not found: %v", kind, name, err)
+			return nil
+		}
+		return err
+	}
+	selector, err := getSelectorFromRuntimeObject(rtObject)
+	if err != nil {
+		return err
+	}
+	reaper, err := getReaperForKind(internalClientset, kind)
+	if err != nil {
+		return err
+	}
+
+	ps, err := podStoreForSelector(clientset, ns, selector)
+	if err != nil {
+		return err
+	}
+	defer ps.Stop()
+	startTime := time.Now()
+	err = reaper.Stop(ns, name, 0, nil)
+	if apierrs.IsNotFound(err) {
+		Logf("%v %s was already deleted: %v", kind, name, err)
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("error while stopping %v: %s: %v", kind, name, err)
+	}
+	deleteTime := time.Now().Sub(startTime)
+	Logf("Deleting %v %s took: %v", kind, name, deleteTime)
+	err = waitForPodsInactive(ps, 100*time.Millisecond, 10*time.Minute)
+	if err != nil {
+		return fmt.Errorf("error while waiting for pods to become inactive %s: %v", name, err)
+	}
+	terminatePodTime := time.Now().Sub(startTime) - deleteTime
+	Logf("Terminating %v %s pods took: %v", kind, name, terminatePodTime)
+	// this is to relieve namespace controller's pressure when deleting the
+	// namespace after a test.
+	err = waitForPodsGone(ps, 100*time.Millisecond, 10*time.Minute)
+	if err != nil {
+		return fmt.Errorf("error while waiting for pods gone %s: %v", name, err)
+	}
+	gcPodTime := time.Now().Sub(startTime) - terminatePodTime
+	Logf("Garbage collecting %v %s pods took: %v", kind, name, gcPodTime)
+	return nil
+}
+
+// podStoreForSelector creates a PodStore that monitors pods from given namespace matching given selector.
+// It waits until the reflector does a List() before returning.
+func podStoreForSelector(c clientset.Interface, ns string, selector labels.Selector) (*testutil.PodStore, error) {
+	ps := testutil.NewPodStore(c, ns, selector, fields.Everything())
+	err := wait.Poll(100*time.Millisecond, 2*time.Minute, func() (bool, error) {
+		if len(ps.Reflector.LastSyncResourceVersion()) != 0 {
+			return true, nil
+		}
+		return false, nil
+	})
+	return ps, err
+}
+
+// waitForPodsInactive waits until there are no active pods left in the PodStore.
+// This is to make a fair comparison of deletion time between DeleteRCAndPods
+// and DeleteRCAndWaitForGC, because the RC controller decreases status.replicas
+// when the pod is inactvie.
+func waitForPodsInactive(ps *testutil.PodStore, interval, timeout time.Duration) error {
+	return wait.PollImmediate(interval, timeout, func() (bool, error) {
+		pods := ps.List()
+		for _, pod := range pods {
+			if controller.IsPodActive(pod) {
+				return false, nil
+			}
+		}
+		return true, nil
+	})
+}
+
+// waitForPodsGone waits until there are no pods left in the PodStore.
+func waitForPodsGone(ps *testutil.PodStore, interval, timeout time.Duration) error {
+	return wait.PollImmediate(interval, timeout, func() (bool, error) {
+		if pods := ps.List(); len(pods) == 0 {
+			return true, nil
+		}
+		return false, nil
+	})
+}
+
+func DeleteRCAndPods(clientset clientset.Interface, internalClientset internalclientset.Interface, ns, name string) error {
+	return DeleteResourceAndPods(clientset, internalClientset, api.Kind("ReplicationController"), ns, name)
 }

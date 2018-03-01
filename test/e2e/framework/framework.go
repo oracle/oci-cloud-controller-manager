@@ -31,6 +31,7 @@ import (
 	wait "k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	clientcmd "k8s.io/client-go/tools/clientcmd"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 )
 
 const (
@@ -53,7 +54,8 @@ func init() {
 type Framework struct {
 	BaseName string
 
-	ClientSet clientset.Interface
+	ClientSet         clientset.Interface
+	InternalClientset internalclientset.Interface
 
 	// Namespace in which test resources are created.
 	Namespace          *v1.Namespace
@@ -158,6 +160,8 @@ func (f *Framework) BeforeEach() {
 		config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 		Expect(err).NotTo(HaveOccurred())
 		f.ClientSet, err = clientset.NewForConfig(config)
+		Expect(err).NotTo(HaveOccurred())
+		f.InternalClientset, err = internalclientset.NewForConfig(config)
 		Expect(err).NotTo(HaveOccurred())
 	}
 
