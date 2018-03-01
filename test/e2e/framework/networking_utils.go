@@ -190,6 +190,7 @@ func TestReachableUDP(ip string, port int, request string, expect string) (bool,
 	if err != nil {
 		return false, fmt.Errorf("Failed to dial %s: %v", ipPort, err)
 	}
+	defer con.Close()
 
 	_, err = con.Write([]byte(fmt.Sprintf("%s\n", request)))
 	if err != nil {
@@ -235,6 +236,7 @@ func TestNotReachableUDP(ip string, port int, request string) (bool, error) {
 		Logf("Confirmed that %s is not reachable", uri)
 		return true, nil
 	}
+	defer con.Close()
 
 	_, err = con.Write([]byte(fmt.Sprintf("%s\n", request)))
 	if err != nil {

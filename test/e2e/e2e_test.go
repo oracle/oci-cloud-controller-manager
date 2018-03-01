@@ -19,11 +19,12 @@ package e2e
 import (
 	"testing"
 
-	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 
 	"k8s.io/apiserver/pkg/util/logs"
 
+	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
 	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework/ginkgowrapper"
 )
 
@@ -32,5 +33,10 @@ func TestE2E(t *testing.T) {
 	defer logs.FlushLogs()
 
 	gomega.RegisterFailHandler(ginkgowrapper.Fail)
-	RunSpecs(t, "CCM E2E suite")
+	ginkgo.RunSpecs(t, "CCM E2E suite")
 }
+
+var _ = ginkgo.SynchronizedAfterSuite(func() {
+	framework.Logf("Running AfterSuite actions on all node")
+	framework.RunCleanupActions()
+}, func() {})

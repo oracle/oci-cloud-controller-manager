@@ -126,6 +126,10 @@ func (f *Framework) CreateNamespace(baseName string, labels map[string]string) (
 func (f *Framework) DeleteNamespace(namespace string, timeout time.Duration) error {
 	startTime := time.Now()
 	if err := f.ClientSet.CoreV1().Namespaces().Delete(namespace, nil); err != nil {
+		if apierrors.IsNotFound(err) {
+			Logf("Namespace %v was already deleted", namespace)
+			return nil
+		}
 		return err
 	}
 
@@ -180,35 +184,28 @@ func (f *Framework) AfterEach() {
 
 	// DeleteNamespace at the very end in defer, to avoid any expectation
 	// failures preventing deleting the namespace.
-	defer func() {
-		nsDeletionErrors := map[string]error{}
+	nsDeletionErrors := map[string]error{}
 
-		if deleteNamespace {
-			// TODO: skip namespace deletion
-			for _, ns := range f.namespacesToDelete {
-				By(fmt.Sprintf("Destroying namespace %q for this suite.", ns.Name))
-				if err := f.DeleteNamespace(ns.Name, 5*time.Minute); err != nil {
-					if !apierrors.IsNotFound(err) {
-						nsDeletionErrors[ns.Name] = err
-					} else {
-						Logf("Namespace %v was already deleted", ns.Name)
-					}
-				}
+	if deleteNamespace {
+		for _, ns := range f.namespacesToDelete {
+			By(fmt.Sprintf("Destroying namespace %q for this suite.", ns.Name))
+			if err := f.DeleteNamespace(ns.Name, 5*time.Minute); err != nil {
+				nsDeletionErrors[ns.Name] = err
 			}
 		}
+	}
 
-		// Paranoia -- prevent reuse!
-		f.Namespace = nil
-		f.ClientSet = nil
-		f.namespacesToDelete = nil
+	// Paranoia -- prevent reuse!
+	f.Namespace = nil
+	f.ClientSet = nil
+	f.namespacesToDelete = nil
 
-		// if we had errors deleting, report them now.
-		if len(nsDeletionErrors) != 0 {
-			messages := []string{}
-			for namespaceKey, namespaceErr := range nsDeletionErrors {
-				messages = append(messages, fmt.Sprintf("Couldn't delete ns: %q: %s (%#v)", namespaceKey, namespaceErr, namespaceErr))
-			}
-			Failf(strings.Join(messages, ","))
+	// if we had errors deleting, report them now.
+	if len(nsDeletionErrors) != 0 {
+		messages := []string{}
+		for namespaceKey, namespaceErr := range nsDeletionErrors {
+			messages = append(messages, fmt.Sprintf("Couldn't delete ns: %q: %s (%#v)", namespaceKey, namespaceErr, namespaceErr))
 		}
-	}()
+		Failf(strings.Join(messages, ","))
+	}
 }

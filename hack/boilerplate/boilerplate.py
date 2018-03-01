@@ -143,7 +143,7 @@ skipped_dirs = [
     "hack/verify-boilerplate.sh",
 
     "test/e2e/e2e_test.go",
-    "test/e2e/load_balancer_test.go",
+    "test/e2e/load_balancer.go",
     "test/e2e/framework/cleanup.go",
     "test/e2e/framework/framework.go",
     "test/e2e/framework/service_util.go",
