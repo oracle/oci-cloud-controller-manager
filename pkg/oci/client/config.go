@@ -31,7 +31,7 @@ type AuthConfig struct {
 	UserOCID             string `yaml:"user"`
 	PrivateKey           string `yaml:"key"`
 	Fingerprint          string `yaml:"fingerprint"`
-	PrivateKeyPassphrase string `yaml:"key_passphrase"`
+	PrivateKeyPassphrase string `yaml:"key_passphrase"` // TODO(apryde): the yaml should be keyPassphrase
 }
 
 // LoadBalancerConfig holds the configuration options for OCI load balancers.
@@ -54,6 +54,10 @@ type LoadBalancerConfig struct {
 type Config struct {
 	Auth         AuthConfig         `yaml:"auth"`
 	LoadBalancer LoadBalancerConfig `yaml:"loadBalancer"`
+
+	// VCNID is the OCID of the Virtual Cloud Network (VCN) within which the
+	// cluster resides.
+	VCNID string `yaml:"vcn"`
 }
 
 // Validate validates the OCI cloud-provider config.

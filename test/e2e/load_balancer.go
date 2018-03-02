@@ -163,12 +163,11 @@ var _ = Describe("Service [Slow]", func() {
 // routing (i.e. avoidance of a second hop).
 var _ = Describe("ESIPP [Slow]", func() {
 	f := framework.NewDefaultFramework("esipp")
-	loadBalancerCreateTimeout := framework.LoadBalancerCreateTimeoutDefault
 
+	loadBalancerCreateTimeout := framework.LoadBalancerCreateTimeoutDefault
 	serviceLBNames := []string{}
 
 	var cs clientset.Interface
-
 	BeforeEach(func() {
 		cs = f.ClientSet
 	})

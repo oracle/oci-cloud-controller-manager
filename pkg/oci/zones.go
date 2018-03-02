@@ -38,7 +38,7 @@ func mapAvailabilityDomainToFailureDomain(AD string) string {
 
 // GetZone returns the Zone containing the current failure zone and locality
 // region that the program is running in.
-func (cp *CloudProvider) GetZone() (zone cloudprovider.Zone, err error) {
+func (cp *CloudProvider) GetZone() (cloudprovider.Zone, error) {
 	return cloudprovider.Zone{}, errors.New("unimplemented")
 }
 
