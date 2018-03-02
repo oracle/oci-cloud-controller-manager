@@ -11,6 +11,9 @@ auth:
   key_passphrase: supersecretpassword
   fingerprint: 8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74
 
+# vcn configures the Virtual Cloud Network (VCN) within which the cluster resides.
+vcn: ocid1.vcn.oc1..aaaaaaaask7mpk4mij3pnm6yvnntte25ffadxiivpokxevfxgtsu6ftkqhrq
+
 loadBalancer:
   # disableSecurityListManagement disables the automatic creation of ingress
   # rules for the node subnets and egress rules for the load balancers to the

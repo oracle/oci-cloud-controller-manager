@@ -54,6 +54,10 @@ type LoadBalancerConfig struct {
 type Config struct {
 	Auth         AuthConfig         `yaml:"auth"`
 	LoadBalancer LoadBalancerConfig `yaml:"loadBalancer"`
+
+	// VCNID is the OCID of the Virtual Cloud Network (VCN) within which the
+	// cluster resides.
+	VCNID string `yaml:"vcn"`
 }
 
 // Validate validates the OCI cloud-provider config.

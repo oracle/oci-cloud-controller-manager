@@ -165,9 +165,20 @@ func New(cfg *Config) (Interface, error) {
 		compartmentOCID = metadata.CompartmentOCID
 	}
 
+	vcnID := cfg.VCNID
+	if vcnID == "" {
+		glog.Infof("No vcnID provided in cloud provider config. Falling back to looking up VCN via LB subnet.")
+		subnet, err := ociClient.GetSubnet(cfg.LoadBalancer.Subnet1)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get load balancer subnet 1: %v", err)
+		}
+		vcnID = subnet.VcnID
+	}
+
 	return &client{
 		Client:            ociClient,
 		compartmentID:     compartmentOCID,
+		vcnID:             vcnID,
 		subnetCache:       cache.NewTTLStore(subnetCacheKeyFn, time.Duration(24)*time.Hour),
 		securityListCache: cache.NewTTLStore(securityListKeyFn, time.Duration(24)*time.Hour),
 	}, nil
@@ -178,9 +189,8 @@ func New(cfg *Config) (Interface, error) {
 type client struct {
 	*baremetal.Client
 
-	// compartmentID is OCID of the compartment in which the Kuberenetes cluster
-	// resides.
-	compartmentID string
+	compartmentID string // the OCID of the Compartment in which the cluster resides.
+	vcnID         string // the OCID of the VCN in which the cluster resides.
 
 	subnetCache       cache.Store
 	securityListCache cache.Store
@@ -264,6 +274,15 @@ func (c *client) findInstanceByNodeNameIsVnic(nodeName string) (*baremetal.Insta
 			vnic, err := c.GetVnic(attachment.VnicID)
 			if err != nil {
 				return nil, err
+			}
+
+			// Skip VNICs that aren't attached to the cluster's VCN.
+			subnet, err := c.GetSubnet(vnic.SubnetID)
+			if err != nil {
+				return nil, err
+			}
+			if subnet.VcnID != c.vcnID {
+				continue
 			}
 
 			if vnic.PublicIPAddress == nodeName ||
