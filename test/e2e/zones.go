@@ -53,7 +53,9 @@ var _ = Describe("Zones", func() {
 		zone, err := zones.GetZoneByProviderID(providerID)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(zone.Region).NotTo(BeEmpty())
+		framework.Logf("%q: Region=%q", providerID, zone.Region)
 		Expect(zone.FailureDomain).NotTo(BeEmpty())
+		framework.Logf("%q: FailureDomain=%q", providerID, zone.FailureDomain)
 	})
 
 	It("should be possible to get a non-empty zone by node name", func() {
@@ -64,6 +66,8 @@ var _ = Describe("Zones", func() {
 		zone, err := zones.GetZoneByNodeName(nodeName)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(zone.Region).NotTo(BeEmpty())
+		framework.Logf("%q: Region=%q", nodeName, zone.Region)
 		Expect(zone.FailureDomain).NotTo(BeEmpty())
+		framework.Logf("%q: FailureDomain=%q", nodeName, zone.FailureDomain)
 	})
 })

@@ -31,7 +31,7 @@ type AuthConfig struct {
 	UserOCID             string `yaml:"user"`
 	PrivateKey           string `yaml:"key"`
 	Fingerprint          string `yaml:"fingerprint"`
-	PrivateKeyPassphrase string `yaml:"key_passphrase"`
+	PrivateKeyPassphrase string `yaml:"key_passphrase"` // TODO(apryde): the yaml should be keyPassphrase
 }
 
 // LoadBalancerConfig holds the configuration options for OCI load balancers.

@@ -19,7 +19,7 @@ import (
 )
 
 func TestMapAvailabilityDomainToFailureDomain(t *testing.T) {
-	var testCases = [string]string{
+	var testCases = map[string]string{
 		"NWuj:PHX-AD-1": "PHX-AD-1",
 		"NWuj:PHX-AD-2": "PHX-AD-2",
 		"NWuj:PHX-AD-3": "PHX-AD-3",

@@ -196,7 +196,7 @@ func (c *client) Validate() error {
 // GetInstanceByNodeName gets the OCID of instance with a display name equal to
 // the given node name.
 func (c *client) GetInstanceByNodeName(nodeName string) (*baremetal.Instance, error) {
-	glog.V(4).Infof("getInstanceByNodeName(%q) called", nodeName)
+	glog.V(4).Infof("GetInstanceByNodeName(%q) called", nodeName)
 	if nodeName == "" {
 		return nil, fmt.Errorf("blank nodeName passed to getInstanceByNodeName()")
 	}
