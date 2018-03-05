@@ -38,7 +38,7 @@ func assertNodeAddressesContainValidIPs(addrs []v1.NodeAddress) {
 }
 
 var _ = Describe("Instances", func() {
-	f := framework.NewFrameworkWithCloudProvider("zones")
+	f := framework.NewFrameworkWithCloudProvider("instances")
 
 	var (
 		cs        clientset.Interface

@@ -21,6 +21,9 @@ import (
 // validateAuthConfig provides basic validation of AuthConfig instances.
 func validateAuthConfig(c *AuthConfig, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
+	if c == nil {
+		return append(allErrs, field.Required(fldPath, ""))
+	}
 	if c.Region == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("region"), ""))
 	}
@@ -43,6 +46,9 @@ func validateAuthConfig(c *AuthConfig, fldPath *field.Path) field.ErrorList {
 // instances.
 func validateLoadBalancerConfig(c *LoadBalancerConfig, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
+	if c == nil {
+		return append(allErrs, field.Required(fldPath, ""))
+	}
 	if c.Subnet1 == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("subnet1"), ""))
 	}

@@ -167,7 +167,7 @@ func New(cfg *Config) (Interface, error) {
 
 	vcnID := cfg.VCNID
 	if vcnID == "" {
-		glog.Infof("No vcnID provided in cloud provider config. Falling back to looking up VCN via LB subnet.")
+		glog.Infof("No vcn provided in cloud provider config. Falling back to looking up VCN via LB subnet.")
 		subnet, err := ociClient.GetSubnet(cfg.LoadBalancer.Subnet1)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get load balancer subnet 1: %v", err)

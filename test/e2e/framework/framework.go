@@ -58,8 +58,8 @@ func init() {
 type Framework struct {
 	BaseName string
 
-	SkipInitCloudProvider bool                    // Whether to skip initialising a cloud provider
-	CloudProvider         cloudprovider.Interface // Every test has a cloud provider unless initialisation is skipped
+	InitCloudProvider bool                    // Whether to initialise a cloud provider interface for testing
+	CloudProvider     cloudprovider.Interface // Every test has a cloud provider unless initialisation is skipped
 
 	ClientSet         clientset.Interface
 	InternalClientset internalclientset.Interface
@@ -77,7 +77,6 @@ type Framework struct {
 // NewDefaultFramework constructs a new e2e test Framework with default options.
 func NewDefaultFramework(baseName string) *Framework {
 	f := NewFramework(baseName, nil)
-	f.SkipInitCloudProvider = true
 	return f
 }
 
@@ -187,7 +186,7 @@ func (f *Framework) BeforeEach() {
 		Expect(err).NotTo(HaveOccurred())
 	}
 
-	if !f.SkipInitCloudProvider {
+	if f.InitCloudProvider {
 		cloud, err := cloudprovider.InitCloudProvider(oci.ProviderName(), cloudConfigFile)
 		Expect(err).NotTo(HaveOccurred())
 		f.CloudProvider = cloud
@@ -216,11 +215,6 @@ func (f *Framework) AfterEach() {
 			}
 		}
 	}
-
-	// Paranoia -- prevent reuse!
-	f.Namespace = nil
-	f.ClientSet = nil
-	f.namespacesToDelete = nil
 
 	// if we had errors deleting, report them now.
 	if len(nsDeletionErrors) != 0 {
