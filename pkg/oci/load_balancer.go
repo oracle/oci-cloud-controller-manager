@@ -99,7 +99,7 @@ func (cp *CloudProvider) readTLSSecret(secretString, serviceNS string) (cert, ke
 // ensureSSLCertificate creates a OCI SSL certificate to the given load
 // balancer, if it doesn't already exist.
 func (cp *CloudProvider) ensureSSLCertificate(name string, svc *api.Service, lb *baremetal.LoadBalancer) error {
-	_, err := cp.client.GetCertificateByName(lb.ID, name)
+	_, err := cp.oldClient.GetCertificateByName(lb.ID, name)
 	if err == nil {
 		glog.V(4).Infof("Certificate: %q already exists on load balancer: %q", name, lb.DisplayName)
 		return nil
@@ -118,7 +118,7 @@ func (cp *CloudProvider) ensureSSLCertificate(name string, svc *api.Service, lb 
 		return err
 	}
 
-	err = cp.client.CreateAndAwaitCertificate(lb, name, cert, key)
+	err = cp.oldClient.CreateAndAwaitCertificate(lb, name, cert, key)
 	if err != nil {
 		return err
 	}
@@ -133,7 +133,7 @@ func (cp *CloudProvider) GetLoadBalancer(clusterName string, service *api.Servic
 	name := GetLoadBalancerName(service)
 	glog.V(4).Infof("Fetching load balancer with name '%s'", name)
 
-	lb, err := cp.client.GetLoadBalancerByName(name)
+	lb, err := cp.oldClient.GetLoadBalancerByName(name)
 	if err != nil {
 		if client.IsNotFound(err) {
 			glog.V(2).Infof("Load balancer '%s' does not exist", name)
@@ -167,12 +167,12 @@ func (cp *CloudProvider) EnsureLoadBalancer(clusterName string, service *api.Ser
 	glog.V(4).Infof("Ensure load balancer '%s' called for '%s' with %d nodes.", spec.Name, spec.Service.Name, len(nodes))
 
 	var lb *baremetal.LoadBalancer
-	lb, err = cp.client.GetLoadBalancerByName(spec.Name)
+	lb, err = cp.oldClient.GetLoadBalancerByName(spec.Name)
 	if err != nil {
 		if client.IsNotFound(err) {
 			glog.Infof("Attempting to create a load balancer with name '%s'", spec.Name)
 			var cerr error
-			lb, cerr = cp.client.CreateAndAwaitLoadBalancer(spec.Name, spec.Shape, spec.Subnets, spec.Internal)
+			lb, cerr = cp.oldClient.CreateAndAwaitLoadBalancer(spec.Name, spec.Shape, spec.Subnets, spec.Internal)
 			if cerr != nil {
 				glog.Errorf("Failed to create load balancer: %s", err)
 				return nil, cerr
@@ -238,12 +238,12 @@ func (cp *CloudProvider) updateLoadBalancer(
 		return nil // Nothing to do.
 	}
 
-	lbSubnets, err := cp.client.GetSubnets(spec.Subnets)
+	lbSubnets, err := cp.oldClient.GetSubnets(spec.Subnets)
 	if err != nil {
 		return fmt.Errorf("get subnets for lbs: %v", err)
 	}
 
-	nodeSubnets, err := cp.client.GetSubnetsForNodes(spec.Nodes)
+	nodeSubnets, err := cp.oldClient.GetSubnetsForNodes(spec.Nodes)
 	if err != nil {
 		return fmt.Errorf("get subnets for nodes: %v", err)
 	}
@@ -296,7 +296,7 @@ func (cp *CloudProvider) updateBackendSet(lbOCID string, action *BackendSetActio
 			return err
 		}
 
-		workRequestID, err = cp.client.CreateBackendSet(
+		workRequestID, err = cp.oldClient.CreateBackendSet(
 			lbOCID,
 			be.Name,
 			be.Policy,
@@ -312,7 +312,7 @@ func (cp *CloudProvider) updateBackendSet(lbOCID string, action *BackendSetActio
 			return err
 		}
 
-		workRequestID, err = cp.client.UpdateBackendSet(lbOCID, be.Name, &baremetal.UpdateLoadBalancerBackendSetOptions{
+		workRequestID, err = cp.oldClient.UpdateBackendSet(lbOCID, be.Name, &baremetal.UpdateLoadBalancerBackendSetOptions{
 			Policy:        be.Policy,
 			HealthChecker: be.HealthChecker,
 			Backends:      be.Backends,
@@ -323,14 +323,14 @@ func (cp *CloudProvider) updateBackendSet(lbOCID string, action *BackendSetActio
 			return err
 		}
 
-		workRequestID, err = cp.client.DeleteBackendSet(lbOCID, be.Name, nil)
+		workRequestID, err = cp.oldClient.DeleteBackendSet(lbOCID, be.Name, nil)
 	}
 
 	if err != nil {
 		return err
 	}
 
-	_, err = cp.client.AwaitWorkRequest(workRequestID)
+	_, err = cp.oldClient.AwaitWorkRequest(workRequestID)
 	if err != nil {
 		return err
 	}
@@ -361,7 +361,7 @@ func (cp *CloudProvider) updateListener(lbOCID string,
 			return err
 		}
 
-		workRequestID, err = cp.client.CreateListener(
+		workRequestID, err = cp.oldClient.CreateListener(
 			lbOCID,
 			l.Name,
 			l.DefaultBackendSetName,
@@ -376,7 +376,7 @@ func (cp *CloudProvider) updateListener(lbOCID string,
 			return err
 		}
 
-		workRequestID, err = cp.client.UpdateListener(lbOCID, l.Name, &baremetal.UpdateLoadBalancerListenerOptions{
+		workRequestID, err = cp.oldClient.UpdateListener(lbOCID, l.Name, &baremetal.UpdateLoadBalancerListenerOptions{
 			DefaultBackendSetName: l.DefaultBackendSetName,
 			Port:      l.Port,
 			Protocol:  l.Protocol,
@@ -388,14 +388,14 @@ func (cp *CloudProvider) updateListener(lbOCID string,
 			return err
 		}
 
-		workRequestID, err = cp.client.DeleteListener(lbOCID, l.Name, nil)
+		workRequestID, err = cp.oldClient.DeleteListener(lbOCID, l.Name, nil)
 	}
 
 	if err != nil {
 		return err
 	}
 
-	_, err = cp.client.AwaitWorkRequest(workRequestID)
+	_, err = cp.oldClient.AwaitWorkRequest(workRequestID)
 	if err != nil {
 		return err
 	}
@@ -444,7 +444,7 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(clusterName string, service *
 
 	glog.Infof("Attempting to delete load balancer with name `%s`", name)
 
-	lb, err := cp.client.GetLoadBalancerByName(name)
+	lb, err := cp.oldClient.GetLoadBalancerByName(name)
 	if err != nil {
 		if client.IsNotFound(err) {
 			glog.Infof("Could not find load balancer with name `%s`. Nothing to do.", name)
@@ -476,12 +476,12 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(clusterName string, service *
 		return fmt.Errorf("get ssl config: %v", err)
 	}
 
-	lbSubnets, err := cp.client.GetSubnets(spec.Subnets)
+	lbSubnets, err := cp.oldClient.GetSubnets(spec.Subnets)
 	if err != nil {
 		return fmt.Errorf("get subnets for lbs: %v", err)
 	}
 
-	nodeSubnets, err := cp.client.GetSubnetsForNodes(spec.Nodes)
+	nodeSubnets, err := cp.oldClient.GetSubnetsForNodes(spec.Nodes)
 	if err != nil {
 		return fmt.Errorf("get subnets for nodes: %v", err)
 	}
@@ -502,12 +502,12 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(clusterName string, service *
 
 	glog.Infof("Deleting load balancer `%s` (OCID: `%s`)", lb.DisplayName, lb.ID)
 
-	workReqID, err := cp.client.DeleteLoadBalancer(lb.ID, &baremetal.ClientRequestOptions{})
+	workReqID, err := cp.oldClient.DeleteLoadBalancer(lb.ID, &baremetal.ClientRequestOptions{})
 	if err != nil {
 		return fmt.Errorf("delete load balancer `%s`: %v", lb.ID, err)
 	}
 
-	_, err = cp.client.AwaitWorkRequest(workReqID)
+	_, err = cp.oldClient.AwaitWorkRequest(workReqID)
 	if err != nil {
 		return err
 	}
