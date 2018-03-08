@@ -71,3 +71,11 @@
 [[constraint]]
   name = "github.com/oracle/oci-go-sdk"
   version = "1.0.0"
+
+[prune]
+  non-go = true
+
+  [[prune.project]]
+    name = "github.com/docker/docker"
+    go-tests = true
+    unused-packages = true
