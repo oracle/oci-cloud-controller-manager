@@ -49,7 +49,7 @@ func (cp *CloudProvider) GetZone() (cloudprovider.Zone, error) {
 // initialization must be down outside the kubelets.
 func (cp *CloudProvider) GetZoneByProviderID(providerID string) (cloudprovider.Zone, error) {
 	instanceID := util.MapProviderIDToInstanceID(providerID)
-	instance, err := cp.client.GetInstance(context.TODO(), instanceID)
+	instance, err := cp.client.Instances().GetInstance(context.TODO(), instanceID)
 	if err != nil {
 		return cloudprovider.Zone{}, err
 	}
@@ -64,7 +64,7 @@ func (cp *CloudProvider) GetZoneByProviderID(providerID string) (cloudprovider.Z
 // in the context of external cloud providers where node initialization must be
 // down outside the kubelets.
 func (cp *CloudProvider) GetZoneByNodeName(nodeName types.NodeName) (cloudprovider.Zone, error) {
-	instance, err := cp.client.GetInstanceByNodeName(context.TODO(), mapNodeNameToInstanceName(nodeName))
+	instance, err := cp.client.Instances().GetInstanceByNodeName(context.TODO(), mapNodeNameToInstanceName(nodeName))
 	if err != nil {
 		return cloudprovider.Zone{}, err
 	}
