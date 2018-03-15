@@ -32,7 +32,8 @@ import (
 	"k8s.io/kubernetes/pkg/cloudprovider"
 	"k8s.io/kubernetes/pkg/controller"
 
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	oldclient "github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	newclient "github.com/oracle/oci-cloud-controller-manager/pkg/oci/newclient"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/util"
 	listersv1 "k8s.io/client-go/listers/core/v1"
 )
@@ -50,11 +51,12 @@ type CloudProvider struct {
 	// we use the node lister to go from IP -> node / provider id -> ... -> subnet
 	NodeLister listersv1.NodeLister
 
-	client     client.Interface
+	oldClient  oldclient.Interface
+	client     newclient.Interface
 	kubeclient clientset.Interface
 
 	securityListManager securityListManager
-	config              *client.Config
+	config              *oldclient.Config
 }
 
 // Compile time check that CloudProvider implements the cloudprovider.Interface
@@ -62,8 +64,13 @@ type CloudProvider struct {
 var _ cloudprovider.Interface = &CloudProvider{}
 
 // NewCloudProvider creates a new baremetal.CloudProvider.
-func NewCloudProvider(cfg *client.Config) (cloudprovider.Interface, error) {
-	c, err := client.New(cfg)
+func NewCloudProvider(cfg *oldclient.Config) (cloudprovider.Interface, error) {
+	c, err := oldclient.New(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	newClient, err := newclient.New(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -75,14 +82,15 @@ func NewCloudProvider(cfg *client.Config) (cloudprovider.Interface, error) {
 	}
 
 	return &CloudProvider{
-		client: c,
-		config: cfg,
+		oldClient: c,
+		client:    newClient,
+		config:    cfg,
 	}, nil
 }
 
 func init() {
 	cloudprovider.RegisterCloudProvider(ProviderName(), func(config io.Reader) (cloudprovider.Interface, error) {
-		cfg, err := client.ReadConfig(config)
+		cfg, err := oldclient.ReadConfig(config)
 		if err != nil {
 			return nil, err
 		}
@@ -121,7 +129,7 @@ func (cp *CloudProvider) Initialize(clientBuilder controller.ControllerClientBui
 		if !cache.WaitForCacheSync(wait.NeverStop, serviceInformer.Informer().HasSynced) {
 			utilruntime.HandleError(fmt.Errorf("Timed out waiting for service informer to sync"))
 		}
-		cp.securityListManager = newSecurityListManager(cp.client, serviceInformer.Lister())
+		cp.securityListManager = newSecurityListManager(cp.oldClient, serviceInformer.Lister())
 	}
 }
 

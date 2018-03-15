@@ -339,6 +339,16 @@
   revision = "1461ec54db86b0cbec11b2730d0ae31a26a7e73d"
 
 [[projects]]
+  name = "github.com/oracle/oci-go-sdk"
+  packages = [
+    "common",
+    "core",
+    "loadbalancer"
+  ]
+  revision = "8090aeb474ad994446b2db294725e3d6c0d95327"
+  version = "v1.0.0"
+
+[[projects]]
   name = "github.com/pborman/uuid"
   packages = ["."]
   revision = "e790cca94e6cc75c7064b1332e63811d4aae1a53"
@@ -355,6 +365,12 @@
   packages = ["."]
   revision = "5f041e8faa004a95c88a202771f4cc3e991971e6"
   version = "v2.0.1"
+
+[[projects]]
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
 
 [[projects]]
   name = "github.com/prometheus/client_golang"
@@ -952,6 +968,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a361296a244bf9eea35f52b4b1a51f4dc08ab30b4a98dc2d25b68cb9827603c7"
+  inputs-digest = "3cdb48818d8df55e21f0a55832f81b895b97b1c0c10b046b7ef5811fc74db198"
   solver-name = "gps-cdcl"
   solver-version = 1
