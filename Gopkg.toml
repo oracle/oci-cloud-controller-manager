@@ -67,3 +67,11 @@
 [[constraint]]
   name = "github.com/onsi/gomega"
   version = "1.3.0"
+
+[prune]
+  non-go = true
+
+  [[prune.project]]
+    name = "github.com/docker/docker"
+    go-tests = true
+    unused-packages = true
