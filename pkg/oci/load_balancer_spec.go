@@ -15,177 +15,231 @@
 package oci
 
 import (
-	"errors"
 	"fmt"
 
-	"github.com/golang/glog"
+	"github.com/oracle/oci-go-sdk/common"
+	"github.com/oracle/oci-go-sdk/loadbalancer"
+	"github.com/pkg/errors"
 
-	baremetal "github.com/oracle/bmcs-go-sdk"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/util"
 	api "k8s.io/api/core/v1"
+	sets "k8s.io/apimachinery/pkg/util/sets"
 	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/util"
 )
+
+type sslSecretReader interface {
+	readSSLSecret(svc *api.Service) (cert, key string, err error)
+}
+
+type noopSSLSecretReader struct{}
+
+func (ssr noopSSLSecretReader) readSSLSecret(svc *api.Service) (cert, key string, err error) {
+	return "", "", nil
+}
+
+// SSLConfig is a description of a SSL certificate.
+type SSLConfig struct {
+	Name  string
+	Ports sets.Int
+
+	sslSecretReader
+}
+
+func needsCerts(svc *api.Service) bool {
+	_, ok := svc.Annotations[ServiceAnnotationLoadBalancerSSLPorts]
+	return ok
+}
+
+// NewSSLConfig constructs a new SSLConfig.
+func NewSSLConfig(name string, ports []int, ssr sslSecretReader) *SSLConfig {
+	if ssr == nil {
+		ssr = noopSSLSecretReader{}
+	}
+	return &SSLConfig{
+		Name:            name,
+		Ports:           sets.NewInt(ports...),
+		sslSecretReader: ssr,
+	}
+}
 
 // LBSpec holds the data required to build a OCI load balancer from a
 // kubernetes service.
 type LBSpec struct {
 	Name     string
 	Shape    string
-	Service  *api.Service
 	Nodes    []*api.Node
 	Subnets  []string
 	Internal bool
+
+	SSLConfig *SSLConfig
+	service   *api.Service
 }
 
-// NewLBSpec creates a LB Spec from a kubernetes service and a slice of nodes.
-func NewLBSpec(cp *CloudProvider, service *api.Service, nodes []*api.Node) (LBSpec, error) {
-	if err := validateProtocols(service.Spec.Ports); err != nil {
+// NewLBSpec creates a LB Spec from a Kubernetes service and a slice of nodes.
+func NewLBSpec(service *api.Service, nodes []*api.Node, defaultSubnets []string, sslCfg *SSLConfig) (LBSpec, error) {
+	if len(defaultSubnets) != 2 {
+		return LBSpec{}, errors.New("defualt subnets incorrectly configured")
+	}
+
+	if err := validateService(service); err != nil {
 		return LBSpec{}, err
 	}
 
-	if service.Spec.SessionAffinity != api.ServiceAffinityNone {
-		return LBSpec{}, errors.New("OCI only supports SessionAffinity `None` currently")
-	}
-
-	if service.Spec.LoadBalancerIP != "" {
-		// TODO(horwitz): We need to figure out in the WG if this should actually log or error.
-		// The docs say: If the loadBalancerIP is specified, but the cloud provider does not support the feature, the field will be ignored.
-		// But no one does that...
-		// https://kubernetes.io/docs/concepts/services-networking/service/#type-loadbalancer
-		return LBSpec{}, errors.New("OCI does not support setting the LoadBalancerIP")
-	}
-
-	spec := LBSpec{
-		Name:     GetLoadBalancerName(service),
-		Shape:    lbDefaultShape,
-		Service:  service,
-		Nodes:    nodes,
-		Internal: false,
-	}
-
-	_, ok := service.Annotations[ServiceAnnotationLoadBalancerInternal]
-	if ok {
-		spec.Internal = true
-	}
+	_, internal := service.Annotations[ServiceAnnotationLoadBalancerInternal]
 
 	// TODO (apryde): We should detect when this changes and WARN as we don't
 	// support updating a load balancer's Shape.
-	lbShape, ok := service.Annotations[ServiceAnnotationLoadBalancerShape]
-	if ok {
-		spec.Shape = lbShape
+	shape := lbDefaultShape
+	if s, ok := service.Annotations[ServiceAnnotationLoadBalancerShape]; ok {
+		shape = s
 	}
 
 	// NOTE: These will be overridden for existing load balancers as load
 	// balancer subnets cannot be modified.
-	subnet1, ok := service.Annotations[ServiceAnnotationLoadBalancerSubnet1]
-	if !ok {
-		subnet1 = cp.config.LoadBalancer.Subnet1
+	subnets := defaultSubnets
+	if s, ok := service.Annotations[ServiceAnnotationLoadBalancerSubnet1]; ok {
+		subnets[0] = s
 	}
-	spec.Subnets = append(spec.Subnets, subnet1)
-
-	subnet2, ok := service.Annotations[ServiceAnnotationLoadBalancerSubnet2]
-	if !ok {
-		subnet2 = cp.config.LoadBalancer.Subnet2
+	if s, ok := service.Annotations[ServiceAnnotationLoadBalancerSubnet2]; ok {
+		subnets[1] = s
 	}
-
-	if !spec.Internal {
-		// Only public load balancers need two subnets.
-		// Internal load balancers will always use the first subnet
-		spec.Subnets = append(spec.Subnets, subnet2)
+	if internal {
+		// Only public load balancers need two subnets.  Internal load
+		// balancers will always use the first subnet.
+		subnets = subnets[:1]
 	}
 
-	return spec, nil
+	return LBSpec{
+		Name:     GetLoadBalancerName(service),
+		Shape:    shape,
+		Nodes:    nodes,
+		Internal: internal,
+		Subnets:  subnets,
+
+		service:   service,
+		SSLConfig: sslCfg,
+	}, nil
+}
+
+// TODO(apryde): aggragate errors using an error list.
+func validateService(svc *api.Service) error {
+	if err := validateProtocols(svc.Spec.Ports); err != nil {
+		return err
+	}
+
+	if svc.Spec.SessionAffinity != api.ServiceAffinityNone {
+		return errors.New("OCI only supports SessionAffinity `None` currently")
+	}
+
+	if svc.Spec.LoadBalancerIP != "" {
+		// TODO(horwitz): We need to figure out in the WG if this should actually log or error.
+		// The docs say: If the loadBalancerIP is specified, but the cloud provider does not support the feature, the field will be ignored.
+		// But no one does that...
+		// https://kubernetes.io/docs/concepts/services-networking/service/#type-loadbalancer
+		return errors.New("OCI does not support setting the LoadBalancerIP")
+	}
+
+	return nil
 }
 
 func getBackendSetName(protocol string, port int) string {
 	return fmt.Sprintf("%s-%d", protocol, port)
 }
 
+func (s *LBSpec) getBackends(nodePort int32) []loadbalancer.BackendDetails {
+	backends := make([]loadbalancer.BackendDetails, len(s.Nodes))
+	for i, node := range s.Nodes {
+		backends[i] = loadbalancer.BackendDetails{
+			IpAddress: common.String(util.NodeInternalIP(node)),
+			Port:      common.Int(int(nodePort)),
+			Weight:    common.Int(1),
+		}
+	}
+	return backends
+}
+
 // GetBackendSets builds a map of BackendSets based on the LBSpec.
-func (s *LBSpec) GetBackendSets() map[string]baremetal.BackendSet {
-	backendSets := make(map[string]baremetal.BackendSet)
-	for _, servicePort := range s.Service.Spec.Ports {
+func (s *LBSpec) GetBackendSets() map[string]loadbalancer.BackendSetDetails {
+	backendSets := make(map[string]loadbalancer.BackendSetDetails)
+	for _, servicePort := range s.service.Spec.Ports {
 		name := getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
-		backendSet := baremetal.BackendSet{
-			Name:          name,
-			Policy:        client.DefaultLoadBalancerPolicy,
-			Backends:      []baremetal.Backend{},
+		backendSets[name] = loadbalancer.BackendSetDetails{
+			Policy:        common.String(DefaultLoadBalancerPolicy),
+			Backends:      s.getBackends(servicePort.NodePort),
 			HealthChecker: s.getHealthChecker(),
 		}
-		for _, node := range s.Nodes {
-			backendSet.Backends = append(backendSet.Backends, baremetal.Backend{
-				IPAddress: util.NodeInternalIP(node),
-				Port:      int(servicePort.NodePort),
-				Weight:    1,
-			})
-		}
-		backendSets[name] = backendSet
+
 	}
 	return backendSets
 }
 
-func (s *LBSpec) getHealthChecker() *baremetal.HealthChecker {
-	path, port := apiservice.GetServiceHealthCheckPathPort(s.Service)
+func (s *LBSpec) getHealthChecker() *loadbalancer.HealthCheckerDetails {
+	path, port := apiservice.GetServiceHealthCheckPathPort(s.service)
 	if path != "" {
-		return &baremetal.HealthChecker{
-			Protocol: lbNodesHealthCheckProto,
-			URLPath:  path,
-			Port:     int(port),
+		return &loadbalancer.HealthCheckerDetails{
+			Protocol: common.String(lbNodesHealthCheckProto),
+			UrlPath:  &path,
+			Port:     common.Int(int(port)),
 		}
 	}
 
-	return &baremetal.HealthChecker{
-		Protocol: lbNodesHealthCheckProto,
-		URLPath:  lbNodesHealthCheckPath,
-		Port:     lbNodesHealthCheckPort,
+	return &loadbalancer.HealthCheckerDetails{
+		Protocol: common.String(lbNodesHealthCheckProto),
+		UrlPath:  common.String(lbNodesHealthCheckPath),
+		Port:     common.Int(lbNodesHealthCheckPort),
 	}
 }
 
-// GetSSLConfig builds a map of SSL configuration per listener port based on
-// the LBSpec.
-func (s *LBSpec) GetSSLConfig(certificateName string) (map[int]*baremetal.SSLConfiguration, error) {
-	sslConfigMap := make(map[int]*baremetal.SSLConfiguration)
+func (s *LBSpec) getSSLConfiguration(port int) *loadbalancer.SslConfigurationDetails {
+	if s.SSLConfig == nil || !s.SSLConfig.Ports.Has(port) {
+		return nil
+	}
+	return &loadbalancer.SslConfigurationDetails{
+		CertificateName:       &s.SSLConfig.Name,
+		VerifyDepth:           common.Int(0),
+		VerifyPeerCertificate: common.Bool(false),
+	}
+}
 
-	sslEnabledPorts, err := getSSLEnabledPorts(s.Service.ObjectMeta.Annotations)
+// GetCertificates builds a map of required SSL certificates.
+func (s *LBSpec) GetCertificates() (map[string]loadbalancer.CertificateDetails, error) {
+	certs := make(map[string]loadbalancer.CertificateDetails)
+	if s.SSLConfig == nil {
+		return certs, nil
+	}
+
+	cert, key, err := s.SSLConfig.readSSLSecret(s.service)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "reading SSL Secret")
+	}
+	if cert == "" || key == "" {
+		return certs, nil
 	}
 
-	if len(sslEnabledPorts) == 0 {
-		glog.V(4).Infof("No SSL enabled ports found for service %q", s.Service.Name)
-		return sslConfigMap, nil
+	certs[s.SSLConfig.Name] = loadbalancer.CertificateDetails{
+		CertificateName:   &s.SSLConfig.Name,
+		PublicCertificate: &cert,
+		PrivateKey:        &key,
 	}
 
-	for _, servicePort := range s.Service.Spec.Ports {
-		port := int(servicePort.Port)
-		if _, ok := sslEnabledPorts[port]; ok {
-			sslConfigMap[port] = &baremetal.SSLConfiguration{
-				CertificateName:       certificateName,
-				VerifyDepth:           0,
-				VerifyPeerCertificate: false,
-			}
-		}
-	}
-	return sslConfigMap, nil
+	return certs, nil
 }
 
 // GetListeners builds a map of listeners based on the LBSpec.
-func (s *LBSpec) GetListeners(sslConfigMap map[int]*baremetal.SSLConfiguration) map[string]baremetal.Listener {
-	listeners := make(map[string]baremetal.Listener)
-	for _, servicePort := range s.Service.Spec.Ports {
+func (s *LBSpec) GetListeners() map[string]loadbalancer.ListenerDetails {
+	listeners := make(map[string]loadbalancer.ListenerDetails)
+	for _, servicePort := range s.service.Spec.Ports {
 		protocol := string(servicePort.Protocol)
 		port := int(servicePort.Port)
-		sslConfig := sslConfigMap[port]
-		name := getListenerName(protocol, port, sslConfig)
-		listener := baremetal.Listener{
-			Name: name,
-			DefaultBackendSetName: getBackendSetName(string(servicePort.Protocol), int(servicePort.Port)),
-			Protocol:              protocol,
-			Port:                  port,
-			SSLConfig:             sslConfig,
+		sslConfiguration := s.getSSLConfiguration(port)
+		name := getListenerName(protocol, port, sslConfiguration)
+		listeners[name] = loadbalancer.ListenerDetails{
+			DefaultBackendSetName: common.String(getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))),
+			Protocol:              &protocol,
+			Port:                  &port,
+			SslConfiguration:      sslConfiguration,
 		}
-		listeners[name] = listener
 	}
 	return listeners
 }

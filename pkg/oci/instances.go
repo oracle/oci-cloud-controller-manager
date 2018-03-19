@@ -15,17 +15,21 @@
 package oci
 
 import (
-	"errors"
+	"context"
 	"fmt"
+	"net"
 	"strings"
 
 	"github.com/golang/glog"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/util"
+	"github.com/oracle/oci-go-sdk/core"
+	"github.com/pkg/errors"
 
 	api "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/kubernetes/pkg/cloudprovider"
+	types "k8s.io/apimachinery/pkg/types"
+	cloudprovider "k8s.io/kubernetes/pkg/cloudprovider"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/util"
 )
 
 var _ cloudprovider.Instances = &CloudProvider{}
@@ -42,6 +46,31 @@ func mapInstanceNameToNodeName(displayName string) types.NodeName {
 	return types.NodeName(strings.ToLower(displayName))
 }
 
+func extractNodeAddressesFromVNIC(vnic *core.Vnic) ([]api.NodeAddress, error) {
+	addresses := []api.NodeAddress{}
+	if vnic == nil {
+		return addresses, nil
+	}
+
+	if vnic.PrivateIp != nil && *vnic.PrivateIp != "" {
+		ip := net.ParseIP(*vnic.PrivateIp)
+		if ip == nil {
+			return nil, fmt.Errorf("instance has invalid private address: %q", *vnic.PrivateIp)
+		}
+		addresses = append(addresses, api.NodeAddress{Type: api.NodeInternalIP, Address: ip.String()})
+	}
+
+	if vnic.PublicIp != nil && *vnic.PublicIp != "" {
+		ip := net.ParseIP(*vnic.PublicIp)
+		if ip == nil {
+			return nil, errors.Errorf("instance has invalid public address: %q", *vnic.PublicIp)
+		}
+		addresses = append(addresses, api.NodeAddress{Type: api.NodeExternalIP, Address: ip.String()})
+	}
+
+	return addresses, nil
+}
+
 // NodeAddresses returns the addresses of the specified instance.
 // TODO(roberthbailey): This currently is only used in such a way that it
 // returns the address of the calling instance. We should do a rename to
@@ -49,11 +78,16 @@ func mapInstanceNameToNodeName(displayName string) types.NodeName {
 func (cp *CloudProvider) NodeAddresses(name types.NodeName) ([]api.NodeAddress, error) {
 	glog.V(4).Infof("NodeAddresses(%q) called", name)
 
-	inst, err := cp.client.GetInstanceByNodeName(mapNodeNameToInstanceName(name))
+	inst, err := cp.client.Compute().GetInstanceByNodeName(context.TODO(), mapNodeNameToInstanceName(name))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "GetInstanceByNodeName")
 	}
-	return cp.client.GetNodeAddressesForInstance(inst.ID)
+
+	vnic, err := cp.client.Compute().GetPrimaryVNICForInstance(context.TODO(), *inst.Id)
+	if err != nil {
+		return nil, errors.Wrap(err, "GetPrimaryVNICForInstance")
+	}
+	return extractNodeAddressesFromVNIC(vnic)
 }
 
 // NodeAddressesByProviderID returns the addresses of the specified instance.
@@ -64,7 +98,11 @@ func (cp *CloudProvider) NodeAddresses(name types.NodeName) ([]api.NodeAddress, 
 func (cp *CloudProvider) NodeAddressesByProviderID(providerID string) ([]api.NodeAddress, error) {
 	glog.V(4).Infof("NodeAddressesByProviderID(%q) called", providerID)
 	instanceID := util.MapProviderIDToInstanceID(providerID)
-	return cp.client.GetNodeAddressesForInstance(instanceID)
+	vnic, err := cp.client.Compute().GetPrimaryVNICForInstance(context.TODO(), instanceID)
+	if err != nil {
+		return nil, errors.Wrap(err, "GetPrimaryVNICForInstance")
+	}
+	return extractNodeAddressesFromVNIC(vnic)
 }
 
 // ExternalID returns the cloud provider ID of the node with the specified NodeName.
@@ -74,7 +112,7 @@ func (cp *CloudProvider) ExternalID(nodeName types.NodeName) (string, error) {
 	glog.V(4).Infof("ExternalID(%q) called", nodeName)
 
 	instName := mapNodeNameToInstanceName(nodeName)
-	inst, err := cp.client.GetInstanceByNodeName(instName)
+	inst, err := cp.client.Compute().GetInstanceByNodeName(context.TODO(), instName)
 	if client.IsNotFound(err) {
 		glog.Infof("Instance %q was not found. Unable to get ExternalID: %v", instName, err)
 		return "", cloudprovider.InstanceNotFound
@@ -84,8 +122,8 @@ func (cp *CloudProvider) ExternalID(nodeName types.NodeName) (string, error) {
 		return "", err
 	}
 
-	glog.V(4).Infof("Got ExternalID %s for %s", inst.ID, nodeName)
-	return inst.ID, nil
+	glog.V(4).Infof("Got ExternalID %s for %s", *inst.Id, nodeName)
+	return *inst.Id, nil
 }
 
 // InstanceID returns the cloud provider ID of the node with the specified NodeName.
@@ -94,22 +132,22 @@ func (cp *CloudProvider) InstanceID(nodeName types.NodeName) (string, error) {
 	glog.V(4).Infof("InstanceID(%q) called", nodeName)
 
 	name := mapNodeNameToInstanceName(nodeName)
-	inst, err := cp.client.GetInstanceByNodeName(name)
+	inst, err := cp.client.Compute().GetInstanceByNodeName(context.TODO(), name)
 	if err != nil {
-		return "", fmt.Errorf("unable to fetch InstanceID for %q: %v", name, err)
+		return "", errors.Wrap(err, "GetInstanceByNodeName")
 	}
-	return inst.ID, nil
+	return *inst.Id, nil
 }
 
 // InstanceType returns the type of the specified instance.
 func (cp *CloudProvider) InstanceType(name types.NodeName) (string, error) {
 	glog.V(4).Infof("InstanceType(%q) called", name)
 
-	inst, err := cp.client.GetInstanceByNodeName(mapNodeNameToInstanceName(name))
+	inst, err := cp.client.Compute().GetInstanceByNodeName(context.TODO(), mapNodeNameToInstanceName(name))
 	if err != nil {
-		return "", fmt.Errorf("getInstanceByNodeName failed for %q with %v", name, err)
+		return "", errors.Wrap(err, "GetInstanceByNodeName")
 	}
-	return inst.Shape, nil
+	return *inst.Shape, nil
 }
 
 // InstanceTypeByProviderID returns the type of the specified instance.
@@ -117,11 +155,11 @@ func (cp *CloudProvider) InstanceTypeByProviderID(providerID string) (string, er
 	glog.V(4).Infof("InstanceTypeByProviderID(%q) called", providerID)
 
 	instanceID := util.MapProviderIDToInstanceID(providerID)
-	inst, err := cp.client.GetInstance(instanceID)
+	inst, err := cp.client.Compute().GetInstance(context.TODO(), instanceID)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "GetInstance")
 	}
-	return inst.Shape, nil
+	return *inst.Shape, nil
 }
 
 // AddSSHKeyToAllInstances adds an SSH public key as a legal identity for all instances
@@ -143,7 +181,7 @@ func (cp *CloudProvider) CurrentNodeName(hostname string) (types.NodeName, error
 func (cp *CloudProvider) InstanceExistsByProviderID(providerID string) (bool, error) {
 	glog.V(4).Infof("InstanceExistsByProviderID(%q) called", providerID)
 	instanceID := util.MapProviderIDToInstanceID(providerID)
-	instance, err := cp.client.GetInstance(instanceID)
+	instance, err := cp.client.Compute().GetInstance(context.TODO(), instanceID)
 	if client.IsNotFound(err) {
 		return false, nil
 	}

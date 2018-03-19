@@ -85,6 +85,7 @@ func NewDefaultFramework(baseName string) *Framework {
 func NewFrameworkWithCloudProvider(baseName string) *Framework {
 	f := NewFramework(baseName, nil)
 	f.SkipNamespaceCreation = true
+	f.InitCloudProvider = true
 	return f
 }
 

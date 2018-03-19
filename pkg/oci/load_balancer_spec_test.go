@@ -18,7 +18,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -139,16 +138,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			// we expect the service to be unchanged
-			tc.expected.Service = tc.service
-			cp := &CloudProvider{
-				config: &client.Config{
-					LoadBalancer: client.LoadBalancerConfig{
-						Subnet1: tc.defaultSubnetOne,
-						Subnet2: tc.defaultSubnetTwo,
-					},
-				},
-			}
-			result, err := NewLBSpec(cp, tc.service, tc.nodes)
+			tc.expected.service = tc.service
+			subnets := []string{tc.defaultSubnetOne, tc.defaultSubnetTwo}
+			result, err := NewLBSpec(tc.service, tc.nodes, subnets, nil)
 			if err != nil {
 				t.Error(err)
 			}
@@ -204,15 +196,8 @@ func TestNewLBSpecFailure(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			cp := &CloudProvider{
-				config: &client.Config{
-					LoadBalancer: client.LoadBalancerConfig{
-						Subnet1: tc.defaultSubnetOne,
-						Subnet2: tc.defaultSubnetTwo,
-					},
-				},
-			}
-			_, err := NewLBSpec(cp, tc.service, tc.nodes)
+			subnets := []string{tc.defaultSubnetOne, tc.defaultSubnetTwo}
+			_, err := NewLBSpec(tc.service, tc.nodes, subnets, nil)
 			if err == nil || err.Error() != tc.expectedErrMsg {
 				t.Errorf("Expected error with message %q but got `%v`", tc.expectedErrMsg, err)
 			}

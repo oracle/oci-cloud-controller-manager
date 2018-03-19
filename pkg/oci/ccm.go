@@ -25,16 +25,16 @@ import (
 	"github.com/golang/glog"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/informers"
+	wait "k8s.io/apimachinery/pkg/util/wait"
+	informers "k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
-	"k8s.io/kubernetes/pkg/cloudprovider"
-	"k8s.io/kubernetes/pkg/controller"
+	listersv1 "k8s.io/client-go/listers/core/v1"
+	cache "k8s.io/client-go/tools/cache"
+	cloudprovider "k8s.io/kubernetes/pkg/cloudprovider"
+	controller "k8s.io/kubernetes/pkg/controller"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/util"
-	listersv1 "k8s.io/client-go/listers/core/v1"
 )
 
 // ProviderName uniquely identifies the Oracle Bare Metal Cloud Services (OCI)
@@ -61,16 +61,10 @@ type CloudProvider struct {
 // interface.
 var _ cloudprovider.Interface = &CloudProvider{}
 
-// NewCloudProvider creates a new baremetal.CloudProvider.
+// NewCloudProvider creates a new oci.CloudProvider.
 func NewCloudProvider(cfg *client.Config) (cloudprovider.Interface, error) {
 	c, err := client.New(cfg)
 	if err != nil {
-		return nil, err
-	}
-
-	err = c.Validate()
-	if err != nil {
-		glog.Errorf("cloudprovider.Validate() failed to communicate with OCI: %v", err)
 		return nil, err
 	}
 
