@@ -567,35 +567,30 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(clusterName string, service *
 	if err != nil {
 		return errors.Wrap(err, "fetching nodes by internal ips")
 	}
-
-	spec, err := NewLBSpec(service, nodes, []string{cp.config.LoadBalancer.Subnet1, cp.config.LoadBalancer.Subnet2}, nil)
-	if err != nil {
-		return errors.Wrap(err, "new lb spec")
-	}
-
-	lbSubnets, err := getSubnets(context.TODO(), spec.Subnets, cp.client.Networking())
-	if err != nil {
-		return errors.Wrap(err, "getting subnets for load balancers")
-	}
 	nodeSubnets, err := getSubnetsForNodes(context.TODO(), nodes, cp.client)
 	if err != nil {
 		return errors.Wrap(err, "getting subnets for nodes")
 	}
 
-	for listenerName, listener := range spec.GetListeners() {
+	lbSubnets, err := getSubnets(context.TODO(), lb.SubnetIds, cp.client.Networking())
+	if err != nil {
+		return errors.Wrap(err, "getting subnets for load balancers")
+	}
+
+	for listenerName, listener := range lb.Listeners {
 		glog.V(4).Infof("Deleting security rules for listener %q for load balancer %q", listenerName, id)
 
 		backendSetName := *listener.DefaultBackendSetName
-		bs, ok := spec.GetBackendSets()[backendSetName]
+		bs, ok := lb.BackendSets[backendSetName]
 		if !ok {
-			return errors.Errorf("no backend set %q in spec", backendSetName)
+			return errors.Errorf("backend set %q missing (loadbalancer=%q)", backendSetName, id)
 		}
 		if len(bs.Backends) < 1 {
-			return errors.Errorf("backend set %q has no backends", backendSetName)
+			return errors.Errorf("backend set %q has no backends (loadbalancer=%q)", backendSetName, id)
 		}
 		backendPort := *bs.Backends[0].Port
 		if bs.HealthChecker == nil {
-			return errors.Errorf("backend set %q has no health checker", backendSetName)
+			return errors.Errorf("backend set %q has no health checker (loadbalancer=%q)", backendSetName, id)
 		}
 		healthCheckPort := *bs.HealthChecker.Port
 
@@ -613,8 +608,8 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(clusterName string, service *
 	if err != nil {
 		return errors.Wrapf(err, "awaiting deletion of load balancer %q", name)
 	}
-
 	glog.Infof("Deleted load balancer %q (OCID: %q)", name, id)
+
 	return nil
 }
 
