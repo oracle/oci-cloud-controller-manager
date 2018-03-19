@@ -1,4 +1,4 @@
-// Copyright 2017 Oracle and/or its affiliates. All rights reserved.
+// Copyright 2018 Oracle and/or its affiliates. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,119 +15,41 @@
 package client
 
 import (
-	"errors"
-	"reflect"
 	"testing"
 
-	baremetal "github.com/oracle/bmcs-go-sdk"
-
-	api "k8s.io/api/core/v1"
+	"github.com/oracle/oci-go-sdk/core"
 )
 
 func TestInstanceTerminalState(t *testing.T) {
 	testCases := map[string]struct {
-		state    string
+		state    core.InstanceLifecycleStateEnum
 		expected bool
 	}{
 		"not terminal - running": {
-			state:    baremetal.ResourceRunning,
+			state:    core.InstanceLifecycleStateRunning,
 			expected: false,
 		},
 		"not terminal - stopped": {
-			state:    baremetal.ResourceStopped,
+			state:    core.InstanceLifecycleStateStopped,
 			expected: false,
 		},
 		"is terminal - terminating": {
-			state:    baremetal.ResourceTerminating,
+			state:    core.InstanceLifecycleStateTerminating,
 			expected: true,
 		},
 		"is terminal - terminated": {
-			state:    baremetal.ResourceTerminated,
-			expected: true,
-		},
-		"is terminal - unknown": {
-			state:    "UNKNOWN",
+			state:    core.InstanceLifecycleStateTerminated,
 			expected: true,
 		},
 	}
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			result := IsInstanceInTerminalState(&baremetal.Instance{
-				State: tc.state,
+			result := IsInstanceInTerminalState(&core.Instance{
+				LifecycleState: tc.state,
 			})
 			if result != tc.expected {
 				t.Errorf("IsInstanceInTerminalState(%q) = %v ; wanted %v", tc.state, result, tc.expected)
-			}
-		})
-	}
-}
-
-func TestExtractNodeAddressesFromVNIC(t *testing.T) {
-	testCases := []struct {
-		name string
-		in   *baremetal.Vnic
-		out  []api.NodeAddress
-		err  error
-	}{
-		{
-			name: "basic-complete",
-			in: &baremetal.Vnic{
-				PrivateIPAddress: "10.0.0.1",
-				PublicIPAddress:  "0.0.0.1",
-			},
-			out: []api.NodeAddress{
-				api.NodeAddress{Type: api.NodeInternalIP, Address: "10.0.0.1"},
-				api.NodeAddress{Type: api.NodeExternalIP, Address: "0.0.0.1"},
-			},
-			err: nil,
-		},
-		{
-			name: "no-external-ip",
-			in: &baremetal.Vnic{
-				PrivateIPAddress: "10.0.0.1",
-			},
-			out: []api.NodeAddress{
-				api.NodeAddress{Type: api.NodeInternalIP, Address: "10.0.0.1"},
-			},
-			err: nil,
-		},
-		{
-			name: "no-internal-ip",
-			in: &baremetal.Vnic{
-				PublicIPAddress: "0.0.0.1",
-			},
-			out: []api.NodeAddress{
-				api.NodeAddress{Type: api.NodeExternalIP, Address: "0.0.0.1"},
-			},
-			err: nil,
-		},
-		{
-			name: "invalid-external-ip",
-			in: &baremetal.Vnic{
-				PublicIPAddress: "0.0.0.",
-			},
-			out: nil,
-			err: errors.New(`instance has invalid public address: "0.0.0."`),
-		},
-		{
-			name: "invalid-external-ip",
-			in: &baremetal.Vnic{
-				PrivateIPAddress: "10.0.0.",
-			},
-			out: nil,
-			err: errors.New(`instance has invalid private address: "10.0.0."`),
-		},
-	}
-
-	for _, tt := range testCases {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := extractNodeAddressesFromVNIC(tt.in)
-			if err != nil && err.Error() != tt.err.Error() {
-				t.Errorf("extractNodeAddressesFromVNIC(%+v) got error %v, expected %v", tt.in, err, tt.err)
-			}
-			if !reflect.DeepEqual(result, tt.out) {
-				t.Errorf("extractNodeAddressesFromVNIC(%+v) => %+v, want %+v", tt.in, result, tt.out)
 			}
 		})
 	}
