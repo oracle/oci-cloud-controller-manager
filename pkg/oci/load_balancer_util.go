@@ -17,13 +17,12 @@ package oci
 import (
 	"fmt"
 	"os"
-	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/golang/glog"
-	baremetal "github.com/oracle/bmcs-go-sdk"
+	"github.com/oracle/oci-go-sdk/loadbalancer"
 
 	api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -60,7 +59,9 @@ type BackendSetAction struct {
 	Action
 
 	actionType ActionType
-	BackendSet baremetal.BackendSet
+	name       string
+
+	BackendSet loadbalancer.BackendSetDetails
 }
 
 // Type of the Action.
@@ -70,7 +71,7 @@ func (b *BackendSetAction) Type() ActionType {
 
 // Name of the action's object.
 func (b *BackendSetAction) Name() string {
-	return b.BackendSet.Name
+	return b.name
 }
 
 func (b *BackendSetAction) String() string {
@@ -82,7 +83,9 @@ type ListenerAction struct {
 	Action
 
 	actionType ActionType
-	Listener   baremetal.Listener
+	name       string
+
+	Listener loadbalancer.ListenerDetails
 }
 
 // Type of the Action.
@@ -92,21 +95,74 @@ func (l *ListenerAction) Type() ActionType {
 
 // Name of the action's object.
 func (l *ListenerAction) Name() string {
-	return l.Listener.Name
+	return l.name
 }
 
 func (l *ListenerAction) String() string {
 	return fmt.Sprintf("ListenerAction:{Name: %s, Type: %v }", l.Name(), l.actionType)
 }
 
+func toBool(b *bool) bool {
+	if b == nil {
+		return false
+	}
+	return *b
+}
+
+func toString(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+func toInt(i *int) int {
+	if i == nil {
+		return 0
+	}
+	return *i
+}
+
+func hasHealthCheckerChanged(actual *loadbalancer.HealthChecker, desired *loadbalancer.HealthCheckerDetails) bool {
+	if actual == nil {
+		return !(desired == nil)
+	}
+
+	if toInt(actual.Port) != toInt(desired.Port) {
+		return false
+	}
+
+	if toString(actual.ResponseBodyRegex) != toString(desired.ResponseBodyRegex) {
+		return false
+	}
+
+	if toInt(actual.Retries) != toInt(desired.Retries) {
+		return false
+	}
+
+	if toInt(actual.ReturnCode) != toInt(desired.ReturnCode) {
+		return false
+	}
+
+	if toInt(actual.TimeoutInMillis) != toInt(desired.TimeoutInMillis) {
+		return false
+	}
+
+	if toString(actual.UrlPath) != toString(desired.UrlPath) {
+		return false
+	}
+
+	return true
+}
+
 // TODO(horwitz): this doesn't check weight which we may want in the future to
 // evenly distribute Local traffic policy load.
-func hasBackendSetChanged(actual, desired baremetal.BackendSet) bool {
-	if !reflect.DeepEqual(actual.HealthChecker, desired.HealthChecker) {
+func hasBackendSetChanged(actual loadbalancer.BackendSet, desired loadbalancer.BackendSetDetails) bool {
+	if hasHealthCheckerChanged(actual.HealthChecker, desired.HealthChecker) {
 		return true
 	}
 
-	if actual.Policy != desired.Policy {
+	if toString(actual.Policy) != toString(desired.Policy) {
 		return true
 	}
 
@@ -120,12 +176,12 @@ func hasBackendSetChanged(actual, desired baremetal.BackendSet) bool {
 	// else there has been change.
 	desiredSet := sets.NewString()
 	for _, backend := range desired.Backends {
-		name := fmt.Sprintf(nameFormat, backend.IPAddress, backend.Port)
+		name := fmt.Sprintf(nameFormat, *backend.IpAddress, *backend.Port)
 		desiredSet.Insert(name)
 	}
 
 	for _, backend := range actual.Backends {
-		name := fmt.Sprintf(nameFormat, backend.IPAddress, backend.Port)
+		name := fmt.Sprintf(nameFormat, *backend.IpAddress, *backend.Port)
 		if !desiredSet.Has(name) {
 			return true
 		}
@@ -134,15 +190,64 @@ func hasBackendSetChanged(actual, desired baremetal.BackendSet) bool {
 	return false
 }
 
-func getBackendSetChanges(actual, desired map[string]baremetal.BackendSet) []Action {
+func healthCheckerToDetails(hc *loadbalancer.HealthChecker) *loadbalancer.HealthCheckerDetails {
+	if hc == nil {
+		return nil
+	}
+	return &loadbalancer.HealthCheckerDetails{
+		Protocol:          hc.Protocol,
+		IntervalInMillis:  hc.IntervalInMillis,
+		Port:              hc.Port,
+		ResponseBodyRegex: hc.ResponseBodyRegex,
+		Retries:           hc.Retries,
+		ReturnCode:        hc.ReturnCode,
+		TimeoutInMillis:   hc.TimeoutInMillis,
+		UrlPath:           hc.UrlPath,
+	}
+}
+
+func sslConfigurationToDetails(sc *loadbalancer.SslConfiguration) *loadbalancer.SslConfigurationDetails {
+	if sc == nil {
+		return nil
+	}
+	return &loadbalancer.SslConfigurationDetails{
+		CertificateName:       sc.CertificateName,
+		VerifyDepth:           sc.VerifyDepth,
+		VerifyPeerCertificate: sc.VerifyPeerCertificate,
+	}
+}
+
+func backendsToBackendDetails(bs []loadbalancer.Backend) []loadbalancer.BackendDetails {
+	backends := make([]loadbalancer.BackendDetails, len(bs))
+	for i, backend := range bs {
+		backends[i] = loadbalancer.BackendDetails{
+			IpAddress: backend.IpAddress,
+			Port:      backend.Port,
+			Backup:    backend.Backup,
+			Drain:     backend.Drain,
+			Offline:   backend.Offline,
+			Weight:    backend.Weight,
+		}
+	}
+	return backends
+}
+
+func getBackendSetChanges(actual map[string]loadbalancer.BackendSet, desired map[string]loadbalancer.BackendSetDetails) []Action {
 	var backendSetActions []Action
 	// First check to see if any backendsets need to be deleted or updated.
 	for name, actualBackendSet := range actual {
 		desiredBackendSet, ok := desired[name]
 		if !ok {
-			// No longer exists.
+			// No longer exists
 			backendSetActions = append(backendSetActions, &BackendSetAction{
-				BackendSet: actualBackendSet,
+				name: *actualBackendSet.Name,
+				BackendSet: loadbalancer.BackendSetDetails{
+					HealthChecker:                   healthCheckerToDetails(actualBackendSet.HealthChecker),
+					Policy:                          actualBackendSet.Policy,
+					Backends:                        backendsToBackendDetails(actualBackendSet.Backends),
+					SessionPersistenceConfiguration: actualBackendSet.SessionPersistenceConfiguration,
+					SslConfiguration:                sslConfigurationToDetails(actualBackendSet.SslConfiguration),
+				},
 				actionType: Delete,
 			})
 			continue
@@ -150,6 +255,7 @@ func getBackendSetChanges(actual, desired map[string]baremetal.BackendSet) []Act
 
 		if hasBackendSetChanged(actualBackendSet, desiredBackendSet) {
 			backendSetActions = append(backendSetActions, &BackendSetAction{
+				name:       name,
 				BackendSet: desiredBackendSet,
 				actionType: Update,
 			})
@@ -161,6 +267,7 @@ func getBackendSetChanges(actual, desired map[string]baremetal.BackendSet) []Act
 		if _, ok := actual[name]; !ok {
 			// Doesn't exist so lets create it.
 			backendSetActions = append(backendSetActions, &BackendSetAction{
+				name:       name,
 				BackendSet: desiredBackendSet,
 				actionType: Create,
 			})
@@ -170,11 +277,43 @@ func getBackendSetChanges(actual, desired map[string]baremetal.BackendSet) []Act
 	return backendSetActions
 }
 
-func hasListenerChanged(actual, desired baremetal.Listener) bool {
-	return !reflect.DeepEqual(actual, desired)
+func hasSSLConfigurationChanged(actual *loadbalancer.SslConfiguration, desired *loadbalancer.SslConfigurationDetails) bool {
+	if actual == nil || desired == nil {
+		if actual == nil && desired == nil {
+			return false
+		}
+		return true
+	}
+
+	if toString(actual.CertificateName) != toString(desired.CertificateName) {
+		return true
+	}
+	if toInt(actual.VerifyDepth) != toInt(desired.VerifyDepth) {
+		return true
+	}
+	if toBool(actual.VerifyPeerCertificate) != toBool(desired.VerifyPeerCertificate) {
+		return true
+	}
+	return false
 }
 
-func getListenerChanges(actual, desired map[string]baremetal.Listener) []Action {
+func hasListenerChanged(actual loadbalancer.Listener, desired loadbalancer.ListenerDetails) bool {
+	if toString(actual.DefaultBackendSetName) != toString(desired.DefaultBackendSetName) {
+		return true
+	}
+	if toInt(actual.Port) != toInt(desired.Port) {
+		return true
+	}
+	if toString(actual.Protocol) != toString(desired.Protocol) {
+		return true
+	}
+	if hasSSLConfigurationChanged(actual.SslConfiguration, desired.SslConfiguration) {
+		return true
+	}
+	return false
+}
+
+func getListenerChanges(actual map[string]loadbalancer.Listener, desired map[string]loadbalancer.ListenerDetails) []Action {
 	var listenerActions []Action
 	// First check to see if any listeners need to be deleted or updated.
 	for name, actualListener := range actual {
@@ -182,7 +321,13 @@ func getListenerChanges(actual, desired map[string]baremetal.Listener) []Action 
 		if !ok {
 			// no longer exists
 			listenerActions = append(listenerActions, &ListenerAction{
-				Listener:   actualListener,
+				Listener: loadbalancer.ListenerDetails{
+					DefaultBackendSetName: actualListener.DefaultBackendSetName,
+					Port:             actualListener.Port,
+					Protocol:         actualListener.Protocol,
+					SslConfiguration: sslConfigurationToDetails(actualListener.SslConfiguration),
+				},
+				name:       name,
 				actionType: Delete,
 			})
 			continue
@@ -191,6 +336,7 @@ func getListenerChanges(actual, desired map[string]baremetal.Listener) []Action 
 		if hasListenerChanged(actualListener, desiredListener) {
 			listenerActions = append(listenerActions, &ListenerAction{
 				Listener:   desiredListener,
+				name:       name,
 				actionType: Update,
 			})
 		}
@@ -202,6 +348,7 @@ func getListenerChanges(actual, desired map[string]baremetal.Listener) []Action 
 			// doesn't exist so lets create it
 			listenerActions = append(listenerActions, &ListenerAction{
 				Listener:   desiredListener,
+				name:       name,
 				actionType: Create,
 			})
 		}
@@ -210,13 +357,13 @@ func getListenerChanges(actual, desired map[string]baremetal.Listener) []Action 
 	return listenerActions
 }
 
-func sslEnabled(sslConfigMap map[int]*baremetal.SSLConfiguration) bool {
+func sslEnabled(sslConfigMap map[int]*loadbalancer.SslConfiguration) bool {
 	return len(sslConfigMap) > 0
 }
 
-func getListenerName(protocol string, port int, sslConfig *baremetal.SSLConfiguration) string {
+func getListenerName(protocol string, port int, sslConfig *loadbalancer.SslConfigurationDetails) string {
 	if sslConfig != nil {
-		return fmt.Sprintf("%s-%d-%s", protocol, port, sslConfig.CertificateName)
+		return fmt.Sprintf("%s-%d-%s", protocol, port, *sslConfig.CertificateName)
 	}
 	return fmt.Sprintf("%s-%d", protocol, port)
 }
@@ -250,23 +397,23 @@ func validateProtocols(servicePorts []api.ServicePort) error {
 	return nil
 }
 
-// getSSLEnabledPorts returns a set (implemented as a map) of port numbers for
-// which we need to enable SSL on the corresponding listener.
-func getSSLEnabledPorts(annotations map[string]string) (map[int]bool, error) {
-	sslPortsAnnotation, ok := annotations[ServiceAnnotationLoadBalancerSSLPorts]
-	if !ok {
-		return nil, nil
+// getSSLEnabledPorts returns a list of port numbers for which we need to enable
+// SSL on the corresponding listener.
+func getSSLEnabledPorts(svc *api.Service) ([]int, error) {
+	ports := []int{}
+	annotation, ok := svc.Annotations[ServiceAnnotationLoadBalancerSSLPorts]
+	if !ok || annotation == "" {
+		return ports, nil
 	}
 
-	sslPorts := make(map[int]bool)
-	for _, sslPort := range strings.Split(sslPortsAnnotation, ",") {
-		i, err := strconv.Atoi(strings.TrimSpace(sslPort))
+	for _, s := range strings.Split(annotation, ",") {
+		port, err := strconv.Atoi(strings.TrimSpace(s))
 		if err != nil {
 			return nil, fmt.Errorf("parse SSL port: %v", err)
 		}
-		sslPorts[i] = true
+		ports = append(ports, port)
 	}
-	return sslPorts, nil
+	return ports, nil
 }
 
 // parseSecretString returns the secret name and secret namespace from the
@@ -316,10 +463,4 @@ func sortAndCombineActions(backendSetActions []Action, listenerActions []Action)
 		}
 	})
 	return actions
-}
-
-func getBackendPort(backends []baremetal.Backend) uint64 {
-	// TODO: what happens if this is 0? e.g. we scale the pods to 0 for a
-	// deployment.
-	return uint64(backends[0].Port)
 }

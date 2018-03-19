@@ -184,12 +184,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/google/go-querystring"
-  packages = ["query"]
-  revision = "53e6ce116135b80d037921a7fdd5138cf32d7a8a"
-
-[[projects]]
-  branch = "master"
   name = "github.com/google/gofuzz"
   packages = ["."]
   revision = "24818f796faf91cd76ec7bddd72458fbced7a6c1"
@@ -333,10 +327,14 @@
   version = "v1.0.0-rc1"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/oracle/bmcs-go-sdk"
-  packages = ["."]
-  revision = "1461ec54db86b0cbec11b2730d0ae31a26a7e73d"
+  name = "github.com/oracle/oci-go-sdk"
+  packages = [
+    "common",
+    "core",
+    "loadbalancer"
+  ]
+  revision = "8090aeb474ad994446b2db294725e3d6c0d95327"
+  version = "v1.0.0"
 
 [[projects]]
   name = "github.com/pborman/uuid"
@@ -355,6 +353,12 @@
   packages = ["."]
   revision = "5f041e8faa004a95c88a202771f4cc3e991971e6"
   version = "v2.0.1"
+
+[[projects]]
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
 
 [[projects]]
   name = "github.com/prometheus/client_golang"
@@ -952,6 +956,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a361296a244bf9eea35f52b4b1a51f4dc08ab30b4a98dc2d25b68cb9827603c7"
+  inputs-digest = "43614e55350ef4681fd37c3406397db5ba7aa2ad5587f5ac691b6497df3937bd"
   solver-name = "gps-cdcl"
   solver-version = 1

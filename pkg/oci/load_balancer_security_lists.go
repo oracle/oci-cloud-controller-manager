@@ -15,18 +15,23 @@
 package oci
 
 import (
+	"context"
 	"fmt"
 	"reflect"
+	"sort"
 
 	"github.com/golang/glog"
-	baremetal "github.com/oracle/bmcs-go-sdk"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-go-sdk/common"
+	"github.com/oracle/oci-go-sdk/core"
+	"github.com/pkg/errors"
 
 	api "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/util/sets"
+	labels "k8s.io/apimachinery/pkg/labels"
+	sets "k8s.io/apimachinery/pkg/util/sets"
 	listersv1 "k8s.io/client-go/listers/core/v1"
 	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 )
 
 const (
@@ -46,13 +51,13 @@ type securityListManager interface {
 	// 		from LB subnets to backend subnets on the backend port
 	// Egress rules added:
 	// 		from LB subnets to backend subnets on the backend port
-	Update(lbSubnets []*baremetal.Subnet, backendSubnets []*baremetal.Subnet, sourceCIDRs []string, listenerPort uint64, backendPort uint64, healthCheckPort uint64) error
+	Update(ctx context.Context, lbSubnets []*core.Subnet, backendSubnets []*core.Subnet, sourceCIDRs []string, listenerPort, backendPort, healthCheckPort int) error
 	// Delete the security list rules associated with the listener & backends.
 	//
 	// If the listener is nil, then only the egress rules from the LB's to the backends and the
 	// ingress rules from the LB's to the backends will be cleaned up.
 	// If the listener is not nil, then the ingress rules to the LB's will be cleaned up.
-	Delete(lbSubnets []*baremetal.Subnet, backendSubnets []*baremetal.Subnet, listenerPort uint64, backendPort uint64, healthCheckPort uint64) error
+	Delete(ctx context.Context, lbSubnets []*core.Subnet, backendSubnets []*core.Subnet, listenerPort, backendPort, healthCheckPort int) error
 }
 
 type securityListManagerImpl struct {
@@ -67,59 +72,45 @@ func newSecurityListManager(client client.Interface, serviceLister listersv1.Ser
 	}
 }
 
-func (s *securityListManagerImpl) Update(
-	lbSubnets []*baremetal.Subnet,
-	backendSubnets []*baremetal.Subnet,
-	sourceCIDRs []string,
-	listenerPort uint64,
-	backendPort uint64,
-	healthCheckPort uint64) error {
-
-	err := s.updateLoadBalancerRules(lbSubnets, backendSubnets, sourceCIDRs, listenerPort, backendPort, healthCheckPort)
-	if err != nil {
+func (s *securityListManagerImpl) Update(ctx context.Context, lbSubnets []*core.Subnet, backendSubnets []*core.Subnet, sourceCIDRs []string, listenerPort, backendPort, healthCheckPort int) error {
+	if err := s.updateLoadBalancerRules(ctx, lbSubnets, backendSubnets, sourceCIDRs, listenerPort, backendPort, healthCheckPort); err != nil {
 		return err
 	}
 
-	return s.updateBackendRules(lbSubnets, backendSubnets, backendPort, healthCheckPort)
+	return s.updateBackendRules(ctx, lbSubnets, backendSubnets, backendPort, healthCheckPort)
 }
 
-func (s *securityListManagerImpl) Delete(
-	lbSubnets []*baremetal.Subnet,
-	backendSubnets []*baremetal.Subnet,
-	listenerPort uint64,
-	backendPort uint64,
-	healthCheckPort uint64) error {
-
-	noSubnets := []*baremetal.Subnet{}
+func (s *securityListManagerImpl) Delete(ctx context.Context, lbSubnets []*core.Subnet, backendSubnets []*core.Subnet, listenerPort, backendPort, healthCheckPort int) error {
+	noSubnets := []*core.Subnet{}
 	noSourceCIDRs := []string{}
 
-	err := s.updateLoadBalancerRules(lbSubnets, noSubnets, noSourceCIDRs, listenerPort, backendPort, healthCheckPort)
+	err := s.updateLoadBalancerRules(ctx, lbSubnets, noSubnets, noSourceCIDRs, listenerPort, backendPort, healthCheckPort)
 	if err != nil {
 		return err
 	}
 
-	return s.updateBackendRules(noSubnets, backendSubnets, backendPort, healthCheckPort)
+	return s.updateBackendRules(ctx, noSubnets, backendSubnets, backendPort, healthCheckPort)
 }
 
 // updateBackendRules handles adding ingress rules to the backend subnets from the load balancer subnets.
-func (s *securityListManagerImpl) updateBackendRules(lbSubnets []*baremetal.Subnet, nodeSubnets []*baremetal.Subnet, backendPort uint64, healthCheckPort uint64) error {
+func (s *securityListManagerImpl) updateBackendRules(ctx context.Context, lbSubnets []*core.Subnet, nodeSubnets []*core.Subnet, backendPort, healthCheckPort int) error {
 	for _, subnet := range nodeSubnets {
-		secList, err := s.client.GetDefaultSecurityList(subnet)
+		secList, etag, err := getDefaultSecurityList(ctx, s.client.Networking(), subnet.SecurityListIds)
 		if err != nil {
-			return fmt.Errorf("get security list for subnet `%s`: %v", subnet.ID, err)
+			return errors.Wrapf(err, "get security list for subnet %q", *subnet.Id)
 		}
 
 		ingressRules := getNodeIngressRules(secList.IngressSecurityRules, lbSubnets, backendPort, s.serviceLister)
 		ingressRules = getNodeIngressRules(ingressRules, lbSubnets, healthCheckPort, s.serviceLister)
 
 		if !securityListRulesChanged(secList, ingressRules, secList.EgressSecurityRules) {
-			glog.V(4).Infof("No changes for node subnet security list `%s`", secList.ID)
+			glog.V(4).Infof("No changes for node subnet security list %q", *secList.Id)
 			continue
 		}
 
-		err = s.updateSecurityListRules(secList.ID, secList.ETag, ingressRules, secList.EgressSecurityRules)
+		err = s.updateSecurityListRules(ctx, *secList.Id, etag, ingressRules, secList.EgressSecurityRules)
 		if err != nil {
-			return fmt.Errorf("update security list rules `%s` for subnet `%s: %v", secList.ID, subnet.ID, err)
+			return errors.Wrapf(err, "update security list rules %q for subnet %q", *secList.Id, *subnet.Id)
 		}
 	}
 
@@ -128,11 +119,11 @@ func (s *securityListManagerImpl) updateBackendRules(lbSubnets []*baremetal.Subn
 
 // updateLoadBalancerRules handles updating the ingress and egress rules for the load balance subnets.
 // If the listener is nil, then only egress rules from the load balancer to the backend subnets will be checked.
-func (s *securityListManagerImpl) updateLoadBalancerRules(lbSubnets []*baremetal.Subnet, nodeSubnets []*baremetal.Subnet, sourceCIDRs []string, listenerPort uint64, backendPort uint64, healthCheckPort uint64) error {
+func (s *securityListManagerImpl) updateLoadBalancerRules(ctx context.Context, lbSubnets []*core.Subnet, nodeSubnets []*core.Subnet, sourceCIDRs []string, listenerPort, backendPort, healthCheckPort int) error {
 	for _, lbSubnet := range lbSubnets {
-		lbSecurityList, err := s.client.GetDefaultSecurityList(lbSubnet)
+		lbSecurityList, etag, err := getDefaultSecurityList(ctx, s.client.Networking(), lbSubnet.SecurityListIds)
 		if err != nil {
-			return fmt.Errorf("get lb security list for subnet `%s`: %v", lbSubnet.ID, err)
+			return errors.Wrapf(err, "get lb security list for subnet %q", *lbSubnet.Id)
 		}
 
 		lbEgressRules := getLoadBalancerEgressRules(lbSecurityList.EgressSecurityRules, nodeSubnets, backendPort, s.serviceLister)
@@ -144,24 +135,44 @@ func (s *securityListManagerImpl) updateLoadBalancerRules(lbSubnets []*baremetal
 		}
 
 		if !securityListRulesChanged(lbSecurityList, lbIngressRules, lbEgressRules) {
-			glog.V(4).Infof("No changes for lb subnet security list `%s`", lbSecurityList.ID)
+			glog.V(4).Infof("No changes for lb subnet security list %q", *lbSecurityList.Id)
 			continue
 		}
 
-		err = s.updateSecurityListRules(lbSecurityList.ID, lbSecurityList.ETag, lbIngressRules, lbEgressRules)
+		err = s.updateSecurityListRules(ctx, *lbSecurityList.Id, etag, lbIngressRules, lbEgressRules)
 		if err != nil {
-			return fmt.Errorf("update lb security list rules `%s` for subnet `%s: %v", lbSecurityList.ID, lbSubnet.ID, err)
+			return errors.Wrapf(err, "update lb security list rules %q for subnet %q", *lbSecurityList.Id, *lbSubnet.Id)
 		}
 	}
 
 	return nil
 }
 
+func getDefaultSecurityList(ctx context.Context, n client.NetworkingInterface, ids []string) (*core.SecurityList, string, error) {
+	if len(ids) < 1 {
+		return nil, "", errors.Errorf("no security lists")
+	}
+
+	responses := make([]core.GetSecurityListResponse, len(ids))
+	for i, id := range ids {
+		response, err := n.GetSecurityList(ctx, id)
+		if err != nil {
+			return nil, "", err
+		}
+		responses[i] = response
+	}
+
+	sort.Slice(responses, func(i, j int) bool {
+		return responses[i].TimeCreated.Before(responses[j].TimeCreated.Time)
+	})
+
+	return &responses[0].SecurityList, *responses[0].Etag, nil
+}
+
 // securityListRulesChanged compares the ingress rules and egress rules against the rules in the security list. It checks that all the passed in egress & ingress rules
 // exist or not in the security list rules. If a rule does not exist then the rules have changed, so an update is required.
-func securityListRulesChanged(securityList *baremetal.SecurityList, ingressRules []baremetal.IngressSecurityRule, egressRules []baremetal.EgressSecurityRule) bool {
-	if len(ingressRules) != len(securityList.IngressSecurityRules) ||
-		len(egressRules) != len(securityList.EgressSecurityRules) {
+func securityListRulesChanged(securityList *core.SecurityList, ingressRules []core.IngressSecurityRule, egressRules []core.EgressSecurityRule) bool {
+	if len(ingressRules) != len(securityList.IngressSecurityRules) || len(egressRules) != len(securityList.EgressSecurityRules) {
 		return true
 	}
 
@@ -197,40 +208,38 @@ func securityListRulesChanged(securityList *baremetal.SecurityList, ingressRules
 }
 
 // updateSecurityListRules updates the security list rules and saves the security list in the cache upon successful update.
-func (s *securityListManagerImpl) updateSecurityListRules(securityListID string, etag string, ingressRules []baremetal.IngressSecurityRule, egressRules []baremetal.EgressSecurityRule) error {
-	_, err := s.client.UpdateSecurityList(securityListID, &baremetal.UpdateSecurityListOptions{
-		IfMatchDisplayNameOptions: baremetal.IfMatchDisplayNameOptions{
-			IfMatchOptions: baremetal.IfMatchOptions{
-				IfMatch: etag,
-			},
+func (s *securityListManagerImpl) updateSecurityListRules(ctx context.Context, id string, etag string, ingressRules []core.IngressSecurityRule, egressRules []core.EgressSecurityRule) error {
+	_, err := s.client.Networking().UpdateSecurityList(ctx, core.UpdateSecurityListRequest{
+		SecurityListId: &id,
+		IfMatch:        &etag,
+		UpdateSecurityListDetails: core.UpdateSecurityListDetails{
+			IngressSecurityRules: ingressRules,
+			EgressSecurityRules:  egressRules,
 		},
-		EgressRules:  egressRules,
-		IngressRules: ingressRules,
 	})
 	return err
 }
 
-func getNodeIngressRules(rules []baremetal.IngressSecurityRule, lbSubnets []*baremetal.Subnet, port uint64, serviceLister listersv1.ServiceLister) []baremetal.IngressSecurityRule {
+func getNodeIngressRules(rules []core.IngressSecurityRule, lbSubnets []*core.Subnet, port int, serviceLister listersv1.ServiceLister) []core.IngressSecurityRule {
 	desired := sets.NewString()
 	for _, lbSubnet := range lbSubnets {
-		desired.Insert(lbSubnet.CIDRBlock)
+		desired.Insert(*lbSubnet.CidrBlock)
 	}
 
-	ingressRules := []baremetal.IngressSecurityRule{}
+	ingressRules := []core.IngressSecurityRule{}
 
 	for _, rule := range rules {
-		if rule.TCPOptions == nil || rule.TCPOptions.SourcePortRange != nil || rule.TCPOptions.DestinationPortRange == nil ||
-			rule.TCPOptions.DestinationPortRange.Min != port ||
-			rule.TCPOptions.DestinationPortRange.Max != port {
+		if rule.TcpOptions == nil || rule.TcpOptions.SourcePortRange != nil || rule.TcpOptions.DestinationPortRange == nil ||
+			*rule.TcpOptions.DestinationPortRange.Min != port || *rule.TcpOptions.DestinationPortRange.Max != port {
 			// this rule doesn't apply to this service so nothing to do but keep it
 			ingressRules = append(ingressRules, rule)
 			continue
 		}
 
-		if desired.Has(rule.Source) {
+		if desired.Has(*rule.Source) {
 			// This rule still exists so lets keep it
 			ingressRules = append(ingressRules, rule)
-			desired.Delete(rule.Source)
+			desired.Delete(*rule.Source)
 			continue
 		}
 
@@ -269,23 +278,22 @@ func getNodeIngressRules(rules []baremetal.IngressSecurityRule, lbSubnets []*bar
 	return ingressRules
 }
 
-func getLoadBalancerIngressRules(rules []baremetal.IngressSecurityRule, sourceCIDRs []string, port uint64, serviceLister listersv1.ServiceLister) []baremetal.IngressSecurityRule {
+func getLoadBalancerIngressRules(rules []core.IngressSecurityRule, sourceCIDRs []string, port int, serviceLister listersv1.ServiceLister) []core.IngressSecurityRule {
 	desired := sets.NewString(sourceCIDRs...)
 
-	ingressRules := []baremetal.IngressSecurityRule{}
+	ingressRules := []core.IngressSecurityRule{}
 	for _, rule := range rules {
-		if rule.TCPOptions == nil || rule.TCPOptions.SourcePortRange != nil || rule.TCPOptions.DestinationPortRange == nil ||
-			rule.TCPOptions.DestinationPortRange.Min != port ||
-			rule.TCPOptions.DestinationPortRange.Max != port {
+		if rule.TcpOptions == nil || rule.TcpOptions.SourcePortRange != nil || rule.TcpOptions.DestinationPortRange == nil ||
+			*rule.TcpOptions.DestinationPortRange.Min != port || *rule.TcpOptions.DestinationPortRange.Max != port {
 			// this rule doesn't apply to this service so nothing to do but keep it
 			ingressRules = append(ingressRules, rule)
 			continue
 		}
 
-		if desired.Has(rule.Source) {
+		if desired.Has(*rule.Source) {
 			// This rule still exists so lets keep it
 			ingressRules = append(ingressRules, rule)
-			desired.Delete(rule.Source)
+			desired.Delete(*rule.Source)
 			continue
 		}
 
@@ -324,26 +332,25 @@ func getLoadBalancerIngressRules(rules []baremetal.IngressSecurityRule, sourceCI
 	return ingressRules
 }
 
-func getLoadBalancerEgressRules(rules []baremetal.EgressSecurityRule, nodeSubnets []*baremetal.Subnet, port uint64, serviceLister listersv1.ServiceLister) []baremetal.EgressSecurityRule {
+func getLoadBalancerEgressRules(rules []core.EgressSecurityRule, nodeSubnets []*core.Subnet, port int, serviceLister listersv1.ServiceLister) []core.EgressSecurityRule {
 	nodeCIDRs := sets.NewString()
 	for _, subnet := range nodeSubnets {
-		nodeCIDRs.Insert(subnet.CIDRBlock)
+		nodeCIDRs.Insert(*subnet.CidrBlock)
 	}
 
-	egressRules := []baremetal.EgressSecurityRule{}
+	egressRules := []core.EgressSecurityRule{}
 	for _, rule := range rules {
-		if rule.TCPOptions == nil || rule.TCPOptions.SourcePortRange != nil || rule.TCPOptions.DestinationPortRange == nil ||
-			rule.TCPOptions.DestinationPortRange.Min != port ||
-			rule.TCPOptions.DestinationPortRange.Max != port {
+		if rule.TcpOptions == nil || rule.TcpOptions.SourcePortRange != nil || rule.TcpOptions.DestinationPortRange == nil ||
+			*rule.TcpOptions.DestinationPortRange.Min != port || *rule.TcpOptions.DestinationPortRange.Max != port {
 			// this rule doesn't apply to this service so nothing to do but keep it
 			egressRules = append(egressRules, rule)
 			continue
 		}
 
-		if nodeCIDRs.Has(rule.Destination) {
+		if nodeCIDRs.Has(*rule.Destination) {
 			// This rule still exists so lets keep it
 			egressRules = append(egressRules, rule)
-			nodeCIDRs.Delete(rule.Destination)
+			nodeCIDRs.Delete(*rule.Destination)
 			continue
 		}
 
@@ -383,32 +390,32 @@ func getLoadBalancerEgressRules(rules []baremetal.EgressSecurityRule, nodeSubnet
 }
 
 // TODO(apryde): UDP support.
-func makeEgressSecurityRule(cidrBlock string, port uint64) baremetal.EgressSecurityRule {
-	return baremetal.EgressSecurityRule{
-		Destination: cidrBlock,
-		Protocol:    fmt.Sprintf("%d", ProtocolTCP),
-		TCPOptions: &baremetal.TCPOptions{
-			DestinationPortRange: &baremetal.PortRange{
-				Min: port,
-				Max: port,
+func makeEgressSecurityRule(cidrBlock string, port int) core.EgressSecurityRule {
+	return core.EgressSecurityRule{
+		Destination: common.String(cidrBlock),
+		Protocol:    common.String(fmt.Sprintf("%d", ProtocolTCP)),
+		TcpOptions: &core.TcpOptions{
+			DestinationPortRange: &core.PortRange{
+				Min: common.Int(port),
+				Max: common.Int(port),
 			},
 		},
-		IsStateless: false,
+		IsStateless: common.Bool(false),
 	}
 }
 
 // TODO(apryde): UDP support.
-func makeIngressSecurityRule(cidrBlock string, port uint64) baremetal.IngressSecurityRule {
-	return baremetal.IngressSecurityRule{
-		Source:   cidrBlock,
-		Protocol: fmt.Sprintf("%d", ProtocolTCP),
-		TCPOptions: &baremetal.TCPOptions{
-			DestinationPortRange: &baremetal.PortRange{
-				Min: port,
-				Max: port,
+func makeIngressSecurityRule(cidrBlock string, port int) core.IngressSecurityRule {
+	return core.IngressSecurityRule{
+		Source:   common.String(cidrBlock),
+		Protocol: common.String(fmt.Sprintf("%d", ProtocolTCP)),
+		TcpOptions: &core.TcpOptions{
+			DestinationPortRange: &core.PortRange{
+				Min: common.Int(port),
+				Max: common.Int(port),
 			},
 		},
-		IsStateless: false,
+		IsStateless: common.Bool(false),
 	}
 }
 
@@ -460,11 +467,11 @@ func healthCheckPortInUse(serviceLister listersv1.ServiceLister, port int32) (bo
 // to use that feature.
 type securityListManagerNOOP struct{}
 
-func (s *securityListManagerNOOP) Update(lbSubnets []*baremetal.Subnet, backendSubnets []*baremetal.Subnet, sourceCIDRs []string, listenerPort uint64, backendPort uint64, healthCheckPort uint64) error {
+func (s *securityListManagerNOOP) Update(ctx context.Context, lbSubnets []*core.Subnet, backendSubnets []*core.Subnet, sourceCIDRs []string, listenerPort int, backendPort int, healthCheckPort int) error {
 	return nil
 }
 
-func (s *securityListManagerNOOP) Delete(lbSubnets []*baremetal.Subnet, backendSubnets []*baremetal.Subnet, listenerPort uint64, backendPort uint64, healthCheckPort uint64) error {
+func (s *securityListManagerNOOP) Delete(ctx context.Context, lbSubnets []*core.Subnet, backendSubnets []*core.Subnet, listenerPort int, backendPort int, healthCheckPort int) error {
 	return nil
 }
 

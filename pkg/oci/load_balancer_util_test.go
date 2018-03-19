@@ -22,7 +22,8 @@ import (
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	baremetal "github.com/oracle/bmcs-go-sdk"
+	"github.com/oracle/oci-go-sdk/common"
+	"github.com/oracle/oci-go-sdk/loadbalancer"
 )
 
 func TestSortAndCombineActions(t *testing.T) {
@@ -34,120 +35,144 @@ func TestSortAndCombineActions(t *testing.T) {
 		"create": {
 			backendSetActions: []Action{
 				&BackendSetAction{
+					name:       "TCP-80",
 					actionType: Create,
-					BackendSet: baremetal.BackendSet{Name: "TCP-80"},
+					BackendSet: loadbalancer.BackendSetDetails{},
 				},
 				&BackendSetAction{
+					name:       "TCP-443",
 					actionType: Create,
-					BackendSet: baremetal.BackendSet{Name: "TCP-443"},
+					BackendSet: loadbalancer.BackendSetDetails{},
 				},
 			},
 			listenerActions: []Action{
 				&ListenerAction{
+					name:       "TCP-443",
 					actionType: Create,
-					Listener:   baremetal.Listener{Name: "TCP-443"},
+					Listener:   loadbalancer.ListenerDetails{},
 				},
 				&ListenerAction{
+					name:       "TCP-80",
 					actionType: Create,
-					Listener:   baremetal.Listener{Name: "TCP-80"},
+					Listener:   loadbalancer.ListenerDetails{},
 				},
 			},
 			expected: []Action{
 				&BackendSetAction{
+					name:       "TCP-443",
 					actionType: Create,
-					BackendSet: baremetal.BackendSet{Name: "TCP-443"},
+					BackendSet: loadbalancer.BackendSetDetails{},
 				},
 				&ListenerAction{
+					name:       "TCP-443",
 					actionType: Create,
-					Listener:   baremetal.Listener{Name: "TCP-443"},
+					Listener:   loadbalancer.ListenerDetails{},
 				},
 				&BackendSetAction{
+					name:       "TCP-80",
 					actionType: Create,
-					BackendSet: baremetal.BackendSet{Name: "TCP-80"},
+					BackendSet: loadbalancer.BackendSetDetails{},
 				},
 				&ListenerAction{
+					name:       "TCP-80",
 					actionType: Create,
-					Listener:   baremetal.Listener{Name: "TCP-80"},
+					Listener:   loadbalancer.ListenerDetails{},
 				},
 			},
 		},
 		"update": {
 			backendSetActions: []Action{
 				&BackendSetAction{
+					name:       "TCP-80",
 					actionType: Update,
-					BackendSet: baremetal.BackendSet{Name: "TCP-80"},
+					BackendSet: loadbalancer.BackendSetDetails{},
 				},
 				&BackendSetAction{
+					name:       "TCP-443",
 					actionType: Update,
-					BackendSet: baremetal.BackendSet{Name: "TCP-443"},
+					BackendSet: loadbalancer.BackendSetDetails{},
 				},
 			},
 			listenerActions: []Action{
 				&ListenerAction{
+					name:       "TCP-443",
 					actionType: Update,
-					Listener:   baremetal.Listener{Name: "TCP-443"},
+					Listener:   loadbalancer.ListenerDetails{},
 				},
 				&ListenerAction{
+					name:       "TCP-80",
 					actionType: Update,
-					Listener:   baremetal.Listener{Name: "TCP-80"},
+					Listener:   loadbalancer.ListenerDetails{},
 				},
 			},
 			expected: []Action{
 				&ListenerAction{
+					name:       "TCP-443",
 					actionType: Update,
-					Listener:   baremetal.Listener{Name: "TCP-443"},
+					Listener:   loadbalancer.ListenerDetails{},
 				},
 				&BackendSetAction{
+					name:       "TCP-443",
 					actionType: Update,
-					BackendSet: baremetal.BackendSet{Name: "TCP-443"},
+					BackendSet: loadbalancer.BackendSetDetails{},
 				},
 				&ListenerAction{
+					name:       "TCP-80",
 					actionType: Update,
-					Listener:   baremetal.Listener{Name: "TCP-80"},
+					Listener:   loadbalancer.ListenerDetails{},
 				},
 				&BackendSetAction{
+					name:       "TCP-80",
 					actionType: Update,
-					BackendSet: baremetal.BackendSet{Name: "TCP-80"},
+					BackendSet: loadbalancer.BackendSetDetails{},
 				},
 			},
 		},
 		"delete": {
 			backendSetActions: []Action{
 				&BackendSetAction{
+					name:       "TCP-80",
 					actionType: Delete,
-					BackendSet: baremetal.BackendSet{Name: "TCP-80"},
+					BackendSet: loadbalancer.BackendSetDetails{},
 				},
 				&BackendSetAction{
+					name:       "TCP-443",
 					actionType: Delete,
-					BackendSet: baremetal.BackendSet{Name: "TCP-443"},
+					BackendSet: loadbalancer.BackendSetDetails{},
 				},
 			},
 			listenerActions: []Action{
 				&ListenerAction{
+					name:       "TCP-443",
 					actionType: Delete,
-					Listener:   baremetal.Listener{Name: "TCP-443"},
+					Listener:   loadbalancer.ListenerDetails{},
 				},
 				&ListenerAction{
+					name:       "TCP-80",
 					actionType: Delete,
-					Listener:   baremetal.Listener{Name: "TCP-80"},
+					Listener:   loadbalancer.ListenerDetails{},
 				},
 			},
 			expected: []Action{
 				&ListenerAction{
+					name:       "TCP-443",
 					actionType: Delete,
-					Listener:   baremetal.Listener{Name: "TCP-443"},
+					Listener:   loadbalancer.ListenerDetails{},
 				},
 				&BackendSetAction{
+					name:       "TCP-443",
 					actionType: Delete,
-					BackendSet: baremetal.BackendSet{Name: "TCP-443"},
+					BackendSet: loadbalancer.BackendSetDetails{},
 				},
 				&ListenerAction{
+					name:       "TCP-80",
 					actionType: Delete,
-					Listener:   baremetal.Listener{Name: "TCP-80"},
+					Listener:   loadbalancer.ListenerDetails{},
 				},
 				&BackendSetAction{
+					name:       "TCP-80",
 					actionType: Delete,
-					BackendSet: baremetal.BackendSet{Name: "TCP-80"},
+					BackendSet: loadbalancer.BackendSetDetails{},
 				},
 			},
 		},
@@ -166,41 +191,41 @@ func TestSortAndCombineActions(t *testing.T) {
 func TestGetBackendSetChanges(t *testing.T) {
 	var testCases = []struct {
 		name     string
-		desired  map[string]baremetal.BackendSet
-		actual   map[string]baremetal.BackendSet
+		desired  map[string]loadbalancer.BackendSetDetails
+		actual   map[string]loadbalancer.BackendSet
 		expected []Action
 	}{
 		{
 			name: "create backendset",
-			desired: map[string]baremetal.BackendSet{
-				"one": baremetal.BackendSet{
-					Backends: []baremetal.Backend{
-						{IPAddress: "0.0.0.0", Port: 80},
+			desired: map[string]loadbalancer.BackendSetDetails{
+				"one": loadbalancer.BackendSetDetails{
+					Backends: []loadbalancer.BackendDetails{
+						{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
 					},
 				},
-				"two": baremetal.BackendSet{
-					Name: "two",
-					Backends: []baremetal.Backend{
-						{IPAddress: "0.0.0.3", Port: 80},
-						{IPAddress: "0.0.0.4", Port: 80},
+				"two": loadbalancer.BackendSetDetails{
+					Backends: []loadbalancer.BackendDetails{
+						{IpAddress: common.String("0.0.0.3"), Port: common.Int(80)},
+						{IpAddress: common.String("0.0.0.4"), Port: common.Int(80)},
 					},
 				},
 			},
-			actual: map[string]baremetal.BackendSet{
-				"one": baremetal.BackendSet{
-					Backends: []baremetal.Backend{
-						{IPAddress: "0.0.0.0", Port: 80},
+			actual: map[string]loadbalancer.BackendSet{
+				"one": loadbalancer.BackendSet{
+					Name: common.String("one"),
+					Backends: []loadbalancer.Backend{
+						{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
 					},
 				},
 			},
 			expected: []Action{
 				&BackendSetAction{
+					name:       "two",
 					actionType: Create,
-					BackendSet: baremetal.BackendSet{
-						Name: "two",
-						Backends: []baremetal.Backend{
-							{IPAddress: "0.0.0.3", Port: 80},
-							{IPAddress: "0.0.0.4", Port: 80},
+					BackendSet: loadbalancer.BackendSetDetails{
+						Backends: []loadbalancer.BackendDetails{
+							{IpAddress: common.String("0.0.0.3"), Port: common.Int(80)},
+							{IpAddress: common.String("0.0.0.4"), Port: common.Int(80)},
 						},
 					},
 				},
@@ -208,28 +233,30 @@ func TestGetBackendSetChanges(t *testing.T) {
 		},
 		{
 			name: "update backendset - add backend",
-			desired: map[string]baremetal.BackendSet{
-				"one": baremetal.BackendSet{
-					Backends: []baremetal.Backend{
-						{IPAddress: "0.0.0.0", Port: 80},
-						{IPAddress: "0.0.0.1", Port: 80},
+			desired: map[string]loadbalancer.BackendSetDetails{
+				"one": loadbalancer.BackendSetDetails{
+					Backends: []loadbalancer.BackendDetails{
+						{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
+						{IpAddress: common.String("0.0.0.1"), Port: common.Int(80)},
 					},
 				},
 			},
-			actual: map[string]baremetal.BackendSet{
-				"one": baremetal.BackendSet{
-					Backends: []baremetal.Backend{
-						{IPAddress: "0.0.0.0", Port: 80},
+			actual: map[string]loadbalancer.BackendSet{
+				"one": loadbalancer.BackendSet{
+					Name: common.String("one"),
+					Backends: []loadbalancer.Backend{
+						{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
 					},
 				},
 			},
 			expected: []Action{
 				&BackendSetAction{
+					name:       "one",
 					actionType: Update,
-					BackendSet: baremetal.BackendSet{
-						Backends: []baremetal.Backend{
-							{IPAddress: "0.0.0.0", Port: 80},
-							{IPAddress: "0.0.0.1", Port: 80},
+					BackendSet: loadbalancer.BackendSetDetails{
+						Backends: []loadbalancer.BackendDetails{
+							{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
+							{IpAddress: common.String("0.0.0.1"), Port: common.Int(80)},
 						},
 					},
 				},
@@ -237,27 +264,29 @@ func TestGetBackendSetChanges(t *testing.T) {
 		},
 		{
 			name: "update backendset - remove backend",
-			desired: map[string]baremetal.BackendSet{
-				"one": baremetal.BackendSet{
-					Backends: []baremetal.Backend{
-						{IPAddress: "0.0.0.0", Port: 80},
+			desired: map[string]loadbalancer.BackendSetDetails{
+				"one": loadbalancer.BackendSetDetails{
+					Backends: []loadbalancer.BackendDetails{
+						{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
 					},
 				},
 			},
-			actual: map[string]baremetal.BackendSet{
-				"one": baremetal.BackendSet{
-					Backends: []baremetal.Backend{
-						{IPAddress: "0.0.0.0", Port: 80},
-						{IPAddress: "0.0.0.1", Port: 80},
+			actual: map[string]loadbalancer.BackendSet{
+				"one": loadbalancer.BackendSet{
+					Name: common.String("one"),
+					Backends: []loadbalancer.Backend{
+						{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
+						{IpAddress: common.String("0.0.0.1"), Port: common.Int(80)},
 					},
 				},
 			},
 			expected: []Action{
 				&BackendSetAction{
+					name:       "one",
 					actionType: Update,
-					BackendSet: baremetal.BackendSet{
-						Backends: []baremetal.Backend{
-							{IPAddress: "0.0.0.0", Port: 80},
+					BackendSet: loadbalancer.BackendSetDetails{
+						Backends: []loadbalancer.BackendDetails{
+							{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
 						},
 					},
 				},
@@ -265,20 +294,22 @@ func TestGetBackendSetChanges(t *testing.T) {
 		},
 		{
 			name:    "remove backendset",
-			desired: map[string]baremetal.BackendSet{},
-			actual: map[string]baremetal.BackendSet{
-				"one": baremetal.BackendSet{
-					Backends: []baremetal.Backend{
-						{IPAddress: "0.0.0.0", Port: 80},
+			desired: map[string]loadbalancer.BackendSetDetails{},
+			actual: map[string]loadbalancer.BackendSet{
+				"one": loadbalancer.BackendSet{
+					Name: common.String("one"),
+					Backends: []loadbalancer.Backend{
+						{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
 					},
 				},
 			},
 			expected: []Action{
 				&BackendSetAction{
+					name:       "one",
 					actionType: Delete,
-					BackendSet: baremetal.BackendSet{
-						Backends: []baremetal.Backend{
-							{IPAddress: "0.0.0.0", Port: 80},
+					BackendSet: loadbalancer.BackendSetDetails{
+						Backends: []loadbalancer.BackendDetails{
+							{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
 						},
 					},
 				},
@@ -286,17 +317,18 @@ func TestGetBackendSetChanges(t *testing.T) {
 		},
 		{
 			name: "no change",
-			desired: map[string]baremetal.BackendSet{
-				"one": baremetal.BackendSet{
-					Backends: []baremetal.Backend{
-						{IPAddress: "0.0.0.0", Port: 80},
+			desired: map[string]loadbalancer.BackendSetDetails{
+				"one": loadbalancer.BackendSetDetails{
+					Backends: []loadbalancer.BackendDetails{
+						{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
 					},
 				},
 			},
-			actual: map[string]baremetal.BackendSet{
-				"one": baremetal.BackendSet{
-					Backends: []baremetal.Backend{
-						{IPAddress: "0.0.0.0", Port: 80},
+			actual: map[string]loadbalancer.BackendSet{
+				"one": loadbalancer.BackendSet{
+					Name: common.String("one"),
+					Backends: []loadbalancer.Backend{
+						{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
 					},
 				},
 			},
@@ -320,157 +352,151 @@ func TestGetBackendSetChanges(t *testing.T) {
 func TestGetListenerChanges(t *testing.T) {
 	var testCases = []struct {
 		name     string
-		desired  map[string]baremetal.Listener
-		actual   map[string]baremetal.Listener
+		desired  map[string]loadbalancer.ListenerDetails
+		actual   map[string]loadbalancer.Listener
 		expected []Action
 	}{
 		{
 			name: "create listener",
-			desired: map[string]baremetal.Listener{"TCP-443": baremetal.Listener{
-				Name: "TCP-443",
-				DefaultBackendSetName: "TCP-443",
-				Protocol:              "TCP",
-				Port:                  443,
+			desired: map[string]loadbalancer.ListenerDetails{"TCP-443": loadbalancer.ListenerDetails{
+				DefaultBackendSetName: common.String("TCP-443"),
+				Protocol:              common.String("TCP"),
+				Port:                  common.Int(443),
 			}},
-			actual: map[string]baremetal.Listener{},
+			actual: map[string]loadbalancer.Listener{},
 			expected: []Action{
 				&ListenerAction{
+					name:       "TCP-443",
 					actionType: Create,
-					Listener: baremetal.Listener{
-						Name: "TCP-443",
-						DefaultBackendSetName: "TCP-443",
-						Protocol:              "TCP",
-						Port:                  443,
+					Listener: loadbalancer.ListenerDetails{
+						DefaultBackendSetName: common.String("TCP-443"),
+						Protocol:              common.String("TCP"),
+						Port:                  common.Int(443),
 					},
 				},
 			},
 		},
 		{
 			name: "add listener",
-			desired: map[string]baremetal.Listener{
-				"TCP-80": baremetal.Listener{
-					Name: "TCP-80",
-					DefaultBackendSetName: "TCP-80",
-					Protocol:              "TCP",
-					Port:                  80,
+			desired: map[string]loadbalancer.ListenerDetails{
+				"TCP-80": loadbalancer.ListenerDetails{
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
 				},
-				"TCP-443": baremetal.Listener{
-					Name: "TCP-443",
-					DefaultBackendSetName: "TCP-443",
-					Protocol:              "TCP",
-					Port:                  443,
+				"TCP-443": loadbalancer.ListenerDetails{
+					DefaultBackendSetName: common.String("TCP-443"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(443),
 				},
 			},
-			actual: map[string]baremetal.Listener{
-				"TCP-80": baremetal.Listener{
-					Name: "TCP-80",
-					DefaultBackendSetName: "TCP-80",
-					Protocol:              "TCP",
-					Port:                  80,
+			actual: map[string]loadbalancer.Listener{
+				"TCP-80": loadbalancer.Listener{
+					Name: common.String("TCP-80"),
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
 				},
 			},
 			expected: []Action{
 				&ListenerAction{
+					name:       "TCP-443",
 					actionType: Create,
-					Listener: baremetal.Listener{
-						Name: "TCP-443",
-						DefaultBackendSetName: "TCP-443",
-						Protocol:              "TCP",
-						Port:                  443,
+					Listener: loadbalancer.ListenerDetails{
+						DefaultBackendSetName: common.String("TCP-443"),
+						Protocol:              common.String("TCP"),
+						Port:                  common.Int(443),
 					},
 				},
 			},
 		},
 		{
 			name: "remove listener",
-			desired: map[string]baremetal.Listener{
-				"TCP-80": baremetal.Listener{
-					Name: "TCP-80",
-					DefaultBackendSetName: "TCP-80",
-					Protocol:              "TCP",
-					Port:                  80,
+			desired: map[string]loadbalancer.ListenerDetails{
+				"TCP-80": loadbalancer.ListenerDetails{
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
 				},
 			},
-			actual: map[string]baremetal.Listener{
-				"TCP-443": baremetal.Listener{
-					Name: "TCP-443",
-					DefaultBackendSetName: "TCP-443",
-					Protocol:              "TCP",
-					Port:                  443,
+			actual: map[string]loadbalancer.Listener{
+				"TCP-443": loadbalancer.Listener{
+					Name: common.String("TCP-443"),
+					DefaultBackendSetName: common.String("TCP-443"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(443),
 				},
-				"TCP-80": baremetal.Listener{
-					Name: "TCP-80",
-					DefaultBackendSetName: "TCP-80",
-					Protocol:              "TCP",
-					Port:                  80,
+				"TCP-80": loadbalancer.Listener{
+					Name: common.String("TCP-80"),
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
 				},
 			},
 			expected: []Action{
 				&ListenerAction{
+					name:       "TCP-443",
 					actionType: Delete,
-					Listener: baremetal.Listener{
-						Name: "TCP-443",
-						DefaultBackendSetName: "TCP-443",
-						Protocol:              "TCP",
-						Port:                  443,
+					Listener: loadbalancer.ListenerDetails{
+						DefaultBackendSetName: common.String("TCP-443"),
+						Protocol:              common.String("TCP"),
+						Port:                  common.Int(443),
 					},
 				},
 			},
 		},
 		{
 			name: "no change",
-			desired: map[string]baremetal.Listener{
-				"TCP-80": baremetal.Listener{
-					Name: "TCP-80",
-					DefaultBackendSetName: "TCP-80",
-					Protocol:              "TCP",
-					Port:                  80,
+			desired: map[string]loadbalancer.ListenerDetails{
+				"TCP-80": loadbalancer.ListenerDetails{
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
 				},
 			},
-			actual: map[string]baremetal.Listener{
-				"TCP-80": baremetal.Listener{
-					Name: "TCP-80",
-					DefaultBackendSetName: "TCP-80",
-					Protocol:              "TCP",
-					Port:                  80,
+			actual: map[string]loadbalancer.Listener{
+				"TCP-80": loadbalancer.Listener{
+					Name: common.String("TCP-80"),
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
 				},
 			},
 			expected: []Action{},
 		},
 		{
 			name: "ssl config change",
-			desired: map[string]baremetal.Listener{
-				"TCP-80": baremetal.Listener{
-					Name: "TCP-80",
-					DefaultBackendSetName: "TCP-80",
-					Protocol:              "TCP",
-					Port:                  80,
-					SSLConfig: &baremetal.SSLConfiguration{
-						CertificateName: "desired",
+			desired: map[string]loadbalancer.ListenerDetails{
+				"TCP-80": loadbalancer.ListenerDetails{
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
+					SslConfiguration: &loadbalancer.SslConfigurationDetails{
+						CertificateName: common.String("desired"),
 					},
 				},
 			},
-			actual: map[string]baremetal.Listener{
-				"TCP-80": baremetal.Listener{
-					Name: "TCP-80",
-					DefaultBackendSetName: "TCP-80",
-					Protocol:              "TCP",
-					Port:                  80,
-					SSLConfig: &baremetal.SSLConfiguration{
-						CertificateName: "actual",
+			actual: map[string]loadbalancer.Listener{
+				"TCP-80": loadbalancer.Listener{
+					Name: common.String("TCP-80"),
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
+					SslConfiguration: &loadbalancer.SslConfiguration{
+						CertificateName: common.String("actual"),
 					},
 				},
 			},
 			expected: []Action{
 				&ListenerAction{
+					name:       "TCP-80",
 					actionType: Update,
-					Listener: baremetal.Listener{
-						Name: "TCP-80",
-						DefaultBackendSetName: "TCP-80",
-						Protocol:              "TCP",
-						Port:                  80,
-						SSLConfig: &baremetal.SSLConfiguration{
-							CertificateName: "desired",
+					Listener: loadbalancer.ListenerDetails{
+						DefaultBackendSetName: common.String("TCP-80"),
+						Protocol:              common.String("TCP"),
+						Port:                  common.Int(80),
+						SslConfiguration: &loadbalancer.SslConfigurationDetails{
+							CertificateName: common.String("desired"),
 						},
 					},
 				},
@@ -495,37 +521,39 @@ func TestGetSSLEnabledPorts(t *testing.T) {
 	testCases := []struct {
 		name        string
 		annotations map[string]string
-		expected    map[int]bool
+		expected    []int
 	}{
 		{
 			name:        "empty",
 			annotations: map[string]string{},
-			expected:    nil,
+			expected:    []int{},
 		}, {
 			name:        "empty string",
 			annotations: map[string]string{"service.beta.kubernetes.io/oci-load-balancer-ssl-ports": ""},
-			expected:    nil,
+			expected:    []int{},
 		}, {
 			name:        "443",
 			annotations: map[string]string{"service.beta.kubernetes.io/oci-load-balancer-ssl-ports": "443"},
-			expected:    map[int]bool{443: true},
+			expected:    []int{443},
 		}, {
 			name:        "1,2,3",
 			annotations: map[string]string{"service.beta.kubernetes.io/oci-load-balancer-ssl-ports": "1,2,3"},
-			expected:    map[int]bool{1: true, 2: true, 3: true},
+			expected:    []int{1, 2, 3},
 		}, {
 			name:        "1, 2, 3",
 			annotations: map[string]string{"service.beta.kubernetes.io/oci-load-balancer-ssl-ports": "1, 2, 3"},
-			expected:    map[int]bool{1: true, 2: true, 3: true},
+			expected:    []int{1, 2, 3},
 		}, {
 			name:        "not-an-integer",
 			annotations: map[string]string{"service.beta.kubernetes.io/oci-load-balancer-ssl-ports": "not-an-integer"},
-			expected:    nil,
+			expected:    nil, // becuase we error
 		},
 	}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			sslEnabledPorts, _ := getSSLEnabledPorts(tt.annotations)
+			sslEnabledPorts, _ := getSSLEnabledPorts(&api.Service{
+				ObjectMeta: metav1.ObjectMeta{Annotations: tt.annotations},
+			})
 			if !reflect.DeepEqual(sslEnabledPorts, tt.expected) {
 				t.Errorf("getSSLEnabledPorts(%#v) => (%#v), expected (%#v)",
 					tt.annotations, sslEnabledPorts, tt.expected)
