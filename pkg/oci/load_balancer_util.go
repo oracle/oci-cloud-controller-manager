@@ -126,34 +126,34 @@ func toInt(i *int) int {
 
 func hasHealthCheckerChanged(actual *loadbalancer.HealthChecker, desired *loadbalancer.HealthCheckerDetails) bool {
 	if actual == nil {
-		return !(desired == nil)
+		return desired != nil
 	}
 
 	if toInt(actual.Port) != toInt(desired.Port) {
-		return false
+		return true
 	}
 
 	if toString(actual.ResponseBodyRegex) != toString(desired.ResponseBodyRegex) {
-		return false
+		return true
 	}
 
 	if toInt(actual.Retries) != toInt(desired.Retries) {
-		return false
+		return true
 	}
 
 	if toInt(actual.ReturnCode) != toInt(desired.ReturnCode) {
-		return false
+		return true
 	}
 
 	if toInt(actual.TimeoutInMillis) != toInt(desired.TimeoutInMillis) {
-		return false
+		return true
 	}
 
 	if toString(actual.UrlPath) != toString(desired.UrlPath) {
-		return false
+		return true
 	}
 
-	return true
+	return false
 }
 
 // TODO(horwitz): this doesn't check weight which we may want in the future to
