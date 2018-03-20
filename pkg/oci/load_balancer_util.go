@@ -61,7 +61,8 @@ type BackendSetAction struct {
 	actionType ActionType
 	name       string
 
-	BackendSet loadbalancer.BackendSetDetails
+	BackendSet    loadbalancer.BackendSetDetails
+	OldBackendSet *loadbalancer.BackendSetDetails
 }
 
 // Type of the Action.
@@ -257,6 +258,13 @@ func getBackendSetChanges(actual map[string]loadbalancer.BackendSet, desired map
 			backendSetActions = append(backendSetActions, &BackendSetAction{
 				name:       name,
 				BackendSet: desiredBackendSet,
+				OldBackendSet: &loadbalancer.BackendSetDetails{
+					HealthChecker:                   healthCheckerToDetails(actualBackendSet.HealthChecker),
+					Policy:                          actualBackendSet.Policy,
+					Backends:                        backendsToBackendDetails(actualBackendSet.Backends),
+					SessionPersistenceConfiguration: actualBackendSet.SessionPersistenceConfiguration,
+					SslConfiguration:                sslConfigurationToDetails(actualBackendSet.SslConfiguration),
+				},
 				actionType: Update,
 			})
 		}

@@ -419,13 +419,13 @@ func (cp *CloudProvider) updateBackendSet(ctx context.Context, lbOCID string, ac
 
 	bs := action.BackendSet
 
-	glog.V(2).Infof("Applying %q action on backend set %q for lb %q", action.Type(), action.Name(), lbOCID)
-
 	if len(bs.Backends) < 1 {
 		return errors.New("no backends provided")
 	}
 	backendPort := *bs.Backends[0].Port
 	healthCheckPort := *bs.HealthChecker.Port
+
+	glog.V(2).Infof("Applying %q action on backend set %q for lb %q (listenerPort=%d backendPort=%d healthCheckPort=%d)", action.Type(), action.Name(), lbOCID, listenerPort, backendPort, healthCheckPort)
 
 	switch action.Type() {
 	case Create:
@@ -436,11 +436,17 @@ func (cp *CloudProvider) updateBackendSet(ctx context.Context, lbOCID string, ac
 
 		workRequestID, err = cp.client.LoadBalancer().CreateBackendSet(ctx, lbOCID, action.Name(), bs)
 	case Update:
-		err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, listenerPort, backendPort, healthCheckPort)
-		if err != nil {
+		// FIXME(apryde): This is inelegant and inefficient. Update() should be refactored
+		// to take the old backend port and handle removal of associated rules.
+		if action.OldBackendSet != nil && *action.OldBackendSet.Backends[0].Port != backendPort {
+			oldBackendPort := *action.OldBackendSet.Backends[0].Port
+			if err = cp.securityListManager.Delete(ctx, lbSubnets, nodeSubnets, listenerPort, oldBackendPort, healthCheckPort); err != nil {
+				return errors.Wrapf(err, "deleting security rule for old node port %d", oldBackendPort)
+			}
+		}
+		if err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, listenerPort, backendPort, healthCheckPort); err != nil {
 			return err
 		}
-
 		workRequestID, err = cp.client.LoadBalancer().UpdateBackendSet(ctx, lbOCID, action.Name(), bs)
 	case Delete:
 		err = cp.securityListManager.Delete(ctx, lbSubnets, nodeSubnets, listenerPort, backendPort, healthCheckPort)
