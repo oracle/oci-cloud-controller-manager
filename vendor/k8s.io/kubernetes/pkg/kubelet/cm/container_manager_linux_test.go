@@ -79,6 +79,34 @@ func (mi *fakeMountInterface) MakeRShared(path string) error {
 	return nil
 }
 
+func (mi *fakeMountInterface) GetFileType(pathname string) (mount.FileType, error) {
+	return mount.FileType("fake"), nil
+}
+
+func (mi *fakeMountInterface) MakeDir(pathname string) error {
+	return nil
+}
+
+func (mi *fakeMountInterface) MakeFile(pathname string) error {
+	return nil
+}
+
+func (mi *fakeMountInterface) ExistsPath(pathname string) bool {
+	return true
+}
+
+func (mi *fakeMountInterface) PrepareSafeSubpath(subPath mount.Subpath) (newHostPath string, cleanupAction func(), err error) {
+	return "", nil, nil
+}
+
+func (mi *fakeMountInterface) CleanSubPaths(_, _ string) error {
+	return nil
+}
+
+func (mi *fakeMountInterface) SafeMakeDir(_, _ string, _ os.FileMode) error {
+	return nil
+}
+
 func fakeContainerMgrMountInt() mount.Interface {
 	return &fakeMountInterface{
 		[]mount.MountPoint{

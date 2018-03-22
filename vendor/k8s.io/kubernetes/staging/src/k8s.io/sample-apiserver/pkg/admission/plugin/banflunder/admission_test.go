@@ -28,8 +28,8 @@ import (
 	"k8s.io/sample-apiserver/pkg/admission/plugin/banflunder"
 	"k8s.io/sample-apiserver/pkg/admission/wardleinitializer"
 	"k8s.io/sample-apiserver/pkg/apis/wardle"
-	"k8s.io/sample-apiserver/pkg/client/clientset_generated/internalclientset/fake"
-	informers "k8s.io/sample-apiserver/pkg/client/informers_generated/internalversion"
+	"k8s.io/sample-apiserver/pkg/client/clientset/internalversion/fake"
+	informers "k8s.io/sample-apiserver/pkg/client/informers/internalversion"
 )
 
 // TestBanfluderAdmissionPlugin tests various test cases against
@@ -113,13 +113,10 @@ func TestBanflunderAdmissionPlugin(t *testing.T) {
 				t.Fatalf("scenario %d: failed to create banflunder admission plugin due to = %v", index, err)
 			}
 
-			targetInitializer, err := wardleinitializer.New(informersFactory)
-			if err != nil {
-				t.Fatalf("scenario %d: failed to crate wardle plugin initializer due to = %v", index, err)
-			}
+			targetInitializer := wardleinitializer.New(informersFactory)
 			targetInitializer.Initialize(target)
 
-			err = admission.Validate(target)
+			err = admission.ValidateInitialization(target)
 			if err != nil {
 				t.Fatalf("scenario %d: failed to initialize banflunder admission plugin due to =%v", index, err)
 			}

@@ -36,20 +36,21 @@ import (
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	"k8s.io/kubernetes/pkg/api/testapi"
-	"k8s.io/kubernetes/plugin/pkg/scheduler"
-	_ "k8s.io/kubernetes/plugin/pkg/scheduler/algorithmprovider"
-	schedulerapi "k8s.io/kubernetes/plugin/pkg/scheduler/api"
-	"k8s.io/kubernetes/plugin/pkg/scheduler/factory"
+	"k8s.io/kubernetes/pkg/scheduler"
+	_ "k8s.io/kubernetes/pkg/scheduler/algorithmprovider"
+	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
+	"k8s.io/kubernetes/pkg/scheduler/factory"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/integration/framework"
 )
 
 const (
-	filter     = "filter"
-	prioritize = "prioritize"
-	bind       = "bind"
+	filter               = "filter"
+	prioritize           = "prioritize"
+	bind                 = "bind"
+	extendedResourceName = "foo.com/bar"
 )
 
 type fitPredicate func(pod *v1.Pod, node *v1.Node) (bool, error)
@@ -334,7 +335,7 @@ func TestSchedulerExtender(t *testing.T) {
 				FilterVerb:     filter,
 				PrioritizeVerb: prioritize,
 				Weight:         3,
-				EnableHttps:    false,
+				EnableHTTPS:    false,
 			},
 			{
 				URLPrefix:      es2.URL,
@@ -342,14 +343,20 @@ func TestSchedulerExtender(t *testing.T) {
 				PrioritizeVerb: prioritize,
 				BindVerb:       bind,
 				Weight:         4,
-				EnableHttps:    false,
+				EnableHTTPS:    false,
+				ManagedResources: []schedulerapi.ExtenderManagedResource{
+					{
+						Name:               extendedResourceName,
+						IgnoredByScheduler: true,
+					},
+				},
 			},
 			{
 				URLPrefix:        es3.URL,
 				FilterVerb:       filter,
 				PrioritizeVerb:   prioritize,
 				Weight:           10,
-				EnableHttps:      false,
+				EnableHTTPS:      false,
 				NodeCacheCapable: true,
 			},
 		},
@@ -368,6 +375,8 @@ func TestSchedulerExtender(t *testing.T) {
 		informerFactory.Extensions().V1beta1().ReplicaSets(),
 		informerFactory.Apps().V1beta1().StatefulSets(),
 		informerFactory.Core().V1().Services(),
+		informerFactory.Policy().V1beta1().PodDisruptionBudgets(),
+		informerFactory.Storage().V1().StorageClasses(),
 		v1.DefaultHardPodAffinitySymmetricWeight,
 		enableEquivalenceCache,
 	)
@@ -376,7 +385,7 @@ func TestSchedulerExtender(t *testing.T) {
 		t.Fatalf("Couldn't create scheduler config: %v", err)
 	}
 	eventBroadcaster := record.NewBroadcaster()
-	schedulerConfig.Recorder = eventBroadcaster.NewRecorder(api.Scheme, v1.EventSource{Component: v1.DefaultSchedulerName})
+	schedulerConfig.Recorder = eventBroadcaster.NewRecorder(legacyscheme.Scheme, v1.EventSource{Component: v1.DefaultSchedulerName})
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: v1core.New(clientSet.CoreV1().RESTClient()).Events("")})
 	scheduler, _ := scheduler.NewFromConfigurator(&scheduler.FakeConfigurator{Config: schedulerConfig}, nil...)
 	informerFactory.Start(schedulerConfig.StopEverything)
@@ -418,7 +427,17 @@ func DoTestPodScheduling(ns *v1.Namespace, t *testing.T, cs clientset.Interface)
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: "extender-test-pod"},
 		Spec: v1.PodSpec{
-			Containers: []v1.Container{{Name: "container", Image: e2e.GetPauseImageName(cs)}},
+			Containers: []v1.Container{
+				{
+					Name:  "container",
+					Image: e2e.GetPauseImageName(cs),
+					Resources: v1.ResourceRequirements{
+						Limits: v1.ResourceList{
+							extendedResourceName: *resource.NewQuantity(1, resource.DecimalSI),
+						},
+					},
+				},
+			},
 		},
 	}
 

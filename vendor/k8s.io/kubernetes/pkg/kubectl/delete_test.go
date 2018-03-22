@@ -30,8 +30,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/apimachinery/pkg/watch"
 	testcore "k8s.io/client-go/testing"
-	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/batch"
+	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/fake"
 	coreclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
@@ -64,7 +64,7 @@ func TestReplicationControllerStop(t *testing.T) {
 				},
 			},
 			StopError:       nil,
-			ExpectedActions: []string{"get", "list", "get", "update", "get", "delete"},
+			ExpectedActions: []string{"get", "list", "get", "update", "get", "get", "delete"},
 		},
 		{
 			Name: "NoOverlapping",
@@ -93,7 +93,7 @@ func TestReplicationControllerStop(t *testing.T) {
 				},
 			},
 			StopError:       nil,
-			ExpectedActions: []string{"get", "list", "get", "update", "get", "delete"},
+			ExpectedActions: []string{"get", "list", "get", "update", "get", "get", "delete"},
 		},
 		{
 			Name: "OverlappingError",
@@ -588,7 +588,7 @@ func (c *reaperCoreFake) Pods(namespace string) coreclient.PodInterface {
 	return pods
 }
 
-func pod() *api.Pod {
+func newPod() *api.Pod {
 	return &api.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceDefault, Name: "foo"}}
 }
 
@@ -602,7 +602,7 @@ func TestSimpleStop(t *testing.T) {
 	}{
 		{
 			fake: &reaperFake{
-				Clientset: fake.NewSimpleClientset(pod()),
+				Clientset: fake.NewSimpleClientset(newPod()),
 			},
 			kind: api.Kind("Pod"),
 			actions: []testcore.Action{
@@ -624,7 +624,7 @@ func TestSimpleStop(t *testing.T) {
 		},
 		{
 			fake: &reaperFake{
-				Clientset:   fake.NewSimpleClientset(pod()),
+				Clientset:   fake.NewSimpleClientset(newPod()),
 				noDeletePod: true,
 			},
 			kind: api.Kind("Pod"),

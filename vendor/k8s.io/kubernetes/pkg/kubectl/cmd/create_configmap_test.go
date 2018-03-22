@@ -21,18 +21,25 @@ import (
 	"net/http"
 	"testing"
 
+	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest/fake"
-	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
+	"k8s.io/kubernetes/pkg/kubectl/scheme"
 )
 
 func TestCreateConfigMap(t *testing.T) {
-	configMap := &api.ConfigMap{}
+	configMap := &v1.ConfigMap{}
 	configMap.Name = "my-configmap"
-	f, tf, codec, ns := cmdtesting.NewAPIFactory()
-	tf.Printer = &testPrinter{}
+	tf := cmdtesting.NewTestFactory()
+	defer tf.Cleanup()
+
+	codec := legacyscheme.Codecs.LegacyCodec(scheme.Versions...)
+	ns := legacyscheme.Codecs
+
 	tf.Client = &fake.RESTClient{
-		APIRegistry:          api.Registry,
+		GroupVersion:         schema.GroupVersion{Group: "", Version: "v1"},
 		NegotiatedSerializer: ns,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
@@ -46,7 +53,7 @@ func TestCreateConfigMap(t *testing.T) {
 	}
 	tf.Namespace = "test"
 	buf := bytes.NewBuffer([]byte{})
-	cmd := NewCmdCreateConfigMap(f, buf)
+	cmd := NewCmdCreateConfigMap(tf, buf)
 	cmd.Flags().Set("output", "name")
 	cmd.Run(cmd, []string{configMap.Name})
 	expectedOutput := "configmap/" + configMap.Name + "\n"

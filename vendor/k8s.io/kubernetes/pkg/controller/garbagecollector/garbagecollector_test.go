@@ -17,16 +17,18 @@ limitations under the License.
 package garbagecollector
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
-	_ "k8s.io/kubernetes/pkg/api/install"
+	_ "k8s.io/kubernetes/pkg/apis/core/install"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -37,12 +39,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	"k8s.io/kubernetes/pkg/controller/garbagecollector/metaonly"
 )
 
@@ -56,7 +60,7 @@ func TestGarbageCollectorConstruction(t *testing.T) {
 	config := &restclient.Config{}
 	config.ContentConfig.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: metaonly.NewMetadataCodecFactory()}
 	tweakableRM := meta.NewDefaultRESTMapper(nil, nil)
-	rm := &testRESTMapper{meta.MultiRESTMapper{tweakableRM, api.Registry.RESTMapper()}}
+	rm := &testRESTMapper{meta.MultiRESTMapper{tweakableRM, legacyscheme.Registry.RESTMapper()}}
 	metaOnlyClientPool := dynamic.NewClientPool(config, rm, dynamic.LegacyAPIPathResolverFunc)
 	config.ContentConfig.NegotiatedSerializer = nil
 	clientPool := dynamic.NewClientPool(config, rm, dynamic.LegacyAPIPathResolverFunc)
@@ -140,18 +144,34 @@ type fakeActionHandler struct {
 
 // ServeHTTP logs the action that occurred and always returns the associated status code
 func (f *fakeActionHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
-	f.lock.Lock()
-	defer f.lock.Unlock()
+	func() {
+		f.lock.Lock()
+		defer f.lock.Unlock()
 
-	f.actions = append(f.actions, fakeAction{method: request.Method, path: request.URL.Path, query: request.URL.RawQuery})
-	fakeResponse, ok := f.response[request.Method+request.URL.Path]
-	if !ok {
-		fakeResponse.statusCode = 200
-		fakeResponse.content = []byte("{\"kind\": \"List\"}")
+		f.actions = append(f.actions, fakeAction{method: request.Method, path: request.URL.Path, query: request.URL.RawQuery})
+		fakeResponse, ok := f.response[request.Method+request.URL.Path]
+		if !ok {
+			fakeResponse.statusCode = 200
+			fakeResponse.content = []byte("{\"kind\": \"List\"}")
+		}
+		response.Header().Set("Content-Type", "application/json")
+		response.WriteHeader(fakeResponse.statusCode)
+		response.Write(fakeResponse.content)
+	}()
+
+	// This is to allow the fakeActionHandler to simulate a watch being opened
+	if strings.Contains(request.URL.RawQuery, "watch=true") {
+		hijacker, ok := response.(http.Hijacker)
+		if !ok {
+			return
+		}
+		connection, _, err := hijacker.Hijack()
+		if err != nil {
+			return
+		}
+		defer connection.Close()
+		time.Sleep(30 * time.Second)
 	}
-	response.Header().Set("Content-Type", "application/json")
-	response.WriteHeader(fakeResponse.statusCode)
-	response.Write(fakeResponse.content)
 }
 
 // testServerAndClientConfig returns a server that listens and a config that can reference it
@@ -170,15 +190,15 @@ type garbageCollector struct {
 
 func setupGC(t *testing.T, config *restclient.Config) garbageCollector {
 	config.ContentConfig.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: metaonly.NewMetadataCodecFactory()}
-	metaOnlyClientPool := dynamic.NewClientPool(config, api.Registry.RESTMapper(), dynamic.LegacyAPIPathResolverFunc)
+	metaOnlyClientPool := dynamic.NewClientPool(config, legacyscheme.Registry.RESTMapper(), dynamic.LegacyAPIPathResolverFunc)
 	config.ContentConfig.NegotiatedSerializer = nil
-	clientPool := dynamic.NewClientPool(config, api.Registry.RESTMapper(), dynamic.LegacyAPIPathResolverFunc)
+	clientPool := dynamic.NewClientPool(config, legacyscheme.Registry.RESTMapper(), dynamic.LegacyAPIPathResolverFunc)
 	podResource := map[schema.GroupVersionResource]struct{}{{Version: "v1", Resource: "pods"}: {}}
 	client := fake.NewSimpleClientset()
 	sharedInformers := informers.NewSharedInformerFactory(client, 0)
 	alwaysStarted := make(chan struct{})
 	close(alwaysStarted)
-	gc, err := NewGarbageCollector(metaOnlyClientPool, clientPool, &testRESTMapper{api.Registry.RESTMapper()}, podResource, ignoredResources, sharedInformers, alwaysStarted)
+	gc, err := NewGarbageCollector(metaOnlyClientPool, clientPool, &testRESTMapper{legacyscheme.Registry.RESTMapper()}, podResource, ignoredResources, sharedInformers, alwaysStarted)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -413,7 +433,7 @@ func TestGCListWatcher(t *testing.T) {
 	testHandler := &fakeActionHandler{}
 	srv, clientConfig := testServerAndClientConfig(testHandler.ServeHTTP)
 	defer srv.Close()
-	clientPool := dynamic.NewClientPool(clientConfig, api.Registry.RESTMapper(), dynamic.LegacyAPIPathResolverFunc)
+	clientPool := dynamic.NewClientPool(clientConfig, legacyscheme.Registry.RESTMapper(), dynamic.LegacyAPIPathResolverFunc)
 	podResource := schema.GroupVersionResource{Version: "v1", Resource: "pods"}
 	client, err := clientPool.ClientForGroupVersionResource(podResource)
 	if err != nil {
@@ -670,4 +690,230 @@ func TestOrphanDependentsFailure(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), expected) {
 		t.Errorf("expected error contains text %s, got %v", expected, err)
 	}
+}
+
+// TestGetDeletableResources ensures GetDeletableResources always returns
+// something usable regardless of discovery output.
+func TestGetDeletableResources(t *testing.T) {
+	tests := map[string]struct {
+		serverResources    []*metav1.APIResourceList
+		err                error
+		deletableResources map[schema.GroupVersionResource]struct{}
+	}{
+		"no error": {
+			serverResources: []*metav1.APIResourceList{
+				{
+					// Valid GroupVersion
+					GroupVersion: "apps/v1",
+					APIResources: []metav1.APIResource{
+						{Name: "pods", Namespaced: true, Kind: "Pod", Verbs: metav1.Verbs{"delete", "list", "watch"}},
+						{Name: "services", Namespaced: true, Kind: "Service"},
+					},
+				},
+				{
+					// Invalid GroupVersion, should be ignored
+					GroupVersion: "foo//whatever",
+					APIResources: []metav1.APIResource{
+						{Name: "bars", Namespaced: true, Kind: "Bar", Verbs: metav1.Verbs{"delete", "list", "watch"}},
+					},
+				},
+				{
+					// Valid GroupVersion, missing required verbs, should be ignored
+					GroupVersion: "acme/v1",
+					APIResources: []metav1.APIResource{
+						{Name: "widgets", Namespaced: true, Kind: "Widget", Verbs: metav1.Verbs{"delete"}},
+					},
+				},
+			},
+			err: nil,
+			deletableResources: map[schema.GroupVersionResource]struct{}{
+				{Group: "apps", Version: "v1", Resource: "pods"}: {},
+			},
+		},
+		"nonspecific failure, includes usable results": {
+			serverResources: []*metav1.APIResourceList{
+				{
+					GroupVersion: "apps/v1",
+					APIResources: []metav1.APIResource{
+						{Name: "pods", Namespaced: true, Kind: "Pod", Verbs: metav1.Verbs{"delete", "list", "watch"}},
+						{Name: "services", Namespaced: true, Kind: "Service"},
+					},
+				},
+			},
+			err: fmt.Errorf("internal error"),
+			deletableResources: map[schema.GroupVersionResource]struct{}{
+				{Group: "apps", Version: "v1", Resource: "pods"}: {},
+			},
+		},
+		"partial discovery failure, includes usable results": {
+			serverResources: []*metav1.APIResourceList{
+				{
+					GroupVersion: "apps/v1",
+					APIResources: []metav1.APIResource{
+						{Name: "pods", Namespaced: true, Kind: "Pod", Verbs: metav1.Verbs{"delete", "list", "watch"}},
+						{Name: "services", Namespaced: true, Kind: "Service"},
+					},
+				},
+			},
+			err: &discovery.ErrGroupDiscoveryFailed{
+				Groups: map[schema.GroupVersion]error{
+					{Group: "foo", Version: "v1"}: fmt.Errorf("discovery failure"),
+				},
+			},
+			deletableResources: map[schema.GroupVersionResource]struct{}{
+				{Group: "apps", Version: "v1", Resource: "pods"}: {},
+			},
+		},
+		"discovery failure, no results": {
+			serverResources:    nil,
+			err:                fmt.Errorf("internal error"),
+			deletableResources: map[schema.GroupVersionResource]struct{}{},
+		},
+	}
+
+	for name, test := range tests {
+		t.Logf("testing %q", name)
+		client := &fakeServerResources{
+			PreferredResources: test.serverResources,
+			Error:              test.err,
+		}
+		actual := GetDeletableResources(client)
+		if !reflect.DeepEqual(test.deletableResources, actual) {
+			t.Errorf("expected resources:\n%v\ngot:\n%v", test.deletableResources, actual)
+		}
+	}
+}
+
+// TestGarbageCollectorSync ensures that a discovery client error
+// will not cause the garbage collector to block infinitely.
+func TestGarbageCollectorSync(t *testing.T) {
+	serverResources := []*metav1.APIResourceList{
+		{
+			GroupVersion: "v1",
+			APIResources: []metav1.APIResource{
+				{Name: "pods", Namespaced: true, Kind: "Pod", Verbs: metav1.Verbs{"delete", "list", "watch"}},
+			},
+		},
+	}
+	fakeDiscoveryClient := &fakeServerResources{
+		PreferredResources: serverResources,
+		Error:              nil,
+		Lock:               sync.Mutex{},
+		InterfaceUsedCount: 0,
+	}
+
+	testHandler := &fakeActionHandler{
+		response: map[string]FakeResponse{
+			"GET" + "/api/v1/pods": {
+				200,
+				[]byte("{}"),
+			},
+		},
+	}
+	srv, clientConfig := testServerAndClientConfig(testHandler.ServeHTTP)
+	defer srv.Close()
+	clientConfig.ContentConfig.NegotiatedSerializer = nil
+	client, err := kubernetes.NewForConfig(clientConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rm := &testRESTMapper{legacyscheme.Registry.RESTMapper()}
+	metaOnlyClientPool := dynamic.NewClientPool(clientConfig, rm, dynamic.LegacyAPIPathResolverFunc)
+	clientPool := dynamic.NewClientPool(clientConfig, rm, dynamic.LegacyAPIPathResolverFunc)
+	podResource := map[schema.GroupVersionResource]struct{}{
+		{Group: "", Version: "v1", Resource: "pods"}: {},
+	}
+	sharedInformers := informers.NewSharedInformerFactory(client, 0)
+	alwaysStarted := make(chan struct{})
+	close(alwaysStarted)
+	gc, err := NewGarbageCollector(metaOnlyClientPool, clientPool, rm, podResource, map[schema.GroupResource]struct{}{}, sharedInformers, alwaysStarted)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	go gc.Run(1, stopCh)
+	go gc.Sync(fakeDiscoveryClient, 10*time.Millisecond, stopCh)
+
+	// Wait until the sync discovers the initial resources
+	fmt.Printf("Test output")
+	time.Sleep(1 * time.Second)
+
+	err = expectSyncNotBlocked(fakeDiscoveryClient)
+	if err != nil {
+		t.Fatalf("Expected garbagecollector.Sync to be running but it is blocked: %v", err)
+	}
+
+	// Simulate the discovery client returning an error
+	fakeDiscoveryClient.setPreferredResources(nil)
+	fakeDiscoveryClient.setError(fmt.Errorf("Error calling discoveryClient.ServerPreferredResources()"))
+
+	// Wait until sync discovers the change
+	time.Sleep(1 * time.Second)
+
+	// Remove the error from being returned and see if the garbage collector sync is still working
+	fakeDiscoveryClient.setPreferredResources(serverResources)
+	fakeDiscoveryClient.setError(nil)
+
+	err = expectSyncNotBlocked(fakeDiscoveryClient)
+	if err != nil {
+		t.Fatalf("Expected garbagecollector.Sync to still be running but it is blocked: %v", err)
+	}
+}
+
+func expectSyncNotBlocked(fakeDiscoveryClient *fakeServerResources) error {
+	before := fakeDiscoveryClient.getInterfaceUsedCount()
+	t := 1 * time.Second
+	time.Sleep(t)
+	after := fakeDiscoveryClient.getInterfaceUsedCount()
+	if before == after {
+		return fmt.Errorf("discoveryClient.ServerPreferredResources() called %d times over %v", after-before, t)
+	}
+	return nil
+}
+
+type fakeServerResources struct {
+	PreferredResources []*metav1.APIResourceList
+	Error              error
+	Lock               sync.Mutex
+	InterfaceUsedCount int
+}
+
+func (_ *fakeServerResources) ServerResourcesForGroupVersion(groupVersion string) (*metav1.APIResourceList, error) {
+	return nil, nil
+}
+
+func (_ *fakeServerResources) ServerResources() ([]*metav1.APIResourceList, error) {
+	return nil, nil
+}
+
+func (f *fakeServerResources) ServerPreferredResources() ([]*metav1.APIResourceList, error) {
+	f.Lock.Lock()
+	defer f.Lock.Unlock()
+	f.InterfaceUsedCount++
+	return f.PreferredResources, f.Error
+}
+
+func (f *fakeServerResources) setPreferredResources(resources []*metav1.APIResourceList) {
+	f.Lock.Lock()
+	defer f.Lock.Unlock()
+	f.PreferredResources = resources
+}
+
+func (f *fakeServerResources) setError(err error) {
+	f.Lock.Lock()
+	defer f.Lock.Unlock()
+	f.Error = err
+}
+
+func (f *fakeServerResources) getInterfaceUsedCount() int {
+	f.Lock.Lock()
+	defer f.Lock.Unlock()
+	return f.InterfaceUsedCount
+}
+
+func (_ *fakeServerResources) ServerPreferredNamespacedResources() ([]*metav1.APIResourceList, error) {
+	return nil, nil
 }

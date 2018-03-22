@@ -27,9 +27,9 @@ import (
 	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
 	restclient "k8s.io/client-go/rest"
-	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	authorizationapi "k8s.io/kubernetes/pkg/apis/authorization"
+	api "k8s.io/kubernetes/pkg/apis/core"
 	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/plugin/pkg/admission/admit"
 	"k8s.io/kubernetes/test/integration/framework"
@@ -39,12 +39,12 @@ import (
 // TODO(etune): remove this test once a more comprehensive built-in authorizer is implemented.
 type sarAuthorizer struct{}
 
-func (sarAuthorizer) Authorize(a authorizer.Attributes) (bool, string, error) {
+func (sarAuthorizer) Authorize(a authorizer.Attributes) (authorizer.Decision, string, error) {
 	if a.GetUser().GetName() == "dave" {
-		return false, "no", errors.New("I'm sorry, Dave")
+		return authorizer.DecisionNoOpinion, "no", errors.New("I'm sorry, Dave")
 	}
 
-	return true, "you're not dave", nil
+	return authorizer.DecisionAllow, "you're not dave", nil
 }
 
 func alwaysAlice(req *http.Request) (user.Info, bool, error) {
@@ -55,8 +55,8 @@ func alwaysAlice(req *http.Request) (user.Info, bool, error) {
 
 func TestSubjectAccessReview(t *testing.T) {
 	masterConfig := framework.NewIntegrationTestMasterConfig()
-	masterConfig.GenericConfig.Authenticator = authenticator.RequestFunc(alwaysAlice)
-	masterConfig.GenericConfig.Authorizer = sarAuthorizer{}
+	masterConfig.GenericConfig.Authentication.Authenticator = authenticator.RequestFunc(alwaysAlice)
+	masterConfig.GenericConfig.Authorization.Authorizer = sarAuthorizer{}
 	masterConfig.GenericConfig.AdmissionControl = admit.NewAlwaysAdmit()
 	_, s, closeFn := framework.RunAMaster(masterConfig)
 	defer closeFn()
@@ -147,10 +147,10 @@ func TestSubjectAccessReview(t *testing.T) {
 func TestSelfSubjectAccessReview(t *testing.T) {
 	username := "alice"
 	masterConfig := framework.NewIntegrationTestMasterConfig()
-	masterConfig.GenericConfig.Authenticator = authenticator.RequestFunc(func(req *http.Request) (user.Info, bool, error) {
+	masterConfig.GenericConfig.Authentication.Authenticator = authenticator.RequestFunc(func(req *http.Request) (user.Info, bool, error) {
 		return &user.DefaultInfo{Name: username}, true, nil
 	})
-	masterConfig.GenericConfig.Authorizer = sarAuthorizer{}
+	masterConfig.GenericConfig.Authorization.Authorizer = sarAuthorizer{}
 	masterConfig.GenericConfig.AdmissionControl = admit.NewAlwaysAdmit()
 	_, s, closeFn := framework.RunAMaster(masterConfig)
 	defer closeFn()
@@ -229,8 +229,8 @@ func TestSelfSubjectAccessReview(t *testing.T) {
 
 func TestLocalSubjectAccessReview(t *testing.T) {
 	masterConfig := framework.NewIntegrationTestMasterConfig()
-	masterConfig.GenericConfig.Authenticator = authenticator.RequestFunc(alwaysAlice)
-	masterConfig.GenericConfig.Authorizer = sarAuthorizer{}
+	masterConfig.GenericConfig.Authentication.Authenticator = authenticator.RequestFunc(alwaysAlice)
+	masterConfig.GenericConfig.Authorization.Authorizer = sarAuthorizer{}
 	masterConfig.GenericConfig.AdmissionControl = admit.NewAlwaysAdmit()
 	_, s, closeFn := framework.RunAMaster(masterConfig)
 	defer closeFn()

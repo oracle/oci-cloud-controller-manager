@@ -21,9 +21,11 @@ import (
 	"net/http"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest/fake"
-	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
+	"k8s.io/kubernetes/pkg/kubectl/scheme"
 )
 
 func TestExtraArgsFail(t *testing.T) {
@@ -31,9 +33,12 @@ func TestExtraArgsFail(t *testing.T) {
 	buf := bytes.NewBuffer([]byte{})
 	errBuf := bytes.NewBuffer([]byte{})
 
-	f, _, _, _ := cmdtesting.NewAPIFactory()
+	f := cmdtesting.NewTestFactory()
+	defer f.Cleanup()
+
 	c := NewCmdCreate(f, buf, errBuf)
-	if ValidateArgs(c, []string{"rc"}) == nil {
+	options := CreateOptions{}
+	if options.ValidateArgs(c, []string{"rc"}) == nil {
 		t.Errorf("unexpected non-error")
 	}
 }
@@ -43,10 +48,13 @@ func TestCreateObject(t *testing.T) {
 	_, _, rc := testData()
 	rc.Items[0].Name = "redis-master-controller"
 
-	f, tf, codec, _ := cmdtesting.NewAPIFactory()
-	tf.Printer = &testPrinter{}
+	tf := cmdtesting.NewTestFactory()
+	defer tf.Cleanup()
+
+	codec := legacyscheme.Codecs.LegacyCodec(scheme.Versions...)
+
 	tf.UnstructuredClient = &fake.RESTClient{
-		APIRegistry:          api.Registry,
+		GroupVersion:         schema.GroupVersion{Version: "v1"},
 		NegotiatedSerializer: unstructuredSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
@@ -62,7 +70,7 @@ func TestCreateObject(t *testing.T) {
 	buf := bytes.NewBuffer([]byte{})
 	errBuf := bytes.NewBuffer([]byte{})
 
-	cmd := NewCmdCreate(f, buf, errBuf)
+	cmd := NewCmdCreate(tf, buf, errBuf)
 	cmd.Flags().Set("filename", "../../../examples/guestbook/legacy/redis-master-controller.yaml")
 	cmd.Flags().Set("output", "name")
 	cmd.Run(cmd, []string{})
@@ -77,10 +85,13 @@ func TestCreateMultipleObject(t *testing.T) {
 	initTestErrorHandler(t)
 	_, svc, rc := testData()
 
-	f, tf, codec, _ := cmdtesting.NewAPIFactory()
-	tf.Printer = &testPrinter{}
+	tf := cmdtesting.NewTestFactory()
+	defer tf.Cleanup()
+
+	codec := legacyscheme.Codecs.LegacyCodec(scheme.Versions...)
+
 	tf.UnstructuredClient = &fake.RESTClient{
-		APIRegistry:          api.Registry,
+		GroupVersion:         schema.GroupVersion{Version: "v1"},
 		NegotiatedSerializer: unstructuredSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
@@ -98,7 +109,7 @@ func TestCreateMultipleObject(t *testing.T) {
 	buf := bytes.NewBuffer([]byte{})
 	errBuf := bytes.NewBuffer([]byte{})
 
-	cmd := NewCmdCreate(f, buf, errBuf)
+	cmd := NewCmdCreate(tf, buf, errBuf)
 	cmd.Flags().Set("filename", "../../../examples/guestbook/legacy/redis-master-controller.yaml")
 	cmd.Flags().Set("filename", "../../../examples/guestbook/frontend-service.yaml")
 	cmd.Flags().Set("output", "name")
@@ -115,10 +126,13 @@ func TestCreateDirectory(t *testing.T) {
 	_, _, rc := testData()
 	rc.Items[0].Name = "name"
 
-	f, tf, codec, _ := cmdtesting.NewAPIFactory()
-	tf.Printer = &testPrinter{}
+	tf := cmdtesting.NewTestFactory()
+	defer tf.Cleanup()
+
+	codec := legacyscheme.Codecs.LegacyCodec(scheme.Versions...)
+
 	tf.UnstructuredClient = &fake.RESTClient{
-		APIRegistry:          api.Registry,
+		GroupVersion:         schema.GroupVersion{Version: "v1"},
 		NegotiatedSerializer: unstructuredSerializer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
@@ -134,7 +148,7 @@ func TestCreateDirectory(t *testing.T) {
 	buf := bytes.NewBuffer([]byte{})
 	errBuf := bytes.NewBuffer([]byte{})
 
-	cmd := NewCmdCreate(f, buf, errBuf)
+	cmd := NewCmdCreate(tf, buf, errBuf)
 	cmd.Flags().Set("filename", "../../../examples/guestbook/legacy")
 	cmd.Flags().Set("output", "name")
 	cmd.Run(cmd, []string{})
