@@ -259,6 +259,11 @@ func TestGetBackendSetChanges(t *testing.T) {
 							{IpAddress: common.String("0.0.0.1"), Port: common.Int(80)},
 						},
 					},
+					OldBackendSet: &loadbalancer.BackendSetDetails{
+						Backends: []loadbalancer.BackendDetails{
+							{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
+						},
+					},
 				},
 			},
 		},
@@ -287,6 +292,12 @@ func TestGetBackendSetChanges(t *testing.T) {
 					BackendSet: loadbalancer.BackendSetDetails{
 						Backends: []loadbalancer.BackendDetails{
 							{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
+						},
+					},
+					OldBackendSet: &loadbalancer.BackendSetDetails{
+						Backends: []loadbalancer.BackendDetails{
+							{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
+							{IpAddress: common.String("0.0.0.1"), Port: common.Int(80)},
 						},
 					},
 				},

@@ -419,13 +419,13 @@ func (cp *CloudProvider) updateBackendSet(ctx context.Context, lbOCID string, ac
 
 	bs := action.BackendSet
 
-	glog.V(2).Infof("Applying %q action on backend set %q for lb %q", action.Type(), action.Name(), lbOCID)
-
 	if len(bs.Backends) < 1 {
 		return errors.New("no backends provided")
 	}
 	backendPort := *bs.Backends[0].Port
 	healthCheckPort := *bs.HealthChecker.Port
+
+	glog.V(2).Infof("Applying %q action on backend set %q for lb %q (listenerPort=%d backendPort=%d healthCheckPort=%d)", action.Type(), action.Name(), lbOCID, listenerPort, backendPort, healthCheckPort)
 
 	switch action.Type() {
 	case Create:
@@ -436,11 +436,17 @@ func (cp *CloudProvider) updateBackendSet(ctx context.Context, lbOCID string, ac
 
 		workRequestID, err = cp.client.LoadBalancer().CreateBackendSet(ctx, lbOCID, action.Name(), bs)
 	case Update:
-		err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, listenerPort, backendPort, healthCheckPort)
-		if err != nil {
+		// FIXME(apryde): This is inelegant and inefficient. Update() should be refactored
+		// to take the old backend port and handle removal of associated rules.
+		if action.OldBackendSet != nil && *action.OldBackendSet.Backends[0].Port != backendPort {
+			oldBackendPort := *action.OldBackendSet.Backends[0].Port
+			if err = cp.securityListManager.Delete(ctx, lbSubnets, nodeSubnets, listenerPort, oldBackendPort, healthCheckPort); err != nil {
+				return errors.Wrapf(err, "deleting security rule for old node port %d", oldBackendPort)
+			}
+		}
+		if err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, listenerPort, backendPort, healthCheckPort); err != nil {
 			return err
 		}
-
 		workRequestID, err = cp.client.LoadBalancer().UpdateBackendSet(ctx, lbOCID, action.Name(), bs)
 	case Delete:
 		err = cp.securityListManager.Delete(ctx, lbSubnets, nodeSubnets, listenerPort, backendPort, healthCheckPort)
@@ -567,35 +573,30 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(clusterName string, service *
 	if err != nil {
 		return errors.Wrap(err, "fetching nodes by internal ips")
 	}
-
-	spec, err := NewLBSpec(service, nodes, []string{cp.config.LoadBalancer.Subnet1, cp.config.LoadBalancer.Subnet2}, nil)
-	if err != nil {
-		return errors.Wrap(err, "new lb spec")
-	}
-
-	lbSubnets, err := getSubnets(context.TODO(), spec.Subnets, cp.client.Networking())
-	if err != nil {
-		return errors.Wrap(err, "getting subnets for load balancers")
-	}
 	nodeSubnets, err := getSubnetsForNodes(context.TODO(), nodes, cp.client)
 	if err != nil {
 		return errors.Wrap(err, "getting subnets for nodes")
 	}
 
-	for listenerName, listener := range spec.GetListeners() {
+	lbSubnets, err := getSubnets(context.TODO(), lb.SubnetIds, cp.client.Networking())
+	if err != nil {
+		return errors.Wrap(err, "getting subnets for load balancers")
+	}
+
+	for listenerName, listener := range lb.Listeners {
 		glog.V(4).Infof("Deleting security rules for listener %q for load balancer %q", listenerName, id)
 
 		backendSetName := *listener.DefaultBackendSetName
-		bs, ok := spec.GetBackendSets()[backendSetName]
+		bs, ok := lb.BackendSets[backendSetName]
 		if !ok {
-			return errors.Errorf("no backend set %q in spec", backendSetName)
+			return errors.Errorf("backend set %q missing (loadbalancer=%q)", backendSetName, id)
 		}
 		if len(bs.Backends) < 1 {
-			return errors.Errorf("backend set %q has no backends", backendSetName)
+			return errors.Errorf("backend set %q has no backends (loadbalancer=%q)", backendSetName, id)
 		}
 		backendPort := *bs.Backends[0].Port
 		if bs.HealthChecker == nil {
-			return errors.Errorf("backend set %q has no health checker", backendSetName)
+			return errors.Errorf("backend set %q has no health checker (loadbalancer=%q)", backendSetName, id)
 		}
 		healthCheckPort := *bs.HealthChecker.Port
 
@@ -613,8 +614,8 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(clusterName string, service *
 	if err != nil {
 		return errors.Wrapf(err, "awaiting deletion of load balancer %q", name)
 	}
-
 	glog.Infof("Deleted load balancer %q (OCID: %q)", name, id)
+
 	return nil
 }
 
