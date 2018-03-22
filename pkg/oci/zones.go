@@ -39,7 +39,7 @@ func mapAvailabilityDomainToFailureDomain(AD string) string {
 
 // GetZone returns the Zone containing the current failure zone and locality
 // region that the program is running in.
-func (cp *CloudProvider) GetZone() (cloudprovider.Zone, error) {
+func (cp *CloudProvider) GetZone(ctx context.Context) (cloudprovider.Zone, error) {
 	return cloudprovider.Zone{}, errors.New("unimplemented")
 }
 
@@ -47,9 +47,9 @@ func (cp *CloudProvider) GetZone() (cloudprovider.Zone, error) {
 // locality region of the node specified by providerID This method is
 // particularly used in the context of external cloud providers where node
 // initialization must be down outside the kubelets.
-func (cp *CloudProvider) GetZoneByProviderID(providerID string) (cloudprovider.Zone, error) {
+func (cp *CloudProvider) GetZoneByProviderID(ctx context.Context, providerID string) (cloudprovider.Zone, error) {
 	instanceID := util.MapProviderIDToInstanceID(providerID)
-	instance, err := cp.client.Compute().GetInstance(context.TODO(), instanceID)
+	instance, err := cp.client.Compute().GetInstance(ctx, instanceID)
 	if err != nil {
 		return cloudprovider.Zone{}, err
 	}
@@ -63,8 +63,8 @@ func (cp *CloudProvider) GetZoneByProviderID(providerID string) (cloudprovider.Z
 // region of the node specified by node name This method is particularly used
 // in the context of external cloud providers where node initialization must be
 // down outside the kubelets.
-func (cp *CloudProvider) GetZoneByNodeName(nodeName types.NodeName) (cloudprovider.Zone, error) {
-	instance, err := cp.client.Compute().GetInstanceByNodeName(context.TODO(), mapNodeNameToInstanceName(nodeName))
+func (cp *CloudProvider) GetZoneByNodeName(ctx context.Context, nodeName types.NodeName) (cloudprovider.Zone, error) {
+	instance, err := cp.client.Compute().GetInstanceByNodeName(ctx, mapNodeNameToInstanceName(nodeName))
 	if err != nil {
 		return cloudprovider.Zone{}, err
 	}

@@ -62,7 +62,7 @@ build-dirs:
 
 .PHONY: build
 build: build-dirs manifests
-	@GOOS=${GOOS} GOARCH=${ARCH} go build -v  \
+	@GOOS=${GOOS} GOARCH=${ARCH} go build     \
 	    -i                                    \
 	    -o dist/oci-cloud-controller-manager  \
 	    -installsuffix "static"               \
@@ -90,11 +90,11 @@ deploy:
 
 .PHONY: run-dev
 run-dev: build
-	dist/oci-cloud-controller-manager             \
-	    --kubeconfig=${KUBECONFIG}                \
-	    --cloud-config=${CLOUD_PROVIDER_CFG}      \
-	    --cluster-cidr=10.244.0.0/16              \
-	    --cloud-provider=external                 \
+	@dist/oci-cloud-controller-manager        \
+	    --kubeconfig=${KUBECONFIG}           \
+	    --cloud-config=${CLOUD_PROVIDER_CFG} \
+	    --cluster-cidr=10.244.0.0/16         \
+	    --cloud-provider=oci                 \
 	    -v=4
 
 .PHONY: version

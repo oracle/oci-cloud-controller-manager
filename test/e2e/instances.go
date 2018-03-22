@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"net"
 
 	. "github.com/onsi/ginkgo"
@@ -61,7 +62,7 @@ var _ = Describe("Instances", func() {
 		Expect(nodeName).NotTo(BeEmpty())
 
 		By("calling NodeAddresses()")
-		addresses, err := instances.NodeAddresses(nodeName)
+		addresses, err := instances.NodeAddresses(context.Background(), nodeName)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(len(addresses)).NotTo(BeZero())
 		framework.Logf("%q: addresses=%v", nodeName, addresses)
@@ -71,7 +72,7 @@ var _ = Describe("Instances", func() {
 		Expect(providerID).NotTo(BeEmpty())
 
 		By("calling NodeAddressesByProviderID()")
-		addresses2, err := instances.NodeAddressesByProviderID(providerID)
+		addresses2, err := instances.NodeAddressesByProviderID(context.Background(), providerID)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(len(addresses2)).NotTo(BeZero())
 		framework.Logf("%q (%s): addresses=%v", node.Name, providerID, addresses2)
@@ -85,13 +86,13 @@ var _ = Describe("Instances", func() {
 		Expect(nodeName).NotTo(BeEmpty())
 
 		By("calling ExternalID()")
-		providerID, err := instances.ExternalID(nodeName)
+		providerID, err := instances.ExternalID(context.Background(), nodeName)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(providerID).NotTo(BeEmpty())
 		framework.Logf("%q: providerID=%q", nodeName, providerID)
 
 		By("calling InstanceID()")
-		providerID2, err := instances.InstanceID(nodeName)
+		providerID2, err := instances.InstanceID(context.Background(), nodeName)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(providerID2).NotTo(BeEmpty())
 		framework.Logf("%q: providerID=%q", nodeName, providerID2)
@@ -104,7 +105,7 @@ var _ = Describe("Instances", func() {
 		Expect(nodeName).NotTo(BeEmpty())
 
 		By("calling InstanceType()")
-		instanceType, err := instances.InstanceType(nodeName)
+		instanceType, err := instances.InstanceType(context.Background(), nodeName)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(instanceType).NotTo(BeEmpty())
 		framework.Logf("%q: instanceType=%q", nodeName, instanceType)
@@ -113,7 +114,7 @@ var _ = Describe("Instances", func() {
 		Expect(providerID).NotTo(BeEmpty())
 
 		By("calling InstanceTypeByProviderID()")
-		instanceType2, err := instances.InstanceTypeByProviderID(providerID)
+		instanceType2, err := instances.InstanceTypeByProviderID(context.Background(), providerID)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(instanceType2).NotTo(BeEmpty())
 		framework.Logf("%q (%s): instanceType=%q", node.Name, providerID, instanceType2)
@@ -125,7 +126,7 @@ var _ = Describe("Instances", func() {
 		providerID := node.Spec.ProviderID
 		Expect(providerID).NotTo(BeEmpty())
 		By("calling InstanceExistsByProviderID()")
-		exists, err := instances.InstanceExistsByProviderID(providerID)
+		exists, err := instances.InstanceExistsByProviderID(context.Background(), providerID)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(exists).To(BeTrue())
 	})

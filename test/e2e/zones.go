@@ -15,6 +15,8 @@
 package e2e
 
 import (
+	"context"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -50,7 +52,7 @@ var _ = Describe("Zones", func() {
 		Expect(providerID).NotTo(BeEmpty())
 
 		By("calling GetZoneByProviderID()")
-		zone, err := zones.GetZoneByProviderID(providerID)
+		zone, err := zones.GetZoneByProviderID(context.Background(), providerID)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(zone.Region).NotTo(BeEmpty())
 		framework.Logf("%q: Region=%q", providerID, zone.Region)
@@ -63,7 +65,7 @@ var _ = Describe("Zones", func() {
 		Expect(nodeName).NotTo(BeEmpty())
 
 		By("calling GetZoneByNodeName()")
-		zone, err := zones.GetZoneByNodeName(nodeName)
+		zone, err := zones.GetZoneByNodeName(context.Background(), nodeName)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(zone.Region).NotTo(BeEmpty())
 		framework.Logf("%q: Region=%q", nodeName, zone.Region)
