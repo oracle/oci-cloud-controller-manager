@@ -18,7 +18,6 @@ import (
 	"context"
 
 	"github.com/golang/glog"
-	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/core"
 	"github.com/oracle/oci-go-sdk/loadbalancer"
 	"github.com/pkg/errors"
@@ -27,7 +26,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	sets "k8s.io/apimachinery/pkg/util/sets"
-	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
 	k8sports "k8s.io/kubernetes/pkg/master/ports"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
@@ -197,7 +195,7 @@ func (cp *CloudProvider) readSSLSecret(svc *api.Service) (string, string, error)
 
 // ensureSSLCertificate creates a OCI SSL certificate to the given load
 // balancer, if it doesn't already exist.
-func (cp *CloudProvider) ensureSSLCertificate(ctx context.Context, spec LBSpec, lb *loadbalancer.LoadBalancer) error {
+func (cp *CloudProvider) ensureSSLCertificate(ctx context.Context, lb *loadbalancer.LoadBalancer, spec *LBSpec) error {
 	name := spec.SSLConfig.Name
 	_, err := cp.client.LoadBalancer().GetCertificateByName(ctx, *lb.Id, name)
 	if err == nil {
@@ -208,9 +206,8 @@ func (cp *CloudProvider) ensureSSLCertificate(ctx context.Context, spec LBSpec, 
 		return err
 	}
 
-	// Although we iterate here only one certificate is supported at the
-	// moment as specifying a
-	certs, err := spec.GetCertificates()
+	// Although we iterate here only one certificate is supported at the moment.
+	certs, err := spec.Certificates()
 	if err != nil {
 		return err
 	}
@@ -230,7 +227,7 @@ func (cp *CloudProvider) ensureSSLCertificate(ctx context.Context, spec LBSpec, 
 }
 
 // createLoadBalancer creates a new OCI load balancer based on the given spec.
-func (cp *CloudProvider) createLoadBalancer(ctx context.Context, spec LBSpec, sourceCIDRs []string) (*api.LoadBalancerStatus, error) {
+func (cp *CloudProvider) createLoadBalancer(ctx context.Context, spec *LBSpec) (*api.LoadBalancerStatus, error) {
 	glog.Infof("Attempting to create a new load balancer with name %q", spec.Name)
 
 	// First update the security lists so that if it fails (due to
@@ -239,40 +236,41 @@ func (cp *CloudProvider) createLoadBalancer(ctx context.Context, spec LBSpec, so
 	if err != nil {
 		return nil, errors.Wrap(err, "getting subnets for load balancers")
 	}
-	nodeSubnets, err := getSubnetsForNodes(ctx, spec.Nodes, cp.client)
+	nodeSubnets, err := getSubnetsForNodes(ctx, spec.nodes, cp.client)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting subnets for nodes")
 	}
 
-	for name, bs := range spec.GetBackendSets() {
+	for name, bs := range spec.BackendSets {
 		backendPort := *bs.Backends[0].Port
 		healthCheckPort := *bs.HealthChecker.Port
-		listenerPort := *spec.GetListeners()[name].Port
-		if err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, listenerPort, backendPort, healthCheckPort); err != nil {
+		listenerPort := *spec.Listeners[name].Port
+		if err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, spec.SourceCIDRs, listenerPort, backendPort, healthCheckPort); err != nil {
 			return nil, err
 		}
 	}
 
 	// Then we create the load balancer and wait for it to be online.
-	certs, err := spec.GetCertificates()
+	certs, err := spec.Certificates()
 	if err != nil {
 		return nil, errors.Wrap(err, "get certificates")
 	}
 	details := loadbalancer.CreateLoadBalancerDetails{
-		CompartmentId: common.String(cp.config.Auth.CompartmentOCID),
-		DisplayName:   common.String(spec.Name),
-		ShapeName:     common.String(spec.Shape),
-		IsPrivate:     common.Bool(spec.Internal),
+		CompartmentId: &cp.config.Auth.CompartmentOCID,
+		DisplayName:   &spec.Name,
+		ShapeName:     &spec.Shape,
+		IsPrivate:     &spec.Internal,
 		SubnetIds:     spec.Subnets,
-		BackendSets:   spec.GetBackendSets(),
-		Listeners:     spec.GetListeners(),
+		BackendSets:   spec.BackendSets,
+		Listeners:     spec.Listeners,
 		Certificates:  certs,
 	}
+
 	glog.V(4).Infof("CreateLoadBalancerDetails: %#v", details.String())
+
 	wrID, err := cp.client.LoadBalancer().CreateLoadBalancer(ctx, details)
 	if err != nil {
-		glog.Errorf("Failed to create load balancer: %+v", err)
-		return nil, err
+		return nil, errors.Wrap(err, "creating load balancer")
 	}
 	wr, err := cp.client.LoadBalancer().AwaitWorkRequest(ctx, wrID)
 	if err != nil {
@@ -283,6 +281,7 @@ func (cp *CloudProvider) createLoadBalancer(ctx context.Context, spec LBSpec, so
 	if err != nil {
 		return nil, errors.Wrapf(err, "get load balancer %q", *wr.LoadBalancerId)
 	}
+
 	glog.Infof("Created load balancer %q with OCID %q", *lb.DisplayName, *lb.Id)
 	return loadBalancerToStatus(lb)
 }
@@ -298,7 +297,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 	exists := !client.IsNotFound(err)
 
 	var ssl *SSLConfig
-	if needsCerts(service) {
+	if requiresCertificate(service) {
 		ports, err := getSSLEnabledPorts(service)
 		if err != nil {
 			return nil, err
@@ -308,19 +307,14 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 	subnets := []string{cp.config.LoadBalancer.Subnet1, cp.config.LoadBalancer.Subnet2}
 	spec, err := NewLBSpec(service, nodes, subnets, ssl)
 	if err != nil {
-		glog.Errorf("Failed to create LBSpec: %v", err)
-		return nil, err
-	}
-
-	sourceCIDRs, err := getLoadBalancerSourceRanges(service)
-	if err != nil {
+		glog.Errorf("Failed to derive LBSpec: %+v", err)
 		return nil, err
 	}
 
 	glog.V(4).Infof("Ensure load balancer %q called for %q with %d nodes.", spec.Name, service.Name, len(nodes))
 
 	if !exists {
-		return cp.createLoadBalancer(ctx, spec, sourceCIDRs)
+		return cp.createLoadBalancer(ctx, spec)
 	}
 
 	// Existing load balancers cannot change subnets. This ensures that the spec matches
@@ -331,14 +325,13 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 	spec.Subnets = lb.SubnetIds
 
 	// If the load balancer needs an SSL cert ensure it is present.
-	if needsCerts(service) {
-		if err := cp.ensureSSLCertificate(ctx, spec, lb); err != nil {
-			return nil, err
+	if requiresCertificate(service) {
+		if err := cp.ensureSSLCertificate(ctx, lb, spec); err != nil {
+			return nil, errors.Wrap(err, "ensuring ssl certificate")
 		}
 	}
 
-	err = cp.updateLoadBalancer(ctx, lb, spec, sourceCIDRs)
-	if err != nil {
+	if err := cp.updateLoadBalancer(ctx, lb, spec); err != nil {
 		return nil, err
 	}
 
@@ -348,18 +341,19 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 	}
 
 	glog.V(2).Infof("Successfully ensured load balancer %q", *lb.DisplayName)
+
 	return status, nil
 }
 
-func (cp *CloudProvider) updateLoadBalancer(ctx context.Context, lb *loadbalancer.LoadBalancer, spec LBSpec, sourceCIDRs []string) error {
+func (cp *CloudProvider) updateLoadBalancer(ctx context.Context, lb *loadbalancer.LoadBalancer, spec *LBSpec) error {
 	lbOCID := *lb.Id
 
 	actualBackendSets := lb.BackendSets
-	desiredBackendSets := spec.GetBackendSets()
+	desiredBackendSets := spec.BackendSets
 	backendSetActions := getBackendSetChanges(actualBackendSets, desiredBackendSets)
 
 	actualListeners := lb.Listeners
-	desiredListeners := spec.GetListeners()
+	desiredListeners := spec.Listeners
 	listenerActions := getListenerChanges(actualListeners, desiredListeners)
 
 	if len(backendSetActions) == 0 && len(listenerActions) == 0 {
@@ -370,7 +364,7 @@ func (cp *CloudProvider) updateLoadBalancer(ctx context.Context, lb *loadbalance
 	if err != nil {
 		return errors.Wrapf(err, "getting load balancer subnets")
 	}
-	nodeSubnets, err := getSubnetsForNodes(ctx, spec.Nodes, cp.client)
+	nodeSubnets, err := getSubnetsForNodes(ctx, spec.nodes, cp.client)
 	if err != nil {
 		return errors.Wrap(err, "get subnets for nodes")
 	}
@@ -395,13 +389,13 @@ func (cp *CloudProvider) updateLoadBalancer(ctx context.Context, lb *loadbalance
 				backendPort = *bs.Backends[0].Port
 				healthCheckPort = *bs.HealthChecker.Port
 			} else {
-				bs := spec.GetBackendSets()[*a.Listener.DefaultBackendSetName]
+				bs := spec.BackendSets[*a.Listener.DefaultBackendSetName]
 				// FIXME(apryde): panics when no backends.
 				backendPort = *bs.Backends[0].Port
 				healthCheckPort = *bs.HealthChecker.Port
 			}
 
-			err := cp.updateListener(ctx, lbOCID, a, backendPort, healthCheckPort, lbSubnets, nodeSubnets, sourceCIDRs)
+			err := cp.updateListener(ctx, lbOCID, a, backendPort, healthCheckPort, lbSubnets, nodeSubnets, spec.SourceCIDRs)
 			if err != nil {
 				return errors.Wrap(err, "updating listener")
 			}
@@ -630,18 +624,4 @@ func loadBalancerToStatus(lb *loadbalancer.LoadBalancer) (*api.LoadBalancerStatu
 		ingress = append(ingress, api.LoadBalancerIngress{IP: *ip.IpAddress})
 	}
 	return &api.LoadBalancerStatus{Ingress: ingress}, nil
-}
-
-func getLoadBalancerSourceRanges(service *api.Service) ([]string, error) {
-	sourceRanges, err := apiservice.GetLoadBalancerSourceRanges(service)
-	if err != nil {
-		return []string{}, err
-	}
-
-	sourceCIDRs := make([]string, 0, len(sourceRanges))
-	for _, sourceRange := range sourceRanges {
-		sourceCIDRs = append(sourceCIDRs, sourceRange.String())
-	}
-
-	return sourceCIDRs, nil
 }
