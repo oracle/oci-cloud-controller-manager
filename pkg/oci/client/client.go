@@ -16,6 +16,14 @@ package client
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"fmt"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
 	"time"
 
 	"k8s.io/client-go/tools/cache"
@@ -61,14 +69,29 @@ func New(config *Config) (Interface, error) {
 		return nil, errors.Wrap(err, "NewComputeClientWithConfigurationProvider")
 	}
 
+	err = configureCustomTransport(&compute.BaseClient)
+	if err != nil {
+		return nil, err
+	}
+
 	network, err := core.NewVirtualNetworkClientWithConfigurationProvider(cp)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewVirtualNetworkClientWithConfigurationProvider")
 	}
 
+	err = configureCustomTransport(&network.BaseClient)
+	if err != nil {
+		return nil, err
+	}
+
 	lb, err := loadbalancer.NewLoadBalancerClientWithConfigurationProvider(cp)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewLoadBalancerClientWithConfigurationProvider")
+	}
+
+	err = configureCustomTransport(&lb.BaseClient)
+	if err != nil {
+		return nil, err
 	}
 
 	c := &client{
@@ -105,4 +128,52 @@ func (c *client) Networking() NetworkingInterface {
 
 func (c *client) Compute() ComputeInterface {
 	return c
+}
+
+func configureCustomTransport(baseClient *common.BaseClient) error {
+	httpClient := baseClient.HTTPClient.(*http.Client)
+
+	var transport *http.Transport
+	if httpClient.Transport == nil {
+		transport = &http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+				DualStack: true,
+			}).DialContext,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		}
+	} else {
+		transport = httpClient.Transport.(*http.Transport)
+	}
+
+	ociProxy := os.Getenv("OCI_PROXY")
+	if ociProxy != "" {
+		proxyURL, err := url.Parse(ociProxy)
+		if err != nil {
+			return fmt.Errorf("failed to parse OCI proxy url: %s, err: %v", ociProxy, err)
+		}
+		transport.Proxy = func(req *http.Request) (*url.URL, error) {
+			return proxyURL, nil
+		}
+	}
+
+	trustedCACertPath := os.Getenv("TRUSTED_CA_CERT_PATH")
+	if trustedCACertPath != "" {
+		glog.Infof("configuring OCI client with a new trusted ca: %s", trustedCACertPath)
+		trustedCACert, err := ioutil.ReadFile(trustedCACertPath)
+		if err != nil {
+			return fmt.Errorf("failed to read root certificate: %s, err: %v", trustedCACertPath, err)
+		}
+		caCertPool := x509.NewCertPool()
+		ok := caCertPool.AppendCertsFromPEM(trustedCACert)
+		if !ok {
+			return fmt.Errorf("failed to parse root certificate: %s", trustedCACertPath)
+		}
+		transport.TLSClientConfig = &tls.Config{RootCAs: caCertPool}
+	}
+	return nil
 }
