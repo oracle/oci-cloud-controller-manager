@@ -76,6 +76,12 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": portSpec{
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
 			},
 		},
 		"internal": {
@@ -123,6 +129,12 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": portSpec{
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
 			},
 		},
 		"subnet annotations": {
@@ -171,6 +183,12 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": portSpec{
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
 			},
 		},
 		"custom shape": {
@@ -218,6 +236,12 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": portSpec{
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
 			},
 		},
 	}

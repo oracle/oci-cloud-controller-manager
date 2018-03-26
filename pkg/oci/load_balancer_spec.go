@@ -73,6 +73,7 @@ type LBSpec struct {
 	Listeners   map[string]loadbalancer.ListenerDetails
 	BackendSets map[string]loadbalancer.BackendSetDetails
 
+	Ports       map[string]portSpec
 	SourceCIDRs []string
 	SSLConfig   *SSLConfig
 
@@ -127,6 +128,7 @@ func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCf
 		Listeners:   getListeners(svc, sslCfg),
 		BackendSets: getBackendSets(svc, nodes),
 
+		Ports:       getPorts(svc),
 		SSLConfig:   sslCfg,
 		SourceCIDRs: sourceCIDRs,
 
@@ -196,6 +198,20 @@ func getLoadBalancerSourceRanges(service *v1.Service) ([]string, error) {
 
 func getBackendSetName(protocol string, port int) string {
 	return fmt.Sprintf("%s-%d", protocol, port)
+}
+
+func getPorts(svc *v1.Service) map[string]portSpec {
+	ports := make(map[string]portSpec)
+	for _, servicePort := range svc.Spec.Ports {
+		name := getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
+		ports[name] = portSpec{
+			BackendPort:       int(servicePort.NodePort),
+			ListenerPort:      int(servicePort.Port),
+			HealthCheckerPort: *getHealthChecker(svc).Port,
+		}
+
+	}
+	return ports
 }
 
 func getBackends(nodes []*v1.Node, nodePort int32) []loadbalancer.BackendDetails {

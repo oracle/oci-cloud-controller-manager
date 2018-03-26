@@ -47,7 +47,6 @@ func main() {
 	pflag.CommandLine.SetNormalizeFunc(utilflag.WordSepNormalizeFunc)
 	pflag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 	goflag.CommandLine.Parse([]string{})
-	// utilflag.InitFlags()
 	logs.InitLogs()
 	defer logs.FlushLogs()
 

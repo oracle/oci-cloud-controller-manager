@@ -61,8 +61,10 @@ type BackendSetAction struct {
 	actionType ActionType
 	name       string
 
-	BackendSet    loadbalancer.BackendSetDetails
-	OldBackendSet *loadbalancer.BackendSetDetails
+	BackendSet loadbalancer.BackendSetDetails
+
+	Ports    portSpec
+	OldPorts *portSpec
 }
 
 // Type of the Action.
@@ -76,7 +78,7 @@ func (b *BackendSetAction) Name() string {
 }
 
 func (b *BackendSetAction) String() string {
-	return fmt.Sprintf("BackendSetAction:{Name: %s, Type: %v }", b.Name(), b.actionType)
+	return fmt.Sprintf("BackendSetAction:{Name: %s, Type: %v, Ports: %+v}", b.Name(), b.actionType, b.Ports)
 }
 
 // ListenerAction denotes the action that should be taken on the given Listener.
@@ -87,6 +89,9 @@ type ListenerAction struct {
 	name       string
 
 	Listener loadbalancer.ListenerDetails
+
+	Ports    portSpec
+	OldPorts *portSpec
 }
 
 // Type of the Action.
@@ -233,6 +238,36 @@ func backendsToBackendDetails(bs []loadbalancer.Backend) []loadbalancer.BackendD
 	return backends
 }
 
+func portsFromBackendSetDetails(name string, bs *loadbalancer.BackendSetDetails) portSpec {
+	spec := portSpec{}
+	if len(bs.Backends) > 0 {
+		spec.BackendPort = *bs.Backends[0].Port
+	} else {
+		glog.Warningf("BackendSet %q has no Backends", name)
+	}
+	if bs.HealthChecker != nil {
+		spec.HealthCheckerPort = *bs.HealthChecker.Port
+	} else {
+		glog.Warningf("BackendSet %q has no health checker", name)
+	}
+	return spec
+}
+
+func portsFromBackendSet(name string, bs *loadbalancer.BackendSet) portSpec {
+	spec := portSpec{}
+	if len(bs.Backends) > 0 {
+		spec.BackendPort = *bs.Backends[0].Port
+	} else {
+		glog.Warningf("BackendSet %q has no Backends", name)
+	}
+	if bs.HealthChecker != nil {
+		spec.HealthCheckerPort = *bs.HealthChecker.Port
+	} else {
+		glog.Warningf("BackendSet %q has no health checker", name)
+	}
+	return spec
+}
+
 func getBackendSetChanges(actual map[string]loadbalancer.BackendSet, desired map[string]loadbalancer.BackendSetDetails) []Action {
 	var backendSetActions []Action
 	// First check to see if any backendsets need to be deleted or updated.
@@ -249,22 +284,19 @@ func getBackendSetChanges(actual map[string]loadbalancer.BackendSet, desired map
 					SessionPersistenceConfiguration: actualBackendSet.SessionPersistenceConfiguration,
 					SslConfiguration:                sslConfigurationToDetails(actualBackendSet.SslConfiguration),
 				},
+				Ports:      portsFromBackendSet(*actualBackendSet.Name, &actualBackendSet),
 				actionType: Delete,
 			})
 			continue
 		}
 
 		if hasBackendSetChanged(actualBackendSet, desiredBackendSet) {
+			oldPorts := portsFromBackendSet(name, &actualBackendSet)
 			backendSetActions = append(backendSetActions, &BackendSetAction{
 				name:       name,
 				BackendSet: desiredBackendSet,
-				OldBackendSet: &loadbalancer.BackendSetDetails{
-					HealthChecker:                   healthCheckerToDetails(actualBackendSet.HealthChecker),
-					Policy:                          actualBackendSet.Policy,
-					Backends:                        backendsToBackendDetails(actualBackendSet.Backends),
-					SessionPersistenceConfiguration: actualBackendSet.SessionPersistenceConfiguration,
-					SslConfiguration:                sslConfigurationToDetails(actualBackendSet.SslConfiguration),
-				},
+				Ports:      portsFromBackendSetDetails(name, &desiredBackendSet),
+				OldPorts:   &oldPorts,
 				actionType: Update,
 			})
 		}
@@ -277,6 +309,7 @@ func getBackendSetChanges(actual map[string]loadbalancer.BackendSet, desired map
 			backendSetActions = append(backendSetActions, &BackendSetAction{
 				name:       name,
 				BackendSet: desiredBackendSet,
+				Ports:      portsFromBackendSetDetails(name, &desiredBackendSet),
 				actionType: Create,
 			})
 		}
