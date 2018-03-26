@@ -22,10 +22,12 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kubeapi "k8s.io/kubernetes/pkg/api"
+	kubeapi "k8s.io/kubernetes/pkg/apis/core"
+	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/kubelet/apis/kubeletconfig"
 	kubelettypes "k8s.io/kubernetes/pkg/kubelet/types"
 	"k8s.io/kubernetes/test/e2e/framework"
+	imageutils "k8s.io/kubernetes/test/utils/image"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -43,7 +45,7 @@ var _ = framework.KubeDescribe("CriticalPod [Serial] [Disruptive]", func() {
 
 	Context("when we need to admit a critical pod", func() {
 		tempSetCurrentKubeletConfig(f, func(initialConfig *kubeletconfig.KubeletConfiguration) {
-			initialConfig.FeatureGates += ", ExperimentalCriticalPodAnnotation=true"
+			initialConfig.FeatureGates[string(features.ExperimentalCriticalPodAnnotation)] = true
 		})
 
 		It("should be able to create and delete a critical pod", func() {
@@ -82,7 +84,7 @@ var _ = framework.KubeDescribe("CriticalPod [Serial] [Disruptive]", func() {
 			f.PodClientNS(kubeapi.NamespaceSystem).CreateSyncInNamespace(criticalPod, kubeapi.NamespaceSystem)
 
 			// Check that non-critical pods other than the besteffort have been evicted
-			updatedPodList, err := f.ClientSet.Core().Pods(f.Namespace.Name).List(metav1.ListOptions{})
+			updatedPodList, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).List(metav1.ListOptions{})
 			framework.ExpectNoError(err)
 			for _, p := range updatedPodList.Items {
 				if p.Name == nonCriticalBestEffort.Name {
@@ -107,7 +109,7 @@ var _ = framework.KubeDescribe("CriticalPod [Serial] [Disruptive]", func() {
 })
 
 func getNodeCPUAndMemoryCapacity(f *framework.Framework) v1.ResourceList {
-	nodeList, err := f.ClientSet.Core().Nodes().List(metav1.ListOptions{})
+	nodeList, err := f.ClientSet.CoreV1().Nodes().List(metav1.ListOptions{})
 	framework.ExpectNoError(err)
 	// Assuming that there is only one node, because this is a node e2e test.
 	Expect(len(nodeList.Items)).To(Equal(1))
@@ -129,7 +131,7 @@ func getTestPod(critical bool, name string, resources v1.ResourceRequirements) *
 			Containers: []v1.Container{
 				{
 					Name:      "container",
-					Image:     framework.GetPauseImageNameForHostArch(),
+					Image:     imageutils.GetPauseImageNameForHostArch(),
 					Resources: resources,
 				},
 			},

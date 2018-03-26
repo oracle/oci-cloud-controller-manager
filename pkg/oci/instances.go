@@ -75,15 +75,15 @@ func extractNodeAddressesFromVNIC(vnic *core.Vnic) ([]api.NodeAddress, error) {
 // TODO(roberthbailey): This currently is only used in such a way that it
 // returns the address of the calling instance. We should do a rename to
 // make this clearer.
-func (cp *CloudProvider) NodeAddresses(name types.NodeName) ([]api.NodeAddress, error) {
+func (cp *CloudProvider) NodeAddresses(ctx context.Context, name types.NodeName) ([]api.NodeAddress, error) {
 	glog.V(4).Infof("NodeAddresses(%q) called", name)
 
-	inst, err := cp.client.Compute().GetInstanceByNodeName(context.TODO(), mapNodeNameToInstanceName(name))
+	inst, err := cp.client.Compute().GetInstanceByNodeName(ctx, mapNodeNameToInstanceName(name))
 	if err != nil {
 		return nil, errors.Wrap(err, "GetInstanceByNodeName")
 	}
 
-	vnic, err := cp.client.Compute().GetPrimaryVNICForInstance(context.TODO(), *inst.Id)
+	vnic, err := cp.client.Compute().GetPrimaryVNICForInstance(ctx, *inst.Id)
 	if err != nil {
 		return nil, errors.Wrap(err, "GetPrimaryVNICForInstance")
 	}
@@ -95,10 +95,10 @@ func (cp *CloudProvider) NodeAddresses(name types.NodeName) ([]api.NodeAddress, 
 // a unique identifier of the node. This will not be called from the node whose
 // nodeaddresses are being queried. i.e. local metadata services cannot be used
 // in this method to obtain nodeaddresses.
-func (cp *CloudProvider) NodeAddressesByProviderID(providerID string) ([]api.NodeAddress, error) {
+func (cp *CloudProvider) NodeAddressesByProviderID(ctx context.Context, providerID string) ([]api.NodeAddress, error) {
 	glog.V(4).Infof("NodeAddressesByProviderID(%q) called", providerID)
 	instanceID := util.MapProviderIDToInstanceID(providerID)
-	vnic, err := cp.client.Compute().GetPrimaryVNICForInstance(context.TODO(), instanceID)
+	vnic, err := cp.client.Compute().GetPrimaryVNICForInstance(ctx, instanceID)
 	if err != nil {
 		return nil, errors.Wrap(err, "GetPrimaryVNICForInstance")
 	}
@@ -108,11 +108,11 @@ func (cp *CloudProvider) NodeAddressesByProviderID(providerID string) ([]api.Nod
 // ExternalID returns the cloud provider ID of the node with the specified NodeName.
 // Note that if the instance does not exist or is no longer running, we must
 // return ("", cloudprovider.InstanceNotFound).
-func (cp *CloudProvider) ExternalID(nodeName types.NodeName) (string, error) {
+func (cp *CloudProvider) ExternalID(ctx context.Context, nodeName types.NodeName) (string, error) {
 	glog.V(4).Infof("ExternalID(%q) called", nodeName)
 
 	instName := mapNodeNameToInstanceName(nodeName)
-	inst, err := cp.client.Compute().GetInstanceByNodeName(context.TODO(), instName)
+	inst, err := cp.client.Compute().GetInstanceByNodeName(ctx, instName)
 	if client.IsNotFound(err) {
 		glog.Infof("Instance %q was not found. Unable to get ExternalID: %v", instName, err)
 		return "", cloudprovider.InstanceNotFound
@@ -128,11 +128,11 @@ func (cp *CloudProvider) ExternalID(nodeName types.NodeName) (string, error) {
 
 // InstanceID returns the cloud provider ID of the node with the specified NodeName.
 // TODO (apryde): AWS and GCE use format /<zone>/<instanceid> - should we?
-func (cp *CloudProvider) InstanceID(nodeName types.NodeName) (string, error) {
+func (cp *CloudProvider) InstanceID(ctx context.Context, nodeName types.NodeName) (string, error) {
 	glog.V(4).Infof("InstanceID(%q) called", nodeName)
 
 	name := mapNodeNameToInstanceName(nodeName)
-	inst, err := cp.client.Compute().GetInstanceByNodeName(context.TODO(), name)
+	inst, err := cp.client.Compute().GetInstanceByNodeName(ctx, name)
 	if err != nil {
 		return "", errors.Wrap(err, "GetInstanceByNodeName")
 	}
@@ -140,10 +140,10 @@ func (cp *CloudProvider) InstanceID(nodeName types.NodeName) (string, error) {
 }
 
 // InstanceType returns the type of the specified instance.
-func (cp *CloudProvider) InstanceType(name types.NodeName) (string, error) {
+func (cp *CloudProvider) InstanceType(ctx context.Context, name types.NodeName) (string, error) {
 	glog.V(4).Infof("InstanceType(%q) called", name)
 
-	inst, err := cp.client.Compute().GetInstanceByNodeName(context.TODO(), mapNodeNameToInstanceName(name))
+	inst, err := cp.client.Compute().GetInstanceByNodeName(ctx, mapNodeNameToInstanceName(name))
 	if err != nil {
 		return "", errors.Wrap(err, "GetInstanceByNodeName")
 	}
@@ -151,11 +151,11 @@ func (cp *CloudProvider) InstanceType(name types.NodeName) (string, error) {
 }
 
 // InstanceTypeByProviderID returns the type of the specified instance.
-func (cp *CloudProvider) InstanceTypeByProviderID(providerID string) (string, error) {
+func (cp *CloudProvider) InstanceTypeByProviderID(ctx context.Context, providerID string) (string, error) {
 	glog.V(4).Infof("InstanceTypeByProviderID(%q) called", providerID)
 
 	instanceID := util.MapProviderIDToInstanceID(providerID)
-	inst, err := cp.client.Compute().GetInstance(context.TODO(), instanceID)
+	inst, err := cp.client.Compute().GetInstance(ctx, instanceID)
 	if err != nil {
 		return "", errors.Wrap(err, "GetInstance")
 	}
@@ -164,13 +164,13 @@ func (cp *CloudProvider) InstanceTypeByProviderID(providerID string) (string, er
 
 // AddSSHKeyToAllInstances adds an SSH public key as a legal identity for all instances
 // expected format for the key is standard ssh-keygen format: <protocol> <blob>
-func (cp *CloudProvider) AddSSHKeyToAllInstances(user string, keyData []byte) error {
+func (cp *CloudProvider) AddSSHKeyToAllInstances(ctx context.Context, user string, keyData []byte) error {
 	return errors.New("unimplemented")
 }
 
 // CurrentNodeName returns the name of the node we are currently running on
 // On most clouds (e.g. GCE) this is the hostname, so we provide the hostname
-func (cp *CloudProvider) CurrentNodeName(hostname string) (types.NodeName, error) {
+func (cp *CloudProvider) CurrentNodeName(ctx context.Context, hostname string) (types.NodeName, error) {
 	glog.V(4).Infof("CurrentNodeName(%q) called", hostname)
 	return "", errors.New("unimplemented")
 }
@@ -178,10 +178,10 @@ func (cp *CloudProvider) CurrentNodeName(hostname string) (types.NodeName, error
 // InstanceExistsByProviderID returns true if the instance for the given
 // provider id still is running. If false is returned with no error, the
 // instance will be immediately deleted by the cloud controller manager.
-func (cp *CloudProvider) InstanceExistsByProviderID(providerID string) (bool, error) {
+func (cp *CloudProvider) InstanceExistsByProviderID(ctx context.Context, providerID string) (bool, error) {
 	glog.V(4).Infof("InstanceExistsByProviderID(%q) called", providerID)
 	instanceID := util.MapProviderIDToInstanceID(providerID)
-	instance, err := cp.client.Compute().GetInstance(context.TODO(), instanceID)
+	instance, err := cp.client.Compute().GetInstance(ctx, instanceID)
 	if client.IsNotFound(err) {
 		return false, nil
 	}

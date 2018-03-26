@@ -69,7 +69,7 @@ func TestGetAccessModes(t *testing.T) {
 	if err != nil {
 		t.Errorf("Can't find the plugin by name")
 	}
-	if !contains(plug.GetAccessModes(), v1.ReadWriteOnce) || !contains(plug.GetAccessModes(), v1.ReadOnlyMany) {
+	if !volumetest.ContainsAccessMode(plug.GetAccessModes(), v1.ReadWriteOnce) || !volumetest.ContainsAccessMode(plug.GetAccessModes(), v1.ReadOnlyMany) {
 		t.Errorf("Expected two AccessModeTypes:  %s and %s", v1.ReadWriteOnce, v1.ReadOnlyMany)
 	}
 }
@@ -129,6 +129,10 @@ func (fake *fakePDManager) DeleteVolume(d *storageosDeleter) error {
 		return fmt.Errorf("Deleter got unexpected volume name: %s", d.volName)
 	}
 	return nil
+}
+
+func (fake *fakePDManager) DeviceDir(mounter *storageosMounter) string {
+	return defaultDeviceDir
 }
 
 func TestPlugin(t *testing.T) {
@@ -237,7 +241,7 @@ func TestPlugin(t *testing.T) {
 	if _, err := os.Stat(volPath); err == nil {
 		t.Errorf("TearDown() failed, volume path still exists: %s", volPath)
 	} else if !os.IsNotExist(err) {
-		t.Errorf("SetUp() failed: %v", err)
+		t.Errorf("TearDown() failed: %v", err)
 	}
 
 	if !fakeManager.unmountCalled {
@@ -249,6 +253,7 @@ func TestPlugin(t *testing.T) {
 
 	// Test Provisioner
 	fakeManager = &fakePDManager{}
+	mountOptions := []string{"sync", "noatime"}
 	options := volume.VolumeOptions{
 		PVC: volumetest.CreateTestPVC("100Mi", []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce}),
 		// PVName: "test-volume-name",
@@ -257,6 +262,7 @@ func TestPlugin(t *testing.T) {
 			"VolumeNamespace": "test-volume-namespace",
 			"adminSecretName": secretName,
 		},
+		MountOptions: mountOptions,
 	}
 	provisioner, err := plug.(*storageosPlugin).newProvisionerInternal(options, fakeManager)
 	if err != nil {
@@ -282,6 +288,9 @@ func TestPlugin(t *testing.T) {
 	if persistentSpec.Spec.PersistentVolumeSource.StorageOS.FSType != "ext2" {
 		t.Errorf("Provision() returned unexpected volume FSType: %s", persistentSpec.Spec.PersistentVolumeSource.StorageOS.FSType)
 	}
+	if len(persistentSpec.Spec.MountOptions) != 2 {
+		t.Errorf("Provision() returned unexpected volume mount options: %v", persistentSpec.Spec.MountOptions)
+	}
 	if persistentSpec.Labels["fakepdmanager"] != "yes" {
 		t.Errorf("Provision() returned unexpected labels: %v", persistentSpec.Labels)
 	}
@@ -306,15 +315,6 @@ func TestPlugin(t *testing.T) {
 	if !fakeManager.deleteCalled {
 		t.Errorf("Delete not called")
 	}
-}
-
-func contains(modes []v1.PersistentVolumeAccessMode, mode v1.PersistentVolumeAccessMode) bool {
-	for _, m := range modes {
-		if m == mode {
-			return true
-		}
-	}
-	return false
 }
 
 func TestPersistentClaimReadOnlyFlag(t *testing.T) {

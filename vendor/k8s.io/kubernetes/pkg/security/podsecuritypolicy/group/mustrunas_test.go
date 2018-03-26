@@ -17,10 +17,8 @@ limitations under the License.
 package group
 
 import (
-	"testing"
-
-	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/apis/extensions"
+	"testing"
 )
 
 func TestMustRunAsOptions(t *testing.T) {
@@ -109,34 +107,22 @@ func TestGenerate(t *testing.T) {
 }
 
 func TestValidate(t *testing.T) {
-	validPod := func() *api.Pod {
-		return &api.Pod{
-			Spec: api.PodSpec{
-				SecurityContext: &api.PodSecurityContext{},
-			},
-		}
-	}
-
 	tests := map[string]struct {
 		ranges []extensions.GroupIDRange
-		pod    *api.Pod
 		groups []int64
 		pass   bool
 	}{
 		"nil security context": {
-			pod: &api.Pod{},
 			ranges: []extensions.GroupIDRange{
 				{Min: 1, Max: 3},
 			},
 		},
 		"empty groups": {
-			pod: validPod(),
 			ranges: []extensions.GroupIDRange{
 				{Min: 1, Max: 3},
 			},
 		},
 		"not in range": {
-			pod:    validPod(),
 			groups: []int64{5},
 			ranges: []extensions.GroupIDRange{
 				{Min: 1, Max: 3},
@@ -144,23 +130,20 @@ func TestValidate(t *testing.T) {
 			},
 		},
 		"in range 1": {
-			pod:    validPod(),
 			groups: []int64{2},
 			ranges: []extensions.GroupIDRange{
 				{Min: 1, Max: 3},
 			},
 			pass: true,
 		},
-		"in range boundry min": {
-			pod:    validPod(),
+		"in range boundary min": {
 			groups: []int64{1},
 			ranges: []extensions.GroupIDRange{
 				{Min: 1, Max: 3},
 			},
 			pass: true,
 		},
-		"in range boundry max": {
-			pod:    validPod(),
+		"in range boundary max": {
 			groups: []int64{3},
 			ranges: []extensions.GroupIDRange{
 				{Min: 1, Max: 3},
@@ -168,7 +151,6 @@ func TestValidate(t *testing.T) {
 			pass: true,
 		},
 		"singular range": {
-			pod:    validPod(),
 			groups: []int64{4},
 			ranges: []extensions.GroupIDRange{
 				{Min: 4, Max: 4},
@@ -182,7 +164,7 @@ func TestValidate(t *testing.T) {
 		if err != nil {
 			t.Errorf("error creating strategy for %s: %v", k, err)
 		}
-		errs := s.Validate(v.pod, v.groups)
+		errs := s.Validate(nil, v.groups)
 		if v.pass && len(errs) > 0 {
 			t.Errorf("unexpected errors for %s: %v", k, errs)
 		}

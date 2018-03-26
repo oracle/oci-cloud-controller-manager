@@ -66,11 +66,11 @@ func TestCanSupport(t *testing.T) {
 }
 
 type fakeMountDetector struct {
-	medium  storageMedium
+	medium  v1.StorageMedium
 	isMount bool
 }
 
-func (fake *fakeMountDetector) GetMountMedium(path string) (storageMedium, bool, error) {
+func (fake *fakeMountDetector) GetMountMedium(path string) (v1.StorageMedium, bool, error) {
 	return fake.medium, fake.isMount, nil
 }
 
@@ -83,7 +83,7 @@ func TestPluginEmptyRootContext(t *testing.T) {
 
 func TestPluginHugetlbfs(t *testing.T) {
 	doTestPlugin(t, pluginTestConfig{
-		medium:                        v1.StorageMediumHugepages,
+		medium:                        v1.StorageMediumHugePages,
 		expectedSetupMounts:           1,
 		expectedTeardownMounts:        0,
 		shouldBeMountedBeforeTeardown: true,
@@ -196,9 +196,9 @@ func doTestPlugin(t *testing.T, config pluginTestConfig) {
 	physicalMounter.ResetLog()
 
 	// Make an unmounter for the volume
-	teardownMedium := mediumUnknown
+	teardownMedium := v1.StorageMediumDefault
 	if config.medium == v1.StorageMediumMemory {
-		teardownMedium = mediumMemory
+		teardownMedium = v1.StorageMediumMemory
 	}
 	unmounterMountDetector := &fakeMountDetector{medium: teardownMedium, isMount: config.shouldBeMountedBeforeTeardown}
 	unmounter, err := plug.(*emptyDirPlugin).newUnmounterInternal(volumeName, types.UID("poduid"), &physicalMounter, unmounterMountDetector)
@@ -216,7 +216,7 @@ func doTestPlugin(t *testing.T, config pluginTestConfig) {
 	if _, err := os.Stat(volPath); err == nil {
 		t.Errorf("TearDown() failed, volume path still exists: %s", volPath)
 	} else if !os.IsNotExist(err) {
-		t.Errorf("SetUp() failed: %v", err)
+		t.Errorf("TearDown() failed: %v", err)
 	}
 
 	// Check the number of physicalMounter calls during tardown

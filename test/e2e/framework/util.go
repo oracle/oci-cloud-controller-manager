@@ -42,18 +42,18 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	clientcmd "k8s.io/client-go/tools/clientcmd"
-	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	appsinternal "k8s.io/kubernetes/pkg/apis/apps"
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
+	api "k8s.io/kubernetes/pkg/apis/core"
 	extensionsinternal "k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/controller"
+	"k8s.io/kubernetes/pkg/controller/nodelifecycle"
 	"k8s.io/kubernetes/pkg/kubectl"
-	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm"
-	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/predicates"
-	"k8s.io/kubernetes/plugin/pkg/scheduler/schedulercache"
+	"k8s.io/kubernetes/pkg/scheduler/algorithm/predicates"
+	"k8s.io/kubernetes/pkg/scheduler/schedulercache"
 	testutil "k8s.io/kubernetes/test/utils"
 	uexec "k8s.io/utils/exec"
 
@@ -209,16 +209,6 @@ func waitListSchedulableNodesOrDie(c clientset.Interface) *v1.NodeList {
 }
 
 func isNodeConditionSetAsExpected(node *v1.Node, conditionType v1.NodeConditionType, wantTrue, silent bool) bool {
-	// TODO(apryde): replace with vars from k8s.io/kubernetes/pkg/controller/nodelifecycle
-	// once k8s dep bumped.
-	unreachableTaintTemplate := &v1.Taint{
-		Key:    algorithm.TaintNodeUnreachable,
-		Effect: v1.TaintEffectNoExecute,
-	}
-	notReadyTaintTemplate := &v1.Taint{
-		Key:    algorithm.TaintNodeNotReady,
-		Effect: v1.TaintEffectNoExecute,
-	}
 	// Check the node readiness condition (logging all).
 	for _, cond := range node.Status.Conditions {
 		// Ensure that the condition type and the status matches as desired.
@@ -229,7 +219,7 @@ func isNodeConditionSetAsExpected(node *v1.Node, conditionType v1.NodeConditionT
 				// For NodeReady we need to check if Taints are gone as well
 				taints := node.Spec.Taints
 				for _, taint := range taints {
-					if taint.MatchTaint(unreachableTaintTemplate) || taint.MatchTaint(notReadyTaintTemplate) {
+					if taint.MatchTaint(nodelifecycle.UnreachableTaintTemplate) || taint.MatchTaint(nodelifecycle.NotReadyTaintTemplate) {
 						hasNodeControllerTaints = true
 						break
 					}

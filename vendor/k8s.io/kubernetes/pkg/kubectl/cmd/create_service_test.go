@@ -21,18 +21,25 @@ import (
 	"net/http"
 	"testing"
 
+	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest/fake"
-	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	cmdtesting "k8s.io/kubernetes/pkg/kubectl/cmd/testing"
+	"k8s.io/kubernetes/pkg/kubectl/scheme"
 )
 
 func TestCreateService(t *testing.T) {
-	service := &api.Service{}
+	service := &v1.Service{}
 	service.Name = "my-service"
-	f, tf, codec, negSer := cmdtesting.NewAPIFactory()
-	tf.Printer = &testPrinter{}
+	tf := cmdtesting.NewTestFactory()
+	defer tf.Cleanup()
+
+	codec := legacyscheme.Codecs.LegacyCodec(scheme.Versions...)
+	negSer := legacyscheme.Codecs
+
 	tf.Client = &fake.RESTClient{
-		APIRegistry:          api.Registry,
+		GroupVersion:         schema.GroupVersion{Version: "v1"},
 		NegotiatedSerializer: negSer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
@@ -46,7 +53,7 @@ func TestCreateService(t *testing.T) {
 	}
 	tf.Namespace = "test"
 	buf := bytes.NewBuffer([]byte{})
-	cmd := NewCmdCreateServiceClusterIP(f, buf)
+	cmd := NewCmdCreateServiceClusterIP(tf, buf)
 	cmd.Flags().Set("output", "name")
 	cmd.Flags().Set("tcp", "8080:8000")
 	cmd.Run(cmd, []string{service.Name})
@@ -57,12 +64,16 @@ func TestCreateService(t *testing.T) {
 }
 
 func TestCreateServiceNodePort(t *testing.T) {
-	service := &api.Service{}
+	service := &v1.Service{}
 	service.Name = "my-node-port-service"
-	f, tf, codec, negSer := cmdtesting.NewAPIFactory()
-	tf.Printer = &testPrinter{}
+	tf := cmdtesting.NewTestFactory()
+	defer tf.Cleanup()
+
+	codec := legacyscheme.Codecs.LegacyCodec(scheme.Versions...)
+	negSer := legacyscheme.Codecs
+
 	tf.Client = &fake.RESTClient{
-		APIRegistry:          api.Registry,
+		GroupVersion:         schema.GroupVersion{Version: "v1"},
 		NegotiatedSerializer: negSer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
@@ -76,7 +87,7 @@ func TestCreateServiceNodePort(t *testing.T) {
 	}
 	tf.Namespace = "test"
 	buf := bytes.NewBuffer([]byte{})
-	cmd := NewCmdCreateServiceNodePort(f, buf)
+	cmd := NewCmdCreateServiceNodePort(tf, buf)
 	cmd.Flags().Set("output", "name")
 	cmd.Flags().Set("tcp", "30000:8000")
 	cmd.Run(cmd, []string{service.Name})
@@ -87,12 +98,16 @@ func TestCreateServiceNodePort(t *testing.T) {
 }
 
 func TestCreateServiceExternalName(t *testing.T) {
-	service := &api.Service{}
+	service := &v1.Service{}
 	service.Name = "my-external-name-service"
-	f, tf, codec, negSer := cmdtesting.NewAPIFactory()
-	tf.Printer = &testPrinter{}
+	tf := cmdtesting.NewTestFactory()
+	defer tf.Cleanup()
+
+	codec := legacyscheme.Codecs.LegacyCodec(scheme.Versions...)
+	negSer := legacyscheme.Codecs
+
 	tf.Client = &fake.RESTClient{
-		APIRegistry:          api.Registry,
+		GroupVersion:         schema.GroupVersion{Version: "v1"},
 		NegotiatedSerializer: negSer,
 		Client: fake.CreateHTTPClient(func(req *http.Request) (*http.Response, error) {
 			switch p, m := req.URL.Path, req.Method; {
@@ -106,7 +121,7 @@ func TestCreateServiceExternalName(t *testing.T) {
 	}
 	tf.Namespace = "test"
 	buf := bytes.NewBuffer([]byte{})
-	cmd := NewCmdCreateServiceExternalName(f, buf)
+	cmd := NewCmdCreateServiceExternalName(tf, buf)
 	cmd.Flags().Set("output", "name")
 	cmd.Flags().Set("external-name", "name")
 	cmd.Run(cmd, []string{service.Name})

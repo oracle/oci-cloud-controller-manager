@@ -81,11 +81,11 @@ const (
 
 // GetLoadBalancer returns whether the specified load balancer exists, and if
 // so, what its status is.
-func (cp *CloudProvider) GetLoadBalancer(clusterName string, service *api.Service) (*api.LoadBalancerStatus, bool, error) {
+func (cp *CloudProvider) GetLoadBalancer(ctx context.Context, clusterName string, service *api.Service) (*api.LoadBalancerStatus, bool, error) {
 	name := GetLoadBalancerName(service)
 	glog.V(4).Infof("Fetching load balancer with name %q", name)
 
-	lb, err := cp.client.LoadBalancer().GetLoadBalancerByName(context.TODO(), name)
+	lb, err := cp.client.LoadBalancer().GetLoadBalancerByName(ctx, name)
 	if err != nil {
 		if client.IsNotFound(err) {
 			glog.V(2).Infof("Load balancer %q does not exist", name)
@@ -107,7 +107,7 @@ func (cp *CloudProvider) GetLoadBalancer(clusterName string, service *api.Servic
 func getSubnets(ctx context.Context, subnetIDs []string, n client.NetworkingInterface) ([]*core.Subnet, error) {
 	subnets := make([]*core.Subnet, len(subnetIDs))
 	for i, id := range subnetIDs {
-		subnet, err := n.GetSubnet(context.TODO(), id)
+		subnet, err := n.GetSubnet(ctx, id)
 		if err != nil {
 			return nil, err
 		}
@@ -289,9 +289,9 @@ func (cp *CloudProvider) createLoadBalancer(ctx context.Context, spec LBSpec, so
 
 // EnsureLoadBalancer creates a new load balancer or updates the existing one.
 // Returns the status of the balancer (i.e it's public IP address if one exists).
-func (cp *CloudProvider) EnsureLoadBalancer(clusterName string, service *api.Service, nodes []*api.Node) (*api.LoadBalancerStatus, error) {
+func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName string, service *api.Service, nodes []*api.Node) (*api.LoadBalancerStatus, error) {
 	lbName := GetLoadBalancerName(service)
-	lb, err := cp.client.LoadBalancer().GetLoadBalancerByName(context.TODO(), lbName)
+	lb, err := cp.client.LoadBalancer().GetLoadBalancerByName(ctx, lbName)
 	if err != nil && !client.IsNotFound(err) {
 		return nil, err
 	}
@@ -320,7 +320,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(clusterName string, service *api.Ser
 	glog.V(4).Infof("Ensure load balancer %q called for %q with %d nodes.", spec.Name, service.Name, len(nodes))
 
 	if !exists {
-		return cp.createLoadBalancer(context.TODO(), spec, sourceCIDRs)
+		return cp.createLoadBalancer(ctx, spec, sourceCIDRs)
 	}
 
 	// Existing load balancers cannot change subnets. This ensures that the spec matches
@@ -332,12 +332,12 @@ func (cp *CloudProvider) EnsureLoadBalancer(clusterName string, service *api.Ser
 
 	// If the load balancer needs an SSL cert ensure it is present.
 	if needsCerts(service) {
-		if err := cp.ensureSSLCertificate(context.TODO(), spec, lb); err != nil {
+		if err := cp.ensureSSLCertificate(ctx, spec, lb); err != nil {
 			return nil, err
 		}
 	}
 
-	err = cp.updateLoadBalancer(context.TODO(), lb, spec, sourceCIDRs)
+	err = cp.updateLoadBalancer(ctx, lb, spec, sourceCIDRs)
 	if err != nil {
 		return nil, err
 	}
@@ -379,7 +379,7 @@ func (cp *CloudProvider) updateLoadBalancer(ctx context.Context, lb *loadbalance
 	for _, action := range actions {
 		switch a := action.(type) {
 		case *BackendSetAction:
-			err := cp.updateBackendSet(context.TODO(), lbOCID, a, lbSubnets, nodeSubnets)
+			err := cp.updateBackendSet(ctx, lbOCID, a, lbSubnets, nodeSubnets)
 			if err != nil {
 				return errors.Wrap(err, "updating BackendSet")
 			}
@@ -512,11 +512,11 @@ func (cp *CloudProvider) updateListener(ctx context.Context, lbOCID string, acti
 }
 
 // UpdateLoadBalancer : TODO find out where this is called
-func (cp *CloudProvider) UpdateLoadBalancer(clusterName string, service *api.Service, nodes []*api.Node) error {
+func (cp *CloudProvider) UpdateLoadBalancer(ctx context.Context, clusterName string, service *api.Service, nodes []*api.Node) error {
 	name := GetLoadBalancerName(service)
 	glog.Infof("Attempting to update load balancer %q", name)
 
-	_, err := cp.EnsureLoadBalancer(clusterName, service, nodes)
+	_, err := cp.EnsureLoadBalancer(ctx, clusterName, service, nodes)
 	return err
 }
 
@@ -548,11 +548,11 @@ func (cp *CloudProvider) getNodesByIPs(backendIPs []string) ([]*api.Node, error)
 // EnsureLoadBalancerDeleted deletes the specified load balancer if it exists,
 // returning nil if the load balancer specified either didn't exist or was
 // successfully deleted.
-func (cp *CloudProvider) EnsureLoadBalancerDeleted(clusterName string, service *api.Service) error {
+func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterName string, service *api.Service) error {
 	name := GetLoadBalancerName(service)
 	glog.Infof("Attempting to delete load balancer %q", name)
 
-	lb, err := cp.client.LoadBalancer().GetLoadBalancerByName(context.TODO(), name)
+	lb, err := cp.client.LoadBalancer().GetLoadBalancerByName(ctx, name)
 	if err != nil {
 		if client.IsNotFound(err) {
 			glog.Infof("Could not find load balancer with name %q. Nothing to do.", name)
@@ -573,12 +573,12 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(clusterName string, service *
 	if err != nil {
 		return errors.Wrap(err, "fetching nodes by internal ips")
 	}
-	nodeSubnets, err := getSubnetsForNodes(context.TODO(), nodes, cp.client)
+	nodeSubnets, err := getSubnetsForNodes(ctx, nodes, cp.client)
 	if err != nil {
 		return errors.Wrap(err, "getting subnets for nodes")
 	}
 
-	lbSubnets, err := getSubnets(context.TODO(), lb.SubnetIds, cp.client.Networking())
+	lbSubnets, err := getSubnets(ctx, lb.SubnetIds, cp.client.Networking())
 	if err != nil {
 		return errors.Wrap(err, "getting subnets for load balancers")
 	}
@@ -600,17 +600,17 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(clusterName string, service *
 		}
 		healthCheckPort := *bs.HealthChecker.Port
 
-		if err := cp.securityListManager.Delete(context.TODO(), lbSubnets, nodeSubnets, *listener.Port, backendPort, healthCheckPort); err != nil {
+		if err := cp.securityListManager.Delete(ctx, lbSubnets, nodeSubnets, *listener.Port, backendPort, healthCheckPort); err != nil {
 			return errors.Wrapf(err, "delete security rules for listener %q on load balancer %q", listenerName, name)
 		}
 	}
 
 	glog.Infof("Deleting load balancer %q (OCID: %q)", name, id)
-	workReqID, err := cp.client.LoadBalancer().DeleteLoadBalancer(context.TODO(), id)
+	workReqID, err := cp.client.LoadBalancer().DeleteLoadBalancer(ctx, id)
 	if err != nil {
 		return errors.Wrapf(err, "delete load balancer %q", id)
 	}
-	_, err = cp.client.LoadBalancer().AwaitWorkRequest(context.TODO(), workReqID)
+	_, err = cp.client.LoadBalancer().AwaitWorkRequest(ctx, workReqID)
 	if err != nil {
 		return errors.Wrapf(err, "awaiting deletion of load balancer %q", name)
 	}
