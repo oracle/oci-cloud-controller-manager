@@ -18,7 +18,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -71,7 +70,7 @@ func New(config *Config) (Interface, error) {
 
 	err = configureCustomTransport(&compute.BaseClient)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "configuring load balancer client custom transport")
 	}
 
 	network, err := core.NewVirtualNetworkClientWithConfigurationProvider(cp)
@@ -81,7 +80,7 @@ func New(config *Config) (Interface, error) {
 
 	err = configureCustomTransport(&network.BaseClient)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "configuring load balancer client custom transport")
 	}
 
 	lb, err := loadbalancer.NewLoadBalancerClientWithConfigurationProvider(cp)
@@ -91,7 +90,7 @@ func New(config *Config) (Interface, error) {
 
 	err = configureCustomTransport(&lb.BaseClient)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "configuring load balancer client custom transport")
 	}
 
 	c := &client{
@@ -154,7 +153,7 @@ func configureCustomTransport(baseClient *common.BaseClient) error {
 	if ociProxy != "" {
 		proxyURL, err := url.Parse(ociProxy)
 		if err != nil {
-			return fmt.Errorf("failed to parse OCI proxy url: %s, err: %v", ociProxy, err)
+			return errors.Wrapf(err, "failed to parse OCI proxy url: %s", ociProxy)
 		}
 		transport.Proxy = func(req *http.Request) (*url.URL, error) {
 			return proxyURL, nil
@@ -166,14 +165,16 @@ func configureCustomTransport(baseClient *common.BaseClient) error {
 		glog.Infof("configuring OCI client with a new trusted ca: %s", trustedCACertPath)
 		trustedCACert, err := ioutil.ReadFile(trustedCACertPath)
 		if err != nil {
-			return fmt.Errorf("failed to read root certificate: %s, err: %v", trustedCACertPath, err)
+			return errors.Wrapf(err, "failed to read root certificate: %s", trustedCACertPath)
 		}
 		caCertPool := x509.NewCertPool()
 		ok := caCertPool.AppendCertsFromPEM(trustedCACert)
 		if !ok {
-			return fmt.Errorf("failed to parse root certificate: %s", trustedCACertPath)
+			return errors.Wrapf(err, "failed to parse root certificate: %s", trustedCACertPath)
 		}
 		transport.TLSClientConfig = &tls.Config{RootCAs: caCertPool}
 	}
+
+	httpClient.Transport = transport
 	return nil
 }
