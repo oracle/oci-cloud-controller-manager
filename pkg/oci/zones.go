@@ -16,13 +16,12 @@ package oci
 
 import (
 	"context"
-	"errors"
 	"strings"
-
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/util"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubernetes/pkg/cloudprovider"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/util"
 )
 
 var _ cloudprovider.Zones = &CloudProvider{}
@@ -40,7 +39,7 @@ func mapAvailabilityDomainToFailureDomain(AD string) string {
 // GetZone returns the Zone containing the current failure zone and locality
 // region that the program is running in.
 func (cp *CloudProvider) GetZone(ctx context.Context) (cloudprovider.Zone, error) {
-	return cloudprovider.Zone{}, errors.New("unimplemented")
+	return cloudprovider.Zone{}, cloudprovider.NotImplemented
 }
 
 // GetZoneByProviderID returns the Zone containing the current zone and

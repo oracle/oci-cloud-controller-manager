@@ -167,14 +167,15 @@ func (cp *CloudProvider) InstanceTypeByProviderID(ctx context.Context, providerI
 // AddSSHKeyToAllInstances adds an SSH public key as a legal identity for all instances
 // expected format for the key is standard ssh-keygen format: <protocol> <blob>
 func (cp *CloudProvider) AddSSHKeyToAllInstances(ctx context.Context, user string, keyData []byte) error {
-	return errors.New("unimplemented")
+	return cloudprovider.NotImplemented
 }
 
 // CurrentNodeName returns the name of the node we are currently running on
 // On most clouds (e.g. GCE) this is the hostname, so we provide the hostname
 func (cp *CloudProvider) CurrentNodeName(ctx context.Context, hostname string) (types.NodeName, error) {
 	glog.V(4).Infof("CurrentNodeName(%q) called", hostname)
-	return "", errors.New("unimplemented")
+	return "", cloudprovider.NotImplemented
+
 }
 
 // InstanceExistsByProviderID returns true if the instance for the given
