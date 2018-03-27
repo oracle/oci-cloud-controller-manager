@@ -50,10 +50,16 @@ rules:
   - ""
   resources:
   - endpoints
+  verbs:
+  - create
+
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
   resourceNames:
   - "cloud-controller-manager"
   verbs:
-  - create
   - get
   - list
   - watch
@@ -63,10 +69,16 @@ rules:
   - ""
   resources:
   - configmaps
+  verbs:
+  - create
+
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
   resourceNames:
   - "cloud-controller-manager"
   verbs:
-  - create
   - get
   - update
 
