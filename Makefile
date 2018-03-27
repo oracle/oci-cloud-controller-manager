@@ -90,11 +90,12 @@ deploy:
 
 .PHONY: run-dev
 run-dev: build
-	@dist/oci-cloud-controller-manager        \
-	    --kubeconfig=${KUBECONFIG}           \
-	    --cloud-config=${CLOUD_PROVIDER_CFG} \
-	    --cluster-cidr=10.244.0.0/16         \
-	    --cloud-provider=oci                 \
+	@dist/oci-cloud-controller-manager          \
+	    --kubeconfig=${KUBECONFIG}              \
+	    --cloud-config=${CLOUD_PROVIDER_CFG}    \
+	    --cluster-cidr=10.244.0.0/16            \
+	    --leader-elect-resource-lock=configmaps \
+	    --cloud-provider=oci                    \
 	    -v=4
 
 .PHONY: version
