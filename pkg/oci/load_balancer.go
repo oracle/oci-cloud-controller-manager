@@ -238,7 +238,7 @@ func (cp *CloudProvider) createLoadBalancer(ctx context.Context, spec *LBSpec) (
 	}
 
 	for _, ports := range spec.Ports {
-		if err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, spec.SourceCIDRs, ports.ListenerPort, ports.BackendPort, ports.HealthCheckerPort); err != nil {
+		if err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, spec.SourceCIDRs, ports); err != nil {
 			return nil, err
 		}
 	}
@@ -399,7 +399,7 @@ func (cp *CloudProvider) updateBackendSet(ctx context.Context, lbID string, acti
 
 	switch action.Type() {
 	case Create:
-		err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, ports.ListenerPort, ports.BackendPort, ports.HealthCheckerPort)
+		err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, ports)
 		if err != nil {
 			return err
 		}
@@ -410,16 +410,16 @@ func (cp *CloudProvider) updateBackendSet(ctx context.Context, lbID string, acti
 		// to take the old backend port and handle removal of associated rules.
 		if action.OldPorts != nil && action.OldPorts.BackendPort != ports.BackendPort {
 			ports := action.OldPorts
-			if err = cp.securityListManager.Delete(ctx, lbSubnets, nodeSubnets, ports.ListenerPort, ports.BackendPort, ports.HealthCheckerPort); err != nil {
+			if err = cp.securityListManager.Delete(ctx, lbSubnets, nodeSubnets, *ports); err != nil {
 				return errors.Wrapf(err, "deleting security rule for old node port %d", ports.BackendPort)
 			}
 		}
-		if err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, ports.ListenerPort, ports.BackendPort, ports.HealthCheckerPort); err != nil {
+		if err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, ports); err != nil {
 			return err
 		}
 		workRequestID, err = cp.client.LoadBalancer().UpdateBackendSet(ctx, lbID, action.Name(), bs)
 	case Delete:
-		err = cp.securityListManager.Delete(ctx, lbSubnets, nodeSubnets, ports.ListenerPort, ports.BackendPort, ports.HealthCheckerPort)
+		err = cp.securityListManager.Delete(ctx, lbSubnets, nodeSubnets, ports)
 		if err != nil {
 			return err
 		}
@@ -449,21 +449,21 @@ func (cp *CloudProvider) updateListener(ctx context.Context, lbID string, action
 
 	switch action.Type() {
 	case Create:
-		err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, ports.ListenerPort, ports.BackendPort, ports.HealthCheckerPort)
+		err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, ports)
 		if err != nil {
 			return err
 		}
 
 		workRequestID, err = cp.client.LoadBalancer().CreateListener(ctx, lbID, action.Name(), l)
 	case Update:
-		err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, ports.ListenerPort, ports.BackendPort, ports.HealthCheckerPort)
+		err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, ports)
 		if err != nil {
 			return err
 		}
 
 		workRequestID, err = cp.client.LoadBalancer().UpdateListener(ctx, lbID, action.Name(), l)
 	case Delete:
-		err = cp.securityListManager.Delete(ctx, lbSubnets, nodeSubnets, ports.ListenerPort, ports.BackendPort, ports.HealthCheckerPort)
+		err = cp.securityListManager.Delete(ctx, lbSubnets, nodeSubnets, ports)
 		if err != nil {
 			return err
 		}
@@ -559,10 +559,11 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 		}
 
 		ports := portsFromBackendSet(backendSetName, &bs)
+		ports.ListenerPort = *listener.Port
 
 		glog.V(4).Infof("Deleting security rules for listener %q for load balancer %q ports=%+v", listenerName, id, ports)
 
-		if err := cp.securityListManager.Delete(ctx, lbSubnets, nodeSubnets, *listener.Port, ports.BackendPort, ports.HealthCheckerPort); err != nil {
+		if err := cp.securityListManager.Delete(ctx, lbSubnets, nodeSubnets, ports); err != nil {
 			return errors.Wrapf(err, "delete security rules for listener %q on load balancer %q", listenerName, name)
 		}
 	}
