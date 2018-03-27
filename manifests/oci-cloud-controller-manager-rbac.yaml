@@ -12,14 +12,14 @@ rules:
   - nodes
   verbs:
   - '*'
- 
+
 - apiGroups:
   - ""
   resources:
   - nodes/status
   verbs:
   - patch
-  
+
 - apiGroups:
   - ""
   resources:
@@ -52,10 +52,36 @@ rules:
   - endpoints
   verbs:
   - create
+
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  resourceNames:
+  - "cloud-controller-manager"
+  verbs:
   - get
   - list
   - watch
   - update
+
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - create
+
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  resourceNames:
+  - "cloud-controller-manager"
+  verbs:
+  - get
+  - update
+
 - apiGroups:
   - ""
   resources:
