@@ -127,13 +127,15 @@ func (cp *CloudProvider) ExternalID(ctx context.Context, nodeName types.NodeName
 }
 
 // InstanceID returns the cloud provider ID of the node with the specified NodeName.
-// TODO (apryde): AWS and GCE use format /<zone>/<instanceid> - should we?
 func (cp *CloudProvider) InstanceID(ctx context.Context, nodeName types.NodeName) (string, error) {
 	glog.V(4).Infof("InstanceID(%q) called", nodeName)
 
 	name := mapNodeNameToInstanceName(nodeName)
 	inst, err := cp.client.Compute().GetInstanceByNodeName(ctx, name)
 	if err != nil {
+		if client.IsNotFound(err) {
+			return "", cloudprovider.InstanceNotFound
+		}
 		return "", errors.Wrap(err, "GetInstanceByNodeName")
 	}
 	return *inst.Id, nil
