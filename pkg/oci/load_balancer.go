@@ -238,7 +238,7 @@ func (cp *CloudProvider) createLoadBalancer(ctx context.Context, spec *LBSpec) (
 	}
 
 	for _, ports := range spec.Ports {
-		if err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, spec.SourceCIDRs, ports); err != nil {
+		if err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, spec.SourceCIDRs, nil, ports); err != nil {
 			return nil, err
 		}
 	}
@@ -399,22 +399,14 @@ func (cp *CloudProvider) updateBackendSet(ctx context.Context, lbID string, acti
 
 	switch action.Type() {
 	case Create:
-		err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, ports)
+		err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, nil, ports)
 		if err != nil {
 			return err
 		}
 
 		workRequestID, err = cp.client.LoadBalancer().CreateBackendSet(ctx, lbID, action.Name(), bs)
 	case Update:
-		// FIXME(apryde): This is inelegant and inefficient. Update() should be refactored
-		// to take the old backend port and handle removal of associated rules.
-		if action.OldPorts != nil && action.OldPorts.BackendPort != ports.BackendPort {
-			ports := action.OldPorts
-			if err = cp.securityListManager.Delete(ctx, lbSubnets, nodeSubnets, *ports); err != nil {
-				return errors.Wrapf(err, "deleting security rule for old node port %d", ports.BackendPort)
-			}
-		}
-		if err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, ports); err != nil {
+		if err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, action.OldPorts, ports); err != nil {
 			return err
 		}
 		workRequestID, err = cp.client.LoadBalancer().UpdateBackendSet(ctx, lbID, action.Name(), bs)
@@ -449,14 +441,14 @@ func (cp *CloudProvider) updateListener(ctx context.Context, lbID string, action
 
 	switch action.Type() {
 	case Create:
-		err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, ports)
+		err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, nil, ports)
 		if err != nil {
 			return err
 		}
 
 		workRequestID, err = cp.client.LoadBalancer().CreateListener(ctx, lbID, action.Name(), l)
 	case Update:
-		err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, ports)
+		err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, nil, ports)
 		if err != nil {
 			return err
 		}
