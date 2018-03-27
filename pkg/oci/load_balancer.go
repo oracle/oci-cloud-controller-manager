@@ -22,7 +22,7 @@ import (
 	"github.com/oracle/oci-go-sdk/loadbalancer"
 	"github.com/pkg/errors"
 
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	sets "k8s.io/apimachinery/pkg/util/sets"
@@ -434,8 +434,8 @@ func (cp *CloudProvider) updateBackendSet(ctx context.Context, lbID string, acti
 func (cp *CloudProvider) updateListener(ctx context.Context, lbID string, action *ListenerAction, ports portSpec, lbSubnets, nodeSubnets []*core.Subnet, sourceCIDRs []string) error {
 	var workRequestID string
 	var err error
-	l := action.Listener
-	ports.ListenerPort = *l.Port
+	listener := action.Listener
+	ports.ListenerPort = *listener.Port
 
 	glog.V(2).Infof("Applying %q action on listener %q for lb %q (ports=%+v)", action.Type(), action.Name(), lbID, ports)
 
@@ -446,14 +446,14 @@ func (cp *CloudProvider) updateListener(ctx context.Context, lbID string, action
 			return err
 		}
 
-		workRequestID, err = cp.client.LoadBalancer().CreateListener(ctx, lbID, action.Name(), l)
+		workRequestID, err = cp.client.LoadBalancer().CreateListener(ctx, lbID, action.Name(), listener)
 	case Update:
 		err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, nil, ports)
 		if err != nil {
 			return err
 		}
 
-		workRequestID, err = cp.client.LoadBalancer().UpdateListener(ctx, lbID, action.Name(), l)
+		workRequestID, err = cp.client.LoadBalancer().UpdateListener(ctx, lbID, action.Name(), listener)
 	case Delete:
 		err = cp.securityListManager.Delete(ctx, lbSubnets, nodeSubnets, ports)
 		if err != nil {

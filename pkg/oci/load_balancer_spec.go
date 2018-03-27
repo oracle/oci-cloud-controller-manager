@@ -84,7 +84,7 @@ type LBSpec struct {
 // NewLBSpec creates a LB Spec from a Kubernetes service and a slice of nodes.
 func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCfg *SSLConfig) (*LBSpec, error) {
 	if len(defaultSubnets) != 2 {
-		return nil, errors.New("defualt subnets incorrectly configured")
+		return nil, errors.New("default subnets incorrectly configured")
 	}
 
 	if err := validateService(svc); err != nil {
@@ -161,7 +161,7 @@ func (s *LBSpec) Certificates() (map[string]loadbalancer.CertificateDetails, err
 	return certs, nil
 }
 
-// TODO(apryde): aggragate errors using an error list.
+// TODO(apryde): aggregate errors using an error list.
 func validateService(svc *v1.Service) error {
 	if err := validateProtocols(svc.Spec.Ports); err != nil {
 		return err
@@ -215,7 +215,7 @@ func getPorts(svc *v1.Service) map[string]portSpec {
 }
 
 func getBackends(nodes []*v1.Node, nodePort int32) []loadbalancer.BackendDetails {
-	if len(nodes) < 1 {
+	if len(nodes) == 0 {
 		return nil
 	}
 	backends := make([]loadbalancer.BackendDetails, len(nodes))
