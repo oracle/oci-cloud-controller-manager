@@ -25,6 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	k8sports "k8s.io/kubernetes/pkg/master/ports"
 )
 
 func TestGetNodeIngressRules(t *testing.T) {
@@ -32,7 +33,8 @@ func TestGetNodeIngressRules(t *testing.T) {
 		name         string
 		securityList *core.SecurityList
 		lbSubnets    []*core.Subnet
-		port         int
+		actualPorts  *portSpec
+		desiredPorts portSpec
 		services     []*v1.Service
 		expected     []core.IngressSecurityRule
 	}{
@@ -47,12 +49,17 @@ func TestGetNodeIngressRules(t *testing.T) {
 				{CidrBlock: common.String("1")},
 				{CidrBlock: common.String("2")},
 			},
-			port:     80,
+			desiredPorts: portSpec{
+				BackendPort:       80,
+				HealthCheckerPort: k8sports.ProxyHealthzPort,
+			},
 			services: []*v1.Service{},
 			expected: []core.IngressSecurityRule{
 				makeIngressSecurityRule("existing", 9000),
 				makeIngressSecurityRule("1", 80),
 				makeIngressSecurityRule("2", 80),
+				makeIngressSecurityRule("1", k8sports.ProxyHealthzPort),
+				makeIngressSecurityRule("2", k8sports.ProxyHealthzPort),
 			},
 		}, {
 			name: "no change",
@@ -60,19 +67,26 @@ func TestGetNodeIngressRules(t *testing.T) {
 				IngressSecurityRules: []core.IngressSecurityRule{
 					makeIngressSecurityRule("existing", 9000),
 					makeIngressSecurityRule("1", 80),
+					makeIngressSecurityRule("1", k8sports.ProxyHealthzPort),
 					makeIngressSecurityRule("2", 80),
+					makeIngressSecurityRule("2", k8sports.ProxyHealthzPort),
 				},
 			},
 			lbSubnets: []*core.Subnet{
 				{CidrBlock: common.String("1")},
 				{CidrBlock: common.String("2")},
 			},
-			port:     80,
+			desiredPorts: portSpec{
+				BackendPort:       80,
+				HealthCheckerPort: k8sports.ProxyHealthzPort,
+			},
 			services: []*v1.Service{},
 			expected: []core.IngressSecurityRule{
 				makeIngressSecurityRule("existing", 9000),
 				makeIngressSecurityRule("1", 80),
+				makeIngressSecurityRule("1", k8sports.ProxyHealthzPort),
 				makeIngressSecurityRule("2", 80),
+				makeIngressSecurityRule("2", k8sports.ProxyHealthzPort),
 			},
 		}, {
 			name: "change lb subnet",
@@ -80,7 +94,9 @@ func TestGetNodeIngressRules(t *testing.T) {
 				IngressSecurityRules: []core.IngressSecurityRule{
 					makeIngressSecurityRule("existing", 9000),
 					makeIngressSecurityRule("1", 80),
+					makeIngressSecurityRule("1", k8sports.ProxyHealthzPort),
 					makeIngressSecurityRule("2", 80),
+					makeIngressSecurityRule("2", k8sports.ProxyHealthzPort),
 					makeIngressSecurityRule("existing", 9001),
 				},
 			},
@@ -88,13 +104,18 @@ func TestGetNodeIngressRules(t *testing.T) {
 				{CidrBlock: common.String("1")},
 				{CidrBlock: common.String("3")},
 			},
-			port:     80,
+			desiredPorts: portSpec{
+				BackendPort:       80,
+				HealthCheckerPort: k8sports.ProxyHealthzPort,
+			},
 			services: []*v1.Service{},
 			expected: []core.IngressSecurityRule{
 				makeIngressSecurityRule("existing", 9000),
 				makeIngressSecurityRule("1", 80),
+				makeIngressSecurityRule("1", k8sports.ProxyHealthzPort),
 				makeIngressSecurityRule("existing", 9001),
 				makeIngressSecurityRule("3", 80),
+				makeIngressSecurityRule("3", k8sports.ProxyHealthzPort),
 			},
 		}, {
 			name: "remove lb subnets",
@@ -102,26 +123,34 @@ func TestGetNodeIngressRules(t *testing.T) {
 				IngressSecurityRules: []core.IngressSecurityRule{
 					makeIngressSecurityRule("existing", 9000),
 					makeIngressSecurityRule("1", 80),
+					makeIngressSecurityRule("1", k8sports.ProxyHealthzPort),
 					makeIngressSecurityRule("2", 80),
+					makeIngressSecurityRule("2", k8sports.ProxyHealthzPort),
 					makeIngressSecurityRule("existing", 9001),
 				},
 			},
 			lbSubnets: []*core.Subnet{},
-			port:      80,
-			services:  []*v1.Service{},
+			desiredPorts: portSpec{
+				BackendPort:       80,
+				HealthCheckerPort: k8sports.ProxyHealthzPort,
+			},
+			services: []*v1.Service{},
 			expected: []core.IngressSecurityRule{
 				makeIngressSecurityRule("existing", 9000),
 				makeIngressSecurityRule("existing", 9001),
 			},
 		}, {
-			name: "do not delete a port rule which is used by another services (default) health check",
+			name: "do not delete a rule which is used by another services (default) health check",
 			securityList: &core.SecurityList{
 				IngressSecurityRules: []core.IngressSecurityRule{
 					makeIngressSecurityRule("0.0.0.0/0", lbNodesHealthCheckPort),
 				},
 			},
 			lbSubnets: []*core.Subnet{},
-			port:      lbNodesHealthCheckPort,
+			desiredPorts: portSpec{
+				BackendPort:       80,
+				HealthCheckerPort: k8sports.ProxyHealthzPort,
+			},
 			services: []*v1.Service{
 				{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-default-health-check-port"},
@@ -133,6 +162,37 @@ func TestGetNodeIngressRules(t *testing.T) {
 			},
 			expected: []core.IngressSecurityRule{
 				makeIngressSecurityRule("0.0.0.0/0", lbNodesHealthCheckPort),
+			},
+		}, {
+			name: "update node port",
+			securityList: &core.SecurityList{
+				IngressSecurityRules: []core.IngressSecurityRule{
+					makeIngressSecurityRule("existing", 9000),
+					makeIngressSecurityRule("1", 8081),
+					makeIngressSecurityRule("2", 8081),
+					makeIngressSecurityRule("1", k8sports.ProxyHealthzPort),
+					makeIngressSecurityRule("2", k8sports.ProxyHealthzPort),
+				},
+			},
+			lbSubnets: []*core.Subnet{
+				{CidrBlock: common.String("1")},
+				{CidrBlock: common.String("2")},
+			},
+			actualPorts: &portSpec{
+				BackendPort:       8081,
+				HealthCheckerPort: k8sports.ProxyHealthzPort,
+			},
+			desiredPorts: portSpec{
+				BackendPort:       80,
+				HealthCheckerPort: k8sports.ProxyHealthzPort,
+			},
+			services: []*v1.Service{},
+			expected: []core.IngressSecurityRule{
+				makeIngressSecurityRule("existing", 9000),
+				makeIngressSecurityRule("1", k8sports.ProxyHealthzPort),
+				makeIngressSecurityRule("2", k8sports.ProxyHealthzPort),
+				makeIngressSecurityRule("1", 80),
+				makeIngressSecurityRule("2", 80),
 			},
 		},
 	}
@@ -146,7 +206,7 @@ func TestGetNodeIngressRules(t *testing.T) {
 			}
 		}
 		t.Run(tc.name, func(t *testing.T) {
-			rules := getNodeIngressRules(tc.securityList.IngressSecurityRules, tc.lbSubnets, tc.port, serviceLister)
+			rules := getNodeIngressRules(tc.securityList.IngressSecurityRules, tc.lbSubnets, tc.actualPorts, tc.desiredPorts, serviceLister)
 			if !reflect.DeepEqual(rules, tc.expected) {
 				t.Errorf("expected rules\n%+v\nbut got\n%+v", tc.expected, rules)
 			}

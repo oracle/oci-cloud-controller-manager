@@ -18,7 +18,10 @@ import (
 	"reflect"
 	"testing"
 
-	api "k8s.io/api/core/v1"
+	"github.com/oracle/oci-go-sdk/common"
+	"github.com/oracle/oci-go-sdk/loadbalancer"
+
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -26,38 +29,65 @@ func TestNewLBSpecSuccess(t *testing.T) {
 	testCases := map[string]struct {
 		defaultSubnetOne string
 		defaultSubnetTwo string
-		nodes            []*api.Node
-		service          *api.Service
-		expected         LBSpec
+		nodes            []*v1.Node
+		service          *v1.Service
+		expected         *LBSpec
 	}{
 		"defaults": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
-			service: &api.Service{
+			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace:   "kube-system",
 					Name:        "testservice",
 					UID:         "test-uid",
 					Annotations: map[string]string{},
 				},
-				Spec: api.ServiceSpec{
-					SessionAffinity: api.ServiceAffinityNone,
-					Ports: []api.ServicePort{
-						{Protocol: api.ProtocolTCP},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						v1.ServicePort{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
 					},
 				},
 			},
-			expected: LBSpec{
+			expected: &LBSpec{
 				Name:     "test-uid",
 				Shape:    "100Mbps",
 				Internal: false,
 				Subnets:  []string{"one", "two"},
+				Listeners: map[string]loadbalancer.ListenerDetails{
+					"TCP-80": loadbalancer.ListenerDetails{
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:     common.Int(80),
+						Protocol: common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]loadbalancer.BackendSetDetails{
+					"TCP-80": loadbalancer.BackendSetDetails{
+						HealthChecker: &loadbalancer.HealthCheckerDetails{
+							Protocol: common.String("HTTP"),
+							Port:     common.Int(10256),
+							UrlPath:  common.String("/healthz"),
+						},
+						Policy: common.String("ROUND_ROBIN"),
+					},
+				},
+				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": portSpec{
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
 			},
 		},
 		"internal": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
-			service: &api.Service{
+			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
 					Name:      "testservice",
@@ -66,24 +96,51 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						ServiceAnnotationLoadBalancerInternal: "",
 					},
 				},
-				Spec: api.ServiceSpec{
-					SessionAffinity: api.ServiceAffinityNone,
-					Ports: []api.ServicePort{
-						{Protocol: api.ProtocolTCP},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						v1.ServicePort{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
 					},
 				},
 			},
-			expected: LBSpec{
+			expected: &LBSpec{
 				Name:     "test-uid",
 				Shape:    "100Mbps",
 				Internal: true,
 				Subnets:  []string{"one"},
+				Listeners: map[string]loadbalancer.ListenerDetails{
+					"TCP-80": loadbalancer.ListenerDetails{
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:     common.Int(80),
+						Protocol: common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]loadbalancer.BackendSetDetails{
+					"TCP-80": loadbalancer.BackendSetDetails{
+						HealthChecker: &loadbalancer.HealthCheckerDetails{
+							Protocol: common.String("HTTP"),
+							Port:     common.Int(10256),
+							UrlPath:  common.String("/healthz"),
+						},
+						Policy: common.String("ROUND_ROBIN"),
+					},
+				},
+				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": portSpec{
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
 			},
 		},
 		"subnet annotations": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
-			service: &api.Service{
+			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
 					Name:      "testservice",
@@ -93,24 +150,51 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						ServiceAnnotationLoadBalancerSubnet2: "annotation-two",
 					},
 				},
-				Spec: api.ServiceSpec{
-					SessionAffinity: api.ServiceAffinityNone,
-					Ports: []api.ServicePort{
-						{Protocol: api.ProtocolTCP},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						v1.ServicePort{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
 					},
 				},
 			},
-			expected: LBSpec{
+			expected: &LBSpec{
 				Name:     "test-uid",
 				Shape:    "100Mbps",
 				Internal: false,
 				Subnets:  []string{"annotation-one", "annotation-two"},
+				Listeners: map[string]loadbalancer.ListenerDetails{
+					"TCP-80": loadbalancer.ListenerDetails{
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:     common.Int(80),
+						Protocol: common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]loadbalancer.BackendSetDetails{
+					"TCP-80": loadbalancer.BackendSetDetails{
+						HealthChecker: &loadbalancer.HealthCheckerDetails{
+							Protocol: common.String("HTTP"),
+							Port:     common.Int(10256),
+							UrlPath:  common.String("/healthz"),
+						},
+						Policy: common.String("ROUND_ROBIN"),
+					},
+				},
+				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": portSpec{
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
 			},
 		},
 		"custom shape": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
-			service: &api.Service{
+			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
 					Name:      "testservice",
@@ -119,18 +203,45 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						ServiceAnnotationLoadBalancerShape: "8000Mbps",
 					},
 				},
-				Spec: api.ServiceSpec{
-					SessionAffinity: api.ServiceAffinityNone,
-					Ports: []api.ServicePort{
-						{Protocol: api.ProtocolTCP},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						v1.ServicePort{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
 					},
 				},
 			},
-			expected: LBSpec{
+			expected: &LBSpec{
 				Name:     "test-uid",
 				Shape:    "8000Mbps",
 				Internal: false,
 				Subnets:  []string{"one", "two"},
+				Listeners: map[string]loadbalancer.ListenerDetails{
+					"TCP-80": loadbalancer.ListenerDetails{
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:     common.Int(80),
+						Protocol: common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]loadbalancer.BackendSetDetails{
+					"TCP-80": loadbalancer.BackendSetDetails{
+						HealthChecker: &loadbalancer.HealthCheckerDetails{
+							Protocol: common.String("HTTP"),
+							Port:     common.Int(10256),
+							UrlPath:  common.String("/healthz"),
+						},
+						Policy: common.String("ROUND_ROBIN"),
+					},
+				},
+				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": portSpec{
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
 			},
 		},
 	}
@@ -155,42 +266,42 @@ func TestNewLBSpecFailure(t *testing.T) {
 	testCases := map[string]struct {
 		defaultSubnetOne string
 		defaultSubnetTwo string
-		nodes            []*api.Node
-		service          *api.Service
+		nodes            []*v1.Node
+		service          *v1.Service
 		expectedErrMsg   string
 	}{
 		"unsupported udp protocol": {
-			service: &api.Service{
-				Spec: api.ServiceSpec{
-					Ports: []api.ServicePort{
-						{Protocol: api.ProtocolUDP},
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{Protocol: v1.ProtocolUDP},
 					},
 				},
 			},
-			expectedErrMsg: "OCI load balancers do not support UDP",
+			expectedErrMsg: "invalid service: OCI load balancers do not support UDP",
 		},
 		"unsupported LB IP": {
-			service: &api.Service{
-				Spec: api.ServiceSpec{
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
 					LoadBalancerIP:  "127.0.0.1",
-					SessionAffinity: api.ServiceAffinityNone,
-					Ports: []api.ServicePort{
-						{Protocol: api.ProtocolTCP},
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{Protocol: v1.ProtocolTCP},
 					},
 				},
 			},
-			expectedErrMsg: "OCI does not support setting the LoadBalancerIP",
+			expectedErrMsg: "invalid service: OCI does not support setting LoadBalancerIP",
 		},
 		"unsupported session affinity": {
-			service: &api.Service{
-				Spec: api.ServiceSpec{
-					SessionAffinity: api.ServiceAffinityClientIP,
-					Ports: []api.ServicePort{
-						{Protocol: api.ProtocolTCP},
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityClientIP,
+					Ports: []v1.ServicePort{
+						{Protocol: v1.ProtocolTCP},
 					},
 				},
 			},
-			expectedErrMsg: "OCI only supports SessionAffinity `None` currently",
+			expectedErrMsg: "invalid service: OCI only supports SessionAffinity \"None\" currently",
 		},
 	}
 
@@ -199,7 +310,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 			subnets := []string{tc.defaultSubnetOne, tc.defaultSubnetTwo}
 			_, err := NewLBSpec(tc.service, tc.nodes, subnets, nil)
 			if err == nil || err.Error() != tc.expectedErrMsg {
-				t.Errorf("Expected error with message %q but got `%v`", tc.expectedErrMsg, err)
+				t.Errorf("Expected error with message %q but got %q", tc.expectedErrMsg, err)
 			}
 		})
 	}

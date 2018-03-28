@@ -21,7 +21,7 @@ import (
 	"github.com/oracle/oci-go-sdk/loadbalancer"
 	"github.com/pkg/errors"
 
-	api "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	sets "k8s.io/apimachinery/pkg/util/sets"
 	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
 
@@ -29,12 +29,12 @@ import (
 )
 
 type sslSecretReader interface {
-	readSSLSecret(svc *api.Service) (cert, key string, err error)
+	readSSLSecret(svc *v1.Service) (cert, key string, err error)
 }
 
 type noopSSLSecretReader struct{}
 
-func (ssr noopSSLSecretReader) readSSLSecret(svc *api.Service) (cert, key string, err error) {
+func (ssr noopSSLSecretReader) readSSLSecret(svc *v1.Service) (cert, key string, err error) {
 	return "", "", nil
 }
 
@@ -46,7 +46,7 @@ type SSLConfig struct {
 	sslSecretReader
 }
 
-func needsCerts(svc *api.Service) bool {
+func requiresCertificate(svc *v1.Service) bool {
 	_, ok := svc.Annotations[ServiceAnnotationLoadBalancerSSLPorts]
 	return ok
 }
@@ -66,42 +66,52 @@ func NewSSLConfig(name string, ports []int, ssr sslSecretReader) *SSLConfig {
 // LBSpec holds the data required to build a OCI load balancer from a
 // kubernetes service.
 type LBSpec struct {
-	Name     string
-	Shape    string
-	Nodes    []*api.Node
-	Subnets  []string
-	Internal bool
+	Name        string
+	Shape       string
+	Subnets     []string
+	Internal    bool
+	Listeners   map[string]loadbalancer.ListenerDetails
+	BackendSets map[string]loadbalancer.BackendSetDetails
 
-	SSLConfig *SSLConfig
-	service   *api.Service
+	Ports       map[string]portSpec
+	SourceCIDRs []string
+	SSLConfig   *SSLConfig
+
+	service *v1.Service
+	nodes   []*v1.Node
 }
 
 // NewLBSpec creates a LB Spec from a Kubernetes service and a slice of nodes.
-func NewLBSpec(service *api.Service, nodes []*api.Node, defaultSubnets []string, sslCfg *SSLConfig) (LBSpec, error) {
+func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCfg *SSLConfig) (*LBSpec, error) {
 	if len(defaultSubnets) != 2 {
-		return LBSpec{}, errors.New("defualt subnets incorrectly configured")
+		return nil, errors.New("default subnets incorrectly configured")
 	}
 
-	if err := validateService(service); err != nil {
-		return LBSpec{}, err
+	if err := validateService(svc); err != nil {
+		return nil, errors.Wrap(err, "invalid service")
 	}
 
-	_, internal := service.Annotations[ServiceAnnotationLoadBalancerInternal]
+	_, internal := svc.Annotations[ServiceAnnotationLoadBalancerInternal]
 
 	// TODO (apryde): We should detect when this changes and WARN as we don't
 	// support updating a load balancer's Shape.
 	shape := lbDefaultShape
-	if s, ok := service.Annotations[ServiceAnnotationLoadBalancerShape]; ok {
+	if s, ok := svc.Annotations[ServiceAnnotationLoadBalancerShape]; ok {
 		shape = s
+	}
+
+	sourceCIDRs, err := getLoadBalancerSourceRanges(svc)
+	if err != nil {
+		return nil, err
 	}
 
 	// NOTE: These will be overridden for existing load balancers as load
 	// balancer subnets cannot be modified.
 	subnets := defaultSubnets
-	if s, ok := service.Annotations[ServiceAnnotationLoadBalancerSubnet1]; ok {
+	if s, ok := svc.Annotations[ServiceAnnotationLoadBalancerSubnet1]; ok {
 		subnets[0] = s
 	}
-	if s, ok := service.Annotations[ServiceAnnotationLoadBalancerSubnet2]; ok {
+	if s, ok := svc.Annotations[ServiceAnnotationLoadBalancerSubnet2]; ok {
 		subnets[1] = s
 	}
 	if internal {
@@ -110,100 +120,25 @@ func NewLBSpec(service *api.Service, nodes []*api.Node, defaultSubnets []string,
 		subnets = subnets[:1]
 	}
 
-	return LBSpec{
-		Name:     GetLoadBalancerName(service),
-		Shape:    shape,
-		Nodes:    nodes,
-		Internal: internal,
-		Subnets:  subnets,
+	return &LBSpec{
+		Name:        GetLoadBalancerName(svc),
+		Shape:       shape,
+		Internal:    internal,
+		Subnets:     subnets,
+		Listeners:   getListeners(svc, sslCfg),
+		BackendSets: getBackendSets(svc, nodes),
 
-		service:   service,
-		SSLConfig: sslCfg,
+		Ports:       getPorts(svc),
+		SSLConfig:   sslCfg,
+		SourceCIDRs: sourceCIDRs,
+
+		service: svc,
+		nodes:   nodes,
 	}, nil
 }
 
-// TODO(apryde): aggragate errors using an error list.
-func validateService(svc *api.Service) error {
-	if err := validateProtocols(svc.Spec.Ports); err != nil {
-		return err
-	}
-
-	if svc.Spec.SessionAffinity != api.ServiceAffinityNone {
-		return errors.New("OCI only supports SessionAffinity `None` currently")
-	}
-
-	if svc.Spec.LoadBalancerIP != "" {
-		// TODO(horwitz): We need to figure out in the WG if this should actually log or error.
-		// The docs say: If the loadBalancerIP is specified, but the cloud provider does not support the feature, the field will be ignored.
-		// But no one does that...
-		// https://kubernetes.io/docs/concepts/services-networking/service/#type-loadbalancer
-		return errors.New("OCI does not support setting the LoadBalancerIP")
-	}
-
-	return nil
-}
-
-func getBackendSetName(protocol string, port int) string {
-	return fmt.Sprintf("%s-%d", protocol, port)
-}
-
-func (s *LBSpec) getBackends(nodePort int32) []loadbalancer.BackendDetails {
-	backends := make([]loadbalancer.BackendDetails, len(s.Nodes))
-	for i, node := range s.Nodes {
-		backends[i] = loadbalancer.BackendDetails{
-			IpAddress: common.String(util.NodeInternalIP(node)),
-			Port:      common.Int(int(nodePort)),
-			Weight:    common.Int(1),
-		}
-	}
-	return backends
-}
-
-// GetBackendSets builds a map of BackendSets based on the LBSpec.
-func (s *LBSpec) GetBackendSets() map[string]loadbalancer.BackendSetDetails {
-	backendSets := make(map[string]loadbalancer.BackendSetDetails)
-	for _, servicePort := range s.service.Spec.Ports {
-		name := getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
-		backendSets[name] = loadbalancer.BackendSetDetails{
-			Policy:        common.String(DefaultLoadBalancerPolicy),
-			Backends:      s.getBackends(servicePort.NodePort),
-			HealthChecker: s.getHealthChecker(),
-		}
-
-	}
-	return backendSets
-}
-
-func (s *LBSpec) getHealthChecker() *loadbalancer.HealthCheckerDetails {
-	path, port := apiservice.GetServiceHealthCheckPathPort(s.service)
-	if path != "" {
-		return &loadbalancer.HealthCheckerDetails{
-			Protocol: common.String(lbNodesHealthCheckProto),
-			UrlPath:  &path,
-			Port:     common.Int(int(port)),
-		}
-	}
-
-	return &loadbalancer.HealthCheckerDetails{
-		Protocol: common.String(lbNodesHealthCheckProto),
-		UrlPath:  common.String(lbNodesHealthCheckPath),
-		Port:     common.Int(lbNodesHealthCheckPort),
-	}
-}
-
-func (s *LBSpec) getSSLConfiguration(port int) *loadbalancer.SslConfigurationDetails {
-	if s.SSLConfig == nil || !s.SSLConfig.Ports.Has(port) {
-		return nil
-	}
-	return &loadbalancer.SslConfigurationDetails{
-		CertificateName:       &s.SSLConfig.Name,
-		VerifyDepth:           common.Int(0),
-		VerifyPeerCertificate: common.Bool(false),
-	}
-}
-
-// GetCertificates builds a map of required SSL certificates.
-func (s *LBSpec) GetCertificates() (map[string]loadbalancer.CertificateDetails, error) {
+// Certificates builds a map of required SSL certificates.
+func (s *LBSpec) Certificates() (map[string]loadbalancer.CertificateDetails, error) {
 	certs := make(map[string]loadbalancer.CertificateDetails)
 	if s.SSLConfig == nil {
 		return certs, nil
@@ -226,13 +161,122 @@ func (s *LBSpec) GetCertificates() (map[string]loadbalancer.CertificateDetails, 
 	return certs, nil
 }
 
-// GetListeners builds a map of listeners based on the LBSpec.
-func (s *LBSpec) GetListeners() map[string]loadbalancer.ListenerDetails {
+// TODO(apryde): aggregate errors using an error list.
+func validateService(svc *v1.Service) error {
+	if err := validateProtocols(svc.Spec.Ports); err != nil {
+		return err
+	}
+
+	if svc.Spec.SessionAffinity != v1.ServiceAffinityNone {
+		return errors.New("OCI only supports SessionAffinity \"None\" currently")
+	}
+
+	if svc.Spec.LoadBalancerIP != "" {
+		// TODO(horwitz): We need to figure out in the WG if this should actually log or error.
+		// The docs say: If the loadBalancerIP is specified, but the cloud provider does not support the feature, the field will be ignored.
+		// But no one does that...
+		// https://kubernetes.io/docs/concepts/services-networking/service/#type-loadbalancer
+		return errors.New("OCI does not support setting LoadBalancerIP")
+	}
+
+	return nil
+}
+
+func getLoadBalancerSourceRanges(service *v1.Service) ([]string, error) {
+	sourceRanges, err := apiservice.GetLoadBalancerSourceRanges(service)
+	if err != nil {
+		return []string{}, err
+	}
+
+	sourceCIDRs := make([]string, 0, len(sourceRanges))
+	for _, sourceRange := range sourceRanges {
+		sourceCIDRs = append(sourceCIDRs, sourceRange.String())
+	}
+
+	return sourceCIDRs, nil
+}
+
+func getBackendSetName(protocol string, port int) string {
+	return fmt.Sprintf("%s-%d", protocol, port)
+}
+
+func getPorts(svc *v1.Service) map[string]portSpec {
+	ports := make(map[string]portSpec)
+	for _, servicePort := range svc.Spec.Ports {
+		name := getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
+		ports[name] = portSpec{
+			BackendPort:       int(servicePort.NodePort),
+			ListenerPort:      int(servicePort.Port),
+			HealthCheckerPort: *getHealthChecker(svc).Port,
+		}
+
+	}
+	return ports
+}
+
+func getBackends(nodes []*v1.Node, nodePort int32) []loadbalancer.BackendDetails {
+	if len(nodes) == 0 {
+		return nil
+	}
+	backends := make([]loadbalancer.BackendDetails, len(nodes))
+	for i, node := range nodes {
+		backends[i] = loadbalancer.BackendDetails{
+			IpAddress: common.String(util.NodeInternalIP(node)),
+			Port:      common.Int(int(nodePort)),
+			Weight:    common.Int(1),
+		}
+	}
+	return backends
+}
+
+func getBackendSets(svc *v1.Service, nodes []*v1.Node) map[string]loadbalancer.BackendSetDetails {
+	backendSets := make(map[string]loadbalancer.BackendSetDetails)
+	for _, servicePort := range svc.Spec.Ports {
+		name := getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
+		backendSets[name] = loadbalancer.BackendSetDetails{
+			Policy:        common.String(DefaultLoadBalancerPolicy),
+			Backends:      getBackends(nodes, servicePort.NodePort),
+			HealthChecker: getHealthChecker(svc),
+		}
+
+	}
+	return backendSets
+}
+
+func getHealthChecker(svc *v1.Service) *loadbalancer.HealthCheckerDetails {
+	path, port := apiservice.GetServiceHealthCheckPathPort(svc)
+	if path != "" {
+		return &loadbalancer.HealthCheckerDetails{
+			Protocol: common.String(lbNodesHealthCheckProto),
+			UrlPath:  &path,
+			Port:     common.Int(int(port)),
+		}
+	}
+
+	return &loadbalancer.HealthCheckerDetails{
+		Protocol: common.String(lbNodesHealthCheckProto),
+		UrlPath:  common.String(lbNodesHealthCheckPath),
+		Port:     common.Int(lbNodesHealthCheckPort),
+	}
+}
+
+func getSSLConfiguration(cfg *SSLConfig, port int) *loadbalancer.SslConfigurationDetails {
+	if cfg == nil || !cfg.Ports.Has(port) {
+		return nil
+	}
+	return &loadbalancer.SslConfigurationDetails{
+		CertificateName:       &cfg.Name,
+		VerifyDepth:           common.Int(0),
+		VerifyPeerCertificate: common.Bool(false),
+	}
+}
+
+func getListeners(svc *v1.Service, sslCfg *SSLConfig) map[string]loadbalancer.ListenerDetails {
 	listeners := make(map[string]loadbalancer.ListenerDetails)
-	for _, servicePort := range s.service.Spec.Ports {
+	for _, servicePort := range svc.Spec.Ports {
 		protocol := string(servicePort.Protocol)
 		port := int(servicePort.Port)
-		sslConfiguration := s.getSSLConfiguration(port)
+		sslConfiguration := getSSLConfiguration(sslCfg, port)
 		name := getListenerName(protocol, port, sslConfiguration)
 		listeners[name] = loadbalancer.ListenerDetails{
 			DefaultBackendSetName: common.String(getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))),
