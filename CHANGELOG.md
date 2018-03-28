@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 0.3.0
+
+ * Create load balancers using a single OCI API request significantly reducing fresh load balancer creation time [[#148][6]]
+ * Fix failure to delete security list rules when deleting a Service type=LoadBalancer or changing its NodePort(s) [[#151][7]]
+ * Move to ConfigMap based leader election [[#160][8]]
+ * Fix potential panic when a load balancer had no backends [[#157][9]]
+
 ## 0.2.1
 
  * Add OCI proxy support [[#135][5]]
@@ -30,3 +37,7 @@
 [3]: https://github.com/oracle/oci-cloud-controller-manager/issues/131
 [4]: https://github.com/oracle/oci-cloud-controller-manager/issues/125
 [5]: https://github.com/oracle/oci-cloud-controller-manager/issues/135
+[6]: https://github.com/oracle/oci-cloud-controller-manager/issues/148
+[7]: https://github.com/oracle/oci-cloud-controller-manager/issues/151
+[8]: https://github.com/oracle/oci-cloud-controller-manager/issues/160
+[9]: https://github.com/oracle/oci-cloud-controller-manager/issues/157
