@@ -5,6 +5,7 @@ implementation (or out-of-tree cloud-provider) for [Oracle Cloud
 Infrastucture][1] (OCI).
 
 [![wercker status](https://app.wercker.com/status/17a52304e0309d138ad41f7ae9f9ea49/s/master "wercker status")](https://app.wercker.com/project/byKey/17a52304e0309d138ad41f7ae9f9ea49)
+[![Go Report Card](https://goreportcard.com/badge/github.com/oracle/oci-volume-provisioner)](https://goreportcard.com/report/github.com/oracle/oci-volume-provisioner)
 
 **WARNING**: this project is under active development and should be considered alpha.
 
