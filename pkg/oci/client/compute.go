@@ -29,9 +29,9 @@ type ComputeInterface interface {
 	GetInstance(ctx context.Context, id string) (*core.Instance, error)
 	// GetInstanceByNodeName gets the OCI instance corresponding to the given
 	// Kubernetes node name.
-	GetInstanceByNodeName(ctx context.Context, nodeName string) (*core.Instance, error)
+	GetInstanceByNodeName(ctx context.Context, compartmentID, vcnID, nodeName string) (*core.Instance, error)
 
-	GetPrimaryVNICForInstance(ctx context.Context, instanceID string) (*core.Vnic, error)
+	GetPrimaryVNICForInstance(ctx context.Context, compartmentID, instanceID string) (*core.Vnic, error)
 }
 
 func (c *client) GetInstance(ctx context.Context, id string) (*core.Instance, error) {
@@ -47,14 +47,14 @@ func (c *client) GetInstance(ctx context.Context, id string) (*core.Instance, er
 	return &resp.Instance, nil
 }
 
-func (c *client) getInstanceByDisplayName(ctx context.Context, displayName string) (*core.Instance, error) {
+func (c *client) getInstanceByDisplayName(ctx context.Context, compartmentID, displayName string) (*core.Instance, error) {
 	var (
 		page      *string
 		instances []core.Instance
 	)
 	for {
 		resp, err := c.compute.ListInstances(ctx, core.ListInstancesRequest{
-			CompartmentId: &c.config.Auth.CompartmentOCID,
+			CompartmentId: &compartmentID,
 			DisplayName:   &displayName,
 			Page:          page,
 		})
@@ -91,12 +91,12 @@ func (c *client) listVNICAttachments(ctx context.Context, req core.ListVnicAttac
 	return resp, nil
 }
 
-func (c *client) GetPrimaryVNICForInstance(ctx context.Context, instanceID string) (*core.Vnic, error) {
+func (c *client) GetPrimaryVNICForInstance(ctx context.Context, compartmentID, instanceID string) (*core.Vnic, error) {
 	var page *string
 	for {
 		resp, err := c.listVNICAttachments(ctx, core.ListVnicAttachmentsRequest{
 			InstanceId:    &instanceID,
-			CompartmentId: &c.config.Auth.CompartmentOCID,
+			CompartmentId: &compartmentID,
 			Page:          page,
 		})
 
@@ -129,9 +129,9 @@ func (c *client) GetPrimaryVNICForInstance(ctx context.Context, instanceID strin
 	return nil, errors.WithStack(errNotFound)
 }
 
-func (c *client) GetInstanceByNodeName(ctx context.Context, nodeName string) (*core.Instance, error) {
+func (c *client) GetInstanceByNodeName(ctx context.Context, compartmentID, vcnID, nodeName string) (*core.Instance, error) {
 	// First try lookup by display name.
-	instance, err := c.getInstanceByDisplayName(ctx, nodeName)
+	instance, err := c.getInstanceByDisplayName(ctx, compartmentID, nodeName)
 	if err == nil {
 		return instance, nil
 	}
@@ -143,7 +143,7 @@ func (c *client) GetInstanceByNodeName(ctx context.Context, nodeName string) (*c
 	)
 	for {
 		resp, err := c.listVNICAttachments(ctx, core.ListVnicAttachmentsRequest{
-			CompartmentId: &c.config.Auth.CompartmentOCID,
+			CompartmentId: &compartmentID,
 			Page:          page,
 		})
 		if err != nil {
@@ -167,7 +167,7 @@ func (c *client) GetInstanceByNodeName(ctx context.Context, nodeName string) (*c
 			if err != nil {
 				return nil, err
 			}
-			if *subnet.VcnId != c.vcnID {
+			if *subnet.VcnId != vcnID {
 				continue
 			}
 

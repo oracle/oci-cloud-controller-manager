@@ -30,7 +30,7 @@ const workRequestPollInterval = 5 * time.Second
 type LoadBalancerInterface interface {
 	CreateLoadBalancer(ctx context.Context, details loadbalancer.CreateLoadBalancerDetails) (string, error)
 	GetLoadBalancer(ctx context.Context, id string) (*loadbalancer.LoadBalancer, error)
-	GetLoadBalancerByName(ctx context.Context, name string) (*loadbalancer.LoadBalancer, error)
+	GetLoadBalancerByName(ctx context.Context, compartmentID, name string) (*loadbalancer.LoadBalancer, error)
 	DeleteLoadBalancer(ctx context.Context, id string) (string, error)
 
 	GetCertificateByName(ctx context.Context, lbID, name string) (*loadbalancer.Certificate, error)
@@ -60,11 +60,11 @@ func (c *client) GetLoadBalancer(ctx context.Context, id string) (*loadbalancer.
 	return &resp.LoadBalancer, nil
 }
 
-func (c *client) GetLoadBalancerByName(ctx context.Context, name string) (*loadbalancer.LoadBalancer, error) {
+func (c *client) GetLoadBalancerByName(ctx context.Context, compartmentID, name string) (*loadbalancer.LoadBalancer, error) {
 	var page *string
 	for {
 		resp, err := c.loadbalancer.ListLoadBalancers(ctx, loadbalancer.ListLoadBalancersRequest{
-			CompartmentId: &c.config.Auth.CompartmentOCID,
+			CompartmentId: &compartmentID,
 			DisplayName:   &name,
 			Page:          page,
 		})
