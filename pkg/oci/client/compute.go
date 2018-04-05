@@ -171,7 +171,8 @@ func (c *client) GetInstanceByNodeName(ctx context.Context, compartmentID, vcnID
 				continue
 			}
 
-			if *vnic.PublicIp == nodeName || (*vnic.HostnameLabel != "" && strings.HasPrefix(nodeName, *vnic.HostnameLabel)) {
+			if (vnic.PublicIp != nil && *vnic.PublicIp == nodeName) ||
+				(vnic.HostnameLabel != nil && (*vnic.HostnameLabel != "" && strings.HasPrefix(nodeName, *vnic.HostnameLabel))) {
 				instance, err := c.GetInstance(ctx, *attachment.InstanceId)
 				if err != nil {
 					return nil, err
