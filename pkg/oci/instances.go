@@ -78,12 +78,12 @@ func extractNodeAddressesFromVNIC(vnic *core.Vnic) ([]api.NodeAddress, error) {
 func (cp *CloudProvider) NodeAddresses(ctx context.Context, name types.NodeName) ([]api.NodeAddress, error) {
 	glog.V(4).Infof("NodeAddresses(%q) called", name)
 
-	inst, err := cp.client.Compute().GetInstanceByNodeName(ctx, mapNodeNameToInstanceName(name))
+	inst, err := cp.client.Compute().GetInstanceByNodeName(ctx, cp.config.Auth.CompartmentOCID, cp.config.VCNID, mapNodeNameToInstanceName(name))
 	if err != nil {
 		return nil, errors.Wrap(err, "GetInstanceByNodeName")
 	}
 
-	vnic, err := cp.client.Compute().GetPrimaryVNICForInstance(ctx, *inst.Id)
+	vnic, err := cp.client.Compute().GetPrimaryVNICForInstance(ctx, cp.config.Auth.CompartmentOCID, *inst.Id)
 	if err != nil {
 		return nil, errors.Wrap(err, "GetPrimaryVNICForInstance")
 	}
@@ -98,7 +98,7 @@ func (cp *CloudProvider) NodeAddresses(ctx context.Context, name types.NodeName)
 func (cp *CloudProvider) NodeAddressesByProviderID(ctx context.Context, providerID string) ([]api.NodeAddress, error) {
 	glog.V(4).Infof("NodeAddressesByProviderID(%q) called", providerID)
 	instanceID := util.MapProviderIDToInstanceID(providerID)
-	vnic, err := cp.client.Compute().GetPrimaryVNICForInstance(ctx, instanceID)
+	vnic, err := cp.client.Compute().GetPrimaryVNICForInstance(ctx, cp.config.Auth.CompartmentOCID, instanceID)
 	if err != nil {
 		return nil, errors.Wrap(err, "GetPrimaryVNICForInstance")
 	}
@@ -112,7 +112,7 @@ func (cp *CloudProvider) ExternalID(ctx context.Context, nodeName types.NodeName
 	glog.V(4).Infof("ExternalID(%q) called", nodeName)
 
 	instName := mapNodeNameToInstanceName(nodeName)
-	inst, err := cp.client.Compute().GetInstanceByNodeName(ctx, instName)
+	inst, err := cp.client.Compute().GetInstanceByNodeName(ctx, cp.config.Auth.CompartmentOCID, cp.config.VCNID, instName)
 	if client.IsNotFound(err) {
 		glog.Infof("Instance %q was not found. Unable to get ExternalID: %v", instName, err)
 		return "", cloudprovider.InstanceNotFound
@@ -131,7 +131,7 @@ func (cp *CloudProvider) InstanceID(ctx context.Context, nodeName types.NodeName
 	glog.V(4).Infof("InstanceID(%q) called", nodeName)
 
 	name := mapNodeNameToInstanceName(nodeName)
-	inst, err := cp.client.Compute().GetInstanceByNodeName(ctx, name)
+	inst, err := cp.client.Compute().GetInstanceByNodeName(ctx, cp.config.Auth.CompartmentOCID, cp.config.VCNID, name)
 	if err != nil {
 		if client.IsNotFound(err) {
 			return "", cloudprovider.InstanceNotFound
@@ -145,7 +145,7 @@ func (cp *CloudProvider) InstanceID(ctx context.Context, nodeName types.NodeName
 func (cp *CloudProvider) InstanceType(ctx context.Context, name types.NodeName) (string, error) {
 	glog.V(4).Infof("InstanceType(%q) called", name)
 
-	inst, err := cp.client.Compute().GetInstanceByNodeName(ctx, mapNodeNameToInstanceName(name))
+	inst, err := cp.client.Compute().GetInstanceByNodeName(ctx, cp.config.Auth.CompartmentOCID, cp.config.VCNID, mapNodeNameToInstanceName(name))
 	if err != nil {
 		return "", errors.Wrap(err, "GetInstanceByNodeName")
 	}

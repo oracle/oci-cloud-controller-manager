@@ -17,12 +17,15 @@
 package oci
 
 import (
+	"context"
 	"fmt"
 	"io"
 
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/oracle/oci-go-sdk/common"
+	"github.com/pkg/errors"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	wait "k8s.io/apimachinery/pkg/util/wait"
@@ -34,6 +37,7 @@ import (
 	controller "k8s.io/kubernetes/pkg/controller"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instancemeta"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/util"
 )
 
@@ -54,7 +58,7 @@ type CloudProvider struct {
 	kubeclient clientset.Interface
 
 	securityListManager securityListManager
-	config              *client.Config
+	config              *Config
 }
 
 // Compile time check that CloudProvider implements the cloudprovider.Interface
@@ -62,27 +66,53 @@ type CloudProvider struct {
 var _ cloudprovider.Interface = &CloudProvider{}
 
 // NewCloudProvider creates a new oci.CloudProvider.
-func NewCloudProvider(cfg *client.Config) (cloudprovider.Interface, error) {
-	c, err := client.New(cfg)
+func NewCloudProvider(config *Config) (cloudprovider.Interface, error) {
+	c, err := client.New(common.NewRawConfigurationProvider(
+		config.Auth.TenancyOCID,
+		config.Auth.UserOCID,
+		config.Auth.Region,
+		config.Auth.Fingerprint,
+		config.Auth.PrivateKey,
+		&config.Auth.PrivateKeyPassphrase,
+	))
 	if err != nil {
 		return nil, err
 	}
 
+	if config.Auth.CompartmentOCID == "" {
+		glog.Info("Compartment not supplied in config: attempting to infer from instance metadata")
+		metadata, err := instancemeta.New().Get()
+		if err != nil {
+			return nil, err
+		}
+		config.Auth.CompartmentOCID = metadata.CompartmentOCID
+	}
+
+	if config.VCNID == "" {
+		glog.Infof("No vcn provided in cloud provider config. Falling back to looking up VCN via LB subnet.")
+		subnet, err := c.Networking().GetSubnet(context.Background(), config.LoadBalancer.Subnet1)
+		if err != nil {
+			return nil, errors.Wrap(err, "get subnet for loadBalancer.subnet1")
+		}
+		config.VCNID = *subnet.VcnId
+	}
+
 	return &CloudProvider{
 		client: c,
-		config: cfg,
+		config: config,
 	}, nil
 }
 
 func init() {
 	cloudprovider.RegisterCloudProvider(ProviderName(), func(config io.Reader) (cloudprovider.Interface, error) {
-		cfg, err := client.ReadConfig(config)
+		cfg, err := ReadConfig(config)
 		if err != nil {
 			return nil, err
 		}
 		if err = cfg.Validate(); err != nil {
 			return nil, err
 		}
+
 		return NewCloudProvider(cfg)
 	})
 }

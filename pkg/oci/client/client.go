@@ -15,7 +15,6 @@
 package client
 
 import (
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
@@ -32,8 +31,6 @@ import (
 	"github.com/oracle/oci-go-sdk/core"
 	"github.com/oracle/oci-go-sdk/loadbalancer"
 	"github.com/pkg/errors"
-
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instancemeta"
 )
 
 // Interface of consumed OCI API functionality.
@@ -44,27 +41,15 @@ type Interface interface {
 }
 
 type client struct {
-	config *Config
-
 	compute      *core.ComputeClient
 	network      *core.VirtualNetworkClient
 	loadbalancer *loadbalancer.LoadBalancerClient
-
-	vcnID string
 
 	subnetCache cache.Store
 }
 
 // New constructs an OCI API client.
-func New(config *Config) (Interface, error) {
-	cp := common.NewRawConfigurationProvider(
-		config.Auth.TenancyOCID,
-		config.Auth.UserOCID,
-		config.Auth.Region,
-		config.Auth.Fingerprint,
-		config.Auth.PrivateKey,
-		&config.Auth.PrivateKeyPassphrase,
-	)
+func New(cp common.ConfigurationProvider) (Interface, error) {
 	compute, err := core.NewComputeClientWithConfigurationProvider(cp)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewComputeClientWithConfigurationProvider")
@@ -96,34 +81,12 @@ func New(config *Config) (Interface, error) {
 	}
 
 	c := &client{
-		config: config,
-
 		compute:      &compute,
 		network:      &network,
 		loadbalancer: &lb,
 
 		subnetCache: cache.NewTTLStore(subnetCacheKeyFn, time.Duration(24)*time.Hour),
 	}
-
-	if config.Auth.CompartmentOCID == "" {
-		glog.Info("Compartment not supplied in config: attempting to infer from instance metadata")
-		metadata, err := instancemeta.New().Get()
-		if err != nil {
-			return nil, err
-		}
-		config.Auth.CompartmentOCID = metadata.CompartmentOCID
-	}
-
-	vcnID := config.VCNID
-	if vcnID == "" {
-		glog.Infof("No vcn provided in cloud provider config. Falling back to looking up VCN via LB subnet.")
-		subnet, err := c.GetSubnet(context.Background(), config.LoadBalancer.Subnet1)
-		if err != nil {
-			return nil, errors.Wrap(err, "get subnet for loadBalancer.subnet1")
-		}
-		vcnID = *subnet.VcnId
-	}
-	c.vcnID = vcnID
 
 	return c, nil
 }

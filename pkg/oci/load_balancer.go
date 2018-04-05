@@ -83,7 +83,7 @@ func (cp *CloudProvider) GetLoadBalancer(ctx context.Context, clusterName string
 	name := GetLoadBalancerName(service)
 	glog.V(4).Infof("Fetching load balancer with name %q", name)
 
-	lb, err := cp.client.LoadBalancer().GetLoadBalancerByName(ctx, name)
+	lb, err := cp.client.LoadBalancer().GetLoadBalancerByName(ctx, cp.config.Auth.CompartmentOCID, name)
 	if err != nil {
 		if client.IsNotFound(err) {
 			glog.V(2).Infof("Load balancer %q does not exist", name)
@@ -112,7 +112,7 @@ func getSubnets(ctx context.Context, subnetIDs []string, n client.NetworkingInte
 
 // getSubnetsForNodes returns the de-duplicated subnets in which the given
 // internal IP addresses reside.
-func getSubnetsForNodes(ctx context.Context, nodes []*v1.Node, client client.Interface) ([]*core.Subnet, error) {
+func getSubnetsForNodes(ctx context.Context, nodes []*v1.Node, client client.Interface, compartmentID string) ([]*core.Subnet, error) {
 	var (
 		subnetOCIDs = sets.NewString()
 		subnets     []*core.Subnet
@@ -141,7 +141,7 @@ func getSubnetsForNodes(ctx context.Context, nodes []*v1.Node, client client.Int
 		}
 
 		id := util.MapProviderIDToInstanceID(node.Spec.ProviderID)
-		vnic, err := client.Compute().GetPrimaryVNICForInstance(ctx, id)
+		vnic, err := client.Compute().GetPrimaryVNICForInstance(ctx, compartmentID, id)
 		if err != nil {
 			return nil, err
 		}
@@ -232,7 +232,7 @@ func (cp *CloudProvider) createLoadBalancer(ctx context.Context, spec *LBSpec) (
 	if err != nil {
 		return nil, errors.Wrap(err, "getting subnets for load balancers")
 	}
-	nodeSubnets, err := getSubnetsForNodes(ctx, spec.nodes, cp.client)
+	nodeSubnets, err := getSubnetsForNodes(ctx, spec.nodes, cp.client, cp.config.Auth.CompartmentOCID)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting subnets for nodes")
 	}
@@ -286,7 +286,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 
 	glog.V(4).Infof("Ensure load balancer %q called for %q with %d nodes.", lbName, service.Name, len(nodes))
 
-	lb, err := cp.client.LoadBalancer().GetLoadBalancerByName(ctx, lbName)
+	lb, err := cp.client.LoadBalancer().GetLoadBalancerByName(ctx, cp.config.Auth.CompartmentOCID, lbName)
 	if err != nil && !client.IsNotFound(err) {
 		return nil, err
 	}
@@ -351,7 +351,7 @@ func (cp *CloudProvider) updateLoadBalancer(ctx context.Context, lb *loadbalance
 	if err != nil {
 		return errors.Wrapf(err, "getting load balancer subnets")
 	}
-	nodeSubnets, err := getSubnetsForNodes(ctx, spec.nodes, cp.client)
+	nodeSubnets, err := getSubnetsForNodes(ctx, spec.nodes, cp.client, cp.config.Auth.CompartmentOCID)
 	if err != nil {
 		return errors.Wrap(err, "get subnets for nodes")
 	}
@@ -512,7 +512,7 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 	name := GetLoadBalancerName(service)
 	glog.Infof("Attempting to delete load balancer %q", name)
 
-	lb, err := cp.client.LoadBalancer().GetLoadBalancerByName(ctx, name)
+	lb, err := cp.client.LoadBalancer().GetLoadBalancerByName(ctx, cp.config.Auth.CompartmentOCID, name)
 	if err != nil {
 		if client.IsNotFound(err) {
 			glog.Infof("Could not find load balancer with name %q. Nothing to do.", name)
@@ -533,7 +533,7 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 	if err != nil {
 		return errors.Wrap(err, "fetching nodes by internal ips")
 	}
-	nodeSubnets, err := getSubnetsForNodes(ctx, nodes, cp.client)
+	nodeSubnets, err := getSubnetsForNodes(ctx, nodes, cp.client, cp.config.Auth.CompartmentOCID)
 	if err != nil {
 		return errors.Wrap(err, "getting subnets for nodes")
 	}
