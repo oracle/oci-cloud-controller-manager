@@ -32,6 +32,8 @@ import (
 	"github.com/oracle/oci-go-sdk/core"
 	"github.com/oracle/oci-go-sdk/loadbalancer"
 	"github.com/pkg/errors"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instancemeta"
 )
 
 // Interface of consumed OCI API functionality.
@@ -101,6 +103,15 @@ func New(config *Config) (Interface, error) {
 		loadbalancer: &lb,
 
 		subnetCache: cache.NewTTLStore(subnetCacheKeyFn, time.Duration(24)*time.Hour),
+	}
+
+	if config.Auth.CompartmentOCID == "" {
+		glog.Info("Compartment not supplied in config: attempting to infer from instance metadata")
+		metadata, err := instancemeta.New().Get()
+		if err != nil {
+			return nil, err
+		}
+		config.Auth.CompartmentOCID = metadata.CompartmentOCID
 	}
 
 	vcnID := config.VCNID
