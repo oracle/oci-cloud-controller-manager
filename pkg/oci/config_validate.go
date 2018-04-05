@@ -27,10 +27,10 @@ func validateAuthConfig(c *AuthConfig, fldPath *field.Path) field.ErrorList {
 	if c.Region == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("region"), ""))
 	}
-	if c.TenancyOCID == "" {
+	if c.TenancyID == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("tenancy"), ""))
 	}
-	if c.UserOCID == "" {
+	if c.UserID == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("user"), ""))
 	}
 	if c.PrivateKey == "" {

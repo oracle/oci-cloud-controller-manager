@@ -15,20 +15,23 @@
 package oci
 
 import (
-	"errors"
 	"io"
 	"io/ioutil"
 
+	"github.com/golang/glog"
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
 
 // AuthConfig holds the configuration required for communicating with the OCI
 // API.
 type AuthConfig struct {
-	Region               string `yaml:"region"`
-	TenancyOCID          string `yaml:"tenancy"`
-	CompartmentOCID      string `yaml:"compartment"`
-	UserOCID             string `yaml:"user"`
+	Region    string `yaml:"region"`
+	TenancyID string `yaml:"tenancy"`
+	// CompartmentID is DEPRECIATED and should be set on the top level Config
+	// struct.
+	CompartmentID        string `yaml:"compartment"`
+	UserID               string `yaml:"user"`
 	PrivateKey           string `yaml:"key"`
 	Fingerprint          string `yaml:"fingerprint"`
 	PrivateKeyPassphrase string `yaml:"key_passphrase"` // TODO(apryde): the yaml should be keyPassphrase
@@ -55,9 +58,20 @@ type Config struct {
 	Auth         AuthConfig         `yaml:"auth"`
 	LoadBalancer LoadBalancerConfig `yaml:"loadBalancer"`
 
+	// CompartmentID is the OCID of the Compartment within which the cluster
+	// resides.
+	CompartmentID string `yaml:"compartment"`
 	// VCNID is the OCID of the Virtual Cloud Network (VCN) within which the
 	// cluster resides.
 	VCNID string `yaml:"vcn"`
+}
+
+// Complete the config applying defaults / overrides.
+func (c *Config) Complete() {
+	if c.CompartmentID == "" && c.Auth.CompartmentID != "" {
+		glog.Warning("cloud-provider config: \"auth.compartment\" is DEPRECIATED and will be removed in a later release. Please set \"compartment\".")
+		c.CompartmentID = c.Auth.CompartmentID
+	}
 }
 
 // Validate validates the OCI cloud-provider config.
@@ -71,15 +85,15 @@ func ReadConfig(r io.Reader) (*Config, error) {
 		return nil, errors.New("no cloud-provider config file given")
 	}
 
-	cfg := &Config{}
-
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "reading cloud-provider config")
 	}
+
+	cfg := &Config{}
 	err = yaml.Unmarshal(b, &cfg)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "unmarshalling cloud-provider config")
 	}
 
 	return cfg, nil

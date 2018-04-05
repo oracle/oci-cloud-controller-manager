@@ -30,7 +30,6 @@ const validConfig = `
 auth:
   region: us-phoenix-1
   tenancy: ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq
-  compartment: ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq
   user: ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q
   key: |
     -----BEGIN RSA PRIVATE KEY-----
@@ -61,6 +60,8 @@ auth:
     D/yEDdXVK/lIzNt7kIMFhtoYGrwv1JQGfK5Wh2bi+AwbBDZ45/17
     -----END RSA PRIVATE KEY-----
   fingerprint: 97:84:f7:26:a3:7b:74:d0:bd:4e:08:a7:79:c9:d0:1d
+
+compartment: ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq
 
 loadBalancer:
   disableSecurityListManagement: false
@@ -132,8 +133,8 @@ func TestReadConfigShouldSetCompartmentOCIDWhenProvidedValidConfig(t *testing.T)
 	}
 	expected := "ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq"
 
-	if cfg.Auth.CompartmentOCID != expected {
-		t.Errorf("Got Auth.CompartmentOCID = %s; want Auth.CompartmentOCID = %s",
-			cfg.Auth.CompartmentOCID, expected)
+	if cfg.CompartmentID != expected {
+		t.Errorf("Got CompartmentID = %s; want CompartmentID = %s",
+			cfg.CompartmentID, expected)
 	}
 }

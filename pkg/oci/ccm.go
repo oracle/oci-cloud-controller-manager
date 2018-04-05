@@ -68,8 +68,8 @@ var _ cloudprovider.Interface = &CloudProvider{}
 // NewCloudProvider creates a new oci.CloudProvider.
 func NewCloudProvider(config *Config) (cloudprovider.Interface, error) {
 	c, err := client.New(common.NewRawConfigurationProvider(
-		config.Auth.TenancyOCID,
-		config.Auth.UserOCID,
+		config.Auth.TenancyID,
+		config.Auth.UserID,
 		config.Auth.Region,
 		config.Auth.Fingerprint,
 		config.Auth.PrivateKey,
@@ -79,13 +79,13 @@ func NewCloudProvider(config *Config) (cloudprovider.Interface, error) {
 		return nil, err
 	}
 
-	if config.Auth.CompartmentOCID == "" {
+	if config.CompartmentID == "" {
 		glog.Info("Compartment not supplied in config: attempting to infer from instance metadata")
 		metadata, err := instancemeta.New().Get()
 		if err != nil {
 			return nil, err
 		}
-		config.Auth.CompartmentOCID = metadata.CompartmentOCID
+		config.CompartmentID = metadata.CompartmentOCID
 	}
 
 	if config.VCNID == "" {
@@ -109,6 +109,8 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
+		cfg.Complete()
+
 		if err = cfg.Validate(); err != nil {
 			return nil, err
 		}

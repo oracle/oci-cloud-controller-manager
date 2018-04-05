@@ -1,7 +1,6 @@
 auth:
   region: us-phoenix-1
   tenancy: ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq
-  compartment: ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq
   user: ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q
   key: |
     -----BEGIN RSA PRIVATE KEY-----
@@ -10,6 +9,9 @@ auth:
   # Omit if there is not a password for the key
   key_passphrase: supersecretpassword
   fingerprint: 8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74
+
+# compartment configures Compartment within which the cluster resides.
+compartment: ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq
 
 # vcn configures the Virtual Cloud Network (VCN) within which the cluster resides.
 vcn: ocid1.vcn.oc1..aaaaaaaask7mpk4mij3pnm6yvnntte25ffadxiivpokxevfxgtsu6ftkqhrq
