@@ -30,11 +30,13 @@ type AuthConfig struct {
 	TenancyID string `yaml:"tenancy"`
 	// CompartmentID is DEPRECIATED and should be set on the top level Config
 	// struct.
-	CompartmentID        string `yaml:"compartment"`
-	UserID               string `yaml:"user"`
-	PrivateKey           string `yaml:"key"`
-	Fingerprint          string `yaml:"fingerprint"`
-	PrivateKeyPassphrase string `yaml:"key_passphrase"` // TODO(apryde): the yaml should be keyPassphrase
+	CompartmentID string `yaml:"compartment"`
+	UserID        string `yaml:"user"`
+	PrivateKey    string `yaml:"key"`
+	Fingerprint   string `yaml:"fingerprint"`
+	// PrivateKeyPassphrase is DEPRECIATED in favour of Passphrase.
+	PrivateKeyPassphrase string `yaml:"key_passphrase"`
+	Passphrase           string `yaml:"passphrase"`
 }
 
 // LoadBalancerConfig holds the configuration options for OCI load balancers.
@@ -71,6 +73,10 @@ func (c *Config) Complete() {
 	if c.CompartmentID == "" && c.Auth.CompartmentID != "" {
 		glog.Warning("cloud-provider config: \"auth.compartment\" is DEPRECIATED and will be removed in a later release. Please set \"compartment\".")
 		c.CompartmentID = c.Auth.CompartmentID
+	}
+	if c.Auth.Passphrase == "" && c.Auth.PrivateKeyPassphrase != "" {
+		glog.Warning("cloud-provider config: \"auth.key_passphrase\" is DEPRECIATED and will be removed in a later release. Please set \"auth.passphrase\".")
+		c.Auth.Passphrase = c.Auth.PrivateKeyPassphrase
 	}
 }
 
