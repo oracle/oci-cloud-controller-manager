@@ -73,7 +73,7 @@ func NewCloudProvider(config *Config) (cloudprovider.Interface, error) {
 		config.Auth.Region,
 		config.Auth.Fingerprint,
 		config.Auth.PrivateKey,
-		&config.Auth.PrivateKeyPassphrase,
+		&config.Auth.Passphrase,
 	))
 	if err != nil {
 		return nil, err
