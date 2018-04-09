@@ -215,9 +215,6 @@ func getPorts(svc *v1.Service) map[string]portSpec {
 }
 
 func getBackends(nodes []*v1.Node, nodePort int32) []loadbalancer.BackendDetails {
-	if len(nodes) == 0 {
-		return nil
-	}
 	backends := make([]loadbalancer.BackendDetails, len(nodes))
 	for i, node := range nodes {
 		backends[i] = loadbalancer.BackendDetails{
