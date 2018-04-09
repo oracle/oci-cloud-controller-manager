@@ -582,6 +582,9 @@ func loadBalancerToStatus(lb *loadbalancer.LoadBalancer) (*v1.LoadBalancerStatus
 
 	ingress := []v1.LoadBalancerIngress{}
 	for _, ip := range lb.IpAddresses {
+		if ip.IpAddress == nil {
+			continue // should never happen but appears to when EnsureLoadBalancer is called with 0 nodes.
+		}
 		ingress = append(ingress, v1.LoadBalancerIngress{IP: *ip.IpAddress})
 	}
 	return &v1.LoadBalancerStatus{Ingress: ingress}, nil

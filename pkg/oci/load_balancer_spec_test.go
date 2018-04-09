@@ -67,6 +67,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]loadbalancer.BackendSetDetails{
 					"TCP-80": loadbalancer.BackendSetDetails{
+						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
 							Protocol: common.String("HTTP"),
 							Port:     common.Int(10256),
@@ -120,6 +121,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]loadbalancer.BackendSetDetails{
 					"TCP-80": loadbalancer.BackendSetDetails{
+						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
 							Protocol: common.String("HTTP"),
 							Port:     common.Int(10256),
@@ -174,6 +176,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]loadbalancer.BackendSetDetails{
 					"TCP-80": loadbalancer.BackendSetDetails{
+						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
 							Protocol: common.String("HTTP"),
 							Port:     common.Int(10256),
@@ -227,6 +230,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]loadbalancer.BackendSetDetails{
 					"TCP-80": loadbalancer.BackendSetDetails{
+						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
 							Protocol: common.String("HTTP"),
 							Port:     common.Int(10256),
