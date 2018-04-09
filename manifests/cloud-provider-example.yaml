@@ -10,6 +10,15 @@ auth:
   passphrase: supersecretpassword
   fingerprint: 8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74
 
+  # Omit all of the above options then set useInstancePrincipals to true if you
+  # want to use Instance Principals API access
+  # (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Tasks/callingservicesfrominstances.htm).
+  # Ensure you have setup the following OCI policies and your kubernetes nodes are running within them
+  # allow dynamic-group [your dynamic group name] to read instance-family in compartment [your compartment name]
+  # allow dynamic-group [your dynamic group name] to use virtual-network-family in compartment [your compartment name]
+  # allow dynamic-group [your dynamic group name] to manage load-balancers in compartment [your compartment name]
+  useInstancePrincipals: false
+
 # compartment configures Compartment within which the cluster resides.
 compartment: ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq
 

@@ -25,6 +25,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/oracle/oci-go-sdk/common"
+	"github.com/oracle/oci-go-sdk/common/auth"
 	"github.com/pkg/errors"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -68,14 +69,11 @@ var _ cloudprovider.Interface = &CloudProvider{}
 
 // NewCloudProvider creates a new oci.CloudProvider.
 func NewCloudProvider(config *Config) (cloudprovider.Interface, error) {
-	c, err := client.New(common.NewRawConfigurationProvider(
-		config.Auth.TenancyID,
-		config.Auth.UserID,
-		config.Auth.Region,
-		config.Auth.Fingerprint,
-		config.Auth.PrivateKey,
-		&config.Auth.Passphrase,
-	))
+	cp, err := buildConfigurationProvider(config)
+	if err != nil {
+		return nil, err
+	}
+	c, err := client.New(cp)
 	if err != nil {
 		return nil, err
 	}
@@ -198,4 +196,25 @@ func (cp *CloudProvider) ScrubDNS(nameservers, searches []string) (nsOut, srchOu
 // HasClusterID returns true if the cluster has a clusterID.
 func (cp *CloudProvider) HasClusterID() bool {
 	return true
+}
+
+func buildConfigurationProvider(config *Config) (common.ConfigurationProvider, error) {
+	if config.Auth.UseInstancePrincipals {
+		glog.V(2).Info("Using instance principals configuration provider")
+		cp, err := auth.InstancePrincipalConfigurationProvider()
+		if err != nil {
+			return nil, errors.Wrap(err, "InstancePrincipalConfigurationProvider")
+		}
+		return cp, nil
+	}
+	glog.V(2).Info("Using raw configuration provider")
+	cp := common.NewRawConfigurationProvider(
+		config.Auth.TenancyID,
+		config.Auth.UserID,
+		config.Auth.Region,
+		config.Auth.Fingerprint,
+		config.Auth.PrivateKey,
+		&config.Auth.Passphrase,
+	)
+	return cp, nil
 }

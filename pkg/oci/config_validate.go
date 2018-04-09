@@ -24,6 +24,25 @@ func validateAuthConfig(c *AuthConfig, fldPath *field.Path) field.ErrorList {
 	if c == nil {
 		return append(allErrs, field.Required(fldPath, ""))
 	}
+	if c.UseInstancePrincipals {
+		if c.Region != "" {
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child("region"), "cannot be used when useInstancePrincipals is enabled"))
+		}
+		if c.TenancyID != "" {
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child("tenancy"), "cannot be used when useInstancePrincipals is enabled"))
+		}
+		if c.UserID != "" {
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child("user"), "cannot be used when useInstancePrincipals is enabled"))
+		}
+		if c.PrivateKey != "" {
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child("key"), "cannot be used when useInstancePrincipals is enabled"))
+		}
+		if c.Fingerprint != "" {
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child("fingerprint"), "cannot be used when useInstancePrincipals is enabled"))
+		}
+
+		return allErrs
+	}
 	if c.Region == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("region"), ""))
 	}
