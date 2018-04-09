@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 0.3.2
+
+ * [BUG] Fix panic when EnsureLoadBalancer() called with 0 Nodes [#176][11]
+ * [BUG] Fix panic when GetInstanceByNodeName() encountered an instance without
+   either a public IP or a hostname [#167][14]
+ * [BUG] Fix regression where compartment OCID was no longer looked up from
+   metadata when not provided in cloud-provider config [#168][15]
+ * Depreciate cloud-provider config property `auth.key_passphrase` replacing it
+   with `auth.passphrase` [#142][12]
+ * Depreciate cloud-provider config property `auth.compartment` replacing it
+   with `compartment` [#170][13]
+
+## 0.3.1
+
+ * Remove redundant `--cluster-cidr` flag from DaemonSet [#163][10]
+
 ## 0.3.0
 
  * Create load balancers using a single OCI API request significantly reducing fresh load balancer creation time [[#148][6]]
@@ -41,3 +57,9 @@
 [7]: https://github.com/oracle/oci-cloud-controller-manager/issues/151
 [8]: https://github.com/oracle/oci-cloud-controller-manager/issues/160
 [9]: https://github.com/oracle/oci-cloud-controller-manager/issues/157
+[10]: https://github.com/oracle/oci-cloud-controller-manager/issues/163
+[11]: https://github.com/oracle/oci-cloud-controller-manager/issues/176
+[12]: https://github.com/oracle/oci-cloud-controller-manager/issues/142
+[13]: https://github.com/oracle/oci-cloud-controller-manager/issues/170
+[14]: https://github.com/oracle/oci-cloud-controller-manager/issues/167
+[15]: https://github.com/oracle/oci-cloud-controller-manager/issues/168
