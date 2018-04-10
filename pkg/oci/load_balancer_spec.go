@@ -16,6 +16,7 @@ package oci
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/loadbalancer"
@@ -120,12 +121,17 @@ func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCf
 		subnets = subnets[:1]
 	}
 
+	listeners, err := getListeners(svc, sslCfg)
+	if err != nil {
+		return nil, err
+	}
+
 	return &LBSpec{
 		Name:        GetLoadBalancerName(svc),
 		Shape:       shape,
 		Internal:    internal,
 		Subnets:     subnets,
-		Listeners:   getListeners(svc, sslCfg),
+		Listeners:   listeners,
 		BackendSets: getBackendSets(svc, nodes),
 
 		Ports:       getPorts(svc),
@@ -268,19 +274,44 @@ func getSSLConfiguration(cfg *SSLConfig, port int) *loadbalancer.SslConfiguratio
 	}
 }
 
-func getListeners(svc *v1.Service, sslCfg *SSLConfig) map[string]loadbalancer.ListenerDetails {
+func getListeners(svc *v1.Service, sslCfg *SSLConfig) (map[string]loadbalancer.ListenerDetails, error) {
+	// Determine if connection idle timeout has been specified
+	var connectionIdleTimeout int
+	connectionIdleTimeoutAnnotation := svc.Annotations[ServiceAnnotationLoadBalancerConnectionIdleTimeout]
+	if connectionIdleTimeoutAnnotation != "" {
+		timeout, err := strconv.ParseInt(connectionIdleTimeoutAnnotation, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing service annotation: %s=%s",
+				ServiceAnnotationLoadBalancerConnectionIdleTimeout,
+				connectionIdleTimeoutAnnotation,
+			)
+		}
+
+		connectionIdleTimeout = int(timeout)
+	}
+
 	listeners := make(map[string]loadbalancer.ListenerDetails)
 	for _, servicePort := range svc.Spec.Ports {
 		protocol := string(servicePort.Protocol)
 		port := int(servicePort.Port)
 		sslConfiguration := getSSLConfiguration(sslCfg, port)
 		name := getListenerName(protocol, port, sslConfiguration)
-		listeners[name] = loadbalancer.ListenerDetails{
+
+		listener := loadbalancer.ListenerDetails{
 			DefaultBackendSetName: common.String(getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))),
 			Protocol:              &protocol,
 			Port:                  &port,
 			SslConfiguration:      sslConfiguration,
 		}
+
+		if connectionIdleTimeout > 0 {
+			listener.ConnectionConfiguration = &loadbalancer.ConnectionConfiguration{
+				IdleTimeout: common.Int(int(connectionIdleTimeout)),
+			}
+		}
+
+		listeners[name] = listener
 	}
-	return listeners
+
+	return listeners, nil
 }
