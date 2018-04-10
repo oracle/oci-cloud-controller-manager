@@ -323,6 +323,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 		})
 	}
 }
+
 func TestNewLBSpecFailure(t *testing.T) {
 	testCases := map[string]struct {
 		defaultSubnetOne string
@@ -363,6 +364,25 @@ func TestNewLBSpecFailure(t *testing.T) {
 				},
 			},
 			expectedErrMsg: "invalid service: OCI only supports SessionAffinity \"None\" currently",
+		},
+		"invalid idle connection timeout": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerConnectionIdleTimeout: "whoops",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{Protocol: v1.ProtocolTCP},
+					},
+				},
+			},
+			expectedErrMsg: "error parsing service annotation: service.beta.kubernetes.io/oci-load-balancer-connection-idle-timeout=whoops",
 		},
 	}
 
