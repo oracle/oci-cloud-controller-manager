@@ -110,6 +110,30 @@ func (client VirtualNetworkClient) ConnectLocalPeeringGateways(ctx context.Conte
 	return
 }
 
+// ConnectRemotePeeringConnections Connects this RPC to another one in a different region.
+// This operation must be called by the VCN administrator who is designated as
+// the *requestor* in the peering relationship. The *acceptor* must implement
+// an Identity and Access Management (IAM) policy that gives the requestor permission
+// to connect to RPCs in the acceptor's compartment. Without that permission, this
+// operation will fail. For more information, see
+// VCN Peering (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Tasks/VCNpeering.htm).
+func (client VirtualNetworkClient) ConnectRemotePeeringConnections(ctx context.Context, request ConnectRemotePeeringConnectionsRequest) (response ConnectRemotePeeringConnectionsResponse, err error) {
+	httpRequest, err := common.MakeDefaultHTTPRequestWithTaggedStruct(http.MethodPost, "/remotePeeringConnections/{remotePeeringConnectionId}/actions/connect", request)
+	if err != nil {
+		return
+	}
+
+	httpResponse, err := client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return
+}
+
 // CreateCpe Creates a new virtual Customer-Premises Equipment (CPE) object in the specified compartment. For
 // more information, see IPSec VPNs (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Tasks/managingIPsec.htm).
 // For the purposes of access control, you must provide the OCID of the compartment where you want
@@ -377,6 +401,57 @@ func (client VirtualNetworkClient) CreateLocalPeeringGateway(ctx context.Context
 // IP Addresses (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Tasks/managingIPaddresses.htm).
 func (client VirtualNetworkClient) CreatePrivateIp(ctx context.Context, request CreatePrivateIpRequest) (response CreatePrivateIpResponse, err error) {
 	httpRequest, err := common.MakeDefaultHTTPRequestWithTaggedStruct(http.MethodPost, "/privateIps", request)
+	if err != nil {
+		return
+	}
+
+	httpResponse, err := client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return
+}
+
+// CreatePublicIp Creates a public IP. Use the `lifetime` property to specify whether it's an ephemeral or
+// reserved public IP. For information about limits on how many you can create, see
+// Public IP Addresses (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Tasks/managingpublicIPs.htm).
+// * **For an ephemeral public IP:** You must also specify a `privateIpId` with the OCID of
+// the primary private IP you want to assign the public IP to. The public IP is created in
+// the same Availability Domain as the private IP. An ephemeral public IP must always be
+// assigned to a private IP, and only to the *primary* private IP on a VNIC, not a secondary
+// private IP.
+// * **For a reserved public IP:** You may also optionally assign the public IP to a private
+// IP by specifying `privateIpId`. Or you can later assign the public IP with
+// UpdatePublicIp.
+// **Note:** When assigning a public IP to a private IP, the private IP must not already have
+// a public IP with `lifecycleState` = ASSIGNING or ASSIGNED. If it does, an error is returned.
+// Also, for reserved public IPs, the optional assignment part of this operation is
+// asynchronous. Poll the public IP's `lifecycleState` to determine if the assignment
+// succeeded.
+func (client VirtualNetworkClient) CreatePublicIp(ctx context.Context, request CreatePublicIpRequest) (response CreatePublicIpResponse, err error) {
+	httpRequest, err := common.MakeDefaultHTTPRequestWithTaggedStruct(http.MethodPost, "/publicIps", request)
+	if err != nil {
+		return
+	}
+
+	httpResponse, err := client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return
+}
+
+// CreateRemotePeeringConnection Creates a new remote peering connection (RPC) for the specified DRG.
+func (client VirtualNetworkClient) CreateRemotePeeringConnection(ctx context.Context, request CreateRemotePeeringConnectionRequest) (response CreateRemotePeeringConnectionResponse, err error) {
+	httpRequest, err := common.MakeDefaultHTTPRequestWithTaggedStruct(http.MethodPost, "/remotePeeringConnections", request)
 	if err != nil {
 		return
 	}
@@ -780,6 +855,52 @@ func (client VirtualNetworkClient) DeletePrivateIp(ctx context.Context, request 
 	return
 }
 
+// DeletePublicIp Unassigns and deletes the specified public IP (either ephemeral or reserved).
+// You must specify the object's OCID. The public IP address is returned to the
+// Oracle Cloud Infrastructure public IP pool.
+// For an assigned reserved public IP, the initial unassignment portion of this operation
+// is asynchronous. Poll the public IP's `lifecycleState` to determine
+// if the operation succeeded.
+// If you want to simply unassign a reserved public IP and return it to your pool
+// of reserved public IPs, instead use
+// UpdatePublicIp.
+func (client VirtualNetworkClient) DeletePublicIp(ctx context.Context, request DeletePublicIpRequest) (response DeletePublicIpResponse, err error) {
+	httpRequest, err := common.MakeDefaultHTTPRequestWithTaggedStruct(http.MethodDelete, "/publicIps/{publicIpId}", request)
+	if err != nil {
+		return
+	}
+
+	httpResponse, err := client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return
+}
+
+// DeleteRemotePeeringConnection Deletes the remote peering connection (RPC).
+// This is an asynchronous operation; the RPC's `lifecycleState` changes to TERMINATING temporarily
+// until the RPC is completely removed.
+func (client VirtualNetworkClient) DeleteRemotePeeringConnection(ctx context.Context, request DeleteRemotePeeringConnectionRequest) (response DeleteRemotePeeringConnectionResponse, err error) {
+	httpRequest, err := common.MakeDefaultHTTPRequestWithTaggedStruct(http.MethodDelete, "/remotePeeringConnections/{remotePeeringConnectionId}", request)
+	if err != nil {
+		return
+	}
+
+	httpResponse, err := client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return
+}
+
 // DeleteRouteTable Deletes the specified route table, but only if it's not associated with a subnet. You can't delete a
 // VCN's default route table.
 // This is an asynchronous operation. The route table's `lifecycleState` will change to TERMINATING temporarily
@@ -1160,6 +1281,97 @@ func (client VirtualNetworkClient) GetPrivateIp(ctx context.Context, request Get
 	return
 }
 
+// GetPublicIp Gets the specified public IP. You must specify the object's OCID.
+// Alternatively, you can get the object by using GetPublicIpByIpAddress
+// with the public IP address (for example, 129.146.2.1).
+// Or you can use GetPublicIpByPrivateIpId
+// with the OCID of the private IP that the public IP is assigned to.
+// **Note:** If you're fetching a reserved public IP that is in the process of being
+// moved to a different private IP, the service returns the public IP object with
+// `lifecycleState` = ASSIGNING and `privateIpId` = OCID of the target private IP.
+func (client VirtualNetworkClient) GetPublicIp(ctx context.Context, request GetPublicIpRequest) (response GetPublicIpResponse, err error) {
+	httpRequest, err := common.MakeDefaultHTTPRequestWithTaggedStruct(http.MethodGet, "/publicIps/{publicIpId}", request)
+	if err != nil {
+		return
+	}
+
+	httpResponse, err := client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return
+}
+
+// GetPublicIpByIpAddress Gets the public IP based on the public IP address (for example, 129.146.2.1).
+// **Note:** If you're fetching a reserved public IP that is in the process of being
+// moved to a different private IP, the service returns the public IP object with
+// `lifecycleState` = ASSIGNING and `privateIpId` = OCID of the target private IP.
+func (client VirtualNetworkClient) GetPublicIpByIpAddress(ctx context.Context, request GetPublicIpByIpAddressRequest) (response GetPublicIpByIpAddressResponse, err error) {
+	httpRequest, err := common.MakeDefaultHTTPRequestWithTaggedStruct(http.MethodPost, "/publicIps/actions/getByIpAddress", request)
+	if err != nil {
+		return
+	}
+
+	httpResponse, err := client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return
+}
+
+// GetPublicIpByPrivateIpId Gets the public IP assigned to the specified private IP. You must specify the OCID
+// of the private IP. If no public IP is assigned, a 404 is returned.
+// **Note:** If you're fetching a reserved public IP that is in the process of being
+// moved to a different private IP, and you provide the OCID of the original private
+// IP, this operation returns a 404. If you instead provide the OCID of the target
+// private IP, or if you instead call
+// GetPublicIp or
+// GetPublicIpByIpAddress, the
+// service returns the public IP object with `lifecycleState` = ASSIGNING and `privateIpId` = OCID
+// of the target private IP.
+func (client VirtualNetworkClient) GetPublicIpByPrivateIpId(ctx context.Context, request GetPublicIpByPrivateIpIdRequest) (response GetPublicIpByPrivateIpIdResponse, err error) {
+	httpRequest, err := common.MakeDefaultHTTPRequestWithTaggedStruct(http.MethodPost, "/publicIps/actions/getByPrivateIpId", request)
+	if err != nil {
+		return
+	}
+
+	httpResponse, err := client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return
+}
+
+// GetRemotePeeringConnection Get the specified remote peering connection's information.
+func (client VirtualNetworkClient) GetRemotePeeringConnection(ctx context.Context, request GetRemotePeeringConnectionRequest) (response GetRemotePeeringConnectionResponse, err error) {
+	httpRequest, err := common.MakeDefaultHTTPRequestWithTaggedStruct(http.MethodGet, "/remotePeeringConnections/{remotePeeringConnectionId}", request)
+	if err != nil {
+		return
+	}
+
+	httpResponse, err := client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return
+}
+
 // GetRouteTable Gets the specified route table's information.
 func (client VirtualNetworkClient) GetRouteTable(ctx context.Context, request GetRouteTableRequest) (response GetRouteTableResponse, err error) {
 	httpRequest, err := common.MakeDefaultHTTPRequestWithTaggedStruct(http.MethodGet, "/routeTables/{rtId}", request)
@@ -1256,6 +1468,25 @@ func (client VirtualNetworkClient) GetVirtualCircuit(ctx context.Context, reques
 // operation.
 func (client VirtualNetworkClient) GetVnic(ctx context.Context, request GetVnicRequest) (response GetVnicResponse, err error) {
 	httpRequest, err := common.MakeDefaultHTTPRequestWithTaggedStruct(http.MethodGet, "/vnics/{vnicId}", request)
+	if err != nil {
+		return
+	}
+
+	httpResponse, err := client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return
+}
+
+// ListAllowedPeerRegionsForRemotePeering Lists the regions that support remote VCN peering (which is peering across regions).
+// For more information, see VCN Peering (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Tasks/VCNpeering.htm).
+func (client VirtualNetworkClient) ListAllowedPeerRegionsForRemotePeering(ctx context.Context, request ListAllowedPeerRegionsForRemotePeeringRequest) (response ListAllowedPeerRegionsForRemotePeeringResponse, err error) {
+	httpRequest, err := common.MakeDefaultHTTPRequestWithTaggedStruct(http.MethodGet, "/allowedPeerRegionsForRemotePeering", request)
 	if err != nil {
 		return
 	}
@@ -1533,6 +1764,49 @@ func (client VirtualNetworkClient) ListLocalPeeringGateways(ctx context.Context,
 // or VNIC, the response includes both primary and secondary private IPs.
 func (client VirtualNetworkClient) ListPrivateIps(ctx context.Context, request ListPrivateIpsRequest) (response ListPrivateIpsResponse, err error) {
 	httpRequest, err := common.MakeDefaultHTTPRequestWithTaggedStruct(http.MethodGet, "/privateIps", request)
+	if err != nil {
+		return
+	}
+
+	httpResponse, err := client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return
+}
+
+// ListPublicIps Lists either the ephemeral or reserved PublicIp objects
+// in the specified compartment.
+// To list your reserved public IPs, set `scope` = `REGION`, and leave the
+// `availabilityDomain` parameter empty.
+// To list your ephemeral public IPs, set `scope` = `AVAILABILITY_DOMAIN`, and set the
+// `availabilityDomain` parameter to the desired Availability Domain. An ephemeral public IP
+// is always in the same Availability Domain and compartment as the private IP it's assigned to.
+func (client VirtualNetworkClient) ListPublicIps(ctx context.Context, request ListPublicIpsRequest) (response ListPublicIpsResponse, err error) {
+	httpRequest, err := common.MakeDefaultHTTPRequestWithTaggedStruct(http.MethodGet, "/publicIps", request)
+	if err != nil {
+		return
+	}
+
+	httpResponse, err := client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return
+}
+
+// ListRemotePeeringConnections Lists the remote peering connections (RPCs) for the specified DRG and compartment
+// (the RPC's compartment).
+func (client VirtualNetworkClient) ListRemotePeeringConnections(ctx context.Context, request ListRemotePeeringConnectionsRequest) (response ListRemotePeeringConnectionsResponse, err error) {
+	httpRequest, err := common.MakeDefaultHTTPRequestWithTaggedStruct(http.MethodGet, "/remotePeeringConnections", request)
 	if err != nil {
 		return
 	}
@@ -1858,6 +2132,73 @@ func (client VirtualNetworkClient) UpdateLocalPeeringGateway(ctx context.Context
 // UpdateVnic.
 func (client VirtualNetworkClient) UpdatePrivateIp(ctx context.Context, request UpdatePrivateIpRequest) (response UpdatePrivateIpResponse, err error) {
 	httpRequest, err := common.MakeDefaultHTTPRequestWithTaggedStruct(http.MethodPut, "/privateIps/{privateIpId}", request)
+	if err != nil {
+		return
+	}
+
+	httpResponse, err := client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return
+}
+
+// UpdatePublicIp Updates the specified public IP. You must specify the object's OCID. Use this operation if you want to:
+// * Assign a reserved public IP in your pool to a private IP.
+// * Move a reserved public IP to a different private IP.
+// * Unassign a reserved public IP from a private IP (which returns it to your pool
+// of reserved public IPs).
+// * Change the display name for a public IP (either ephemeral or reserved).
+// Assigning, moving, and unassigning a reserved public IP are asynchronous
+// operations. Poll the public IP's `lifecycleState` to determine if the operation
+// succeeded.
+// **Note:** When moving a reserved public IP, the target private IP
+// must not already have a public IP with `lifecycleState` = ASSIGNING or ASSIGNED. If it
+// does, an error is returned. Also, the initial unassignment from the original
+// private IP always succeeds, but the assignment to the target private IP is asynchronous and
+// could fail silently (for example, if the target private IP is deleted or has a different public IP
+// assigned to it in the interim). If that occurs, the public IP remains unassigned and its
+// `lifecycleState` switches to AVAILABLE (it is not reassigned to its original private IP).
+// You must poll the public IP's `lifecycleState` to determine if the move succeeded.
+// Regarding ephemeral public IPs:
+// * If you want to assign an ephemeral public IP to a primary private IP, use
+// CreatePublicIp.
+// * You can't move an ephemeral public IP to a different private IP.
+// * If you want to unassign an ephemeral public IP from its private IP, use
+// DeletePublicIp, which
+// unassigns and deletes the ephemeral public IP.
+// **Note:** If a public IP (either ephemeral or reserved) is assigned to a secondary private
+// IP (see PrivateIp), and you move that secondary
+// private IP to another VNIC, the public IP moves with it.
+// **Note:** There's a limit to the number of PublicIp
+// a VNIC or instance can have. If you try to move a reserved public IP
+// to a VNIC or instance that has already reached its public IP limit, an error is
+// returned. For information about the public IP limits, see
+// Public IP Addresses (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Tasks/managingpublicIPs.htm).
+func (client VirtualNetworkClient) UpdatePublicIp(ctx context.Context, request UpdatePublicIpRequest) (response UpdatePublicIpResponse, err error) {
+	httpRequest, err := common.MakeDefaultHTTPRequestWithTaggedStruct(http.MethodPut, "/publicIps/{publicIpId}", request)
+	if err != nil {
+		return
+	}
+
+	httpResponse, err := client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return
+}
+
+// UpdateRemotePeeringConnection Updates the specified remote peering connection (RPC).
+func (client VirtualNetworkClient) UpdateRemotePeeringConnection(ctx context.Context, request UpdateRemotePeeringConnectionRequest) (response UpdateRemotePeeringConnectionResponse, err error) {
+	httpRequest, err := common.MakeDefaultHTTPRequestWithTaggedStruct(http.MethodPut, "/remotePeeringConnections/{remotePeeringConnectionId}", request)
 	if err != nil {
 		return
 	}

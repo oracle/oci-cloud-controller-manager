@@ -14,7 +14,7 @@ type ListBucketsRequest struct {
 	// The top-level namespace used for the request.
 	NamespaceName *string `mandatory:"true" contributesTo:"path" name:"namespaceName"`
 
-	// The ID of the compartment in which to create the bucket.
+	// The ID of the compartment in which to list buckets.
 	CompartmentId *string `mandatory:"true" contributesTo:"query" name:"compartmentId"`
 
 	// The maximum number of items to return.
@@ -22,6 +22,11 @@ type ListBucketsRequest struct {
 
 	// The page at which to start retrieving results.
 	Page *string `mandatory:"false" contributesTo:"query" name:"page"`
+
+	// Bucket summary in list of buckets includes the 'namespace', 'name', 'compartmentId', 'createdBy', 'timeCreated',
+	// and 'etag' fields. This parameter can also include 'tags' (freeformTags and definedTags). The only supported value
+	// of this parameter is 'tags' for now. Example 'tags'.
+	Fields []ListBucketsFieldsEnum `contributesTo:"query" name:"fields" omitEmpty:"true" collectionFormat:"csv"`
 
 	// The client request ID for tracing.
 	OpcClientRequestId *string `mandatory:"false" contributesTo:"header" name:"opc-client-request-id"`
@@ -44,7 +49,7 @@ type ListBucketsResponse struct {
 	OpcClientRequestId *string `presentIn:"header" name:"opc-client-request-id"`
 
 	// Unique Oracle-assigned identifier for the request. If you need to contact Oracle about a particular
-	// request, please provide this request ID.
+	// request, provide this request ID.
 	OpcRequestId *string `presentIn:"header" name:"opc-request-id"`
 
 	// For pagination of a list of `Bucket`s. If this header appears in the response, then this
@@ -56,4 +61,25 @@ type ListBucketsResponse struct {
 
 func (response ListBucketsResponse) String() string {
 	return common.PointerString(response)
+}
+
+// ListBucketsFieldsEnum Enum with underlying type: string
+type ListBucketsFieldsEnum string
+
+// Set of constants representing the allowable values for ListBucketsFields
+const (
+	ListBucketsFieldsTags ListBucketsFieldsEnum = "tags"
+)
+
+var mappingListBucketsFields = map[string]ListBucketsFieldsEnum{
+	"tags": ListBucketsFieldsTags,
+}
+
+// GetListBucketsFieldsEnumValues Enumerates the set of values for ListBucketsFields
+func GetListBucketsFieldsEnumValues() []ListBucketsFieldsEnum {
+	values := make([]ListBucketsFieldsEnum, 0)
+	for _, v := range mappingListBucketsFields {
+		values = append(values, v)
+	}
+	return values
 }
