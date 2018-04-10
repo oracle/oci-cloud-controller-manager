@@ -45,6 +45,24 @@ func TestValidateConfig(t *testing.T) {
 			},
 			errs: field.ErrorList{},
 		}, {
+			name: "valid_with_non_default_security_list_management_mode",
+			in: &Config{
+				Auth: AuthConfig{
+					Region:        "us-phoenix-1",
+					TenancyID:     "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
+					CompartmentID: "ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq",
+					UserID:        "ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q",
+					PrivateKey:    "-----BEGIN RSA PRIVATE KEY----- (etc)",
+					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
+				},
+				LoadBalancer: LoadBalancerConfig{
+					Subnet1:                    "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
+					Subnet2:                    "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
+					SecurityListManagementMode: ManagementModeFrontend,
+				},
+			},
+			errs: field.ErrorList{},
+		}, {
 			name: "missing_region",
 			in: &Config{
 				Auth: AuthConfig{
@@ -186,14 +204,40 @@ func TestValidateConfig(t *testing.T) {
 			errs: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeRequired, Field: "loadBalancer.subnet2", BadValue: ""},
 			},
+		}, {
+			name: "invalid_security_list_management_mode",
+			in: &Config{
+				Auth: AuthConfig{
+					Region:        "us-phoenix-1",
+					TenancyID:     "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
+					CompartmentID: "ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq",
+					UserID:        "ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q",
+					PrivateKey:    "-----BEGIN RSA PRIVATE KEY----- (etc)",
+					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
+				},
+				LoadBalancer: LoadBalancerConfig{
+					Subnet1:                    "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
+					Subnet2:                    "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
+					SecurityListManagementMode: "invalid",
+				},
+			},
+			errs: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "loadBalancer.securityListManagementMode",
+					BadValue: "invalid",
+					Detail:   "invalid security list management mode",
+				},
+			},
 		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
+			tt.in.Complete()
 			result := ValidateConfig(tt.in)
 			if !reflect.DeepEqual(result, tt.errs) {
-				t.Errorf("ValidateConfig(%#v)\n=> %#v\nExpected: %#v", tt.in, result, tt.errs)
+				t.Errorf("ValidateConfig(%#v)\n=> %q \nExpected: %q", tt.in, result, tt.errs)
 			}
 		})
 	}
