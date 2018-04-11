@@ -20,12 +20,13 @@ spec:
 
 ## Load balancer properties
 
-| Name | Description | Default |
-| ---- | ----------- | ------- |
-| `oci-load-balancer-internal` | Create an [internal load balancer][1]. Cannot be modified after load balancer creation. | `false` |
-| `oci-load-balancer-shape` | A template that determines the load balancer's total pre-provisioned maximum capacity (bandwidth) for ingress plus egress traffic. Available shapes include `100Mbps`, `400Mbps`, and `8000Mbps.` Cannot be modified after load balancer creation. | `"100Mbps"` |
-| `oci-load-balancer-subnet1` | The OCID of the first [subnet][2] of the two required subnets to attach the load balancer to. Must be in separate Availability Domains. | Value provided in config file |
-| `oci-load-balancer-subnet2` | The OCID of the second [subnet][2] of the two required subnets to attach the load balancer to. Must be in separate Availability Domains. | Value provided in config file |
+| Name                                        | Description                                                                                                                                                                                                                                        | Default                                          |
+| -----                                       | -----------                                                                                                                                                                                                                                        | -------                                          |
+| `oci-load-balancer-internal`                | Create an [internal load balancer][1]. Cannot be modified after load balancer creation.                                                                                                                                                            | `false`                                          |
+| `oci-load-balancer-shape`                   | A template that determines the load balancer's total pre-provisioned maximum capacity (bandwidth) for ingress plus egress traffic. Available shapes include `100Mbps`, `400Mbps`, and `8000Mbps.` Cannot be modified after load balancer creation. | `"100Mbps"`                                      |
+| `oci-load-balancer-subnet1`                 | The OCID of the first [subnet][2] of the two required subnets to attach the load balancer to. Must be in separate Availability Domains.                                                                                                            | Value provided in config file                    |
+| `oci-load-balancer-subnet2`                 | The OCID of the second [subnet][2] of the two required subnets to attach the load balancer to. Must be in separate Availability Domains.                                                                                                           | Value provided in config file                    |
+| `oci-load-balancer-connection-idle-timeout` | The maximum idle time, in seconds, allowed between two successive receive or two successive send operations between the client and backend servers.                                                                                                | `300` for TCP listeners, `60` for HTTP listeners |
 
 ## TLS-related
 

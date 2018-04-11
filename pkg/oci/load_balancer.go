@@ -62,6 +62,10 @@ const (
 	// have SSL enabled.
 	// See: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
 	ServiceAnnotationLoadBalancerTLSSecret = "service.beta.kubernetes.io/oci-load-balancer-tls-secret"
+
+	// ServiceAnnotationLoadBalancerConnectionIdleTimeout is the annotation used
+	// on the service to specify the idle connection timeout.
+	ServiceAnnotationLoadBalancerConnectionIdleTimeout = "service.beta.kubernetes.io/oci-load-balancer-connection-idle-timeout"
 )
 
 // DefaultLoadBalancerPolicy defines the default traffic policy for load

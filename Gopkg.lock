@@ -382,8 +382,8 @@
     "core",
     "loadbalancer"
   ]
-  revision = "8090aeb474ad994446b2db294725e3d6c0d95327"
-  version = "v1.0.0"
+  revision = "ad5c34ed0cf8169d6817e2a37ec3e4521f856368"
+  version = "v1.2.0"
 
 [[projects]]
   name = "github.com/pborman/uuid"
@@ -1149,6 +1149,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "fc2abdeaa6b5144c51b422320c020f0fa91293c09c3b012785acbee1705ab3ac"
+  inputs-digest = "a546f4ff19df2e0294f113d7011a8b83f0023d42057906eb1e37a654998a31a2"
   solver-name = "gps-cdcl"
   solver-version = 1

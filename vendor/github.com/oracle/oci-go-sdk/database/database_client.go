@@ -81,8 +81,8 @@ func (client DatabaseClient) CreateBackup(ctx context.Context, request CreateBac
 // All Oracle Cloud Infrastructure resources, including Data Guard associations, get an Oracle-assigned, unique ID
 // called an Oracle Cloud Identifier (OCID). When you create a resource, you can find its OCID in the response.
 // You can also retrieve a resource's OCID by using a List API operation on that resource type, or by viewing the
-// resource in the Console. Fore more information, see
-// Resource Identifiers (http://localhost:8000/Content/General/Concepts/identifiers.htm).
+// resource in the Console. For more information, see
+// Resource Identifiers (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/identifiers.htm).
 func (client DatabaseClient) CreateDataGuardAssociation(ctx context.Context, request CreateDataGuardAssociationRequest) (response CreateDataGuardAssociationResponse, err error) {
 	httpRequest, err := common.MakeDefaultHTTPRequestWithTaggedStruct(http.MethodPost, "/databases/{databaseId}/dataGuardAssociations", request)
 	if err != nil {
@@ -587,7 +587,7 @@ func (client DatabaseClient) ListDbSystemShapes(ctx context.Context, request Lis
 	return
 }
 
-// ListDbSystems Gets a list of the DB Systems in the specified compartment.
+// ListDbSystems Gets a list of the DB Systems in the specified compartment. You can specify a backupId to list only the DB Systems that support creating a database using this backup in this compartment.
 //
 func (client DatabaseClient) ListDbSystems(ctx context.Context, request ListDbSystemsRequest) (response ListDbSystemsResponse, err error) {
 	httpRequest, err := common.MakeDefaultHTTPRequestWithTaggedStruct(http.MethodGet, "/dbSystems", request)
