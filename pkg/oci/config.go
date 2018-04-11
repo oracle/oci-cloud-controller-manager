@@ -50,8 +50,17 @@ type LoadBalancerConfig struct {
 	// E.g. 10.82.0.0/16 30000-32000
 	DisableSecurityListManagement bool `yaml:"disableSecurityListManagement"`
 
+	// SecurityListManagementMode defines how the CCM manages security lists
+	// when provisioning load balancers. Available modes are All, Frontend,
+	// and None.
+	SecurityListManagementMode string `yaml:"securityListManagementMode"`
+
 	Subnet1 string `yaml:"subnet1"`
 	Subnet2 string `yaml:"subnet2"`
+
+	// SecurityLists defines the Security List to mutate for each Subnet (
+	// both load balancer and worker).
+	SecurityLists map[string]string `yaml:"securityLists"`
 }
 
 // Config holds the OCI cloud-provider config passed to Kubernetes compontents
@@ -70,6 +79,13 @@ type Config struct {
 
 // Complete the config applying defaults / overrides.
 func (c *Config) Complete() {
+	if c.LoadBalancer.SecurityListManagementMode == "" {
+		c.LoadBalancer.SecurityListManagementMode = ManagementModeAll // default
+		if c.LoadBalancer.DisableSecurityListManagement {
+			glog.Warningf("cloud-provider config: \"loadBalancer.disableSecurityListManagement\" is DEPRECIATED and will be removed in a later release. Please set \"loadBalancer.SecurityListManagementMode: %s\".", ManagementModeNone)
+			c.LoadBalancer.SecurityListManagementMode = ManagementModeNone
+		}
+	}
 	if c.CompartmentID == "" && c.Auth.CompartmentID != "" {
 		glog.Warning("cloud-provider config: \"auth.compartment\" is DEPRECIATED and will be removed in a later release. Please set \"compartment\".")
 		c.CompartmentID = c.Auth.CompartmentID

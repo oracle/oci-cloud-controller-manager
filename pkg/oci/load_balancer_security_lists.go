@@ -43,6 +43,27 @@ const (
 	ProtocolUDP = 17
 )
 
+const (
+	// ManagementModeAll denotes the management of security list rules for load
+	// balancer ingress/egress, health checkers, and worker ingress/egress.
+	ManagementModeAll = "All"
+	// ManagementModeFrontend denotes the management of security list rules for load
+	// balancer ingress only.
+	ManagementModeFrontend = "Frontend"
+	// ManagementModeNone denotes the management of no security list rules.
+	ManagementModeNone = "None"
+)
+
+// SecurityListManagementModeChoices are the supported security list management
+// modes.
+var SecurityListManagementModeChoices = []string{ManagementModeAll, ManagementModeFrontend, ManagementModeNone}
+
+// IsValidSecurityListManagementMode checks if a given security list management
+// mode is valid.
+func IsValidSecurityListManagementMode(mode string) bool {
+	return sets.NewString(SecurityListManagementModeChoices...).Has(mode)
+}
+
 type portSpec struct {
 	ListenerPort      int
 	BackendPort       int
@@ -50,58 +71,42 @@ type portSpec struct {
 }
 
 type securityListManager interface {
-	// Update the security list rules associated with the listener and backends.
-	//
-	// Ingress rules added:
-	// 		from source cidrs to lb subnets on the listener port
-	// 		from LB subnets to backend subnets on the backend port
-	// Egress rules added:
-	// 		from LB subnets to backend subnets on the backend port
 	Update(ctx context.Context, lbSubnets []*core.Subnet, backendSubnets []*core.Subnet, sourceCIDRs []string, actaulPorts *portSpec, desiredPorts portSpec) error
-	// Delete the security list rules associated with the listener & backends.
-	//
-	// If the listener is nil, then only the egress rules from the LB's to the backends and the
-	// ingress rules from the LB's to the backends will be cleaned up.
-	// If the listener is not nil, then the ingress rules to the LB's will be cleaned up.
 	Delete(ctx context.Context, lbSubnets []*core.Subnet, backendSubnets []*core.Subnet, actualPorts portSpec) error
 }
 
-type securityListManagerImpl struct {
+type baseSecurityListManager struct {
 	client        client.Interface
 	serviceLister listersv1.ServiceLister
+	securityLists map[string]string
 }
 
-func newSecurityListManager(client client.Interface, serviceLister listersv1.ServiceLister) securityListManager {
-	return &securityListManagerImpl{
+func newSecurityListManager(client client.Interface, serviceLister listersv1.ServiceLister, securityLists map[string]string, mode string) securityListManager {
+	if securityLists == nil {
+		securityLists = make(map[string]string)
+	}
+	baseMgr := baseSecurityListManager{
 		client:        client,
 		serviceLister: serviceLister,
+		securityLists: securityLists,
 	}
-}
-
-func (s *securityListManagerImpl) Update(ctx context.Context, lbSubnets []*core.Subnet, backendSubnets []*core.Subnet, sourceCIDRs []string, actualPorts *portSpec, desiredPorts portSpec) error {
-	if err := s.updateLoadBalancerRules(ctx, lbSubnets, backendSubnets, sourceCIDRs, desiredPorts); err != nil {
-		return err
+	switch mode {
+	case ManagementModeFrontend:
+		glog.Infof("Security list management mode: %q. Managing frontend security lists only.", ManagementModeFrontend)
+		return &frontendSecurityListManager{baseSecurityListManager: baseMgr}
+	case ManagementModeNone:
+		glog.Infof("Security list management mode: %q. Not managing security lists.", ManagementModeNone)
+		return &securityListManagerNOOP{}
+	default:
+		glog.Infof("Security list management mode: %q. Managing all security lists.", ManagementModeAll)
+		return &defaultSecurityListManager{baseSecurityListManager: baseMgr}
 	}
-
-	return s.updateBackendRules(ctx, lbSubnets, backendSubnets, actualPorts, desiredPorts)
-}
-
-func (s *securityListManagerImpl) Delete(ctx context.Context, lbSubnets []*core.Subnet, backendSubnets []*core.Subnet, ports portSpec) error {
-	noSubnets := []*core.Subnet{}
-	noSourceCIDRs := []string{}
-
-	err := s.updateLoadBalancerRules(ctx, lbSubnets, noSubnets, noSourceCIDRs, ports)
-	if err != nil {
-		return err
-	}
-
-	return s.updateBackendRules(ctx, noSubnets, backendSubnets, nil, ports)
 }
 
 // updateBackendRules handles adding ingress rules to the backend subnets from the load balancer subnets.
-func (s *securityListManagerImpl) updateBackendRules(ctx context.Context, lbSubnets []*core.Subnet, nodeSubnets []*core.Subnet, actualPorts *portSpec, desiredPorts portSpec) error {
+func (s *baseSecurityListManager) updateBackendRules(ctx context.Context, lbSubnets []*core.Subnet, nodeSubnets []*core.Subnet, actualPorts *portSpec, desiredPorts portSpec) error {
 	for _, subnet := range nodeSubnets {
-		secList, etag, err := getDefaultSecurityList(ctx, s.client.Networking(), subnet.SecurityListIds)
+		secList, etag, err := s.getSecurityList(ctx, subnet)
 		if err != nil {
 			return errors.Wrapf(err, "get security list for subnet %q", *subnet.Id)
 		}
@@ -126,9 +131,9 @@ func (s *securityListManagerImpl) updateBackendRules(ctx context.Context, lbSubn
 
 // updateLoadBalancerRules handles updating the ingress and egress rules for the load balance subnets.
 // If the listener is nil, then only egress rules from the load balancer to the backend subnets will be checked.
-func (s *securityListManagerImpl) updateLoadBalancerRules(ctx context.Context, lbSubnets []*core.Subnet, nodeSubnets []*core.Subnet, sourceCIDRs []string, ports portSpec) error {
+func (s *baseSecurityListManager) updateLoadBalancerRules(ctx context.Context, lbSubnets []*core.Subnet, nodeSubnets []*core.Subnet, sourceCIDRs []string, ports portSpec) error {
 	for _, lbSubnet := range lbSubnets {
-		lbSecurityList, etag, err := getDefaultSecurityList(ctx, s.client.Networking(), lbSubnet.SecurityListIds)
+		lbSecurityList, etag, err := s.getSecurityList(ctx, lbSubnet)
 		if err != nil {
 			return errors.Wrapf(err, "get lb security list for subnet %q", *lbSubnet.Id)
 		}
@@ -157,14 +162,25 @@ func (s *securityListManagerImpl) updateLoadBalancerRules(ctx context.Context, l
 	return nil
 }
 
-func getDefaultSecurityList(ctx context.Context, n client.NetworkingInterface, ids []string) (*core.SecurityList, string, error) {
-	if len(ids) < 1 {
-		return nil, "", errors.Errorf("no security lists")
+func (s *baseSecurityListManager) getSecurityList(ctx context.Context, subnet *core.Subnet) (*core.SecurityList, string, error) {
+	if len(subnet.SecurityListIds) < 1 {
+		return nil, "", errors.Errorf("no security lists") // should never happen
 	}
 
-	responses := make([]core.GetSecurityListResponse, len(ids))
-	for i, id := range ids {
-		response, err := n.GetSecurityList(ctx, id)
+	// Use the security list from cloud-provider config if provided.
+	if id, ok := s.securityLists[*subnet.Id]; ok && sets.NewString(subnet.SecurityListIds...).Has(id) {
+		response, err := s.client.Networking().GetSecurityList(ctx, id)
+		if err != nil {
+			return nil, "", err
+		}
+		return &response.SecurityList, *response.Etag, nil
+	}
+
+	// Otherwise use the oldest security list.
+	// NOTE(apryde): This is rather arbitrary but we're probably stuck with it at this point.
+	responses := make([]core.GetSecurityListResponse, len(subnet.SecurityListIds))
+	for i, id := range subnet.SecurityListIds {
+		response, err := s.client.Networking().GetSecurityList(ctx, id)
 		if err != nil {
 			return nil, "", err
 		}
@@ -176,6 +192,83 @@ func getDefaultSecurityList(ctx context.Context, n client.NetworkingInterface, i
 	})
 
 	return &responses[0].SecurityList, *responses[0].Etag, nil
+}
+
+// defaultSecurityListManager manages all security list rules required for
+// a Service type=LoadBalancer.
+type defaultSecurityListManager struct {
+	baseSecurityListManager
+}
+
+// Update the security list rules associated with the listener and backends.
+//
+// Ingress rules added:
+// 		from source cidrs to lb subnets on the listener port
+// 		from LB subnets to backend subnets on the backend port
+// Egress rules added:
+// 		from LB subnets to backend subnets on the backend port
+func (s *defaultSecurityListManager) Update(ctx context.Context, lbSubnets []*core.Subnet, backendSubnets []*core.Subnet, sourceCIDRs []string, actualPorts *portSpec, desiredPorts portSpec) error {
+	if err := s.updateLoadBalancerRules(ctx, lbSubnets, backendSubnets, sourceCIDRs, desiredPorts); err != nil {
+		return err
+	}
+
+	return s.updateBackendRules(ctx, lbSubnets, backendSubnets, actualPorts, desiredPorts)
+}
+
+// Delete the security list rules associated with the listener & backends.
+//
+// If the listener is nil, then only the egress rules from the LB's to the backends and the
+// ingress rules from the LB's to the backends will be cleaned up.
+// If the listener is not nil, then the ingress rules to the LB's will be cleaned up.
+func (s *defaultSecurityListManager) Delete(ctx context.Context, lbSubnets []*core.Subnet, backendSubnets []*core.Subnet, ports portSpec) error {
+	noSubnets := []*core.Subnet{}
+	noSourceCIDRs := []string{}
+
+	err := s.updateLoadBalancerRules(ctx, lbSubnets, noSubnets, noSourceCIDRs, ports)
+	if err != nil {
+		return err
+	}
+
+	return s.updateBackendRules(ctx, noSubnets, backendSubnets, nil, ports)
+}
+
+// frontendSecurityListManager manages only the ingress security list rules required for
+// a Service type=LoadBalancer.
+type frontendSecurityListManager struct {
+	baseSecurityListManager
+}
+
+// Update the ingress security list rules associated with the listener.
+//
+// Ingress rules added:
+// 		from source cidrs to lb subnets on the listener port
+func (s *frontendSecurityListManager) Update(ctx context.Context, lbSubnets []*core.Subnet, _ []*core.Subnet, sourceCIDRs []string, actualPorts *portSpec, desiredPorts portSpec) error {
+	noSubnets := []*core.Subnet{}
+	return s.updateLoadBalancerRules(ctx, lbSubnets, noSubnets, sourceCIDRs, desiredPorts)
+}
+
+// Delete the ingress security list rules associated with the listener.
+func (s *frontendSecurityListManager) Delete(ctx context.Context, lbSubnets []*core.Subnet, backendSubnets []*core.Subnet, ports portSpec) error {
+	noSubnets := []*core.Subnet{}
+	noSourceCIDRs := []string{}
+	return s.updateLoadBalancerRules(ctx, lbSubnets, noSubnets, noSourceCIDRs, ports)
+}
+
+// securityListManagerNOOP implements the securityListManager interface but does
+// no logic, so that it can be used to not handle security lists if the user doesn't wish
+// to use that feature.
+type securityListManagerNOOP struct{}
+
+func (s *securityListManagerNOOP) Update(ctx context.Context, lbSubnets []*core.Subnet, backendSubnets []*core.Subnet, sourceCIDRs []string, actualPorts *portSpec, ports portSpec) error {
+	return nil
+}
+
+func (s *securityListManagerNOOP) Delete(ctx context.Context, lbSubnets []*core.Subnet, backendSubnets []*core.Subnet, ports portSpec) error {
+	return nil
+}
+
+func newSecurityListManagerNOOP() securityListManager {
+	return &securityListManagerNOOP{}
 }
 
 // securityListRulesChanged compares the ingress rules and egress rules against the rules in the security list. It checks that all the passed in egress & ingress rules
@@ -217,7 +310,7 @@ func securityListRulesChanged(securityList *core.SecurityList, ingressRules []co
 }
 
 // updateSecurityListRules updates the security list rules and saves the security list in the cache upon successful update.
-func (s *securityListManagerImpl) updateSecurityListRules(ctx context.Context, id string, etag string, ingressRules []core.IngressSecurityRule, egressRules []core.EgressSecurityRule) error {
+func (s *baseSecurityListManager) updateSecurityListRules(ctx context.Context, id string, etag string, ingressRules []core.IngressSecurityRule, egressRules []core.EgressSecurityRule) error {
 	_, err := s.client.Networking().UpdateSecurityList(ctx, core.UpdateSecurityListRequest{
 		SecurityListId: &id,
 		IfMatch:        &etag,
@@ -509,21 +602,4 @@ func healthCheckPortInUse(serviceLister listersv1.ServiceLister, port int32) (bo
 		}
 	}
 	return false, nil
-}
-
-// securityListManagerNOOP implements the securityListManager interface but does
-// no logic, so that it can be used to not handle security lists if the user doesn't wish
-// to use that feature.
-type securityListManagerNOOP struct{}
-
-func (s *securityListManagerNOOP) Update(ctx context.Context, lbSubnets []*core.Subnet, backendSubnets []*core.Subnet, sourceCIDRs []string, actualPorts *portSpec, ports portSpec) error {
-	return nil
-}
-
-func (s *securityListManagerNOOP) Delete(ctx context.Context, lbSubnets []*core.Subnet, backendSubnets []*core.Subnet, ports portSpec) error {
-	return nil
-}
-
-func newSecurityListManagerNOOP() securityListManager {
-	return &securityListManagerNOOP{}
 }

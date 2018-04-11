@@ -55,6 +55,9 @@ func validateLoadBalancerConfig(c *LoadBalancerConfig, fldPath *field.Path) fiel
 	if c.Subnet2 == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("subnet2"), ""))
 	}
+	if !IsValidSecurityListManagementMode(c.SecurityListManagementMode) {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("securityListManagementMode"), c.SecurityListManagementMode, "invalid security list management mode"))
+	}
 	return allErrs
 }
 
