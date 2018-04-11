@@ -26,8 +26,9 @@ import (
 // AuthConfig holds the configuration required for communicating with the OCI
 // API.
 type AuthConfig struct {
-	Region    string `yaml:"region"`
-	TenancyID string `yaml:"tenancy"`
+	UseInstancePrincipals bool   `yaml:"useInstancePrincipals"`
+	Region                string `yaml:"region"`
+	TenancyID             string `yaml:"tenancy"`
 	// CompartmentID is DEPRECIATED and should be set on the top level Config
 	// struct.
 	CompartmentID string `yaml:"compartment"`
