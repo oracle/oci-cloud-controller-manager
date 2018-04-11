@@ -36,7 +36,7 @@ spec:
       serviceAccountName: cloud-controller-manager
       containers:
         - name: oci-cloud-controller-manager
-          image: wcr.io/oracle/oci-cloud-controller-manager:0.3.2
+          image: wcr.io/oracle/oci-cloud-controller-manager:0.4.0
           args:
             - --cloud-config=/etc/oci/cloud-provider.yaml
             - --cloud-provider=oci

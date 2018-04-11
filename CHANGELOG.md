@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 0.4
+
+ * Implement `loadbalancer.securityListManagementMode: Frontend` which only
+   manages security list rules for load balancer ingress. [#180][16]
+ * Depreciate `loadbalancer.disableSecurityListManagement` in favour of
+   `loadbalancer.securityListManagementMode: None`. [#180][16]
+ * Implement `loadbalancer.securityLists` to allow explicit configuration of the
+   security lists that the CCM manages on a per-subnet basis [#164][17].
+ * Implement support for [instance principles][19] authentication [#155][18]
+
 ## 0.3.2
 
  * [BUG] Fix panic when EnsureLoadBalancer() called with 0 Nodes [#176][11]
@@ -63,3 +73,7 @@
 [13]: https://github.com/oracle/oci-cloud-controller-manager/issues/170
 [14]: https://github.com/oracle/oci-cloud-controller-manager/issues/167
 [15]: https://github.com/oracle/oci-cloud-controller-manager/issues/168
+[16]: https://github.com/oracle/oci-cloud-controller-manager/issues/180
+[17]: https://github.com/oracle/oci-cloud-controller-manager/issues/164
+[18]: https://github.com/oracle/oci-cloud-controller-manager/issues/155
+[19]: https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Tasks/callingservicesfrominstances.htm
