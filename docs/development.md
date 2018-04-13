@@ -54,7 +54,7 @@ using [`dep`][2].
  3. Ensure you have [`$KUBECONFIG`][4] to the Kubernetes configuration file for
     your cluster.
 
- 4. Execute `make run-dev`
+ 4. Execute `GOOS=darwin make run-dev`
 
 ## DaemonSet manifests
 
@@ -64,32 +64,18 @@ proviso that the version has been pushed to Github, the CI pipeline has
 passed, and `HEAD` is pointed to the commit in question. You can then execute
 the following to run the CCM as a DaemonSet (RBAC optional):
 
-```
+```console
 $ kubectl apply -f dist/oci-cloud-controller-manager.yaml
 $ kubectl apply -f dist/oci-cloud-controller-manager-rbac.yaml
 ```
-
-## Running the integration tests
-
-Create a `cloud-provider.yaml` as detailed above, select two separate
-subnets for nodes, and execute the following (substituting in the node subnet
-OCIDs):
-
-```
-$ OCI_CONFIG_FILE=cloud-provider.yaml \
-   NODE_SUBNET_ONE=ocid1.subnet.oc1.phx.aa... \
-   NODE_SUBNET_TWO=ocid1.subnet.oc1.phx.aa... \
-   go test -timeout 45m -v ./test/integration/loadbalancer
-```
-
 
 ## Running the e2e tests
 
 The e2e test suite requires the version of the CCM under test to be installed in
 the cluster referenced via the `--kubeconfig` flag.
 
-```
-$ go test -timeout 45m -v ./test/e2e/ --kubeconfig="$HOME/.kube/config"
+```console
+$ ginkgo -v -progress test/e2e  -- --kubeconfig=$HOME/.kube/config --cloud-config="$(pwd)/cloud-provider.yaml"
 ```
 
 [1]: https://www.docker.com/
