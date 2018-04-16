@@ -111,12 +111,18 @@ func (c *client) GetPrimaryVNICForInstance(ctx context.Context, compartmentID, i
 				continue
 			}
 
+			if attachment.VnicId == nil {
+				// Should never happen but lets be extra cautious as field is non-mandatory in OCI API.
+				glog.Errorf("VNIC attachment %q for instance %q is attached but has no VNIC ID", *attachment.Id, instanceID)
+				continue
+			}
+
 			// TODO(apryde): Cache map[instanceID]primaryVNICID.
 			vnic, err := c.getVNIC(ctx, *attachment.VnicId)
 			if err != nil {
 				return nil, err
 			}
-			if *vnic.IsPrimary {
+			if vnic.IsPrimary != nil && *vnic.IsPrimary {
 				return vnic, nil
 			}
 		}
@@ -154,6 +160,12 @@ func (c *client) GetInstanceByNodeName(ctx context.Context, compartmentID, vcnID
 			if attachment.LifecycleState != core.VnicAttachmentLifecycleStateAttached {
 				glog.Infof("VNIC attachment %q for instance %q has a life cycle state of %q (not %q)",
 					*attachment.Id, nodeName, attachment.LifecycleState, core.VnicAttachmentLifecycleStateAttached)
+				continue
+			}
+
+			if attachment.VnicId == nil {
+				// Should never happen but lets be extra cautious as field is non-mandatory in OCI API.
+				glog.Errorf("VNIC attachment %q for instance %q is attached but has no VNIC ID", *attachment.Id, nodeName)
 				continue
 			}
 
