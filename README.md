@@ -120,6 +120,16 @@ I0905 13:44:51.786078       7 flags.go:52] FLAG: --cloud-config="/etc/oci/cloud-
 I0905 13:44:51.786083       7 flags.go:52] FLAG: --cloud-provider="oci"
 ```
 
+## Upgrade
+
+The following example shows how to upgrade the CCM from an older version (replace ? with the version you're upgrading to):
+
+```bash
+$ export RELEASE=?
+$ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-cloud-controller-manager-rbac.yaml
+$ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-cloud-controller-manager.yaml
+```
+
 ## Examples
 
  - [Service `type: LoadBalancer` basic NGINX example][8]
