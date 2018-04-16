@@ -22,7 +22,6 @@ explain why.
 
 **Environment**:
 - **Kubernetes version** (use `kubectl version`):
-- **Cloud provider or hardware configuration**:
 - **OS** (e.g. from /etc/os-release):
 - **Kernel** (e.g. `uname -a`):
 - **Others**:
