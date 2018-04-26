@@ -98,6 +98,7 @@ func (c *client) GetPrimaryVNICForInstance(ctx context.Context, compartmentID, i
 	for retryCount := 0; retryCount < 12; retryCount++ {
 		vnic, err := c.getPrimaryVNICForInstance(ctx, compartmentID, instanceID)
 		if errors.Cause(err) == errNoVNICsReady {
+			glog.Infof("No VNICs are attached or primary for instance %q. Retrying in %v to see if that changes.", instanceID, sleepSeconds)
 			time.Sleep(sleepSeconds)
 			continue
 		}
