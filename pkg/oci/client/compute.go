@@ -111,10 +111,6 @@ func (c *client) GetPrimaryVNICForInstance(ctx context.Context, compartmentID, i
 	return nil, errors.WithStack(errNotFound)
 }
 
-var (
-	errNoVNICsReady = errors.New("no vnics are ready")
-)
-
 func (c *client) getPrimaryVNICForInstance(ctx context.Context, compartmentID, instanceID string) (*core.Vnic, error) {
 	var page *string
 	for {
