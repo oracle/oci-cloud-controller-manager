@@ -60,6 +60,14 @@ push:
           echo "${VERSION}"
 
     - script:
+        name: Ensure version is unique
+        code: |
+          if curl -s https://api.github.com/repos/oracle/oci-cloud-controller-manager/git/refs/tags | grep "tags/$VERSION"; then
+            echo "Tag $VERSION already exists. Doing nothing."
+            exit 1
+          fi
+
+    - script:
         name: prepare
         code: |
           mv ./oci-cloud-controller-manager /oci-cloud-controller-manager
@@ -80,6 +88,14 @@ release:
         code: |
           export VERSION=$(cat VERSION.txt)
           echo "${VERSION}"
+
+    - script:
+        name: Ensure version is unique
+        code: |
+          if curl -s https://api.github.com/repos/oracle/oci-cloud-controller-manager/git/refs/tags | grep "tags/$VERSION"; then
+            echo "Tag $VERSION already exists. Doing nothing."
+            exit 1
+          fi
 
     - github-create-release:
       token: $GITHUB_TOKEN
