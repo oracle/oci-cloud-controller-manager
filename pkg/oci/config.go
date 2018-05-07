@@ -29,13 +29,13 @@ type AuthConfig struct {
 	UseInstancePrincipals bool   `yaml:"useInstancePrincipals"`
 	Region                string `yaml:"region"`
 	TenancyID             string `yaml:"tenancy"`
-	// CompartmentID is DEPRECIATED and should be set on the top level Config
+	// CompartmentID is DEPRECATED and should be set on the top level Config
 	// struct.
 	CompartmentID string `yaml:"compartment"`
 	UserID        string `yaml:"user"`
 	PrivateKey    string `yaml:"key"`
 	Fingerprint   string `yaml:"fingerprint"`
-	// PrivateKeyPassphrase is DEPRECIATED in favour of Passphrase.
+	// PrivateKeyPassphrase is DEPRECATED in favour of Passphrase.
 	PrivateKeyPassphrase string `yaml:"key_passphrase"`
 	Passphrase           string `yaml:"passphrase"`
 }
@@ -79,6 +79,9 @@ type Config struct {
 	// VCNID is the OCID of the Virtual Cloud Network (VCN) within which the
 	// cluster resides.
 	VCNID string `yaml:"vcn"`
+
+	// Toggle managing routes
+	ManageRoutes bool `yaml:"manageRoutes"`
 }
 
 // Complete the config applying defaults / overrides.
@@ -86,16 +89,16 @@ func (c *Config) Complete() {
 	if !c.LoadBalancer.Disabled && c.LoadBalancer.SecurityListManagementMode == "" {
 		c.LoadBalancer.SecurityListManagementMode = ManagementModeAll // default
 		if c.LoadBalancer.DisableSecurityListManagement {
-			glog.Warningf("cloud-provider config: \"loadBalancer.disableSecurityListManagement\" is DEPRECIATED and will be removed in a later release. Please set \"loadBalancer.SecurityListManagementMode: %s\".", ManagementModeNone)
+			glog.Warningf("cloud-provider config: \"loadBalancer.disableSecurityListManagement\" is DEPRECATED and will be removed in a later release. Please set \"loadBalancer.SecurityListManagementMode: %s\".", ManagementModeNone)
 			c.LoadBalancer.SecurityListManagementMode = ManagementModeNone
 		}
 	}
 	if c.CompartmentID == "" && c.Auth.CompartmentID != "" {
-		glog.Warning("cloud-provider config: \"auth.compartment\" is DEPRECIATED and will be removed in a later release. Please set \"compartment\".")
+		glog.Warning("cloud-provider config: \"auth.compartment\" is DEPRECATED and will be removed in a later release. Please set \"compartment\".")
 		c.CompartmentID = c.Auth.CompartmentID
 	}
 	if c.Auth.Passphrase == "" && c.Auth.PrivateKeyPassphrase != "" {
-		glog.Warning("cloud-provider config: \"auth.key_passphrase\" is DEPRECIATED and will be removed in a later release. Please set \"auth.passphrase\".")
+		glog.Warning("cloud-provider config: \"auth.key_passphrase\" is DEPRECATED and will be removed in a later release. Please set \"auth.passphrase\".")
 		c.Auth.Passphrase = c.Auth.PrivateKeyPassphrase
 	}
 }

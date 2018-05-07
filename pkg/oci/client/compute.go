@@ -93,6 +93,18 @@ func (c *client) listVNICAttachments(ctx context.Context, req core.ListVnicAttac
 
 func (c *client) GetPrimaryVNICForInstance(ctx context.Context, compartmentID, instanceID string) (*core.Vnic, error) {
 	var page *string
+
+	if compartmentID == "" {
+		glog.V(6).Infof("No compartment specified, looking up instance: %s", instanceID)
+		instance, err := c.GetInstance(ctx, instanceID)
+
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		compartmentID = *instance.CompartmentId
+	}
+
 	for {
 		resp, err := c.listVNICAttachments(ctx, core.ListVnicAttachmentsRequest{
 			InstanceId:    &instanceID,

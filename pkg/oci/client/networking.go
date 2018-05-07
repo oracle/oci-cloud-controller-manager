@@ -30,6 +30,14 @@ type NetworkingInterface interface {
 
 	GetSecurityList(ctx context.Context, id string) (core.GetSecurityListResponse, error)
 	UpdateSecurityList(ctx context.Context, request core.UpdateSecurityListRequest) (core.UpdateSecurityListResponse, error)
+
+	GetRouteTable(ctx context.Context, routeID string) (core.GetRouteTableResponse, error)
+	UpdateRouteTable(ctx context.Context, routeID string, routeRules []core.RouteRule) error
+
+	GetIPFromOCID(ctx context.Context, ipID string) (core.GetPrivateIpResponse, error)
+	GetOCIDFromIP(ctx context.Context, ipAddress string, subnetID string) (string, error)
+
+	UpdateVnic(ctx context.Context, vnicID string, skipSourceCheck bool) error
 }
 
 func (c *client) getVNIC(ctx context.Context, id string) (*core.Vnic, error) {
@@ -104,4 +112,57 @@ func (c *client) UpdateSecurityList(ctx context.Context, request core.UpdateSecu
 
 func subnetCacheKeyFn(obj interface{}) (string, error) {
 	return *obj.(*core.Subnet).Id, nil
+}
+
+func (c *client) GetRouteTable(ctx context.Context, routeID string) (core.GetRouteTableResponse, error) {
+	req := core.GetRouteTableRequest{
+		RtId: &routeID,
+	}
+	return c.network.GetRouteTable(ctx, req)
+}
+
+func (c *client) GetIPFromOCID(ctx context.Context, ipID string) (core.GetPrivateIpResponse, error) {
+	return c.network.GetPrivateIp(ctx, core.GetPrivateIpRequest{
+		PrivateIpId: &ipID,
+	})
+}
+
+func (c *client) GetOCIDFromIP(ctx context.Context, ipAddress string, subnetID string) (string, error) {
+	resp, err := c.network.ListPrivateIps(ctx, core.ListPrivateIpsRequest{
+		IpAddress: &ipAddress,
+		SubnetId:  &subnetID,
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	for _, entry := range resp.Items {
+		if *entry.IpAddress == ipAddress {
+			return *entry.Id, nil
+		}
+	}
+
+	return "", errors.New("IP not found in subnet")
+}
+
+func (c *client) UpdateRouteTable(ctx context.Context, routeID string, routeRules []core.RouteRule) error {
+	_, err := c.network.UpdateRouteTable(ctx, core.UpdateRouteTableRequest{
+		RtId: &routeID,
+		UpdateRouteTableDetails: core.UpdateRouteTableDetails{
+			RouteRules: routeRules,
+		},
+	})
+
+	return err
+}
+
+func (c *client) UpdateVnic(ctx context.Context, vnicID string, skipSourceCheck bool) error {
+	_, err := c.network.UpdateVnic(ctx, core.UpdateVnicRequest{
+		VnicId: &vnicID,
+		UpdateVnicDetails: core.UpdateVnicDetails{
+			SkipSourceDestCheck: &skipSourceCheck,
+		},
+	})
+	return err
 }

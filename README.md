@@ -44,6 +44,8 @@ Key:
    cloud-provider.
  - ServiceController - responsible for creating load balancers when a service
    of `type: LoadBalancer` is created in Kubernetes.
+ - RouteController - response for managing the route tables for instances to
+   allow for podCIDRs to be directly accessible without an overlay
 
 ## Setup and Installation
 

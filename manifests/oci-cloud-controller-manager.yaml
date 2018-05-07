@@ -41,6 +41,8 @@ spec:
             - --cloud-config=/etc/oci/cloud-provider.yaml
             - --cloud-provider=oci
             - --leader-elect-resource-lock=configmaps
+            - --allocate-node-cidrs=true
+            - --cluster-cidr=10.99.0.0/16
             - -v=2
           volumeMounts:
             - name: cfg
