@@ -74,10 +74,40 @@ push:
           chmod +x /oci-cloud-controller-manager
 
     - internal/docker-push:
-        repository: wcr.io/oracle/oci-cloud-controller-manager
+        repository: iad.ocir.io/oracle/oci-cloud-controller-manager
         tag: $VERSION
         entrypoint: /oci-cloud-controller-manager
         user: 65534 # nobody
+        registry: https://iad.ocir.io/v2
+        username: $OCIRUSERNAME
+        password: $OCIRPASSWORD
+
+    - internal/docker-push:
+        repository: lhr.ocir.io/oracle/oci-cloud-controller-manager
+        tag: $VERSION
+        entrypoint: /oci-cloud-controller-manager
+        user: 65534 # nobody
+        registry: https://lhr.ocir.io/v2
+        username: $OCIRUSERNAME
+        password: $OCIRPASSWORD
+
+    - internal/docker-push:
+        repository: phx.ocir.io/oracle/oci-cloud-controller-manager
+        tag: $VERSION
+        entrypoint: /oci-cloud-controller-manager
+        user: 65534 # nobody
+        registry: https://phx.ocir.io/v2
+        username: $OCIRUSERNAME
+        password: $OCIRPASSWORD
+
+    - internal/docker-push:
+        repository: fra.ocir.io/oracle/oci-cloud-controller-manager
+        tag: $VERSION
+        entrypoint: /oci-cloud-controller-manager
+        user: 65534 # nobody
+        registry: https://fra.ocir.io/v2
+        username: $OCIRUSERNAME
+        password: $OCIRPASSWORD
 
 release:
   box:
