@@ -101,7 +101,7 @@ func (cp *CloudProvider) GetLoadBalancer(ctx context.Context, clusterName string
 	return lbStatus, (err == nil), err
 }
 
-// getSubnets returns a list of Subnet objects for the corrosponding OCIDs.
+// getSubnets returns a list of Subnet objects for the corresponding OCIDs.
 func getSubnets(ctx context.Context, subnetIDs []string, n client.NetworkingInterface) ([]*core.Subnet, error) {
 	subnets := make([]*core.Subnet, len(subnetIDs))
 	for i, id := range subnetIDs {
@@ -484,7 +484,7 @@ func (cp *CloudProvider) UpdateLoadBalancer(ctx context.Context, clusterName str
 	return err
 }
 
-// getNodesByIPs returns a slice of Nodes corrosponding to the given IP addresses.
+// getNodesByIPs returns a slice of Nodes corresponding to the given IP addresses.
 func (cp *CloudProvider) getNodesByIPs(backendIPs []string) ([]*v1.Node, error) {
 	nodeList, err := cp.NodeLister.List(labels.Everything())
 	if err != nil {
