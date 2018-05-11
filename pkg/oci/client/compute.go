@@ -17,6 +17,7 @@ package client
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/oracle/oci-go-sdk/core"
@@ -92,6 +93,26 @@ func (c *client) listVNICAttachments(ctx context.Context, req core.ListVnicAttac
 }
 
 func (c *client) GetPrimaryVNICForInstance(ctx context.Context, compartmentID, instanceID string) (*core.Vnic, error) {
+	// Sleep for a max of 2 minutes waiting for the instance to become ready.
+	sleepSeconds := 10 * time.Second
+	for retryCount := 0; retryCount < 12; retryCount++ {
+		vnic, err := c.getPrimaryVNICForInstance(ctx, compartmentID, instanceID)
+		if errors.Cause(err) == errNoVNICsReady {
+			glog.Infof("No VNICs are attached or primary for instance %q. Retrying in %v to see if that changes.", instanceID, sleepSeconds)
+			time.Sleep(sleepSeconds)
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		return vnic, nil
+	}
+
+	return nil, errors.WithStack(errNotFound)
+}
+
+func (c *client) getPrimaryVNICForInstance(ctx context.Context, compartmentID, instanceID string) (*core.Vnic, error) {
 	var page *string
 	for {
 		resp, err := c.listVNICAttachments(ctx, core.ListVnicAttachmentsRequest{
@@ -99,9 +120,12 @@ func (c *client) GetPrimaryVNICForInstance(ctx context.Context, compartmentID, i
 			CompartmentId: &compartmentID,
 			Page:          page,
 		})
-
 		if err != nil {
 			return nil, err
+		}
+
+		if len(resp.Items) == 0 {
+			return nil, errors.WithStack(errNotFound)
 		}
 
 		for _, attachment := range resp.Items {
@@ -132,7 +156,11 @@ func (c *client) GetPrimaryVNICForInstance(ctx context.Context, compartmentID, i
 		}
 	}
 
-	return nil, errors.WithStack(errNotFound)
+	// If we reach this point then there are no active/primary vnics on the instance.
+	// There should always be at least once since at this point the instance is running
+	// and it's not possible to run w/o a vnic. This error lets us retry since we just need
+	// to wait for OCI to update the VNIC to the ATTACHED state.
+	return nil, errNoVNICsReady
 }
 
 func (c *client) GetInstanceByNodeName(ctx context.Context, compartmentID, vcnID, nodeName string) (*core.Instance, error) {

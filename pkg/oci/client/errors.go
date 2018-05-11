@@ -21,7 +21,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-var errNotFound = errors.New("not found")
+var (
+	errNotFound     = errors.New("not found")
+	errNoVNICsReady = errors.New("no vnics are ready")
+)
 
 // IsNotFound returns true if the given error indicates that a resource could
 // not be found.
