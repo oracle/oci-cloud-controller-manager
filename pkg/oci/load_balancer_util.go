@@ -23,6 +23,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/oracle/oci-go-sdk/loadbalancer"
+	netsets "k8s.io/kubernetes/pkg/util/net/sets"
 
 	api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -508,13 +509,17 @@ func sortAndCombineActions(backendSetActions []Action, listenerActions []Action)
 }
 
 func getLoadBalancerSourceRanges(config *Config, service *api.Service) ([]string, error) {
-	sourceRanges, err := apiservice.GetLoadBalancerSourceRanges(service)
-	if err != nil {
-		return []string{}, err
+	var sourceRanges netsets.IPNet
+	var err error
+	if len(service.Spec.LoadBalancerSourceRanges) > 0 {
+		specs := service.Spec.LoadBalancerSourceRanges
+		sourceRanges, err = netsets.ParseIPNets(specs...)
+
+		if err != nil {
+			return []string{}, fmt.Errorf("service.Spec.LoadBalancerSourceRanges: %v is not valid. Expecting a list of IP ranges. For example, 10.0.0.0/24. Error msg: %v", specs, err)
+		}
 	}
 
-	// NOTE: This means that if DefaultSourceCIDRs are set a user cannot set
-	// a source CIDR range of allow all (i.e. 0.0.0.0/0).
 	if len(sourceRanges) == 1 && apiservice.IsAllowAll(sourceRanges) &&
 		len(config.LoadBalancer.DefaultSourceCIDRs) > 0 {
 		return config.LoadBalancer.DefaultSourceCIDRs, nil
