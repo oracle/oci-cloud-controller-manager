@@ -23,6 +23,7 @@ import (
 
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/common/auth"
 	"github.com/pkg/errors"
@@ -34,12 +35,18 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	listersv1 "k8s.io/client-go/listers/core/v1"
 	cache "k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/flowcontrol"
 	cloudprovider "k8s.io/kubernetes/pkg/cloudprovider"
 	controller "k8s.io/kubernetes/pkg/controller"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instancemeta"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/util"
+)
+
+const (
+	RateLimitQPSDefault    = 1.0
+	RateLimitBucketDefault = 5
 )
 
 // ProviderName uniquely identifies the Oracle Bare Metal Cloud Services (OCI)
@@ -78,7 +85,10 @@ func NewCloudProvider(config *Config) (cloudprovider.Interface, error) {
 	if err != nil {
 		return nil, err
 	}
-	c, err := client.New(logger.Sugar(), cp)
+
+	rateLimiter := buildNewRateLimiter(config.RateLimiter)
+
+	c, err := client.New(logger.Sugar(), cp, &rateLimiter)
 	if err != nil {
 		return nil, err
 	}
@@ -224,4 +234,40 @@ func buildConfigurationProvider(logger *zap.Logger, config *Config) (common.Conf
 		&config.Auth.Passphrase,
 	)
 	return cp, nil
+}
+
+// BuildRateLimiter ...
+func buildNewRateLimiter(config *RateLimiterConfig) client.RateLimiter {
+	// Set to default values if configuration not declared
+	if config.RateLimitQPSRead == 0 {
+		config.RateLimitQPSRead = RateLimitQPSDefault
+	}
+	if config.RateLimitBucketRead == 0 {
+		config.RateLimitBucketRead = RateLimitBucketDefault
+	}
+	if config.RateLimitQPSWrite == 0 {
+		config.RateLimitQPSWrite = RateLimitQPSDefault
+	}
+	if config.RateLimitBucketWrite == 0 {
+		config.RateLimitBucketWrite = RateLimitBucketDefault
+	}
+
+	rateLimiter := client.RateLimiter{
+		Reader: flowcontrol.NewTokenBucketRateLimiter(
+			config.RateLimitQPSRead,
+			config.RateLimitBucketRead),
+		Writer: flowcontrol.NewTokenBucketRateLimiter(
+			config.RateLimitQPSWrite,
+			config.RateLimitBucketWrite),
+	}
+
+	glog.V(2).Infof("OCI using read rate limit configuration: QPS=%g, bucket=%d",
+		config.RateLimitQPSRead,
+		config.RateLimitBucketRead)
+
+	glog.V(2).Infof("OCI using write rate limit configuration: QPS=%g, bucket=%d",
+		config.RateLimitQPSWrite,
+		config.RateLimitBucketWrite)
+
+	return rateLimiter
 }

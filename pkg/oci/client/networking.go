@@ -33,6 +33,10 @@ type NetworkingInterface interface {
 }
 
 func (c *client) getVNIC(ctx context.Context, id string) (*core.Vnic, error) {
+	if !c.rateLimiter.Reader.TryAccept() {
+		return nil, RateLimitError(false, "getVNIC")
+	}
+
 	resp, err := c.network.GetVnic(ctx, core.GetVnicRequest{
 		VnicId: &id,
 	})
@@ -52,6 +56,10 @@ func (c *client) GetSubnet(ctx context.Context, id string) (*core.Subnet, error)
 	}
 	if exists {
 		return item.(*core.Subnet), nil
+	}
+
+	if !c.rateLimiter.Reader.TryAccept() {
+		return nil, RateLimitError(false, "GetSubnet")
 	}
 
 	resp, err := c.network.GetSubnet(ctx, core.GetSubnetRequest{
@@ -88,6 +96,10 @@ func (c *client) GetSubnetFromCacheByIP(ip string) (*core.Subnet, error) {
 }
 
 func (c *client) GetSecurityList(ctx context.Context, id string) (core.GetSecurityListResponse, error) {
+	if !c.rateLimiter.Reader.TryAccept() {
+		return core.GetSecurityListResponse{}, RateLimitError(false, "GetSecurityList")
+	}
+
 	resp, err := c.network.GetSecurityList(ctx, core.GetSecurityListRequest{
 		SecurityListId: &id,
 	})
@@ -97,6 +109,10 @@ func (c *client) GetSecurityList(ctx context.Context, id string) (core.GetSecuri
 }
 
 func (c *client) UpdateSecurityList(ctx context.Context, request core.UpdateSecurityListRequest) (core.UpdateSecurityListResponse, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return core.UpdateSecurityListResponse{}, RateLimitError(true, "UpdateSecurityList")
+	}
+
 	resp, err := c.network.UpdateSecurityList(ctx, request)
 	incRequestCounter(err, updateVerb, securityListResource)
 	return resp, errors.WithStack(err)

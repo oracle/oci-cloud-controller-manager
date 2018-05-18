@@ -29,6 +29,7 @@ const workRequestPollInterval = 5 * time.Second
 // LoadBalancerInterface for consumed LB functionality.
 type LoadBalancerInterface interface {
 	CreateLoadBalancer(ctx context.Context, details loadbalancer.CreateLoadBalancerDetails) (string, error)
+
 	GetLoadBalancer(ctx context.Context, id string) (*loadbalancer.LoadBalancer, error)
 	GetLoadBalancerByName(ctx context.Context, compartmentID, name string) (*loadbalancer.LoadBalancer, error)
 	DeleteLoadBalancer(ctx context.Context, id string) (string, error)
@@ -48,6 +49,10 @@ type LoadBalancerInterface interface {
 }
 
 func (c *client) GetLoadBalancer(ctx context.Context, id string) (*loadbalancer.LoadBalancer, error) {
+	if !c.rateLimiter.Reader.TryAccept() {
+		return nil, RateLimitError(false, "GetLoadBalancer")
+	}
+
 	resp, err := c.loadbalancer.GetLoadBalancer(ctx, loadbalancer.GetLoadBalancerRequest{
 		LoadBalancerId: &id,
 	})
@@ -63,6 +68,9 @@ func (c *client) GetLoadBalancer(ctx context.Context, id string) (*loadbalancer.
 func (c *client) GetLoadBalancerByName(ctx context.Context, compartmentID, name string) (*loadbalancer.LoadBalancer, error) {
 	var page *string
 	for {
+		if !c.rateLimiter.Reader.TryAccept() {
+			return nil, RateLimitError(false, "GetLoadBalancerByName")
+		}
 		resp, err := c.loadbalancer.ListLoadBalancers(ctx, loadbalancer.ListLoadBalancersRequest{
 			CompartmentId: &compartmentID,
 			DisplayName:   &name,
@@ -87,6 +95,10 @@ func (c *client) GetLoadBalancerByName(ctx context.Context, compartmentID, name 
 }
 
 func (c *client) CreateLoadBalancer(ctx context.Context, details loadbalancer.CreateLoadBalancerDetails) (string, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return "", RateLimitError(true, "CreateLoadBalancer")
+	}
+
 	resp, err := c.loadbalancer.CreateLoadBalancer(ctx, loadbalancer.CreateLoadBalancerRequest{
 		CreateLoadBalancerDetails: details,
 	})
@@ -100,6 +112,10 @@ func (c *client) CreateLoadBalancer(ctx context.Context, details loadbalancer.Cr
 }
 
 func (c *client) DeleteLoadBalancer(ctx context.Context, id string) (string, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return "", RateLimitError(true, "DeleteLoadBalancer")
+	}
+
 	resp, err := c.loadbalancer.DeleteLoadBalancer(ctx, loadbalancer.DeleteLoadBalancerRequest{
 		LoadBalancerId: &id,
 	})
@@ -113,6 +129,10 @@ func (c *client) DeleteLoadBalancer(ctx context.Context, id string) (string, err
 }
 
 func (c *client) GetCertificateByName(ctx context.Context, lbID, name string) (*loadbalancer.Certificate, error) {
+	if !c.rateLimiter.Reader.TryAccept() {
+		return nil, RateLimitError(false, "GetCertificateByName")
+	}
+
 	resp, err := c.loadbalancer.ListCertificates(ctx, loadbalancer.ListCertificatesRequest{
 		LoadBalancerId: &lbID,
 	})
@@ -131,6 +151,10 @@ func (c *client) GetCertificateByName(ctx context.Context, lbID, name string) (*
 }
 
 func (c *client) CreateCertificate(ctx context.Context, lbID, certificate, key string) (string, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return "", RateLimitError(true, "CreateCertificate")
+	}
+
 	// TODO(apryde): We currently don't have a mechanism for supplying
 	// CreateCertificateDetails.CaCertificate.
 	resp, err := c.loadbalancer.CreateCertificate(ctx, loadbalancer.CreateCertificateRequest{
@@ -150,6 +174,10 @@ func (c *client) CreateCertificate(ctx context.Context, lbID, certificate, key s
 }
 
 func (c *client) GetWorkRequest(ctx context.Context, id string) (*loadbalancer.WorkRequest, error) {
+	if !c.rateLimiter.Reader.TryAccept() {
+		return nil, RateLimitError(false, "GetWorkRequest")
+	}
+
 	resp, err := c.loadbalancer.GetWorkRequest(ctx, loadbalancer.GetWorkRequestRequest{
 		WorkRequestId: &id,
 	})
@@ -163,6 +191,10 @@ func (c *client) GetWorkRequest(ctx context.Context, id string) (*loadbalancer.W
 }
 
 func (c *client) CreateBackendSet(ctx context.Context, lbID, name string, details loadbalancer.BackendSetDetails) (string, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return "", RateLimitError(true, "CreateBackendSet")
+	}
+
 	resp, err := c.loadbalancer.CreateBackendSet(ctx, loadbalancer.CreateBackendSetRequest{
 		LoadBalancerId: &lbID,
 		CreateBackendSetDetails: loadbalancer.CreateBackendSetDetails{
@@ -184,6 +216,10 @@ func (c *client) CreateBackendSet(ctx context.Context, lbID, name string, detail
 }
 
 func (c *client) UpdateBackendSet(ctx context.Context, lbID, name string, details loadbalancer.BackendSetDetails) (string, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return "", RateLimitError(true, "UpdateBackendSet")
+	}
+
 	resp, err := c.loadbalancer.UpdateBackendSet(ctx, loadbalancer.UpdateBackendSetRequest{
 		LoadBalancerId: &lbID,
 		BackendSetName: &name,
@@ -205,6 +241,10 @@ func (c *client) UpdateBackendSet(ctx context.Context, lbID, name string, detail
 }
 
 func (c *client) DeleteBackendSet(ctx context.Context, lbID, name string) (string, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return "", RateLimitError(true, "DeleteBackendSet")
+	}
+
 	resp, err := c.loadbalancer.DeleteBackendSet(ctx, loadbalancer.DeleteBackendSetRequest{
 		LoadBalancerId: &lbID,
 		BackendSetName: &name,
@@ -219,6 +259,10 @@ func (c *client) DeleteBackendSet(ctx context.Context, lbID, name string) (strin
 }
 
 func (c *client) CreateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return "", RateLimitError(true, "CreateListener")
+	}
+
 	resp, err := c.loadbalancer.CreateListener(ctx, loadbalancer.CreateListenerRequest{
 		LoadBalancerId: &lbID,
 		CreateListenerDetails: loadbalancer.CreateListenerDetails{
@@ -239,6 +283,10 @@ func (c *client) CreateListener(ctx context.Context, lbID, name string, details 
 }
 
 func (c *client) UpdateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return "", RateLimitError(true, "UpdateListener")
+	}
+
 	resp, err := c.loadbalancer.UpdateListener(ctx, loadbalancer.UpdateListenerRequest{
 		LoadBalancerId: &lbID,
 		ListenerName:   &name,
@@ -273,7 +321,7 @@ func (c *client) AwaitWorkRequest(ctx context.Context, id string) (*loadbalancer
 			wr = twr
 			return true, nil
 		case loadbalancer.WorkRequestLifecycleStateFailed:
-			return false, errors.Errorf("WorkRequest %q failed: %s", id, twr.Message)
+			return false, errors.Errorf("WorkRequest %q failed: %s", id, *twr.Message)
 		}
 		return false, nil
 	}, ctx.Done())
@@ -281,6 +329,10 @@ func (c *client) AwaitWorkRequest(ctx context.Context, id string) (*loadbalancer
 }
 
 func (c *client) DeleteListener(ctx context.Context, lbID, name string) (string, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return "", RateLimitError(true, "DeleteListener")
+	}
+
 	resp, err := c.loadbalancer.DeleteListener(ctx, loadbalancer.DeleteListenerRequest{
 		LoadBalancerId: &lbID,
 		ListenerName:   &name,
