@@ -45,7 +45,9 @@ import (
 )
 
 const (
-	RateLimitQPSDefault    = 1.0
+	//RateLimitQPSDefault sets a value for the default queries per second.
+	RateLimitQPSDefault = 1.0
+	//RateLimitBucketDefault sets a value for the default token bucket burst size.
 	RateLimitBucketDefault = 5
 )
 
@@ -236,7 +238,8 @@ func buildConfigurationProvider(logger *zap.Logger, config *Config) (common.Conf
 	return cp, nil
 }
 
-// BuildRateLimiter ...
+// buildNewRateLimiter builds and returns a struct containing read and write
+// rate limiters. Defaults are used where no (0) value is provided.
 func buildNewRateLimiter(config *RateLimiterConfig) client.RateLimiter {
 	// Set to default values if configuration not declared
 	if config.RateLimitQPSRead == 0 {
