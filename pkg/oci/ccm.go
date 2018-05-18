@@ -238,9 +238,14 @@ func buildConfigurationProvider(logger *zap.Logger, config *Config) (common.Conf
 	return cp, nil
 }
 
-// buildNewRateLimiter builds and returns a struct containing read and write
+// newRateLimiter builds and returns a struct containing read and write
 // rate limiters. Defaults are used where no (0) value is provided.
 func newRateLimiter(config *RateLimiterConfig) client.RateLimiter {
+
+	if config == nil {
+		config = &RateLimiterConfig{}
+	}
+
 	// Set to default values if configuration not declared
 	if config.RateLimitQPSRead == 0 {
 		config.RateLimitQPSRead = RateLimitQPSDefault
