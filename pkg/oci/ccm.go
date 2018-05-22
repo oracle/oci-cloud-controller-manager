@@ -87,7 +87,7 @@ func NewCloudProvider(config *Config) (cloudprovider.Interface, error) {
 		config.CompartmentID = metadata.CompartmentOCID
 	}
 
-	if config.VCNID == "" {
+	if !config.LoadBalancer.Disabled && config.VCNID == "" {
 		glog.Infof("No vcn provided in cloud provider config. Falling back to looking up VCN via LB subnet.")
 		subnet, err := c.Networking().GetSubnet(context.Background(), config.LoadBalancer.Subnet1)
 		if err != nil {
@@ -136,17 +136,19 @@ func (cp *CloudProvider) Initialize(clientBuilder controller.ControllerClientBui
 	}
 	cp.NodeLister = nodeInformer.Lister()
 
-	var serviceInformer informersv1.ServiceInformer
-	if cp.config.LoadBalancer.SecurityListManagementMode != ManagementModeNone {
-		serviceInformer = factory.Core().V1().Services()
-		go serviceInformer.Informer().Run(wait.NeverStop)
-		glog.Info("Waiting for service informer cache to sync")
-		if !cache.WaitForCacheSync(wait.NeverStop, serviceInformer.Informer().HasSynced) {
-			utilruntime.HandleError(fmt.Errorf("Timed out waiting for service informer to sync"))
-		}
+	if !cp.config.LoadBalancer.Disabled {
+		var serviceInformer informersv1.ServiceInformer
+		if cp.config.LoadBalancer.SecurityListManagementMode != ManagementModeNone {
+			serviceInformer = factory.Core().V1().Services()
+			go serviceInformer.Informer().Run(wait.NeverStop)
+			glog.Info("Waiting for service informer cache to sync")
+			if !cache.WaitForCacheSync(wait.NeverStop, serviceInformer.Informer().HasSynced) {
+				utilruntime.HandleError(fmt.Errorf("Timed out waiting for service informer to sync"))
+			}
 
+		}
+		cp.securityListManager = newSecurityListManager(cp.client, serviceInformer.Lister(), cp.config.LoadBalancer.SecurityLists, cp.config.LoadBalancer.SecurityListManagementMode)
 	}
-	cp.securityListManager = newSecurityListManager(cp.client, serviceInformer.Lister(), cp.config.LoadBalancer.SecurityLists, cp.config.LoadBalancer.SecurityListManagementMode)
 }
 
 // ProviderName returns the cloud-provider ID.
@@ -158,7 +160,7 @@ func (cp *CloudProvider) ProviderName() string {
 // is supported, false otherwise.
 func (cp *CloudProvider) LoadBalancer() (cloudprovider.LoadBalancer, bool) {
 	glog.V(6).Info("Claiming to support Load Balancers")
-	return cp, true
+	return cp, !cp.config.LoadBalancer.Disabled
 }
 
 // Instances returns an instances interface. Also returns true if the interface

@@ -42,6 +42,9 @@ type AuthConfig struct {
 
 // LoadBalancerConfig holds the configuration options for OCI load balancers.
 type LoadBalancerConfig struct {
+	// Disabled disables the creation of a load balancer.
+	Disabled bool `yaml:"disabled"`
+
 	// DisableSecurityListManagement disables the automatic creation of ingress
 	// rules for the node subnets and egress rules for the load balancers to the node subnets.
 	//
@@ -80,7 +83,7 @@ type Config struct {
 
 // Complete the config applying defaults / overrides.
 func (c *Config) Complete() {
-	if c.LoadBalancer.SecurityListManagementMode == "" {
+	if !c.LoadBalancer.Disabled && c.LoadBalancer.SecurityListManagementMode == "" {
 		c.LoadBalancer.SecurityListManagementMode = ManagementModeAll // default
 		if c.LoadBalancer.DisableSecurityListManagement {
 			glog.Warningf("cloud-provider config: \"loadBalancer.disableSecurityListManagement\" is DEPRECIATED and will be removed in a later release. Please set \"loadBalancer.SecurityListManagementMode: %s\".", ManagementModeNone)
