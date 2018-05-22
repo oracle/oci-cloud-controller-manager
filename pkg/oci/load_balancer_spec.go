@@ -115,10 +115,18 @@ func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCf
 	if s, ok := svc.Annotations[ServiceAnnotationLoadBalancerSubnet2]; ok {
 		subnets[1] = s
 	}
+
 	if internal {
 		// Only public load balancers need two subnets.  Internal load
 		// balancers will always use the first subnet.
+		if subnets[0] == "" {
+			return nil, errors.Errorf("a configuration for subnet1 must be specified for an internal load balancer")
+		}
 		subnets = subnets[:1]
+	} else {
+		if subnets[0] == "" || subnets[1] == "" {
+			return nil, errors.Errorf("a configuration for both subnets must be specified")
+		}
 	}
 
 	listeners, err := getListeners(svc, sslCfg)

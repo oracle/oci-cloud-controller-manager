@@ -366,6 +366,8 @@ func TestNewLBSpecFailure(t *testing.T) {
 			expectedErrMsg: "invalid service: OCI only supports SessionAffinity \"None\" currently",
 		},
 		"invalid idle connection timeout": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -383,6 +385,39 @@ func TestNewLBSpecFailure(t *testing.T) {
 				},
 			},
 			expectedErrMsg: "error parsing service annotation: service.beta.kubernetes.io/oci-load-balancer-connection-idle-timeout=whoops",
+		},
+		"missing subnet defaults and annotations": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace:   "kube-system",
+					Name:        "testservice",
+					UID:         "test-uid",
+					Annotations: map[string]string{},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports:           []v1.ServicePort{},
+				},
+			},
+			expectedErrMsg: "a configuration for both subnets must be specified",
+		},
+		"internal lb missing subnet1": {
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInternal: "",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports:           []v1.ServicePort{},
+				},
+			},
+			expectedErrMsg: "a configuration for subnet1 must be specified for an internal load balancer",
 		},
 	}
 

@@ -63,19 +63,18 @@ func validateAuthConfig(c *AuthConfig, fldPath *field.Path) field.ErrorList {
 
 // validateLoadBalancerConfig provides basic validation of LoadBalancerConfig
 // instances.
-func validateLoadBalancerConfig(c *LoadBalancerConfig, fldPath *field.Path) field.ErrorList {
+func validateLoadBalancerConfig(c *Config, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
-	if c == nil {
+	lbConfig := c.LoadBalancer
+	if &lbConfig == nil {
 		return append(allErrs, field.Required(fldPath, ""))
 	}
-	if c.Subnet1 == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child("subnet1"), ""))
+	if lbConfig.Subnet1 == "" && c.VCNID == "" {
+		allErrs = append(allErrs, field.Required(field.NewPath("vcn"), "VCNID configuration must be provided if configuration for subnet1 is not provided"))
 	}
-	if c.Subnet2 == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child("subnet2"), ""))
-	}
-	if !IsValidSecurityListManagementMode(c.SecurityListManagementMode) {
-		allErrs = append(allErrs, field.Invalid(fldPath.Child("securityListManagementMode"), c.SecurityListManagementMode, "invalid security list management mode"))
+	if !IsValidSecurityListManagementMode(lbConfig.SecurityListManagementMode) {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("securityListManagementMode"),
+			lbConfig.SecurityListManagementMode, "invalid security list management mode"))
 	}
 	return allErrs
 }
@@ -84,6 +83,6 @@ func validateLoadBalancerConfig(c *LoadBalancerConfig, fldPath *field.Path) fiel
 func ValidateConfig(c *Config) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateAuthConfig(&c.Auth, field.NewPath("auth"))...)
-	allErrs = append(allErrs, validateLoadBalancerConfig(&c.LoadBalancer, field.NewPath("loadBalancer"))...)
+	allErrs = append(allErrs, validateLoadBalancerConfig(c, field.NewPath("loadBalancer"))...)
 	return allErrs
 }
