@@ -44,6 +44,7 @@ func (c *client) getVNIC(ctx context.Context, id string) (*core.Vnic, error) {
 	resp, err := c.network.GetVnic(ctx, core.GetVnicRequest{
 		VnicId: &id,
 	})
+
 	incRequestCounter(err, getVerb, vnicResource)
 
 	if err != nil {
@@ -115,16 +116,29 @@ func subnetCacheKeyFn(obj interface{}) (string, error) {
 }
 
 func (c *client) GetRouteTable(ctx context.Context, routeID string) (core.GetRouteTableResponse, error) {
-	req := core.GetRouteTableRequest{
+	resp, err := c.network.GetRouteTable(ctx, core.GetRouteTableRequest{
 		RtId: &routeID,
+	})
+	incRequestCounter(err, getVerb, routeTableResource)
+
+	if err != nil {
+		return core.GetRouteTableResponse{}, err
 	}
-	return c.network.GetRouteTable(ctx, req)
+
+	return resp, nil
 }
 
 func (c *client) GetIPFromOCID(ctx context.Context, ipID string) (core.GetPrivateIpResponse, error) {
-	return c.network.GetPrivateIp(ctx, core.GetPrivateIpRequest{
+	resp, err := c.network.GetPrivateIp(ctx, core.GetPrivateIpRequest{
 		PrivateIpId: &ipID,
 	})
+	incRequestCounter(err, getVerb, privateIPResource)
+
+	if err != nil {
+		return core.GetPrivateIpResponse{}, err
+	}
+
+	return resp, nil
 }
 
 func (c *client) GetOCIDFromIP(ctx context.Context, ipAddress string, subnetID string) (string, error) {
@@ -132,6 +146,7 @@ func (c *client) GetOCIDFromIP(ctx context.Context, ipAddress string, subnetID s
 		IpAddress: &ipAddress,
 		SubnetId:  &subnetID,
 	})
+	incRequestCounter(err, getVerb, privateIPResource)
 
 	if err != nil {
 		return "", err
@@ -153,6 +168,7 @@ func (c *client) UpdateRouteTable(ctx context.Context, routeID string, routeRule
 			RouteRules: routeRules,
 		},
 	})
+	incRequestCounter(err, updateVerb, routeTableResource)
 
 	return err
 }

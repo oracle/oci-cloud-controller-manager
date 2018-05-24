@@ -16,16 +16,19 @@ package oci
 
 import (
 	"context"
+	"sync"
+
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 
+	"strings"
+
 	"github.com/golang/glog"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/util"
 	"github.com/oracle/oci-go-sdk/core"
 	"github.com/pkg/errors"
-	"strings"
 )
 
 var _ cloudprovider.Routes = &CloudProvider{}
@@ -47,42 +50,40 @@ clear that should be required.
 
 // CreateRoute for OCI, we have to udpate the whole RouteTable not just add the singular route
 func (cp *CloudProvider) CreateRoute(ctx context.Context, clusterName string, nameHint string, route *cloudprovider.Route) error {
-	glog.V(6).Info("Add Route: ", route)
+	glog.V(6).Info("Adding route to route table: ", route)
 
 	node, err := cp.NodeLister.Get(string(route.TargetNode))
+	if err != nil {
+		return errors.WithStack(err)
+	}
 
 	ocid := util.MapProviderIDToInstanceID(node.Spec.ProviderID)
-
-	glog.V(6).Info("instance ", ocid)
-
 	vnic, err := cp.client.Compute().GetPrimaryVNICForInstance(ctx, "", ocid)
-
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
 	ipOcid, err := cp.client.Networking().GetOCIDFromIP(ctx, *vnic.PrivateIp, *vnic.SubnetId)
-
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
+	glog.V(6).Infof("ipOcid: ", ipOcid)
+
 	for routeTableID := range routeTableIds {
 		routeTable, err := cp.client.Networking().GetRouteTable(ctx, routeTableID)
-
 		if err != nil {
 			return errors.WithStack(err)
 		}
-
 		for _, oRoute := range routeTable.RouteRules {
 			if *oRoute.CidrBlock == route.DestinationCIDR {
 				if *oRoute.NetworkEntityId == ipOcid {
 					// skipping existing route table entry
-					glog.V(6).Info("Skipping existing route entry: ", route.DestinationCIDR, " -> ", ipOcid)
+					glog.V(6).Infof("Skipping existing route entry: %s -> %s", route.DestinationCIDR, ipOcid)
 					continue
 				} else {
 					oRoute.NetworkEntityId = &ipOcid
-					glog.V(6).Info("Update existing route entry: ", route.DestinationCIDR, " -> ", ipOcid)
+					glog.V(6).Infof("Update existing route entry: %s -> %s", route.DestinationCIDR, ipOcid)
 					err := cp.client.Networking().UpdateRouteTable(ctx, routeTableID, routeTable.RouteRules)
 					if err != nil {
 						return errors.WithStack(err)
@@ -100,7 +101,6 @@ func (cp *CloudProvider) CreateRoute(ctx context.Context, clusterName string, na
 		})
 
 		err = cp.client.Networking().UpdateRouteTable(ctx, routeTableID, routeTable.RouteRules)
-
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -115,7 +115,6 @@ func (cp *CloudProvider) DeleteRoute(ctx context.Context, clusterName string, ro
 
 	for routeID := range routeTableIds {
 		oRoute, err := cp.client.Networking().GetRouteTable(ctx, routeID)
-
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -137,7 +136,7 @@ func (cp *CloudProvider) DeleteRoute(ctx context.Context, clusterName string, ro
 			glog.V(6).Infof("Updating Route: %s %v", routeID, oRoute.RouteRules)
 			err := cp.client.Networking().UpdateRouteTable(ctx, routeID, oRoute.RouteRules)
 			if err != nil {
-				return err
+				return errors.WithStack(err)
 			}
 		}
 	}
@@ -145,9 +144,33 @@ func (cp *CloudProvider) DeleteRoute(ctx context.Context, clusterName string, ro
 	return nil
 }
 
+func init() {
+	subnetIDMutex = sync.Mutex{}
+}
+
 // subnet -> routetable
 // subnets cannot change their route tables, so it's safe to cache
-var subnetIds map[string]string
+var (
+	subnetIDs     map[string]string
+	subnetIDMutex sync.Mutex
+)
+
+// SetSubnetIDs sets the subnetID map.
+func SetSubnetIDs(new map[string]string) {
+	subnetIDMutex.Lock()
+	defer subnetIDMutex.Unlock()
+	subnetIDs = new
+}
+
+// GetSubnetIDs returns a map of subnet IDs.
+func GetSubnetIDs() map[string]string {
+	subnetIDMutex.Lock()
+	defer subnetIDMutex.Unlock()
+	if subnetIDs == nil {
+		return nil
+	}
+	return subnetIDs
+}
 
 // routetable -> exists
 // we may see new route tables if we see new subnets
@@ -157,9 +180,11 @@ var routeTableIds map[string]bool
 func (cp *CloudProvider) ListRoutes(ctx context.Context, clusterName string) ([]*cloudprovider.Route, error) {
 	glog.V(6).Info("Listing Routes: ", clusterName)
 
-	if subnetIds == nil {
-		subnetIds = make(map[string]string)
+	subnetIDMutex.Lock()
+	if subnetIDs == nil {
+		subnetIDs = make(map[string]string)
 	}
+	subnetIDMutex.Unlock()
 
 	newRouteTableIds := make(map[string]bool)
 
@@ -168,40 +193,13 @@ func (cp *CloudProvider) ListRoutes(ctx context.Context, clusterName string) ([]
 		return nil, errors.WithStack(err)
 	}
 
+	// Get subnets and their route tables. Mark which route tables are in use.
 	ipToNodeLookup := make(map[string]*v1.Node)
 	for _, node := range nodeList {
-		instanceID := util.MapProviderIDToInstanceID(node.Spec.ProviderID)
-
-		vnic, err := cp.client.Compute().GetPrimaryVNICForInstance(ctx, "", instanceID)
-
+		err := cp.mapNodeSubnetToRouteTable(ctx, node, newRouteTableIds)
 		if err != nil {
-			return nil, errors.WithStack(err)
+			return nil, err
 		}
-
-		if *vnic.SkipSourceDestCheck != true {
-			glog.V(6).Info("Set SkipSourceDestCheck on ", vnic)
-			err = cp.client.Networking().UpdateVnic(ctx, *vnic.Id, true)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		routeTable, ok := subnetIds[*vnic.SubnetId]
-
-		if !ok {
-			subnet, err := cp.client.Networking().GetSubnet(ctx, *vnic.SubnetId)
-
-			if err != nil {
-				return nil, errors.WithStack(err)
-			}
-
-			routeTable = *subnet.RouteTableId
-			subnetIds[*vnic.SubnetId] = routeTable
-		}
-
-		glog.V(6).Infof("Found Route Table id %s", routeTable)
-		newRouteTableIds[routeTable] = true
-
 		ip := util.NodeInternalIP(node)
 		ipToNodeLookup[ip] = node
 	}
@@ -218,13 +216,10 @@ func (cp *CloudProvider) ListRoutes(ctx context.Context, clusterName string) ([]
 		glog.V(6).Infof("Listing routes for id %s", id)
 
 		oRoute, err := cp.client.Networking().GetRouteTable(ctx, id)
-
 		if err != nil {
 			glog.V(6).Infof("Failed to get routes for id %s", id)
 			return nil, errors.WithStack(err)
 		}
-
-		glog.V(6).Infof("Route entries: %v", oRoute.RouteRules)
 
 		for _, r := range oRoute.RouteRules {
 			if !strings.Contains(*r.NetworkEntityId, "privateip") {
@@ -232,54 +227,93 @@ func (cp *CloudProvider) ListRoutes(ctx context.Context, clusterName string) ([]
 				continue
 			}
 
-			// TODO CACHE
-			ipDetails, err := cp.client.Networking().GetIPFromOCID(ctx, *r.NetworkEntityId)
-
+			err := cp.updateDestinationsMap(ctx, ipToNodeLookup, r, destinationsMap)
 			if err != nil {
-				glog.V(6).Infof("Failed to resolve IP to OCID %v", *r.NetworkEntityId)
-				return nil, errors.WithStack(err)
+				return nil, err
 			}
-
-			node, foundNode := ipToNodeLookup[*ipDetails.IpAddress]
-
-			target, ok := destinationsMap[*r.CidrBlock]
-
-			glog.V(6).Infof("Evaluate entry: %v %s %s", node.Name, target, *r.CidrBlock)
-
-			if !ok {
-				if !foundNode {
-					destinationsMap[*r.CidrBlock] = ""
-				} else {
-					destinationsMap[*r.CidrBlock] = node.Name
-				}
-			} else {
-				if target != node.Name {
-					glog.V(6).Infof("Route Destination mismatch %s %s %s", target, node.Name, *r.CidrBlock)
-					destinationsMap[*r.CidrBlock] = ""
-				}
-			}
-
-			glog.V(6).Infof("Destination Map %s -> %s", *r.CidrBlock, destinationsMap[*r.CidrBlock])
 		}
+
 	}
 
 	var routes []*cloudprovider.Route
-
 	for destinationCidr, target := range destinationsMap {
-		found := true
-
-		if target == "" {
-			found = false
-		}
-
 		routes = append(routes, &cloudprovider.Route{
 			Name:            destinationCidr,
 			TargetNode:      types.NodeName(target),
-			Blackhole:       !found,
+			Blackhole:       !(target == ""),
 			DestinationCIDR: destinationCidr,
 		})
 	}
 
 	glog.V(6).Infof("Listed Routes: %d", len(routes))
 	return routes, nil
+}
+
+func (cp *CloudProvider) mapNodeSubnetToRouteTable(ctx context.Context, node *v1.Node, newRouteTableIds map[string]bool) error {
+	instanceID := util.MapProviderIDToInstanceID(node.Spec.ProviderID)
+
+	vnic, err := cp.client.Compute().GetPrimaryVNICForInstance(ctx, "", instanceID)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	// Should this be defaulted to true generally? Making a change to
+	// 'ListRoutes' seems like an anti-pattern.
+	if *vnic.SkipSourceDestCheck != true {
+		glog.V(6).Info("Set SkipSourceDestCheck on ", vnic)
+		err = cp.client.Networking().UpdateVnic(ctx, *vnic.Id, true)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+	}
+
+	routeTable, ok := subnetIDs[*vnic.SubnetId]
+	if !ok {
+		subnet, err := cp.client.Networking().GetSubnet(ctx, *vnic.SubnetId)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		routeTable = *subnet.RouteTableId
+		GetSubnetIDs()[*vnic.SubnetId] = routeTable
+	}
+
+	glog.V(6).Infof("Found Route Table id %s", routeTable)
+	newRouteTableIds[routeTable] = true
+
+	return nil
+}
+
+func (cp *CloudProvider) updateDestinationsMap(ctx context.Context, ipToNodeLookup map[string]*v1.Node,
+	rule core.RouteRule, destinationsMap map[string]string) error {
+	// TODO CACHE
+	// Get the node ip to which these ips exist
+	ipDetails, err := cp.client.Networking().GetIPFromOCID(ctx, *rule.NetworkEntityId)
+	if err != nil {
+		glog.V(6).Infof("Failed to resolve IP to OCID %v", *rule.NetworkEntityId)
+		return errors.WithStack(err)
+	}
+
+	node, foundNode := ipToNodeLookup[*ipDetails.IpAddress]
+
+	target, ok := destinationsMap[*rule.CidrBlock]
+
+	glog.V(6).Infof("Evaluate entry: %v %s %s", node.Name, target, *rule.CidrBlock)
+
+	if !ok {
+		if !foundNode {
+			destinationsMap[*rule.CidrBlock] = ""
+		} else {
+			destinationsMap[*rule.CidrBlock] = node.Name
+		}
+	} else {
+		if target != node.Name {
+			glog.V(6).Infof("Route Destination mismatch %s %s %s", target, node.Name, *rule.CidrBlock)
+			destinationsMap[*rule.CidrBlock] = ""
+		}
+	}
+
+	glog.V(6).Infof("Destination Map %s -> %s", *rule.CidrBlock, destinationsMap[*rule.CidrBlock])
+
+	return nil
 }
