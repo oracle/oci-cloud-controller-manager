@@ -1,6 +1,11 @@
 # CHANGELOG
 
-## 0.4
+## 0.5.0
+
+* Allow load balancer functionality to be disabled. [#198]
+* Allow subnets in configuration to be optional. [#202]
+
+## 0.4.0
 
  * Implement `loadbalancer.securityListManagementMode: Frontend` which only
    manages security list rules for load balancer ingress. [#180][16]
