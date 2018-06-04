@@ -3,9 +3,7 @@
 This file defines a list of [Service][4] `type: LoadBalancer` annotations which are
 supported by the `oci-cloud-controller-manager`.
 
-All annotations are prefixed with `service.beta.kubernetes.io/`.
-
-They are added to the Service metadata as follows:
+All annotations are prefixed with `service.beta.kubernetes.io/`. For example:
 
 ```yaml
 kind: Service
@@ -13,7 +11,9 @@ apiVersion: v1
 metadata:
   name: nginx-service
   annotations:
-    service.beta.kubernetes.io/oci-load-balancer-internal: "443"
+    service.beta.kubernetes.io/oci-load-balancer-shape: "400Mbps"
+    service.beta.kubernetes.io/oci-load-balancer-subnet1: "ocid..."
+    service.beta.kubernetes.io/oci-load-balancer-subnet2: "ocid..."
 spec:
   ...
 ```
