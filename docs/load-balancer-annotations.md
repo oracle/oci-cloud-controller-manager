@@ -11,7 +11,7 @@ apiVersion: v1
 metadata:
   name: nginx-service
   annotations:
-    service.beta.kubernetes.io/oci-load-balancer-shape: 400Mbps
+    service.beta.kubernetes.io/oci-load-balancer-shape: "400Mbps"
     service.beta.kubernetes.io/oci-load-balancer-subnet1: "ocid..."
     service.beta.kubernetes.io/oci-load-balancer-subnet2: "ocid..."
 spec:
