@@ -23,14 +23,16 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/oracle/oci-go-sdk/loadbalancer"
+	netsets "k8s.io/kubernetes/pkg/util/net/sets"
 
 	api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 const (
-	sslCertificateFileName = "tls.crt"
-	sslPrivateKeyFileName  = "tls.key"
+	sslCertificateFileName          = "tls.crt"
+	sslPrivateKeyFileName           = "tls.key"
+	defaultLoadBalancerSourceRanges = "0.0.0.0/0"
 )
 
 const lbNamePrefixEnvVar = "LOAD_BALANCER_PREFIX"
@@ -504,4 +506,46 @@ func sortAndCombineActions(backendSetActions []Action, listenerActions []Action)
 		}
 	})
 	return actions
+}
+
+func getLoadBalancerSourceRanges(config *Config, service *api.Service) ([]string, error) {
+	// The implementation is the same as the one provided by the GetLoadBalancerSourceRanges in
+	// kubernetes/pkg/api/v1/service/util.go, with the distinction that it does not attempt to set a default
+	// LB source ranges from annotations
+	var sourceRanges netsets.IPNet
+	var err error
+	if len(service.Spec.LoadBalancerSourceRanges) > 0 {
+		specs := service.Spec.LoadBalancerSourceRanges
+		sourceRanges, err = netsets.ParseIPNets(specs...)
+
+		if err != nil {
+			return []string{}, fmt.Errorf("service.Spec.LoadBalancerSourceRanges: %v is not valid. Expecting a list of IP ranges. For example, 10.0.0.0/24. Error msg: %v", specs, err)
+		}
+	} else {
+		val := service.Annotations[api.AnnotationLoadBalancerSourceRangesKey]
+		val = strings.TrimSpace(val)
+		if val != "" {
+			// Removed functionality where a defaultLoadBalancerSourceRanges is assigned
+			specs := strings.Split(val, ",")
+			sourceRanges, err = netsets.ParseIPNets(specs...)
+			if err != nil {
+				return []string{}, fmt.Errorf("%s: %s is not valid. Expecting a comma-separated list of source IP ranges. For example, 10.0.0.0/24,192.168.2.0/24", api.AnnotationLoadBalancerSourceRangesKey, val)
+			}
+		}
+	}
+
+	if len(sourceRanges) == 0 {
+		if len(config.LoadBalancer.DefaultSourceCIDRs) > 0 {
+			return config.LoadBalancer.DefaultSourceCIDRs, nil
+		}
+		specs := strings.Split(defaultLoadBalancerSourceRanges, ",")
+		sourceRanges, err = netsets.ParseIPNets(specs...)
+	}
+
+	sourceCIDRs := make([]string, 0, len(sourceRanges))
+	for _, sourceRange := range sourceRanges {
+		sourceCIDRs = append(sourceCIDRs, sourceRange.String())
+	}
+
+	return sourceCIDRs, nil
 }

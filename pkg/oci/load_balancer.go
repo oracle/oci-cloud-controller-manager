@@ -305,7 +305,11 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		ssl = NewSSLConfig(lbName, ports, cp)
 	}
 	subnets := []string{cp.config.LoadBalancer.Subnet1, cp.config.LoadBalancer.Subnet2}
-	spec, err := NewLBSpec(service, nodes, subnets, ssl)
+	sourceCIDRs, err := getLoadBalancerSourceRanges(cp.config, service)
+	if err != nil {
+		return nil, err
+	}
+	spec, err := NewLBSpec(service, nodes, subnets, ssl, sourceCIDRs)
 	if err != nil {
 		glog.Errorf("Failed to derive LBSpec: %+v", err)
 		return nil, err
@@ -330,6 +334,11 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 	}
 
 	if err := cp.updateLoadBalancer(ctx, lb, spec); err != nil {
+		return nil, err
+	}
+
+	sourceCIDRs, err = getLoadBalancerSourceRanges(cp.config, service)
+	if err != nil {
 		return nil, err
 	}
 

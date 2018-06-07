@@ -26,6 +26,11 @@ compartment: ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx
 vcn: ocid1.vcn.oc1..aaaaaaaask7mpk4mij3pnm6yvnntte25ffadxiivpokxevfxgtsu6ftkqhrq
 
 loadBalancer:
+  # defaultSourceCIDRs configures the default permitted source CIDR range(s) for
+  # load balancers. Defaults to allow-all (0.0.0.0/0) if not provided.
+  defaultSourceCIDRs:
+    - 10.0.0.0/24
+
   # subnet1 configures one of two subnets to which load balancers will be added.
   # OCI load balancers require two subnets to ensure high availability.
   subnet1: ocid1.subnet.oc1.phx.aaaaaaaasa53hlkzk6nzksqfccegk2qnkxmphkblst3riclzs4rhwg7rg57q

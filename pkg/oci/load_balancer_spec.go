@@ -83,7 +83,7 @@ type LBSpec struct {
 }
 
 // NewLBSpec creates a LB Spec from a Kubernetes service and a slice of nodes.
-func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCfg *SSLConfig) (*LBSpec, error) {
+func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCfg *SSLConfig, sourceCIDRs []string) (*LBSpec, error) {
 	if len(defaultSubnets) != 2 {
 		return nil, errors.New("default subnets incorrectly configured")
 	}
@@ -99,11 +99,6 @@ func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCf
 	shape := lbDefaultShape
 	if s, ok := svc.Annotations[ServiceAnnotationLoadBalancerShape]; ok {
 		shape = s
-	}
-
-	sourceCIDRs, err := getLoadBalancerSourceRanges(svc)
-	if err != nil {
-		return nil, err
 	}
 
 	// NOTE: These will be overridden for existing load balancers as load
@@ -194,20 +189,6 @@ func validateService(svc *v1.Service) error {
 	}
 
 	return nil
-}
-
-func getLoadBalancerSourceRanges(service *v1.Service) ([]string, error) {
-	sourceRanges, err := apiservice.GetLoadBalancerSourceRanges(service)
-	if err != nil {
-		return []string{}, err
-	}
-
-	sourceCIDRs := make([]string, 0, len(sourceRanges))
-	for _, sourceRange := range sourceRanges {
-		sourceCIDRs = append(sourceCIDRs, sourceRange.String())
-	}
-
-	return sourceCIDRs, nil
 }
 
 func getBackendSetName(protocol string, port int) string {
