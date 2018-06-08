@@ -156,10 +156,17 @@ var (
 )
 
 // SetSubnetIDs sets the subnetID map.
-func SetSubnetIDs(new map[string]string) {
+func SetSubnetIDs(new map[string]string, checkNil bool) {
 	subnetIDMutex.Lock()
 	defer subnetIDMutex.Unlock()
-	subnetIDs = new
+	if checkNil {
+		if subnetIDs == nil {
+			subnetIDs = new
+		}
+	} else {
+		subnetIDs = new
+	}
+
 }
 
 // GetSubnetIDs returns a map of subnet IDs.
@@ -180,11 +187,7 @@ var routeTableIds map[string]bool
 func (cp *CloudProvider) ListRoutes(ctx context.Context, clusterName string) ([]*cloudprovider.Route, error) {
 	glog.V(6).Info("Listing Routes: ", clusterName)
 
-	subnetIDMutex.Lock()
-	if subnetIDs == nil {
-		subnetIDs = make(map[string]string)
-	}
-	subnetIDMutex.Unlock()
+	SetSubnetIDs(make(map[string]string), true)
 
 	newRouteTableIds := make(map[string]bool)
 
