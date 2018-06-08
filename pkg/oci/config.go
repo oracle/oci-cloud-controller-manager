@@ -65,6 +65,9 @@ type LoadBalancerConfig struct {
 	// SecurityLists defines the Security List to mutate for each Subnet (
 	// both load balancer and worker).
 	SecurityLists map[string]string `yaml:"securityLists"`
+
+	// Overrides the envrionment variable prefix for load balancer services.
+	Prefix string `yaml:"prefix"`
 }
 
 // Config holds the OCI cloud-provider config passed to Kubernetes compontents

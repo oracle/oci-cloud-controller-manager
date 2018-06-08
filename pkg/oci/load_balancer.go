@@ -84,7 +84,7 @@ const (
 // GetLoadBalancer returns whether the specified load balancer exists, and if
 // so, what its status is.
 func (cp *CloudProvider) GetLoadBalancer(ctx context.Context, clusterName string, service *v1.Service) (*v1.LoadBalancerStatus, bool, error) {
-	name := GetLoadBalancerName(service)
+	name := GetLoadBalancerName(service, cp.config.LoadBalancer.Prefix)
 	glog.V(4).Infof("Fetching load balancer with name %q", name)
 
 	lb, err := cp.client.LoadBalancer().GetLoadBalancerByName(ctx, cp.config.CompartmentID, name)
@@ -286,7 +286,7 @@ func (cp *CloudProvider) createLoadBalancer(ctx context.Context, spec *LBSpec) (
 // EnsureLoadBalancer creates a new load balancer or updates the existing one.
 // Returns the status of the balancer (i.e it's public IP address if one exists).
 func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName string, service *v1.Service, nodes []*v1.Node) (*v1.LoadBalancerStatus, error) {
-	lbName := GetLoadBalancerName(service)
+	lbName := GetLoadBalancerName(service, cp.config.LoadBalancer.Prefix)
 
 	glog.V(4).Infof("Ensure load balancer %q called for %q with %d nodes.", lbName, service.Name, len(nodes))
 
@@ -305,7 +305,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		ssl = NewSSLConfig(lbName, ports, cp)
 	}
 	subnets := []string{cp.config.LoadBalancer.Subnet1, cp.config.LoadBalancer.Subnet2}
-	spec, err := NewLBSpec(service, nodes, subnets, ssl)
+	spec, err := NewLBSpec(service, nodes, subnets, ssl, cp.config.LoadBalancer.Prefix)
 	if err != nil {
 		glog.Errorf("Failed to derive LBSpec: %+v", err)
 		return nil, err
@@ -477,7 +477,7 @@ func (cp *CloudProvider) updateListener(ctx context.Context, lbID string, action
 
 // UpdateLoadBalancer : TODO find out where this is called
 func (cp *CloudProvider) UpdateLoadBalancer(ctx context.Context, clusterName string, service *v1.Service, nodes []*v1.Node) error {
-	name := GetLoadBalancerName(service)
+	name := GetLoadBalancerName(service, cp.config.LoadBalancer.Prefix)
 	glog.Infof("Attempting to update load balancer %q", name)
 
 	_, err := cp.EnsureLoadBalancer(ctx, clusterName, service, nodes)
@@ -513,7 +513,7 @@ func (cp *CloudProvider) getNodesByIPs(backendIPs []string) ([]*v1.Node, error) 
 // returning nil if the load balancer specified either didn't exist or was
 // successfully deleted.
 func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterName string, service *v1.Service) error {
-	name := GetLoadBalancerName(service)
+	name := GetLoadBalancerName(service, cp.config.LoadBalancer.Prefix)
 	glog.Infof("Attempting to delete load balancer %q", name)
 
 	lb, err := cp.client.LoadBalancer().GetLoadBalancerByName(ctx, cp.config.CompartmentID, name)

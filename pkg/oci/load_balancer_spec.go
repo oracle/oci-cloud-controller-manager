@@ -83,7 +83,7 @@ type LBSpec struct {
 }
 
 // NewLBSpec creates a LB Spec from a Kubernetes service and a slice of nodes.
-func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCfg *SSLConfig) (*LBSpec, error) {
+func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCfg *SSLConfig, prefix string) (*LBSpec, error) {
 	if len(defaultSubnets) != 2 {
 		return nil, errors.New("default subnets incorrectly configured")
 	}
@@ -135,7 +135,7 @@ func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCf
 	}
 
 	return &LBSpec{
-		Name:        GetLoadBalancerName(svc),
+		Name:        GetLoadBalancerName(svc, prefix),
 		Shape:       shape,
 		Internal:    internal,
 		Subnets:     subnets,

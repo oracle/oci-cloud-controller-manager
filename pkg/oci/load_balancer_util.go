@@ -410,8 +410,10 @@ func getListenerName(protocol string, port int, sslConfig *loadbalancer.SslConfi
 }
 
 // GetLoadBalancerName gets the name of the load balancer based on the service
-func GetLoadBalancerName(service *api.Service) string {
-	prefix := os.Getenv(lbNamePrefixEnvVar)
+func GetLoadBalancerName(service *api.Service, prefix string) string {
+	if prefix == "" {
+		prefix = os.Getenv(lbNamePrefixEnvVar)
+	}
 	if prefix != "" && !strings.HasSuffix(prefix, "-") {
 		// Add the trailing hyphen if it's missing
 		prefix += "-"
