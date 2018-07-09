@@ -145,9 +145,9 @@ func (cp *CloudProvider) Initialize(clientBuilder controller.ControllerClientBui
 			if !cache.WaitForCacheSync(wait.NeverStop, serviceInformer.Informer().HasSynced) {
 				utilruntime.HandleError(fmt.Errorf("Timed out waiting for service informer to sync"))
 			}
-
 		}
-		cp.securityListManager = newSecurityListManager(cp.client, serviceInformer.Lister(), cp.config.LoadBalancer.SecurityLists, cp.config.LoadBalancer.SecurityListManagementMode)
+
+		cp.securityListManager = newSecurityListManager(cp.client, serviceInformer, cp.config.LoadBalancer.SecurityLists, cp.config.LoadBalancer.SecurityListManagementMode)
 	}
 }
 
