@@ -28,6 +28,7 @@ import (
 	api "k8s.io/api/core/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	sets "k8s.io/apimachinery/pkg/util/sets"
+	informersv1 "k8s.io/client-go/informers/core/v1"
 	listersv1 "k8s.io/client-go/listers/core/v1"
 	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
 
@@ -81,15 +82,19 @@ type baseSecurityListManager struct {
 	securityLists map[string]string
 }
 
-func newSecurityListManager(client client.Interface, serviceLister listersv1.ServiceLister, securityLists map[string]string, mode string) securityListManager {
+func newSecurityListManager(client client.Interface, serviceInformer informersv1.ServiceInformer, securityLists map[string]string, mode string) securityListManager {
 	if securityLists == nil {
 		securityLists = make(map[string]string)
 	}
 	baseMgr := baseSecurityListManager{
 		client:        client,
-		serviceLister: serviceLister,
 		securityLists: securityLists,
 	}
+
+	if mode != ManagementModeNone {
+		baseMgr.serviceLister = serviceInformer.Lister()
+	}
+
 	switch mode {
 	case ManagementModeFrontend:
 		glog.Infof("Security list management mode: %q. Managing frontend security lists only.", ManagementModeFrontend)
