@@ -46,10 +46,14 @@ using [`dep`][2].
         -----END RSA PRIVATE KEY-----
       fingerprint: 97:84:f7:26:a3:7b:74:d0:bd:4e:08:a7:79:c9:d0:1d
 
+    vcn: ocid1.vcn.oc1.iad.aaaaaaaa7ucuzoltaumdgmq2wcwxjxznuzbugaweh4k4pjm77kldn27fgzha
+
     loadBalancer:
       disableSecurityListManagement: false
       subnet1: ocid1.subnet.oc1.phx.aaaaaaaasa53hlkzk6nzksqfccegk2qnkxmphkblst3riclzs4rhwg7rg57q
       subnet2: ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq
+
+    manageRoutes: true
     ```
  3. Ensure you have [`$KUBECONFIG`][4] to the Kubernetes configuration file for
     your cluster.

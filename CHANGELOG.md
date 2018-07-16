@@ -1,15 +1,17 @@
 # CHANGELOG
 
-## 0.5.0
+## 0.5
 
-* Allow load balancer functionality to be disabled. [#198]
-* Allow subnets in configuration to be optional. [#202]
+ * Implement `manageRoutes` to enable the cloud route controller
+   - This will make sure that `VNIC`s have `SkipSourceDestCheck`
+   - Also make sure that all route tables for all instances have the
+       appropriate route entries for cluster cidr ranges
 
-## 0.4.0
+## 0.4
 
  * Implement `loadbalancer.securityListManagementMode: Frontend` which only
    manages security list rules for load balancer ingress. [#180][16]
- * Depreciate `loadbalancer.disableSecurityListManagement` in favour of
+ * Deprecate `loadbalancer.disableSecurityListManagement` in favour of
    `loadbalancer.securityListManagementMode: None`. [#180][16]
  * Implement `loadbalancer.securityLists` to allow explicit configuration of the
    security lists that the CCM manages on a per-subnet basis [#164][17].
@@ -22,9 +24,9 @@
    either a public IP or a hostname [#167][14]
  * [BUG] Fix regression where compartment OCID was no longer looked up from
    metadata when not provided in cloud-provider config [#168][15]
- * Depreciate cloud-provider config property `auth.key_passphrase` replacing it
+ * Deprecate cloud-provider config property `auth.key_passphrase` replacing it
    with `auth.passphrase` [#142][12]
- * Depreciate cloud-provider config property `auth.compartment` replacing it
+ * Deprecate cloud-provider config property `auth.compartment` replacing it
    with `compartment` [#170][13]
 
 ## 0.3.1

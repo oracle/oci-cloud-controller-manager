@@ -273,7 +273,7 @@ func (c *client) AwaitWorkRequest(ctx context.Context, id string) (*loadbalancer
 			wr = twr
 			return true, nil
 		case loadbalancer.WorkRequestLifecycleStateFailed:
-			return false, errors.Errorf("WorkRequest %q failed: %s", id, twr.Message)
+			return false, errors.Errorf("WorkRequest %q failed: %q", id, twr.Message)
 		}
 		return false, nil
 	}, ctx.Done())

@@ -186,7 +186,8 @@ func (cp *CloudProvider) Clusters() (cloudprovider.Clusters, bool) {
 // Routes returns a routes interface along with whether the interface is
 // supported.
 func (cp *CloudProvider) Routes() (cloudprovider.Routes, bool) {
-	return nil, false
+	glog.V(6).Infof("Claiming to support Routes: %s", cp.config.ManageRoutes)
+	return cp, cp.config.ManageRoutes
 }
 
 // ScrubDNS provides an opportunity for cloud-provider-specific code to process

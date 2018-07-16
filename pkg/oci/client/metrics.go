@@ -44,6 +44,9 @@ const (
 	certificateResource    resource = "load_balancer_certificate"
 	workRequestResource    resource = "load_balancer_work_request"
 	securityListResource   resource = "security_list"
+	privateIPResource      resource = "ip_private"
+	publicIPResource       resource = "ip_public"
+	routeTableResource     resource = "route_table"
 )
 
 type verb string

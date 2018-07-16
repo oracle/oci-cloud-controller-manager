@@ -189,7 +189,7 @@ func (s *baseSecurityListManager) getSecurityList(ctx context.Context, subnet *c
 		if err != nil {
 			return nil, "", err
 		}
-		responses[i] = response
+		responses[i] = *response
 	}
 
 	sort.Slice(responses, func(i, j int) bool {
