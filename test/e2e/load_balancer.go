@@ -38,7 +38,7 @@ import (
 var _ = Describe("Service [Slow]", func() {
 	f := framework.NewDefaultFramework("service")
 
-	It("should be possible to create and mutate a Service type:LoadBalancer", func() {
+	It("should be possible to create and mutate a Service type:LoadBalancer [Canary]", func() {
 		serviceName := "basic-lb-test"
 		ns := f.Namespace.Name
 
