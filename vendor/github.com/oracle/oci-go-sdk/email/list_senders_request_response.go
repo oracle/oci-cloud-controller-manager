@@ -35,10 +35,28 @@ type ListSendersRequest struct {
 
 	// The sort order to use, either ascending or descending order.
 	SortOrder ListSendersSortOrderEnum `mandatory:"false" contributesTo:"query" name:"sortOrder" omitEmpty:"true"`
+
+	// Unique Oracle-assigned identifier for the request.
+	// If you need to contact Oracle about a particular request, please provide the request ID.
+	OpcRequestId *string `mandatory:"false" contributesTo:"header" name:"opc-request-id"`
+
+	// Metadata about the request. This information will not be transmitted to the service, but
+	// represents information that the SDK will consume to drive retry behavior.
+	RequestMetadata common.RequestMetadata
 }
 
 func (request ListSendersRequest) String() string {
 	return common.PointerString(request)
+}
+
+// HTTPRequest implements the OCIRequest interface
+func (request ListSendersRequest) HTTPRequest(method, path string) (http.Request, error) {
+	return common.MakeDefaultHTTPRequestWithTaggedStruct(method, path, request)
+}
+
+// RetryPolicy implements the OCIRetryableRequest interface. This retrieves the specified retry policy.
+func (request ListSendersRequest) RetryPolicy() *common.RetryPolicy {
+	return request.RequestMetadata.RetryPolicy
 }
 
 // ListSendersResponse wrapper for the ListSenders operation
@@ -47,7 +65,7 @@ type ListSendersResponse struct {
 	// The underlying http response
 	RawResponse *http.Response
 
-	// The []SenderSummary instance
+	// A list of []SenderSummary instances
 	Items []SenderSummary `presentIn:"body"`
 
 	// Unique Oracle-assigned identifier for the request. If you need
@@ -68,6 +86,11 @@ type ListSendersResponse struct {
 
 func (response ListSendersResponse) String() string {
 	return common.PointerString(response)
+}
+
+// HTTPResponse implements the OCIResponse interface
+func (response ListSendersResponse) HTTPResponse() *http.Response {
+	return response.RawResponse
 }
 
 // ListSendersSortByEnum Enum with underlying type: string

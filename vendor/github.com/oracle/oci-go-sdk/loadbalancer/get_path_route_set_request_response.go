@@ -15,16 +15,30 @@ type GetPathRouteSetRequest struct {
 	LoadBalancerId *string `mandatory:"true" contributesTo:"path" name:"loadBalancerId"`
 
 	// The name of the path route set to retrieve.
-	// Example: `path-route-set-001`
+	// Example: `example_path_route_set`
 	PathRouteSetName *string `mandatory:"true" contributesTo:"path" name:"pathRouteSetName"`
 
 	// The unique Oracle-assigned identifier for the request. If you need to contact Oracle about a
 	// particular request, please provide the request ID.
 	OpcRequestId *string `mandatory:"false" contributesTo:"header" name:"opc-request-id"`
+
+	// Metadata about the request. This information will not be transmitted to the service, but
+	// represents information that the SDK will consume to drive retry behavior.
+	RequestMetadata common.RequestMetadata
 }
 
 func (request GetPathRouteSetRequest) String() string {
 	return common.PointerString(request)
+}
+
+// HTTPRequest implements the OCIRequest interface
+func (request GetPathRouteSetRequest) HTTPRequest(method, path string) (http.Request, error) {
+	return common.MakeDefaultHTTPRequestWithTaggedStruct(method, path, request)
+}
+
+// RetryPolicy implements the OCIRetryableRequest interface. This retrieves the specified retry policy.
+func (request GetPathRouteSetRequest) RetryPolicy() *common.RetryPolicy {
+	return request.RequestMetadata.RetryPolicy
 }
 
 // GetPathRouteSetResponse wrapper for the GetPathRouteSet operation
@@ -43,4 +57,9 @@ type GetPathRouteSetResponse struct {
 
 func (response GetPathRouteSetResponse) String() string {
 	return common.PointerString(response)
+}
+
+// HTTPResponse implements the OCIResponse interface
+func (response GetPathRouteSetResponse) HTTPResponse() *http.Response {
+	return response.RawResponse
 }

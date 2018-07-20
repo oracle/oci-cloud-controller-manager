@@ -49,10 +49,28 @@ type ListMountTargetsRequest struct {
 	// The sort order to use, either 'asc' or 'desc', where 'asc' is
 	// ascending and 'desc' is descending.
 	SortOrder ListMountTargetsSortOrderEnum `mandatory:"false" contributesTo:"query" name:"sortOrder" omitEmpty:"true"`
+
+	// Unique Oracle-assigned identifier for the request.
+	// If you need to contact Oracle about a particular request, please provide the request ID.
+	OpcRequestId *string `mandatory:"false" contributesTo:"header" name:"opc-request-id"`
+
+	// Metadata about the request. This information will not be transmitted to the service, but
+	// represents information that the SDK will consume to drive retry behavior.
+	RequestMetadata common.RequestMetadata
 }
 
 func (request ListMountTargetsRequest) String() string {
 	return common.PointerString(request)
+}
+
+// HTTPRequest implements the OCIRequest interface
+func (request ListMountTargetsRequest) HTTPRequest(method, path string) (http.Request, error) {
+	return common.MakeDefaultHTTPRequestWithTaggedStruct(method, path, request)
+}
+
+// RetryPolicy implements the OCIRetryableRequest interface. This retrieves the specified retry policy.
+func (request ListMountTargetsRequest) RetryPolicy() *common.RetryPolicy {
+	return request.RequestMetadata.RetryPolicy
 }
 
 // ListMountTargetsResponse wrapper for the ListMountTargets operation
@@ -61,7 +79,7 @@ type ListMountTargetsResponse struct {
 	// The underlying http response
 	RawResponse *http.Response
 
-	// The []MountTargetSummary instance
+	// A list of []MountTargetSummary instances
 	Items []MountTargetSummary `presentIn:"body"`
 
 	// For pagination of a list of items. When paging through
@@ -79,6 +97,11 @@ type ListMountTargetsResponse struct {
 
 func (response ListMountTargetsResponse) String() string {
 	return common.PointerString(response)
+}
+
+// HTTPResponse implements the OCIResponse interface
+func (response ListMountTargetsResponse) HTTPResponse() *http.Response {
+	return response.RawResponse
 }
 
 // ListMountTargetsLifecycleStateEnum Enum with underlying type: string

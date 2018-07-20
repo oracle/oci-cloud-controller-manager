@@ -15,7 +15,7 @@ type ListZonesRequest struct {
 	CompartmentId *string `mandatory:"true" contributesTo:"query" name:"compartmentId"`
 
 	// The maximum number of items to return in a page of the collection.
-	Limit *int `mandatory:"false" contributesTo:"query" name:"limit"`
+	Limit *int64 `mandatory:"false" contributesTo:"query" name:"limit"`
 
 	// The value of the `opc-next-page` response header from the previous "List" call.
 	Page *string `mandatory:"false" contributesTo:"query" name:"page"`
@@ -48,10 +48,28 @@ type ListZonesRequest struct {
 
 	// The state of a resource.
 	LifecycleState ListZonesLifecycleStateEnum `mandatory:"false" contributesTo:"query" name:"lifecycleState" omitEmpty:"true"`
+
+	// Unique Oracle-assigned identifier for the request.
+	// If you need to contact Oracle about a particular request, please provide the request ID.
+	OpcRequestId *string `mandatory:"false" contributesTo:"header" name:"opc-request-id"`
+
+	// Metadata about the request. This information will not be transmitted to the service, but
+	// represents information that the SDK will consume to drive retry behavior.
+	RequestMetadata common.RequestMetadata
 }
 
 func (request ListZonesRequest) String() string {
 	return common.PointerString(request)
+}
+
+// HTTPRequest implements the OCIRequest interface
+func (request ListZonesRequest) HTTPRequest(method, path string) (http.Request, error) {
+	return common.MakeDefaultHTTPRequestWithTaggedStruct(method, path, request)
+}
+
+// RetryPolicy implements the OCIRetryableRequest interface. This retrieves the specified retry policy.
+func (request ListZonesRequest) RetryPolicy() *common.RetryPolicy {
+	return request.RequestMetadata.RetryPolicy
 }
 
 // ListZonesResponse wrapper for the ListZones operation
@@ -60,7 +78,7 @@ type ListZonesResponse struct {
 	// The underlying http response
 	RawResponse *http.Response
 
-	// The []ZoneSummary instance
+	// A list of []ZoneSummary instances
 	Items []ZoneSummary `presentIn:"body"`
 
 	// For pagination of a list of items. When paging through a list, if
@@ -80,6 +98,11 @@ type ListZonesResponse struct {
 
 func (response ListZonesResponse) String() string {
 	return common.PointerString(response)
+}
+
+// HTTPResponse implements the OCIResponse interface
+func (response ListZonesResponse) HTTPResponse() *http.Response {
+	return response.RawResponse
 }
 
 // ListZonesZoneTypeEnum Enum with underlying type: string

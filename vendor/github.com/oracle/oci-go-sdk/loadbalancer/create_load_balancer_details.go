@@ -20,7 +20,7 @@ type CreateLoadBalancerDetails struct {
 
 	// A user-friendly name. It does not have to be unique, and it is changeable.
 	// Avoid entering confidential information.
-	// Example: `My load balancer`
+	// Example: `example_load_balancer`
 	DisplayName *string `mandatory:"true" json:"displayName"`
 
 	// A template that determines the total pre-provisioned bandwidth (ingress plus egress).
@@ -36,6 +36,18 @@ type CreateLoadBalancerDetails struct {
 
 	Certificates map[string]CertificateDetails `mandatory:"false" json:"certificates"`
 
+	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
+	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// Example: `{"Operations": {"CostCenter": "42"}}`
+	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
+
+	// Free-form tags for this resource. Each tag is a simple key-value pair with no predefined name, type, or namespace.
+	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// Example: `{"Department": "Finance"}`
+	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
+
+	Hostnames map[string]HostnameDetails `mandatory:"false" json:"hostnames"`
+
 	// Whether the load balancer has a VCN-local (private) IP address.
 	// If "true", the service assigns a private IP address to the load balancer. The load balancer requires only one subnet
 	// to host both the primary and secondary load balancers. The private IP address is local to the subnet. The load balancer
@@ -46,7 +58,7 @@ type CreateLoadBalancerDetails struct {
 	// requires two subnets, each in a different Availability Domain. One subnet hosts the primary load balancer and the other
 	// hosts the secondary (standby) load balancer. A public load balancer is accessible from the internet, depending on your
 	// VCN's security list rules (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Concepts/securitylists.htm).
-	// Example: `false`
+	// Example: `true`
 	IsPrivate *bool `mandatory:"false" json:"isPrivate"`
 
 	Listeners map[string]ListenerDetails `mandatory:"false" json:"listeners"`

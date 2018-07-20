@@ -30,7 +30,7 @@ type GetDomainRecordsRequest struct {
 	IfModifiedSince *string `mandatory:"false" contributesTo:"header" name:"If-Modified-Since"`
 
 	// The maximum number of items to return in a page of the collection.
-	Limit *int `mandatory:"false" contributesTo:"query" name:"limit"`
+	Limit *int64 `mandatory:"false" contributesTo:"query" name:"limit"`
 
 	// The value of the `opc-next-page` response header from the previous "List" call.
 	Page *string `mandatory:"false" contributesTo:"query" name:"page"`
@@ -50,10 +50,28 @@ type GetDomainRecordsRequest struct {
 
 	// The OCID of the compartment the resource belongs to.
 	CompartmentId *string `mandatory:"false" contributesTo:"query" name:"compartmentId"`
+
+	// Unique Oracle-assigned identifier for the request.
+	// If you need to contact Oracle about a particular request, please provide the request ID.
+	OpcRequestId *string `mandatory:"false" contributesTo:"header" name:"opc-request-id"`
+
+	// Metadata about the request. This information will not be transmitted to the service, but
+	// represents information that the SDK will consume to drive retry behavior.
+	RequestMetadata common.RequestMetadata
 }
 
 func (request GetDomainRecordsRequest) String() string {
 	return common.PointerString(request)
+}
+
+// HTTPRequest implements the OCIRequest interface
+func (request GetDomainRecordsRequest) HTTPRequest(method, path string) (http.Request, error) {
+	return common.MakeDefaultHTTPRequestWithTaggedStruct(method, path, request)
+}
+
+// RetryPolicy implements the OCIRetryableRequest interface. This retrieves the specified retry policy.
+func (request GetDomainRecordsRequest) RetryPolicy() *common.RetryPolicy {
+	return request.RequestMetadata.RetryPolicy
 }
 
 // GetDomainRecordsResponse wrapper for the GetDomainRecords operation
@@ -62,7 +80,7 @@ type GetDomainRecordsResponse struct {
 	// The underlying http response
 	RawResponse *http.Response
 
-	// The RecordCollection instance
+	// A list of RecordCollection instances
 	RecordCollection `presentIn:"body"`
 
 	// For pagination of a list of items. When paging through a list, if
@@ -87,6 +105,11 @@ type GetDomainRecordsResponse struct {
 
 func (response GetDomainRecordsResponse) String() string {
 	return common.PointerString(response)
+}
+
+// HTTPResponse implements the OCIResponse interface
+func (response GetDomainRecordsResponse) HTTPResponse() *http.Response {
+	return response.RawResponse
 }
 
 // GetDomainRecordsSortByEnum Enum with underlying type: string

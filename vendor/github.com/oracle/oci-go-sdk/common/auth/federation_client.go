@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"github.com/oracle/oci-go-sdk/common"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 )
@@ -53,7 +54,11 @@ var (
 func newAuthClient(region common.Region, provider common.KeyProvider) *common.BaseClient {
 	signer := common.RequestSigner(provider, genericHeaders, bodyHeaders)
 	client := common.DefaultBaseClientWithSigner(signer)
-	client.Host = fmt.Sprintf(common.DefaultHostURLTemplate, "auth", string(region))
+	if regionURL, ok := os.LookupEnv("OCI_SDK_AUTH_CLIENT_REGION_URL"); ok {
+		client.Host = regionURL
+	} else {
+		client.Host = fmt.Sprintf(common.DefaultHostURLTemplate, "auth", string(region))
+	}
 	client.BasePath = "v1/x509"
 	return &client
 }
