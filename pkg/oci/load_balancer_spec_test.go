@@ -281,7 +281,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Port:     common.Int(80),
 						Protocol: common.String("TCP"),
 						ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
-							IdleTimeout: common.Int(404),
+							IdleTimeout: common.Int64(404),
 						},
 					},
 				},
