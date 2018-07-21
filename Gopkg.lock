@@ -379,11 +379,12 @@
   name = "github.com/oracle/oci-go-sdk"
   packages = [
     "common",
+    "common/auth",
     "core",
     "loadbalancer"
   ]
-  revision = "ad5c34ed0cf8169d6817e2a37ec3e4521f856368"
-  version = "v1.2.0"
+  revision = "23237533ffdc47ef672c697822c2741d23208822"
+  version = "v2.0.0"
 
 [[projects]]
   name = "github.com/pborman/uuid"
@@ -1149,6 +1150,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a546f4ff19df2e0294f113d7011a8b83f0023d42057906eb1e37a654998a31a2"
+  inputs-digest = "b9a1b5dc06ca0e25a1bc5d1f43e33eeed34e195b33d402c97761ce935dcb9f0d"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -314,7 +314,7 @@ func getListeners(svc *v1.Service, sslCfg *SSLConfig) (map[string]loadbalancer.L
 
 		if connectionIdleTimeout > 0 {
 			listener.ConnectionConfiguration = &loadbalancer.ConnectionConfiguration{
-				IdleTimeout: common.Int(int(connectionIdleTimeout)),
+				IdleTimeout: common.Int64(int64(connectionIdleTimeout)),
 			}
 		}
 

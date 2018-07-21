@@ -46,10 +46,28 @@ type ListFileSystemsRequest struct {
 	// The sort order to use, either 'asc' or 'desc', where 'asc' is
 	// ascending and 'desc' is descending.
 	SortOrder ListFileSystemsSortOrderEnum `mandatory:"false" contributesTo:"query" name:"sortOrder" omitEmpty:"true"`
+
+	// Unique Oracle-assigned identifier for the request.
+	// If you need to contact Oracle about a particular request, please provide the request ID.
+	OpcRequestId *string `mandatory:"false" contributesTo:"header" name:"opc-request-id"`
+
+	// Metadata about the request. This information will not be transmitted to the service, but
+	// represents information that the SDK will consume to drive retry behavior.
+	RequestMetadata common.RequestMetadata
 }
 
 func (request ListFileSystemsRequest) String() string {
 	return common.PointerString(request)
+}
+
+// HTTPRequest implements the OCIRequest interface
+func (request ListFileSystemsRequest) HTTPRequest(method, path string) (http.Request, error) {
+	return common.MakeDefaultHTTPRequestWithTaggedStruct(method, path, request)
+}
+
+// RetryPolicy implements the OCIRetryableRequest interface. This retrieves the specified retry policy.
+func (request ListFileSystemsRequest) RetryPolicy() *common.RetryPolicy {
+	return request.RequestMetadata.RetryPolicy
 }
 
 // ListFileSystemsResponse wrapper for the ListFileSystems operation
@@ -58,7 +76,7 @@ type ListFileSystemsResponse struct {
 	// The underlying http response
 	RawResponse *http.Response
 
-	// The []FileSystemSummary instance
+	// A list of []FileSystemSummary instances
 	Items []FileSystemSummary `presentIn:"body"`
 
 	// For pagination of a list of items. When paging through
@@ -76,6 +94,11 @@ type ListFileSystemsResponse struct {
 
 func (response ListFileSystemsResponse) String() string {
 	return common.PointerString(response)
+}
+
+// HTTPResponse implements the OCIResponse interface
+func (response ListFileSystemsResponse) HTTPResponse() *http.Response {
+	return response.RawResponse
 }
 
 // ListFileSystemsLifecycleStateEnum Enum with underlying type: string

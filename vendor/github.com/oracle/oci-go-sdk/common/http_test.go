@@ -83,8 +83,8 @@ func TestHttpRequestMarshallerQuery(t *testing.T) {
 
 func TestMakeDefault(t *testing.T) {
 	r := MakeDefaultHTTPRequest(http.MethodPost, "/one/two")
-	assert.NotEmpty(t, r.Header.Get("Date"))
-	assert.NotEmpty(t, r.Header.Get("Opc-Client-Info"))
+	assert.NotEmpty(t, r.Header.Get(requestHeaderDate))
+	assert.NotEmpty(t, r.Header.Get(requestHeaderOpcClientInfo))
 }
 
 func TestHttpMarshallerSimpleHeader(t *testing.T) {
@@ -92,7 +92,7 @@ func TestHttpMarshallerSimpleHeader(t *testing.T) {
 	request := MakeDefaultHTTPRequest(http.MethodPost, "/random")
 	HTTPRequestMarshaller(s, &request)
 	header := request.Header
-	assert.True(t, header.Get("if-match") == "n=as")
+	assert.True(t, header.Get(requestHeaderIfMatch) == "n=as")
 }
 
 func TestHttpMarshallerSimpleStruct(t *testing.T) {
@@ -176,15 +176,16 @@ func TestHttpMarshalerAll(t *testing.T) {
 	includes := []inc{inc("One"), inc("Two")}
 
 	s := struct {
-		ID      string                `contributesTo:"path"`
-		Name    string                `contributesTo:"query" name:"name"`
-		When    *SDKTime              `contributesTo:"query" name:"when"`
-		Income  float32               `contributesTo:"query" name:"income"`
-		Include []inc                 `contributesTo:"query" name:"includes" collectionFormat:"csv"`
-		Male    bool                  `contributesTo:"header" name:"male"`
-		Details TestupdateUserDetails `contributesTo:"body"`
+		ID           string                `contributesTo:"path"`
+		Name         string                `contributesTo:"query" name:"name"`
+		When         *SDKTime              `contributesTo:"query" name:"when"`
+		Income       float32               `contributesTo:"query" name:"income"`
+		Include      []inc                 `contributesTo:"query" name:"includes" collectionFormat:"csv"`
+		IncludeMulti []inc                 `contributesTo:"query" name:"includesMulti" collectionFormat:"multi"`
+		Male         bool                  `contributesTo:"header" name:"male"`
+		Details      TestupdateUserDetails `contributesTo:"body"`
 	}{
-		"101", "tapir", now(), 3.23, includes, true, TestupdateUserDetails{Description: desc},
+		"101", "tapir", now(), 3.23, includes, includes, true, TestupdateUserDetails{Description: desc},
 	}
 	request := MakeDefaultHTTPRequest(http.MethodPost, "/")
 	e := HTTPRequestMarshaller(s, &request)
@@ -198,8 +199,9 @@ func TestHttpMarshalerAll(t *testing.T) {
 	assert.True(t, request.URL.Query().Get("income") == strconv.FormatFloat(float64(s.Income), 'f', 6, 32))
 	assert.True(t, request.URL.Query().Get("when") == when)
 	assert.True(t, request.URL.Query().Get("includes") == "One,Two")
+	assert.True(t, reflect.DeepEqual(request.URL.Query()["includesMulti"], []string{"One", "Two"}))
 	assert.Contains(t, content, "description")
-	assert.Equal(t, request.Header.Get("Content-Type"), "application/json")
+	assert.Equal(t, request.Header.Get(requestHeaderContentType), "application/json")
 	if val, ok := content["description"]; !ok || val != desc {
 		assert.Fail(t, "Should contain: "+desc)
 	}
@@ -261,7 +263,7 @@ func TestHttpMarshallerSimpleStructPointers(t *testing.T) {
 	HTTPRequestMarshaller(s, &request)
 	all, _ := ioutil.ReadAll(request.Body)
 	assert.True(t, len(all) > 2)
-	assert.Equal(t, "", request.Header.Get("opc-retry-token"))
+	assert.Equal(t, "", request.Header.Get(requestHeaderOpcRetryToken))
 	assert.True(t, strings.Contains(request.URL.Path, "111"))
 	assert.True(t, strings.Contains(string(all), "thekey"))
 	assert.Contains(t, string(all), now.Format(time.RFC3339))
@@ -274,7 +276,7 @@ func TestHttpMarshallerSimpleStructPointersFilled(t *testing.T) {
 		TestcreateAPIKeyDetailsPtr: TestcreateAPIKeyDetailsPtr{Key: String("thekey")}}
 	request := MakeDefaultHTTPRequest(http.MethodPost, "/random")
 	HTTPRequestMarshaller(s, &request)
-	assert.Equal(t, "token", request.Header.Get("opc-retry-token"))
+	assert.Equal(t, "token", request.Header.Get(requestHeaderOpcRetryToken))
 	assert.True(t, strings.Contains(request.URL.Path, "111"))
 
 }
@@ -914,14 +916,18 @@ func TestOmitFieldsInJson_SimpleStructWithMapStruct(t *testing.T) {
 }
 
 func TestOmitFieldsInJson_removeFields(t *testing.T) {
+	type MyEnum string
 	type InSstruct struct {
 		AString      *string `mandatory:"false" json:"a"`
 		ANilString   *string `mandatory:"false" json:"anil"`
+		ASecondEnum  MyEnum  `mandatory:"false" json:"secenum,omitempty"`
+		ThirdEnum    MyEnum  `mandatory:"false" json:"tnum,omitempty"`
 		EmptyNumbers []int   `mandatory:"false" json:"aempty"`
 	}
 	type Nested struct {
-		N *string `mandatory:"false" json:"n"`
-		//Numbers []int `mandatory:"false" json:"numbers"`
+		N        *string              `mandatory:"false" json:"n"`
+		AnEnum   MyEnum               `mandatory:"false" json:"anenum,omitempty"`
+		AnEnum2  MyEnum               `mandatory:"false" json:"anenum2,omitempty"`
 		ZComplex map[string]InSstruct `mandatory:"false" json:"complex"`
 	}
 	val := ""
@@ -929,16 +935,16 @@ func TestOmitFieldsInJson_removeFields(t *testing.T) {
 	//numbers := []int{1, 3}
 	//s := Nested{N:&val, Numbers: numbers, ZComplex:InSstruct{AString:&val, EmptyNumbers:[]int{}}}
 	data := make(map[string]InSstruct)
-	data["one"] = InSstruct{AString: &val, EmptyNumbers: []int{}}
+	data["one"] = InSstruct{AString: &val, EmptyNumbers: []int{}, ThirdEnum: MyEnum("enum")}
 	data["two"] = InSstruct{AString: &val2, EmptyNumbers: []int{1}}
 	data["ten"] = InSstruct{AString: &val2}
 
-	s := Nested{ZComplex: data}
+	s := Nested{ZComplex: data, AnEnum2: MyEnum("hello")}
 	jsonIn, _ := json.Marshal(s)
 	sVal := reflect.ValueOf(s)
 	jsonRet, err := removeNilFieldsInJSONWithTaggedStruct(jsonIn, sVal)
 	assert.NoError(t, err)
-	assert.Equal(t, `{"complex":{"one":{"a":"","aempty":[]},"ten":{"a":"two"},"two":{"a":"two","aempty":[1]}}}`, string(jsonRet))
+	assert.Equal(t, `{"anenum2":"hello","complex":{"one":{"a":"","aempty":[],"tnum":"enum"},"ten":{"a":"two"},"two":{"a":"two","aempty":[1]}}}`, string(jsonRet))
 }
 
 func TestOmitFieldsInJson_SimpleStructWithTime(t *testing.T) {
@@ -961,4 +967,26 @@ func TestOmitFieldsInJson_SimpleStructWithTime(t *testing.T) {
 	assert.Contains(t, mapRet, "n")
 	assert.Contains(t, mapRet, "theTime")
 	assert.Equal(t, theTime, mapRet.(map[string]interface{})["theTime"])
+}
+
+func TestAddRequestID(t *testing.T) {
+	type testStructType struct {
+		OpcRequestID *string `mandatory:"false" contributesTo:"header" name:"opc-request-id"`
+	}
+
+	inputTestDataSet := []testStructType{
+		{},
+		{OpcRequestID: String("testid")},
+	}
+
+	for _, testData := range inputTestDataSet {
+		request := MakeDefaultHTTPRequest(http.MethodPost, "/random")
+		HTTPRequestMarshaller(testData, &request)
+		assert.NotEmpty(t, request.Header["Opc-Request-Id"])
+		assert.Equal(t, 1, len(request.Header["Opc-Request-Id"]))
+
+		if testData.OpcRequestID != nil {
+			assert.Equal(t, "testid", request.Header["Opc-Request-Id"][0])
+		}
+	}
 }

@@ -18,9 +18,8 @@ type FileSystemSummary struct {
 	// The number of bytes consumed by the file system, including
 	// any snapshots. This number reflects the metered size of the file
 	// system and is updated asynchronously with respect to
-	// updates to the file system. For details on file system
-	// metering see File System Metering (https://docs.us-phoenix-1.oraclecloud.com/Content/File/Concepts/metering.htm).
-	MeteredBytes *int `mandatory:"true" json:"meteredBytes"`
+	// updates to the file system.
+	MeteredBytes *int64 `mandatory:"true" json:"meteredBytes"`
 
 	// The OCID of the compartment that contains the file system.
 	CompartmentId *string `mandatory:"true" json:"compartmentId"`

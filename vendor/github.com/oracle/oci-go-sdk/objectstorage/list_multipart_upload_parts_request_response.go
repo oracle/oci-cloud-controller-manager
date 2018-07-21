@@ -33,10 +33,24 @@ type ListMultipartUploadPartsRequest struct {
 
 	// The client request ID for tracing.
 	OpcClientRequestId *string `mandatory:"false" contributesTo:"header" name:"opc-client-request-id"`
+
+	// Metadata about the request. This information will not be transmitted to the service, but
+	// represents information that the SDK will consume to drive retry behavior.
+	RequestMetadata common.RequestMetadata
 }
 
 func (request ListMultipartUploadPartsRequest) String() string {
 	return common.PointerString(request)
+}
+
+// HTTPRequest implements the OCIRequest interface
+func (request ListMultipartUploadPartsRequest) HTTPRequest(method, path string) (http.Request, error) {
+	return common.MakeDefaultHTTPRequestWithTaggedStruct(method, path, request)
+}
+
+// RetryPolicy implements the OCIRetryableRequest interface. This retrieves the specified retry policy.
+func (request ListMultipartUploadPartsRequest) RetryPolicy() *common.RetryPolicy {
+	return request.RequestMetadata.RetryPolicy
 }
 
 // ListMultipartUploadPartsResponse wrapper for the ListMultipartUploadParts operation
@@ -45,7 +59,7 @@ type ListMultipartUploadPartsResponse struct {
 	// The underlying http response
 	RawResponse *http.Response
 
-	// The []MultipartUploadPartSummary instance
+	// A list of []MultipartUploadPartSummary instances
 	Items []MultipartUploadPartSummary `presentIn:"body"`
 
 	// Echoes back the value passed in the opc-client-request-id header, for use by clients when debugging.
@@ -64,4 +78,9 @@ type ListMultipartUploadPartsResponse struct {
 
 func (response ListMultipartUploadPartsResponse) String() string {
 	return common.PointerString(response)
+}
+
+// HTTPResponse implements the OCIResponse interface
+func (response ListMultipartUploadPartsResponse) HTTPResponse() *http.Response {
+	return response.RawResponse
 }

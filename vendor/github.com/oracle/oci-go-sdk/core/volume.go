@@ -39,7 +39,7 @@ type Volume struct {
 	LifecycleState VolumeLifecycleStateEnum `mandatory:"true" json:"lifecycleState"`
 
 	// The size of the volume in MBs. This field is deprecated. Use sizeInGBs instead.
-	SizeInMBs *int `mandatory:"true" json:"sizeInMBs"`
+	SizeInMBs *int64 `mandatory:"true" json:"sizeInMBs"`
 
 	// The date and time the volume was created. Format defined by RFC3339.
 	TimeCreated *common.SDKTime `mandatory:"true" json:"timeCreated"`
@@ -59,11 +59,14 @@ type Volume struct {
 	IsHydrated *bool `mandatory:"false" json:"isHydrated"`
 
 	// The size of the volume in GBs.
-	SizeInGBs *int `mandatory:"false" json:"sizeInGBs"`
+	SizeInGBs *int64 `mandatory:"false" json:"sizeInGBs"`
 
 	// The volume source, either an existing volume in the same Availability Domain or a volume backup.
 	// If null, an empty volume is created.
 	SourceDetails VolumeSourceDetails `mandatory:"false" json:"sourceDetails"`
+
+	// The OCID of the source volume group.
+	VolumeGroupId *string `mandatory:"false" json:"volumeGroupId"`
 }
 
 func (m Volume) String() string {
@@ -76,14 +79,15 @@ func (m *Volume) UnmarshalJSON(data []byte) (e error) {
 		DefinedTags        map[string]map[string]interface{} `json:"definedTags"`
 		FreeformTags       map[string]string                 `json:"freeformTags"`
 		IsHydrated         *bool                             `json:"isHydrated"`
-		SizeInGBs          *int                              `json:"sizeInGBs"`
+		SizeInGBs          *int64                            `json:"sizeInGBs"`
 		SourceDetails      volumesourcedetails               `json:"sourceDetails"`
+		VolumeGroupId      *string                           `json:"volumeGroupId"`
 		AvailabilityDomain *string                           `json:"availabilityDomain"`
 		CompartmentId      *string                           `json:"compartmentId"`
 		DisplayName        *string                           `json:"displayName"`
 		Id                 *string                           `json:"id"`
 		LifecycleState     VolumeLifecycleStateEnum          `json:"lifecycleState"`
-		SizeInMBs          *int                              `json:"sizeInMBs"`
+		SizeInMBs          *int64                            `json:"sizeInMBs"`
 		TimeCreated        *common.SDKTime                   `json:"timeCreated"`
 	}{}
 
@@ -100,6 +104,7 @@ func (m *Volume) UnmarshalJSON(data []byte) (e error) {
 		return
 	}
 	m.SourceDetails = nn.(VolumeSourceDetails)
+	m.VolumeGroupId = model.VolumeGroupId
 	m.AvailabilityDomain = model.AvailabilityDomain
 	m.CompartmentId = model.CompartmentId
 	m.DisplayName = model.DisplayName

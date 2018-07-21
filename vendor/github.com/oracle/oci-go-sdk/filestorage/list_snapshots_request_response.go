@@ -32,10 +32,28 @@ type ListSnapshotsRequest struct {
 	// The sort order to use, either 'asc' or 'desc', where 'asc' is
 	// ascending and 'desc' is descending.
 	SortOrder ListSnapshotsSortOrderEnum `mandatory:"false" contributesTo:"query" name:"sortOrder" omitEmpty:"true"`
+
+	// Unique Oracle-assigned identifier for the request.
+	// If you need to contact Oracle about a particular request, please provide the request ID.
+	OpcRequestId *string `mandatory:"false" contributesTo:"header" name:"opc-request-id"`
+
+	// Metadata about the request. This information will not be transmitted to the service, but
+	// represents information that the SDK will consume to drive retry behavior.
+	RequestMetadata common.RequestMetadata
 }
 
 func (request ListSnapshotsRequest) String() string {
 	return common.PointerString(request)
+}
+
+// HTTPRequest implements the OCIRequest interface
+func (request ListSnapshotsRequest) HTTPRequest(method, path string) (http.Request, error) {
+	return common.MakeDefaultHTTPRequestWithTaggedStruct(method, path, request)
+}
+
+// RetryPolicy implements the OCIRetryableRequest interface. This retrieves the specified retry policy.
+func (request ListSnapshotsRequest) RetryPolicy() *common.RetryPolicy {
+	return request.RequestMetadata.RetryPolicy
 }
 
 // ListSnapshotsResponse wrapper for the ListSnapshots operation
@@ -44,7 +62,7 @@ type ListSnapshotsResponse struct {
 	// The underlying http response
 	RawResponse *http.Response
 
-	// The []SnapshotSummary instance
+	// A list of []SnapshotSummary instances
 	Items []SnapshotSummary `presentIn:"body"`
 
 	// For pagination of a list of items. When paging through
@@ -62,6 +80,11 @@ type ListSnapshotsResponse struct {
 
 func (response ListSnapshotsResponse) String() string {
 	return common.PointerString(response)
+}
+
+// HTTPResponse implements the OCIResponse interface
+func (response ListSnapshotsResponse) HTTPResponse() *http.Response {
+	return response.RawResponse
 }
 
 // ListSnapshotsLifecycleStateEnum Enum with underlying type: string

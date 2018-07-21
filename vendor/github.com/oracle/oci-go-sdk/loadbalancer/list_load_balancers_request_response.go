@@ -20,7 +20,7 @@ type ListLoadBalancersRequest struct {
 
 	// The maximum number of items to return in a paginated "List" call.
 	// Example: `500`
-	Limit *int `mandatory:"false" contributesTo:"query" name:"limit"`
+	Limit *int64 `mandatory:"false" contributesTo:"query" name:"limit"`
 
 	// The value of the `opc-next-page` response header from the previous "List" call.
 	// Example: `3`
@@ -38,14 +38,30 @@ type ListLoadBalancersRequest struct {
 	SortOrder ListLoadBalancersSortOrderEnum `mandatory:"false" contributesTo:"query" name:"sortOrder" omitEmpty:"true"`
 
 	// A filter to return only resources that match the given display name exactly.
+	// Example: `example_load_balancer`
 	DisplayName *string `mandatory:"false" contributesTo:"query" name:"displayName"`
 
 	// A filter to return only resources that match the given lifecycle state.
+	// Example: `SUCCEEDED`
 	LifecycleState LoadBalancerLifecycleStateEnum `mandatory:"false" contributesTo:"query" name:"lifecycleState" omitEmpty:"true"`
+
+	// Metadata about the request. This information will not be transmitted to the service, but
+	// represents information that the SDK will consume to drive retry behavior.
+	RequestMetadata common.RequestMetadata
 }
 
 func (request ListLoadBalancersRequest) String() string {
 	return common.PointerString(request)
+}
+
+// HTTPRequest implements the OCIRequest interface
+func (request ListLoadBalancersRequest) HTTPRequest(method, path string) (http.Request, error) {
+	return common.MakeDefaultHTTPRequestWithTaggedStruct(method, path, request)
+}
+
+// RetryPolicy implements the OCIRetryableRequest interface. This retrieves the specified retry policy.
+func (request ListLoadBalancersRequest) RetryPolicy() *common.RetryPolicy {
+	return request.RequestMetadata.RetryPolicy
 }
 
 // ListLoadBalancersResponse wrapper for the ListLoadBalancers operation
@@ -54,7 +70,7 @@ type ListLoadBalancersResponse struct {
 	// The underlying http response
 	RawResponse *http.Response
 
-	// The []LoadBalancer instance
+	// A list of []LoadBalancer instances
 	Items []LoadBalancer `presentIn:"body"`
 
 	// For pagination of a list of items. When paging through a list, if this header appears in the response,
@@ -69,6 +85,11 @@ type ListLoadBalancersResponse struct {
 
 func (response ListLoadBalancersResponse) String() string {
 	return common.PointerString(response)
+}
+
+// HTTPResponse implements the OCIResponse interface
+func (response ListLoadBalancersResponse) HTTPResponse() *http.Response {
+	return response.RawResponse
 }
 
 // ListLoadBalancersSortByEnum Enum with underlying type: string
