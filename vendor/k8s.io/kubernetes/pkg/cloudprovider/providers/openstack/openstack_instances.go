@@ -42,6 +42,7 @@ func (os *OpenStack) Instances() (cloudprovider.Instances, bool) {
 
 	compute, err := os.NewComputeV2()
 	if err != nil {
+		glog.Errorf("unable to access compute v2 API : %v", err)
 		return nil, false
 	}
 
@@ -60,7 +61,7 @@ func (i *Instances) CurrentNodeName(ctx context.Context, hostname string) (types
 	if err != nil {
 		return "", err
 	}
-	return types.NodeName(md.Hostname), nil
+	return types.NodeName(md.Name), nil
 }
 
 // AddSSHKeyToAllInstances is not implemented for OpenStack
