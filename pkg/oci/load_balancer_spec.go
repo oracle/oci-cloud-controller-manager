@@ -17,6 +17,7 @@ package oci
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/loadbalancer"
@@ -24,6 +25,7 @@ import (
 
 	"k8s.io/api/core/v1"
 	sets "k8s.io/apimachinery/pkg/util/sets"
+	informers "k8s.io/client-go/informers"
 	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/util"
@@ -74,16 +76,18 @@ type LBSpec struct {
 	Listeners   map[string]loadbalancer.ListenerDetails
 	BackendSets map[string]loadbalancer.BackendSetDetails
 
-	Ports       map[string]portSpec
-	SourceCIDRs []string
-	SSLConfig   *SSLConfig
+	Ports               map[string]portSpec
+	SourceCIDRs         []string
+	SSLConfig           *SSLConfig
+	SecurityListManager securityListManager
 
 	service *v1.Service
 	nodes   []*v1.Node
 }
 
 // NewLBSpec creates a LB Spec from a Kubernetes service and a slice of nodes.
-func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCfg *SSLConfig) (*LBSpec, error) {
+//pass in default slmanager, if annotation isnt set-
+func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCfg *SSLConfig, cp *CloudProvider) (*LBSpec, error) {
 	if len(defaultSubnets) != 2 {
 		return nil, errors.New("default subnets incorrectly configured")
 	}
@@ -134,6 +138,14 @@ func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCf
 		return nil, err
 	}
 
+	slManagerSpec := cp.securityListManager
+	if slManagerAnnotation, ok := svc.Annotations[ServiceAnnotaionLoadBalancerSecurityListManagementMode]; ok {
+		if cp.config.LoadBalancer.SecurityListManagementMode != slManagerAnnotation {
+			factory := informers.NewSharedInformerFactory(cp.kubeclient, 5*time.Minute)
+			slManagerSpec = initializeSL(cp, factory, slManagerAnnotation)
+		}
+	}
+
 	return &LBSpec{
 		Name:        GetLoadBalancerName(svc),
 		Shape:       shape,
@@ -146,8 +158,9 @@ func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCf
 		SSLConfig:   sslCfg,
 		SourceCIDRs: sourceCIDRs,
 
-		service: svc,
-		nodes:   nodes,
+		service:             svc,
+		nodes:               nodes,
+		SecurityListManager: slManagerSpec,
 	}, nil
 }
 

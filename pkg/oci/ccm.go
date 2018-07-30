@@ -137,18 +137,22 @@ func (cp *CloudProvider) Initialize(clientBuilder controller.ControllerClientBui
 	cp.NodeLister = nodeInformer.Lister()
 
 	if !cp.config.LoadBalancer.Disabled {
-		var serviceInformer informersv1.ServiceInformer
-		if cp.config.LoadBalancer.SecurityListManagementMode != ManagementModeNone {
-			serviceInformer = factory.Core().V1().Services()
-			go serviceInformer.Informer().Run(wait.NeverStop)
-			glog.Info("Waiting for service informer cache to sync")
-			if !cache.WaitForCacheSync(wait.NeverStop, serviceInformer.Informer().HasSynced) {
-				utilruntime.HandleError(fmt.Errorf("Timed out waiting for service informer to sync"))
-			}
-		}
-
-		cp.securityListManager = newSecurityListManager(cp.client, serviceInformer, cp.config.LoadBalancer.SecurityLists, cp.config.LoadBalancer.SecurityListManagementMode)
+		cp.securityListManager = initializeSL(cp, factory, cp.config.LoadBalancer.SecurityListManagementMode)
 	}
+}
+
+func initializeSL(cp *CloudProvider, factory informers.SharedInformerFactory, mode string) securityListManager {
+	var serviceInformer informersv1.ServiceInformer
+	if mode != ManagementModeNone {
+		serviceInformer = factory.Core().V1().Services()
+		go serviceInformer.Informer().Run(wait.NeverStop)
+		glog.Info("Waiting for service informer cache to sync")
+		if !cache.WaitForCacheSync(wait.NeverStop, serviceInformer.Informer().HasSynced) {
+			utilruntime.HandleError(fmt.Errorf("Timed out waiting for service informer to sync"))
+		}
+	}
+
+	return newSecurityListManager(cp.client, serviceInformer, cp.config.LoadBalancer.SecurityLists, mode)
 }
 
 // ProviderName returns the cloud-provider ID.
