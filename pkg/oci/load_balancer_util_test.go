@@ -19,6 +19,7 @@ import (
 	"reflect"
 	"testing"
 
+	"go.uber.org/zap"
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -180,7 +181,7 @@ func TestSortAndCombineActions(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			result := sortAndCombineActions(tc.backendSetActions, tc.listenerActions)
+			result := sortAndCombineActions(zap.S(), tc.backendSetActions, tc.listenerActions)
 			if !reflect.DeepEqual(result, tc.expected) {
 				t.Errorf("expected\n%+v\nbut got\n%+v", tc.expected, result)
 			}
@@ -356,7 +357,7 @@ func TestGetBackendSetChanges(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			changes := getBackendSetChanges(tt.actual, tt.desired)
+			changes := getBackendSetChanges(zap.S(), tt.actual, tt.desired)
 			if len(changes) == 0 && len(tt.expected) == 0 {
 				return
 			}

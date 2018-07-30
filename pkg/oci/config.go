@@ -18,8 +18,8 @@ import (
 	"io"
 	"io/ioutil"
 
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 )
 
@@ -86,16 +86,16 @@ func (c *Config) Complete() {
 	if !c.LoadBalancer.Disabled && c.LoadBalancer.SecurityListManagementMode == "" {
 		c.LoadBalancer.SecurityListManagementMode = ManagementModeAll // default
 		if c.LoadBalancer.DisableSecurityListManagement {
-			glog.Warningf("cloud-provider config: \"loadBalancer.disableSecurityListManagement\" is DEPRECIATED and will be removed in a later release. Please set \"loadBalancer.SecurityListManagementMode: %s\".", ManagementModeNone)
+			zap.S().Warnf("cloud-provider config: \"loadBalancer.disableSecurityListManagement\" is DEPRECIATED and will be removed in a later release. Please set \"loadBalancer.SecurityListManagementMode: %s\".", ManagementModeNone)
 			c.LoadBalancer.SecurityListManagementMode = ManagementModeNone
 		}
 	}
 	if c.CompartmentID == "" && c.Auth.CompartmentID != "" {
-		glog.Warning("cloud-provider config: \"auth.compartment\" is DEPRECIATED and will be removed in a later release. Please set \"compartment\".")
+		zap.S().Warn("cloud-provider config: \"auth.compartment\" is DEPRECIATED and will be removed in a later release. Please set \"compartment\".")
 		c.CompartmentID = c.Auth.CompartmentID
 	}
 	if c.Auth.Passphrase == "" && c.Auth.PrivateKeyPassphrase != "" {
-		glog.Warning("cloud-provider config: \"auth.key_passphrase\" is DEPRECIATED and will be removed in a later release. Please set \"auth.passphrase\".")
+		zap.S().Warn("cloud-provider config: \"auth.key_passphrase\" is DEPRECIATED and will be removed in a later release. Please set \"auth.passphrase\".")
 		c.Auth.Passphrase = c.Auth.PrivateKeyPassphrase
 	}
 }

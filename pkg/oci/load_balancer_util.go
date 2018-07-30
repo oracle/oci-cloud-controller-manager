@@ -21,8 +21,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/oracle/oci-go-sdk/loadbalancer"
+	"go.uber.org/zap"
 
 	api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -238,37 +238,37 @@ func backendsToBackendDetails(bs []loadbalancer.Backend) []loadbalancer.BackendD
 	return backends
 }
 
-func portsFromBackendSetDetails(name string, bs *loadbalancer.BackendSetDetails) portSpec {
+func portsFromBackendSetDetails(logger *zap.SugaredLogger, name string, bs *loadbalancer.BackendSetDetails) portSpec {
 	spec := portSpec{}
 	if len(bs.Backends) > 0 {
 		spec.BackendPort = *bs.Backends[0].Port
 	} else {
-		glog.Warningf("BackendSet %q has no Backends", name)
+		logger.Warnf("BackendSet %q has no Backends", name)
 	}
 	if bs.HealthChecker != nil {
 		spec.HealthCheckerPort = *bs.HealthChecker.Port
 	} else {
-		glog.Warningf("BackendSet %q has no health checker", name)
+		logger.Warnf("BackendSet %q has no health checker", name)
 	}
 	return spec
 }
 
-func portsFromBackendSet(name string, bs *loadbalancer.BackendSet) portSpec {
+func portsFromBackendSet(logger *zap.SugaredLogger, name string, bs *loadbalancer.BackendSet) portSpec {
 	spec := portSpec{}
 	if len(bs.Backends) > 0 {
 		spec.BackendPort = *bs.Backends[0].Port
 	} else {
-		glog.Warningf("BackendSet %q has no Backends", name)
+		logger.Warnf("BackendSet %q has no Backends", name)
 	}
 	if bs.HealthChecker != nil {
 		spec.HealthCheckerPort = *bs.HealthChecker.Port
 	} else {
-		glog.Warningf("BackendSet %q has no health checker", name)
+		logger.Warnf("BackendSet %q has no health checker", name)
 	}
 	return spec
 }
 
-func getBackendSetChanges(actual map[string]loadbalancer.BackendSet, desired map[string]loadbalancer.BackendSetDetails) []Action {
+func getBackendSetChanges(logger *zap.SugaredLogger, actual map[string]loadbalancer.BackendSet, desired map[string]loadbalancer.BackendSetDetails) []Action {
 	var backendSetActions []Action
 	// First check to see if any backendsets need to be deleted or updated.
 	for name, actualBackendSet := range actual {
@@ -284,18 +284,18 @@ func getBackendSetChanges(actual map[string]loadbalancer.BackendSet, desired map
 					SessionPersistenceConfiguration: actualBackendSet.SessionPersistenceConfiguration,
 					SslConfiguration:                sslConfigurationToDetails(actualBackendSet.SslConfiguration),
 				},
-				Ports:      portsFromBackendSet(*actualBackendSet.Name, &actualBackendSet),
+				Ports:      portsFromBackendSet(logger, *actualBackendSet.Name, &actualBackendSet),
 				actionType: Delete,
 			})
 			continue
 		}
 
 		if hasBackendSetChanged(actualBackendSet, desiredBackendSet) {
-			oldPorts := portsFromBackendSet(name, &actualBackendSet)
+			oldPorts := portsFromBackendSet(logger, name, &actualBackendSet)
 			backendSetActions = append(backendSetActions, &BackendSetAction{
 				name:       name,
 				BackendSet: desiredBackendSet,
-				Ports:      portsFromBackendSetDetails(name, &desiredBackendSet),
+				Ports:      portsFromBackendSetDetails(logger, name, &desiredBackendSet),
 				OldPorts:   &oldPorts,
 				actionType: Update,
 			})
@@ -309,7 +309,7 @@ func getBackendSetChanges(actual map[string]loadbalancer.BackendSet, desired map
 			backendSetActions = append(backendSetActions, &BackendSetAction{
 				name:       name,
 				BackendSet: desiredBackendSet,
-				Ports:      portsFromBackendSetDetails(name, &desiredBackendSet),
+				Ports:      portsFromBackendSetDetails(logger, name, &desiredBackendSet),
 				actionType: Create,
 			})
 		}
@@ -470,7 +470,7 @@ func parseSecretString(secretString string) (string, string) {
 // sortAndCombineActions combines two slices of Actions and then sorts them to
 // ensure that BackendSets are created prior to their associated Listeners but
 // deleted after their associated Listeners.
-func sortAndCombineActions(backendSetActions []Action, listenerActions []Action) []Action {
+func sortAndCombineActions(logger *zap.SugaredLogger, backendSetActions []Action, listenerActions []Action) []Action {
 	actions := append(backendSetActions, listenerActions...)
 	sort.Slice(actions, func(i, j int) bool {
 		a1 := actions[i]
@@ -499,7 +499,7 @@ func sortAndCombineActions(backendSetActions []Action, listenerActions []Action)
 			return ok
 		default:
 			// Should never be reachable.
-			glog.Errorf("Unknown action type received: %+v", a1)
+			logger.Errorf("Unknown action type received: %+v", a1)
 			return true
 		}
 	})

@@ -21,8 +21,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/spf13/pflag"
+	"go.uber.org/zap"
 
 	utilflag "k8s.io/apiserver/pkg/util/flag"
 	"k8s.io/apiserver/pkg/util/logs"
@@ -50,7 +50,7 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	glog.V(1).Infof("oci-cloud-controller-manager version: %s (%s)", version, build)
+	zap.S().Infof("oci-cloud-controller-manager version: %s (%s)", version, build)
 
 	if err := command.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)

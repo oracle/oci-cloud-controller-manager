@@ -20,6 +20,7 @@ import (
 
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/core"
+	"go.uber.org/zap"
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -206,7 +207,7 @@ func TestGetNodeIngressRules(t *testing.T) {
 			}
 		}
 		t.Run(tc.name, func(t *testing.T) {
-			rules := getNodeIngressRules(tc.securityList.IngressSecurityRules, tc.lbSubnets, tc.actualPorts, tc.desiredPorts, serviceLister)
+			rules := getNodeIngressRules(zap.S(), tc.securityList.IngressSecurityRules, tc.lbSubnets, tc.actualPorts, tc.desiredPorts, serviceLister)
 			if !reflect.DeepEqual(rules, tc.expected) {
 				t.Errorf("expected rules\n%+v\nbut got\n%+v", tc.expected, rules)
 			}
@@ -333,7 +334,7 @@ func TestGetLoadBalancerIngressRules(t *testing.T) {
 			}
 		}
 		t.Run(tc.name, func(t *testing.T) {
-			rules := getLoadBalancerIngressRules(tc.securityList.IngressSecurityRules, tc.sourceCIDRs, tc.port, serviceLister)
+			rules := getLoadBalancerIngressRules(zap.S(), tc.securityList.IngressSecurityRules, tc.sourceCIDRs, tc.port, serviceLister)
 			if !reflect.DeepEqual(rules, tc.expected) {
 				t.Errorf("expected rules\n%+v\nbut got\n%+v", tc.expected, rules)
 			}
@@ -460,7 +461,7 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 			}
 		}
 		t.Run(tc.name, func(t *testing.T) {
-			rules := getLoadBalancerEgressRules(tc.securityList.EgressSecurityRules, tc.subnets, tc.port, serviceLister)
+			rules := getLoadBalancerEgressRules(zap.S(), tc.securityList.EgressSecurityRules, tc.subnets, tc.port, serviceLister)
 			if !reflect.DeepEqual(rules, tc.expected) {
 				t.Errorf("expected rules\n%+v\nbut got\n%+v", tc.expected, rules)
 			}
