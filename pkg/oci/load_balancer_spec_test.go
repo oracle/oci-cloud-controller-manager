@@ -83,6 +83,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
+				SecurityListManager: newSecurityListManagerNOOP(),
 			},
 		},
 		"internal": {
@@ -137,7 +138,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				//Need to add security list manager to spec here
+				SecurityListManager: newSecurityListManagerNOOP(),
 			},
 		},
 		"subnet annotations": {
@@ -193,9 +194,10 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				//Need to add security list manager to spec here
+				SecurityListManager: newSecurityListManagerNOOP(),
 			},
 		},
+		//"security list manager annotation":
 		"custom shape": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
@@ -248,7 +250,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				//Need to add security list manager to spec here
+				SecurityListManager: newSecurityListManagerNOOP(),
 			},
 		},
 		"custom idle connection timeout": {
@@ -306,7 +308,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				//Need to add security list manager to spec here
+				SecurityListManager: newSecurityListManagerNOOP(),
 			},
 		},
 	}
