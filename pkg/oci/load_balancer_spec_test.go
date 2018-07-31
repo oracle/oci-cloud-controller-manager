@@ -31,8 +31,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 		defaultSubnetTwo string
 		nodes            []*v1.Node
 		service          *v1.Service
-		//add cp or just cp security list manager
-		expected *LBSpec
+		expected         *LBSpec
 	}{
 		"defaults": {
 			defaultSubnetOne: "one",
@@ -84,7 +83,6 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				//Need to add security list manager to spec here
 			},
 		},
 		"internal": {
@@ -319,7 +317,10 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			tc.expected.service = tc.service
 			subnets := []string{tc.defaultSubnetOne, tc.defaultSubnetTwo}
 			//reference default cp added
-			result, err := NewLBSpec(tc.service, tc.nodes, subnets, nil)
+			slManagerFactory := func(mode string) securityListManager {
+				return newSecurityListManagerNOOP()
+			}
+			result, err := NewLBSpec(tc.service, tc.nodes, subnets, nil, slManagerFactory)
 			if err != nil {
 				t.Error(err)
 			}
@@ -433,8 +434,10 @@ func TestNewLBSpecFailure(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			subnets := []string{tc.defaultSubnetOne, tc.defaultSubnetTwo}
-			//cp or cp.security list to be passed in NewLBSpec
-			_, err := NewLBSpec(tc.service, tc.nodes, subnets, nil)
+			slManagerFactory := func(mode string) securityListManager {
+				return newSecurityListManagerNOOP()
+			}
+			_, err := NewLBSpec(tc.service, tc.nodes, subnets, nil, slManagerFactory)
 			if err == nil || err.Error() != tc.expectedErrMsg {
 				t.Errorf("Expected error with message %q but got %q", tc.expectedErrMsg, err)
 			}
