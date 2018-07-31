@@ -32,6 +32,11 @@ manifests/bmcs-config.yaml
 manifests/bmcs-secret.yaml
 vendors.txt
 
+env-old.sh
+config.yaml
+**/*cloudconfig_var.enc
+**/*kubeconfig_var.enc
+
 # vim
 *.sw[op]
 

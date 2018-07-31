@@ -5,7 +5,6 @@ dev:
 build:
   base-path: "/go/src/github.com/oracle/oci-cloud-controller-manager"
   steps:
-
     - script:
       name: check boilerplate
       code: ./hack/verify-boilerplate.sh
@@ -42,12 +41,26 @@ build:
         make version > dist/VERSION.txt
         cat dist/VERSION.txt
 
+
 copy:
   steps:
     - script:
       name: copy output
       code: |
         cp -a dist/* ${WERCKER_OUTPUT_DIR}
+    
+    - script:
+      name: copy e2e test artifacts
+      code: |
+        cp -R .git ${WERCKER_OUTPUT_DIR}/
+        cp Makefile ${WERCKER_OUTPUT_DIR}/
+        cp -R cmd ${WERCKER_OUTPUT_DIR}/
+        cp -R dist ${WERCKER_OUTPUT_DIR}/
+        cp -R hack ${WERCKER_OUTPUT_DIR}/
+        cp -R pkg ${WERCKER_OUTPUT_DIR}/
+        cp -R test ${WERCKER_OUTPUT_DIR}/
+        cp -R vendor ${WERCKER_OUTPUT_DIR}/
+
 
 push:
   box:
@@ -109,10 +122,92 @@ push:
         username: $OCIRUSERNAME
         password: $OCIRPASSWORD
 
+
+e2e-test:
+  base-path: "/go/src/github.com/oracle/oci-cloud-controller-manager"
+  box:
+    id: iad.ocir.io/oracle/oci-cloud-controller-manager-ci-e2e:1.0.0
+    registry: https://iad.ocir.io/v2
+    username: $OCIRUSERNAME
+    password: $OCIRPASSWORD
+  steps:
+    - script:
+      name: set ENV vars
+      code: |
+        export VERSION=$(cat VERSION.txt)
+        echo "${VERSION}"
+
+    - script:
+      name: deploy latest CCM
+      code: make upgrade
+        
+    - script:
+      name: e2e default tests
+      code: make e2e
+
+  after-steps:
+    - script:
+      name: rollback original CCM
+      code: make rollback
+
+
+
+push-canary:
+  base-path: "/go/src/github.com/oracle/oci-cloud-controller-manager"
+  box:
+    id: iad.ocir.io/oracle/oci-cloud-controller-manager-ci-e2e:1.0.1
+    registry: https://iad.ocir.io/v2
+    username: $OCIRUSERNAME
+    password: $OCIRPASSWORD
+  steps:
+    - script:
+      name: set ENV vars
+      code: |
+        export VERSION=$(cat dist/VERSION.txt)
+        echo "Pushing test version ${VERSION}"
+
+    - internal/docker-push:
+      repository: iad.ocir.io/oracle/oci-cloud-controller-manager-canary
+      tag: $VERSION
+      working-dir: /go/src/github.com/oracle/oci-cloud-controller-manager/ 
+      entrypoint: make canary
+      registry: https://iad.ocir.io/v2
+      username: $OCIRUSERNAME
+      password: $OCIRPASSWORD
+
+
+validate-canary:
+  box:
+    id: iad.ocir.io/oracle/oci-cloud-controller-manager-ci-e2e:1.0.1
+    registry: https://iad.ocir.io/v2
+    username: $OCIRUSERNAME
+    password: $OCIRPASSWORD
+  steps:
+    - script:
+      name: set ENV vars
+      code: |
+        export VERSION=$(cat VERSION.txt)
+        echo "Canary image version ${VERSION}"
+
+    - script:
+      name: deploy latest CCM
+      code: make upgrade
+        
+    - script:
+      name: validate canary tests
+      code: make validate-canary
+      
+  after-steps:
+    - script:
+      name: rollback original CCM
+      code: make rollback
+
+
 release:
   box:
     id: oraclelinux:7-slim
   steps:
+  
     - script:
         name: set ENV vars
         code: |

@@ -19,7 +19,7 @@ IMAGE := $(REGISTRY)/$(BIN)
 
 
 BUILD := $(shell git describe --always --dirty)
-# Allow overriding for release versions
+# allow overriding for release versions
 # Else just equal the build (git hash)
 VERSION ?= ${BUILD}
 GOOS ?= linux
@@ -79,6 +79,34 @@ manifests: build-dirs
 .PHONY: test
 test:
 	@./hack/test.sh $(SRC_DIRS)
+
+# Deploys the current version to a specified cluster.
+# Requires binary, manifests, images to be built and pushed. Requires $KUBECONFIG set.
+.PHONY: upgrade
+upgrade:
+	# Upgrade the current CCM to the specified version
+	@./hack/deploy.sh deploy-build-version-ccm
+
+# Deploys the current version to a specified cluster.
+# Requires a 'dist/oci-cloud-controller-manager-rollback.yaml' manifest. Requires $KUBECONFIG set.
+.PHONY: rollback
+rollback:
+	# Rollback the current CCM to the specified version
+	@./hack/deploy.sh rollback-original-ccm
+
+.PHONY: e2e
+e2e:
+	@./hack/test-e2e.sh
+
+# Run the canary tests.
+.PHONY: canary
+canary:
+	@./hack/test-canary.sh
+
+# Validate the generated canary test image.
+.PHONY: validate-canary
+validate-canary:
+	@./hack/validate-canary.sh
 
 .PHONY: clean
 clean:
