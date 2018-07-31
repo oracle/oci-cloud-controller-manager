@@ -31,7 +31,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 		defaultSubnetTwo string
 		nodes            []*v1.Node
 		service          *v1.Service
-		expected         *LBSpec
+		//add cp or just cp security list manager
+		expected *LBSpec
 	}{
 		"defaults": {
 			defaultSubnetOne: "one",
@@ -83,6 +84,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
+				//Need to add security list manager to spec here
 			},
 		},
 		"internal": {
@@ -137,6 +139,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
+				//Need to add security list manager to spec here
 			},
 		},
 		"subnet annotations": {
@@ -192,6 +195,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
+				//Need to add security list manager to spec here
 			},
 		},
 		"custom shape": {
@@ -246,6 +250,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
+				//Need to add security list manager to spec here
 			},
 		},
 		"custom idle connection timeout": {
@@ -303,6 +308,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
+				//Need to add security list manager to spec here
 			},
 		},
 	}
@@ -312,6 +318,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			// we expect the service to be unchanged
 			tc.expected.service = tc.service
 			subnets := []string{tc.defaultSubnetOne, tc.defaultSubnetTwo}
+			//reference default cp added
 			result, err := NewLBSpec(tc.service, tc.nodes, subnets, nil)
 			if err != nil {
 				t.Error(err)
@@ -330,7 +337,8 @@ func TestNewLBSpecFailure(t *testing.T) {
 		defaultSubnetTwo string
 		nodes            []*v1.Node
 		service          *v1.Service
-		expectedErrMsg   string
+		//add cp or cp security list
+		expectedErrMsg string
 	}{
 		"unsupported udp protocol": {
 			service: &v1.Service{
@@ -415,6 +423,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 				Spec: v1.ServiceSpec{
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports:           []v1.ServicePort{},
+					//add security list mananger in spec
 				},
 			},
 			expectedErrMsg: "a configuration for subnet1 must be specified for an internal load balancer",
@@ -424,6 +433,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			subnets := []string{tc.defaultSubnetOne, tc.defaultSubnetTwo}
+			//cp or cp.security list to be passed in NewLBSpec
 			_, err := NewLBSpec(tc.service, tc.nodes, subnets, nil)
 			if err == nil || err.Error() != tc.expectedErrMsg {
 				t.Errorf("Expected error with message %q but got %q", tc.expectedErrMsg, err)
