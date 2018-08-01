@@ -135,6 +135,8 @@ func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCf
 		return nil, err
 	}
 
+	//A security list manager will be configured based on the annotation specified when creating the service,
+	//if an annotation is not specified, then the mode specified in cloud provider config file is used.
 	slManagerSpec := secListFactory(svc.Annotations[ServiceAnnotaionLoadBalancerSecurityListManagementMode])
 
 	return &LBSpec{

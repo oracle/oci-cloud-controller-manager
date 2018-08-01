@@ -58,7 +58,7 @@ const (
 	ServiceAnnotationLoadBalancerSSLPorts = "service.beta.kubernetes.io/oci-load-balancer-ssl-ports"
 
 	// ServiceAnnotationLoadBalancerTLSSecret is a Service annotation for
-	// specifying the TLS secret ti install on the load balancer listeners which
+	// specifying the TLS secret to install on the load balancer listeners which
 	// have SSL enabled.
 	// See: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
 	ServiceAnnotationLoadBalancerTLSSecret = "service.beta.kubernetes.io/oci-load-balancer-tls-secret"
@@ -68,7 +68,7 @@ const (
 	ServiceAnnotationLoadBalancerConnectionIdleTimeout = "service.beta.kubernetes.io/oci-load-balancer-connection-idle-timeout"
 
 	//ServiceAnnotaionLoadBalancerSecurityListManagementMode is a Service annotation for
-	//specifying the security list managment mode ("All","Frontend",None) configures how security lists are managed by the CCM
+	//specifying the security list managment mode ("All","Frontend","None") that configures how security lists are managed by the CCM
 	ServiceAnnotaionLoadBalancerSecurityListManagementMode = "service.beta.kubernetes.io/oci-load-balancer-security-list-management-mode"
 )
 
