@@ -67,7 +67,7 @@ EOF
 
 # A set of test_matcher strings that must match the appropriate gingko test 
 # descriptions. These are used to extract the required test results.
-CREATE_LB_TEST="\[It\] \[Canary\] should be possible to create and mutate a Service type:LoadBalancer"
+CREATE_LB_TEST="\[It\] should be possible to create and mutate a Service type:LoadBalancer \[Canary\]"
 # Creates a JSON result file for the specified [Canary] tests to be extracted.
 function create_results() {
     local metrics_dir="$(dirname ${METRICS_FILE})"
@@ -76,7 +76,7 @@ function create_results() {
     cat > "${METRICS_FILE}" <<EOF
 {
     "start_time": "${START}"
-    "create_lb": "$(_extract_result ${CREATE_LB_TEST})"
+    "create_lb": "$(extract_result ${CREATE_LB_TEST})"
     "end_time": "$(now)"
 }
 EOF

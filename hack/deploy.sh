@@ -35,6 +35,10 @@ CCM_NAME="oci-cloud-controller-manager"
 # downgrade operations. 
 CCM_LOCK_LABEL="ccm-deployment-lock"
 
+function ts() {
+    local res=$(date '+%Y-%m-%d %H:%M:%S')
+    echo "${res}" 
+}
 
 # Kubernetes Cluster CCM Functions ********************************************
 #
@@ -50,7 +54,7 @@ function get-k8s-master() {
 }
 
 function get-ccm-ds-image-version() {
-    local res=$(kubectl -n kube-system get ds "${CCM_NAME}" -o=jsonpath="{.spec.template.spec.containers[0].image}")
+    local res=$(kubectl -n kube-system get ds "${CCM_NAME}" -o=jsonpath="{.spec.template.spec.containers[0].image}" 2>/dev/null)
     echo "${res}"
 }
 
@@ -70,13 +74,13 @@ function get-ccm-ds-json() {
 }
 
 function get-ccm-pod-name() {
-    local name=$(kubectl -n kube-system get pods | grep oci-cloud-controller-manager | awk '{print $1}')
+    local name=$(kubectl -n kube-system get pods 2>/dev/null | grep oci-cloud-controller-manager | awk '{print $1}')
     echo "${name}"
 }
 
 function get-ccm-pod-image-version() {
     local name=$(get-ccm-pod-name)
-    local ready=$(kubectl -n kube-system get pod ${name} -o=jsonpath='{.status.containerStatuses[0].image}')
+    local ready=$(kubectl -n kube-system get pod ${name} -o=jsonpath='{.status.containerStatuses[0].image}' 2>/dev/null)
     echo "${ready}"
 }
 
@@ -105,12 +109,13 @@ function is-ccm-pod-version-ready() {
 function wait-for-ccm-pod-version-ready() {
     local version=$1
     local duration=${2:-60}
-    local sleep=${3:-10}
+    local sleep=${3:-1}
     local timeout=$(($(date +%s) + $duration))
     while [ $(date +%s) -lt $timeout ]; do
         if [ $(is-ccm-pod-version-ready ${version}) = 'true' ]; then
             return 0
         fi
+        echo "$(ts) : Waiting for ccm pod to be ready."
         sleep ${sleep}
     done
     echo "Failed to wait for pod version '${version}' to be ready."
@@ -144,10 +149,12 @@ function get-ccm-manifest-version() {
 # NB: The date is used to help auto-release a lock that has been placed.
 function lock-ccm-deployment() {
     kubectl -n kube-system annotate ds "${CCM_NAME}" "${CCM_LOCK_LABEL}"=$(date +%s)
+    echo "$(ts) : Locked ccm deployment." 
 }
 
 function unlock-ccm-deployment() {
     kubectl -n kube-system annotate ds "${CCM_NAME}" "${CCM_LOCK_LABEL}-"
+    echo "$(ts) : Unlocked ccm deployment." 
 }
 
 function get-ccm-deployment-lock() {
@@ -179,16 +186,17 @@ function auto-release-lock() {
 # Wait for the CCM to have no lock present.
 function wait-for-ccm-deployment-permitted() {
     local duration=${1:-3600}
-    local sleep=${2:-60}
+    local sleep=${2:-10}
     local timeout=$(($(date +%s) + $duration))
     while [ $(date +%s) -lt $timeout ]; do
         auto-release-lock
         if [ $(is-ccm-deployment-locked) = 'false' ]; then
             return 0
         fi
+        echo "$(ts) : Waiting for ccm deployment lock."
         sleep ${sleep}
     done
-    echo "Failed to wait for ccm to finish running existing ci pipeline tests."
+    echo "$(ts) : Failed to wait for ccm to finish running existing ci pipeline tests."
     exit 1 
 }
 
@@ -205,13 +213,21 @@ function release-ccm-deployment-lock() {
     unlock-ccm-deployment
 }
 
+# Get the latest release number of the CCM from github.
+function get_latest_ccm_release() {
+    local repo="oracle/oci-cloud-controller-manager"
+    local url="https://api.github.com/repos/${repo}/releases/latest"
+    echo $(curl -s ${url} | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+}
+
 # Test clean-up Functions *****************************************************
 #
 
 function ensure-clean-e2e-test-namespace() {
-    local res=$(kubectl get pods --all-namespaces | grep 'cm-e2e-tests-' | awk '{print $1}')
-    if [ ! -z ${res} ]; then
-        cat ${res} | xargs kubectl delete ns
+    echo "ensuring all 'ccm-e2e-tests' namespaces are terminated."
+    local res=$(kubectl get ns | grep 'cm-e2e-tests-' | awk '{print $1}')
+    if [ ! -z "${res}" ]; then
+        echo ${res} | xargs kubectl delete ns 2> /dev/null
     fi
 }
 
@@ -223,23 +239,19 @@ function deploy-build-version-ccm() {
     local hack_dir=$(cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd)
     local dist_dir=$(dirname "${hack_dir}")/dist
     local build_version_manifest="${dist_dir}/oci-cloud-controller-manager.yaml"
-    local rollback_manifest="${dist_dir}/oci-cloud-controller-manager-rollback.yaml"
-
-    local version=$(cat ${dist_dir}/VERSION.txt)
+    if [ ! -f ${build_version_manifest} ]; then
+        echo "Error: The CCM deployment manifest '${build_version_manifest}' did not exist."
+        exit 1
+    fi
     local build_version_image=$(get-ccm-manifest-image ${build_version_manifest}) 
     local build_version=$(get-ccm-manifest-version ${build_version_manifest})
-    local rollback_image=$(get-ccm-ds-image) 
-    local rollback_version=$(get-ccm-ds-version)
 
     # Wait for there to be no lock on CCM deployment; then take the lock. 
     # NB: Not threadsafe, but, better then nothing...
     obtain-ccm-deployment-lock
-
-    # Generate a rollback CCM daemon-set manifest.
-    sed s#${rollback_image}:.*#${rollback_image}:${rollback_version}#g < ${build_version_manifest} > ${rollback_manifest}
     
     # Apply the build daemon-set manifest.
-    echo "deploying test '${version}' CCM '${build_version_image}:${build_version}' to cluster '$(get-k8s-master)'."
+    echo "deploying test build '${build_version}' CCM '${build_version_image}:${build_version}' to cluster '$(get-k8s-master)'."
     kubectl apply -f ${build_version_manifest}
     
     # Wait for CCM to be ready...
@@ -249,6 +261,8 @@ function deploy-build-version-ccm() {
     echo "currently deployed CCM daemon-set version: $(get-ccm-ds-image-version)"
     echo "currently deployed CCM pod version       : $(get-ccm-pod-image-version)"
     echo "currently deployed CCM pod ready state   : $(get-ccm-pod-ready)"
+    echo "CCM locked?                              : $(is-ccm-deployment-locked)"
+
 }
 
 # Rollback to the CCM version the cluster originally used before it was upgraded.
@@ -257,13 +271,12 @@ function rollback-original-ccm() {
     local dist_dir=$(dirname "${hack_dir}")/dist
     local build_version_manifest="${dist_dir}/oci-cloud-controller-manager.yaml"
     local rollback_manifest="${dist_dir}/oci-cloud-controller-manager-rollback.yaml"
-    local rollback_image=$(get-ccm-manifest-image ${rollback_manifest}) 
-    local rollback_version=$(get-ccm-manifest-version ${rollback_manifest})
+    local rollback_image=$(get-ccm-ds-image) 
+    local rollback_version=$(get_latest_ccm_release)
 
-    # Check the rollback manifest exists.
+    # Generate a roll-back manifest based on the latest CCM release.
     if [ ! -f ${rollback_manifest} ]; then
-        echo "the rollback manifest '${rollback_manifest}' did not exist."
-        exit 1
+        sed s#${rollback_image}:.*#${rollback_image}:${rollback_version}#g < ${build_version_manifest} > ${rollback_manifest}
     fi
     
     # Apply original CCM daemon-set manifest.
@@ -273,13 +286,14 @@ function rollback-original-ccm() {
     # Wait for CCM to be ready after rollback...
     wait-for-ccm-pod-version-ready "${rollback_version}" 
     
+    # Release the lock on the CCM deployment mechanism.
+    release-ccm-deployment-lock
+    
     # Display Info
     echo "currently deployed CCM daemon-set version: $(get-ccm-ds-image-version)"
     echo "currently deployed CCM pod version       : $(get-ccm-pod-image-version)"
     echo "currently deployed CCM pod ready state   : $(get-ccm-pod-ready)"
-
-    # Release the lock on the CCM deployment mechanism.
-    release-ccm-deployment-lock
+    echo "CCM locked?                              : $(is-ccm-deployment-locked)"
 }
 
 
