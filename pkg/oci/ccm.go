@@ -29,14 +29,13 @@ import (
 	"github.com/pkg/errors"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	wait "k8s.io/apimachinery/pkg/util/wait"
-	informers "k8s.io/client-go/informers"
-	informersv1 "k8s.io/client-go/informers/core/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
 	listersv1 "k8s.io/client-go/listers/core/v1"
-	cache "k8s.io/client-go/tools/cache"
-	cloudprovider "k8s.io/kubernetes/pkg/cloudprovider"
-	controller "k8s.io/kubernetes/pkg/controller"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/kubernetes/pkg/cloudprovider"
+	"k8s.io/kubernetes/pkg/controller"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instancemeta"
@@ -137,17 +136,15 @@ func (cp *CloudProvider) Initialize(clientBuilder controller.ControllerClientBui
 	cp.NodeLister = nodeInformer.Lister()
 
 	if !cp.config.LoadBalancer.Disabled {
-		var serviceInformer informersv1.ServiceInformer
-		if cp.config.LoadBalancer.SecurityListManagementMode != ManagementModeNone {
-			serviceInformer = factory.Core().V1().Services()
-			go serviceInformer.Informer().Run(wait.NeverStop)
-			glog.Info("Waiting for service informer cache to sync")
-			if !cache.WaitForCacheSync(wait.NeverStop, serviceInformer.Informer().HasSynced) {
-				utilruntime.HandleError(fmt.Errorf("Timed out waiting for service informer to sync"))
-			}
+		serviceInformer := factory.Core().V1().Services()
+		go serviceInformer.Informer().Run(wait.NeverStop)
+		glog.Info("Waiting for service informer cache to sync")
+		if !cache.WaitForCacheSync(wait.NeverStop, serviceInformer.Informer().HasSynced) {
+			utilruntime.HandleError(fmt.Errorf("Timed out waiting for service informer to sync"))
 		}
-
-		cp.securityListManager = newSecurityListManager(cp.client, serviceInformer, cp.config.LoadBalancer.SecurityLists, cp.config.LoadBalancer.SecurityListManagementMode)
+		if cp.config.LoadBalancer.SecurityListManagementMode != ManagementModeNone {
+			cp.securityListManager = newSecurityListManager(cp.client, serviceInformer, cp.config.LoadBalancer.SecurityLists, cp.config.LoadBalancer.SecurityListManagementMode)
+		}
 	}
 }
 
