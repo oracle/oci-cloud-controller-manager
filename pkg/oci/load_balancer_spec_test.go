@@ -197,6 +197,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				securityListManager: newSecurityListManagerNOOP(),
 			},
 		},
+		//"security list manager annotation":
 		"custom shape": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
@@ -338,7 +339,8 @@ func TestNewLBSpecFailure(t *testing.T) {
 		defaultSubnetTwo string
 		nodes            []*v1.Node
 		service          *v1.Service
-		expectedErrMsg   string
+		//add cp or cp security list
+		expectedErrMsg string
 	}{
 		"unsupported udp protocol": {
 			service: &v1.Service{
@@ -423,6 +425,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 				Spec: v1.ServiceSpec{
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports:           []v1.ServicePort{},
+					//add security list mananger in spec
 				},
 			},
 			expectedErrMsg: "a configuration for subnet1 must be specified for an internal load balancer",
