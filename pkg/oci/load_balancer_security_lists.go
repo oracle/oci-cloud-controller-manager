@@ -82,6 +82,8 @@ type baseSecurityListManager struct {
 	securityLists map[string]string
 }
 
+type securityListManagerFactory func(mode string) securityListManager
+
 func newSecurityListManager(client client.Interface, serviceInformer informersv1.ServiceInformer, securityLists map[string]string, mode string) securityListManager {
 	if securityLists == nil {
 		securityLists = make(map[string]string)

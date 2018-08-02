@@ -74,16 +74,17 @@ type LBSpec struct {
 	Listeners   map[string]loadbalancer.ListenerDetails
 	BackendSets map[string]loadbalancer.BackendSetDetails
 
-	Ports       map[string]portSpec
-	SourceCIDRs []string
-	SSLConfig   *SSLConfig
+	Ports               map[string]portSpec
+	SourceCIDRs         []string
+	SSLConfig           *SSLConfig
+	securityListManager securityListManager
 
 	service *v1.Service
 	nodes   []*v1.Node
 }
 
 // NewLBSpec creates a LB Spec from a Kubernetes service and a slice of nodes.
-func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCfg *SSLConfig) (*LBSpec, error) {
+func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCfg *SSLConfig, secListFactory securityListManagerFactory) (*LBSpec, error) {
 	if len(defaultSubnets) != 2 {
 		return nil, errors.New("default subnets incorrectly configured")
 	}
@@ -148,6 +149,8 @@ func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCf
 
 		service: svc,
 		nodes:   nodes,
+		securityListManager: secListFactory(
+			svc.Annotations[ServiceAnnotaionLoadBalancerSecurityListManagementMode]),
 	}, nil
 }
 

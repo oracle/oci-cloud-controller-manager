@@ -58,7 +58,7 @@ const (
 	ServiceAnnotationLoadBalancerSSLPorts = "service.beta.kubernetes.io/oci-load-balancer-ssl-ports"
 
 	// ServiceAnnotationLoadBalancerTLSSecret is a Service annotation for
-	// specifying the TLS secret ti install on the load balancer listeners which
+	// specifying the TLS secret to install on the load balancer listeners which
 	// have SSL enabled.
 	// See: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
 	ServiceAnnotationLoadBalancerTLSSecret = "service.beta.kubernetes.io/oci-load-balancer-tls-secret"
@@ -66,6 +66,10 @@ const (
 	// ServiceAnnotationLoadBalancerConnectionIdleTimeout is the annotation used
 	// on the service to specify the idle connection timeout.
 	ServiceAnnotationLoadBalancerConnectionIdleTimeout = "service.beta.kubernetes.io/oci-load-balancer-connection-idle-timeout"
+
+	// ServiceAnnotaionLoadBalancerSecurityListManagementMode is a Service annotation for
+	// specifying the security list managment mode ("All", "Frontend", "None") that configures how security lists are managed by the CCM
+	ServiceAnnotaionLoadBalancerSecurityListManagementMode = "service.beta.kubernetes.io/oci-load-balancer-security-list-management-mode"
 )
 
 // DefaultLoadBalancerPolicy defines the default traffic policy for load
@@ -242,7 +246,7 @@ func (cp *CloudProvider) createLoadBalancer(ctx context.Context, spec *LBSpec) (
 	}
 
 	for _, ports := range spec.Ports {
-		if err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, spec.SourceCIDRs, nil, ports); err != nil {
+		if err = spec.securityListManager.Update(ctx, lbSubnets, nodeSubnets, spec.SourceCIDRs, nil, ports); err != nil {
 			return nil, err
 		}
 	}
@@ -305,7 +309,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		ssl = NewSSLConfig(lbName, ports, cp)
 	}
 	subnets := []string{cp.config.LoadBalancer.Subnet1, cp.config.LoadBalancer.Subnet2}
-	spec, err := NewLBSpec(service, nodes, subnets, ssl)
+	spec, err := NewLBSpec(service, nodes, subnets, ssl, cp.securityListManagerFactory)
 	if err != nil {
 		glog.Errorf("Failed to derive LBSpec: %+v", err)
 		return nil, err
@@ -364,7 +368,7 @@ func (cp *CloudProvider) updateLoadBalancer(ctx context.Context, lb *loadbalance
 	for _, action := range actions {
 		switch a := action.(type) {
 		case *BackendSetAction:
-			err := cp.updateBackendSet(ctx, lbID, a, lbSubnets, nodeSubnets)
+			err := cp.updateBackendSet(ctx, lbID, a, lbSubnets, nodeSubnets, spec.securityListManager)
 			if err != nil {
 				return errors.Wrap(err, "updating BackendSet")
 			}
@@ -381,7 +385,7 @@ func (cp *CloudProvider) updateLoadBalancer(ctx context.Context, lb *loadbalance
 				ports = spec.Ports[backendSetName]
 			}
 
-			err := cp.updateListener(ctx, lbID, a, ports, lbSubnets, nodeSubnets, spec.SourceCIDRs)
+			err := cp.updateListener(ctx, lbID, a, ports, lbSubnets, nodeSubnets, spec.SourceCIDRs, spec.securityListManager)
 			if err != nil {
 				return errors.Wrap(err, "updating listener")
 			}
@@ -390,7 +394,7 @@ func (cp *CloudProvider) updateLoadBalancer(ctx context.Context, lb *loadbalance
 	return nil
 }
 
-func (cp *CloudProvider) updateBackendSet(ctx context.Context, lbID string, action *BackendSetAction, lbSubnets, nodeSubnets []*core.Subnet) error {
+func (cp *CloudProvider) updateBackendSet(ctx context.Context, lbID string, action *BackendSetAction, lbSubnets, nodeSubnets []*core.Subnet, secListManager securityListManager) error {
 	var (
 		sourceCIDRs   = []string{}
 		workRequestID string
@@ -403,19 +407,19 @@ func (cp *CloudProvider) updateBackendSet(ctx context.Context, lbID string, acti
 
 	switch action.Type() {
 	case Create:
-		err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, nil, ports)
+		err = secListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, nil, ports)
 		if err != nil {
 			return err
 		}
 
 		workRequestID, err = cp.client.LoadBalancer().CreateBackendSet(ctx, lbID, action.Name(), bs)
 	case Update:
-		if err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, action.OldPorts, ports); err != nil {
+		if err = secListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, action.OldPorts, ports); err != nil {
 			return err
 		}
 		workRequestID, err = cp.client.LoadBalancer().UpdateBackendSet(ctx, lbID, action.Name(), bs)
 	case Delete:
-		err = cp.securityListManager.Delete(ctx, lbSubnets, nodeSubnets, ports)
+		err = secListManager.Delete(ctx, lbSubnets, nodeSubnets, ports)
 		if err != nil {
 			return err
 		}
@@ -435,7 +439,7 @@ func (cp *CloudProvider) updateBackendSet(ctx context.Context, lbID string, acti
 	return nil
 }
 
-func (cp *CloudProvider) updateListener(ctx context.Context, lbID string, action *ListenerAction, ports portSpec, lbSubnets, nodeSubnets []*core.Subnet, sourceCIDRs []string) error {
+func (cp *CloudProvider) updateListener(ctx context.Context, lbID string, action *ListenerAction, ports portSpec, lbSubnets, nodeSubnets []*core.Subnet, sourceCIDRs []string, secListManager securityListManager) error {
 	var workRequestID string
 	var err error
 	listener := action.Listener
@@ -445,21 +449,21 @@ func (cp *CloudProvider) updateListener(ctx context.Context, lbID string, action
 
 	switch action.Type() {
 	case Create:
-		err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, nil, ports)
+		err = secListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, nil, ports)
 		if err != nil {
 			return err
 		}
 
 		workRequestID, err = cp.client.LoadBalancer().CreateListener(ctx, lbID, action.Name(), listener)
 	case Update:
-		err = cp.securityListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, nil, ports)
+		err = secListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, nil, ports)
 		if err != nil {
 			return err
 		}
 
 		workRequestID, err = cp.client.LoadBalancer().UpdateListener(ctx, lbID, action.Name(), listener)
 	case Delete:
-		err = cp.securityListManager.Delete(ctx, lbSubnets, nodeSubnets, ports)
+		err = secListManager.Delete(ctx, lbSubnets, nodeSubnets, ports)
 		if err != nil {
 			return err
 		}
@@ -547,6 +551,9 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 		return errors.Wrap(err, "getting subnets for load balancers")
 	}
 
+	securityListManager := cp.securityListManagerFactory(
+		service.Annotations[ServiceAnnotaionLoadBalancerSecurityListManagementMode])
+
 	for listenerName, listener := range lb.Listeners {
 		backendSetName := *listener.DefaultBackendSetName
 		bs, ok := lb.BackendSets[backendSetName]
@@ -559,7 +566,7 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 
 		glog.V(4).Infof("Deleting security rules for listener %q for load balancer %q ports=%+v", listenerName, id, ports)
 
-		if err := cp.securityListManager.Delete(ctx, lbSubnets, nodeSubnets, ports); err != nil {
+		if err := securityListManager.Delete(ctx, lbSubnets, nodeSubnets, ports); err != nil {
 			return errors.Wrapf(err, "delete security rules for listener %q on load balancer %q", listenerName, name)
 		}
 	}

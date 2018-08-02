@@ -31,7 +31,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	wait "k8s.io/apimachinery/pkg/util/wait"
 	informers "k8s.io/client-go/informers"
-	informersv1 "k8s.io/client-go/informers/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	listersv1 "k8s.io/client-go/listers/core/v1"
 	cache "k8s.io/client-go/tools/cache"
@@ -59,8 +58,8 @@ type CloudProvider struct {
 	client     client.Interface
 	kubeclient clientset.Interface
 
-	securityListManager securityListManager
-	config              *Config
+	securityListManagerFactory securityListManagerFactory
+	config                     *Config
 }
 
 // Compile time check that CloudProvider implements the cloudprovider.Interface
@@ -130,24 +129,23 @@ func (cp *CloudProvider) Initialize(clientBuilder controller.ControllerClientBui
 
 	nodeInformer := factory.Core().V1().Nodes()
 	go nodeInformer.Informer().Run(wait.NeverStop)
+	serviceInformer := factory.Core().V1().Services()
+	go serviceInformer.Informer().Run(wait.NeverStop)
+
 	glog.Info("Waiting for node informer cache to sync")
-	if !cache.WaitForCacheSync(wait.NeverStop, nodeInformer.Informer().HasSynced) {
-		utilruntime.HandleError(fmt.Errorf("Timed out waiting for node informer to sync"))
+	if !cache.WaitForCacheSync(wait.NeverStop, nodeInformer.Informer().HasSynced, serviceInformer.Informer().HasSynced) {
+		utilruntime.HandleError(fmt.Errorf("Timed out waiting for informers to sync"))
 	}
 	cp.NodeLister = nodeInformer.Lister()
 
-	if !cp.config.LoadBalancer.Disabled {
-		var serviceInformer informersv1.ServiceInformer
-		if cp.config.LoadBalancer.SecurityListManagementMode != ManagementModeNone {
-			serviceInformer = factory.Core().V1().Services()
-			go serviceInformer.Informer().Run(wait.NeverStop)
-			glog.Info("Waiting for service informer cache to sync")
-			if !cache.WaitForCacheSync(wait.NeverStop, serviceInformer.Informer().HasSynced) {
-				utilruntime.HandleError(fmt.Errorf("Timed out waiting for service informer to sync"))
-			}
+	cp.securityListManagerFactory = func(mode string) securityListManager {
+		if cp.config.LoadBalancer.Disabled {
+			return newSecurityListManagerNOOP()
 		}
-
-		cp.securityListManager = newSecurityListManager(cp.client, serviceInformer, cp.config.LoadBalancer.SecurityLists, cp.config.LoadBalancer.SecurityListManagementMode)
+		if len(mode) == 0 {
+			mode = cp.config.LoadBalancer.SecurityListManagementMode
+		}
+		return newSecurityListManager(cp.client, serviceInformer, cp.config.LoadBalancer.SecurityLists, mode)
 	}
 }
 
