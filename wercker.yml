@@ -1,4 +1,6 @@
 box: golang:1.9
+no-response-timeout: 30
+command-timeout: 30
 dev:
   steps:
     - internal/shell
@@ -8,7 +10,7 @@ build:
     - script:
       name: check boilerplate
       code: ./hack/verify-boilerplate.sh
-
+  
     - script:
       name: go fmt
       code: make gofmt
@@ -48,7 +50,7 @@ copy:
       name: copy output
       code: |
         cp -a dist/* ${WERCKER_OUTPUT_DIR}
-    
+
     - script:
       name: copy e2e test artifacts
       code: |
@@ -140,7 +142,7 @@ e2e-test:
     - script:
       name: deploy latest CCM
       code: make upgrade
-        
+
     - script:
       name: e2e default tests
       code: make e2e
@@ -169,7 +171,7 @@ push-canary:
     - internal/docker-push:
       repository: iad.ocir.io/oracle/oci-cloud-controller-manager-canary
       tag: $VERSION
-      working-dir: /go/src/github.com/oracle/oci-cloud-controller-manager/ 
+      working-dir: /go/src/github.com/oracle/oci-cloud-controller-manager/
       entrypoint: make canary
       registry: https://iad.ocir.io/v2
       username: $OCIRUSERNAME
@@ -192,11 +194,11 @@ validate-canary:
     - script:
       name: deploy latest CCM
       code: make upgrade
-        
+
     - script:
       name: validate canary tests
       code: make validate-canary
-      
+
   after-steps:
     - script:
       name: rollback original CCM
