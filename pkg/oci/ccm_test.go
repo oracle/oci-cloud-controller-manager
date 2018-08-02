@@ -19,9 +19,9 @@ import (
 )
 
 func TestBuildRateLimiterWithConfig(t *testing.T) {
-	var qpsRead float32 = 6.0
+	qpsRead := float32(6.0)
 	bucketRead := 20
-	var qpsWrite float32 = 8.0
+	qpsWrite := float32(8.0)
 	bucketWrite := 20
 
 	rateLimiterConfig := &RateLimiterConfig{
@@ -31,7 +31,7 @@ func TestBuildRateLimiterWithConfig(t *testing.T) {
 		RateLimitBucketWrite: bucketWrite,
 	}
 
-	rateLimiter := buildNewRateLimiter(rateLimiterConfig)
+	rateLimiter := newRateLimiter(rateLimiterConfig)
 
 	if rateLimiter.Reader.QPS() != qpsRead {
 		t.Errorf("unexpected QPS (read) value: expected %f but found %f", qpsRead, rateLimiter.Reader.QPS())
@@ -45,7 +45,7 @@ func TestBuildRateLimiterWithConfig(t *testing.T) {
 func TestBuildRateLimiterWithDefaults(t *testing.T) {
 	rateLimiterConfig := &RateLimiterConfig{}
 
-	rateLimiter := buildNewRateLimiter(rateLimiterConfig)
+	rateLimiter := newRateLimiter(rateLimiterConfig)
 
 	if rateLimiter.Reader.QPS() != RateLimitQPSDefault {
 		t.Errorf("unexpected QPS (read) value: expected %f but found %f", RateLimitQPSDefault, rateLimiter.Reader.QPS())

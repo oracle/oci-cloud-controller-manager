@@ -57,7 +57,7 @@ func (c *client) getInstanceByDisplayName(ctx context.Context, compartmentID, di
 	)
 	for {
 		if !c.rateLimiter.Reader.TryAccept() {
-			return nil, RateLimitError(false, "getInstanceByDisplayName")
+			return nil, RateLimitError(false, "ListInstances")
 		}
 		resp, err := c.compute.ListInstances(ctx, core.ListInstancesRequest{
 			CompartmentId: &compartmentID,
@@ -88,7 +88,7 @@ func (c *client) getInstanceByDisplayName(ctx context.Context, compartmentID, di
 
 func (c *client) listVNICAttachments(ctx context.Context, req core.ListVnicAttachmentsRequest) (core.ListVnicAttachmentsResponse, error) {
 	if !c.rateLimiter.Reader.TryAccept() {
-		return core.ListVnicAttachmentsResponse{}, RateLimitError(false, "listVNICAttachments")
+		return core.ListVnicAttachmentsResponse{}, RateLimitError(false, "ListVnicAttachments")
 	}
 
 	resp, err := c.compute.ListVnicAttachments(ctx, req)
@@ -129,7 +129,7 @@ func (c *client) GetPrimaryVNICForInstance(ctx context.Context, compartmentID, i
 			}
 
 			// TODO(apryde): Cache map[instanceID]primaryVNICID.
-			vnic, err := c.getVNIC(ctx, *attachment.VnicId)
+			vnic, err := c.GetVNIC(ctx, *attachment.VnicId)
 			if err != nil {
 				return nil, err
 			}
@@ -181,7 +181,7 @@ func (c *client) GetInstanceByNodeName(ctx context.Context, compartmentID, vcnID
 				continue
 			}
 
-			vnic, err := c.getVNIC(ctx, *attachment.VnicId)
+			vnic, err := c.GetVNIC(ctx, *attachment.VnicId)
 			if err != nil {
 				return nil, err
 			}

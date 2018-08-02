@@ -69,7 +69,7 @@ func (c *client) GetLoadBalancerByName(ctx context.Context, compartmentID, name 
 	var page *string
 	for {
 		if !c.rateLimiter.Reader.TryAccept() {
-			return nil, RateLimitError(false, "GetLoadBalancerByName")
+			return nil, RateLimitError(false, "ListLoadBalancers")
 		}
 		resp, err := c.loadbalancer.ListLoadBalancers(ctx, loadbalancer.ListLoadBalancersRequest{
 			CompartmentId: &compartmentID,
@@ -130,7 +130,7 @@ func (c *client) DeleteLoadBalancer(ctx context.Context, id string) (string, err
 
 func (c *client) GetCertificateByName(ctx context.Context, lbID, name string) (*loadbalancer.Certificate, error) {
 	if !c.rateLimiter.Reader.TryAccept() {
-		return nil, RateLimitError(false, "GetCertificateByName")
+		return nil, RateLimitError(false, "ListCertificates")
 	}
 
 	resp, err := c.loadbalancer.ListCertificates(ctx, loadbalancer.ListCertificatesRequest{

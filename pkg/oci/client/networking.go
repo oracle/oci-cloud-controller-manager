@@ -32,9 +32,9 @@ type NetworkingInterface interface {
 	UpdateSecurityList(ctx context.Context, request core.UpdateSecurityListRequest) (core.UpdateSecurityListResponse, error)
 }
 
-func (c *client) getVNIC(ctx context.Context, id string) (*core.Vnic, error) {
+func (c *client) GetVNIC(ctx context.Context, id string) (*core.Vnic, error) {
 	if !c.rateLimiter.Reader.TryAccept() {
-		return nil, RateLimitError(false, "getVNIC")
+		return nil, RateLimitError(false, "GetVNIC")
 	}
 
 	resp, err := c.network.GetVnic(ctx, core.GetVnicRequest{
