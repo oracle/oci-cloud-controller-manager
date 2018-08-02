@@ -67,8 +67,8 @@ const (
 	// on the service to specify the idle connection timeout.
 	ServiceAnnotationLoadBalancerConnectionIdleTimeout = "service.beta.kubernetes.io/oci-load-balancer-connection-idle-timeout"
 
-	//ServiceAnnotaionLoadBalancerSecurityListManagementMode is a Service annotation for
-	//specifying the security list managment mode ("All","Frontend","None") that configures how security lists are managed by the CCM
+	// ServiceAnnotaionLoadBalancerSecurityListManagementMode is a Service annotation for
+	// specifying the security list managment mode ("All", "Frontend", "None") that configures how security lists are managed by the CCM
 	ServiceAnnotaionLoadBalancerSecurityListManagementMode = "service.beta.kubernetes.io/oci-load-balancer-security-list-management-mode"
 )
 
@@ -246,7 +246,7 @@ func (cp *CloudProvider) createLoadBalancer(ctx context.Context, spec *LBSpec) (
 	}
 
 	for _, ports := range spec.Ports {
-		if err = spec.SecurityListManager.Update(ctx, lbSubnets, nodeSubnets, spec.SourceCIDRs, nil, ports); err != nil {
+		if err = spec.securityListManager.Update(ctx, lbSubnets, nodeSubnets, spec.SourceCIDRs, nil, ports); err != nil {
 			return nil, err
 		}
 	}
@@ -368,7 +368,7 @@ func (cp *CloudProvider) updateLoadBalancer(ctx context.Context, lb *loadbalance
 	for _, action := range actions {
 		switch a := action.(type) {
 		case *BackendSetAction:
-			err := cp.updateBackendSet(ctx, lbID, a, lbSubnets, nodeSubnets, spec.SecurityListManager)
+			err := cp.updateBackendSet(ctx, lbID, a, lbSubnets, nodeSubnets, spec.securityListManager)
 			if err != nil {
 				return errors.Wrap(err, "updating BackendSet")
 			}
@@ -385,7 +385,7 @@ func (cp *CloudProvider) updateLoadBalancer(ctx context.Context, lb *loadbalance
 				ports = spec.Ports[backendSetName]
 			}
 
-			err := cp.updateListener(ctx, lbID, a, ports, lbSubnets, nodeSubnets, spec.SourceCIDRs, spec.SecurityListManager)
+			err := cp.updateListener(ctx, lbID, a, ports, lbSubnets, nodeSubnets, spec.SourceCIDRs, spec.securityListManager)
 			if err != nil {
 				return errors.Wrap(err, "updating listener")
 			}

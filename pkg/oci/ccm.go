@@ -131,6 +131,7 @@ func (cp *CloudProvider) Initialize(clientBuilder controller.ControllerClientBui
 	go nodeInformer.Informer().Run(wait.NeverStop)
 	serviceInformer := factory.Core().V1().Services()
 	go serviceInformer.Informer().Run(wait.NeverStop)
+
 	glog.Info("Waiting for node informer cache to sync")
 	if !cache.WaitForCacheSync(wait.NeverStop, nodeInformer.Informer().HasSynced, serviceInformer.Informer().HasSynced) {
 		utilruntime.HandleError(fmt.Errorf("Timed out waiting for informers to sync"))

@@ -77,7 +77,7 @@ type LBSpec struct {
 	Ports               map[string]portSpec
 	SourceCIDRs         []string
 	SSLConfig           *SSLConfig
-	SecurityListManager securityListManager
+	securityListManager securityListManager
 
 	service *v1.Service
 	nodes   []*v1.Node
@@ -135,10 +135,6 @@ func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCf
 		return nil, err
 	}
 
-	//A security list manager will be configured based on the annotation specified when creating the service,
-	//if an annotation is not specified, then the mode specified in cloud provider config file is used.
-	slManagerSpec := secListFactory(svc.Annotations[ServiceAnnotaionLoadBalancerSecurityListManagementMode])
-
 	return &LBSpec{
 		Name:        GetLoadBalancerName(svc),
 		Shape:       shape,
@@ -151,9 +147,10 @@ func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCf
 		SSLConfig:   sslCfg,
 		SourceCIDRs: sourceCIDRs,
 
-		service:             svc,
-		nodes:               nodes,
-		SecurityListManager: slManagerSpec,
+		service: svc,
+		nodes:   nodes,
+		securityListManager: secListFactory(
+			svc.Annotations[ServiceAnnotaionLoadBalancerSecurityListManagementMode]),
 	}, nil
 }
 
