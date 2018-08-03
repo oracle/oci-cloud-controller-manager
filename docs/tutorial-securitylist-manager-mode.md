@@ -31,8 +31,8 @@ The example below will create an NGINX deployment, expose it via a load
 balancer and disables all security list management. 
 Note: 
 - The service **type** is set to **LoadBalancer**.
-- The annotation must follow the following format **oci-load-balancer-security-list-management-mode**, 
-and declared as `"All"`, `"Frontend"`, `"None"` [1].
+- The annotation must follow the [following format][1] **oci-load-balancer-security-list-management-mode**, 
+and declared as `"All"`, `"Frontend"`, `"None"`.
 
 ```yaml
 ---
