@@ -165,7 +165,7 @@ func (cp *CloudProvider) ProviderName() string {
 // LoadBalancer returns a balancer interface. Also returns true if the interface
 // is supported, false otherwise.
 func (cp *CloudProvider) LoadBalancer() (cloudprovider.LoadBalancer, bool) {
-	cp.logger.Debug("Claiming to support Load Balancers")
+	cp.logger.Debug("Claiming to support load balancers")
 	return cp, !cp.config.LoadBalancer.Disabled
 }
 
@@ -179,7 +179,7 @@ func (cp *CloudProvider) Instances() (cloudprovider.Instances, bool) {
 // Zones returns a zones interface. Also returns true if the interface is
 // supported, false otherwise.
 func (cp *CloudProvider) Zones() (cloudprovider.Zones, bool) {
-	cp.logger.Debug("Claiming to support Zones")
+	cp.logger.Debug("Claiming to support zones")
 	return cp, true
 }
 

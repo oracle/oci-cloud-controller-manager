@@ -76,7 +76,7 @@ func extractNodeAddressesFromVNIC(vnic *core.Vnic) ([]api.NodeAddress, error) {
 // returns the address of the calling instance. We should do a rename to
 // make this clearer.
 func (cp *CloudProvider) NodeAddresses(ctx context.Context, name types.NodeName) ([]api.NodeAddress, error) {
-	cp.logger.Debugf("NodeAddresses(%q) called", name)
+	cp.logger.With("nodeName", name).Debug("Getting node addresses")
 
 	inst, err := cp.client.Compute().GetInstanceByNodeName(ctx, cp.config.CompartmentID, cp.config.VCNID, mapNodeNameToInstanceName(name))
 	if err != nil {
@@ -96,7 +96,7 @@ func (cp *CloudProvider) NodeAddresses(ctx context.Context, name types.NodeName)
 // nodeaddresses are being queried. i.e. local metadata services cannot be used
 // in this method to obtain nodeaddresses.
 func (cp *CloudProvider) NodeAddressesByProviderID(ctx context.Context, providerID string) ([]api.NodeAddress, error) {
-	cp.logger.Debugf("NodeAddressesByProviderID(%q) called", providerID)
+	cp.logger.With("instanceID", providerID).Debug("Getting node addresses by provider id")
 	instanceID := util.MapProviderIDToInstanceID(providerID)
 	vnic, err := cp.client.Compute().GetPrimaryVNICForInstance(ctx, cp.config.CompartmentID, instanceID)
 	if err != nil {
@@ -109,26 +109,27 @@ func (cp *CloudProvider) NodeAddressesByProviderID(ctx context.Context, provider
 // Note that if the instance does not exist or is no longer running, we must
 // return ("", cloudprovider.InstanceNotFound).
 func (cp *CloudProvider) ExternalID(ctx context.Context, nodeName types.NodeName) (string, error) {
-	cp.logger.Debugf("ExternalID(%q) called", nodeName)
+	logger := cp.logger.With("nodeName", nodeName)
+	logger.Debug("Getting external id for node name")
 
 	instName := mapNodeNameToInstanceName(nodeName)
 	inst, err := cp.client.Compute().GetInstanceByNodeName(ctx, cp.config.CompartmentID, cp.config.VCNID, instName)
 	if client.IsNotFound(err) {
-		cp.logger.With(zap.Error(err), "instanceName", instName).Info("Instance not found. Unable to get ExternalID.")
+		logger.With(zap.Error(err)).Info("Instance not found. Unable to get ExternalID.")
 		return "", cloudprovider.InstanceNotFound
 	}
 	if err != nil {
-		cp.logger.With(zap.Error(err), "instanceName", instName).Errorf("Failed to get ExternalID")
+		logger.With(zap.Error(err)).Errorf("Failed to get ExternalID")
 		return "", err
 	}
 
-	cp.logger.Debugf("Got ExternalID %q for %q", *inst.Id, nodeName)
+	logger.With("instanceID", *inst.Id).Debug("Got ExternalID for node")
 	return *inst.Id, nil
 }
 
 // InstanceID returns the cloud provider ID of the node with the specified NodeName.
 func (cp *CloudProvider) InstanceID(ctx context.Context, nodeName types.NodeName) (string, error) {
-	cp.logger.Debugf("InstanceID(%q) called", nodeName)
+	cp.logger.With("nodeName", nodeName).Debug("Getting instance id for node name")
 
 	name := mapNodeNameToInstanceName(nodeName)
 	inst, err := cp.client.Compute().GetInstanceByNodeName(ctx, cp.config.CompartmentID, cp.config.VCNID, name)
@@ -143,7 +144,7 @@ func (cp *CloudProvider) InstanceID(ctx context.Context, nodeName types.NodeName
 
 // InstanceType returns the type of the specified instance.
 func (cp *CloudProvider) InstanceType(ctx context.Context, name types.NodeName) (string, error) {
-	cp.logger.Debugf("InstanceType(%q) called", name)
+	cp.logger.With("nodeName", name).Debug("Getting instance type by node name")
 
 	inst, err := cp.client.Compute().GetInstanceByNodeName(ctx, cp.config.CompartmentID, cp.config.VCNID, mapNodeNameToInstanceName(name))
 	if err != nil {
@@ -154,7 +155,7 @@ func (cp *CloudProvider) InstanceType(ctx context.Context, name types.NodeName) 
 
 // InstanceTypeByProviderID returns the type of the specified instance.
 func (cp *CloudProvider) InstanceTypeByProviderID(ctx context.Context, providerID string) (string, error) {
-	cp.logger.Debugf("InstanceTypeByProviderID(%q) called", providerID)
+	cp.logger.With("instanceID", providerID).Debug("Getting instance type by provider id")
 
 	instanceID := util.MapProviderIDToInstanceID(providerID)
 	inst, err := cp.client.Compute().GetInstance(ctx, instanceID)
@@ -173,7 +174,6 @@ func (cp *CloudProvider) AddSSHKeyToAllInstances(ctx context.Context, user strin
 // CurrentNodeName returns the name of the node we are currently running on
 // On most clouds (e.g. GCE) this is the hostname, so we provide the hostname
 func (cp *CloudProvider) CurrentNodeName(ctx context.Context, hostname string) (types.NodeName, error) {
-	cp.logger.Debugf("CurrentNodeName(%q) called", hostname)
 	return "", cloudprovider.NotImplemented
 
 }
@@ -182,7 +182,7 @@ func (cp *CloudProvider) CurrentNodeName(ctx context.Context, hostname string) (
 // provider id still is running. If false is returned with no error, the
 // instance will be immediately deleted by the cloud controller manager.
 func (cp *CloudProvider) InstanceExistsByProviderID(ctx context.Context, providerID string) (bool, error) {
-	cp.logger.Debugf("InstanceExistsByProviderID(%q) called", providerID)
+	cp.logger.With("instanceID", providerID).Debug("Checking instance exists by provider id")
 	instanceID := util.MapProviderIDToInstanceID(providerID)
 	instance, err := cp.client.Compute().GetInstance(ctx, instanceID)
 	if client.IsNotFound(err) {

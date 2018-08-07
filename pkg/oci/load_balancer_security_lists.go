@@ -121,9 +121,10 @@ func (s *baseSecurityListManager) updateBackendRules(ctx context.Context, lbSubn
 			return errors.Wrapf(err, "get security list for subnet %q", *subnet.Id)
 		}
 
-		ingressRules := getNodeIngressRules(s.logger, secList.IngressSecurityRules, lbSubnets, actualPorts, desiredPorts, s.serviceLister)
-
 		logger := s.logger.With("securityListID", *secList.Id)
+
+		ingressRules := getNodeIngressRules(logger, secList.IngressSecurityRules, lbSubnets, actualPorts, desiredPorts, s.serviceLister)
+
 		if !securityListRulesChanged(secList, ingressRules, secList.EgressSecurityRules) {
 			logger.Info("No changes for node subnet security list")
 			continue

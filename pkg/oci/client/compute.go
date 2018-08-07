@@ -91,6 +91,8 @@ func (c *client) listVNICAttachments(ctx context.Context, req core.ListVnicAttac
 }
 
 func (c *client) GetPrimaryVNICForInstance(ctx context.Context, compartmentID, instanceID string) (*core.Vnic, error) {
+	logger := c.logger.With("instanceID", instanceID, "compartmentID", compartmentID)
+
 	var page *string
 	for {
 		resp, err := c.listVNICAttachments(ctx, core.ListVnicAttachmentsRequest{
@@ -105,19 +107,13 @@ func (c *client) GetPrimaryVNICForInstance(ctx context.Context, compartmentID, i
 
 		for _, attachment := range resp.Items {
 			if attachment.LifecycleState != core.VnicAttachmentLifecycleStateAttached {
-				c.logger.With(
-					"instanceID", instanceID,
-					"vnicAttachmentID", *attachment.Id,
-					"expectedLifecycleState", core.VnicAttachmentLifecycleStateAttached,
-					"actualLifecycleState", attachment.LifecycleState,
-				).Info("VNIC attachment in unexpected lifecycle state")
+				logger.With("vnicAttachmentID", *attachment.Id).Info("VNIC attachment is not in attached state")
 				continue
 			}
 
 			if attachment.VnicId == nil {
 				// Should never happen but lets be extra cautious as field is non-mandatory in OCI API.
-				c.logger.With("instanceID", instanceID,
-					"vnicAttachmentID", *attachment.Id).Error("VNIC attachment is attached but has no VNIC ID")
+				logger.With("vnicAttachmentID", *attachment.Id).Error("VNIC attachment is attached but has no VNIC ID")
 				continue
 			}
 
@@ -146,6 +142,8 @@ func (c *client) GetInstanceByNodeName(ctx context.Context, compartmentID, vcnID
 		return instance, nil
 	}
 
+	logger := c.logger.With("nodeName", nodeName, "compartmentID", compartmentID)
+
 	// Otherwise fall back to looking up via VNiC properties (hostname or public IP).
 	var (
 		page      *string
@@ -162,19 +160,13 @@ func (c *client) GetInstanceByNodeName(ctx context.Context, compartmentID, vcnID
 
 		for _, attachment := range resp.Items {
 			if attachment.LifecycleState != core.VnicAttachmentLifecycleStateAttached {
-				c.logger.With(
-					"nodeName", nodeName,
-					"vnicAttachmentID", *attachment.Id,
-					"expectedLifecycleState", core.VnicAttachmentLifecycleStateAttached,
-					"actualLifecycleState", attachment.LifecycleState,
-				).Info("VNIC attachment in unexpected lifecycle state")
+				logger.With("vnicAttachmentID", *attachment.Id).Info("VNIC attachment is not in attached state")
 				continue
 			}
 
 			if attachment.VnicId == nil {
 				// Should never happen but lets be extra cautious as field is non-mandatory in OCI API.
-				c.logger.With("nodeName", nodeName,
-					"vnicAttachmentID", *attachment.Id).Error("VNIC attachment is attached but has no VNIC ID")
+				logger.With("vnicAttachmentID", *attachment.Id).Error("VNIC attachment is attached but has no VNIC ID")
 				continue
 			}
 
@@ -200,7 +192,7 @@ func (c *client) GetInstanceByNodeName(ctx context.Context, compartmentID, vcnID
 				}
 
 				if IsInstanceInTerminalState(instance) {
-					c.logger.With("instanceID", *instance.Id,
+					logger.With("instanceID", *instance.Id,
 						"lifecycleState", instance.LifecycleState).Warn("Instance in a terminal state")
 					continue
 				}
