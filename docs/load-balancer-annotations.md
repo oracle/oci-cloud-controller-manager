@@ -27,6 +27,7 @@ spec:
 | `oci-load-balancer-subnet1`                 | The OCID of the first [subnet][2] of the two required subnets to attach the load balancer to. Must be in separate Availability Domains.                                                                                                            | Value provided in config file                    |
 | `oci-load-balancer-subnet2`                 | The OCID of the second [subnet][2] of the two required subnets to attach the load balancer to. Must be in separate Availability Domains.                                                                                                           | Value provided in config file                    |
 | `oci-load-balancer-connection-idle-timeout` | The maximum idle time, in seconds, allowed between two successive receive or two successive send operations between the client and backend servers.                                                                                                | `300` for TCP listeners, `60` for HTTP listeners |
+| `oci-load-balancer-security-list-management-mode` | Specifies the [security list mode](##security-list-management-modes) (`"All"`, `"Frontend"`,`"None"`) to configure how security lists are managed by the CCM.                            | `"All"`            
 
 ## TLS-related
 
@@ -34,6 +35,17 @@ spec:
 | ---- | ----------- | ------- |
 | `oci-load-balancer-tls-secret` | A reference in the form `<namespace>/<secretName>` to a Kubernetes [TLS secret][3]. | `""` |
 | `oci-load-balancer-ssl-ports` | A `,` separated list of port number(s) for which to enable SSL termination. | `""` |
+
+## Security List Management Modes
+| Mode | Description | 
+| ---- | ----------- | 
+| `"All"` | CCM will manage all required security list rules for load balancer services | 
+| `"Frontend"` | CCM will manage  only security list rules for ingress to the load balancer. Requires that the user has setup a rule that allows inbound traffic to the appropriate ports for kube proxy health port, node port ranges, and health check port ranges.  | 
+| `"None`" | Disables all security list management. Requires that the user has setup a rule that allows inbound traffic to the appropriate ports for kube proxy health port, node port ranges, and health check port ranges. *Additionally, requires the user to mange rules to allow inbound traffic to load balancers.* | 
+
+Note:
+- If an invalid mode is passed in the annotation, then the default (`"All"`) mode is configured.
+- If an annotation is not specified, the mode specified in the cloud provider config file is configured.  
 
 [1]: https://kubernetes.io/docs/concepts/services-networking/service/#internal-load-balancer
 [2]: https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Tasks/managingVCNs.htm

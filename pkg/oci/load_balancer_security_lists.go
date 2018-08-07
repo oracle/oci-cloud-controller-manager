@@ -406,14 +406,14 @@ func getNodeIngressRules(rules []core.IngressSecurityRule, lbSubnets []*core.Sub
 	if desiredPorts.BackendPort != 0 { // Can happen when there are no backends.
 		for _, cidr := range desiredBackend.List() {
 			rule := makeIngressSecurityRule(cidr, desiredPorts.BackendPort)
-			glog.V(4).Infof("Addding node port ingress security rule %q %d-%d", *rule.Source, *rule.TcpOptions.DestinationPortRange.Min, *rule.TcpOptions.DestinationPortRange.Max)
+			glog.V(4).Infof("Adding node port ingress security rule %q %d-%d", *rule.Source, *rule.TcpOptions.DestinationPortRange.Min, *rule.TcpOptions.DestinationPortRange.Max)
 			ingressRules = append(ingressRules, rule)
 		}
 	}
 	if desiredPorts.HealthCheckerPort != 0 {
 		for _, cidr := range desiredHealthChecker.List() {
 			rule := makeIngressSecurityRule(cidr, desiredPorts.HealthCheckerPort)
-			glog.V(4).Infof("Addding health checker ingress security rule %q %d-%d", *rule.Source, *rule.TcpOptions.DestinationPortRange.Min, *rule.TcpOptions.DestinationPortRange.Max)
+			glog.V(4).Infof("Adding health checker ingress security rule %q %d-%d", *rule.Source, *rule.TcpOptions.DestinationPortRange.Min, *rule.TcpOptions.DestinationPortRange.Max)
 			ingressRules = append(ingressRules, rule)
 		}
 	}
@@ -471,7 +471,7 @@ func getLoadBalancerIngressRules(rules []core.IngressSecurityRule, sourceCIDRs [
 	// so we need to create one for each.
 	for _, cidr := range desired.List() {
 		rule := makeIngressSecurityRule(cidr, port)
-		glog.V(4).Infof("Addding load balancer ingress security rule %q %d-%d", *rule.Source, *rule.TcpOptions.DestinationPortRange.Min, *rule.TcpOptions.DestinationPortRange.Max)
+		glog.V(4).Infof("Adding load balancer ingress security rule %q %d-%d", *rule.Source, *rule.TcpOptions.DestinationPortRange.Min, *rule.TcpOptions.DestinationPortRange.Max)
 		ingressRules = append(ingressRules, rule)
 	}
 
