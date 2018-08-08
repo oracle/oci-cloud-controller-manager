@@ -16,7 +16,6 @@ package log
 
 import (
 	"flag"
-	"fmt"
 	"sync"
 
 	"go.uber.org/zap"
@@ -24,16 +23,15 @@ import (
 )
 
 var (
-	lvlString     = "info"
-	logJSON       = false
-	logfilePath   = ""
-	config        *zap.Config
-	mu            sync.Mutex
-	glogVerbosity string
+	lvl         = zapcore.InfoLevel
+	logJSON     = false
+	logfilePath = ""
+	config      *zap.Config
+	mu          sync.Mutex
 )
 
 func init() {
-	flag.StringVar(&lvlString, "log-level", lvlString, "Adjusts the level of the logs that will be omitted.")
+	flag.Var(&lvl, "log-level", "Adjusts the level of the logs that will be omitted.")
 	flag.BoolVar(&logJSON, "log-json", logJSON, "Log in json format.")
 	flag.StringVar(&logfilePath, "logfile-path", "", "If specified, write log messages to a file at this path.")
 	_ = flag.String("v", "", "For glog backwards compat. Does nothing.")
@@ -48,14 +46,6 @@ type Options struct {
 // Level gets the current log level.
 func Level() *zap.AtomicLevel {
 	return &config.Level
-}
-
-func levelFromString(level string) (*zapcore.Level, error) {
-	var zapLevel zapcore.Level
-	if err := zapLevel.UnmarshalText([]byte(level)); err != nil {
-		return nil, fmt.Errorf("invalid logging level: %v", level)
-	}
-	return &zapLevel, nil
 }
 
 // Logger builds a new logger based on the given flags.
@@ -77,9 +67,7 @@ func Logger() *zap.Logger {
 
 	if config == nil {
 		config = &cfg
-		if level, err := levelFromString(lvlString); err == nil {
-			config.Level = zap.NewAtomicLevelAt(*level)
-		}
+		config.Level.SetLevel(lvl)
 		config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	}
 
