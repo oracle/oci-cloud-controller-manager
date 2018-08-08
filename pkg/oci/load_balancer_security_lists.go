@@ -161,7 +161,7 @@ func (s *baseSecurityListManager) updateLoadBalancerRules(ctx context.Context, l
 		}
 
 		if !securityListRulesChanged(secList, lbIngressRules, lbEgressRules) {
-			logger.Info("No changes for load balancer subnet security list")
+			logger.Debug("No changes for load balancer subnet security list")
 			continue
 		}
 

@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/pflag"
 	"go.uber.org/zap"
 
+	logutil "github.com/oracle/oci-cloud-controller-manager/pkg/log"
 	utilflag "k8s.io/apiserver/pkg/util/flag"
 	"k8s.io/apiserver/pkg/util/logs"
 	"k8s.io/kubernetes/cmd/cloud-controller-manager/app"
@@ -39,6 +40,10 @@ var build string
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 
+	logger := logutil.Logger()
+	defer logger.Sync()
+	zap.ReplaceGlobals(logger)
+
 	command := app.NewCloudControllerManagerCommand()
 
 	// TODO: once we switch everything over to Cobra commands, we can go back to calling
@@ -50,7 +55,7 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	zap.S().Infof("oci-cloud-controller-manager version: %s (%s)", version, build)
+	logger.Sugar().With("version", version, "build", build).Info("oci-cloud-controller-manager")
 
 	if err := command.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
