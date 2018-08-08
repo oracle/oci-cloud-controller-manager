@@ -126,7 +126,7 @@ func (s *baseSecurityListManager) updateBackendRules(ctx context.Context, lbSubn
 		ingressRules := getNodeIngressRules(logger, secList.IngressSecurityRules, lbSubnets, actualPorts, desiredPorts, s.serviceLister)
 
 		if !securityListRulesChanged(secList, ingressRules, secList.EgressSecurityRules) {
-			logger.Info("No changes for node subnet security list")
+			logger.Debug("No changes for node subnet security list")
 			continue
 		}
 
@@ -411,7 +411,7 @@ func getNodeIngressRules(
 			"source", *rule.Source,
 			"destinationPortRangeMin", *rule.TcpOptions.DestinationPortRange.Min,
 			"destinationPortRangeMax", *rule.TcpOptions.DestinationPortRange.Max,
-		).Debugf("Deleting node ingres security rule")
+		).Debug("Deleting node ingres security rule")
 	}
 
 	if desiredBackend.Len() == 0 && desiredHealthChecker.Len() == 0 {

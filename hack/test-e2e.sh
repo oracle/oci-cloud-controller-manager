@@ -26,7 +26,11 @@ function run_e2e_tests() {
     ginkgo -v -progress \
         -focus "\[Canary\]" \
         test/e2e \
-        -- --kubeconfig=${KUBECONFIG} --cloud-config=${CLOUDCONFIG} --delete-namespace=false
+        -- \
+        --kubeconfig="${KUBECONFIG}" \
+        --cloud-config="${CLOUDCONFIG}" \
+        --delete-namespace=false \
+        --log-level=debug
 }
 
 # Main ************************************************************************
@@ -57,5 +61,3 @@ fi
 run_e2e_tests
 
 exit $?
-
-
