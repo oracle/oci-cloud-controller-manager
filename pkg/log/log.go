@@ -20,6 +20,7 @@ import (
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 )
 
 var (
@@ -61,8 +62,25 @@ func Logger() *zap.Logger {
 		cfg = zap.NewProductionConfig()
 	}
 
+	options := []zap.Option{zap.AddStacktrace(zapcore.FatalLevel)}
+
 	if len(logfilePath) > 0 {
-		cfg.OutputPaths = append(cfg.OutputPaths, logfilePath)
+		w := zapcore.AddSync(&lumberjack.Logger{
+			Filename:   logfilePath,
+			MaxSize:    10, // megabytes
+			MaxBackups: 3,
+			MaxAge:     28, // days
+		})
+		var enc zapcore.Encoder
+		if logJSON {
+			enc = zapcore.NewJSONEncoder(cfg.EncoderConfig)
+		} else {
+			enc = zapcore.NewConsoleEncoder(cfg.EncoderConfig)
+		}
+		core := zapcore.NewCore(enc, w, lvl)
+		options = append(options, zap.WrapCore(func(zapcore.Core) zapcore.Core {
+			return core
+		}))
 	}
 
 	if config == nil {
@@ -74,7 +92,7 @@ func Logger() *zap.Logger {
 	logger, err := config.Build(
 		// We handle this via errors package for 99% of the stuff so only
 		// enable this at the fatal/panic level.
-		zap.AddStacktrace(zapcore.FatalLevel),
+		options...,
 	)
 	if err != nil {
 		panic(err)
