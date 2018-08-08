@@ -72,6 +72,8 @@ var _ cloudprovider.Interface = &CloudProvider{}
 // NewCloudProvider creates a new oci.CloudProvider.
 func NewCloudProvider(config *Config) (cloudprovider.Interface, error) {
 	logger := logutil.Logger()
+	defer logger.Sync()
+	zap.ReplaceGlobals(logger)
 
 	cp, err := buildConfigurationProvider(logger, config)
 	if err != nil {
