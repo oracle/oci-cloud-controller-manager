@@ -35,7 +35,6 @@ func init() {
 	flag.Var(&lvl, "log-level", "Adjusts the level of the logs that will be omitted.")
 	flag.BoolVar(&logJSON, "log-json", logJSON, "Log in json format.")
 	flag.StringVar(&logfilePath, "logfile-path", "", "If specified, write log messages to a file at this path.")
-	_ = flag.String("v", "", "For glog backwards compat. Does nothing.")
 }
 
 // Options holds the zap logger configuration.
