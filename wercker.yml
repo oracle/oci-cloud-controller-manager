@@ -138,6 +138,8 @@ e2e-test:
       code: |
         export VERSION=$(cat VERSION.txt)
         echo "${VERSION}"
+        export CCM_SECLIST_ID="ocid1.securitylist.oc1.iad.aaaaaaaaqshdqfwpgqnvt42vrvtn4oqlpxvmgte5r5j7aczkxghodftx77gq"
+        export K8S_SECLIST_ID="ocid1.securitylist.oc1.iad.aaaaaaaazsac74oe2fml7bhpmkbboik7zfzsma2eakeummgeyvbuzpjbvs4a"
 
     - script:
       name: deploy latest CCM

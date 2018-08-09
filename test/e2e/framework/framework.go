@@ -19,11 +19,14 @@ package framework
 import (
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
+	"go.uber.org/zap"
 
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -35,6 +38,8 @@ import (
 	"k8s.io/kubernetes/pkg/cloudprovider"
 
 	oci "github.com/oracle/oci-cloud-controller-manager/pkg/oci" // register oci cloud provider
+	client "github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	common "github.com/oracle/oci-go-sdk/common"
 )
 
 const (
@@ -46,12 +51,16 @@ var (
 	kubeconfig      string // path to kubeconfig file
 	deleteNamespace bool   // whether or not to delete test namespaces
 	cloudConfigFile string // path to cloud provider config file
+	ccmSeclistID    string // The ocid of the loadbalancer subnet seclist. Optional.
+	k8sSeclistID    string // The ocid of the k8s worker subnet seclist. Optional.
 )
 
 func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to Kubeconfig file with authorization and master location information.")
 	flag.BoolVar(&deleteNamespace, "delete-namespace", true, "If true tests will delete namespace after completion. It is only designed to make debugging easier, DO NOT turn it off by default.")
 	flag.StringVar(&cloudConfigFile, "cloud-config", "", "The path to the cloud provider configuration file. Empty string for no configuration file.")
+	flag.StringVar(&ccmSeclistID, "ccm-seclist-id", "", "The ocid of the loadbalancer subnet seclist. Enables additional seclist rule tests. If specified the 'k8s-seclist-id parameter' is also required.")
+	flag.StringVar(&k8sSeclistID, "k8s-seclist-id", "", "The ocid of the k8s worker subnet seclist. Enables additional seclist rule tests. If specified the 'ccm-seclist-id parameter' is also required.")
 }
 
 // Framework is used in the execution of e2e tests.
@@ -64,6 +73,11 @@ type Framework struct {
 	ClientSet         clientset.Interface
 	InternalClientset internalclientset.Interface
 
+	CloudProviderConfig *oci.Config      // If specified, the CloudProviderConfig. This provides information on the configuration of the test cluster.
+	Client              client.Interface // An OCI client for checking the state of any provisioned OCI infrastructure during testing.
+	CCMSecListID        string           // An optional configuration for E2E testing. If present can be used to run additional checks against seclist during testing.
+	K8SSecListID        string           // An optional configuration for E2E testing. If present can be used to run additional checks against seclist during testing.
+
 	SkipNamespaceCreation bool            // Whether to skip creating a namespace
 	Namespace             *v1.Namespace   // Every test has at least one namespace unless creation is skipped
 	namespacesToDelete    []*v1.Namespace // Some tests have more than one.
@@ -71,6 +85,8 @@ type Framework struct {
 	// To make sure that this framework cleans up after itself, no matter what,
 	// we install a Cleanup action before each test and clear it after.  If we
 	// should abort, the AfterSuite hook should run all Cleanup actions.
+	//
+	// NB: This can fail from the CI when external temrination (e.g. timeouts) occur.
 	cleanupHandle CleanupActionHandle
 }
 
@@ -95,7 +111,16 @@ func NewFramework(baseName string, client clientset.Interface) *Framework {
 		BaseName:  baseName,
 		ClientSet: client,
 	}
-
+	// Dev/CI only configuration. The seclist for CCM load-balancer routes.
+	f.CCMSecListID = os.Getenv("CCM_SECLIST_ID")
+	if ccmSeclistID != "" {
+		f.CCMSecListID = ccmSeclistID // Commandline override.
+	}
+	// Dev/CI only configuration. The seclist for K8S worker node routes.
+	f.K8SSecListID = os.Getenv("K8S_SECLIST_ID")
+	if k8sSeclistID != "" {
+		f.K8SSecListID = k8sSeclistID // Commandline override.
+	}
 	BeforeEach(f.BeforeEach)
 	AfterEach(f.AfterEach)
 
@@ -177,6 +202,16 @@ func (f *Framework) BeforeEach() {
 	// https://github.com/onsi/ginkgo/issues/222
 	f.cleanupHandle = AddCleanupAction(f.AfterEach)
 
+	if f.Client == nil {
+		By("Creating OCI client")
+		cloudProviderConfig, err := createCloudProviderConfig(cloudConfigFile)
+		Expect(err).NotTo(HaveOccurred())
+		f.CloudProviderConfig = cloudProviderConfig
+		ociClient, err := createOCIClient(cloudProviderConfig)
+		Expect(err).NotTo(HaveOccurred())
+		f.Client = ociClient
+	}
+
 	if f.ClientSet == nil {
 		By("Creating a kubernetes client")
 		config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
@@ -225,4 +260,32 @@ func (f *Framework) AfterEach() {
 		}
 		Failf(strings.Join(messages, ","))
 	}
+}
+
+// createCloudProviderConfig unmarshalls the CCM's cloud provider config from
+// the specified location so it can be used for testing.
+func createCloudProviderConfig(cloudConfigFile string) (*oci.Config, error) {
+	file, err := os.Open(cloudConfigFile)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Couldn't open cloud provider configuration: %s.", cloudConfigFile)
+	}
+	defer file.Close()
+	cloudProviderConfig, err := oci.ReadConfig(file)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Couldn't create cloud provider configuration: %s.", cloudConfigFile)
+	}
+	return cloudProviderConfig, nil
+}
+
+// createOCIClient creates an OCI client derived from the CCM's cloud provider config file.
+func createOCIClient(cloudProviderConfig *oci.Config) (client.Interface, error) {
+	cpc := cloudProviderConfig.Auth
+	ociClientConfig := common.NewRawConfigurationProvider(cpc.TenancyID, cpc.UserID, cpc.Region, cpc.Fingerprint, cpc.PrivateKey, &cpc.PrivateKeyPassphrase)
+	logger := zap.L()
+	rateLimiter := oci.NewRateLimiter(logger.Sugar(), cloudProviderConfig.RateLimiter)
+	ociClient, err := client.New(logger.Sugar(), ociClientConfig, &rateLimiter)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Couldn't create oci client from configuration: %s.", cloudConfigFile)
+	}
+	return ociClient, nil
 }

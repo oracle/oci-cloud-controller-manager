@@ -165,7 +165,7 @@ func TestGetNodeIngressRules(t *testing.T) {
 				makeIngressSecurityRule("0.0.0.0/0", lbNodesHealthCheckPort),
 			},
 		}, {
-			name: "update node port",
+			name: "update service port",
 			securityList: &core.SecurityList{
 				IngressSecurityRules: []core.IngressSecurityRule{
 					makeIngressSecurityRule("existing", 9000),
@@ -194,6 +194,37 @@ func TestGetNodeIngressRules(t *testing.T) {
 				makeIngressSecurityRule("2", k8sports.ProxyHealthzPort),
 				makeIngressSecurityRule("1", 80),
 				makeIngressSecurityRule("2", 80),
+			},
+		}, {
+			name: "update service health check port",
+			securityList: &core.SecurityList{
+				IngressSecurityRules: []core.IngressSecurityRule{
+					core.IngressSecurityRule{Source: common.String("0.0.0.0/0")},
+					makeIngressSecurityRule("10.0.50.0/24", 8081),
+					makeIngressSecurityRule("10.0.51.0/24", 8081),
+					makeIngressSecurityRule("10.0.50.0/24", k8sports.ProxyHealthzPort),
+					makeIngressSecurityRule("10.0.51.0/24", k8sports.ProxyHealthzPort),
+				},
+			},
+			lbSubnets: []*core.Subnet{
+				{CidrBlock: common.String("10.0.50.0/24")},
+				{CidrBlock: common.String("10.0.51.0/24")},
+			},
+			actualPorts: &portSpec{
+				BackendPort:       8081,
+				HealthCheckerPort: k8sports.ProxyHealthzPort,
+			},
+			desiredPorts: portSpec{
+				BackendPort:       8081,
+				HealthCheckerPort: k8sports.ProxyHealthzPort + 1,
+			},
+			services: []*v1.Service{},
+			expected: []core.IngressSecurityRule{
+				core.IngressSecurityRule{Source: common.String("0.0.0.0/0")},
+				makeIngressSecurityRule("10.0.50.0/24", 8081),
+				makeIngressSecurityRule("10.0.51.0/24", 8081),
+				makeIngressSecurityRule("10.0.50.0/24", k8sports.ProxyHealthzPort+1),
+				makeIngressSecurityRule("10.0.51.0/24", k8sports.ProxyHealthzPort+1),
 			},
 		},
 	}
@@ -347,7 +378,8 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 		name         string
 		securityList *core.SecurityList
 		subnets      []*core.Subnet
-		port         int
+		actualPort   int
+		desiredPort  int
 		services     []*v1.Service
 		expected     []core.EgressSecurityRule
 	}{
@@ -362,8 +394,9 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 				{CidrBlock: common.String("1")},
 				{CidrBlock: common.String("2")},
 			},
-			port:     80,
-			services: []*v1.Service{},
+			actualPort:  80,
+			desiredPort: 80,
+			services:    []*v1.Service{},
 			expected: []core.EgressSecurityRule{
 				makeEgressSecurityRule("existing", 9000),
 				makeEgressSecurityRule("1", 80),
@@ -382,12 +415,89 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 				{CidrBlock: common.String("1")},
 				{CidrBlock: common.String("2")},
 			},
-			port:     80,
-			services: []*v1.Service{},
+			actualPort:  80,
+			desiredPort: 80,
+			services:    []*v1.Service{},
 			expected: []core.EgressSecurityRule{
 				makeEgressSecurityRule("existing", 9000),
 				makeEgressSecurityRule("1", 80),
 				makeEgressSecurityRule("2", 80),
+			},
+		}, {
+			name: "update service port",
+			securityList: &core.SecurityList{
+				EgressSecurityRules: []core.EgressSecurityRule{
+					core.EgressSecurityRule{Destination: common.String("0.0.0.0/0")},
+					makeEgressSecurityRule("10.0.40.0/24", lbNodesHealthCheckPort),
+					makeEgressSecurityRule("10.0.41.0/24", lbNodesHealthCheckPort),
+					makeEgressSecurityRule("10.0.42.0/24", lbNodesHealthCheckPort),
+					makeEgressSecurityRule("10.0.40.0/24", 30354),
+					makeEgressSecurityRule("10.0.41.0/24", 30354),
+					makeEgressSecurityRule("10.0.42.0/24", 30354),
+				},
+			},
+			subnets: []*core.Subnet{
+				{CidrBlock: common.String("10.0.40.0/24")},
+				{CidrBlock: common.String("10.0.41.0/24")},
+				{CidrBlock: common.String("10.0.42.0/24")},
+			},
+			actualPort:  30354,
+			desiredPort: 30355,
+			services: []*v1.Service{
+				{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "update-service-port"},
+					Spec: v1.ServiceSpec{
+						Type:  v1.ServiceTypeLoadBalancer,
+						Ports: []v1.ServicePort{{Port: 30354}},
+					},
+				},
+			},
+			expected: []core.EgressSecurityRule{
+				core.EgressSecurityRule{Destination: common.String("0.0.0.0/0")},
+				makeEgressSecurityRule("10.0.40.0/24", lbNodesHealthCheckPort),
+				makeEgressSecurityRule("10.0.41.0/24", lbNodesHealthCheckPort),
+				makeEgressSecurityRule("10.0.42.0/24", lbNodesHealthCheckPort),
+				makeEgressSecurityRule("10.0.40.0/24", 30355),
+				makeEgressSecurityRule("10.0.41.0/24", 30355),
+				makeEgressSecurityRule("10.0.42.0/24", 30355),
+			},
+		}, {
+			name: "update service health check port",
+			securityList: &core.SecurityList{
+				EgressSecurityRules: []core.EgressSecurityRule{
+					core.EgressSecurityRule{Destination: common.String("0.0.0.0/0")},
+					makeEgressSecurityRule("10.0.40.0/24", lbNodesHealthCheckPort),
+					makeEgressSecurityRule("10.0.41.0/24", lbNodesHealthCheckPort),
+					makeEgressSecurityRule("10.0.42.0/24", lbNodesHealthCheckPort),
+					makeEgressSecurityRule("10.0.40.0/24", 30354),
+					makeEgressSecurityRule("10.0.41.0/24", 30354),
+					makeEgressSecurityRule("10.0.42.0/24", 30354),
+				},
+			},
+			subnets: []*core.Subnet{
+				{CidrBlock: common.String("10.0.40.0/24")},
+				{CidrBlock: common.String("10.0.41.0/24")},
+				{CidrBlock: common.String("10.0.42.0/24")},
+			},
+			actualPort:  lbNodesHealthCheckPort,
+			desiredPort: lbNodesHealthCheckPort + 1,
+			services: []*v1.Service{
+				{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "update service health check port"},
+					Spec: v1.ServiceSpec{
+						Type:  v1.ServiceTypeLoadBalancer,
+						Ports: []v1.ServicePort{{Port: 30354}},
+					},
+				},
+			},
+			expected: []core.EgressSecurityRule{
+				core.EgressSecurityRule{Destination: common.String("0.0.0.0/0")},
+				makeEgressSecurityRule("10.0.40.0/24", 30354),
+				makeEgressSecurityRule("10.0.41.0/24", 30354),
+				makeEgressSecurityRule("10.0.42.0/24", 30354),
+				makeEgressSecurityRule("10.0.40.0/24", lbNodesHealthCheckPort+1),
+				makeEgressSecurityRule("10.0.41.0/24", lbNodesHealthCheckPort+1),
+				makeEgressSecurityRule("10.0.42.0/24", lbNodesHealthCheckPort+1),
 			},
 		}, {
 			name: "change node subnet",
@@ -403,8 +513,9 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 				{CidrBlock: common.String("1")},
 				{CidrBlock: common.String("3")},
 			},
-			port:     80,
-			services: []*v1.Service{},
+			actualPort:  80,
+			desiredPort: 80,
+			services:    []*v1.Service{},
 			expected: []core.EgressSecurityRule{
 				makeEgressSecurityRule("existing", 9000),
 				makeEgressSecurityRule("1", 80),
@@ -421,9 +532,10 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 					makeEgressSecurityRule("existing", 9001),
 				},
 			},
-			subnets:  []*core.Subnet{},
-			port:     80,
-			services: []*v1.Service{},
+			subnets:     []*core.Subnet{},
+			actualPort:  80,
+			desiredPort: 80,
+			services:    []*v1.Service{},
 			expected: []core.EgressSecurityRule{
 				makeEgressSecurityRule("existing", 9000),
 				makeEgressSecurityRule("existing", 9001),
@@ -435,8 +547,9 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 					makeEgressSecurityRule("0.0.0.0/0", lbNodesHealthCheckPort),
 				},
 			},
-			subnets: []*core.Subnet{},
-			port:    lbNodesHealthCheckPort,
+			subnets:     []*core.Subnet{},
+			actualPort:  lbNodesHealthCheckPort,
+			desiredPort: lbNodesHealthCheckPort,
 			services: []*v1.Service{
 				{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-default-health-check-port"},
@@ -461,7 +574,7 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 			}
 		}
 		t.Run(tc.name, func(t *testing.T) {
-			rules := getLoadBalancerEgressRules(zap.S(), tc.securityList.EgressSecurityRules, tc.subnets, tc.port, serviceLister)
+			rules := getLoadBalancerEgressRules(zap.S(), tc.securityList.EgressSecurityRules, tc.subnets, tc.actualPort, tc.desiredPort, serviceLister)
 			if !reflect.DeepEqual(rules, tc.expected) {
 				t.Errorf("expected rules\n%+v\nbut got\n%+v", tc.expected, rules)
 			}
