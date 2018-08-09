@@ -47,7 +47,10 @@ func (cp *CloudProvider) GetZone(ctx context.Context) (cloudprovider.Zone, error
 // particularly used in the context of external cloud providers where node
 // initialization must be down outside the kubelets.
 func (cp *CloudProvider) GetZoneByProviderID(ctx context.Context, providerID string) (cloudprovider.Zone, error) {
-	instanceID := util.MapProviderIDToInstanceID(providerID)
+	instanceID, err := util.MapProviderIDToInstanceID(providerID)
+	if err != nil {
+		return cloudprovider.Zone{}, err
+	}
 	instance, err := cp.client.Compute().GetInstance(ctx, instanceID)
 	if err != nil {
 		return cloudprovider.Zone{}, err

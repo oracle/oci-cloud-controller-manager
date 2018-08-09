@@ -149,7 +149,15 @@ func getSubnetsForNodes(ctx context.Context, nodes []*v1.Node, client client.Int
 			continue
 		}
 
-		id := util.MapProviderIDToInstanceID(node.Spec.ProviderID)
+		if node.Spec.ProviderID == "" {
+			return nil, errors.Errorf(".spec.providerID was not present on node %q", node.Name)
+		}
+
+		id, err := util.MapProviderIDToInstanceID(node.Spec.ProviderID)
+		if err != nil {
+			return nil, errors.Wrap(err, "MapProviderIDToInstanceID")
+		}
+
 		vnic, err := client.Compute().GetPrimaryVNICForInstance(ctx, compartmentID, id)
 		if err != nil {
 			return nil, err

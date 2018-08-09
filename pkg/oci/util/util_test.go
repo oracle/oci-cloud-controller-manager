@@ -19,23 +19,34 @@ import "testing"
 func TestMapProviderIDToInstanceID(t *testing.T) {
 	testCases := map[string]struct {
 		providerID string
-		expected   string
+		instanceID string
+		error      bool
 	}{
 		"no cloud prefix": {
 			providerID: "testid",
-			expected:   "testid",
+			instanceID: "testid",
+			error:      false,
 		},
 		"cloud prefix": {
 			providerID: providerPrefix + "testid",
-			expected:   "testid",
+			instanceID: "testid",
+			error:      false,
+		},
+		"empty string": {
+			providerID: "",
+			instanceID: "",
+			error:      true,
 		},
 	}
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			result := MapProviderIDToInstanceID(tc.providerID)
-			if result != tc.expected {
-				t.Errorf("Expected instance id %q, but got %q", tc.expected, result)
+			result, err := MapProviderIDToInstanceID(tc.providerID)
+			if result != tc.instanceID {
+				t.Errorf("Expected instance id %q, but got %q", tc.instanceID, result)
+			}
+			if (err == nil && tc.error) || (!tc.error && err != nil) {
+				t.Errorf("Expected an error condition for input %q, but did no receive one; or received one, when not expecting", tc.providerID)
 			}
 		})
 	}
