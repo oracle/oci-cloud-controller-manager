@@ -31,8 +31,9 @@
 
 # glog -> zap
 [[override]]
+  revision = "ad18aa91a01e5a7a4d312d16528a181979a23c62"
   name = "github.com/golang/glog"
-  source = "github.com/istio/glog"
+  source = "github.com/prydie/glog"
 
 [[override]]
   branch = "release-1.10"
