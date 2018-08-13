@@ -29,8 +29,7 @@ function run_e2e_tests() {
         -- \
         --kubeconfig="${KUBECONFIG}" \
         --cloud-config="${CLOUDCONFIG}" \
-        --delete-namespace=false \
-        --log-level=debug
+        --delete-namespace=false
 }
 
 # Main ************************************************************************
