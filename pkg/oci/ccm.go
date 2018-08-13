@@ -37,7 +37,6 @@ import (
 	cloudprovider "k8s.io/kubernetes/pkg/cloudprovider"
 	controller "k8s.io/kubernetes/pkg/controller"
 
-	logutil "github.com/oracle/oci-cloud-controller-manager/pkg/log"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instancemeta"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/util"
@@ -71,9 +70,9 @@ var _ cloudprovider.Interface = &CloudProvider{}
 
 // NewCloudProvider creates a new oci.CloudProvider.
 func NewCloudProvider(config *Config) (cloudprovider.Interface, error) {
-	logger := logutil.Logger()
-	defer logger.Sync()
-	zap.ReplaceGlobals(logger)
+	// The global logger has been replaced with the logger we constructed in
+	// main.go so capture it here and then pass it into all components.
+	logger := zap.L()
 
 	cp, err := buildConfigurationProvider(logger, config)
 	if err != nil {

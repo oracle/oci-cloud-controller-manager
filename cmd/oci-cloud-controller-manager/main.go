@@ -30,6 +30,7 @@ import (
 	_ "k8s.io/kubernetes/pkg/client/metrics/prometheus" // for client metric registration
 	_ "k8s.io/kubernetes/pkg/version/prometheus"        // for version metric registration
 
+	logutil "github.com/oracle/oci-cloud-controller-manager/pkg/log"
 	_ "github.com/oracle/oci-cloud-controller-manager/pkg/oci"
 )
 
@@ -38,6 +39,10 @@ var build string
 
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
+
+	logger := logutil.Logger()
+	defer logger.Sync()
+	zap.ReplaceGlobals(logger)
 
 	command := app.NewCloudControllerManagerCommand()
 
@@ -51,7 +56,7 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	zap.S().With("version", version, "build", build).Info("oci-cloud-controller-manager")
+	logger.Sugar().With("version", version, "build", build).Info("oci-cloud-controller-manager")
 
 	if err := command.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
