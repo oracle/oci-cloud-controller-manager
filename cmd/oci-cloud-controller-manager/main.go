@@ -30,7 +30,7 @@ import (
 	_ "k8s.io/kubernetes/pkg/client/metrics/prometheus" // for client metric registration
 	_ "k8s.io/kubernetes/pkg/version/prometheus"        // for version metric registration
 
-	logutil "github.com/oracle/oci-cloud-controller-manager/pkg/log"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/logging"
 	_ "github.com/oracle/oci-cloud-controller-manager/pkg/oci"
 )
 
@@ -40,7 +40,7 @@ var build string
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	logger := logutil.Logger()
+	logger := logging.Logger()
 	defer logger.Sync()
 	zap.ReplaceGlobals(logger)
 

@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package log
+package logging
 
 import (
 	"flag"
+	"os"
+	"strings"
 	"sync"
 
 	"go.uber.org/zap"
@@ -61,7 +63,15 @@ func Logger() *zap.Logger {
 		cfg = zap.NewProductionConfig()
 	}
 
-	options := []zap.Option{zap.AddStacktrace(zapcore.FatalLevel)}
+	// Extract log fields from environment variables.
+	envFields := FieldsFromEnv(os.Environ())
+
+	options := []zap.Option{
+		zap.AddStacktrace(zapcore.FatalLevel),
+		zap.WrapCore(func(c zapcore.Core) zapcore.Core {
+			return c.With(envFields)
+		}),
+	}
 
 	if len(logfilePath) > 0 {
 		w := zapcore.AddSync(&lumberjack.Logger{
@@ -98,4 +108,28 @@ func Logger() *zap.Logger {
 	}
 
 	return logger
+}
+
+// FieldsFromEnv extracts log fields from environment variables.
+// If an environment variable starts with LOG_FIELD_, the suffix is extracted
+// and split on =. The first part is used for the name and the second for the
+// value.
+// For example, LOG_FIELD_foo=bar would result in a field named "foo" with the
+// value "bar".
+func FieldsFromEnv(env []string) []zapcore.Field {
+	const logfieldPrefix = "LOG_FIELD_"
+
+	fields := []zapcore.Field{}
+	for _, s := range env {
+		if !strings.HasPrefix(s, logfieldPrefix) || len(s) < (len(logfieldPrefix)+1) {
+			continue
+		}
+		s = s[len(logfieldPrefix):]
+		parts := strings.SplitN(s, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		fields = append(fields, zap.String(parts[0], parts[1]))
+	}
+	return fields
 }
