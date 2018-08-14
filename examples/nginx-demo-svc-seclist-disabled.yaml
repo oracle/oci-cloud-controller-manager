@@ -20,7 +20,7 @@ apiVersion: v1
 metadata:
   name: nginx-service
   annotations:
-    oci-load-balancer-security-list-management-mode: "None"
+        service.beta.kubernetes.io/oci-load-balancer-security-list-management-mode: "None"
 spec:
   selector:
     app: nginx
