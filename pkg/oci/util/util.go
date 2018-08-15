@@ -17,6 +17,7 @@ package util
 import (
 	"strings"
 
+	"github.com/pkg/errors"
 	api "k8s.io/api/core/v1"
 )
 
@@ -28,11 +29,14 @@ const (
 )
 
 // MapProviderIDToInstanceID parses the provider id and returns the instance ocid.
-func MapProviderIDToInstanceID(providerID string) string {
-	if strings.HasPrefix(providerID, providerPrefix) {
-		return strings.TrimPrefix(providerID, providerPrefix)
+func MapProviderIDToInstanceID(providerID string) (string, error) {
+	if providerID == "" {
+		return providerID, errors.New("provider ID is empty")
 	}
-	return providerID
+	if strings.HasPrefix(providerID, providerPrefix) {
+		return strings.TrimPrefix(providerID, providerPrefix), nil
+	}
+	return providerID, nil
 }
 
 // NodeInternalIP returns the nodes internal ip

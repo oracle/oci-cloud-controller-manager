@@ -97,7 +97,10 @@ func (cp *CloudProvider) NodeAddresses(ctx context.Context, name types.NodeName)
 // in this method to obtain nodeaddresses.
 func (cp *CloudProvider) NodeAddressesByProviderID(ctx context.Context, providerID string) ([]api.NodeAddress, error) {
 	cp.logger.With("instanceID", providerID).Debug("Getting node addresses by provider id")
-	instanceID := util.MapProviderIDToInstanceID(providerID)
+	instanceID, err := util.MapProviderIDToInstanceID(providerID)
+	if err != nil {
+		return nil, errors.Wrap(err, "MapProviderIDToInstanceID")
+	}
 	vnic, err := cp.client.Compute().GetPrimaryVNICForInstance(ctx, cp.config.CompartmentID, instanceID)
 	if err != nil {
 		return nil, errors.Wrap(err, "GetPrimaryVNICForInstance")
@@ -157,7 +160,10 @@ func (cp *CloudProvider) InstanceType(ctx context.Context, name types.NodeName) 
 func (cp *CloudProvider) InstanceTypeByProviderID(ctx context.Context, providerID string) (string, error) {
 	cp.logger.With("instanceID", providerID).Debug("Getting instance type by provider id")
 
-	instanceID := util.MapProviderIDToInstanceID(providerID)
+	instanceID, err := util.MapProviderIDToInstanceID(providerID)
+	if err != nil {
+		return "", errors.Wrap(err, "MapProviderIDToInstanceID")
+	}
 	inst, err := cp.client.Compute().GetInstance(ctx, instanceID)
 	if err != nil {
 		return "", errors.Wrap(err, "GetInstance")
@@ -183,7 +189,10 @@ func (cp *CloudProvider) CurrentNodeName(ctx context.Context, hostname string) (
 // instance will be immediately deleted by the cloud controller manager.
 func (cp *CloudProvider) InstanceExistsByProviderID(ctx context.Context, providerID string) (bool, error) {
 	cp.logger.With("instanceID", providerID).Debug("Checking instance exists by provider id")
-	instanceID := util.MapProviderIDToInstanceID(providerID)
+	instanceID, err := util.MapProviderIDToInstanceID(providerID)
+	if err != nil {
+		return false, err
+	}
 	instance, err := cp.client.Compute().GetInstance(ctx, instanceID)
 	if client.IsNotFound(err) {
 		return false, nil
