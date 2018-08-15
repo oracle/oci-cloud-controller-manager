@@ -20,10 +20,10 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/golang/glog"
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/core"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 
 	api "k8s.io/api/core/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -80,17 +80,20 @@ type baseSecurityListManager struct {
 	client        client.Interface
 	serviceLister listersv1.ServiceLister
 	securityLists map[string]string
+
+	logger *zap.SugaredLogger
 }
 
 type securityListManagerFactory func(mode string) securityListManager
 
-func newSecurityListManager(client client.Interface, serviceInformer informersv1.ServiceInformer, securityLists map[string]string, mode string) securityListManager {
+func newSecurityListManager(logger *zap.SugaredLogger, client client.Interface, serviceInformer informersv1.ServiceInformer, securityLists map[string]string, mode string) securityListManager {
 	if securityLists == nil {
 		securityLists = make(map[string]string)
 	}
 	baseMgr := baseSecurityListManager{
 		client:        client,
 		securityLists: securityLists,
+		logger:        logger,
 	}
 
 	if mode != ManagementModeNone {
@@ -99,13 +102,13 @@ func newSecurityListManager(client client.Interface, serviceInformer informersv1
 
 	switch mode {
 	case ManagementModeFrontend:
-		glog.Infof("Security list management mode: %q. Managing frontend security lists only.", ManagementModeFrontend)
+		logger.Infof("Security list management mode: %q. Managing frontend security lists only.", ManagementModeFrontend)
 		return &frontendSecurityListManager{baseSecurityListManager: baseMgr}
 	case ManagementModeNone:
-		glog.Infof("Security list management mode: %q. Not managing security lists.", ManagementModeNone)
+		logger.Infof("Security list management mode: %q. Not managing security lists.", ManagementModeNone)
 		return &securityListManagerNOOP{}
 	default:
-		glog.Infof("Security list management mode: %q. Managing all security lists.", ManagementModeAll)
+		logger.Infof("Security list management mode: %q. Managing all security lists.", ManagementModeAll)
 		return &defaultSecurityListManager{baseSecurityListManager: baseMgr}
 	}
 }
@@ -118,14 +121,16 @@ func (s *baseSecurityListManager) updateBackendRules(ctx context.Context, lbSubn
 			return errors.Wrapf(err, "get security list for subnet %q", *subnet.Id)
 		}
 
-		ingressRules := getNodeIngressRules(secList.IngressSecurityRules, lbSubnets, actualPorts, desiredPorts, s.serviceLister)
+		logger := s.logger.With("securityListID", *secList.Id)
+
+		ingressRules := getNodeIngressRules(logger, secList.IngressSecurityRules, lbSubnets, actualPorts, desiredPorts, s.serviceLister)
 
 		if !securityListRulesChanged(secList, ingressRules, secList.EgressSecurityRules) {
-			glog.V(4).Infof("No changes for node subnet security list %q", *secList.Id)
+			logger.Debug("No changes for node subnet security list")
 			continue
 		}
 
-		glog.V(4).Infof("Node subnet security list %q changed", *secList.Id)
+		logger.Info("Node subnet security list changed")
 
 		err = s.updateSecurityListRules(ctx, *secList.Id, etag, ingressRules, secList.EgressSecurityRules)
 		if err != nil {
@@ -140,29 +145,31 @@ func (s *baseSecurityListManager) updateBackendRules(ctx context.Context, lbSubn
 // If the listener is nil, then only egress rules from the load balancer to the backend subnets will be checked.
 func (s *baseSecurityListManager) updateLoadBalancerRules(ctx context.Context, lbSubnets []*core.Subnet, nodeSubnets []*core.Subnet, sourceCIDRs []string, ports portSpec) error {
 	for _, lbSubnet := range lbSubnets {
-		lbSecurityList, etag, err := s.getSecurityList(ctx, lbSubnet)
+		secList, etag, err := s.getSecurityList(ctx, lbSubnet)
 		if err != nil {
 			return errors.Wrapf(err, "get lb security list for subnet %q", *lbSubnet.Id)
 		}
 
-		lbEgressRules := getLoadBalancerEgressRules(lbSecurityList.EgressSecurityRules, nodeSubnets, ports.BackendPort, s.serviceLister)
-		lbEgressRules = getLoadBalancerEgressRules(lbEgressRules, nodeSubnets, ports.HealthCheckerPort, s.serviceLister)
+		logger := s.logger.With("securityListID", *secList.Id)
 
-		lbIngressRules := lbSecurityList.IngressSecurityRules
+		lbEgressRules := getLoadBalancerEgressRules(logger, secList.EgressSecurityRules, nodeSubnets, ports.BackendPort, s.serviceLister)
+		lbEgressRules = getLoadBalancerEgressRules(logger, lbEgressRules, nodeSubnets, ports.HealthCheckerPort, s.serviceLister)
+
+		lbIngressRules := secList.IngressSecurityRules
 		if ports.ListenerPort != 0 {
-			lbIngressRules = getLoadBalancerIngressRules(lbIngressRules, sourceCIDRs, ports.ListenerPort, s.serviceLister)
+			lbIngressRules = getLoadBalancerIngressRules(logger, lbIngressRules, sourceCIDRs, ports.ListenerPort, s.serviceLister)
 		}
 
-		if !securityListRulesChanged(lbSecurityList, lbIngressRules, lbEgressRules) {
-			glog.V(4).Infof("No changes for load balancer subnet security list %q", *lbSecurityList.Id)
+		if !securityListRulesChanged(secList, lbIngressRules, lbEgressRules) {
+			logger.Debug("No changes for load balancer subnet security list")
 			continue
 		}
 
-		glog.V(4).Infof("Load balancer subnet security list %q changed", *lbSecurityList.Id)
+		logger.Info("Load balancer subnet security list changed")
 
-		err = s.updateSecurityListRules(ctx, *lbSecurityList.Id, etag, lbIngressRules, lbEgressRules)
+		err = s.updateSecurityListRules(ctx, *secList.Id, etag, lbIngressRules, lbEgressRules)
 		if err != nil {
-			return errors.Wrapf(err, "update lb security list rules %q for subnet %q", *lbSecurityList.Id, *lbSubnet.Id)
+			return errors.Wrapf(err, "update lb security list rules %q for subnet %q", *secList.Id, *lbSubnet.Id)
 		}
 	}
 
@@ -337,7 +344,14 @@ func portRangeMatchesSpec(r core.PortRange, ports *portSpec) bool {
 		(*r.Min == ports.HealthCheckerPort && *r.Max == ports.HealthCheckerPort)
 }
 
-func getNodeIngressRules(rules []core.IngressSecurityRule, lbSubnets []*core.Subnet, actualPorts *portSpec, desiredPorts portSpec, serviceLister listersv1.ServiceLister) []core.IngressSecurityRule {
+func getNodeIngressRules(
+	logger *zap.SugaredLogger,
+	rules []core.IngressSecurityRule,
+	lbSubnets []*core.Subnet,
+	actualPorts *portSpec,
+	desiredPorts portSpec,
+	serviceLister listersv1.ServiceLister,
+) []core.IngressSecurityRule {
 	desiredBackend := sets.NewString()
 	desiredHealthChecker := sets.NewString()
 	for _, lbSubnet := range lbSubnets {
@@ -379,21 +393,25 @@ func getNodeIngressRules(rules []core.IngressSecurityRule, lbSubnets []*core.Sub
 		if err != nil {
 			// Unable to determine if this port is in use by another service, so I guess
 			// we better err on the safe side and keep the rule.
-			glog.Errorf("failed to determine if port: %d is still in use: %v", desiredPorts.HealthCheckerPort, err)
+			logger.Errorf("failed to determine if port: %d is still in use: %v", desiredPorts.HealthCheckerPort, err)
 			ingressRules = append(ingressRules, rule)
 			continue
 		}
 		if inUse {
 			// This rule is no longer needed for this service, but is still used
 			// by another service, so we must still keep it.
-			glog.V(4).Infof("Port %d still in use by another service.", desiredPorts.HealthCheckerPort)
+			logger.Infof("Port %d still in use by another service.", desiredPorts.HealthCheckerPort)
 			ingressRules = append(ingressRules, rule)
 			continue
 		}
 
 		// else the actual cidr no longer exists so we don't need to do
 		// anything but ignore / delete it.
-		glog.V(4).Infof("Deleting node ingres security rule %q %d-%d", *rule.Source, *rule.TcpOptions.DestinationPortRange.Min, *rule.TcpOptions.DestinationPortRange.Max)
+		logger.With(
+			"source", *rule.Source,
+			"destinationPortRangeMin", *rule.TcpOptions.DestinationPortRange.Min,
+			"destinationPortRangeMax", *rule.TcpOptions.DestinationPortRange.Max,
+		).Debug("Deleting node ingres security rule")
 	}
 
 	if desiredBackend.Len() == 0 && desiredHealthChecker.Len() == 0 {
@@ -406,14 +424,22 @@ func getNodeIngressRules(rules []core.IngressSecurityRule, lbSubnets []*core.Sub
 	if desiredPorts.BackendPort != 0 { // Can happen when there are no backends.
 		for _, cidr := range desiredBackend.List() {
 			rule := makeIngressSecurityRule(cidr, desiredPorts.BackendPort)
-			glog.V(4).Infof("Adding node port ingress security rule %q %d-%d", *rule.Source, *rule.TcpOptions.DestinationPortRange.Min, *rule.TcpOptions.DestinationPortRange.Max)
+			logger.With(
+				"source", *rule.Source,
+				"destinationPortRangeMin", *rule.TcpOptions.DestinationPortRange.Min,
+				"destinationPortRangeMax", *rule.TcpOptions.DestinationPortRange.Max,
+			).Debug("Adding node port ingress security rule")
 			ingressRules = append(ingressRules, rule)
 		}
 	}
 	if desiredPorts.HealthCheckerPort != 0 {
 		for _, cidr := range desiredHealthChecker.List() {
 			rule := makeIngressSecurityRule(cidr, desiredPorts.HealthCheckerPort)
-			glog.V(4).Infof("Adding health checker ingress security rule %q %d-%d", *rule.Source, *rule.TcpOptions.DestinationPortRange.Min, *rule.TcpOptions.DestinationPortRange.Max)
+			logger.With(
+				"source", *rule.Source,
+				"destinationPortRangeMin", *rule.TcpOptions.DestinationPortRange.Min,
+				"destinationPortRangeMax", *rule.TcpOptions.DestinationPortRange.Max,
+			).Debug("Adding node port ingress security rule")
 			ingressRules = append(ingressRules, rule)
 		}
 	}
@@ -421,7 +447,12 @@ func getNodeIngressRules(rules []core.IngressSecurityRule, lbSubnets []*core.Sub
 	return ingressRules
 }
 
-func getLoadBalancerIngressRules(rules []core.IngressSecurityRule, sourceCIDRs []string, port int, serviceLister listersv1.ServiceLister) []core.IngressSecurityRule {
+func getLoadBalancerIngressRules(
+	logger *zap.SugaredLogger,
+	rules []core.IngressSecurityRule,
+	sourceCIDRs []string, port int,
+	serviceLister listersv1.ServiceLister,
+) []core.IngressSecurityRule {
 	desired := sets.NewString(sourceCIDRs...)
 
 	ingressRules := []core.IngressSecurityRule{}
@@ -444,7 +475,7 @@ func getLoadBalancerIngressRules(rules []core.IngressSecurityRule, sourceCIDRs [
 		if err != nil {
 			// Unable to determine if this port is in use by another service, so I guess
 			// we better err on the safe side and keep the rule.
-			glog.Errorf("failed to determine if port: %d is still in use: %v", port, err)
+			logger.With(zap.Error(err), "port", port).Error("Failed to determine if port still in use")
 			ingressRules = append(ingressRules, rule)
 			continue
 		}
@@ -452,14 +483,18 @@ func getLoadBalancerIngressRules(rules []core.IngressSecurityRule, sourceCIDRs [
 		if inUse {
 			// This rule is no longer needed for this service, but is still used
 			// by another service, so we must still keep it.
-			glog.V(4).Infof("Port %d still in use by another service.", port)
+			logger.With("port", port).Debug("Port still in use by another service.")
 			ingressRules = append(ingressRules, rule)
 			continue
 		}
 
 		// else the actual cidr no longer exists so we don't need to do
 		// anything but ignore / delete it.
-		glog.V(4).Infof("Deleting load balancer ingres security rule %q %d-%d", *rule.Source, *rule.TcpOptions.DestinationPortRange.Min, *rule.TcpOptions.DestinationPortRange.Max)
+		logger.With(
+			"source", *rule.Source,
+			"destinationPortRangeMin", *rule.TcpOptions.DestinationPortRange.Min,
+			"destinationPortRangeMax", *rule.TcpOptions.DestinationPortRange.Max,
+		).Debug("Deleting load balancer ingres security rule")
 	}
 
 	if desired.Len() == 0 {
@@ -471,14 +506,24 @@ func getLoadBalancerIngressRules(rules []core.IngressSecurityRule, sourceCIDRs [
 	// so we need to create one for each.
 	for _, cidr := range desired.List() {
 		rule := makeIngressSecurityRule(cidr, port)
-		glog.V(4).Infof("Adding load balancer ingress security rule %q %d-%d", *rule.Source, *rule.TcpOptions.DestinationPortRange.Min, *rule.TcpOptions.DestinationPortRange.Max)
+		logger.With(
+			"source", *rule.Source,
+			"destinationPortRangeMin", *rule.TcpOptions.DestinationPortRange.Min,
+			"destinationPortRangeMax", *rule.TcpOptions.DestinationPortRange.Max,
+		).Debug("Adding load balancer ingress security rule")
 		ingressRules = append(ingressRules, rule)
 	}
 
 	return ingressRules
 }
 
-func getLoadBalancerEgressRules(rules []core.EgressSecurityRule, nodeSubnets []*core.Subnet, port int, serviceLister listersv1.ServiceLister) []core.EgressSecurityRule {
+func getLoadBalancerEgressRules(
+	logger *zap.SugaredLogger,
+	rules []core.EgressSecurityRule,
+	nodeSubnets []*core.Subnet,
+	port int,
+	serviceLister listersv1.ServiceLister,
+) []core.EgressSecurityRule {
 	nodeCIDRs := sets.NewString()
 	for _, subnet := range nodeSubnets {
 		nodeCIDRs.Insert(*subnet.CidrBlock)
@@ -504,7 +549,7 @@ func getLoadBalancerEgressRules(rules []core.EgressSecurityRule, nodeSubnets []*
 		if err != nil {
 			// Unable to determine if this port is in use by another service, so I guess
 			// we better err on the safe side and keep the rule.
-			glog.Errorf("failed to determine if port: %d is still in use: %v", port, err)
+			logger.With(zap.Error(err), "port", port).Error("Failed to determine if port is still in use")
 			egressRules = append(egressRules, rule)
 			continue
 		}
@@ -512,14 +557,18 @@ func getLoadBalancerEgressRules(rules []core.EgressSecurityRule, nodeSubnets []*
 		if inUse {
 			// This rule is no longer needed for this service, but is still used
 			// by another service, so we must still keep it.
-			glog.V(4).Infof("Port %d still in use by another service.", port)
+			logger.With("port", port).Debug("Port still in use by another service.")
 			egressRules = append(egressRules, rule)
 			continue
 		}
 
 		// else the actual cidr no longer exists so we don't need to do
 		// anything but ignore / delete it.
-		glog.V(4).Infof("Deleting load balancer egress security rule %q %d-%d", *rule.Destination, *rule.TcpOptions.DestinationPortRange.Min, *rule.TcpOptions.DestinationPortRange.Max)
+		logger.With(
+			"destination", *rule.Destination,
+			"destinationPortRangeMin", *rule.TcpOptions.DestinationPortRange.Min,
+			"destinationPortRangeMax", *rule.TcpOptions.DestinationPortRange.Max,
+		).Debug("Deleting load balancer egress security rule")
 	}
 
 	if nodeCIDRs.Len() == 0 {
@@ -531,7 +580,11 @@ func getLoadBalancerEgressRules(rules []core.EgressSecurityRule, nodeSubnets []*
 	// so we need to create one for each.
 	for _, desired := range nodeCIDRs.List() {
 		rule := makeEgressSecurityRule(desired, port)
-		glog.V(4).Infof("Adding load balancer egress security rule %q %d-%d", *rule.Destination, *rule.TcpOptions.DestinationPortRange.Min, *rule.TcpOptions.DestinationPortRange.Max)
+		logger.With(
+			"destination", *rule.Destination,
+			"destinationPortRangeMin", *rule.TcpOptions.DestinationPortRange.Min,
+			"destinationPortRangeMax", *rule.TcpOptions.DestinationPortRange.Max,
+		).Debug("Deleting load balancer egress security rule")
 		egressRules = append(egressRules, rule)
 	}
 

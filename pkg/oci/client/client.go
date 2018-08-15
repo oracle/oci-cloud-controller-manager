@@ -24,9 +24,9 @@ import (
 	"os"
 	"time"
 
+	"go.uber.org/zap"
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/golang/glog"
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/core"
 	"github.com/oracle/oci-go-sdk/loadbalancer"
@@ -46,16 +46,18 @@ type client struct {
 	loadbalancer *loadbalancer.LoadBalancerClient
 
 	subnetCache cache.Store
+	logger      *zap.SugaredLogger
 }
 
 // New constructs an OCI API client.
-func New(cp common.ConfigurationProvider) (Interface, error) {
+func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider) (Interface, error) {
+	logger = logger.Named("ociClient")
 	compute, err := core.NewComputeClientWithConfigurationProvider(cp)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewComputeClientWithConfigurationProvider")
 	}
 
-	err = configureCustomTransport(&compute.BaseClient)
+	err = configureCustomTransport(logger, &compute.BaseClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "configuring load balancer client custom transport")
 	}
@@ -65,7 +67,7 @@ func New(cp common.ConfigurationProvider) (Interface, error) {
 		return nil, errors.Wrap(err, "NewVirtualNetworkClientWithConfigurationProvider")
 	}
 
-	err = configureCustomTransport(&network.BaseClient)
+	err = configureCustomTransport(logger, &network.BaseClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "configuring load balancer client custom transport")
 	}
@@ -75,7 +77,7 @@ func New(cp common.ConfigurationProvider) (Interface, error) {
 		return nil, errors.Wrap(err, "NewLoadBalancerClientWithConfigurationProvider")
 	}
 
-	err = configureCustomTransport(&lb.BaseClient)
+	err = configureCustomTransport(logger, &lb.BaseClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "configuring load balancer client custom transport")
 	}
@@ -86,6 +88,7 @@ func New(cp common.ConfigurationProvider) (Interface, error) {
 		loadbalancer: &lb,
 
 		subnetCache: cache.NewTTLStore(subnetCacheKeyFn, time.Duration(24)*time.Hour),
+		logger:      logger,
 	}
 
 	return c, nil
@@ -103,7 +106,7 @@ func (c *client) Compute() ComputeInterface {
 	return c
 }
 
-func configureCustomTransport(baseClient *common.BaseClient) error {
+func configureCustomTransport(logger *zap.SugaredLogger, baseClient *common.BaseClient) error {
 	httpClient := baseClient.HTTPClient.(*http.Client)
 
 	var transport *http.Transport
@@ -136,7 +139,7 @@ func configureCustomTransport(baseClient *common.BaseClient) error {
 
 	trustedCACertPath := os.Getenv("TRUSTED_CA_CERT_PATH")
 	if trustedCACertPath != "" {
-		glog.Infof("configuring OCI client with a new trusted ca: %s", trustedCACertPath)
+		logger.With("path", trustedCACertPath).Infof("Configuring OCI client with a new trusted ca")
 		trustedCACert, err := ioutil.ReadFile(trustedCACertPath)
 		if err != nil {
 			return errors.Wrapf(err, "failed to read root certificate: %s", trustedCACertPath)

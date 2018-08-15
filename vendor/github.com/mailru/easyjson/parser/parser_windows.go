@@ -9,8 +9,7 @@ import (
 )
 
 func normalizePath(path string) string {
-	// use lower case, as Windows file systems will almost always be case insensitive 
-	return strings.ToLower(strings.Replace(path, "\\", "/", -1))
+	return strings.Replace(path, "\\", "/", -1)
 }
 
 func getPkgPath(fname string, isDir bool) (string, error) {
@@ -25,7 +24,16 @@ func getPkgPath(fname string, isDir bool) (string, error) {
 
 	fname = normalizePath(fname)
 
-	for _, p := range strings.Split(os.Getenv("GOPATH"), ";") {
+	gopath := os.Getenv("GOPATH")
+	if gopath == "" {
+		var err error
+		gopath, err = getDefaultGoPath()
+		if err != nil {
+			return "", fmt.Errorf("cannot determine GOPATH: %s", err)
+		}
+	}
+
+	for _, p := range strings.Split(gopath, ";") {
 		prefix := path.Join(normalizePath(p), "src") + "/"
 		if rel := strings.TrimPrefix(fname, prefix); rel != fname {
 			if !isDir {

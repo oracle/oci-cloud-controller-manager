@@ -23,10 +23,10 @@ import (
 
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/common/auth"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	wait "k8s.io/apimachinery/pkg/util/wait"
@@ -60,6 +60,8 @@ type CloudProvider struct {
 
 	securityListManagerFactory securityListManagerFactory
 	config                     *Config
+
+	logger *zap.SugaredLogger
 }
 
 // Compile time check that CloudProvider implements the cloudprovider.Interface
@@ -68,17 +70,21 @@ var _ cloudprovider.Interface = &CloudProvider{}
 
 // NewCloudProvider creates a new oci.CloudProvider.
 func NewCloudProvider(config *Config) (cloudprovider.Interface, error) {
-	cp, err := buildConfigurationProvider(config)
+	// The global logger has been replaced with the logger we constructed in
+	// main.go so capture it here and then pass it into all components.
+	logger := zap.L()
+
+	cp, err := buildConfigurationProvider(logger, config)
 	if err != nil {
 		return nil, err
 	}
-	c, err := client.New(cp)
+	c, err := client.New(logger.Sugar(), cp)
 	if err != nil {
 		return nil, err
 	}
 
 	if config.CompartmentID == "" {
-		glog.Info("Compartment not supplied in config: attempting to infer from instance metadata")
+		logger.Info("Compartment not supplied in config: attempting to infer from instance metadata")
 		metadata, err := instancemeta.New().Get()
 		if err != nil {
 			return nil, err
@@ -87,7 +93,7 @@ func NewCloudProvider(config *Config) (cloudprovider.Interface, error) {
 	}
 
 	if !config.LoadBalancer.Disabled && config.VCNID == "" {
-		glog.Infof("No vcn provided in cloud provider config. Falling back to looking up VCN via LB subnet.")
+		logger.Info("No VCN provided in cloud provider config. Falling back to looking up VCN via LB subnet.")
 		subnet, err := c.Networking().GetSubnet(context.Background(), config.LoadBalancer.Subnet1)
 		if err != nil {
 			return nil, errors.Wrap(err, "get subnet for loadBalancer.subnet1")
@@ -98,6 +104,7 @@ func NewCloudProvider(config *Config) (cloudprovider.Interface, error) {
 	return &CloudProvider{
 		client: c,
 		config: config,
+		logger: logger.Sugar(),
 	}, nil
 }
 
@@ -132,7 +139,7 @@ func (cp *CloudProvider) Initialize(clientBuilder controller.ControllerClientBui
 	serviceInformer := factory.Core().V1().Services()
 	go serviceInformer.Informer().Run(wait.NeverStop)
 
-	glog.Info("Waiting for node informer cache to sync")
+	cp.logger.Info("Waiting for node informer cache to sync")
 	if !cache.WaitForCacheSync(wait.NeverStop, nodeInformer.Informer().HasSynced, serviceInformer.Informer().HasSynced) {
 		utilruntime.HandleError(fmt.Errorf("Timed out waiting for informers to sync"))
 	}
@@ -145,7 +152,7 @@ func (cp *CloudProvider) Initialize(clientBuilder controller.ControllerClientBui
 		if len(mode) == 0 {
 			mode = cp.config.LoadBalancer.SecurityListManagementMode
 		}
-		return newSecurityListManager(cp.client, serviceInformer, cp.config.LoadBalancer.SecurityLists, mode)
+		return newSecurityListManager(cp.logger, cp.client, serviceInformer, cp.config.LoadBalancer.SecurityLists, mode)
 	}
 }
 
@@ -157,21 +164,21 @@ func (cp *CloudProvider) ProviderName() string {
 // LoadBalancer returns a balancer interface. Also returns true if the interface
 // is supported, false otherwise.
 func (cp *CloudProvider) LoadBalancer() (cloudprovider.LoadBalancer, bool) {
-	glog.V(6).Info("Claiming to support Load Balancers")
+	cp.logger.Debug("Claiming to support load balancers")
 	return cp, !cp.config.LoadBalancer.Disabled
 }
 
 // Instances returns an instances interface. Also returns true if the interface
 // is supported, false otherwise.
 func (cp *CloudProvider) Instances() (cloudprovider.Instances, bool) {
-	glog.V(6).Info("Claiming to support instances")
+	cp.logger.Debug("Claiming to support instances")
 	return cp, true
 }
 
 // Zones returns a zones interface. Also returns true if the interface is
 // supported, false otherwise.
 func (cp *CloudProvider) Zones() (cloudprovider.Zones, bool) {
-	glog.V(6).Info("Claiming to support Zones")
+	cp.logger.Debug("Claiming to support zones")
 	return cp, true
 }
 
@@ -198,16 +205,16 @@ func (cp *CloudProvider) HasClusterID() bool {
 	return true
 }
 
-func buildConfigurationProvider(config *Config) (common.ConfigurationProvider, error) {
+func buildConfigurationProvider(logger *zap.Logger, config *Config) (common.ConfigurationProvider, error) {
 	if config.Auth.UseInstancePrincipals {
-		glog.V(2).Info("Using instance principals configuration provider")
+		logger.Info("Using instance principals configuration provider")
 		cp, err := auth.InstancePrincipalConfigurationProvider()
 		if err != nil {
 			return nil, errors.Wrap(err, "InstancePrincipalConfigurationProvider")
 		}
 		return cp, nil
 	}
-	glog.V(2).Info("Using raw configuration provider")
+	logger.Info("Using raw configuration provider")
 	cp := common.NewRawConfigurationProvider(
 		config.Auth.TenancyID,
 		config.Auth.UserID,

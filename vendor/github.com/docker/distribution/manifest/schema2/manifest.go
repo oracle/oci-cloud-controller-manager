@@ -79,7 +79,7 @@ func (m Manifest) References() []distribution.Descriptor {
 	return references
 }
 
-// Target returns the target of this signed manifest.
+// Target returns the target of this manifest.
 func (m Manifest) Target() distribution.Descriptor {
 	return m.Config
 }
@@ -114,6 +114,12 @@ func (m *DeserializedManifest) UnmarshalJSON(b []byte) error {
 	var manifest Manifest
 	if err := json.Unmarshal(m.canonical, &manifest); err != nil {
 		return err
+	}
+
+	if manifest.MediaType != MediaTypeManifest {
+		return fmt.Errorf("mediaType in manifest should be '%s' not '%s'",
+			MediaTypeManifest, manifest.MediaType)
+
 	}
 
 	m.Manifest = manifest

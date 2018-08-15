@@ -40,7 +40,7 @@ import (
 )
 
 const (
-	upgradeManifestTimeout = 1 * time.Minute
+	upgradeManifestTimeout = 5 * time.Minute
 )
 
 // applyFlags holds the information about the flags that can be passed to apply
@@ -268,7 +268,8 @@ func PerformStaticPodUpgrade(client clientset.Interface, waiter apiclient.Waiter
 		return err
 	}
 
-	return upgrade.StaticPodControlPlane(waiter, pathManager, internalcfg, etcdUpgrade)
+	// The arguments, oldEtcdClient and newEtdClient, are uninitialized because passing in the clients allow for mocking the client during testing
+	return upgrade.StaticPodControlPlane(waiter, pathManager, internalcfg, etcdUpgrade, nil, nil)
 }
 
 // DryRunStaticPodUpgrade fakes an upgrade of the control plane

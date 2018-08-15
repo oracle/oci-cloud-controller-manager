@@ -661,8 +661,11 @@ func DeleteResourceAndPods(clientset clientset.Interface, internalClientset inte
 // podStoreForSelector creates a PodStore that monitors pods from given namespace matching given selector.
 // It waits until the reflector does a List() before returning.
 func podStoreForSelector(c clientset.Interface, ns string, selector labels.Selector) (*testutil.PodStore, error) {
-	ps := testutil.NewPodStore(c, ns, selector, fields.Everything())
-	err := wait.Poll(100*time.Millisecond, 2*time.Minute, func() (bool, error) {
+	ps, err := testutil.NewPodStore(c, ns, selector, fields.Everything())
+	if err != nil {
+		return nil, err
+	}
+	err = wait.Poll(100*time.Millisecond, 2*time.Minute, func() (bool, error) {
 		if len(ps.Reflector.LastSyncResourceVersion()) != 0 {
 			return true, nil
 		}

@@ -209,7 +209,7 @@ release:
   box:
     id: oraclelinux:7-slim
   steps:
-  
+
     - script:
         name: set ENV vars
         code: |

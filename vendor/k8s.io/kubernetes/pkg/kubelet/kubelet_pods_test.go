@@ -51,56 +51,11 @@ import (
 	volumetest "k8s.io/kubernetes/pkg/volume/testing"
 )
 
-func TestMakeAbsolutePath(t *testing.T) {
-	tests := []struct {
-		goos         string
-		path         string
-		expectedPath string
-		name         string
-	}{
-		{
-			goos:         "linux",
-			path:         "non-absolute/path",
-			expectedPath: "/non-absolute/path",
-			name:         "basic linux",
-		},
-		{
-			goos:         "windows",
-			path:         "some\\path",
-			expectedPath: "c:\\some\\path",
-			name:         "basic windows",
-		},
-		{
-			goos:         "windows",
-			path:         "/some/path",
-			expectedPath: "c:/some/path",
-			name:         "linux path on windows",
-		},
-		{
-			goos:         "windows",
-			path:         "\\some\\path",
-			expectedPath: "c:\\some\\path",
-			name:         "windows path no drive",
-		},
-		{
-			goos:         "windows",
-			path:         "\\:\\some\\path",
-			expectedPath: "\\:\\some\\path",
-			name:         "windows path with colon",
-		},
-	}
-	for _, test := range tests {
-		path := makeAbsolutePath(test.goos, test.path)
-		if path != test.expectedPath {
-			t.Errorf("[%s] Expected %s saw %s", test.name, test.expectedPath, path)
-		}
-	}
-}
-
 func TestMakeMounts(t *testing.T) {
 	bTrue := true
 	propagationHostToContainer := v1.MountPropagationHostToContainer
 	propagationBidirectional := v1.MountPropagationBidirectional
+	propagationNone := v1.MountPropagationNone
 
 	testCases := map[string]struct {
 		container      v1.Container
@@ -125,9 +80,10 @@ func TestMakeMounts(t *testing.T) {
 						MountPropagation: &propagationHostToContainer,
 					},
 					{
-						MountPath: "/mnt/path3",
-						Name:      "disk",
-						ReadOnly:  true,
+						MountPath:        "/mnt/path3",
+						Name:             "disk",
+						ReadOnly:         true,
+						MountPropagation: &propagationNone,
 					},
 					{
 						MountPath: "/mnt/path4",
@@ -156,7 +112,7 @@ func TestMakeMounts(t *testing.T) {
 					HostPath:       "/mnt/disk",
 					ReadOnly:       true,
 					SELinuxRelabel: false,
-					Propagation:    runtimeapi.MountPropagation_PROPAGATION_HOST_TO_CONTAINER,
+					Propagation:    runtimeapi.MountPropagation_PROPAGATION_PRIVATE,
 				},
 				{
 					Name:           "disk4",
@@ -164,7 +120,7 @@ func TestMakeMounts(t *testing.T) {
 					HostPath:       "/mnt/host",
 					ReadOnly:       false,
 					SELinuxRelabel: false,
-					Propagation:    runtimeapi.MountPropagation_PROPAGATION_HOST_TO_CONTAINER,
+					Propagation:    runtimeapi.MountPropagation_PROPAGATION_PRIVATE,
 				},
 				{
 					Name:           "disk5",
@@ -172,7 +128,7 @@ func TestMakeMounts(t *testing.T) {
 					HostPath:       "/var/lib/kubelet/podID/volumes/empty/disk5",
 					ReadOnly:       false,
 					SELinuxRelabel: false,
-					Propagation:    runtimeapi.MountPropagation_PROPAGATION_HOST_TO_CONTAINER,
+					Propagation:    runtimeapi.MountPropagation_PROPAGATION_PRIVATE,
 				},
 			},
 			expectErr: false,
@@ -231,7 +187,7 @@ func TestMakeMounts(t *testing.T) {
 					HostPath:       "/mnt/host",
 					ReadOnly:       false,
 					SELinuxRelabel: false,
-					Propagation:    runtimeapi.MountPropagation_PROPAGATION_HOST_TO_CONTAINER,
+					Propagation:    runtimeapi.MountPropagation_PROPAGATION_PRIVATE,
 				},
 			},
 			expectErr: false,
@@ -563,7 +519,8 @@ fe00::1	ip6-allnodes
 fe00::2	ip6-allrouters
 123.45.67.89	some.domain
 `,
-			`# hosts file for testing.
+			`# Kubernetes-managed hosts file (host network).
+# hosts file for testing.
 127.0.0.1	localhost
 ::1	localhost ip6-localhost ip6-loopback
 fe00::0	ip6-localnet
@@ -585,7 +542,8 @@ fe00::1	ip6-allnodes
 fe00::2	ip6-allrouters
 12.34.56.78	another.domain
 `,
-			`# another hosts file for testing.
+			`# Kubernetes-managed hosts file (host network).
+# another hosts file for testing.
 127.0.0.1	localhost
 ::1	localhost ip6-localhost ip6-loopback
 fe00::0	ip6-localnet
@@ -609,7 +567,8 @@ fe00::1	ip6-allnodes
 fe00::2	ip6-allrouters
 123.45.67.89	some.domain
 `,
-			`# hosts file for testing.
+			`# Kubernetes-managed hosts file (host network).
+# hosts file for testing.
 127.0.0.1	localhost
 ::1	localhost ip6-localhost ip6-loopback
 fe00::0	ip6-localnet
@@ -639,7 +598,8 @@ fe00::1	ip6-allnodes
 fe00::2	ip6-allrouters
 12.34.56.78	another.domain
 `,
-			`# another hosts file for testing.
+			`# Kubernetes-managed hosts file (host network).
+# another hosts file for testing.
 127.0.0.1	localhost
 ::1	localhost ip6-localhost ip6-loopback
 fe00::0	ip6-localnet

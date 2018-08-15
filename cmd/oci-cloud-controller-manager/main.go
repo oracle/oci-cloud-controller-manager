@@ -21,8 +21,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/spf13/pflag"
+	"go.uber.org/zap"
 
 	utilflag "k8s.io/apiserver/pkg/util/flag"
 	"k8s.io/apiserver/pkg/util/logs"
@@ -30,6 +30,7 @@ import (
 	_ "k8s.io/kubernetes/pkg/client/metrics/prometheus" // for client metric registration
 	_ "k8s.io/kubernetes/pkg/version/prometheus"        // for version metric registration
 
+	"github.com/oracle/oci-cloud-controller-manager/pkg/logging"
 	_ "github.com/oracle/oci-cloud-controller-manager/pkg/oci"
 )
 
@@ -39,6 +40,10 @@ var build string
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 
+	logger := logging.Logger()
+	defer logger.Sync()
+	zap.ReplaceGlobals(logger)
+
 	command := app.NewCloudControllerManagerCommand()
 
 	// TODO: once we switch everything over to Cobra commands, we can go back to calling
@@ -47,10 +52,11 @@ func main() {
 	pflag.CommandLine.SetNormalizeFunc(utilflag.WordSepNormalizeFunc)
 	pflag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 	goflag.CommandLine.Parse([]string{})
+
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	glog.V(1).Infof("oci-cloud-controller-manager version: %s (%s)", version, build)
+	logger.Sugar().With("version", version, "build", build).Info("oci-cloud-controller-manager")
 
 	if err := command.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
