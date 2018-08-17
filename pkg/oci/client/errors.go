@@ -49,3 +49,12 @@ func IsRetryable(err error) bool {
 	serviceErr, ok := common.IsServiceError(err)
 	return ok && serviceErr.GetHTTPStatusCode() == http.StatusTooManyRequests
 }
+
+// RateLimitError produces an Errorf for rate limiting.
+func RateLimitError(isWrite bool, opName string) error {
+	opType := "read"
+	if isWrite {
+		opType = "write"
+	}
+	return errors.Errorf("rate limited(%s) for operation: %s", opType, opName)
+}

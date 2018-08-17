@@ -67,11 +67,20 @@ type LoadBalancerConfig struct {
 	SecurityLists map[string]string `yaml:"securityLists"`
 }
 
+// RateLimiterConfig holds the configuration options for OCI rate limiting.
+type RateLimiterConfig struct {
+	RateLimitQPSRead     float32 `yaml:"rateLimitQPSRead"`
+	RateLimitBucketRead  int     `yaml:"rateLimitBucketRead"` //Read?
+	RateLimitQPSWrite    float32 `yaml:"rateLimitQPSWrite"`
+	RateLimitBucketWrite int     `yaml:"rateLimitBucketWrite"`
+}
+
 // Config holds the OCI cloud-provider config passed to Kubernetes compontents
 // via the --cloud-config option.
 type Config struct {
 	Auth         AuthConfig         `yaml:"auth"`
 	LoadBalancer LoadBalancerConfig `yaml:"loadBalancer"`
+	RateLimiter  *RateLimiterConfig `yaml:"rateLimiter"`
 
 	// CompartmentID is the OCID of the Compartment within which the cluster
 	// resides.
