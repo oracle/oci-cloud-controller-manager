@@ -30,20 +30,32 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/util"
 )
 
+// certificateData is a structure containing the data about a K8S secret required
+// to store SSL information required for BackendSets and Listeners
+type certificateData struct {
+	CACert     string
+	PublicCert string
+	PrivateKey string
+	Passphrase string
+}
+
 type sslSecretReader interface {
-	readSSLSecret(svc *v1.Service) (cert, key string, err error)
+	readSSLSecret(secretType string, svc *v1.Service) (sslSecret *certificateData, err error)
 }
 
 type noopSSLSecretReader struct{}
 
-func (ssr noopSSLSecretReader) readSSLSecret(svc *v1.Service) (cert, key string, err error) {
-	return "", "", nil
+func (ssr noopSSLSecretReader) readSSLSecret(secretType string, svc *v1.Service) (sslSecret *certificateData, err error) {
+	return &certificateData{}, nil
 }
 
 // SSLConfig is a description of a SSL certificate.
 type SSLConfig struct {
-	Name  string
-	Ports sets.Int
+	Name                string
+	Type                string
+	Ports               sets.Int
+	ListenerSSLSecret   *certificateData
+	BackendSetSSLSecret *certificateData
 
 	sslSecretReader
 }
@@ -54,12 +66,13 @@ func requiresCertificate(svc *v1.Service) bool {
 }
 
 // NewSSLConfig constructs a new SSLConfig.
-func NewSSLConfig(name string, ports []int, ssr sslSecretReader) *SSLConfig {
+func NewSSLConfig(name string, sslType string, ports []int, ssr sslSecretReader) *SSLConfig {
 	if ssr == nil {
 		ssr = noopSSLSecretReader{}
 	}
 	return &SSLConfig{
 		Name:            name,
+		Type:            sslType,
 		Ports:           sets.NewInt(ports...),
 		sslSecretReader: ssr,
 	}
@@ -77,7 +90,8 @@ type LBSpec struct {
 
 	Ports               map[string]portSpec
 	SourceCIDRs         []string
-	SSLConfig           *SSLConfig
+	ListenerSSLConfig   *SSLConfig
+	BackendSetSSLConfig *SSLConfig
 	securityListManager securityListManager
 
 	service *v1.Service
@@ -85,7 +99,7 @@ type LBSpec struct {
 }
 
 // NewLBSpec creates a LB Spec from a Kubernetes service and a slice of nodes.
-func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCfg *SSLConfig, secListFactory securityListManagerFactory) (*LBSpec, error) {
+func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, listenerSSLConfig *SSLConfig, backendSetSSLConfig *SSLConfig, secListFactory securityListManagerFactory) (*LBSpec, error) {
 	if len(defaultSubnets) != 2 {
 		return nil, errors.New("default subnets incorrectly configured")
 	}
@@ -131,7 +145,7 @@ func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCf
 		}
 	}
 
-	listeners, err := getListeners(svc, sslCfg)
+	listeners, err := getListeners(svc, listenerSSLConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -142,11 +156,12 @@ func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCf
 		Internal:    internal,
 		Subnets:     subnets,
 		Listeners:   listeners,
-		BackendSets: getBackendSets(svc, nodes),
+		BackendSets: getBackendSets(svc, nodes, backendSetSSLConfig),
 
-		Ports:       getPorts(svc),
-		SSLConfig:   sslCfg,
-		SourceCIDRs: sourceCIDRs,
+		Ports:               getPorts(svc),
+		ListenerSSLConfig:   listenerSSLConfig,
+		BackendSetSSLConfig: backendSetSSLConfig,
+		SourceCIDRs:         sourceCIDRs,
 
 		service: svc,
 		nodes:   nodes,
@@ -156,27 +171,26 @@ func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCf
 }
 
 // Certificates builds a map of required SSL certificates.
-func (s *LBSpec) Certificates() (map[string]loadbalancer.CertificateDetails, error) {
-	certs := make(map[string]loadbalancer.CertificateDetails)
-	if s.SSLConfig == nil {
-		return certs, nil
+func buildCertificates(sslConfig *SSLConfig, svc *v1.Service, certs map[string]loadbalancer.CertificateDetails) error {
+	if sslConfig == nil {
+		return nil
 	}
-
-	cert, key, err := s.SSLConfig.readSSLSecret(s.service)
+	sslSecret, err := sslConfig.readSSLSecret(sslConfig.Type, svc)
 	if err != nil {
-		return nil, errors.Wrap(err, "reading SSL Secret")
+		return errors.Wrap(err, "reading SSL Secret")
 	}
-	if cert == "" || key == "" {
-		return certs, nil
-	}
-
-	certs[s.SSLConfig.Name] = loadbalancer.CertificateDetails{
-		CertificateName:   &s.SSLConfig.Name,
-		PublicCertificate: &cert,
-		PrivateKey:        &key,
+	if sslSecret.PublicCert == "" || sslSecret.PrivateKey == "" {
+		return nil
 	}
 
-	return certs, nil
+	certs[sslConfig.Name] = loadbalancer.CertificateDetails{
+		CertificateName:   &sslConfig.Name,
+		PublicCertificate: &sslSecret.PublicCert,
+		CaCertificate:     &sslSecret.CACert,
+		PrivateKey:        &sslSecret.PrivateKey,
+		Passphrase:        &sslSecret.Passphrase,
+	}
+	return nil
 }
 
 // TODO(apryde): aggregate errors using an error list.
@@ -225,7 +239,7 @@ func getPorts(svc *v1.Service) map[string]portSpec {
 		ports[name] = portSpec{
 			BackendPort:       int(servicePort.NodePort),
 			ListenerPort:      int(servicePort.Port),
-			HealthCheckerPort: *getHealthChecker(svc).Port,
+			HealthCheckerPort: *getHealthChecker(nil, int(servicePort.Port), svc).Port,
 		}
 
 	}
@@ -244,32 +258,47 @@ func getBackends(nodes []*v1.Node, nodePort int32) []loadbalancer.BackendDetails
 	return backends
 }
 
-func getBackendSets(svc *v1.Service, nodes []*v1.Node) map[string]loadbalancer.BackendSetDetails {
+func getBackendSets(svc *v1.Service, nodes []*v1.Node, sslCfg *SSLConfig) map[string]loadbalancer.BackendSetDetails {
 	backendSets := make(map[string]loadbalancer.BackendSetDetails)
 	for _, servicePort := range svc.Spec.Ports {
 		name := getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
-		backendSets[name] = loadbalancer.BackendSetDetails{
-			Policy:        common.String(DefaultLoadBalancerPolicy),
-			Backends:      getBackends(nodes, servicePort.NodePort),
-			HealthChecker: getHealthChecker(svc),
+		port := int(servicePort.Port)
+		sslConfig := getSSLConfiguration(sslCfg, port)
+		if sslConfig != nil {
+			backendSets[name] = loadbalancer.BackendSetDetails{
+				Policy:           common.String(DefaultLoadBalancerPolicy),
+				Backends:         getBackends(nodes, servicePort.NodePort),
+				HealthChecker:    getHealthChecker(sslCfg, port, svc),
+				SslConfiguration: sslConfig,
+			}
+		} else {
+			backendSets[name] = loadbalancer.BackendSetDetails{
+				Policy:        common.String(DefaultLoadBalancerPolicy),
+				Backends:      getBackends(nodes, servicePort.NodePort),
+				HealthChecker: getHealthChecker(sslCfg, port, svc),
+			}
 		}
-
 	}
 	return backendSets
 }
 
-func getHealthChecker(svc *v1.Service) *loadbalancer.HealthCheckerDetails {
-	path, port := apiservice.GetServiceHealthCheckPathPort(svc)
-	if path != "" {
+func getHealthChecker(cfg *SSLConfig, port int, svc *v1.Service) *loadbalancer.HealthCheckerDetails {
+	// If the health-check has SSL enabled use TCP rather than HTTP.
+	protocol := lbNodesHealthCheckProtoHTTP
+	if cfg != nil && cfg.Ports.Has(port) {
+		protocol = lbNodesHealthCheckProtoTCP
+	}
+	checkPath, checkPort := apiservice.GetServiceHealthCheckPathPort(svc)
+	if checkPath != "" {
 		return &loadbalancer.HealthCheckerDetails{
-			Protocol: common.String(lbNodesHealthCheckProto),
-			UrlPath:  &path,
-			Port:     common.Int(int(port)),
+			Protocol: &protocol,
+			UrlPath:  &checkPath,
+			Port:     common.Int(int(checkPort)),
 		}
 	}
 
 	return &loadbalancer.HealthCheckerDetails{
-		Protocol: common.String(lbNodesHealthCheckProto),
+		Protocol: &protocol,
 		UrlPath:  common.String(lbNodesHealthCheckPath),
 		Port:     common.Int(lbNodesHealthCheckPort),
 	}

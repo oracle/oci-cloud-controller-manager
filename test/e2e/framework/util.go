@@ -71,6 +71,90 @@ const (
 
 var (
 	BusyBoxImage = "busybox"
+	// SSL CAData is a CA certificate not being used anywhere else; it only is utilised to check the load
+	// balancer SSL connection during tests
+	SSLCAData = `-----BEGIN CERTIFICATE-----
+MIIE5jCCAs6gAwIBAgIBATANBgkqhkiG9w0BAQsFADATMREwDwYDVQQDEwhzc2wt
+dGVzdDAeFw0xODA5MDYxNTQzNTlaFw0yMDAzMDYxNTQzNTlaMBMxETAPBgNVBAMT
+CHNzbC10ZXN0MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAuZkDWwTh
+2/Oq00ViJw8yXUqAppGgH81QaHbSkGp1W4TbpieFufheWYkxjBksqynph/RD1JX/
+J+k7WLha6QcAEFsDB+b9b+suQS8MPoLxE7Rw95p6PW9TlXYOh7SQSjOOFSA/SDKh
+ewt7PIaGtvn0Qmda8mOTC/Bi/XbnF+ZdM39/WsHYGdqHfEsT40L8Kz3BvQaaLL6Q
+ocJEMKmBCVUN6bLhc8GhFhM1mOn9fvM5wKNzLV07VeEWogH3Zz48qiCK1gosE3c8
+oHynHxbEtnsjawIeYsy01A/i434i1dksqA0bRaNJu5YCQAf5o9JhyPJb16neUag8
+wEuczF7x5Q0V/G5oU7k4Hh1Zcl1kIG7hHvgcpV6uX6+i5H/0Pmxa+9TVP2x3axwH
+0XDZyis8aH0aLLndtH/EqIUJfYq9Q3N871cBYueY9/rqL5sinXgrH0Ud5WKJeREL
+ilFWwFthafj6DMe00S1lKCNIGtRLKt9B9GGhuRdRyOdw4ZWOrxYc66uoeyaQowvi
+iNJnjZ0yQruk3uLkTOMrKo6xXkJKuHyoIWHL6uNFMcVBLBeA9ERdjV36wCJx+zh7
+y2DGydQjSbcGKTYHQr1z21E1n+QRMEnqxQ5cW1kWxhYecfrOja4zh/iGrXOA9ffO
+BEHn0Fb/fA/Pijr0t7mvH4VdaICx8G3X2TUCAwEAAaNFMEMwDgYDVR0PAQH/BAQD
+AgEGMBIGA1UdEwEB/wQIMAYBAf8CAQAwHQYDVR0OBBYEFDEbBw9aIWhE9MHxc+Cm
+4xHNnmu8MA0GCSqGSIb3DQEBCwUAA4ICAQCLtbLoPS/jLWA1zgbw2wQA2rcA7kpB
+D3iKKzA+6FnJlWSbMi9u4Ui/e3Z98P0KLafHZ+E/0jzMM4gq/yEMbWTP4KzY5aCG
+sRJMtawSf3hCxK/1uRmdFbEiygQh2BzjmDb2TYXOeLMMSif+5LzXHD9Vzq4Rnzbf
+Qqf0TnKh7EHIjptkEWgsIX0afBPfXSs0EzVQ8dJNioy/NqkuUoStCdB2OaKcFt/9
+YoCuaWf/4hGvOY59WpUI1i1MXuig2s3o1cpkwu4jB08la2kPFCinv4Cpsv4s5BvY
+zsxPFeMFjjMNLaZnp/LruvbvMq08D58Qvqsn4vpxrYPiRPNvpO3Dh1OeA6KppTNV
+15NtOG0H0K2Wc7iJCMV+vnGBIWUZ9lh57RcKb+pf9E5F5vWBO2MdKUugrUQ60NH9
+cubjZ7moO9OgjNLqe24PdEtx3CK933bwvTn2fT5pR1yYVOGVI0vbmFDgwD9Tg6+X
+Q3xRbI67X9qqGWj1Nxl+WAOCFdzvQWaI6+f4Byhf1xwQ07CFSykUA1JpurXfemkT
+R1F56uxXc5pWQFYU38r8ROKfrzD857kIGoMQhHbf3KBTavR1fCQdun3991wfkKsd
+7Quf316BO4qqn1G3e5vIaRLAqePgvSdm7CRzOtja1RXvqA/o52/9zVourhZinK0x
+UV5xGY0MDAKR0g==
+-----END CERTIFICATE-----`
+	SSLCertificateData = `-----BEGIN CERTIFICATE-----
+MIIEJzCCAg+gAwIBAgIRAPtkjNA2AzZwFxKV/en8uDIwDQYJKoZIhvcNAQELBQAw
+EzERMA8GA1UEAxMIc3NsLXRlc3QwHhcNMTgwOTA2MTU0NTI1WhcNMjAwMzA2MTU0
+MzU4WjAYMRYwFAYDVQQDEw1zc2wtdGVzdC1jZXJ0MIIBIjANBgkqhkiG9w0BAQEF
+AAOCAQ8AMIIBCgKCAQEAlFq7tzGl8ljlzyrddPI5WWs6BfHTwi0WOkhWCOMT2jzo
+qfjZJ4WXCKIn0V3fmsG9MkmDkCRmoBwrwY8axUqwKopF5MQp39rF1W2L7EYaMPiH
+Ry71gPwbfyzWfRcOCG0rlNuyZOkWh9AYKJQAlDPDZrQ9X6fzj7/FhqJLPqHbSgBT
+PCQ7GnPUITYEGcND7d0t4KcojwJHog+7WRuChwq28MVM5gOoONl2eI/C3q6CeXSK
+dlXBjZbBj5pGV+7lqDoSvzSrJYhucruNKGAT3loMvJicRih5+kS1auOOeWLhqupM
+UyLgDSHTLoWzS+gY29UiK3Au/qc72igby/xHaMsZ3QIDAQABo3EwbzAOBgNVHQ8B
+Af8EBAMCA7gwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMB0GA1UdDgQW
+BBSvDgYQAAyY+0OKaCspaI/157dYJjAfBgNVHSMEGDAWgBQxGwcPWiFoRPTB8XPg
+puMRzZ5rvDANBgkqhkiG9w0BAQsFAAOCAgEAH7wRpPqp+M6UCeH9PYuKYml0eqFc
+mhV67Qu/wDUYT8yqy3IoM5fKVyarxK2PbiHZxv+BMDnDMvIFi+8o2DxQC/2mvkgE
+1tQsMIDPphFN/UIAEnBEdjFrnyQljsbjYpazcGr77oM0B5gjzPHc6pyCrgfjfN7g
+Qb8qgTv33feLagGuZ8wV+LQcQxRL+hBqWnl6NivFeKwEHLG/pMKJmsxufTtVDVXt
+GPJBoi6jnOKluIyU+XZAbRl+Iz5lUeEjr24D0+JJlOleqate4uIm8L11AEjQ5NcX
+lgz1Fkr/V5mZIS/CnzxWNdJpCVV39VT5KLAYzXNsnE3kutwW0ERvANz2MqmOW3oW
+hayT/qUlqvJQwghMWPRwAbU0l9TQvSzLWS9t/wLjb9G9xz4UxIrVqUHJ4BhAQsFF
+pYQ6heCqW0mkmgN3Tz/3pgUk9DZvrDPVB6r431geeoFtRfeJMjGtbkjvNufo9Xp9
+sQDNlhZ5X8ZFRKjU4VedYqYrcfya8sjAJnvdktzLozgU41Op0zkykNUogPFK1Wma
+330oZwh9LsEJ3bQnNOQd5P5hERmP4CXDl43qdmnjInp9Fn1kzJFWKzho68tmbdo7
+9rm7AXKM1hM5GcTxKcalQQa92UQCCPbbjQKNUj/dpGHHpNQtEYXlLcvq6OOBfegU
+VcU/2vioT6/IBgM=
+-----END CERTIFICATE-----`
+	SSLPrivateData = `-----BEGIN RSA PRIVATE KEY-----
+MIIEowIBAAKCAQEAlFq7tzGl8ljlzyrddPI5WWs6BfHTwi0WOkhWCOMT2jzoqfjZ
+J4WXCKIn0V3fmsG9MkmDkCRmoBwrwY8axUqwKopF5MQp39rF1W2L7EYaMPiHRy71
+gPwbfyzWfRcOCG0rlNuyZOkWh9AYKJQAlDPDZrQ9X6fzj7/FhqJLPqHbSgBTPCQ7
+GnPUITYEGcND7d0t4KcojwJHog+7WRuChwq28MVM5gOoONl2eI/C3q6CeXSKdlXB
+jZbBj5pGV+7lqDoSvzSrJYhucruNKGAT3loMvJicRih5+kS1auOOeWLhqupMUyLg
+DSHTLoWzS+gY29UiK3Au/qc72igby/xHaMsZ3QIDAQABAoIBAQCIZTs83Jqzy+PN
+qp1dDe6INbttB78nQYi0IRlopk30UhefXjlYysvnlh6BsYsJn6Iw/8HD3pO0FPJt
+zQJR7a82DVbhUzEkrOFCrqr8mh8ucvD9E0GIS0GElVbGP1IZkTWGcM79VAfw6fOs
+Kxa1Kzo1zPS4Y5Pcz/XtKH2BohIZX/jEBM2bLaX1l+/kwZbFwUjSByy6EPl3cDMG
+6FeYMm7mtyR/nS7LvtyQf+d8BwEEoD23OX+TUNdf7Bc72C+5Xm8NNFaI6b/ocy1M
+9h5Y2KGg8opYbonY8EM6cqeUBYoxgd4azOxKehyIs6EqKfi3EkGHMWr9BAapqWKL
+KaVytYiJAoGBAMWyb1ZA4MGJCtKt42XHs7QlYwpzfmY4JSTYrF7C6kk2+55HR6Wf
+GR6u788Rs5t7WP1dss2LUMF8ZIYf8O2Xx5cJ75UrT6Yfj2A2mAjOPNEGqZyrJ3M8
+q4bqEqwyQizsxwNuWTfE8uT5Sv3EU1THXM0nd1xc5GgfrRzxpylFYglzAoGBAMAb
+EqNv8mzZHU9/xN17BmED/rmWQJeHBXAFXG0n0U4VzjkZLJthE00ko1fFvyt/+dc2
+ZctUHBjMktwqtGRmJHVr7FlZAjesaEDCfNGq7GfHn9cNTFqwMpNHZCsl+YydHehV
+2WglfKSgNd29cOluD+WgPi+bsIrHqN801B3flrtvAoGAHxkLZHD+KdNpzWwm+gqo
+3OyIoMs8Fc49IYenzZwxiGTKvcIOpiHZrLbt6A+rxghoHirQBn8kq9rqYSLDHkyi
+y8J3Wmqes84BGqxby/7NGEBJC+jsYrcncCh/2XBqcnCoeYSxKhGj95qzTinExfA6
+S9cqcm/2Sd65t3TXy6krW7sCgYAUoVOpFZaVNeO969y6ZEHVHVa3m3koTKm60/iP
+CF2j4xeYbimqLgyiljKsdGIJS98Ky5627TtvNlj3J+bjeUylB4gEOFjSncM8YSaC
+ZbaplniF4bm3a4Ci7GHHeHaKMT1K/B0y4AO4sjPWskdz6gvu/vxupGubG8H45nV5
+F8/aJQKBgHwkkWYhysyy1F+SyWOkcpFa5ORYapYvVQhnVjgMB8SSs8KZquMV5ixX
+imlfs6WRsA4mr20dMC9a4Lb51lET2XPvc5Tef/kESpGfc7Zbgx5/Sm5Z2IpNlhgp
+rTMMobnwm2ixgvgHMC4Uq9U0HVM9hyQ7l88m5QD+02Qr0vV/ZCMi
+-----END RSA PRIVATE KEY-----`
+	SSLPassphrase = ""
 )
 
 func nowStamp() string {
@@ -526,6 +610,8 @@ func getRuntimeObjectForKind(c clientset.Interface, kind schema.GroupKind, ns, n
 	switch kind {
 	case api.Kind("ReplicationController"):
 		return c.CoreV1().ReplicationControllers(ns).Get(name, metav1.GetOptions{})
+	case api.Kind("Secrets"):
+		return c.CoreV1().Secrets(ns).Get(name, metav1.GetOptions{})
 	case extensionsinternal.Kind("ReplicaSet"), appsinternal.Kind("ReplicaSet"):
 		return c.ExtensionsV1beta1().ReplicaSets(ns).Get(name, metav1.GetOptions{})
 	case extensionsinternal.Kind("Deployment"), appsinternal.Kind("Deployment"):
@@ -543,6 +629,8 @@ func deleteResource(c clientset.Interface, kind schema.GroupKind, ns, name strin
 	switch kind {
 	case api.Kind("ReplicationController"):
 		return c.CoreV1().ReplicationControllers(ns).Delete(name, deleteOption)
+	case api.Kind("Secrets"):
+		return c.CoreV1().Secrets(ns).Delete(name, deleteOption)
 	case extensionsinternal.Kind("ReplicaSet"), appsinternal.Kind("ReplicaSet"):
 		return c.ExtensionsV1beta1().ReplicaSets(ns).Delete(name, deleteOption)
 	case extensionsinternal.Kind("Deployment"), appsinternal.Kind("Deployment"):

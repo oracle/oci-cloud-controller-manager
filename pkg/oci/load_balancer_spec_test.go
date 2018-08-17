@@ -20,7 +20,6 @@ import (
 
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/loadbalancer"
-
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -492,7 +491,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			slManagerFactory := func(mode string) securityListManager {
 				return newSecurityListManagerNOOP()
 			}
-			result, err := NewLBSpec(tc.service, tc.nodes, subnets, nil, slManagerFactory)
+			result, err := NewLBSpec(tc.service, tc.nodes, subnets, nil, nil, slManagerFactory)
 			if err != nil {
 				t.Error(err)
 			}
@@ -609,7 +608,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 			slManagerFactory := func(mode string) securityListManager {
 				return newSecurityListManagerNOOP()
 			}
-			_, err := NewLBSpec(tc.service, tc.nodes, subnets, nil, slManagerFactory)
+			_, err := NewLBSpec(tc.service, tc.nodes, subnets, nil, nil, slManagerFactory)
 			if err == nil || err.Error() != tc.expectedErrMsg {
 				t.Errorf("Expected error with message %q but got %q", tc.expectedErrMsg, err)
 			}

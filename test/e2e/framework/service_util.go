@@ -740,13 +740,13 @@ func (j *ServiceTestJig) waitForPodsReady(namespace string, pods []string) error
 	return nil
 }
 
-func (j *ServiceTestJig) TestReachableHTTP(host string, port int, timeout time.Duration) {
-	j.TestReachableHTTPWithRetriableErrorCodes(host, port, []int{}, timeout)
+func (j *ServiceTestJig) TestReachableHTTP(secure bool, host string, port int, timeout time.Duration) {
+	j.TestReachableHTTPWithRetriableErrorCodes(secure, host, port, []int{}, timeout)
 }
 
-func (j *ServiceTestJig) TestReachableHTTPWithRetriableErrorCodes(host string, port int, retriableErrCodes []int, timeout time.Duration) {
+func (j *ServiceTestJig) TestReachableHTTPWithRetriableErrorCodes(secure bool, host string, port int, retriableErrCodes []int, timeout time.Duration) {
 	if err := wait.PollImmediate(Poll, timeout, func() (bool, error) {
-		return TestReachableHTTPWithRetriableErrorCodes(host, port, "/echo?msg=hello", "hello", retriableErrCodes)
+		return TestReachableHTTPWithRetriableErrorCodes(secure, host, port, "/echo?msg=hello", "hello", retriableErrCodes)
 	}); err != nil {
 		if err == wait.ErrWaitTimeout {
 			Failf("Could not reach HTTP service through %v:%v after %v", host, port, timeout)
@@ -774,12 +774,12 @@ func (j *ServiceTestJig) TestNotReachableUDP(host string, port int, timeout time
 	}
 }
 
-func (j *ServiceTestJig) GetHTTPContent(host string, port int, timeout time.Duration, url string) bytes.Buffer {
+func (j *ServiceTestJig) GetHTTPContent(secure bool, host string, port int, timeout time.Duration, url string) bytes.Buffer {
 	var body bytes.Buffer
 	var err error
 	if pollErr := wait.PollImmediate(Poll, timeout, func() (bool, error) {
 		var result bool
-		result, err = TestReachableHTTPWithContent(host, port, url, "", &body)
+		result, err = TestReachableHTTPWithContent(secure, host, port, url, "", &body)
 		if err != nil {
 			Logf("Error hitting %v:%v%v, retrying: %v", host, port, url, err)
 			return false, nil

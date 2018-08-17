@@ -84,6 +84,7 @@ type Framework struct {
 
 	SkipNamespaceCreation bool            // Whether to skip creating a namespace
 	Namespace             *v1.Namespace   // Every test has at least one namespace unless creation is skipped
+	Secret                *v1.Secret      // Every test has at least one namespace unless creation is skipped
 	namespacesToDelete    []*v1.Namespace // Some tests have more than one.
 
 	// To make sure that this framework cleans up after itself, no matter what,

@@ -63,6 +63,12 @@ const (
 	// See: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
 	ServiceAnnotationLoadBalancerTLSSecret = "service.beta.kubernetes.io/oci-load-balancer-tls-secret"
 
+	// ServiceAnnotationLoadBalancerBackendSetSecret is a Service annotation for
+	// specifying the generic secret to install on the load balancer listeners which
+	// have SSL enabled.
+	// See: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
+	ServiceAnnotationLoadBalancerBackendSetSecret = "service.beta.kubernetes.io/oci-load-balancer-backendset-secret"
+
 	// ServiceAnnotationLoadBalancerConnectionIdleTimeout is the annotation used
 	// on the service to specify the idle connection timeout.
 	ServiceAnnotationLoadBalancerConnectionIdleTimeout = "service.beta.kubernetes.io/oci-load-balancer-connection-idle-timeout"
@@ -89,9 +95,10 @@ const (
 	// Fallback value if annotation on service is not set
 	lbDefaultShape = "100Mbps"
 
-	lbNodesHealthCheckPath  = "/healthz"
-	lbNodesHealthCheckPort  = k8sports.ProxyHealthzPort
-	lbNodesHealthCheckProto = "HTTP"
+	lbNodesHealthCheckPath      = "/healthz"
+	lbNodesHealthCheckPort      = k8sports.ProxyHealthzPort
+	lbNodesHealthCheckProtoHTTP = "HTTP"
+	lbNodesHealthCheckProtoTCP  = "TCP"
 )
 
 // GetLoadBalancer returns whether the specified load balancer exists, and if
@@ -189,10 +196,14 @@ func getSubnetsForNodes(ctx context.Context, nodes []*v1.Node, client client.Int
 
 // readSSLSecret returns the certificate and private key from a Kubernetes TLS
 // private key Secret.
-func (cp *CloudProvider) readSSLSecret(svc *v1.Service) (string, string, error) {
-	secretString, ok := svc.Annotations[ServiceAnnotationLoadBalancerTLSSecret]
+func (cp *CloudProvider) readSSLSecret(secretType string, svc *v1.Service) (*certificateData, error) {
+	secretString, ok := svc.Annotations[secretType]
+	if !ok && secretType == ServiceAnnotationLoadBalancerTLSSecret {
+		return nil, errors.Errorf("no %q annotation found", secretType)
+	}
 	if !ok {
-		return "", "", errors.Errorf("no %q annotation found", ServiceAnnotationLoadBalancerTLSSecret)
+		return &certificateData{CACert: "", PublicCert: "", PrivateKey: "",
+			Passphrase: ""}, nil
 	}
 
 	ns, name := parseSecretString(secretString)
@@ -201,24 +212,35 @@ func (cp *CloudProvider) readSSLSecret(svc *v1.Service) (string, string, error) 
 	}
 	secret, err := cp.kubeclient.CoreV1().Secrets(ns).Get(name, metav1.GetOptions{})
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 
-	var cert, key []byte
-	if cert, ok = secret.Data[sslCertificateFileName]; !ok {
-		return "", "", errors.Errorf("%s not found in secret %s/%s", sslCertificateFileName, ns, name)
+	var cacert, cert, key, pass []byte
+	var cacertstr, passstr string
+	if cacert, ok = secret.Data[SSLCAFileName]; !ok {
+		cacertstr = ""
+	} else {
+		cacertstr = string(cacert)
 	}
-	if key, ok = secret.Data[sslPrivateKeyFileName]; !ok {
-		return "", "", errors.Errorf("%s not found in secret %s/%s", sslPrivateKeyFileName, ns, name)
+	if cert, ok = secret.Data[SSLCertificateFileName]; !ok {
+		return nil, errors.Errorf("%s not found in secret %s/%s", SSLCertificateFileName, ns, name)
 	}
-
-	return string(cert), string(key), nil
+	if key, ok = secret.Data[SSLPrivateKeyFileName]; !ok {
+		return nil, errors.Errorf("%s not found in secret %s/%s", SSLPrivateKeyFileName, ns, name)
+	}
+	if pass, ok = secret.Data[SSLPassphrase]; !ok {
+		passstr = ""
+	} else {
+		passstr = string(pass)
+	}
+	return &certificateData{CACert: cacertstr, PublicCert: string(cert), PrivateKey: string(key),
+		Passphrase: passstr}, nil
 }
 
 // ensureSSLCertificate creates a OCI SSL certificate to the given load
 // balancer, if it doesn't already exist.
-func (cp *CloudProvider) ensureSSLCertificate(ctx context.Context, lb *loadbalancer.LoadBalancer, spec *LBSpec) error {
-	name := spec.SSLConfig.Name
+func (cp *CloudProvider) ensureSSLCertificate(ctx context.Context, lb *loadbalancer.LoadBalancer, sslConfig *SSLConfig, svc *v1.Service) error {
+	name := sslConfig.Name
 	logger := cp.logger.With("loadBalancerID", *lb.Id, "certificateName", name)
 	_, err := cp.client.LoadBalancer().GetCertificateByName(ctx, *lb.Id, name)
 	if err == nil {
@@ -230,7 +252,8 @@ func (cp *CloudProvider) ensureSSLCertificate(ctx context.Context, lb *loadbalan
 	}
 
 	// Although we iterate here only one certificate is supported at the moment.
-	certs, err := spec.Certificates()
+	certs := make(map[string]loadbalancer.CertificateDetails)
+	err = buildCertificates(sslConfig, svc, certs)
 	if err != nil {
 		return err
 	}
@@ -266,7 +289,12 @@ func (cp *CloudProvider) createLoadBalancer(ctx context.Context, spec *LBSpec) (
 	}
 
 	// Then we create the load balancer and wait for it to be online.
-	certs, err := spec.Certificates()
+	certs := make(map[string]loadbalancer.CertificateDetails)
+	err = buildCertificates(spec.ListenerSSLConfig, spec.service, certs)
+	if err != nil {
+		return nil, errors.Wrap(err, "get certificates")
+	}
+	err = buildCertificates(spec.BackendSetSSLConfig, spec.service, certs)
 	if err != nil {
 		return nil, errors.Wrap(err, "get certificates")
 	}
@@ -323,16 +351,17 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 	}
 	exists := !client.IsNotFound(err)
 
-	var ssl *SSLConfig
+	var sslListener, sslBackendSet *SSLConfig
 	if requiresCertificate(service) {
 		ports, err := getSSLEnabledPorts(service)
 		if err != nil {
 			return nil, err
 		}
-		ssl = NewSSLConfig(lbName, ports, cp)
+		sslListener = NewSSLConfig(lbName, ServiceAnnotationLoadBalancerTLSSecret, ports, cp)
+		sslBackendSet = NewSSLConfig(lbName, ServiceAnnotationLoadBalancerBackendSetSecret, ports, cp)
 	}
 	subnets := []string{cp.config.LoadBalancer.Subnet1, cp.config.LoadBalancer.Subnet2}
-	spec, err := NewLBSpec(service, nodes, subnets, ssl, cp.securityListManagerFactory)
+	spec, err := NewLBSpec(service, nodes, subnets, sslListener, sslBackendSet, cp.securityListManagerFactory)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to derive LBSpec")
 		return nil, err
@@ -351,8 +380,11 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 
 	// If the load balancer needs an SSL cert ensure it is present.
 	if requiresCertificate(service) {
-		if err := cp.ensureSSLCertificate(ctx, lb, spec); err != nil {
-			return nil, errors.Wrap(err, "ensuring ssl certificate")
+		if err := cp.ensureSSLCertificate(ctx, lb, spec.ListenerSSLConfig, spec.service); err != nil {
+			return nil, errors.Wrap(err, "ensuring ssl certificate for listeners")
+		}
+		if err := cp.ensureSSLCertificate(ctx, lb, spec.BackendSetSSLConfig, spec.service); err != nil {
+			return nil, errors.Wrap(err, "ensuring ssl certificate for backend sets")
 		}
 	}
 
