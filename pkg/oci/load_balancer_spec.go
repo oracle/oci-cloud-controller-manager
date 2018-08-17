@@ -248,13 +248,20 @@ func getBackendSets(svc *v1.Service, nodes []*v1.Node) map[string]loadbalancer.B
 	for _, servicePort := range svc.Spec.Ports {
 		name := getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
 		backendSets[name] = loadbalancer.BackendSetDetails{
-			Policy:        common.String(DefaultLoadBalancerPolicy),
-			Backends:      getBackends(nodes, servicePort.NodePort),
-			HealthChecker: getHealthChecker(svc),
+			Policy:           common.String(DefaultLoadBalancerPolicy),
+			Backends:         getBackends(nodes, servicePort.NodePort),
+			HealthChecker:    getHealthChecker(svc),
+			SslConfiguration: getSslConfiguration(svc),
 		}
 
 	}
 	return backendSets
+}
+
+func getSslConfiguration(svc *v1.Service) *loadbalancer.SslConfigurationDetails {
+	return &loadbalancer.SslConfigurationDetails{
+		CertificateName: common.String(svc.Annotations[ServiceAnnotationLoadBalancerTLSBackendSecret]),
+	}
 }
 
 func getHealthChecker(svc *v1.Service) *loadbalancer.HealthCheckerDetails {

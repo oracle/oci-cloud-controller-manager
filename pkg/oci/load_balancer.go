@@ -63,6 +63,12 @@ const (
 	// See: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
 	ServiceAnnotationLoadBalancerTLSSecret = "service.beta.kubernetes.io/oci-load-balancer-tls-secret"
 
+	// ServiceAnnotationLoadBalancerTLSBackendSecret is a Service annotation for
+	// specifying the TLS secret to install on the load balancer listeners which
+	// have SSL enabled.
+	// See: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
+	ServiceAnnotationLoadBalancerTLSBackendSecret = "service.beta.kubernetes.io/oci-load-balancer-tls-backend-secret"
+
 	// ServiceAnnotationLoadBalancerConnectionIdleTimeout is the annotation used
 	// on the service to specify the idle connection timeout.
 	ServiceAnnotationLoadBalancerConnectionIdleTimeout = "service.beta.kubernetes.io/oci-load-balancer-connection-idle-timeout"
