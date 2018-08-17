@@ -203,3 +203,8 @@ func (cp *CloudProvider) InstanceExistsByProviderID(ctx context.Context, provide
 
 	return !client.IsInstanceInTerminalState(instance), nil
 }
+
+// InstanceShutdownByProviderID returns true if the instance is shutdown in cloudprovider.
+func (cp *CloudProvider) InstanceShutdownByProviderID(ctx context.Context, providerID string) (bool, error) {
+	return false, cloudprovider.NotImplemented
+}
