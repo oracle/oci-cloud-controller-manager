@@ -15,7 +15,11 @@
 package glog
 
 import (
+	"bytes"
 	"testing"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 func TestAll(t *testing.T) {
@@ -43,4 +47,58 @@ func TestAll(t *testing.T) {
 	}
 
 	Flush()
+}
+
+func assertNumEntries(t *testing.T, b []byte, expected int) {
+	t.Helper()
+	count := bytes.Count(b, []byte{'\n'})
+	if count != expected {
+		t.Errorf("Expected %d logger entries but got %d", expected, count)
+	}
+}
+
+func TestReplaceGlobals(t *testing.T) {
+	b := new(bytes.Buffer)
+	logger := zap.New(
+		zapcore.NewCore(
+			zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig()),
+			zapcore.AddSync(b),
+			zap.InfoLevel,
+		),
+	)
+
+	// Log to global logger.
+	Info("foo")
+
+	assertNumEntries(t, b.Bytes(), 0)
+
+	zap.ReplaceGlobals(logger)
+
+	// Log to logger
+	Info("bar")
+
+	assertNumEntries(t, b.Bytes(), 1)
+
+	b2 := new(bytes.Buffer)
+	logger2 := zap.New(
+		zapcore.NewCore(
+			zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig()),
+			zapcore.AddSync(b2),
+			zap.InfoLevel,
+		),
+	)
+
+	zap.ReplaceGlobals(logger2)
+
+	// Log to logger2
+	Info("baz")
+
+	assertNumEntries(t, b.Bytes(), 1)
+	assertNumEntries(t, b2.Bytes(), 1)
+}
+
+func BenchmarkSkipLogger(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		skipLogger()
+	}
 }

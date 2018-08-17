@@ -34,8 +34,14 @@ import (
 // loggingT collects all the global state of the logging setup.
 type loggingT struct {
 	// mu protects the remaining elements of this structure
-	mu        sync.Mutex
+	mu        sync.RWMutex
 	verbosity Level // V logging level, the value of the -v flag/
+
+	// zapGlobal is a reference to the most recently observed zap global
+	// logger.
+	zapGlobal *zap.Logger
+	// logger is a cached logger with the correct caller skip level.
+	logger *zap.SugaredLogger
 }
 
 var logging loggingT
@@ -101,7 +107,21 @@ func Flush() {
 // skipLogger constructs a suggared logger with an additional caller skip to
 // ensure we log the correct line number.
 func skipLogger() *zap.SugaredLogger {
-	return zap.L().WithOptions(zap.AddCallerSkip(1)).Sugar()
+	logging.mu.RLock()
+	cachedGlobal := logging.zapGlobal
+	cachedLogger := logging.logger
+	logging.mu.RUnlock()
+
+	global := zap.L()
+	if cachedGlobal != global {
+		logging.mu.Lock()
+		logging.zapGlobal = global
+		logging.logger = global.WithOptions(zap.AddCallerSkip(1)).Sugar()
+		cachedLogger = logging.logger
+		logging.mu.Unlock()
+	}
+
+	return cachedLogger
 }
 
 // max calculates the maximum of the two given Levels.
