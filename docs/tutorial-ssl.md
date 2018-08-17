@@ -64,7 +64,7 @@ kubectl create secret tls ssl-certificate-secret --key tls.key --cert tls.crt
 Create the service:
 
 ```
-$ kubectl create -f manifests/demo/nginx-demo-svc-ssl.yaml
+$ kubectl create -f examples/nginx-demo-svc-ssl.yaml
 ```
 
 Watch the service and await a public IP address. This will be the load balancer
