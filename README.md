@@ -173,3 +173,4 @@ See [LICENSE](LICENSE) for more details.
 [7]: https://github.com/oracle/oci-cloud-controller-manager/tree/master/manifests/cloud-provider-example.yaml
 [8]: https://github.com/oracle/oci-cloud-controller-manager/blob/master/docs/tutorial.md
 [9]: https://github.com/oracle/oci-cloud-controller-manager/blob/master/docs/tutorial-ssl.md
+[10]: https://github.com/oracle/oci-cloud-controller-manager/blob/master/docs/rate-limiter-configuration.md
