@@ -23,7 +23,6 @@ import (
 
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/common/auth"
 	"github.com/pkg/errors"
@@ -45,10 +44,8 @@ import (
 )
 
 const (
-	// RateLimitQPSDefault sets a value for the default queries per second.
-	RateLimitQPSDefault = 20.0
-	// RateLimitBucketDefault sets a value for the default token bucket burst size.
-	RateLimitBucketDefault = 5
+	rateLimitQPSDefault    = 20.0
+	rateLimitBucketDefault = 5
 )
 
 // ProviderName uniquely identifies the Oracle Bare Metal Cloud Services (OCI)
@@ -88,7 +85,7 @@ func NewCloudProvider(config *Config) (cloudprovider.Interface, error) {
 		return nil, err
 	}
 
-	rateLimiter := newRateLimiter(config.RateLimiter)
+	rateLimiter := newRateLimiter(logger.Sugar(), config.RateLimiter)
 
 	c, err := client.New(logger.Sugar(), cp, &rateLimiter)
 	if err != nil {
@@ -240,24 +237,23 @@ func buildConfigurationProvider(logger *zap.Logger, config *Config) (common.Conf
 
 // newRateLimiter builds and returns a struct containing read and write
 // rate limiters. Defaults are used where no (0) value is provided.
-func newRateLimiter(config *RateLimiterConfig) client.RateLimiter {
-
+func newRateLimiter(logger *zap.SugaredLogger, config *RateLimiterConfig) client.RateLimiter {
 	if config == nil {
 		config = &RateLimiterConfig{}
 	}
 
 	// Set to default values if configuration not declared
 	if config.RateLimitQPSRead == 0 {
-		config.RateLimitQPSRead = RateLimitQPSDefault
+		config.RateLimitQPSRead = rateLimitQPSDefault
 	}
 	if config.RateLimitBucketRead == 0 {
-		config.RateLimitBucketRead = RateLimitBucketDefault
+		config.RateLimitBucketRead = rateLimitBucketDefault
 	}
 	if config.RateLimitQPSWrite == 0 {
-		config.RateLimitQPSWrite = RateLimitQPSDefault
+		config.RateLimitQPSWrite = rateLimitQPSDefault
 	}
 	if config.RateLimitBucketWrite == 0 {
-		config.RateLimitBucketWrite = RateLimitBucketDefault
+		config.RateLimitBucketWrite = rateLimitBucketDefault
 	}
 
 	rateLimiter := client.RateLimiter{
@@ -269,11 +265,11 @@ func newRateLimiter(config *RateLimiterConfig) client.RateLimiter {
 			config.RateLimitBucketWrite),
 	}
 
-	glog.V(2).Infof("OCI using read rate limit configuration: QPS=%g, bucket=%d",
+	logger.Infof("OCI using read rate limit configuration: QPS=%g, bucket=%d",
 		config.RateLimitQPSRead,
 		config.RateLimitBucketRead)
 
-	glog.V(2).Infof("OCI using write rate limit configuration: QPS=%g, bucket=%d",
+	logger.Infof("OCI using write rate limit configuration: QPS=%g, bucket=%d",
 		config.RateLimitQPSWrite,
 		config.RateLimitBucketWrite)
 

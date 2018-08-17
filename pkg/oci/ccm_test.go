@@ -16,6 +16,8 @@ package oci
 
 import (
 	"testing"
+
+	"go.uber.org/zap"
 )
 
 func TestBuildRateLimiterWithConfig(t *testing.T) {
@@ -31,7 +33,7 @@ func TestBuildRateLimiterWithConfig(t *testing.T) {
 		RateLimitBucketWrite: bucketWrite,
 	}
 
-	rateLimiter := newRateLimiter(rateLimiterConfig)
+	rateLimiter := newRateLimiter(zap.S(), rateLimiterConfig)
 
 	if rateLimiter.Reader.QPS() != qpsRead {
 		t.Errorf("unexpected QPS (read) value: expected %f but found %f", qpsRead, rateLimiter.Reader.QPS())
@@ -45,13 +47,13 @@ func TestBuildRateLimiterWithConfig(t *testing.T) {
 func TestBuildRateLimiterWithDefaults(t *testing.T) {
 	rateLimiterConfig := &RateLimiterConfig{}
 
-	rateLimiter := newRateLimiter(rateLimiterConfig)
+	rateLimiter := newRateLimiter(zap.S(), rateLimiterConfig)
 
-	if rateLimiter.Reader.QPS() != RateLimitQPSDefault {
-		t.Errorf("unexpected QPS (read) value: expected %f but found %f", RateLimitQPSDefault, rateLimiter.Reader.QPS())
+	if rateLimiter.Reader.QPS() != rateLimitQPSDefault {
+		t.Errorf("unexpected QPS (read) value: expected %f but found %f", rateLimitQPSDefault, rateLimiter.Reader.QPS())
 	}
 
-	if rateLimiter.Writer.QPS() != RateLimitQPSDefault {
-		t.Errorf("unexpected QPS (write) value: expected %f but found %f", RateLimitQPSDefault, rateLimiter.Writer.QPS())
+	if rateLimiter.Writer.QPS() != rateLimitQPSDefault {
+		t.Errorf("unexpected QPS (write) value: expected %f but found %f", rateLimitQPSDefault, rateLimiter.Writer.QPS())
 	}
 }
