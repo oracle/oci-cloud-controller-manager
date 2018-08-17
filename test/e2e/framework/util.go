@@ -48,12 +48,10 @@ import (
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	extensionsinternal "k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/nodelifecycle"
-	"k8s.io/kubernetes/pkg/kubectl"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm/predicates"
-	"k8s.io/kubernetes/pkg/scheduler/schedulercache"
+	schedulercache "k8s.io/kubernetes/pkg/scheduler/cache"
 	testutil "k8s.io/kubernetes/test/utils"
 	uexec "k8s.io/utils/exec"
 
@@ -65,6 +63,10 @@ const (
 	// transient failures from failing tests.
 	// TODO: client should not apply this timeout to Watch calls. Increased from 30s until that is fixed.
 	SingleCallTimeout = 5 * time.Minute
+
+	// Number of objects that gc can delete in a second.
+	// GC issues 2 requestes for single delete.
+	gcThroughput = 10
 )
 
 var (
@@ -600,62 +602,9 @@ func getReplicasFromRuntimeObject(obj runtime.Object) (int32, error) {
 	}
 }
 
-func getReaperForKind(internalClientset internalclientset.Interface, kind schema.GroupKind) (kubectl.Reaper, error) {
-	return kubectl.ReaperFor(kind, internalClientset)
-}
-
-// DeleteResourceAndPods deletes a given resource and all pods it spawned
-func DeleteResourceAndPods(clientset clientset.Interface, internalClientset internalclientset.Interface, kind schema.GroupKind, ns, name string) error {
-	By(fmt.Sprintf("deleting %v %s in namespace %s", kind, name, ns))
-
-	rtObject, err := getRuntimeObjectForKind(clientset, kind, ns, name)
-	if err != nil {
-		if apierrs.IsNotFound(err) {
-			Logf("%v %s not found: %v", kind, name, err)
-			return nil
-		}
-		return err
-	}
-	selector, err := getSelectorFromRuntimeObject(rtObject)
-	if err != nil {
-		return err
-	}
-	reaper, err := getReaperForKind(internalClientset, kind)
-	if err != nil {
-		return err
-	}
-
-	ps, err := podStoreForSelector(clientset, ns, selector)
-	if err != nil {
-		return err
-	}
-	defer ps.Stop()
-	startTime := time.Now()
-	err = reaper.Stop(ns, name, 0, nil)
-	if apierrs.IsNotFound(err) {
-		Logf("%v %s was already deleted: %v", kind, name, err)
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("error while stopping %v: %s: %v", kind, name, err)
-	}
-	deleteTime := time.Now().Sub(startTime)
-	Logf("Deleting %v %s took: %v", kind, name, deleteTime)
-	err = waitForPodsInactive(ps, 100*time.Millisecond, 10*time.Minute)
-	if err != nil {
-		return fmt.Errorf("error while waiting for pods to become inactive %s: %v", name, err)
-	}
-	terminatePodTime := time.Now().Sub(startTime) - deleteTime
-	Logf("Terminating %v %s pods took: %v", kind, name, terminatePodTime)
-	// this is to relieve namespace controller's pressure when deleting the
-	// namespace after a test.
-	err = waitForPodsGone(ps, 100*time.Millisecond, 10*time.Minute)
-	if err != nil {
-		return fmt.Errorf("error while waiting for pods gone %s: %v", name, err)
-	}
-	gcPodTime := time.Now().Sub(startTime) - terminatePodTime
-	Logf("Garbage collecting %v %s pods took: %v", kind, name, gcPodTime)
-	return nil
+// DeleteRCAndWaitForGC deletes only the Replication Controller and waits for GC to delete the pods.
+func DeleteRCAndWaitForGC(c clientset.Interface, ns, name string) error {
+	return DeleteResourceAndWaitForGC(c, api.Kind("ReplicationController"), ns, name)
 }
 
 // podStoreForSelector creates a PodStore that monitors pods from given namespace matching given selector.
@@ -700,6 +649,69 @@ func waitForPodsGone(ps *testutil.PodStore, interval, timeout time.Duration) err
 	})
 }
 
-func DeleteRCAndPods(clientset clientset.Interface, internalClientset internalclientset.Interface, ns, name string) error {
-	return DeleteResourceAndPods(clientset, internalClientset, api.Kind("ReplicationController"), ns, name)
+// DeleteResourceAndWaitForGC deletes only given resource and waits for GC to delete the pods.
+func DeleteResourceAndWaitForGC(c clientset.Interface, kind schema.GroupKind, ns, name string) error {
+	By(fmt.Sprintf("deleting %v %s in namespace %s, will wait for the garbage collector to delete the pods", kind, name, ns))
+
+	rtObject, err := getRuntimeObjectForKind(c, kind, ns, name)
+	if err != nil {
+		if apierrs.IsNotFound(err) {
+			Logf("%v %s not found: %v", kind, name, err)
+			return nil
+		}
+		return err
+	}
+	selector, err := getSelectorFromRuntimeObject(rtObject)
+	if err != nil {
+		return err
+	}
+	replicas, err := getReplicasFromRuntimeObject(rtObject)
+	if err != nil {
+		return err
+	}
+
+	ps, err := testutil.NewPodStore(c, ns, selector, fields.Everything())
+	if err != nil {
+		return err
+	}
+
+	defer ps.Stop()
+	falseVar := false
+	deleteOption := &metav1.DeleteOptions{OrphanDependents: &falseVar}
+	startTime := time.Now()
+	if err := testutil.DeleteResourceWithRetries(c, kind, ns, name, deleteOption); err != nil {
+		return err
+	}
+	deleteTime := time.Since(startTime)
+	Logf("Deleting %v %s took: %v", kind, name, deleteTime)
+
+	var interval, timeout time.Duration
+	switch {
+	case replicas < 100:
+		interval = 100 * time.Millisecond
+	case replicas < 1000:
+		interval = 1 * time.Second
+	default:
+		interval = 10 * time.Second
+	}
+	if replicas < 5000 {
+		timeout = 10 * time.Minute
+	} else {
+		timeout = time.Duration(replicas/gcThroughput) * time.Second
+		// gcThroughput is pretty strict now, add a bit more to it
+		timeout = timeout + 3*time.Minute
+	}
+
+	err = waitForPodsInactive(ps, interval, timeout)
+	if err != nil {
+		return fmt.Errorf("error while waiting for pods to become inactive %s: %v", name, err)
+	}
+	terminatePodTime := time.Since(startTime) - deleteTime
+	Logf("Terminating %v %s pods took: %v", kind, name, terminatePodTime)
+
+	err = waitForPodsGone(ps, interval, 10*time.Minute)
+	if err != nil {
+		return fmt.Errorf("error while waiting for pods gone %s: %v", name, err)
+	}
+	return nil
 }

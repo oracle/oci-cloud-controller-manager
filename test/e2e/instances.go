@@ -85,19 +85,11 @@ var _ = Describe("Instances", func() {
 		nodeName := apitypes.NodeName(node.Name)
 		Expect(nodeName).NotTo(BeEmpty())
 
-		By("calling ExternalID()")
-		providerID, err := instances.ExternalID(context.Background(), nodeName)
+		By("calling InstanceID()")
+		providerID, err := instances.InstanceID(context.Background(), nodeName)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(providerID).NotTo(BeEmpty())
 		framework.Logf("%q: providerID=%q", nodeName, providerID)
-
-		By("calling InstanceID()")
-		providerID2, err := instances.InstanceID(context.Background(), nodeName)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(providerID2).NotTo(BeEmpty())
-		framework.Logf("%q: providerID=%q", nodeName, providerID2)
-
-		Expect(providerID).To(Equal(providerID2))
 	})
 
 	It("should be possible to get the type of an instance", func() {

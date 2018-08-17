@@ -22,7 +22,6 @@ import (
 
 	"github.com/oracle/oci-go-sdk/core"
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
 
 	api "k8s.io/api/core/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -108,28 +107,6 @@ func (cp *CloudProvider) NodeAddressesByProviderID(ctx context.Context, provider
 	return extractNodeAddressesFromVNIC(vnic)
 }
 
-// ExternalID returns the cloud provider ID of the node with the specified NodeName.
-// Note that if the instance does not exist or is no longer running, we must
-// return ("", cloudprovider.InstanceNotFound).
-func (cp *CloudProvider) ExternalID(ctx context.Context, nodeName types.NodeName) (string, error) {
-	logger := cp.logger.With("nodeName", nodeName)
-	logger.Debug("Getting external id for node name")
-
-	instName := mapNodeNameToInstanceName(nodeName)
-	inst, err := cp.client.Compute().GetInstanceByNodeName(ctx, cp.config.CompartmentID, cp.config.VCNID, instName)
-	if client.IsNotFound(err) {
-		logger.With(zap.Error(err)).Info("Instance not found. Unable to get ExternalID.")
-		return "", cloudprovider.InstanceNotFound
-	}
-	if err != nil {
-		logger.With(zap.Error(err)).Errorf("Failed to get ExternalID")
-		return "", err
-	}
-
-	logger.With("instanceID", *inst.Id).Debug("Got ExternalID for node")
-	return *inst.Id, nil
-}
-
 // InstanceID returns the cloud provider ID of the node with the specified NodeName.
 func (cp *CloudProvider) InstanceID(ctx context.Context, nodeName types.NodeName) (string, error) {
 	cp.logger.With("nodeName", nodeName).Debug("Getting instance id for node name")
@@ -202,4 +179,9 @@ func (cp *CloudProvider) InstanceExistsByProviderID(ctx context.Context, provide
 	}
 
 	return !client.IsInstanceInTerminalState(instance), nil
+}
+
+// InstanceShutdownByProviderID returns true if the instance is shutdown in cloudprovider.
+func (cp *CloudProvider) InstanceShutdownByProviderID(ctx context.Context, providerID string) (bool, error) {
+	return false, cloudprovider.NotImplemented
 }

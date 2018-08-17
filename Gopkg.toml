@@ -31,16 +31,16 @@
 
 # glog -> zap
 [[override]]
-  revision = "ad18aa91a01e5a7a4d312d16528a181979a23c62"
+  revision = "80c6663f0864be2efa0d7a5d7ba05c1a16256e64"
   name = "github.com/golang/glog"
   source = "github.com/prydie/glog"
 
 [[override]]
-  branch = "release-1.10"
   name = "k8s.io/apiextensions-apiserver"
+  version = "kubernetes-1.11.1"
 
 [[override]]
-  revision = "50ae88d24ede7b8bad68e23c805b5d3da5c8abaf"
+  revision = "91cfa479c814065e420cee7ed227db0f63a5854e"
   name = "k8s.io/kube-openapi"
 
 [[constraint]]
@@ -52,24 +52,24 @@
     version = "1.9.0"
 
 [[constraint]]
-  branch = "release-1.10"
   name = "k8s.io/api"
+  version = "kubernetes-1.11.1"
 
 [[constraint]]
-  branch = "release-1.10"
   name = "k8s.io/apimachinery"
+  version = "kubernetes-1.11.1"
 
 [[constraint]]
-  branch = "release-1.10"
   name = "k8s.io/apiserver"
+  version = "kubernetes-1.11.1"
 
 [[constraint]]
   name = "k8s.io/client-go"
-  version = "~6.0"
+  version = "~8.0"
 
 [[constraint]]
-  branch = "release-1.10"
   name = "k8s.io/kubernetes"
+  version = "1.11.1"
 
 [[constraint]]
   branch = "v2"
