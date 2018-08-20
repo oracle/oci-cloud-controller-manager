@@ -2,7 +2,7 @@
 
 ## 0.6.0
 
-* Allow dynamic configuration of security list management via annotations [#217][23]
+* Allow dynamic configuration of security list management via annotations. [#217][23]
 * Migrate to Zap logger. [#223][24]
 * Runtime checks around providerID. [#228][25]
 * Support request rate limiting. [#201][26]
