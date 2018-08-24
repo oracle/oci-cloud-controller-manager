@@ -17,6 +17,7 @@ package oci
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/loadbalancer"
@@ -304,6 +305,18 @@ func getListeners(svc *v1.Service, sslCfg *SSLConfig) (map[string]loadbalancer.L
 	listeners := make(map[string]loadbalancer.ListenerDetails)
 	for _, servicePort := range svc.Spec.Ports {
 		protocol := string(servicePort.Protocol)
+		// Annotation overrides the protocol.
+		if p, ok := svc.Annotations[ServiceAnnotationLoadBalancerBEProtocol]; ok {
+			// Default
+			if p == "" {
+				p = DefaultLoadBalancerBEProtocol
+			}
+			if strings.EqualFold(p, "HTTP") || strings.EqualFold(p, "TCP") {
+				protocol = p
+			} else {
+				return nil, fmt.Errorf("invalid backend protocol %q requested for load balancer listener. Only 'HTTP' and 'TCP' protocols supported", p)
+			}
+		}
 		port := int(servicePort.Port)
 		sslConfiguration := getSSLConfiguration(sslCfg, port)
 		name := getListenerName(protocol, port, sslConfiguration)

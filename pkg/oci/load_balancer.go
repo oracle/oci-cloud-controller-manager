@@ -70,11 +70,19 @@ const (
 	// ServiceAnnotaionLoadBalancerSecurityListManagementMode is a Service annotation for
 	// specifying the security list managment mode ("All", "Frontend", "None") that configures how security lists are managed by the CCM
 	ServiceAnnotaionLoadBalancerSecurityListManagementMode = "service.beta.kubernetes.io/oci-load-balancer-security-list-management-mode"
+
+	// ServiceAnnotationLoadBalancerBEProtocol is a Service annotation for specifying the
+	// load balancer listener backend protocol ("TCP", "HTTP").
+	ServiceAnnotationLoadBalancerBEProtocol = "service.beta.kubernetes.io/oci-load-balancer-backend-protocol"
 )
 
 // DefaultLoadBalancerPolicy defines the default traffic policy for load
 // balancers created by the CCM.
 const DefaultLoadBalancerPolicy = "ROUND_ROBIN"
+
+// DefaultLoadBalanceBEProtocol defines the default protocol for load
+// balancer listeners created by the CCM.
+const DefaultLoadBalancerBEProtocol = "TCP"
 
 const (
 	// Fallback value if annotation on service is not set
