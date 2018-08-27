@@ -51,3 +51,16 @@ loadBalancer:
   #                    Additionally requires the user to mange rules to allow
   #                    inbound traffic to load balancers.
   securityListManagementMode: All
+
+  # Optional specification of which security lists to modify per subnet. This does not apply if security list management is off.
+  securityLists:
+    ocid1.subnet.oc1.phx.aaaaaaaasa53hlkzk6nzksqfccegk2qnkxmphkblst3riclzs4rhwg7rg57q: ocid1.securitylist.oc1.iad.aaaaaaaaqti5jsfvyw6ejahh7r4okb2xbtuiuguswhs746mtahn72r7adt7q
+    ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq: ocid1.securitylist.oc1.iad.aaaaaaaaqti5jsfvyw6ejahh7r4okb2xbtuiuguswhs746mtahn72r7adt7q
+
+# Optional rate limit controls for accessing OCI API
+rateLimiter:
+  rateLimitQPSRead: 20.0
+  rateLimitBucketRead: 5
+  rateLimitQPSWrite: 20.0
+  rateLimitBucketWrite: 5
+

@@ -72,7 +72,7 @@ type portSpec struct {
 }
 
 type securityListManager interface {
-	Update(ctx context.Context, lbSubnets []*core.Subnet, backendSubnets []*core.Subnet, sourceCIDRs []string, actaulPorts *portSpec, desiredPorts portSpec) error
+	Update(ctx context.Context, lbSubnets []*core.Subnet, backendSubnets []*core.Subnet, sourceCIDRs []string, actualPorts *portSpec, desiredPorts portSpec) error
 	Delete(ctx context.Context, lbSubnets []*core.Subnet, backendSubnets []*core.Subnet, actualPorts portSpec) error
 }
 
@@ -229,7 +229,7 @@ func (s *defaultSecurityListManager) Update(ctx context.Context, lbSubnets []*co
 	return s.updateBackendRules(ctx, lbSubnets, backendSubnets, actualPorts, desiredPorts)
 }
 
-// Delete the security list rules associated with the listener & backends.
+// Delete the security list rules associated with the listener and backends.
 //
 // If the listener is nil, then only the egress rules from the LB's to the backends and the
 // ingress rules from the LB's to the backends will be cleaned up.
