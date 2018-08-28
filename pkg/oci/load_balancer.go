@@ -80,7 +80,7 @@ const (
 // balancers created by the CCM.
 const DefaultLoadBalancerPolicy = "ROUND_ROBIN"
 
-// DefaultLoadBalanceBEProtocol defines the default protocol for load
+// DefaultLoadBalancerBEProtocol defines the default protocol for load
 // balancer listeners created by the CCM.
 const DefaultLoadBalancerBEProtocol = "TCP"
 
