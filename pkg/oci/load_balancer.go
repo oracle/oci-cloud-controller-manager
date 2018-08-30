@@ -265,12 +265,6 @@ func (cp *CloudProvider) createLoadBalancer(ctx context.Context, spec *LBSpec) (
 		return nil, errors.Wrap(err, "getting subnets for nodes")
 	}
 
-	for _, ports := range spec.Ports {
-		if err = spec.securityListManager.Update(ctx, lbSubnets, nodeSubnets, spec.SourceCIDRs, nil, ports); err != nil {
-			return nil, err
-		}
-	}
-
 	// Then we create the load balancer and wait for it to be online.
 	certs, err := spec.Certificates()
 	if err != nil {
@@ -302,7 +296,18 @@ func (cp *CloudProvider) createLoadBalancer(ctx context.Context, spec *LBSpec) (
 	}
 
 	logger.With("loadBalancerID", *lb.Id).Info("Load balancer created")
-	return loadBalancerToStatus(lb)
+	status, err := loadBalancerToStatus(lb)
+	if status != nil && len(status.Ingress) > 0 {
+		// If the LB is successfully provisioned then open lb/node subnet seclists egress/ingress.
+		for _, ports := range spec.Ports {
+			if err = spec.securityListManager.Update(ctx, lbSubnets, nodeSubnets, spec.SourceCIDRs, nil, ports); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return status, err
+
 }
 
 // EnsureLoadBalancer creates a new load balancer or updates the existing one.

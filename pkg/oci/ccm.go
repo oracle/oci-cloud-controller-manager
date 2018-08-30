@@ -85,7 +85,7 @@ func NewCloudProvider(config *Config) (cloudprovider.Interface, error) {
 		return nil, err
 	}
 
-	rateLimiter := newRateLimiter(logger.Sugar(), config.RateLimiter)
+	rateLimiter := NewRateLimiter(logger.Sugar(), config.RateLimiter)
 
 	c, err := client.New(logger.Sugar(), cp, &rateLimiter)
 	if err != nil {
@@ -235,9 +235,9 @@ func buildConfigurationProvider(logger *zap.Logger, config *Config) (common.Conf
 	return cp, nil
 }
 
-// newRateLimiter builds and returns a struct containing read and write
+// NewRateLimiter builds and returns a struct containing read and write
 // rate limiters. Defaults are used where no (0) value is provided.
-func newRateLimiter(logger *zap.SugaredLogger, config *RateLimiterConfig) client.RateLimiter {
+func NewRateLimiter(logger *zap.SugaredLogger, config *RateLimiterConfig) client.RateLimiter {
 	if config == nil {
 		config = &RateLimiterConfig{}
 	}

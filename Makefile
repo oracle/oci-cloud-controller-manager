@@ -43,15 +43,15 @@ all: check test build
 
 .PHONY: gofmt
 gofmt:
-	@./hack/check-gofmt.sh ${SRC_DIRS}
+	@./hack/check-gofmt.sh $(SRC_DIRS)
 
 .PHONY: golint
 golint:
-	@./hack/check-golint.sh ${SRC_DIRS}
+	@./hack/check-golint.sh $(SRC_DIRS)
 
 .PHONY: govet
 govet:
-	@./hack/check-govet.sh ${SRC_DIRS}
+	@./hack/check-govet.sh $(SRC_DIRS)
 
 .PHONY: check
 check: gofmt govet golint
@@ -62,17 +62,17 @@ build-dirs:
 
 .PHONY: build
 build: build-dirs manifests
-	@GOOS=${GOOS} GOARCH=${ARCH} go build     \
+	@GOOS=$(GOOS) GOARCH=$(ARCH) go build     \
 	    -i                                    \
 	    -o dist/oci-cloud-controller-manager  \
 	    -installsuffix "static"               \
-	    -ldflags "-X main.version=${VERSION} -X main.build=${BUILD}" \
+	    -ldflags "-X main.version=$(VERSION) -X main.build=$(BUILD)" \
 	    ./cmd/oci-cloud-controller-manager
 
 .PHONY: manifests
 manifests: build-dirs
 	@cp -a manifests/* dist
-	@sed ${SED_INPLACE}                                            \
+	@sed $(SED_INPLACE)                                            \
 	    's#${IMAGE}:[0-9]\+.[0-9]\+.[0-9]\+#${IMAGE}:${VERSION}#g' \
 	    dist/oci-cloud-controller-manager.yaml
 
@@ -114,13 +114,13 @@ clean:
 
 .PHONY: deploy
 deploy:
-	kubectl -n kube-system set image ds/${BIN} ${BIN}=${IMAGE}:${VERSION}
+	kubectl -n kube-system set image ds/$(BIN) $(BIN)=$(IMAGE):$(VERSION)
 
 .PHONY: run-dev
 run-dev: build
 	@dist/oci-cloud-controller-manager          \
-	    --kubeconfig=${KUBECONFIG}              \
-	    --cloud-config=${CLOUD_PROVIDER_CFG}    \
+	    --kubeconfig=$(KUBECONFIG)              \
+	    --cloud-config=$(CLOUD_PROVIDER_CFG)    \
 	    --cluster-cidr=10.244.0.0/16            \
 	    --leader-elect-resource-lock=configmaps \
 	    --cloud-provider=oci                    \
@@ -128,4 +128,4 @@ run-dev: build
 
 .PHONY: version
 version:
-	@echo ${VERSION}
+	@echo $(VERSION)

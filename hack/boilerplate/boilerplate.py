@@ -136,7 +136,7 @@ skipped_dirs = [
     ".wercker",
     "vendor",
 
-    # Imported from Kubernetes maintaining origional copyright header
+    # Imported from Kubernetes maintaining original copyright header
     "hack/boilerplate/boilerplate.py",
     "hack/boilerplate/boilerplate_test.py",
     "hack/boilerplate/test",
@@ -146,9 +146,10 @@ skipped_dirs = [
     "test/e2e/load_balancer.go",
     "test/e2e/framework/cleanup.go",
     "test/e2e/framework/framework.go",
+    "test/e2e/framework/seclist_util.go",
     "test/e2e/framework/service_util.go",
     "test/e2e/framework/util.go",
-    "test/e2e/framework/networking_utils.go",
+    "test/e2e/framework/networking_util.go",
     "test/e2e/framework/ginkgowrapper/wrapper.go",
 ]
 

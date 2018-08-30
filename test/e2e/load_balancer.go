@@ -43,6 +43,7 @@ var _ = Describe("Service [Slow]", func() {
 		ns := f.Namespace.Name
 
 		jig := framework.NewServiceTestJig(f.ClientSet, serviceName)
+
 		nodeIP := framework.PickNodeIP(jig.Client) // for later
 
 		loadBalancerLagTimeout := framework.LoadBalancerLagTimeoutDefault
@@ -91,8 +92,13 @@ var _ = Describe("Service [Slow]", func() {
 		// Change the services' node ports.
 
 		By("changing the TCP service's NodePort")
+
+		// Count the number of ingress/egress rules with the original port so
+		// we can check the correct number are updated.
+		numEgressRules, numIngressRules := framework.CountSinglePortSecListRules(f.Client, f.CCMSecListID, f.K8SSecListID, tcpNodePort)
 		tcpService = jig.ChangeServiceNodePortOrFail(ns, tcpService.Name, tcpNodePort)
 		jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
 		tcpNodePortOld := tcpNodePort
 		tcpNodePort = int(tcpService.Spec.Ports[0].NodePort)
 		if tcpNodePort == tcpNodePortOld {
@@ -101,6 +107,11 @@ var _ = Describe("Service [Slow]", func() {
 		if framework.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]) != tcpIngressIP {
 			framework.Failf("TCP Status.LoadBalancer.Ingress changed (%s -> %s) when not expected", tcpIngressIP, framework.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]))
 		}
+
+		// Check the correct number of rules are present.
+		framework.WaitForSinglePortEgressRulesAfterPortChangeOrFail(f.Client, f.CCMSecListID, numEgressRules, tcpNodePortOld, tcpNodePort)
+		framework.WaitForSinglePortIngressRulesAfterPortChangeOrFail(f.Client, f.K8SSecListID, numIngressRules, tcpNodePortOld, tcpNodePort)
+
 		framework.Logf("TCP node port: %d", tcpNodePort)
 
 		By("hitting the TCP service's new NodePort")
@@ -117,6 +128,7 @@ var _ = Describe("Service [Slow]", func() {
 		By("changing the TCP service's port")
 		tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
 			s.Spec.Ports[0].Port++
+			framework.Logf("Updating port to: %d", tcpNodePort)
 		})
 		jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
 		svcPortOld := svcPort
