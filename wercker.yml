@@ -155,7 +155,6 @@ e2e-test:
       code: make rollback
 
 
-
 push-canary:
   base-path: "/go/src/github.com/oracle/oci-cloud-controller-manager"
   box:
@@ -169,12 +168,14 @@ push-canary:
       code: |
         export VERSION=$(cat dist/VERSION.txt)
         echo "Pushing test version ${VERSION}"
-
+    - script:
+        name: configure oci canary entrypoint
+        code: mkdir -p /oci/scripts/ && cp ./hack/ccm-canary-entrypoint.sh /oci/scripts/ccm-canary-entrypoint.sh 
     - internal/docker-push:
       repository: iad.ocir.io/oracle/oci-cloud-controller-manager-canary
       tag: $VERSION
-      working-dir: /go/src/github.com/oracle/oci-cloud-controller-manager/
-      entrypoint: make canary
+      working-dir: /oci/scripts/
+      entrypoint: ccm-canary-entrypoint.sh
       registry: https://iad.ocir.io/v2
       username: $OCIRUSERNAME
       password: $OCIRPASSWORD
@@ -199,7 +200,7 @@ validate-canary:
 
     - script:
       name: validate canary tests
-      code: make validate-canary
+      code: make validate-canary 
 
   after-steps:
     - script:

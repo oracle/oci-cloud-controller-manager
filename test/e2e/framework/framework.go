@@ -202,7 +202,8 @@ func (f *Framework) BeforeEach() {
 	// https://github.com/onsi/ginkgo/issues/222
 	f.cleanupHandle = AddCleanupAction(f.AfterEach)
 
-	if f.Client == nil {
+	// Create an OCI client if the cloudConfig has been specified.
+	if cloudConfigFile != "" && f.Client == nil {
 		By("Creating OCI client")
 		cloudProviderConfig, err := createCloudProviderConfig(cloudConfigFile)
 		Expect(err).NotTo(HaveOccurred())
