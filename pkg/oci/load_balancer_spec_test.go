@@ -74,9 +74,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 							UrlPath:  common.String("/healthz"),
 						},
 						Policy: common.String("ROUND_ROBIN"),
-						SslConfiguration: &loadbalancer.SslConfigurationDetails{
-							CertificateName: common.String(""),
-						},
+						// SslConfiguration: &loadbalancer.SslConfigurationDetails{
+						// 	CertificateName: common.String(""),
+						// },
 					},
 				},
 				SourceCIDRs: []string{"0.0.0.0/0"},
@@ -132,9 +132,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 							UrlPath:  common.String("/healthz"),
 						},
 						Policy: common.String("ROUND_ROBIN"),
-						SslConfiguration: &loadbalancer.SslConfigurationDetails{
-							CertificateName: common.String(""),
-						},
+						// SslConfiguration: &loadbalancer.SslConfigurationDetails{
+						// 	CertificateName: common.String(""),
+						// },
 					},
 				},
 				SourceCIDRs: []string{"0.0.0.0/0"},
@@ -191,9 +191,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 							UrlPath:  common.String("/healthz"),
 						},
 						Policy: common.String("ROUND_ROBIN"),
-						SslConfiguration: &loadbalancer.SslConfigurationDetails{
-							CertificateName: common.String(""),
-						},
+						// SslConfiguration: &loadbalancer.SslConfigurationDetails{
+						// 	CertificateName: common.String(""),
+						// },
 					},
 				},
 				SourceCIDRs: []string{"0.0.0.0/0"},
@@ -250,9 +250,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 							UrlPath:  common.String("/healthz"),
 						},
 						Policy: common.String("ROUND_ROBIN"),
-						SslConfiguration: &loadbalancer.SslConfigurationDetails{
-							CertificateName: common.String(""),
-						},
+						// SslConfiguration: &loadbalancer.SslConfigurationDetails{
+						// 	CertificateName: common.String(""),
+						// },
 					},
 				},
 				SourceCIDRs: []string{"0.0.0.0/0"},
@@ -311,9 +311,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 							UrlPath:  common.String("/healthz"),
 						},
 						Policy: common.String("ROUND_ROBIN"),
-						SslConfiguration: &loadbalancer.SslConfigurationDetails{
-							CertificateName: common.String(""),
-						},
+						// SslConfiguration: &loadbalancer.SslConfigurationDetails{
+						// 	CertificateName: common.String(""),
+						// },
 					},
 				},
 				SourceCIDRs: []string{"0.0.0.0/0"},

@@ -249,7 +249,7 @@ func (cp *CloudProvider) ensureSSLCertificate(ctx context.Context, lb *loadbalan
 // createLoadBalancer creates a new OCI load balancer based on the given spec.
 func (cp *CloudProvider) createLoadBalancer(ctx context.Context, spec *LBSpec) (*v1.LoadBalancerStatus, error) {
 	logger := cp.logger.With("loadBalancerName", spec.Name)
-	logger.Error("Attempting to create a new load balancer")
+	logger.Info("Attempting to create a new load balancer")
 
 	// First update the security lists so that if it fails (due to the etag
 	// bug or otherwise) we'll retry prior to LB creation.
