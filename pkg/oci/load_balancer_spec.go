@@ -141,7 +141,7 @@ func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCf
 		Internal:    internal,
 		Subnets:     subnets,
 		Listeners:   listeners,
-		BackendSets: getBackendSets(svc, nodes),
+		BackendSets: getBackendSets(svc, nodes, sslCfg),
 
 		Ports:       getPorts(svc),
 		SSLConfig:   sslCfg,
@@ -243,28 +243,29 @@ func getBackends(nodes []*v1.Node, nodePort int32) []loadbalancer.BackendDetails
 	return backends
 }
 
-func getBackendSets(svc *v1.Service, nodes []*v1.Node) map[string]loadbalancer.BackendSetDetails {
+func getBackendSets(svc *v1.Service, nodes []*v1.Node, sslCfg *SSLConfig) map[string]loadbalancer.BackendSetDetails {
 	backendSets := make(map[string]loadbalancer.BackendSetDetails)
 	for _, servicePort := range svc.Spec.Ports {
 		name := getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
-		backendSets[name] = loadbalancer.BackendSetDetails{
-			Policy:           common.String(DefaultLoadBalancerPolicy),
-			Backends:         getBackends(nodes, servicePort.NodePort),
-			HealthChecker:    getHealthChecker(svc),
-			SslConfiguration: getSslConfiguration(svc),
+		port := int(servicePort.Port)
+		sslConfig := getSSLConfiguration(sslCfg, port)
+		if sslConfig != nil {
+			backendSets[name] = loadbalancer.BackendSetDetails{
+				Policy:           common.String(DefaultLoadBalancerPolicy),
+				Backends:         getBackends(nodes, servicePort.NodePort),
+				HealthChecker:    getHealthChecker(svc),
+				SslConfiguration: sslConfig,
+			}
+		} else {
+			backendSets[name] = loadbalancer.BackendSetDetails{
+				Policy:        common.String(DefaultLoadBalancerPolicy),
+				Backends:      getBackends(nodes, servicePort.NodePort),
+				HealthChecker: getHealthChecker(svc),
+			}
 		}
 
 	}
 	return backendSets
-}
-
-func getSslConfiguration(svc *v1.Service) *loadbalancer.SslConfigurationDetails {
-	if val, ok := svc.Annotations[ServiceAnnotationLoadBalancerTLSBackendSecret]; ok {
-		return &loadbalancer.SslConfigurationDetails{
-			CertificateName: common.String(val),
-		}
-	}
-	return nil
 }
 
 func getHealthChecker(svc *v1.Service) *loadbalancer.HealthCheckerDetails {
