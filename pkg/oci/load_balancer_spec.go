@@ -141,7 +141,7 @@ func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCf
 		Internal:    internal,
 		Subnets:     subnets,
 		Listeners:   listeners,
-		BackendSets: getBackendSets(svc, nodes),
+		BackendSets: getBackendSets(svc, nodes, sslCfg),
 
 		Ports:       getPorts(svc),
 		SSLConfig:   sslCfg,
@@ -243,7 +243,7 @@ func getBackends(nodes []*v1.Node, nodePort int32) []loadbalancer.BackendDetails
 	return backends
 }
 
-func getBackendSets(svc *v1.Service, nodes []*v1.Node) map[string]loadbalancer.BackendSetDetails {
+func getBackendSets(svc *v1.Service, nodes []*v1.Node, sslCfg *SSLConfig) map[string]loadbalancer.BackendSetDetails {
 	backendSets := make(map[string]loadbalancer.BackendSetDetails)
 	for _, servicePort := range svc.Spec.Ports {
 		name := getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
@@ -251,7 +251,7 @@ func getBackendSets(svc *v1.Service, nodes []*v1.Node) map[string]loadbalancer.B
 			Policy:           common.String(DefaultLoadBalancerPolicy),
 			Backends:         getBackends(nodes, servicePort.NodePort),
 			HealthChecker:    getHealthChecker(svc),
-			SslConfiguration: getSslConfiguration(svc),
+			SslConfiguration: getSSLConfiguration(nil, 443),
 		}
 
 	}
@@ -286,6 +286,7 @@ func getHealthChecker(svc *v1.Service) *loadbalancer.HealthCheckerDetails {
 
 func getSSLConfiguration(cfg *SSLConfig, port int) *loadbalancer.SslConfigurationDetails {
 	if cfg == nil || !cfg.Ports.Has(port) {
+
 		return nil
 	}
 	return &loadbalancer.SslConfigurationDetails{
