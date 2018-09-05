@@ -30,16 +30,16 @@ import (
 )
 
 type sslSecretReader interface {
-	readSSLSecret(svc *v1.Service) (cert, key string, err error)
+	readSSLSecret(svc *v1.Service) (cacert, cert, key string, pass string, err error)
 }
 
 type noopSSLSecretReader struct{}
 
-func (ssr noopSSLSecretReader) readSSLSecret(svc *v1.Service) (cert, key string, err error) {
-	return "", "", nil
+func (ssr noopSSLSecretReader) readSSLSecret(svc *v1.Service) (cacert, cert, key string, pass string, err error) {
+	return "", "", "", "", nil
 }
 
-// SSLConfig is a description of a SSL certificate.
+// sslConfig is a description of a SSL certificate.
 type SSLConfig struct {
 	Name  string
 	Ports sets.Int
@@ -141,7 +141,7 @@ func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCf
 		Internal:    internal,
 		Subnets:     subnets,
 		Listeners:   listeners,
-		BackendSets: getBackendSets(svc, nodes),
+		BackendSets: getBackendSets(svc, nodes, sslCfg),
 
 		Ports:       getPorts(svc),
 		SSLConfig:   sslCfg,
@@ -161,7 +161,7 @@ func (s *LBSpec) Certificates() (map[string]loadbalancer.CertificateDetails, err
 		return certs, nil
 	}
 
-	cert, key, err := s.SSLConfig.readSSLSecret(s.service)
+	cacert, cert, key, pass, err := s.SSLConfig.readSSLSecret(s.service)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading SSL Secret")
 	}
@@ -172,7 +172,9 @@ func (s *LBSpec) Certificates() (map[string]loadbalancer.CertificateDetails, err
 	certs[s.SSLConfig.Name] = loadbalancer.CertificateDetails{
 		CertificateName:   &s.SSLConfig.Name,
 		PublicCertificate: &cert,
+		CaCertificate:     &cacert,
 		PrivateKey:        &key,
+		Passphrase:        &pass,
 	}
 
 	return certs, nil
@@ -243,7 +245,7 @@ func getBackends(nodes []*v1.Node, nodePort int32) []loadbalancer.BackendDetails
 	return backends
 }
 
-func getBackendSets(svc *v1.Service, nodes []*v1.Node) map[string]loadbalancer.BackendSetDetails {
+func getBackendSets(svc *v1.Service, nodes []*v1.Node, sslCfg *SSLConfig) map[string]loadbalancer.BackendSetDetails {
 	backendSets := make(map[string]loadbalancer.BackendSetDetails)
 	for _, servicePort := range svc.Spec.Ports {
 		name := getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
@@ -259,12 +261,9 @@ func getBackendSets(svc *v1.Service, nodes []*v1.Node) map[string]loadbalancer.B
 }
 
 func getSslConfiguration(svc *v1.Service) *loadbalancer.SslConfigurationDetails {
-	if val, ok := svc.Annotations[ServiceAnnotationLoadBalancerTLSBackendSecret]; ok {
-		return &loadbalancer.SslConfigurationDetails{
-			CertificateName: common.String(val),
-		}
+	return &loadbalancer.SslConfigurationDetails{
+		CertificateName: common.String(svc.Annotations[ServiceAnnotationLoadBalancerTLSBackendSecret]),
 	}
-	return nil
 }
 
 func getHealthChecker(svc *v1.Service) *loadbalancer.HealthCheckerDetails {

@@ -186,10 +186,10 @@ func getSubnetsForNodes(ctx context.Context, nodes []*v1.Node, client client.Int
 
 // readSSLSecret returns the certificate and private key from a Kubernetes TLS
 // private key Secret.
-func (cp *CloudProvider) readSSLSecret(svc *v1.Service) (string, string, error) {
+func (cp *CloudProvider) readSSLSecret(svc *v1.Service) (string, string, string, string, error) {
 	secretString, ok := svc.Annotations[ServiceAnnotationLoadBalancerTLSSecret]
 	if !ok {
-		return "", "", errors.Errorf("no %q annotation found", ServiceAnnotationLoadBalancerTLSSecret)
+		return "", "", "", "", errors.Errorf("no %q annotation found", ServiceAnnotationLoadBalancerTLSSecret)
 	}
 
 	ns, name := parseSecretString(secretString)
@@ -198,18 +198,28 @@ func (cp *CloudProvider) readSSLSecret(svc *v1.Service) (string, string, error) 
 	}
 	secret, err := cp.kubeclient.CoreV1().Secrets(ns).Get(name, metav1.GetOptions{})
 	if err != nil {
-		return "", "", err
+		return "", "", "", "", err
 	}
 
-	var cert, key []byte
+	var cacert, cert, key, pass []byte
+	var cacertstr, passstr string
+	if cacert, ok = secret.Data[sslCAFileName]; !ok {
+		cacertstr = ""
+	} else {
+		cacertstr = string(cacert)
+	}
 	if cert, ok = secret.Data[sslCertificateFileName]; !ok {
-		return "", "", errors.Errorf("%s not found in secret %s/%s", sslCertificateFileName, ns, name)
+		return "", "", "", "", errors.Errorf("%s not found in secret %s/%s", sslCertificateFileName, ns, name)
 	}
 	if key, ok = secret.Data[sslPrivateKeyFileName]; !ok {
-		return "", "", errors.Errorf("%s not found in secret %s/%s", sslPrivateKeyFileName, ns, name)
+		return "", "", "", "", errors.Errorf("%s not found in secret %s/%s", sslPrivateKeyFileName, ns, name)
 	}
-
-	return string(cert), string(key), nil
+	if pass, ok = secret.Data[sslPassphrase]; !ok {
+		passstr = ""
+	} else {
+		passstr = string(pass)
+	}
+	return cacertstr, string(cert), string(key), passstr, nil
 }
 
 // ensureSSLCertificate creates a OCI SSL certificate to the given load
@@ -330,10 +340,21 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		return nil, err
 	}
 
+	for k, v := range spec.BackendSets {
+		if v.SslConfiguration != nil {
+			logger.With("nodes", len(nodes), "sslKey", k, "backendSetCert", v.SslConfiguration.CertificateName).Info("Created new load balancer spec")
+		} else {
+			logger.With("nodes", len(nodes), "sslKey", k).Info("Created new load balancer spec")
+		}
+	}
+
 	if !exists {
 		return cp.createLoadBalancer(ctx, spec)
 	}
 
+	for _, v := range spec.BackendSets {
+		logger.With("nodes", len(nodes), "backendSetCert", v.SslConfiguration.CertificateName).Info("Created new load balancer spec")
+	}
 	// Existing load balancers cannot change subnets. This ensures that the spec matches
 	// what the actual load balancer has listed as the subnet ids. If the load balancer
 	// was just created then these values would be equal; however, if the load balancer

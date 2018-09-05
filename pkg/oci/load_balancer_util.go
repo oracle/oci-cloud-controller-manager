@@ -29,8 +29,10 @@ import (
 )
 
 const (
+	sslCAFileName          = "ca.crt"
 	sslCertificateFileName = "tls.crt"
 	sslPrivateKeyFileName  = "tls.key"
+	sslPassphrase          = "passphrase"
 )
 
 const lbNamePrefixEnvVar = "LOAD_BALANCER_PREFIX"
