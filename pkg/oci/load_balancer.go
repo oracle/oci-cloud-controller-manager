@@ -219,13 +219,13 @@ func (cp *CloudProvider) readSSLSecret(secretType string, svc *v1.Service) (stri
 	} else {
 		passstr = string(pass)
 	}
-	return string(cacert), string(cert), string(key), passstr, nil
+	return cacertstr, string(cert), string(key), passstr, nil
 }
 
 // ensureSSLCertificate creates a OCI SSL certificate to the given load
 // balancer, if it doesn't already exist.
-func (cp *CloudProvider) ensureSSLCertificate(ctx context.Context, lb *loadbalancer.LoadBalancer, spec *LBSpec) error {
-	name := spec.SSLConfig.Name
+func (cp *CloudProvider) ensureSSLCertificate(ctx context.Context, lb *loadbalancer.LoadBalancer, sslConfig *SSLConfig, svc *v1.Service) error {
+	name := sslConfig.Name
 	logger := cp.logger.With("loadBalancerID", *lb.Id, "certificateName", name)
 	_, err := cp.client.LoadBalancer().GetCertificateByName(ctx, *lb.Id, name)
 	if err == nil {
@@ -237,7 +237,8 @@ func (cp *CloudProvider) ensureSSLCertificate(ctx context.Context, lb *loadbalan
 	}
 
 	// Although we iterate here only one certificate is supported at the moment.
-	certs, err := spec.Certificates()
+	certs := make(map[string]loadbalancer.CertificateDetails)
+	err = buildCertificates(sslConfig, svc, certs)
 	if err != nil {
 		return err
 	}
@@ -279,7 +280,8 @@ func (cp *CloudProvider) createLoadBalancer(ctx context.Context, spec *LBSpec) (
 	}
 
 	// Then we create the load balancer and wait for it to be online.
-	certs, err := spec.Certificates()
+	certs := make(map[string]loadbalancer.CertificateDetails)
+	err = buildCertificates(spec.SSLConfig, spec.service, certs)
 	if err != nil {
 		return nil, errors.Wrap(err, "get certificates")
 	}
@@ -325,16 +327,17 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 	}
 	exists := !client.IsNotFound(err)
 
-	var ssl *SSLConfig
+	var ssl, sslBackendSet *SSLConfig
 	if requiresCertificate(service) {
 		ports, err := getSSLEnabledPorts(service)
 		if err != nil {
 			return nil, err
 		}
-		ssl = NewSSLConfig(lbName, ports, cp)
+		ssl = NewSSLConfig(lbName, ServiceAnnotationLoadBalancerTLSSecret, ports, cp)
+		sslBackendSet = NewSSLConfig(lbName, ServiceAnnotationLoadBalancerTLSBackendSecret, ports, cp)
 	}
 	subnets := []string{cp.config.LoadBalancer.Subnet1, cp.config.LoadBalancer.Subnet2}
-	spec, err := NewLBSpec(service, nodes, subnets, ssl, cp.securityListManagerFactory)
+	spec, err := NewLBSpec(service, nodes, subnets, ssl, sslBackendSet, cp.securityListManagerFactory)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to derive LBSpec")
 		return nil, err
@@ -364,8 +367,11 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 
 	// If the load balancer needs an SSL cert ensure it is present.
 	if requiresCertificate(service) {
-		if err := cp.ensureSSLCertificate(ctx, lb, spec); err != nil {
-			return nil, errors.Wrap(err, "ensuring ssl certificate")
+		if err := cp.ensureSSLCertificate(ctx, lb, spec.SSLConfig, spec.service); err != nil {
+			return nil, errors.Wrap(err, "ensuring ssl certificate for listeners")
+		}
+		if err := cp.ensureSSLCertificate(ctx, lb, spec.SSLBackendSetConfig, spec.service); err != nil {
+			return nil, errors.Wrap(err, "ensuring ssl certificate for backend sets")
 		}
 	}
 

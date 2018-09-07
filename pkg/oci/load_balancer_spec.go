@@ -42,6 +42,7 @@ func (ssr noopSSLSecretReader) readSSLSecret(secretType string, svc *v1.Service)
 // SSLConfig is a description of a SSL certificate.
 type SSLConfig struct {
 	Name  string
+	Type  string
 	Ports sets.Int
 
 	sslSecretReader
@@ -53,12 +54,13 @@ func requiresCertificate(svc *v1.Service) bool {
 }
 
 // NewSSLConfig constructs a new SSLConfig.
-func NewSSLConfig(name string, ports []int, ssr sslSecretReader) *SSLConfig {
+func NewSSLConfig(name string, sslType string, ports []int, ssr sslSecretReader) *SSLConfig {
 	if ssr == nil {
 		ssr = noopSSLSecretReader{}
 	}
 	return &SSLConfig{
 		Name:            name,
+		Type:            sslType,
 		Ports:           sets.NewInt(ports...),
 		sslSecretReader: ssr,
 	}
@@ -77,7 +79,7 @@ type LBSpec struct {
 	Ports               map[string]portSpec
 	SourceCIDRs         []string
 	SSLConfig           *SSLConfig
-	SSLBackendConfig    *SSLConfig
+	SSLBackendSetConfig *SSLConfig
 	securityListManager securityListManager
 
 	service *v1.Service
@@ -85,7 +87,7 @@ type LBSpec struct {
 }
 
 // NewLBSpec creates a LB Spec from a Kubernetes service and a slice of nodes.
-func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCfg *SSLConfig, sslBackendCfg *SSLConfig, secListFactory securityListManagerFactory) (*LBSpec, error) {
+func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCfg *SSLConfig, sslBSCfg *SSLConfig, secListFactory securityListManagerFactory) (*LBSpec, error) {
 	if len(defaultSubnets) != 2 {
 		return nil, errors.New("default subnets incorrectly configured")
 	}
@@ -142,12 +144,12 @@ func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCf
 		Internal:    internal,
 		Subnets:     subnets,
 		Listeners:   listeners,
-		BackendSets: getBackendSets(svc, nodes, sslCfg),
+		BackendSets: getBackendSets(svc, nodes, sslBSCfg),
 
-		Ports:            getPorts(svc),
-		SSLConfig:        sslCfg,
-		SSLBackendConfig: sslBackendCfg,
-		SourceCIDRs:      sourceCIDRs,
+		Ports:               getPorts(svc),
+		SSLConfig:           sslCfg,
+		SSLBackendSetConfig: sslBSCfg,
+		SourceCIDRs:         sourceCIDRs,
 
 		service: svc,
 		nodes:   nodes,
@@ -157,29 +159,26 @@ func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCf
 }
 
 // Certificates builds a map of required SSL certificates.
-func (s *LBSpec) Certificates() (map[string]loadbalancer.CertificateDetails, error) {
-	certs := make(map[string]loadbalancer.CertificateDetails)
-	if s.SSLConfig == nil {
-		return certs, nil
+func buildCertificates(sslConfig *SSLConfig, svc *v1.Service, certs map[string]loadbalancer.CertificateDetails) error {
+	if sslConfig == nil {
+		return nil
 	}
-	for _, secretType := range []string{ServiceAnnotationLoadBalancerTLSSecret, ServiceAnnotationLoadBalancerTLSBackendSecret} {
-		cacert, cert, key, pass, err := s.SSLConfig.readSSLSecret(secretType, s.service)
-		if err != nil {
-			return nil, errors.Wrap(err, "reading SSL Secret")
-		}
-		if cert == "" || key == "" {
-			return certs, nil
-		}
+	cacert, cert, key, pass, err := sslConfig.readSSLSecret(sslConfig.Type, svc)
+	if err != nil {
+		return errors.Wrap(err, "reading SSL Secret")
+	}
+	if cert == "" || key == "" {
+		return nil
+	}
 
-		certs[s.SSLConfig.Name] = loadbalancer.CertificateDetails{
-			CertificateName:   &s.SSLConfig.Name,
-			PublicCertificate: &cert,
-			CaCertificate:     &cacert,
-			PrivateKey:        &key,
-			Passphrase:        &pass,
-		}
+	certs[sslConfig.Name] = loadbalancer.CertificateDetails{
+		CertificateName:   &sslConfig.Name,
+		PublicCertificate: &cert,
+		CaCertificate:     &cacert,
+		PrivateKey:        &key,
+		Passphrase:        &pass,
 	}
-	return certs, nil
+	return nil
 }
 
 // TODO(apryde): aggregate errors using an error list.
