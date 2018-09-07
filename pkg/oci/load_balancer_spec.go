@@ -39,7 +39,7 @@ func (ssr noopSSLSecretReader) readSSLSecret(svc *v1.Service) (cacert, cert, key
 	return "", "", "", "", nil
 }
 
-// sslConfig is a description of a SSL certificate.
+// SSLConfig is a description of a SSL certificate.
 type SSLConfig struct {
 	Name  string
 	Ports sets.Int
