@@ -202,12 +202,14 @@ func (cp *CloudProvider) readSSLSecret(svc *v1.Service) (string, string, string,
 	}
 
 	var cacert, cert, key, pass []byte
-	var cacertstr, passstr string
+	var passstr string
 	if cacert, ok = secret.Data[sslCAFileName]; !ok {
-		cacertstr = ""
-	} else {
-		cacertstr = string(cacert)
+		return "", "", "", "", errors.Errorf("%s not found in secret %s/%s", sslCAFileName, ns, name)
 	}
+	// 	cacertstr = ""
+	// } else {
+	// 	cacertstr = string(cacert)
+	// }
 	if cert, ok = secret.Data[sslCertificateFileName]; !ok {
 		return "", "", "", "", errors.Errorf("%s not found in secret %s/%s", sslCertificateFileName, ns, name)
 	}
@@ -219,7 +221,7 @@ func (cp *CloudProvider) readSSLSecret(svc *v1.Service) (string, string, string,
 	} else {
 		passstr = string(pass)
 	}
-	return cacertstr, string(cert), string(key), passstr, nil
+	return string(cacert), string(cert), string(key), passstr, nil
 }
 
 // ensureSSLCertificate creates a OCI SSL certificate to the given load
