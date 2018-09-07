@@ -354,9 +354,9 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		return cp.createLoadBalancer(ctx, spec)
 	}
 
-	for _, v := range spec.BackendSets {
-		logger.With("nodes", len(nodes), "backendSetCert", v.SslConfiguration.CertificateName).Info("Created new load balancer spec")
-	}
+	// for _, v := range spec.BackendSets {
+	// 	logger.With("nodes", len(nodes), "backendSetCert", v.SslConfiguration.CertificateName).Info("Created new load balancer spec")
+	// }
 	// Existing load balancers cannot change subnets. This ensures that the spec matches
 	// what the actual load balancer has listed as the subnet ids. If the load balancer
 	// was just created then these values would be equal; however, if the load balancer
