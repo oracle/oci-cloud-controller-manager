@@ -177,6 +177,7 @@ function run() {
             local num_fail=$(echo "${logs}"| grep '"create_lb": "0"' | uniq | wc -l)
             if [ "${num_fail}" -gt "0" ]; then 
                 echo "FAILED"
+                kubectl logs oci-cloud-controller-manager-canary -c oci-cloud-controller-manager-canary-test-runner 
                 exit 1
             elif [ "${num_pass}" -eq "1" ]; then
                 echo "PASSED"
