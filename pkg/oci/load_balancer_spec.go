@@ -172,7 +172,7 @@ func (s *LBSpec) Certificates() (map[string]loadbalancer.CertificateDetails, err
 	certs[s.SSLConfig.Name] = loadbalancer.CertificateDetails{
 		CertificateName:   &s.SSLConfig.Name,
 		PublicCertificate: &cert,
-		CaCertificate:     &cert,
+		CaCertificate:     common.String("fsfsdfdfs"),
 		PrivateKey:        &key,
 		Passphrase:        &pass,
 	}
@@ -250,10 +250,10 @@ func getBackendSets(svc *v1.Service, nodes []*v1.Node, sslCfg *SSLConfig) map[st
 	for _, servicePort := range svc.Spec.Ports {
 		name := getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
 		backendSets[name] = loadbalancer.BackendSetDetails{
-			Policy:           common.String(DefaultLoadBalancerPolicy),
-			Backends:         getBackends(nodes, servicePort.NodePort),
-			HealthChecker:    getHealthChecker(svc),
-			SslConfiguration: getSslConfiguration(svc),
+			Policy:        common.String(DefaultLoadBalancerPolicy),
+			Backends:      getBackends(nodes, servicePort.NodePort),
+			HealthChecker: getHealthChecker(svc),
+			// SslConfiguration: getSslConfiguration(svc),
 		}
 
 	}
