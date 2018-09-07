@@ -161,7 +161,7 @@ func (s *LBSpec) Certificates() (map[string]loadbalancer.CertificateDetails, err
 		return certs, nil
 	}
 
-	_, cert, key, pass, err := s.SSLConfig.readSSLSecret(s.service)
+	cacert, cert, key, pass, err := s.SSLConfig.readSSLSecret(s.service)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading SSL Secret")
 	}
@@ -172,7 +172,7 @@ func (s *LBSpec) Certificates() (map[string]loadbalancer.CertificateDetails, err
 	certs[s.SSLConfig.Name] = loadbalancer.CertificateDetails{
 		CertificateName:   &s.SSLConfig.Name,
 		PublicCertificate: &cert,
-		CaCertificate:     common.String("fsfsdfdfs"),
+		CaCertificate:     &cacert,
 		PrivateKey:        &key,
 		Passphrase:        &pass,
 	}
