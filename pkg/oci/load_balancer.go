@@ -186,10 +186,10 @@ func getSubnetsForNodes(ctx context.Context, nodes []*v1.Node, client client.Int
 
 // readSSLSecret returns the certificate and private key from a Kubernetes TLS
 // private key Secret.
-func (cp *CloudProvider) readSSLSecret(svc *v1.Service) (string, string, string, string, error) {
-	secretString, ok := svc.Annotations[ServiceAnnotationLoadBalancerTLSSecret]
-	if !ok {
-		return "", "", "", "", errors.Errorf("no %q annotation found", ServiceAnnotationLoadBalancerTLSSecret)
+func (cp *CloudProvider) readSSLSecret(secretType string, svc *v1.Service) (string, string, string, string, error) {
+	secretString, ok := svc.Annotations[secretType]
+	if !ok && secretType == ServiceAnnotationLoadBalancerTLSSecret {
+		return "", "", "", "", errors.Errorf("no %q annotation found", secretType)
 	}
 
 	ns, name := parseSecretString(secretString)
@@ -202,14 +202,12 @@ func (cp *CloudProvider) readSSLSecret(svc *v1.Service) (string, string, string,
 	}
 
 	var cacert, cert, key, pass []byte
-	var passstr string
+	var cacertstr, passstr string
 	if cacert, ok = secret.Data[sslCAFileName]; !ok {
-		return "", "", "", "", errors.Errorf("%s not found in secret %s/%s", sslCAFileName, ns, name)
+		cacertstr = ""
+	} else {
+		cacertstr = string(cacert)
 	}
-	// 	cacertstr = ""
-	// } else {
-	// 	cacertstr = string(cacert)
-	// }
 	if cert, ok = secret.Data[sslCertificateFileName]; !ok {
 		return "", "", "", "", errors.Errorf("%s not found in secret %s/%s", sslCertificateFileName, ns, name)
 	}
