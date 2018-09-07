@@ -262,7 +262,9 @@ func getBackendSets(svc *v1.Service, nodes []*v1.Node, sslCfg *SSLConfig) map[st
 
 func getSslConfiguration(svc *v1.Service) *loadbalancer.SslConfigurationDetails {
 	return &loadbalancer.SslConfigurationDetails{
-		CertificateName: common.String(svc.Annotations[ServiceAnnotationLoadBalancerTLSBackendSecret]),
+		CertificateName:       common.String(svc.Annotations[ServiceAnnotationLoadBalancerTLSBackendSecret]),
+		VerifyDepth:           common.Int(0),
+		VerifyPeerCertificate: common.Bool(false),
 	}
 }
 
