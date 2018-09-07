@@ -253,14 +253,14 @@ func getBackendSets(svc *v1.Service, nodes []*v1.Node, sslCfg *SSLConfig) map[st
 			Policy:           common.String(DefaultLoadBalancerPolicy),
 			Backends:         getBackends(nodes, servicePort.NodePort),
 			HealthChecker:    getHealthChecker(svc),
-			SslConfiguration: getSslConfiguration(&sslCfg),
+			SslConfiguration: getSslConfiguration(sslCfg),
 		}
 
 	}
 	return backendSets
 }
 
-func getSslConfiguration(cfg *SSLConfig, svc *v1.Service) *loadbalancer.SslConfigurationDetails {
+func getSslConfiguration(cfg *SSLConfig) *loadbalancer.SslConfigurationDetails {
 	return &loadbalancer.SslConfigurationDetails{
 		CertificateName:       &cfg.Name,
 		VerifyDepth:           common.Int(0),
