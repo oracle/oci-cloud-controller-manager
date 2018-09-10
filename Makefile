@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-REGISTRY := iad.ocir.io/oracle
+REGISTRY := iad.ocir.io/spinnaker
 PKG := github.com/oracle/oci-cloud-controller-manager
 BIN := oci-cloud-controller-manager
 IMAGE := $(REGISTRY)/$(BIN)
+DOCKER_REGISTRY_TENANCY := spinnaker
+DOCKER_REGISTRY_USERNAME := spinnaker/ioana-madalina.patrichi@oracle.com
+TEST_IMAGE ?= $(REGISTRY)/$(DOCKER_REGISTRY_TENANCY)/$(BIN)-test
 
 
 BUILD := $(shell git describe --always --dirty)
@@ -115,6 +118,17 @@ clean:
 .PHONY: deploy
 deploy:
 	kubectl -n kube-system set image ds/${BIN} ${BIN}=${IMAGE}:${VERSION}
+
+.PHONY: image
+image: build
+	docker build -t ${IMAGE}:${VERSION} -f Dockerfile .
+	docker build -t ${TEST_IMAGE}:${VERSION} -f Dockerfile.test .
+
+.PHONY: push-dev
+push-dev: image
+	docker login -u '$(DOCKER_REGISTRY_USERNAME)' -p '$(DOCKER_REGISTRY_PASSWORD)' $(REGISTRY)
+	docker push ${IMAGE}:${VERSION}
+	docker push ${TEST_IMAGE}:${VERSION}
 
 .PHONY: run-dev
 run-dev: build
