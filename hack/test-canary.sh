@@ -75,8 +75,8 @@ function create_results() {
     echo "Creating result file: ${METRICS_FILE}"
     cat > "${METRICS_FILE}" <<EOF
 {
-    "start_time": "${START}"
-    "create_lb": "$(extract_result ${CREATE_LB_TEST})"
+    "start_time": "${START}",
+    "create_lb": "$(extract_result ${CREATE_LB_TEST})",
     "end_time": "$(now)"
 }
 EOF
