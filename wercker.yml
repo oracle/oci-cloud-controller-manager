@@ -200,7 +200,7 @@ validate-canary:
 
     - script:
       name: validate canary tests
-      code: make validate-canary 
+      code: make validate-canary
 
   after-steps:
     - script:

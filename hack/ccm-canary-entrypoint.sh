@@ -19,11 +19,9 @@ echo "\$MONITOR_PERIOD: ${MONITOR_PERIOD}"
 
 # For OCI usage canary mode is the default
 if [ -z "${CANARY_MODE}" ]; then
-    export CANARY_MODE="monitor" 
+    export CANARY_MODE="monitor"
 fi
 
-# "/go/src/github.com/oracle/oci-cloud-controller-manager"
-export CCM_DIR="${GOPATH}/src/github.com/oracle/oci-cloud-controller-manager"
-pushd "${CCM_DIR}"
+pushd "${GOPATH}/src/github.com/oracle/oci-cloud-controller-manager"
 ./hack/test-canary.sh ${CANARY_MODE}
 popd
