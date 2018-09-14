@@ -20,6 +20,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -51,6 +52,7 @@ var (
 	kubeconfig      string // path to kubeconfig file
 	deleteNamespace bool   // whether or not to delete test namespaces
 	cloudConfigFile string // path to cloud provider config file
+	nodePortTest    bool   // whether or not to test the connectivity of node ports.
 	ccmSeclistID    string // The ocid of the loadbalancer subnet seclist. Optional.
 	k8sSeclistID    string // The ocid of the k8s worker subnet seclist. Optional.
 )
@@ -59,6 +61,7 @@ func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to Kubeconfig file with authorization and master location information.")
 	flag.BoolVar(&deleteNamespace, "delete-namespace", true, "If true tests will delete namespace after completion. It is only designed to make debugging easier, DO NOT turn it off by default.")
 	flag.StringVar(&cloudConfigFile, "cloud-config", "", "The path to the cloud provider configuration file. Empty string for no configuration file.")
+	flag.BoolVar(&nodePortTest, "nodeport-test", false, "If true test will include 'nodePort' connectectivity tests.")
 	flag.StringVar(&ccmSeclistID, "ccm-seclist-id", "", "The ocid of the loadbalancer subnet seclist. Enables additional seclist rule tests. If specified the 'k8s-seclist-id parameter' is also required.")
 	flag.StringVar(&k8sSeclistID, "k8s-seclist-id", "", "The ocid of the k8s worker subnet seclist. Enables additional seclist rule tests. If specified the 'ccm-seclist-id parameter' is also required.")
 }
@@ -75,6 +78,7 @@ type Framework struct {
 
 	CloudProviderConfig *oci.Config      // If specified, the CloudProviderConfig. This provides information on the configuration of the test cluster.
 	Client              client.Interface // An OCI client for checking the state of any provisioned OCI infrastructure during testing.
+	NodePortTest        bool             // An optional configuration for E2E testing. If set to true, then will run additional E2E nodePort connectivity checks during testing.
 	CCMSecListID        string           // An optional configuration for E2E testing. If present can be used to run additional checks against seclist during testing.
 	K8SSecListID        string           // An optional configuration for E2E testing. If present can be used to run additional checks against seclist during testing.
 
@@ -110,6 +114,13 @@ func NewFramework(baseName string, client clientset.Interface) *Framework {
 	f := &Framework{
 		BaseName:  baseName,
 		ClientSet: client,
+	}
+	// Dev/CI only configuration. Enable NodePort tests.
+	npt, err := strconv.ParseBool(os.Getenv("NODEPORT_TEST"))
+	if err != nil {
+		f.NodePortTest = false
+	} else {
+		f.NodePortTest = npt
 	}
 	// Dev/CI only configuration. The seclist for CCM load-balancer routes.
 	f.CCMSecListID = os.Getenv("CCM_SECLIST_ID")
@@ -202,7 +213,8 @@ func (f *Framework) BeforeEach() {
 	// https://github.com/onsi/ginkgo/issues/222
 	f.cleanupHandle = AddCleanupAction(f.AfterEach)
 
-	if f.Client == nil {
+	// Create an OCI client if the cloudConfig has been specified.
+	if cloudConfigFile != "" && f.Client == nil {
 		By("Creating OCI client")
 		cloudProviderConfig, err := createCloudProviderConfig(cloudConfigFile)
 		Expect(err).NotTo(HaveOccurred())

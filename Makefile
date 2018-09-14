@@ -91,22 +91,28 @@ upgrade:
 # Requires a 'dist/oci-cloud-controller-manager-rollback.yaml' manifest. Requires $KUBECONFIG set.
 .PHONY: rollback
 rollback:
-	# Rollback the current CCM to the specified version
+	# Rollback the current CCM to the specified version.
 	@./hack/deploy.sh rollback-original-ccm
 
 .PHONY: e2e
 e2e:
 	@./hack/test-e2e.sh
 
-# Run the canary tests.
-.PHONY: canary
-canary:
-	@./hack/test-canary.sh
+# Run the canary tests - in single run mode.
+.PHONY: canary-run-once
+canary-run-once:
+	@./hack/test-canary.sh run-once
 
-# Validate the generated canary test image.
+# Run the canary tests - in monitor (infinite loop) mode.
+.PHONY: canary-monitor
+canary-monitor:
+	@./hack/test-canary.sh monitor
+
+# Validate the generated canary test image. Runs test once 
+# and monitors from sidecar.
 .PHONY: validate-canary
 validate-canary:
-	@./hack/validate-canary.sh
+	@./hack/validate-canary.sh run
 
 .PHONY: clean
 clean:

@@ -88,7 +88,6 @@ function local-docker-mode() {
     docker exec -it ${cid} /bin/bash
 }
 
-
 # Test Functions **************************************************************
 #
 
@@ -107,28 +106,32 @@ spec:
   containers:
   - name: oci-cloud-controller-manager-canary-test-runner
     image: iad.ocir.io/oracle/oci-cloud-controller-manager-canary:${version}
-    command: ["/bin/bash"]
-    args: ["-ec", "make canary"]
     env:
-      - name: METRICS_FILE
-        value: /metrics/output.json
-      - name: KUBECONFIG_VAR
-        value: $(cat ${KUBECONFIG} | openssl enc -base64 -A)
+    - name: KUBECONFIG_VAR
+      value: $(cat ${KUBECONFIG} | openssl enc -base64 -A)
+    - name: METRICS_FILE
+      value: /metrics/output.json
+    - name: MONITOR_PERIOD
+      value: "30"
+    - name: CANARY_MODE
+      value: monitor
+    command: ["/bin/bash"]
+    args: ["-ec", "/oci/scripts/ccm-canary-entrypoint.sh"]
     volumeMounts:
     - mountPath: /metrics
       name: metrics-volume
- 
+
   - name: oci-cloud-controller-manager-canary-test-reporter
     image: iad.ocir.io/oracle/oci-cloud-controller-manager-ci-e2e:1.0.1
     command: ["/bin/bash"]
-    args: ["-ec", "touch \$METRICS_FILE; while [ -z \$(cat \$METRICS_FILE | grep 'end_time' | cut -d':' -f 1) ]; do sleep 1;  done; cat \$METRICS_FILE"]
+    args: ["-ec", "while true; do sleep 10; cat \$METRICS_FILE; done"]
     env:
-      - name: METRICS_FILE
-        value: /metrics/output.json
+    - name: METRICS_FILE
+      value: /metrics/output.json
     volumeMounts:
     - mountPath: /metrics
       name: metrics-volume
-  
+      
   imagePullSecrets:
   - name: ocir
  
@@ -152,17 +155,37 @@ function run() {
     clean-canary
     generate-canary-manifest
     deploy-canary
-    # Tail the logs of the reporter to block until it completes. The report only logs the result file.
-    res=$(kubectl logs -f oci-cloud-controller-manager-canary -c oci-cloud-controller-manager-canary-test-reporter)
-    # Display the results.
-    echo "${res}"
-    # Grep the log to return an error code.
-    error=$(echo "${res}" | grep 'end_time' | cut -d':' -f 1)
-    if [ -z ${error} ]; then
-        exit 1
-    else
-        exit 0
-    fi
+
+    local canary_runs=${CANARY_RUNS}
+    local duration=1800
+    local sleep=10
+    local timeout=$(($(date +%s) + $duration))
+    while [ $(date +%s) -lt $timeout ]; do
+        echo "waiting for ${canary_runs} runs."
+        local logs=$(kubectl logs oci-cloud-controller-manager-canary -c oci-cloud-controller-manager-canary-test-reporter)
+        local num_runs=$(echo "${logs}"| grep 'end_time' | uniq | wc -l)
+        echo "currently run ${num_runs} times."
+        if [ "${num_runs}" -ge "${canary_runs}" ]; then
+            # Remove canary and delete any remaining test namespaces.
+            kubectl delete pod oci-cloud-controller-manager-canary
+            local res=$(kubectl get ns | grep 'cm-e2e-tests-' | awk '{print $1}')
+            if [ ! -z "${res}" ]; then
+                echo ${res} | xargs kubectl delete ns
+            fi
+            #  Test results
+            local num_pass=$(echo "${logs}"| grep '"create_lb": "1"' | uniq | wc -l)
+            local num_fail=$(echo "${logs}"| grep '"create_lb": "0"' | uniq | wc -l)
+            if [ "${num_fail}" -gt "0" ]; then 
+                echo "FAILED"
+                kubectl logs oci-cloud-controller-manager-canary -c oci-cloud-controller-manager-canary-test-runner 
+                exit 1
+            elif [ "${num_pass}" -eq "1" ]; then
+                echo "PASSED"
+                exit 0 
+            fi 
+        fi
+        sleep ${sleep}
+    done
 }
 
 # Main ************************************************************************
@@ -178,9 +201,14 @@ if [ -z "${KUBECONFIG}" ]; then
         export KUBECONFIG=/tmp/kubeconfig
     fi
 fi
+
 if [ -z "${VERSION}" ]; then
     echo "The VERSION must be set"
     exit 1
+fi
+
+if [ -z "${CANARY_RUNS}" ]; then
+    export CANARY_RUNS=1
 fi
 
 # If provided, execute the specified function.

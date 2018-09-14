@@ -32,7 +32,7 @@ function run_canary_tests() {
     ginkgo -v -progress -noColor=true \
         -focus "\[Canary\]" \
         test/e2e \
-        -- --kubeconfig=${KUBECONFIG} --delete-namespace=false \
+        -- --kubeconfig=${KUBECONFIG} --delete-namespace=true \
         2>&1 | tee "${TEST_LOG}"
 }
 
@@ -75,15 +75,16 @@ function create_results() {
     echo "Creating result file: ${METRICS_FILE}"
     cat > "${METRICS_FILE}" <<EOF
 {
-    "start_time": "${START}"
-    "create_lb": "$(extract_result ${CREATE_LB_TEST})"
+    "start_time": "${START}",
+    "create_lb": "$(extract_result ${CREATE_LB_TEST})",
     "end_time": "$(now)"
 }
 EOF
 }
 
-# Run the tests and extract the results
-function run() {
+# Run the tests once and extract the results.
+function run-once() {
+    START=$(now)
     init_results
     cat "${METRICS_FILE}" 
     run_canary_tests
@@ -95,13 +96,34 @@ function run() {
 
 # Helper function to clean up log and json files.
 function clean() {
-    kubectl get pods --all-namespaces | grep ccm | awk '{print $1}' | xargs kubectl delete ns
-    rm "${TEST_DIR}/${TEST_PREFIX}*"
+    echo "ensuring fresh \$START."
+    unset START
+    echo "ensuring fresh ${TEST_LOG} file."
+    rm -f "${TEST_LOG}"
+    echo "ensuring fresh ${METRICS_FILE} result file."
+    rm -f  "${METRICS_FILE}" 
+    echo "ensuring all 'cm-e2e-tests' namespaces are terminated."
+    local res=$(kubectl get ns | grep 'cm-e2e-tests-' | awk '{print $1}')
+    if [ ! -z "${res}" ]; then
+        echo ${res} | xargs kubectl delete ns 2> /dev/null
+    fi
+}
+
+# Run the tests in loop with the specified wait period.
+function monitor() {
+    local period=${1:-$MONITOR_PERIOD}
+    while true;
+    do
+        clean && run-once
+        echo "Sleeping for ${period} before next run..."
+        sleep "${period}"
+    done
 }
 
 # Main ************************************************************************
 #
 
+# Handle mandatory KUBECONFIG requirement.
 if [ -z "${KUBECONFIG}" ]; then
     if [ -z "${KUBECONFIG_VAR}" ]; then
         echo "KUBECONFIG or KUBECONFIG_VAR must be set"
@@ -113,26 +135,31 @@ if [ -z "${KUBECONFIG}" ]; then
     fi
 fi
 
-START=$(now)
-
-TEST_ID=""
-if [ "${UNIQUE_TEST_ID}" = true ]; then
-    TEST_ID="-$(date +"%Y-%m-%d-%H%M%S")"
+# If not specified, default mandatory 'metrics file' location.
+if [ -z "${METRICS_FILE}" ]; then
+    export METRICS_FILE=/tmp/ccm-canary-metrics.json 
 fi
 
+# If not specified, default mandatory 'monitor period' in seconds. 
+if [ -z "${MONITOR_PERIOD}" ]; then
+    export MONITOR_PERIOD=30 
+fi
+
+# Set up directory for filesystem test log. The success of the test 
+# is extracted from this log.
 if [ -z "${TEST_DIR}" ]; then
     TEST_DIR="/tmp"
 fi
 mkdir -p "${TEST_DIR}" 
+TEST_LOG="${TEST_DIR}/oci-ccm-canary-test.log"
 
-TEST_PREFIX="oci-ccm-canary-test"
-TEST_LOG="${TEST_DIR}/${TEST_PREFIX}${TEST_ID}.log"
-
-# If provided, execute the specified function.
 if [ ! -z "$1" ]; then
-  $1
+    # If provided, execute the specified function with args.
+    # e.g. run-once, monitor, clean, etc.
+    $@
 else 
-    run
+    # Otherwise, run the monitor
+    monitor
 fi
 
 exit $?

@@ -83,6 +83,7 @@ var _ = Describe("Service [Slow]", func() {
 		tcpIngressIP := framework.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0])
 		framework.Logf("TCP load balancer: %s", tcpIngressIP)
 
+		// trjl - hide this?
 		By("hitting the TCP service's NodePort")
 		jig.TestReachableHTTP(nodeIP, tcpNodePort, framework.KubeProxyLagTimeout)
 
@@ -92,7 +93,6 @@ var _ = Describe("Service [Slow]", func() {
 		// Change the services' node ports.
 
 		By("changing the TCP service's NodePort")
-
 		// Count the number of ingress/egress rules with the original port so
 		// we can check the correct number are updated.
 		numEgressRules, numIngressRules := framework.CountSinglePortSecListRules(f.Client, f.CCMSecListID, f.K8SSecListID, tcpNodePort)
@@ -114,11 +114,13 @@ var _ = Describe("Service [Slow]", func() {
 
 		framework.Logf("TCP node port: %d", tcpNodePort)
 
-		By("hitting the TCP service's new NodePort")
-		jig.TestReachableHTTP(nodeIP, tcpNodePort, framework.KubeProxyLagTimeout)
+		if f.NodePortTest {
+			By("hitting the TCP service's new NodePort")
+			jig.TestReachableHTTP(nodeIP, tcpNodePort, framework.KubeProxyLagTimeout)
 
-		By("checking the old TCP NodePort is closed")
-		jig.TestNotReachableHTTP(nodeIP, tcpNodePortOld, framework.KubeProxyLagTimeout)
+			By("checking the old TCP NodePort is closed")
+			jig.TestNotReachableHTTP(nodeIP, tcpNodePortOld, framework.KubeProxyLagTimeout)
+		}
 
 		By("hitting the TCP service's LoadBalancer")
 		jig.TestReachableHTTP(tcpIngressIP, svcPort, loadBalancerLagTimeout)
@@ -145,8 +147,10 @@ var _ = Describe("Service [Slow]", func() {
 
 		framework.Logf("service port (TCP): %d", svcPort)
 
-		By("hitting the TCP service's NodePort")
-		jig.TestReachableHTTP(nodeIP, tcpNodePort, framework.KubeProxyLagTimeout)
+		if f.NodePortTest {
+			By("hitting the TCP service's NodePort")
+			jig.TestReachableHTTP(nodeIP, tcpNodePort, framework.KubeProxyLagTimeout)
+		}
 
 		By("hitting the TCP service's LoadBalancer")
 		jig.TestReachableHTTP(tcpIngressIP, svcPort, loadBalancerCreateTimeout) // this may actually recreate the LB
@@ -162,8 +166,10 @@ var _ = Describe("Service [Slow]", func() {
 		tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
 		jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
 
-		By("checking the TCP NodePort is closed")
-		jig.TestNotReachableHTTP(nodeIP, tcpNodePort, framework.KubeProxyLagTimeout)
+		if f.NodePortTest {
+			By("checking the TCP NodePort is closed")
+			jig.TestNotReachableHTTP(nodeIP, tcpNodePort, framework.KubeProxyLagTimeout)
+		}
 
 		By("checking the TCP LoadBalancer is closed")
 		jig.TestNotReachableHTTP(tcpIngressIP, svcPort, loadBalancerLagTimeout)
