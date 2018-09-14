@@ -83,9 +83,10 @@ var _ = Describe("Service [Slow]", func() {
 		tcpIngressIP := framework.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0])
 		framework.Logf("TCP load balancer: %s", tcpIngressIP)
 
-		// trjl - hide this?
-		By("hitting the TCP service's NodePort")
-		jig.TestReachableHTTP(nodeIP, tcpNodePort, framework.KubeProxyLagTimeout)
+		if f.NodePortTest {
+			By("hitting the TCP service's NodePort")
+			jig.TestReachableHTTP(nodeIP, tcpNodePort, framework.KubeProxyLagTimeout)
+		}
 
 		By("hitting the TCP service's LoadBalancer")
 		jig.TestReachableHTTP(tcpIngressIP, svcPort, loadBalancerLagTimeout)
