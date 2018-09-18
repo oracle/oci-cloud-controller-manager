@@ -491,7 +491,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			slManagerFactory := func(mode string) securityListManager {
 				return newSecurityListManagerNOOP()
 			}
-			result, err := NewLBSpec(tc.service, tc.nodes, subnets, nil, nil, slManagerFactory)
+			result, err := NewLBSpec(tc.service, tc.nodes, subnets, nil, slManagerFactory)
 			if err != nil {
 				t.Error(err)
 			}
@@ -608,7 +608,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 			slManagerFactory := func(mode string) securityListManager {
 				return newSecurityListManagerNOOP()
 			}
-			_, err := NewLBSpec(tc.service, tc.nodes, subnets, nil, nil, slManagerFactory)
+			_, err := NewLBSpec(tc.service, tc.nodes, subnets, nil, slManagerFactory)
 			if err == nil || err.Error() != tc.expectedErrMsg {
 				t.Errorf("Expected error with message %q but got %q", tc.expectedErrMsg, err)
 			}

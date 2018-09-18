@@ -196,78 +196,49 @@ func getSubnetsForNodes(ctx context.Context, nodes []*v1.Node, client client.Int
 
 // readSSLSecret returns the certificate and private key from a Kubernetes TLS
 // private key Secret.
-func (cp *CloudProvider) readSSLSecret(secretType string, svc *v1.Service) (*certificateData, error) {
-	secretString, ok := svc.Annotations[secretType]
-	if !ok && secretType == ServiceAnnotationLoadBalancerTLSSecret {
-		return nil, errors.Errorf("no %q annotation found", secretType)
-	}
-	if !ok {
-		return &certificateData{CACert: "", PublicCert: "", PrivateKey: "",
-			Passphrase: ""}, nil
-	}
-
-	ns, name := parseSecretString(secretString)
-	if ns == "" {
-		ns = svc.Namespace
-	}
+func (cp *CloudProvider) readSSLSecret(ns, name string) (*certificateData, error) {
 	secret, err := cp.kubeclient.CoreV1().Secrets(ns).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
-
+	var ok bool
 	var cacert, cert, key, pass []byte
-	var cacertstr, passstr string
-	if cacert, ok = secret.Data[SSLCAFileName]; !ok {
-		cacertstr = ""
-	} else {
-		cacertstr = string(cacert)
-	}
+	cacert, _ = secret.Data[SSLCAFileName]
 	if cert, ok = secret.Data[SSLCertificateFileName]; !ok {
 		return nil, errors.Errorf("%s not found in secret %s/%s", SSLCertificateFileName, ns, name)
 	}
 	if key, ok = secret.Data[SSLPrivateKeyFileName]; !ok {
 		return nil, errors.Errorf("%s not found in secret %s/%s", SSLPrivateKeyFileName, ns, name)
 	}
-	if pass, ok = secret.Data[SSLPassphrase]; !ok {
-		passstr = ""
-	} else {
-		passstr = string(pass)
-	}
-	return &certificateData{CACert: cacertstr, PublicCert: string(cert), PrivateKey: string(key),
-		Passphrase: passstr}, nil
+	pass, _ = secret.Data[SSLPassphrase]
+	return &certificateData{CACert: cacert, PublicCert: cert, PrivateKey: key, Passphrase: pass}, nil
 }
 
 // ensureSSLCertificate creates a OCI SSL certificate to the given load
 // balancer, if it doesn't already exist.
-func (cp *CloudProvider) ensureSSLCertificate(ctx context.Context, lb *loadbalancer.LoadBalancer, sslConfig *SSLConfig, svc *v1.Service) error {
-	name := sslConfig.Name
-	logger := cp.logger.With("loadBalancerID", *lb.Id, "certificateName", name)
-	_, err := cp.client.LoadBalancer().GetCertificateByName(ctx, *lb.Id, name)
-	if err == nil {
-		logger.Debug("Certificate already exists on load balancer. Nothing to do.")
-		return nil
-	}
-	if !client.IsNotFound(err) {
-		return err
-	}
-
-	// Although we iterate here only one certificate is supported at the moment.
-	certs := make(map[string]loadbalancer.CertificateDetails)
-	err = buildCertificates(sslConfig, svc, certs)
+func (cp *CloudProvider) ensureSSLCertificates(ctx context.Context, lb *loadbalancer.LoadBalancer, spec *LBSpec) error {
+	logger := cp.logger.With("loadBalancerID", *lb.Id)
+	// Get all required certificates
+	certs, err := spec.Certificates()
 	if err != nil {
 		return err
 	}
-	for _, cert := range certs {
-		wrID, err := cp.client.LoadBalancer().CreateCertificate(ctx, *lb.Id, *cert.PublicCertificate, *cert.PrivateKey)
-		if err != nil {
-			return err
-		}
-		_, err = cp.client.LoadBalancer().AwaitWorkRequest(ctx, wrID)
-		if err != nil {
-			return err
-		}
 
-		logger.Info("Certificate created")
+	var ok bool
+	for _, cert := range certs {
+		if _, ok = lb.Certificates[*cert.CertificateName]; !ok {
+			logger = cp.logger.With("certificateName", *cert.CertificateName)
+			wrID, err := cp.client.LoadBalancer().CreateCertificate(ctx, *lb.Id, cert)
+			if err != nil {
+				return err
+			}
+			_, err = cp.client.LoadBalancer().AwaitWorkRequest(ctx, wrID)
+			if err != nil {
+				return err
+			}
+
+			logger.Info("Certificate created")
+		}
 	}
 	return nil
 }
@@ -289,12 +260,7 @@ func (cp *CloudProvider) createLoadBalancer(ctx context.Context, spec *LBSpec) (
 	}
 
 	// Then we create the load balancer and wait for it to be online.
-	certs := make(map[string]loadbalancer.CertificateDetails)
-	err = buildCertificates(spec.ListenerSSLConfig, spec.service, certs)
-	if err != nil {
-		return nil, errors.Wrap(err, "get certificates")
-	}
-	err = buildCertificates(spec.BackendSetSSLConfig, spec.service, certs)
+	certs, err := spec.Certificates()
 	if err != nil {
 		return nil, errors.Wrap(err, "get certificates")
 	}
@@ -351,17 +317,18 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 	}
 	exists := !client.IsNotFound(err)
 
-	var sslListener, sslBackendSet *SSLConfig
+	var sslConfig *SSLConfig
 	if requiresCertificate(service) {
 		ports, err := getSSLEnabledPorts(service)
 		if err != nil {
 			return nil, err
 		}
-		sslListener = NewSSLConfig(lbName, ServiceAnnotationLoadBalancerTLSSecret, ports, cp)
-		sslBackendSet = NewSSLConfig(lbName, ServiceAnnotationLoadBalancerBackendSetSecret, ports, cp)
+		secretListenerString, _ := service.Annotations[ServiceAnnotationLoadBalancerTLSSecret]
+		secretBackendSetString, _ := service.Annotations[ServiceAnnotationLoadBalancerBackendSetSecret]
+		sslConfig = NewSSLConfig(secretListenerString, secretBackendSetString, ports, cp)
 	}
 	subnets := []string{cp.config.LoadBalancer.Subnet1, cp.config.LoadBalancer.Subnet2}
-	spec, err := NewLBSpec(service, nodes, subnets, sslListener, sslBackendSet, cp.securityListManagerFactory)
+	spec, err := NewLBSpec(service, nodes, subnets, sslConfig, cp.securityListManagerFactory)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to derive LBSpec")
 		return nil, err
@@ -380,11 +347,8 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 
 	// If the load balancer needs an SSL cert ensure it is present.
 	if requiresCertificate(service) {
-		if err := cp.ensureSSLCertificate(ctx, lb, spec.ListenerSSLConfig, spec.service); err != nil {
-			return nil, errors.Wrap(err, "ensuring ssl certificate for listeners")
-		}
-		if err := cp.ensureSSLCertificate(ctx, lb, spec.BackendSetSSLConfig, spec.service); err != nil {
-			return nil, errors.Wrap(err, "ensuring ssl certificate for backend sets")
+		if err := cp.ensureSSLCertificates(ctx, lb, spec); err != nil {
+			return nil, errors.Wrap(err, "ensuring ssl certificates")
 		}
 	}
 

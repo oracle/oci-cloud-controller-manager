@@ -327,7 +327,7 @@ var _ = Describe("End to end TLS", func() {
 			},
 		})
 		framework.ExpectNoError(err)
-		loadBalancerLagTimeout := framework.LoadBalancerLagTimeoutDefault
+		//loadBalancerLagTimeout := framework.LoadBalancerLagTimeoutDefault
 		loadBalancerCreateTimeout := framework.LoadBalancerCreateTimeoutDefault
 		if nodes := framework.GetReadySchedulableNodesOrDie(f.ClientSet); len(nodes.Items) > framework.LargeClusterMinNodesNumber {
 			loadBalancerCreateTimeout = framework.LoadBalancerCreateTimeoutLarge
@@ -376,6 +376,13 @@ var _ = Describe("End to end TLS", func() {
 		// By("hitting the TCP service's LoadBalancer")
 		// jig.TestReachableHTTP(true, tcpIngressIP, svcPort, loadBalancerLagTimeout)
 
+		By("changing TCP service back to type=ClusterIP")
+		tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+			s.Spec.Type = v1.ServiceTypeClusterIP
+			s.Spec.Ports[0].NodePort = 0
+			s.Spec.Ports[1].NodePort = 0
+		})
+
 		// Wait for the load balancer to be destroyed asynchronously
 		tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
 		jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
@@ -383,8 +390,8 @@ var _ = Describe("End to end TLS", func() {
 		// By("checking the TCP NodePort is closed")
 		// jig.TestNotReachableHTTP(nodeIP, tcpNodePort, framework.KubeProxyLagTimeout)
 
-		By("checking the TCP LoadBalancer is closed")
-		jig.TestNotReachableHTTP(tcpIngressIP, svcPort, loadBalancerLagTimeout)
+		// By("checking the TCP LoadBalancer is closed")
+		// jig.TestNotReachableHTTP(tcpIngressIP, svcPort, loadBalancerLagTimeout)
 		err = f.ClientSet.CoreV1().Secrets(ns).Delete(sslSecretName, nil)
 		framework.ExpectNoError(err)
 	})
