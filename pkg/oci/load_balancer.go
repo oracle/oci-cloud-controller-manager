@@ -203,14 +203,14 @@ func (cp *CloudProvider) readSSLSecret(ns, name string) (*certificateData, error
 	}
 	var ok bool
 	var cacert, cert, key, pass []byte
-	cacert, _ = secret.Data[SSLCAFileName]
+	cacert = secret.Data[SSLCAFileName]
 	if cert, ok = secret.Data[SSLCertificateFileName]; !ok {
 		return nil, errors.Errorf("%s not found in secret %s/%s", SSLCertificateFileName, ns, name)
 	}
 	if key, ok = secret.Data[SSLPrivateKeyFileName]; !ok {
 		return nil, errors.Errorf("%s not found in secret %s/%s", SSLPrivateKeyFileName, ns, name)
 	}
-	pass, _ = secret.Data[SSLPassphrase]
+	pass = secret.Data[SSLPassphrase]
 	return &certificateData{CACert: cacert, PublicCert: cert, PrivateKey: key, Passphrase: pass}, nil
 }
 
@@ -323,8 +323,8 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		if err != nil {
 			return nil, err
 		}
-		secretListenerString, _ := service.Annotations[ServiceAnnotationLoadBalancerTLSSecret]
-		secretBackendSetString, _ := service.Annotations[ServiceAnnotationLoadBalancerBackendSetSecret]
+		secretListenerString := service.Annotations[ServiceAnnotationLoadBalancerTLSSecret]
+		secretBackendSetString := service.Annotations[ServiceAnnotationLoadBalancerBackendSetSecret]
 		sslConfig = NewSSLConfig(secretListenerString, secretBackendSetString, ports, cp)
 	}
 	subnets := []string{cp.config.LoadBalancer.Subnet1, cp.config.LoadBalancer.Subnet2}

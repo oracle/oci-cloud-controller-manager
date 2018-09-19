@@ -104,8 +104,7 @@ func TestReachableHTTPWithContentTimeout(secure bool, ip string, port int, reque
 func TestReachableHTTPWithContentTimeoutWithRetriableErrorCodes(secure bool, ip string, port int, request string, expect string, content *bytes.Buffer, retriableErrCodes []int, timeout time.Duration) (bool, error) {
 
 	ipPort := net.JoinHostPort(ip, strconv.Itoa(port))
-	var url string
-	url = fmt.Sprintf("http://%s%s", ipPort, request)
+	url := fmt.Sprintf("http://%s%s", ipPort, request)
 	if secure {
 		url = fmt.Sprintf("https://%s%s", ipPort, request)
 	}
