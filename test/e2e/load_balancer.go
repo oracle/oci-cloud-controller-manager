@@ -331,9 +331,6 @@ var _ = Describe("End to end TLS", func() {
 			loadBalancerCreateTimeout = framework.LoadBalancerCreateTimeoutLarge
 		}
 
-		// TODO(apryde): Test that LoadBalancers can receive static IP addresses
-		// (in a provider agnostic manner?). OCI does not currently
-		// support this.
 		requestedIP := ""
 
 		tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
@@ -342,8 +339,8 @@ var _ = Describe("End to end TLS", func() {
 			s.Spec.Ports = []v1.ServicePort{v1.ServicePort{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
 				v1.ServicePort{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
 			s.ObjectMeta.Annotations = map[string]string{cloudprovider.ServiceAnnotationLoadBalancerSSLPorts: "443",
-				cloudprovider.ServiceAnnotationLoadBalancerTLSSecret:        sslSecretName,
-				cloudprovider.ServiceAnnotationLoadBalancerBackendSetSecret: sslSecretName}
+				cloudprovider.ServiceAnnotationLoadBalancerTLSSecret:           sslSecretName,
+				cloudprovider.ServiceAnnotationLoadBalancerTLSBackendSetSecret: sslSecretName}
 
 		})
 
@@ -392,7 +389,6 @@ var _ = Describe("BackendSet only enabled TLS", func() {
 		ns := f.Namespace.Name
 
 		jig := framework.NewServiceTestJig(f.ClientSet, serviceName)
-		//nodeIP := framework.PickNodeIP(jig.Client) // for later
 
 		sslSecretName := "ssl-certificate-secret"
 		_, err := f.ClientSet.CoreV1().Secrets(ns).Create(&v1.Secret{
@@ -413,9 +409,6 @@ var _ = Describe("BackendSet only enabled TLS", func() {
 			loadBalancerCreateTimeout = framework.LoadBalancerCreateTimeoutLarge
 		}
 
-		// TODO(apryde): Test that LoadBalancers can receive static IP addresses
-		// (in a provider agnostic manner?). OCI does not currently
-		// support this.
 		requestedIP := ""
 
 		tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
@@ -424,7 +417,7 @@ var _ = Describe("BackendSet only enabled TLS", func() {
 			s.Spec.Ports = []v1.ServicePort{v1.ServicePort{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
 				v1.ServicePort{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
 			s.ObjectMeta.Annotations = map[string]string{cloudprovider.ServiceAnnotationLoadBalancerSSLPorts: "443",
-				cloudprovider.ServiceAnnotationLoadBalancerBackendSetSecret: sslSecretName}
+				cloudprovider.ServiceAnnotationLoadBalancerTLSBackendSetSecret: sslSecretName}
 
 		})
 
@@ -471,7 +464,6 @@ var _ = Describe("Listener only enabled TLS", func() {
 		ns := f.Namespace.Name
 
 		jig := framework.NewServiceTestJig(f.ClientSet, serviceName)
-		//nodeIP := framework.PickNodeIP(jig.Client) // for later
 
 		sslSecretName := "ssl-certificate-secret"
 		_, err := f.ClientSet.CoreV1().Secrets(ns).Create(&v1.Secret{
@@ -492,9 +484,6 @@ var _ = Describe("Listener only enabled TLS", func() {
 			loadBalancerCreateTimeout = framework.LoadBalancerCreateTimeoutLarge
 		}
 
-		// TODO(apryde): Test that LoadBalancers can receive static IP addresses
-		// (in a provider agnostic manner?). OCI does not currently
-		// support this.
 		requestedIP := ""
 
 		tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
@@ -550,13 +539,13 @@ var _ = Describe("End to end enabled TLS - different certificates", func() {
 		ns := f.Namespace.Name
 
 		jig := framework.NewServiceTestJig(f.ClientSet, serviceName)
-		//nodeIP := framework.PickNodeIP(jig.Client) // for later
 
-		sslSecretNameL := "ssl-certificate-secret-listener"
+		sslListenerSecretName := "ssl-certificate-secret-lis"
+		sslBackendSetSecretName := "ssl-certificate-secret-backendset"
 		_, err := f.ClientSet.CoreV1().Secrets(ns).Create(&v1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: ns,
-				Name:      sslSecretNameL,
+				Name:      sslListenerSecretName,
 			},
 			Data: map[string][]byte{
 				cloudprovider.SSLCAFileName:          []byte(framework.SSLCAData),
@@ -565,11 +554,11 @@ var _ = Describe("End to end enabled TLS - different certificates", func() {
 				cloudprovider.SSLPassphrase:          []byte(framework.SSLPassphrase),
 			},
 		})
-		sslSecretNameB := "ssl-certificate-secret-backendset"
+		framework.ExpectNoError(err)
 		_, err = f.ClientSet.CoreV1().Secrets(ns).Create(&v1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: ns,
-				Name:      sslSecretNameB,
+				Name:      sslBackendSetSecretName,
 			},
 			Data: map[string][]byte{
 				cloudprovider.SSLCAFileName:          []byte(framework.SSLCAData),
@@ -584,9 +573,6 @@ var _ = Describe("End to end enabled TLS - different certificates", func() {
 			loadBalancerCreateTimeout = framework.LoadBalancerCreateTimeoutLarge
 		}
 
-		// TODO(apryde): Test that LoadBalancers can receive static IP addresses
-		// (in a provider agnostic manner?). OCI does not currently
-		// support this.
 		requestedIP := ""
 
 		tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
@@ -595,8 +581,8 @@ var _ = Describe("End to end enabled TLS - different certificates", func() {
 			s.Spec.Ports = []v1.ServicePort{v1.ServicePort{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
 				v1.ServicePort{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
 			s.ObjectMeta.Annotations = map[string]string{cloudprovider.ServiceAnnotationLoadBalancerSSLPorts: "443",
-				cloudprovider.ServiceAnnotationLoadBalancerTLSSecret: sslSecretNameL,
-				cloudprovider.ServiceAnnotationLoadBalancerBackendSetSecret: sslSecretNameB}
+				cloudprovider.ServiceAnnotationLoadBalancerTLSSecret:           sslListenerSecretName,
+				cloudprovider.ServiceAnnotationLoadBalancerTLSBackendSetSecret: sslBackendSetSecretName}
 
 		})
 
@@ -630,9 +616,9 @@ var _ = Describe("End to end enabled TLS - different certificates", func() {
 		tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
 		jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
 
-		err = f.ClientSet.CoreV1().Secrets(ns).Delete(sslSecretNameL, nil)
+		err = f.ClientSet.CoreV1().Secrets(ns).Delete(sslListenerSecretName, nil)
 		framework.ExpectNoError(err)
-		err = f.ClientSet.CoreV1().Secrets(ns).Delete(sslSecretNameB, nil)
+		err = f.ClientSet.CoreV1().Secrets(ns).Delete(sslBackendSetSecretName, nil)
 		framework.ExpectNoError(err)
 	})
 })

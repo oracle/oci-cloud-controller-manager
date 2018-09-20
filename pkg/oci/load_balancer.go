@@ -63,11 +63,11 @@ const (
 	// See: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
 	ServiceAnnotationLoadBalancerTLSSecret = "service.beta.kubernetes.io/oci-load-balancer-tls-secret"
 
-	// ServiceAnnotationLoadBalancerBackendSetSecret is a Service annotation for
+	// ServiceAnnotationLoadBalancerTLSBackendSetSecret is a Service annotation for
 	// specifying the generic secret to install on the load balancer listeners which
 	// have SSL enabled.
 	// See: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
-	ServiceAnnotationLoadBalancerBackendSetSecret = "service.beta.kubernetes.io/oci-load-balancer-backendset-secret"
+	ServiceAnnotationLoadBalancerTLSBackendSetSecret = "service.beta.kubernetes.io/oci-load-balancer-tls-backendset-secret"
 
 	// ServiceAnnotationLoadBalancerConnectionIdleTimeout is the annotation used
 	// on the service to specify the idle connection timeout.
@@ -224,9 +224,8 @@ func (cp *CloudProvider) ensureSSLCertificates(ctx context.Context, lb *loadbala
 		return err
 	}
 
-	var ok bool
 	for _, cert := range certs {
-		if _, ok = lb.Certificates[*cert.CertificateName]; !ok {
+		if _, ok := lb.Certificates[*cert.CertificateName]; !ok {
 			logger = cp.logger.With("certificateName", *cert.CertificateName)
 			wrID, err := cp.client.LoadBalancer().CreateCertificate(ctx, *lb.Id, cert)
 			if err != nil {
@@ -324,7 +323,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 			return nil, err
 		}
 		secretListenerString := service.Annotations[ServiceAnnotationLoadBalancerTLSSecret]
-		secretBackendSetString := service.Annotations[ServiceAnnotationLoadBalancerBackendSetSecret]
+		secretBackendSetString := service.Annotations[ServiceAnnotationLoadBalancerTLSBackendSetSecret]
 		sslConfig = NewSSLConfig(secretListenerString, secretBackendSetString, ports, cp)
 	}
 	subnets := []string{cp.config.LoadBalancer.Subnet1, cp.config.LoadBalancer.Subnet2}

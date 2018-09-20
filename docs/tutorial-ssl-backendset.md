@@ -38,7 +38,7 @@ metadata:
   annotations:
     service.beta.kubernetes.io/oci-load-balancer-ssl-ports: "443"
     service.beta.kubernetes.io/oci-load-balancer-tls-secret: ssl-certificate-secret
-    service.beta.kubernetes.io/oci-load-balancer-backendset-secret: ssl-certificate-secret
+    service.beta.kubernetes.io/oci-load-balancer-tls-backendset-secret: ssl-certificate-secret
 spec:
   selector:
     app: nginx
