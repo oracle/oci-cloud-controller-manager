@@ -10,7 +10,7 @@ build:
     - script:
       name: check boilerplate
       code: ./hack/verify-boilerplate.sh
-  
+
     - script:
       name: go fmt
       code: make gofmt
@@ -139,8 +139,8 @@ e2e-test:
         export VERSION=$(cat VERSION.txt)
         echo "${VERSION}"
         export NODEPORT_TEST="true"
-        export CCM_SECLIST_ID="ocid1.securitylist.oc1.iad.aaaaaaaaqshdqfwpgqnvt42vrvtn4oqlpxvmgte5r5j7aczkxghodftx77gq"
-        export K8S_SECLIST_ID="ocid1.securitylist.oc1.iad.aaaaaaaazsac74oe2fml7bhpmkbboik7zfzsma2eakeummgeyvbuzpjbvs4a"
+        export CCM_SECLIST_ID="ocid1.securitylist.oc1.iad.aaaaaaaagekgnvc75yxb66xj2qgocejhyk5xuhojm6wimmteqa5fj43kk5lq"
+        export K8S_SECLIST_ID="ocid1.securitylist.oc1.iad.aaaaaaaajzgrgfma2xzzdv4erczaiphuyaflazbt2bvzw2cwj2pxo3fygo5a"
 
     - script:
       name: deploy latest CCM
@@ -171,7 +171,7 @@ push-canary:
         echo "Pushing test version ${VERSION}"
     - script:
         name: configure oci canary entrypoint
-        code: mkdir -p /oci/scripts/ && cp ./hack/ccm-canary-entrypoint.sh /oci/scripts/ccm-canary-entrypoint.sh 
+        code: mkdir -p /oci/scripts/ && cp ./hack/ccm-canary-entrypoint.sh /oci/scripts/ccm-canary-entrypoint.sh
     - internal/docker-push:
       repository: iad.ocir.io/oracle/oci-cloud-controller-manager-canary
       tag: $VERSION
