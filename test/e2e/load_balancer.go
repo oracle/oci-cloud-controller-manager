@@ -85,11 +85,11 @@ var _ = Describe("Service [Slow]", func() {
 
 		if f.NodePortTest {
 			By("hitting the TCP service's NodePort")
-			jig.TestReachableHTTP(nodeIP, tcpNodePort, framework.KubeProxyLagTimeout)
+			jig.TestReachableHTTP(false, nodeIP, tcpNodePort, framework.KubeProxyLagTimeout)
 		}
 
 		By("hitting the TCP service's LoadBalancer")
-		jig.TestReachableHTTP(tcpIngressIP, svcPort, loadBalancerLagTimeout)
+		jig.TestReachableHTTP(false, tcpIngressIP, svcPort, loadBalancerLagTimeout)
 
 		// Change the services' node ports.
 
@@ -117,21 +117,20 @@ var _ = Describe("Service [Slow]", func() {
 
 		if f.NodePortTest {
 			By("hitting the TCP service's new NodePort")
-			jig.TestReachableHTTP(nodeIP, tcpNodePort, framework.KubeProxyLagTimeout)
+			jig.TestReachableHTTP(false, nodeIP, tcpNodePort, framework.KubeProxyLagTimeout)
 
 			By("checking the old TCP NodePort is closed")
 			jig.TestNotReachableHTTP(nodeIP, tcpNodePortOld, framework.KubeProxyLagTimeout)
 		}
 
 		By("hitting the TCP service's LoadBalancer")
-		jig.TestReachableHTTP(tcpIngressIP, svcPort, loadBalancerLagTimeout)
+		jig.TestReachableHTTP(false, tcpIngressIP, svcPort, loadBalancerLagTimeout)
 
 		// Change the services' main ports.
 
 		By("changing the TCP service's port")
 		tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
 			s.Spec.Ports[0].Port++
-			framework.Logf("Updating port to: %d", tcpNodePort)
 		})
 		jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
 		svcPortOld := svcPort
@@ -147,14 +146,13 @@ var _ = Describe("Service [Slow]", func() {
 		}
 
 		framework.Logf("service port (TCP): %d", svcPort)
-
 		if f.NodePortTest {
 			By("hitting the TCP service's NodePort")
-			jig.TestReachableHTTP(nodeIP, tcpNodePort, framework.KubeProxyLagTimeout)
+			jig.TestReachableHTTP(false, nodeIP, tcpNodePort, framework.KubeProxyLagTimeout)
 		}
 
 		By("hitting the TCP service's LoadBalancer")
-		jig.TestReachableHTTP(tcpIngressIP, svcPort, loadBalancerCreateTimeout) // this may actually recreate the LB
+		jig.TestReachableHTTP(false, tcpIngressIP, svcPort, loadBalancerCreateTimeout) // this may actually recreate the LB
 
 		// Change the services back to ClusterIP.
 
@@ -244,7 +242,7 @@ var _ = Describe("ESIPP [Slow]", func() {
 			for n, publicIP := range ips {
 				// Make sure the loadbalancer picked up the health check change.
 				// Confirm traffic can reach backend through LB before checking healthcheck nodeport.
-				jig.TestReachableHTTP(ingressIP, svcTCPPort, framework.KubeProxyLagTimeout)
+				jig.TestReachableHTTP(false, ingressIP, svcTCPPort, framework.KubeProxyLagTimeout)
 				expectedSuccess := nodes.Items[n].Name == endpointNodeName
 				port := strconv.Itoa(healthCheckNodePort)
 				ipPort := net.JoinHostPort(publicIP, port)
@@ -302,5 +300,325 @@ var _ = Describe("ESIPP [Slow]", func() {
 		}); pollErr != nil {
 			framework.Failf("Source IP not preserved from %v, expected '%v' got '%v'", podName, execPod.Status.PodIP, srcIP)
 		}
+	})
+})
+
+var _ = Describe("End to end TLS", func() {
+	f := framework.NewDefaultFramework("service")
+
+	It("should be possible to create and mutate a Service type:LoadBalancer [Canary]", func() {
+		serviceName := "e2e-tls-lb-test"
+		ns := f.Namespace.Name
+
+		jig := framework.NewServiceTestJig(f.ClientSet, serviceName)
+
+		sslSecretName := "ssl-certificate-secret"
+		_, err := f.ClientSet.CoreV1().Secrets(ns).Create(&v1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: ns,
+				Name:      sslSecretName,
+			},
+			Data: map[string][]byte{
+				cloudprovider.SSLCAFileName:          []byte(framework.SSLCAData),
+				cloudprovider.SSLCertificateFileName: []byte(framework.SSLCertificateData),
+				cloudprovider.SSLPrivateKeyFileName:  []byte(framework.SSLPrivateData),
+				cloudprovider.SSLPassphrase:          []byte(framework.SSLPassphrase),
+			},
+		})
+		framework.ExpectNoError(err)
+		loadBalancerCreateTimeout := framework.LoadBalancerCreateTimeoutDefault
+		if nodes := framework.GetReadySchedulableNodesOrDie(f.ClientSet); len(nodes.Items) > framework.LargeClusterMinNodesNumber {
+			loadBalancerCreateTimeout = framework.LoadBalancerCreateTimeoutLarge
+		}
+
+		requestedIP := ""
+
+		tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
+			s.Spec.Type = v1.ServiceTypeLoadBalancer
+			s.Spec.LoadBalancerIP = requestedIP
+			s.Spec.Ports = []v1.ServicePort{v1.ServicePort{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
+				v1.ServicePort{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
+			s.ObjectMeta.Annotations = map[string]string{cloudprovider.ServiceAnnotationLoadBalancerSSLPorts: "443",
+				cloudprovider.ServiceAnnotationLoadBalancerTLSSecret:           sslSecretName,
+				cloudprovider.ServiceAnnotationLoadBalancerTLSBackendSetSecret: sslSecretName}
+
+		})
+
+		svcPort := int(tcpService.Spec.Ports[0].Port)
+
+		By("creating a pod to be part of the TCP service " + serviceName)
+		jig.RunOrFail(ns, nil)
+
+		// TODO(apryde): Test UDP service. OCI does not currently support this.
+
+		By("waiting for the TCP service to have a load balancer")
+		// Wait for the load balancer to be created asynchronously
+		tcpService = jig.WaitForLoadBalancerOrFail(ns, tcpService.Name, loadBalancerCreateTimeout)
+		jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
+		tcpNodePort := int(tcpService.Spec.Ports[0].NodePort)
+		framework.Logf("TCP node port: %d", tcpNodePort)
+
+		if requestedIP != "" && framework.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]) != requestedIP {
+			framework.Failf("unexpected TCP Status.LoadBalancer.Ingress (expected %s, got %s)", requestedIP, framework.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]))
+		}
+		tcpIngressIP := framework.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0])
+		framework.Logf("TCP load balancer: %s", tcpIngressIP)
+
+		By("changing TCP service back to type=ClusterIP")
+		tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+			s.Spec.Type = v1.ServiceTypeClusterIP
+			s.Spec.Ports[0].NodePort = 0
+			s.Spec.Ports[1].NodePort = 0
+		})
+
+		// Wait for the load balancer to be destroyed asynchronously
+		tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
+		jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
+
+		err = f.ClientSet.CoreV1().Secrets(ns).Delete(sslSecretName, nil)
+		framework.ExpectNoError(err)
+	})
+})
+
+var _ = Describe("BackendSet only enabled TLS", func() {
+	f := framework.NewDefaultFramework("backendset-service")
+
+	It("should be possible to create and mutate a Service type:LoadBalancer [Canary]", func() {
+		serviceName := "backendset-tls-lb-test"
+		ns := f.Namespace.Name
+
+		jig := framework.NewServiceTestJig(f.ClientSet, serviceName)
+
+		sslSecretName := "ssl-certificate-secret"
+		_, err := f.ClientSet.CoreV1().Secrets(ns).Create(&v1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: ns,
+				Name:      sslSecretName,
+			},
+			Data: map[string][]byte{
+				cloudprovider.SSLCAFileName:          []byte(framework.SSLCAData),
+				cloudprovider.SSLCertificateFileName: []byte(framework.SSLCertificateData),
+				cloudprovider.SSLPrivateKeyFileName:  []byte(framework.SSLPrivateData),
+				cloudprovider.SSLPassphrase:          []byte(framework.SSLPassphrase),
+			},
+		})
+		framework.ExpectNoError(err)
+		loadBalancerCreateTimeout := framework.LoadBalancerCreateTimeoutDefault
+		if nodes := framework.GetReadySchedulableNodesOrDie(f.ClientSet); len(nodes.Items) > framework.LargeClusterMinNodesNumber {
+			loadBalancerCreateTimeout = framework.LoadBalancerCreateTimeoutLarge
+		}
+
+		requestedIP := ""
+
+		tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
+			s.Spec.Type = v1.ServiceTypeLoadBalancer
+			s.Spec.LoadBalancerIP = requestedIP
+			s.Spec.Ports = []v1.ServicePort{v1.ServicePort{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
+				v1.ServicePort{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
+			s.ObjectMeta.Annotations = map[string]string{cloudprovider.ServiceAnnotationLoadBalancerSSLPorts: "443",
+				cloudprovider.ServiceAnnotationLoadBalancerTLSBackendSetSecret: sslSecretName}
+
+		})
+
+		svcPort := int(tcpService.Spec.Ports[0].Port)
+
+		By("creating a pod to be part of the TCP service " + serviceName)
+		jig.RunOrFail(ns, nil)
+
+		By("waiting for the TCP service to have a load balancer")
+		// Wait for the load balancer to be created asynchronously
+		tcpService = jig.WaitForLoadBalancerOrFail(ns, tcpService.Name, loadBalancerCreateTimeout)
+		jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
+		tcpNodePort := int(tcpService.Spec.Ports[0].NodePort)
+		framework.Logf("TCP node port: %d", tcpNodePort)
+
+		if requestedIP != "" && framework.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]) != requestedIP {
+			framework.Failf("unexpected TCP Status.LoadBalancer.Ingress (expected %s, got %s)", requestedIP, framework.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]))
+		}
+		tcpIngressIP := framework.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0])
+		framework.Logf("TCP load balancer: %s", tcpIngressIP)
+
+		By("changing TCP service back to type=ClusterIP")
+		tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+			s.Spec.Type = v1.ServiceTypeClusterIP
+			s.Spec.Ports[0].NodePort = 0
+			s.Spec.Ports[1].NodePort = 0
+		})
+
+		// Wait for the load balancer to be destroyed asynchronously
+		tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
+		jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
+
+		err = f.ClientSet.CoreV1().Secrets(ns).Delete(sslSecretName, nil)
+		framework.ExpectNoError(err)
+	})
+})
+
+var _ = Describe("Listener only enabled TLS", func() {
+	f := framework.NewDefaultFramework("listener-service")
+
+	It("should be possible to create and mutate a Service type:LoadBalancer [Canary]", func() {
+		serviceName := "listener-tls-lb-test"
+		ns := f.Namespace.Name
+
+		jig := framework.NewServiceTestJig(f.ClientSet, serviceName)
+
+		sslSecretName := "ssl-certificate-secret"
+		_, err := f.ClientSet.CoreV1().Secrets(ns).Create(&v1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: ns,
+				Name:      sslSecretName,
+			},
+			Data: map[string][]byte{
+				cloudprovider.SSLCAFileName:          []byte(framework.SSLCAData),
+				cloudprovider.SSLCertificateFileName: []byte(framework.SSLCertificateData),
+				cloudprovider.SSLPrivateKeyFileName:  []byte(framework.SSLPrivateData),
+				cloudprovider.SSLPassphrase:          []byte(framework.SSLPassphrase),
+			},
+		})
+		framework.ExpectNoError(err)
+		loadBalancerCreateTimeout := framework.LoadBalancerCreateTimeoutDefault
+		if nodes := framework.GetReadySchedulableNodesOrDie(f.ClientSet); len(nodes.Items) > framework.LargeClusterMinNodesNumber {
+			loadBalancerCreateTimeout = framework.LoadBalancerCreateTimeoutLarge
+		}
+
+		requestedIP := ""
+
+		tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
+			s.Spec.Type = v1.ServiceTypeLoadBalancer
+			s.Spec.LoadBalancerIP = requestedIP
+			s.Spec.Ports = []v1.ServicePort{v1.ServicePort{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
+				v1.ServicePort{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
+			s.ObjectMeta.Annotations = map[string]string{cloudprovider.ServiceAnnotationLoadBalancerSSLPorts: "443",
+				cloudprovider.ServiceAnnotationLoadBalancerTLSSecret: sslSecretName}
+
+		})
+
+		svcPort := int(tcpService.Spec.Ports[0].Port)
+
+		By("creating a pod to be part of the TCP service " + serviceName)
+		jig.RunOrFail(ns, nil)
+
+		By("waiting for the TCP service to have a load balancer")
+		// Wait for the load balancer to be created asynchronously
+		tcpService = jig.WaitForLoadBalancerOrFail(ns, tcpService.Name, loadBalancerCreateTimeout)
+		jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
+		tcpNodePort := int(tcpService.Spec.Ports[0].NodePort)
+		framework.Logf("TCP node port: %d", tcpNodePort)
+
+		if requestedIP != "" && framework.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]) != requestedIP {
+			framework.Failf("unexpected TCP Status.LoadBalancer.Ingress (expected %s, got %s)", requestedIP, framework.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]))
+		}
+		tcpIngressIP := framework.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0])
+		framework.Logf("TCP load balancer: %s", tcpIngressIP)
+
+		By("changing TCP service back to type=ClusterIP")
+		tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+			s.Spec.Type = v1.ServiceTypeClusterIP
+			s.Spec.Ports[0].NodePort = 0
+			s.Spec.Ports[1].NodePort = 0
+		})
+
+		// Wait for the load balancer to be destroyed asynchronously
+		tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
+		jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
+
+		err = f.ClientSet.CoreV1().Secrets(ns).Delete(sslSecretName, nil)
+		framework.ExpectNoError(err)
+	})
+})
+
+var _ = Describe("End to end enabled TLS - different certificates", func() {
+	f := framework.NewDefaultFramework("e2e-diff-certs")
+
+	It("should be possible to create and mutate a Service type:LoadBalancer [Canary]", func() {
+		serviceName := "e2e-diff-certs-service"
+		ns := f.Namespace.Name
+
+		jig := framework.NewServiceTestJig(f.ClientSet, serviceName)
+
+		sslListenerSecretName := "ssl-certificate-secret-lis"
+		sslBackendSetSecretName := "ssl-certificate-secret-backendset"
+		_, err := f.ClientSet.CoreV1().Secrets(ns).Create(&v1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: ns,
+				Name:      sslListenerSecretName,
+			},
+			Data: map[string][]byte{
+				cloudprovider.SSLCAFileName:          []byte(framework.SSLCAData),
+				cloudprovider.SSLCertificateFileName: []byte(framework.SSLCertificateData),
+				cloudprovider.SSLPrivateKeyFileName:  []byte(framework.SSLPrivateData),
+				cloudprovider.SSLPassphrase:          []byte(framework.SSLPassphrase),
+			},
+		})
+		framework.ExpectNoError(err)
+		_, err = f.ClientSet.CoreV1().Secrets(ns).Create(&v1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: ns,
+				Name:      sslBackendSetSecretName,
+			},
+			Data: map[string][]byte{
+				cloudprovider.SSLCAFileName:          []byte(framework.SSLCAData),
+				cloudprovider.SSLCertificateFileName: []byte(framework.SSLCertificateData),
+				cloudprovider.SSLPrivateKeyFileName:  []byte(framework.SSLPrivateData),
+				cloudprovider.SSLPassphrase:          []byte(framework.SSLPassphrase),
+			},
+		})
+		framework.ExpectNoError(err)
+		loadBalancerCreateTimeout := framework.LoadBalancerCreateTimeoutDefault
+		if nodes := framework.GetReadySchedulableNodesOrDie(f.ClientSet); len(nodes.Items) > framework.LargeClusterMinNodesNumber {
+			loadBalancerCreateTimeout = framework.LoadBalancerCreateTimeoutLarge
+		}
+
+		requestedIP := ""
+
+		tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
+			s.Spec.Type = v1.ServiceTypeLoadBalancer
+			s.Spec.LoadBalancerIP = requestedIP
+			s.Spec.Ports = []v1.ServicePort{v1.ServicePort{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
+				v1.ServicePort{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
+			s.ObjectMeta.Annotations = map[string]string{cloudprovider.ServiceAnnotationLoadBalancerSSLPorts: "443",
+				cloudprovider.ServiceAnnotationLoadBalancerTLSSecret:           sslListenerSecretName,
+				cloudprovider.ServiceAnnotationLoadBalancerTLSBackendSetSecret: sslBackendSetSecretName}
+
+		})
+
+		svcPort := int(tcpService.Spec.Ports[0].Port)
+
+		By("creating a pod to be part of the TCP service " + serviceName)
+		jig.RunOrFail(ns, nil)
+
+		By("waiting for the TCP service to have a load balancer")
+		// Wait for the load balancer to be created asynchronously
+		tcpService = jig.WaitForLoadBalancerOrFail(ns, tcpService.Name, loadBalancerCreateTimeout)
+		jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
+		tcpNodePort := int(tcpService.Spec.Ports[0].NodePort)
+		framework.Logf("TCP node port: %d", tcpNodePort)
+
+		if requestedIP != "" && framework.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]) != requestedIP {
+			framework.Failf("unexpected TCP Status.LoadBalancer.Ingress (expected %s, got %s)", requestedIP, framework.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]))
+		}
+		tcpIngressIP := framework.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0])
+		framework.Logf("TCP load balancer: %s", tcpIngressIP)
+
+		By("changing TCP service back to type=ClusterIP")
+		tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+			s.Spec.Type = v1.ServiceTypeClusterIP
+			s.Spec.Ports[0].NodePort = 0
+			s.Spec.Ports[1].NodePort = 0
+		})
+
+		// Wait for the load balancer to be destroyed asynchronously
+		tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
+		jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
+
+		err = f.ClientSet.CoreV1().Secrets(ns).Delete(sslListenerSecretName, nil)
+		framework.ExpectNoError(err)
+		err = f.ClientSet.CoreV1().Secrets(ns).Delete(sslBackendSetSecretName, nil)
+		framework.ExpectNoError(err)
 	})
 })

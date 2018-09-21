@@ -29,8 +29,14 @@ import (
 )
 
 const (
-	sslCertificateFileName = "tls.crt"
-	sslPrivateKeyFileName  = "tls.key"
+	// SSLCAFileName is a key name for ca data in the secrets config.
+	SSLCAFileName = "ca.crt"
+	// SSLCertificateFileName is a key name for certificate data in the secrets config.
+	SSLCertificateFileName = "tls.crt"
+	// SSLPrivateKeyFileName is a key name for cartificate private key in the secrets config.
+	SSLPrivateKeyFileName = "tls.key"
+	// SSLPassphrase is a key name for certificate passphrase in the secrets config.
+	SSLPassphrase = "passphrase"
 )
 
 const lbNamePrefixEnvVar = "LOAD_BALANCER_PREFIX"

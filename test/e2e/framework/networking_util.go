@@ -36,6 +36,7 @@ import (
 
 const (
 	EndpointHttpPort           = 8080
+	EndpointHttpsPort          = 443
 	EndpointUdpPort            = 8081
 	TestContainerHttpPort      = 8080
 	ClusterHttpPort            = 80
@@ -84,26 +85,29 @@ func httpGetNoConnectionPoolTimeout(url string, timeout time.Duration) (*http.Re
 	return client.Get(url)
 }
 
-func TestReachableHTTP(ip string, port int, request string, expect string) (bool, error) {
-	return TestReachableHTTPWithContent(ip, port, request, expect, nil)
+func TestReachableHTTP(secure bool, ip string, port int, request string, expect string) (bool, error) {
+	return TestReachableHTTPWithContent(secure, ip, port, request, expect, nil)
 }
 
-func TestReachableHTTPWithRetriableErrorCodes(ip string, port int, request string, expect string, retriableErrCodes []int) (bool, error) {
-	return TestReachableHTTPWithContentTimeoutWithRetriableErrorCodes(ip, port, request, expect, nil, retriableErrCodes, time.Second*5)
+func TestReachableHTTPWithRetriableErrorCodes(secure bool, ip string, port int, request string, expect string, retriableErrCodes []int) (bool, error) {
+	return TestReachableHTTPWithContentTimeoutWithRetriableErrorCodes(secure, ip, port, request, expect, nil, retriableErrCodes, time.Second*5)
 }
 
-func TestReachableHTTPWithContent(ip string, port int, request string, expect string, content *bytes.Buffer) (bool, error) {
-	return TestReachableHTTPWithContentTimeout(ip, port, request, expect, content, 5*time.Second)
+func TestReachableHTTPWithContent(secure bool, ip string, port int, request string, expect string, content *bytes.Buffer) (bool, error) {
+	return TestReachableHTTPWithContentTimeout(secure, ip, port, request, expect, content, 5*time.Second)
 }
 
-func TestReachableHTTPWithContentTimeout(ip string, port int, request string, expect string, content *bytes.Buffer, timeout time.Duration) (bool, error) {
-	return TestReachableHTTPWithContentTimeoutWithRetriableErrorCodes(ip, port, request, expect, content, []int{}, timeout)
+func TestReachableHTTPWithContentTimeout(secure bool, ip string, port int, request string, expect string, content *bytes.Buffer, timeout time.Duration) (bool, error) {
+	return TestReachableHTTPWithContentTimeoutWithRetriableErrorCodes(secure, ip, port, request, expect, content, []int{}, timeout)
 }
 
-func TestReachableHTTPWithContentTimeoutWithRetriableErrorCodes(ip string, port int, request string, expect string, content *bytes.Buffer, retriableErrCodes []int, timeout time.Duration) (bool, error) {
+func TestReachableHTTPWithContentTimeoutWithRetriableErrorCodes(secure bool, ip string, port int, request string, expect string, content *bytes.Buffer, retriableErrCodes []int, timeout time.Duration) (bool, error) {
 
 	ipPort := net.JoinHostPort(ip, strconv.Itoa(port))
 	url := fmt.Sprintf("http://%s%s", ipPort, request)
+	if secure {
+		url = fmt.Sprintf("https://%s%s", ipPort, request)
+	}
 	if ip == "" {
 		Failf("Got empty IP for reachability check (%s)", url)
 		return false, nil
@@ -271,7 +275,7 @@ func TestHitNodesFromOutsideWithCount(externalIP string, httpPort int32, timeout
 	count := 0
 	condition := func() (bool, error) {
 		var respBody bytes.Buffer
-		reached, err := TestReachableHTTPWithContentTimeout(externalIP, int(httpPort), "/hostname", "", &respBody,
+		reached, err := TestReachableHTTPWithContentTimeout(false, externalIP, int(httpPort), "/hostname", "", &respBody,
 			1*time.Second)
 		if err != nil || !reached {
 			return false, nil

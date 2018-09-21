@@ -35,7 +35,7 @@ type LoadBalancerInterface interface {
 	DeleteLoadBalancer(ctx context.Context, id string) (string, error)
 
 	GetCertificateByName(ctx context.Context, lbID, name string) (*loadbalancer.Certificate, error)
-	CreateCertificate(ctx context.Context, lbID, certificate, key string) (string, error)
+	CreateCertificate(ctx context.Context, lbID string, cert loadbalancer.CertificateDetails) (string, error)
 
 	CreateBackendSet(ctx context.Context, lbID, name string, details loadbalancer.BackendSetDetails) (string, error)
 	UpdateBackendSet(ctx context.Context, lbID, name string, details loadbalancer.BackendSetDetails) (string, error)
@@ -150,18 +150,19 @@ func (c *client) GetCertificateByName(ctx context.Context, lbID, name string) (*
 	return nil, errors.WithStack(errNotFound)
 }
 
-func (c *client) CreateCertificate(ctx context.Context, lbID, certificate, key string) (string, error) {
+func (c *client) CreateCertificate(ctx context.Context, lbID string, cert loadbalancer.CertificateDetails) (string, error) {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return "", RateLimitError(true, "CreateCertificate")
 	}
 
-	// TODO(apryde): We currently don't have a mechanism for supplying
-	// CreateCertificateDetails.CaCertificate.
 	resp, err := c.loadbalancer.CreateCertificate(ctx, loadbalancer.CreateCertificateRequest{
 		LoadBalancerId: &lbID,
 		CreateCertificateDetails: loadbalancer.CreateCertificateDetails{
-			PublicCertificate: &certificate,
-			PrivateKey:        &key,
+			CertificateName:   cert.CertificateName,
+			CaCertificate:     cert.CaCertificate,
+			PublicCertificate: cert.PublicCertificate,
+			PrivateKey:        cert.PrivateKey,
+			Passphrase:        cert.Passphrase,
 		},
 	})
 	incRequestCounter(err, createVerb, certificateResource)
