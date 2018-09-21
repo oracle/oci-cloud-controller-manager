@@ -382,10 +382,10 @@ var _ = Describe("End to end TLS", func() {
 })
 
 var _ = Describe("BackendSet only enabled TLS", func() {
-	f := framework.NewDefaultFramework("service")
+	f := framework.NewDefaultFramework("backendset-service")
 
 	It("should be possible to create and mutate a Service type:LoadBalancer [Canary]", func() {
-		serviceName := "e2e-tls-lb-test"
+		serviceName := "backendset-tls-lb-test"
 		ns := f.Namespace.Name
 
 		jig := framework.NewServiceTestJig(f.ClientSet, serviceName)
@@ -457,10 +457,10 @@ var _ = Describe("BackendSet only enabled TLS", func() {
 })
 
 var _ = Describe("Listener only enabled TLS", func() {
-	f := framework.NewDefaultFramework("service")
+	f := framework.NewDefaultFramework("listener-service")
 
 	It("should be possible to create and mutate a Service type:LoadBalancer [Canary]", func() {
-		serviceName := "e2e-tls-lb-test"
+		serviceName := "listener-tls-lb-test"
 		ns := f.Namespace.Name
 
 		jig := framework.NewServiceTestJig(f.ClientSet, serviceName)
@@ -532,10 +532,10 @@ var _ = Describe("Listener only enabled TLS", func() {
 })
 
 var _ = Describe("End to end enabled TLS - different certificates", func() {
-	f := framework.NewDefaultFramework("service")
+	f := framework.NewDefaultFramework("e2e-diff-certs")
 
 	It("should be possible to create and mutate a Service type:LoadBalancer [Canary]", func() {
-		serviceName := "e2e-tls-lb-test"
+		serviceName := "e2e-diff-certs-service"
 		ns := f.Namespace.Name
 
 		jig := framework.NewServiceTestJig(f.ClientSet, serviceName)
