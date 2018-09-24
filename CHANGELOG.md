@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 0.7.0
+
+* Support assigning SSL certs to BackendSets (#243)[29]
+
+## 0.6.1
+
+* Support load balancer listeners with http protocol via annotation (#239)
+* Prevent leaking security list rules when updating a service (#238)[28]
+
 ## 0.6.0
 
 * Allow dynamic configuration of security list management via annotations. [#217][23]
@@ -103,3 +112,5 @@
 [25]: https://github.com/oracle/oci-cloud-controller-manager/pull/228
 [26]: https://github.com/oracle/oci-cloud-controller-manager/issues/108
 [27]: https://github.com/oracle/oci-cloud-controller-manager/issues/232
+[28]: https://github.com/oracle/oci-cloud-controller-manager/issues/208
+[29]: https://github.com/oracle/oci-cloud-controller-manager/issues/235
