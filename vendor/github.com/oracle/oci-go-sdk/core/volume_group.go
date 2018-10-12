@@ -13,7 +13,10 @@ import (
 	"github.com/oracle/oci-go-sdk/common"
 )
 
-// VolumeGroup Specifies a volume group which is a collection of volumes. For more information, see Volume Groups (https://docs.us-phoenix-1.oraclecloud.com/Content/Block/Concepts/volumegroups.htm).
+// VolumeGroup Specifies a volume group which is a collection of
+// volumes. For more information, see Volume Groups (https://docs.us-phoenix-1.oraclecloud.com/Content/Block/Concepts/volumegroups.htm).
+// **Warning:** Oracle recommends that you avoid using any confidential information when you
+// supply string values using the API.
 type VolumeGroup struct {
 
 	// The availability domain of the volume group.
@@ -57,6 +60,9 @@ type VolumeGroup struct {
 	// The volume group source. The source is either another a list of
 	// volume IDs in the same availability domain, another volume group, or a volume group backup.
 	SourceDetails VolumeGroupSourceDetails `mandatory:"false" json:"sourceDetails"`
+
+	// Specifies whether the newly created cloned volume group's data has finished copying from the source volume group or backup.
+	IsHydrated *bool `mandatory:"false" json:"isHydrated"`
 }
 
 func (m VolumeGroup) String() string {
@@ -71,6 +77,7 @@ func (m *VolumeGroup) UnmarshalJSON(data []byte) (e error) {
 		LifecycleState     VolumeGroupLifecycleStateEnum     `json:"lifecycleState"`
 		SizeInGBs          *int64                            `json:"sizeInGBs"`
 		SourceDetails      volumegroupsourcedetails          `json:"sourceDetails"`
+		IsHydrated         *bool                             `json:"isHydrated"`
 		AvailabilityDomain *string                           `json:"availabilityDomain"`
 		CompartmentId      *string                           `json:"compartmentId"`
 		DisplayName        *string                           `json:"displayName"`
@@ -92,7 +99,12 @@ func (m *VolumeGroup) UnmarshalJSON(data []byte) (e error) {
 	if e != nil {
 		return
 	}
-	m.SourceDetails = nn.(VolumeGroupSourceDetails)
+	if nn != nil {
+		m.SourceDetails = nn.(VolumeGroupSourceDetails)
+	} else {
+		m.SourceDetails = nil
+	}
+	m.IsHydrated = model.IsHydrated
 	m.AvailabilityDomain = model.AvailabilityDomain
 	m.CompartmentId = model.CompartmentId
 	m.DisplayName = model.DisplayName

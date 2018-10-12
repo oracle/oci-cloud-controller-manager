@@ -65,8 +65,16 @@ func (client ContainerEngineClient) CreateCluster(ctx context.Context, request C
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createCluster, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateClusterResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateClusterResponse); ok {
@@ -106,6 +114,9 @@ func (client ContainerEngineClient) CreateKubeconfig(ctx context.Context, reques
 	}
 	ociResponse, err = common.Retry(ctx, request, client.createKubeconfig, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateKubeconfigResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateKubeconfigResponse); ok {
@@ -142,8 +153,16 @@ func (client ContainerEngineClient) CreateNodePool(ctx context.Context, request 
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createNodePool, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateNodePoolResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateNodePoolResponse); ok {
@@ -183,6 +202,9 @@ func (client ContainerEngineClient) DeleteCluster(ctx context.Context, request D
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteCluster, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteClusterResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteClusterResponse); ok {
@@ -222,6 +244,9 @@ func (client ContainerEngineClient) DeleteNodePool(ctx context.Context, request 
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteNodePool, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteNodePoolResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteNodePoolResponse); ok {
@@ -261,6 +286,9 @@ func (client ContainerEngineClient) DeleteWorkRequest(ctx context.Context, reque
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteWorkRequest, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteWorkRequestResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteWorkRequestResponse); ok {
@@ -300,6 +328,9 @@ func (client ContainerEngineClient) GetCluster(ctx context.Context, request GetC
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getCluster, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetClusterResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetClusterResponse); ok {
@@ -339,6 +370,9 @@ func (client ContainerEngineClient) GetClusterOptions(ctx context.Context, reque
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getClusterOptions, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetClusterOptionsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetClusterOptionsResponse); ok {
@@ -378,6 +412,9 @@ func (client ContainerEngineClient) GetNodePool(ctx context.Context, request Get
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getNodePool, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetNodePoolResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetNodePoolResponse); ok {
@@ -417,6 +454,9 @@ func (client ContainerEngineClient) GetNodePoolOptions(ctx context.Context, requ
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getNodePoolOptions, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetNodePoolOptionsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetNodePoolOptionsResponse); ok {
@@ -456,6 +496,9 @@ func (client ContainerEngineClient) GetWorkRequest(ctx context.Context, request 
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getWorkRequest, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetWorkRequestResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetWorkRequestResponse); ok {
@@ -495,6 +538,9 @@ func (client ContainerEngineClient) ListClusters(ctx context.Context, request Li
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listClusters, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListClustersResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListClustersResponse); ok {
@@ -534,6 +580,9 @@ func (client ContainerEngineClient) ListNodePools(ctx context.Context, request L
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listNodePools, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListNodePoolsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListNodePoolsResponse); ok {
@@ -573,6 +622,9 @@ func (client ContainerEngineClient) ListWorkRequestErrors(ctx context.Context, r
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listWorkRequestErrors, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListWorkRequestErrorsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListWorkRequestErrorsResponse); ok {
@@ -612,6 +664,9 @@ func (client ContainerEngineClient) ListWorkRequestLogs(ctx context.Context, req
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listWorkRequestLogs, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListWorkRequestLogsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListWorkRequestLogsResponse); ok {
@@ -651,6 +706,9 @@ func (client ContainerEngineClient) ListWorkRequests(ctx context.Context, reques
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listWorkRequests, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListWorkRequestsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListWorkRequestsResponse); ok {
@@ -690,6 +748,9 @@ func (client ContainerEngineClient) UpdateCluster(ctx context.Context, request U
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateCluster, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateClusterResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateClusterResponse); ok {
@@ -729,6 +790,9 @@ func (client ContainerEngineClient) UpdateNodePool(ctx context.Context, request 
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateNodePool, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateNodePoolResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateNodePoolResponse); ok {

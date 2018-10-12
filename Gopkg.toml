@@ -1,32 +1,10 @@
-
-# Gopkg.toml example
-#
-# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
-# for detailed Gopkg.toml documentation.
-#
-# required = ["github.com/user/thing/cmd/thing"]
-# ignored = ["github.com/user/project/pkgX", "bitbucket.org/user/project/pkgA/pkgY"]
-#
-# [[constraint]]
-#   name = "github.com/user/project"
-#   version = "1.0.0"
-#
-# [[constraint]]
-#   name = "github.com/user/project2"
-#   branch = "dev"
-#   source = "github.com/myfork/project2"
-#
-# [[override]]
-#  name = "github.com/x/y"
-#  version = "2.4.0"
-
 # See: https://github.com/golang/dep/issues/1799
 [[override]]
   name = "gopkg.in/fsnotify.v1"
   source = "https://github.com/fsnotify/fsnotify.git"
 
 [[override]]
-  branch = "master"
+  revision = "edc3ab29cdff8694dd6feb85cfeb4b5f1b38ed9c"
   name = "github.com/docker/distribution"
 
 # glog -> zap
@@ -37,39 +15,39 @@
 
 [[override]]
   name = "k8s.io/apiextensions-apiserver"
-  version = "kubernetes-1.11.1"
+  version = "kubernetes-1.12.1"
 
 [[override]]
-  revision = "91cfa479c814065e420cee7ed227db0f63a5854e"
+  revision = "0cf8f7e6ed1d2e3d47d02e3b6e559369af24d803"
   name = "k8s.io/kube-openapi"
 
 [[constraint]]
   name = "github.com/spf13/pflag"
-  version = "1.0.0"
+  version = "1.0.1"
 
 [[constraint]]
   name = "go.uber.org/zap"
-    version = "1.9.0"
+    version = "1.9.1"
 
 [[constraint]]
   name = "k8s.io/api"
-  version = "kubernetes-1.11.1"
+  version = "kubernetes-1.12.1"
 
 [[constraint]]
   name = "k8s.io/apimachinery"
-  version = "kubernetes-1.11.1"
+  version = "kubernetes-1.12.1"
 
 [[constraint]]
   name = "k8s.io/apiserver"
-  version = "kubernetes-1.11.1"
+  version = "kubernetes-1.12.1"
 
 [[constraint]]
   name = "k8s.io/client-go"
-  version = "~8.0"
+  version = "~9.0"
 
 [[constraint]]
   name = "k8s.io/kubernetes"
-  version = "1.11.1"
+  version = "1.12.1"
 
 [[constraint]]
  name = "github.com/kubernetes-incubator/external-storage"
@@ -81,15 +59,15 @@
 
 [[constraint]]
   name = "github.com/onsi/ginkgo"
-  version = "1.4.0"
+  version = "1.6.0"
 
 [[constraint]]
   name = "github.com/onsi/gomega"
-  version = "1.3.0"
+  version = "1.4.2"
 
 [[constraint]]
   name = "github.com/oracle/oci-go-sdk"
-  version = "2.0.0"
+  version = "2.6.0"
 
 [prune]
   non-go = true

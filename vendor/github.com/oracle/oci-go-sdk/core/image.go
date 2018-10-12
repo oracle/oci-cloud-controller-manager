@@ -17,6 +17,8 @@ import (
 // To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized,
 // talk to an administrator. If you're an administrator who needs to write policies to give users access, see
 // Getting Started with Policies (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/policygetstarted.htm).
+// **Warning:** Oracle recommends that you avoid using any confidential information when you
+// supply string values using the API.
 type Image struct {
 
 	// The OCID of the compartment containing the instance you want to use as the basis for the image.
@@ -67,6 +69,7 @@ type Image struct {
 	// Specifies the configuration mode for launching virtual machine (VM) instances. The configuration modes are:
 	// * `NATIVE` - VM instances launch with iSCSI boot and VFIO devices. The default value for Oracle-provided images.
 	// * `EMULATED` - VM instances launch with emulated devices, such as the E1000 network driver and emulated SCSI disk controller.
+	// * `PARAVIRTUALIZED` - VM instances launch with paravirtualized devices using virtio drivers.
 	// * `CUSTOM` - VM instances launch with custom configuration settings specified in the `LaunchOptions` parameter.
 	LaunchMode ImageLaunchModeEnum `mandatory:"false" json:"launchMode,omitempty"`
 
@@ -86,15 +89,17 @@ type ImageLaunchModeEnum string
 
 // Set of constants representing the allowable values for ImageLaunchMode
 const (
-	ImageLaunchModeNative   ImageLaunchModeEnum = "NATIVE"
-	ImageLaunchModeEmulated ImageLaunchModeEnum = "EMULATED"
-	ImageLaunchModeCustom   ImageLaunchModeEnum = "CUSTOM"
+	ImageLaunchModeNative          ImageLaunchModeEnum = "NATIVE"
+	ImageLaunchModeEmulated        ImageLaunchModeEnum = "EMULATED"
+	ImageLaunchModeParavirtualized ImageLaunchModeEnum = "PARAVIRTUALIZED"
+	ImageLaunchModeCustom          ImageLaunchModeEnum = "CUSTOM"
 )
 
 var mappingImageLaunchMode = map[string]ImageLaunchModeEnum{
-	"NATIVE":   ImageLaunchModeNative,
-	"EMULATED": ImageLaunchModeEmulated,
-	"CUSTOM":   ImageLaunchModeCustom,
+	"NATIVE":          ImageLaunchModeNative,
+	"EMULATED":        ImageLaunchModeEmulated,
+	"PARAVIRTUALIZED": ImageLaunchModeParavirtualized,
+	"CUSTOM":          ImageLaunchModeCustom,
 }
 
 // GetImageLaunchModeEnumValues Enumerates the set of values for ImageLaunchMode

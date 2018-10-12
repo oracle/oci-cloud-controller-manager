@@ -68,8 +68,16 @@ func (client BlockstorageClient) CreateBootVolume(ctx context.Context, request C
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createBootVolume, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateBootVolumeResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateBootVolumeResponse); ok {
@@ -111,8 +119,16 @@ func (client BlockstorageClient) CreateBootVolumeBackup(ctx context.Context, req
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createBootVolumeBackup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateBootVolumeBackupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateBootVolumeBackupResponse); ok {
@@ -147,11 +163,11 @@ func (client BlockstorageClient) createBootVolumeBackup(ctx context.Context, req
 // 50 GB (51200 MB) to 32 TB (33554432 MB), in 1 GB (1024 MB) increments. By default, volumes are 1 TB (1048576 MB).
 // For general information about block volumes, see
 // Overview of Block Volume Service (https://docs.us-phoenix-1.oraclecloud.com/Content/Block/Concepts/overview.htm).
-// A volume and instance can be in separate compartments but must be in the same Availability Domain.
+// A volume and instance can be in separate compartments but must be in the same availability domain.
 // For information about access control and compartments, see
 // Overview of the IAM Service (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/overview.htm). For information about
-// Availability Domains, see Regions and Availability Domains (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/regions.htm).
-// To get a list of Availability Domains, use the `ListAvailabilityDomains` operation
+// availability domains, see Regions and Availability Domains (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/regions.htm).
+// To get a list of availability domains, use the `ListAvailabilityDomains` operation
 // in the Identity and Access Management Service API.
 // You may optionally specify a *display name* for the volume, which is simply a friendly name or
 // description. It does not have to be unique, and you can change it. Avoid entering confidential information.
@@ -161,8 +177,16 @@ func (client BlockstorageClient) CreateVolume(ctx context.Context, request Creat
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createVolume, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateVolumeResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateVolumeResponse); ok {
@@ -204,8 +228,16 @@ func (client BlockstorageClient) CreateVolumeBackup(ctx context.Context, request
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createVolumeBackup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateVolumeBackupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateVolumeBackupResponse); ok {
@@ -247,6 +279,9 @@ func (client BlockstorageClient) CreateVolumeBackupPolicyAssignment(ctx context.
 	}
 	ociResponse, err = common.Retry(ctx, request, client.createVolumeBackupPolicyAssignment, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateVolumeBackupPolicyAssignmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateVolumeBackupPolicyAssignmentResponse); ok {
@@ -289,8 +324,16 @@ func (client BlockstorageClient) CreateVolumeGroup(ctx context.Context, request 
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createVolumeGroup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateVolumeGroupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateVolumeGroupResponse); ok {
@@ -329,8 +372,16 @@ func (client BlockstorageClient) CreateVolumeGroupBackup(ctx context.Context, re
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createVolumeGroupBackup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateVolumeGroupBackupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateVolumeGroupBackupResponse); ok {
@@ -373,6 +424,9 @@ func (client BlockstorageClient) DeleteBootVolume(ctx context.Context, request D
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteBootVolume, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteBootVolumeResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteBootVolumeResponse); ok {
@@ -412,6 +466,9 @@ func (client BlockstorageClient) DeleteBootVolumeBackup(ctx context.Context, req
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteBootVolumeBackup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteBootVolumeBackupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteBootVolumeBackupResponse); ok {
@@ -442,6 +499,48 @@ func (client BlockstorageClient) deleteBootVolumeBackup(ctx context.Context, req
 	return response, err
 }
 
+// DeleteBootVolumeKmsKey Remove kms for the specific boot volume. If the volume doesn't use KMS, then do nothing.
+func (client BlockstorageClient) DeleteBootVolumeKmsKey(ctx context.Context, request DeleteBootVolumeKmsKeyRequest) (response DeleteBootVolumeKmsKeyResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.deleteBootVolumeKmsKey, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = DeleteBootVolumeKmsKeyResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(DeleteBootVolumeKmsKeyResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into DeleteBootVolumeKmsKeyResponse")
+	}
+	return
+}
+
+// deleteBootVolumeKmsKey implements the OCIOperation interface (enables retrying operations)
+func (client BlockstorageClient) deleteBootVolumeKmsKey(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/bootVolumes/{bootVolumeId}/kmsKey")
+	if err != nil {
+		return nil, err
+	}
+
+	var response DeleteBootVolumeKmsKeyResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // DeleteVolume Deletes the specified volume. The volume cannot have an active connection to an instance.
 // To disconnect the volume from a connected instance, see
 // Disconnecting From a Volume (https://docs.us-phoenix-1.oraclecloud.com/Content/Block/Tasks/disconnectingfromavolume.htm).
@@ -454,6 +553,9 @@ func (client BlockstorageClient) DeleteVolume(ctx context.Context, request Delet
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteVolume, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteVolumeResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteVolumeResponse); ok {
@@ -493,6 +595,9 @@ func (client BlockstorageClient) DeleteVolumeBackup(ctx context.Context, request
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteVolumeBackup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteVolumeBackupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteVolumeBackupResponse); ok {
@@ -532,6 +637,9 @@ func (client BlockstorageClient) DeleteVolumeBackupPolicyAssignment(ctx context.
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteVolumeBackupPolicyAssignment, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteVolumeBackupPolicyAssignmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteVolumeBackupPolicyAssignmentResponse); ok {
@@ -572,6 +680,9 @@ func (client BlockstorageClient) DeleteVolumeGroup(ctx context.Context, request 
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteVolumeGroup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteVolumeGroupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteVolumeGroupResponse); ok {
@@ -611,6 +722,9 @@ func (client BlockstorageClient) DeleteVolumeGroupBackup(ctx context.Context, re
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteVolumeGroupBackup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteVolumeGroupBackupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteVolumeGroupBackupResponse); ok {
@@ -641,6 +755,48 @@ func (client BlockstorageClient) deleteVolumeGroupBackup(ctx context.Context, re
 	return response, err
 }
 
+// DeleteVolumeKmsKey Remove kms for the specific volume. If the volume doesn't use KMS, then do nothing.
+func (client BlockstorageClient) DeleteVolumeKmsKey(ctx context.Context, request DeleteVolumeKmsKeyRequest) (response DeleteVolumeKmsKeyResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.deleteVolumeKmsKey, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = DeleteVolumeKmsKeyResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(DeleteVolumeKmsKeyResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into DeleteVolumeKmsKeyResponse")
+	}
+	return
+}
+
+// deleteVolumeKmsKey implements the OCIOperation interface (enables retrying operations)
+func (client BlockstorageClient) deleteVolumeKmsKey(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/volumes/{volumeId}/kmsKey")
+	if err != nil {
+		return nil, err
+	}
+
+	var response DeleteVolumeKmsKeyResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // GetBootVolume Gets information for the specified boot volume.
 func (client BlockstorageClient) GetBootVolume(ctx context.Context, request GetBootVolumeRequest) (response GetBootVolumeResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -650,6 +806,9 @@ func (client BlockstorageClient) GetBootVolume(ctx context.Context, request GetB
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getBootVolume, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetBootVolumeResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetBootVolumeResponse); ok {
@@ -689,6 +848,9 @@ func (client BlockstorageClient) GetBootVolumeBackup(ctx context.Context, reques
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getBootVolumeBackup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetBootVolumeBackupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetBootVolumeBackupResponse); ok {
@@ -719,6 +881,48 @@ func (client BlockstorageClient) getBootVolumeBackup(ctx context.Context, reques
 	return response, err
 }
 
+// GetBootVolumeKmsKey Gets kms key id for the specified boot volume.
+func (client BlockstorageClient) GetBootVolumeKmsKey(ctx context.Context, request GetBootVolumeKmsKeyRequest) (response GetBootVolumeKmsKeyResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.getBootVolumeKmsKey, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = GetBootVolumeKmsKeyResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(GetBootVolumeKmsKeyResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into GetBootVolumeKmsKeyResponse")
+	}
+	return
+}
+
+// getBootVolumeKmsKey implements the OCIOperation interface (enables retrying operations)
+func (client BlockstorageClient) getBootVolumeKmsKey(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/bootVolumes/{bootVolumeId}/kmsKey")
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetBootVolumeKmsKeyResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // GetVolume Gets information for the specified volume.
 func (client BlockstorageClient) GetVolume(ctx context.Context, request GetVolumeRequest) (response GetVolumeResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -728,6 +932,9 @@ func (client BlockstorageClient) GetVolume(ctx context.Context, request GetVolum
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getVolume, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetVolumeResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetVolumeResponse); ok {
@@ -767,6 +974,9 @@ func (client BlockstorageClient) GetVolumeBackup(ctx context.Context, request Ge
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getVolumeBackup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetVolumeBackupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetVolumeBackupResponse); ok {
@@ -806,6 +1016,9 @@ func (client BlockstorageClient) GetVolumeBackupPolicy(ctx context.Context, requ
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getVolumeBackupPolicy, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetVolumeBackupPolicyResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetVolumeBackupPolicyResponse); ok {
@@ -847,6 +1060,9 @@ func (client BlockstorageClient) GetVolumeBackupPolicyAssetAssignment(ctx contex
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getVolumeBackupPolicyAssetAssignment, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetVolumeBackupPolicyAssetAssignmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetVolumeBackupPolicyAssetAssignmentResponse); ok {
@@ -886,6 +1102,9 @@ func (client BlockstorageClient) GetVolumeBackupPolicyAssignment(ctx context.Con
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getVolumeBackupPolicyAssignment, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetVolumeBackupPolicyAssignmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetVolumeBackupPolicyAssignmentResponse); ok {
@@ -925,6 +1144,9 @@ func (client BlockstorageClient) GetVolumeGroup(ctx context.Context, request Get
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getVolumeGroup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetVolumeGroupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetVolumeGroupResponse); ok {
@@ -964,6 +1186,9 @@ func (client BlockstorageClient) GetVolumeGroupBackup(ctx context.Context, reque
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getVolumeGroupBackup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetVolumeGroupBackupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetVolumeGroupBackupResponse); ok {
@@ -994,6 +1219,48 @@ func (client BlockstorageClient) getVolumeGroupBackup(ctx context.Context, reque
 	return response, err
 }
 
+// GetVolumeKmsKey Gets kms key id for the specified volume.
+func (client BlockstorageClient) GetVolumeKmsKey(ctx context.Context, request GetVolumeKmsKeyRequest) (response GetVolumeKmsKeyResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.getVolumeKmsKey, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = GetVolumeKmsKeyResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(GetVolumeKmsKeyResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into GetVolumeKmsKeyResponse")
+	}
+	return
+}
+
+// getVolumeKmsKey implements the OCIOperation interface (enables retrying operations)
+func (client BlockstorageClient) getVolumeKmsKey(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumes/{volumeId}/kmsKey")
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetVolumeKmsKeyResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // ListBootVolumeBackups Lists the boot volume backups in the specified compartment. You can filter the results by boot volume.
 func (client BlockstorageClient) ListBootVolumeBackups(ctx context.Context, request ListBootVolumeBackupsRequest) (response ListBootVolumeBackupsResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -1003,6 +1270,9 @@ func (client BlockstorageClient) ListBootVolumeBackups(ctx context.Context, requ
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listBootVolumeBackups, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListBootVolumeBackupsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListBootVolumeBackupsResponse); ok {
@@ -1033,7 +1303,7 @@ func (client BlockstorageClient) listBootVolumeBackups(ctx context.Context, requ
 	return response, err
 }
 
-// ListBootVolumes Lists the boot volumes in the specified compartment and Availability Domain.
+// ListBootVolumes Lists the boot volumes in the specified compartment and availability domain.
 func (client BlockstorageClient) ListBootVolumes(ctx context.Context, request ListBootVolumesRequest) (response ListBootVolumesResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -1042,6 +1312,9 @@ func (client BlockstorageClient) ListBootVolumes(ctx context.Context, request Li
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listBootVolumes, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListBootVolumesResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListBootVolumesResponse); ok {
@@ -1081,6 +1354,9 @@ func (client BlockstorageClient) ListVolumeBackupPolicies(ctx context.Context, r
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listVolumeBackupPolicies, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListVolumeBackupPoliciesResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListVolumeBackupPoliciesResponse); ok {
@@ -1120,6 +1396,9 @@ func (client BlockstorageClient) ListVolumeBackups(ctx context.Context, request 
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listVolumeBackups, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListVolumeBackupsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListVolumeBackupsResponse); ok {
@@ -1160,6 +1439,9 @@ func (client BlockstorageClient) ListVolumeGroupBackups(ctx context.Context, req
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listVolumeGroupBackups, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListVolumeGroupBackupsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListVolumeGroupBackupsResponse); ok {
@@ -1200,6 +1482,9 @@ func (client BlockstorageClient) ListVolumeGroups(ctx context.Context, request L
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listVolumeGroups, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListVolumeGroupsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListVolumeGroupsResponse); ok {
@@ -1230,7 +1515,7 @@ func (client BlockstorageClient) listVolumeGroups(ctx context.Context, request c
 	return response, err
 }
 
-// ListVolumes Lists the volumes in the specified compartment and Availability Domain.
+// ListVolumes Lists the volumes in the specified compartment and availability domain.
 func (client BlockstorageClient) ListVolumes(ctx context.Context, request ListVolumesRequest) (response ListVolumesResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -1239,6 +1524,9 @@ func (client BlockstorageClient) ListVolumes(ctx context.Context, request ListVo
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listVolumes, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListVolumesResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListVolumesResponse); ok {
@@ -1278,6 +1566,9 @@ func (client BlockstorageClient) UpdateBootVolume(ctx context.Context, request U
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateBootVolume, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateBootVolumeResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateBootVolumeResponse); ok {
@@ -1318,6 +1609,9 @@ func (client BlockstorageClient) UpdateBootVolumeBackup(ctx context.Context, req
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateBootVolumeBackup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateBootVolumeBackupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateBootVolumeBackupResponse); ok {
@@ -1348,6 +1642,48 @@ func (client BlockstorageClient) updateBootVolumeBackup(ctx context.Context, req
 	return response, err
 }
 
+// UpdateBootVolumeKmsKey Update kms key id for the specific volume.
+func (client BlockstorageClient) UpdateBootVolumeKmsKey(ctx context.Context, request UpdateBootVolumeKmsKeyRequest) (response UpdateBootVolumeKmsKeyResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.updateBootVolumeKmsKey, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = UpdateBootVolumeKmsKeyResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(UpdateBootVolumeKmsKeyResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into UpdateBootVolumeKmsKeyResponse")
+	}
+	return
+}
+
+// updateBootVolumeKmsKey implements the OCIOperation interface (enables retrying operations)
+func (client BlockstorageClient) updateBootVolumeKmsKey(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/bootVolumes/{bootVolumeId}/kmsKey")
+	if err != nil {
+		return nil, err
+	}
+
+	var response UpdateBootVolumeKmsKeyResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // UpdateVolume Updates the specified volume's display name.
 // Avoid entering confidential information.
 func (client BlockstorageClient) UpdateVolume(ctx context.Context, request UpdateVolumeRequest) (response UpdateVolumeResponse, err error) {
@@ -1358,6 +1694,9 @@ func (client BlockstorageClient) UpdateVolume(ctx context.Context, request Updat
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateVolume, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateVolumeResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateVolumeResponse); ok {
@@ -1398,6 +1737,9 @@ func (client BlockstorageClient) UpdateVolumeBackup(ctx context.Context, request
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateVolumeBackup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateVolumeBackupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateVolumeBackupResponse); ok {
@@ -1441,6 +1783,9 @@ func (client BlockstorageClient) UpdateVolumeGroup(ctx context.Context, request 
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateVolumeGroup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateVolumeGroupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateVolumeGroupResponse); ok {
@@ -1480,6 +1825,9 @@ func (client BlockstorageClient) UpdateVolumeGroupBackup(ctx context.Context, re
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateVolumeGroupBackup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateVolumeGroupBackupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateVolumeGroupBackupResponse); ok {
@@ -1498,6 +1846,48 @@ func (client BlockstorageClient) updateVolumeGroupBackup(ctx context.Context, re
 	}
 
 	var response UpdateVolumeGroupBackupResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// UpdateVolumeKmsKey Update kms key id for the specific volume.
+func (client BlockstorageClient) UpdateVolumeKmsKey(ctx context.Context, request UpdateVolumeKmsKeyRequest) (response UpdateVolumeKmsKeyResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.updateVolumeKmsKey, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = UpdateVolumeKmsKeyResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(UpdateVolumeKmsKeyResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into UpdateVolumeKmsKeyResponse")
+	}
+	return
+}
+
+// updateVolumeKmsKey implements the OCIOperation interface (enables retrying operations)
+func (client BlockstorageClient) updateVolumeKmsKey(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/volumes/{volumeId}/kmsKey")
+	if err != nil {
+		return nil, err
+	}
+
+	var response UpdateVolumeKmsKeyResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)

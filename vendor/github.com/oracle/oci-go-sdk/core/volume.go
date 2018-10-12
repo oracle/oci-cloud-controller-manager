@@ -19,9 +19,11 @@ import (
 // To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized,
 // talk to an administrator. If you're an administrator who needs to write policies to give users access, see
 // Getting Started with Policies (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/policygetstarted.htm).
+// **Warning:** Oracle recommends that you avoid using any confidential information when you
+// supply string values using the API.
 type Volume struct {
 
-	// The Availability Domain of the volume.
+	// The availability domain of the volume.
 	// Example: `Uocm:PHX-AD-1`
 	AvailabilityDomain *string `mandatory:"true" json:"availabilityDomain"`
 
@@ -58,10 +60,13 @@ type Volume struct {
 	// Specifies whether the cloned volume's data has finished copying from the source volume or backup.
 	IsHydrated *bool `mandatory:"false" json:"isHydrated"`
 
+	// The OCID of the KMS key which is the master encryption key for the volume.
+	KmsKeyId *string `mandatory:"false" json:"kmsKeyId"`
+
 	// The size of the volume in GBs.
 	SizeInGBs *int64 `mandatory:"false" json:"sizeInGBs"`
 
-	// The volume source, either an existing volume in the same Availability Domain or a volume backup.
+	// The volume source, either an existing volume in the same availability domain or a volume backup.
 	// If null, an empty volume is created.
 	SourceDetails VolumeSourceDetails `mandatory:"false" json:"sourceDetails"`
 
@@ -79,6 +84,7 @@ func (m *Volume) UnmarshalJSON(data []byte) (e error) {
 		DefinedTags        map[string]map[string]interface{} `json:"definedTags"`
 		FreeformTags       map[string]string                 `json:"freeformTags"`
 		IsHydrated         *bool                             `json:"isHydrated"`
+		KmsKeyId           *string                           `json:"kmsKeyId"`
 		SizeInGBs          *int64                            `json:"sizeInGBs"`
 		SourceDetails      volumesourcedetails               `json:"sourceDetails"`
 		VolumeGroupId      *string                           `json:"volumeGroupId"`
@@ -98,12 +104,17 @@ func (m *Volume) UnmarshalJSON(data []byte) (e error) {
 	m.DefinedTags = model.DefinedTags
 	m.FreeformTags = model.FreeformTags
 	m.IsHydrated = model.IsHydrated
+	m.KmsKeyId = model.KmsKeyId
 	m.SizeInGBs = model.SizeInGBs
 	nn, e := model.SourceDetails.UnmarshalPolymorphicJSON(model.SourceDetails.JsonData)
 	if e != nil {
 		return
 	}
-	m.SourceDetails = nn.(VolumeSourceDetails)
+	if nn != nil {
+		m.SourceDetails = nn.(VolumeSourceDetails)
+	} else {
+		m.SourceDetails = nil
+	}
 	m.VolumeGroupId = model.VolumeGroupId
 	m.AvailabilityDomain = model.AvailabilityDomain
 	m.CompartmentId = model.CompartmentId

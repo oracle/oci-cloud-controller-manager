@@ -13,10 +13,11 @@ import (
 	"github.com/oracle/oci-go-sdk/common"
 )
 
-// CreateDbHomeWithDbSystemIdBase The representation of CreateDbHomeWithDbSystemIdBase
+// CreateDbHomeWithDbSystemIdBase Details for creating a database home.
+// **Warning:** Oracle recommends that you avoid using any confidential information when you supply string values using the API.
 type CreateDbHomeWithDbSystemIdBase interface {
 
-	// The OCID of the DB System.
+	// The OCID (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/identifiers.htm) of the DB system.
 	GetDbSystemId() *string
 
 	// The user-provided name of the database home.
@@ -50,6 +51,11 @@ func (m *createdbhomewithdbsystemidbase) UnmarshalJSON(data []byte) error {
 
 // UnmarshalPolymorphicJSON unmarshals polymorphic json
 func (m *createdbhomewithdbsystemidbase) UnmarshalPolymorphicJSON(data []byte) (interface{}, error) {
+
+	if data == nil || string(data) == "null" {
+		return nil, nil
+	}
+
 	var err error
 	switch m.Source {
 	case "DB_BACKUP":
@@ -61,7 +67,7 @@ func (m *createdbhomewithdbsystemidbase) UnmarshalPolymorphicJSON(data []byte) (
 		err = json.Unmarshal(data, &mm)
 		return mm, err
 	default:
-		return m, nil
+		return *m, nil
 	}
 }
 
