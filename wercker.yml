@@ -16,7 +16,6 @@ build:
     - script:
       name: golint
       code: |
-        go get -u github.com/golang/lint/golint
         make golint
 
     - script:
