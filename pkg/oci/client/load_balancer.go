@@ -199,10 +199,10 @@ func (c *client) CreateBackendSet(ctx context.Context, lbID, name string, detail
 	resp, err := c.loadbalancer.CreateBackendSet(ctx, loadbalancer.CreateBackendSetRequest{
 		LoadBalancerId: &lbID,
 		CreateBackendSetDetails: loadbalancer.CreateBackendSetDetails{
-			Name:          &name,
-			Backends:      details.Backends,
-			HealthChecker: details.HealthChecker,
-			Policy:        details.Policy,
+			Name:                            &name,
+			Backends:                        details.Backends,
+			HealthChecker:                   details.HealthChecker,
+			Policy:                          details.Policy,
 			SessionPersistenceConfiguration: details.SessionPersistenceConfiguration,
 			SslConfiguration:                details.SslConfiguration,
 		},
@@ -225,9 +225,9 @@ func (c *client) UpdateBackendSet(ctx context.Context, lbID, name string, detail
 		LoadBalancerId: &lbID,
 		BackendSetName: &name,
 		UpdateBackendSetDetails: loadbalancer.UpdateBackendSetDetails{
-			Backends:      details.Backends,
-			HealthChecker: details.HealthChecker,
-			Policy:        details.Policy,
+			Backends:                        details.Backends,
+			HealthChecker:                   details.HealthChecker,
+			Policy:                          details.Policy,
 			SessionPersistenceConfiguration: details.SessionPersistenceConfiguration,
 			SslConfiguration:                details.SslConfiguration,
 		},
@@ -267,11 +267,11 @@ func (c *client) CreateListener(ctx context.Context, lbID, name string, details 
 	resp, err := c.loadbalancer.CreateListener(ctx, loadbalancer.CreateListenerRequest{
 		LoadBalancerId: &lbID,
 		CreateListenerDetails: loadbalancer.CreateListenerDetails{
-			Name: &name,
+			Name:                  &name,
 			DefaultBackendSetName: details.DefaultBackendSetName,
-			Port:             details.Port,
-			Protocol:         details.Protocol,
-			SslConfiguration: details.SslConfiguration,
+			Port:                  details.Port,
+			Protocol:              details.Protocol,
+			SslConfiguration:      details.SslConfiguration,
 		},
 	})
 	incRequestCounter(err, createVerb, listenerResource)
@@ -293,9 +293,9 @@ func (c *client) UpdateListener(ctx context.Context, lbID, name string, details 
 		ListenerName:   &name,
 		UpdateListenerDetails: loadbalancer.UpdateListenerDetails{
 			DefaultBackendSetName: details.DefaultBackendSetName,
-			Port:             details.Port,
-			Protocol:         details.Protocol,
-			SslConfiguration: details.SslConfiguration,
+			Port:                  details.Port,
+			Protocol:              details.Protocol,
+			SslConfiguration:      details.SslConfiguration,
 		},
 	})
 	incRequestCounter(err, updateVerb, listenerResource)

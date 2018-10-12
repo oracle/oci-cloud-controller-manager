@@ -70,7 +70,7 @@ func NewSSLConfig(listenerSecretName, backendSetSecretName string, ports []int, 
 		ssr = noopSSLSecretReader{}
 	}
 	return &SSLConfig{
-		Ports: sets.NewInt(ports...),
+		Ports:                   sets.NewInt(ports...),
 		ListenerSSLSecretName:   listenerSecretName,
 		BackendSetSSLSecretName: backendSetSecretName,
 		sslSecretReader:         ssr,
