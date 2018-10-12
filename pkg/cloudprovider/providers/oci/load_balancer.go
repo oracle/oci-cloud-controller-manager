@@ -98,6 +98,12 @@ const (
 	lbNodesHealthCheckProtoTCP  = "TCP"
 )
 
+// GetLoadBalancerName returns the name of the load balancer. Implementations
+// must treat the *v1.Service parameter as read-only and not modify it.
+func (cp *CloudProvider) GetLoadBalancerName(ctx context.Context, clusterName string, service *v1.Service) string {
+	return GetLoadBalancerName(service)
+}
+
 // GetLoadBalancer returns whether the specified load balancer exists, and if
 // so, what its status is.
 func (cp *CloudProvider) GetLoadBalancer(ctx context.Context, clusterName string, service *v1.Service) (*v1.LoadBalancerStatus, bool, error) {
