@@ -183,7 +183,7 @@ func getSubnetsForNodes(ctx context.Context, nodes []*v1.Node, client client.Int
 			!subnetOCIDs.Has(*vnic.SubnetId) {
 			subnet, err := client.Networking().GetSubnet(ctx, *vnic.SubnetId)
 			if err != nil {
-				return nil, errors.Wrapf(err, "get subnet %q for instance %q", *vnic.SubnetId, id, err)
+				return nil, errors.Wrapf(err, "get subnet %q for instance %q", *vnic.SubnetId, id)
 			}
 
 			subnets = append(subnets, subnet)
