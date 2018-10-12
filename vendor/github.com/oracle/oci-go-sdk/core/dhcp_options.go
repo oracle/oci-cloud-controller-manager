@@ -24,6 +24,8 @@ import (
 // To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized,
 // talk to an administrator. If you're an administrator who needs to write policies to give users access, see
 // Getting Started with Policies (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/policygetstarted.htm).
+// **Warning:** Oracle recommends that you avoid using any confidential information when you
+// supply string values using the API.
 type DhcpOptions struct {
 
 	// The OCID of the compartment containing the set of DHCP options.
@@ -95,7 +97,11 @@ func (m *DhcpOptions) UnmarshalJSON(data []byte) (e error) {
 		if err != nil {
 			return err
 		}
-		m.Options[i] = nn.(DhcpOption)
+		if nn != nil {
+			m.Options[i] = nn.(DhcpOption)
+		} else {
+			m.Options[i] = nil
+		}
 	}
 	m.TimeCreated = model.TimeCreated
 	m.VcnId = model.VcnId

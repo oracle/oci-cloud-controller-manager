@@ -65,8 +65,16 @@ func (client LoadBalancerClient) CreateBackend(ctx context.Context, request Crea
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createBackend, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateBackendResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateBackendResponse); ok {
@@ -104,8 +112,16 @@ func (client LoadBalancerClient) CreateBackendSet(ctx context.Context, request C
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createBackendSet, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateBackendSetResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateBackendSetResponse); ok {
@@ -143,8 +159,16 @@ func (client LoadBalancerClient) CreateCertificate(ctx context.Context, request 
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createCertificate, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateCertificateResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateCertificateResponse); ok {
@@ -183,8 +207,16 @@ func (client LoadBalancerClient) CreateHostname(ctx context.Context, request Cre
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createHostname, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateHostnameResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateHostnameResponse); ok {
@@ -222,8 +254,16 @@ func (client LoadBalancerClient) CreateListener(ctx context.Context, request Cre
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createListener, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateListenerResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateListenerResponse); ok {
@@ -281,8 +321,16 @@ func (client LoadBalancerClient) CreateLoadBalancer(ctx context.Context, request
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createLoadBalancer, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateLoadBalancerResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateLoadBalancerResponse); ok {
@@ -321,8 +369,16 @@ func (client LoadBalancerClient) CreatePathRouteSet(ctx context.Context, request
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createPathRouteSet, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreatePathRouteSetResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreatePathRouteSetResponse); ok {
@@ -362,6 +418,9 @@ func (client LoadBalancerClient) DeleteBackend(ctx context.Context, request Dele
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteBackend, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteBackendResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteBackendResponse); ok {
@@ -402,6 +461,9 @@ func (client LoadBalancerClient) DeleteBackendSet(ctx context.Context, request D
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteBackendSet, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteBackendSetResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteBackendSetResponse); ok {
@@ -441,6 +503,9 @@ func (client LoadBalancerClient) DeleteCertificate(ctx context.Context, request 
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteCertificate, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteCertificateResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteCertificateResponse); ok {
@@ -480,6 +545,9 @@ func (client LoadBalancerClient) DeleteHostname(ctx context.Context, request Del
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteHostname, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteHostnameResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteHostnameResponse); ok {
@@ -519,6 +587,9 @@ func (client LoadBalancerClient) DeleteListener(ctx context.Context, request Del
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteListener, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteListenerResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteListenerResponse); ok {
@@ -558,6 +629,9 @@ func (client LoadBalancerClient) DeleteLoadBalancer(ctx context.Context, request
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteLoadBalancer, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteLoadBalancerResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteLoadBalancerResponse); ok {
@@ -599,6 +673,9 @@ func (client LoadBalancerClient) DeletePathRouteSet(ctx context.Context, request
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deletePathRouteSet, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeletePathRouteSetResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeletePathRouteSetResponse); ok {
@@ -638,6 +715,9 @@ func (client LoadBalancerClient) GetBackend(ctx context.Context, request GetBack
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getBackend, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetBackendResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetBackendResponse); ok {
@@ -677,6 +757,9 @@ func (client LoadBalancerClient) GetBackendHealth(ctx context.Context, request G
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getBackendHealth, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetBackendHealthResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetBackendHealthResponse); ok {
@@ -716,6 +799,9 @@ func (client LoadBalancerClient) GetBackendSet(ctx context.Context, request GetB
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getBackendSet, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetBackendSetResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetBackendSetResponse); ok {
@@ -755,6 +841,9 @@ func (client LoadBalancerClient) GetBackendSetHealth(ctx context.Context, reques
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getBackendSetHealth, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetBackendSetHealthResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetBackendSetHealthResponse); ok {
@@ -794,6 +883,9 @@ func (client LoadBalancerClient) GetHealthChecker(ctx context.Context, request G
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getHealthChecker, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetHealthCheckerResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetHealthCheckerResponse); ok {
@@ -833,6 +925,9 @@ func (client LoadBalancerClient) GetHostname(ctx context.Context, request GetHos
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getHostname, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetHostnameResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetHostnameResponse); ok {
@@ -872,6 +967,9 @@ func (client LoadBalancerClient) GetLoadBalancer(ctx context.Context, request Ge
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getLoadBalancer, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetLoadBalancerResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetLoadBalancerResponse); ok {
@@ -911,6 +1009,9 @@ func (client LoadBalancerClient) GetLoadBalancerHealth(ctx context.Context, requ
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getLoadBalancerHealth, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetLoadBalancerHealthResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetLoadBalancerHealthResponse); ok {
@@ -950,6 +1051,9 @@ func (client LoadBalancerClient) GetPathRouteSet(ctx context.Context, request Ge
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getPathRouteSet, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetPathRouteSetResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetPathRouteSetResponse); ok {
@@ -989,6 +1093,9 @@ func (client LoadBalancerClient) GetWorkRequest(ctx context.Context, request Get
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getWorkRequest, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetWorkRequestResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetWorkRequestResponse); ok {
@@ -1028,6 +1135,9 @@ func (client LoadBalancerClient) ListBackendSets(ctx context.Context, request Li
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listBackendSets, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListBackendSetsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListBackendSetsResponse); ok {
@@ -1067,6 +1177,9 @@ func (client LoadBalancerClient) ListBackends(ctx context.Context, request ListB
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listBackends, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListBackendsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListBackendsResponse); ok {
@@ -1106,6 +1219,9 @@ func (client LoadBalancerClient) ListCertificates(ctx context.Context, request L
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listCertificates, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListCertificatesResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListCertificatesResponse); ok {
@@ -1145,6 +1261,9 @@ func (client LoadBalancerClient) ListHostnames(ctx context.Context, request List
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listHostnames, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListHostnamesResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListHostnamesResponse); ok {
@@ -1184,6 +1303,9 @@ func (client LoadBalancerClient) ListLoadBalancerHealths(ctx context.Context, re
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listLoadBalancerHealths, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListLoadBalancerHealthsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListLoadBalancerHealthsResponse); ok {
@@ -1223,6 +1345,9 @@ func (client LoadBalancerClient) ListLoadBalancers(ctx context.Context, request 
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listLoadBalancers, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListLoadBalancersResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListLoadBalancersResponse); ok {
@@ -1262,6 +1387,9 @@ func (client LoadBalancerClient) ListPathRouteSets(ctx context.Context, request 
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listPathRouteSets, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListPathRouteSetsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListPathRouteSetsResponse); ok {
@@ -1301,6 +1429,9 @@ func (client LoadBalancerClient) ListPolicies(ctx context.Context, request ListP
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listPolicies, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListPoliciesResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListPoliciesResponse); ok {
@@ -1340,6 +1471,9 @@ func (client LoadBalancerClient) ListProtocols(ctx context.Context, request List
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listProtocols, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListProtocolsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListProtocolsResponse); ok {
@@ -1379,6 +1513,9 @@ func (client LoadBalancerClient) ListShapes(ctx context.Context, request ListSha
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listShapes, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListShapesResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListShapesResponse); ok {
@@ -1418,6 +1555,9 @@ func (client LoadBalancerClient) ListWorkRequests(ctx context.Context, request L
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listWorkRequests, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListWorkRequestsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListWorkRequestsResponse); ok {
@@ -1455,8 +1595,16 @@ func (client LoadBalancerClient) UpdateBackend(ctx context.Context, request Upda
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.updateBackend, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateBackendResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateBackendResponse); ok {
@@ -1494,8 +1642,16 @@ func (client LoadBalancerClient) UpdateBackendSet(ctx context.Context, request U
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.updateBackendSet, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateBackendSetResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateBackendSetResponse); ok {
@@ -1533,8 +1689,16 @@ func (client LoadBalancerClient) UpdateHealthChecker(ctx context.Context, reques
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.updateHealthChecker, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateHealthCheckerResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateHealthCheckerResponse); ok {
@@ -1575,6 +1739,9 @@ func (client LoadBalancerClient) UpdateHostname(ctx context.Context, request Upd
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateHostname, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateHostnameResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateHostnameResponse); ok {
@@ -1612,8 +1779,16 @@ func (client LoadBalancerClient) UpdateListener(ctx context.Context, request Upd
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.updateListener, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateListenerResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateListenerResponse); ok {
@@ -1651,8 +1826,16 @@ func (client LoadBalancerClient) UpdateLoadBalancer(ctx context.Context, request
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.updateLoadBalancer, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateLoadBalancerResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateLoadBalancerResponse); ok {
@@ -1694,8 +1877,16 @@ func (client LoadBalancerClient) UpdatePathRouteSet(ctx context.Context, request
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.updatePathRouteSet, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdatePathRouteSetResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdatePathRouteSetResponse); ok {

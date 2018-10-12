@@ -5,7 +5,6 @@ package azure
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/distribution/context"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	"github.com/docker/distribution/registry/storage/driver/base"
 	"github.com/docker/distribution/registry/storage/driver/factory"
@@ -87,7 +87,7 @@ func New(accountName, accountKey, container, realm string) (*Driver, error) {
 
 	// Create registry container
 	containerRef := blobClient.GetContainerReference(container)
-	if _, err = containerRef.CreateIfNotExists(nil); err != nil {
+	if _, err = containerRef.CreateIfNotExists(); err != nil {
 		return nil, err
 	}
 
@@ -104,8 +104,7 @@ func (d *driver) Name() string {
 
 // GetContent retrieves the content stored at "path" as a []byte.
 func (d *driver) GetContent(ctx context.Context, path string) ([]byte, error) {
-	blobRef := d.client.GetContainerReference(d.container).GetBlobReference(path)
-	blob, err := blobRef.Get(nil)
+	blob, err := d.client.GetBlob(d.container, path)
 	if err != nil {
 		if is404(err) {
 			return nil, storagedriver.PathNotFoundError{Path: path}
@@ -119,10 +118,7 @@ func (d *driver) GetContent(ctx context.Context, path string) ([]byte, error) {
 
 // PutContent stores the []byte content at a location designated by "path".
 func (d *driver) PutContent(ctx context.Context, path string, contents []byte) error {
-	// max size for block blobs uploaded via single "Put Blob" for version after "2016-05-31"
-	// https://docs.microsoft.com/en-us/rest/api/storageservices/put-blob#remarks
-	const limit = 256 * 1024 * 1024
-	if len(contents) > limit {
+	if limit := 64 * 1024 * 1024; len(contents) > limit { // max size for block blobs uploaded via single "Put Blob"
 		return fmt.Errorf("uploading %d bytes with PutContent is not supported; limit: %d bytes", len(contents), limit)
 	}
 
@@ -137,49 +133,41 @@ func (d *driver) PutContent(ctx context.Context, path string, contents []byte) e
 	// losing the existing data while migrating it to BlockBlob type. However,
 	// expectation is the clients pushing will be retrying when they get an error
 	// response.
-	blobRef := d.client.GetContainerReference(d.container).GetBlobReference(path)
-	err := blobRef.GetProperties(nil)
+	props, err := d.client.GetBlobProperties(d.container, path)
 	if err != nil && !is404(err) {
 		return fmt.Errorf("failed to get blob properties: %v", err)
 	}
-	if err == nil && blobRef.Properties.BlobType != azure.BlobTypeBlock {
-		if err := blobRef.Delete(nil); err != nil {
-			return fmt.Errorf("failed to delete legacy blob (%s): %v", blobRef.Properties.BlobType, err)
+	if err == nil && props.BlobType != azure.BlobTypeBlock {
+		if err := d.client.DeleteBlob(d.container, path, nil); err != nil {
+			return fmt.Errorf("failed to delete legacy blob (%s): %v", props.BlobType, err)
 		}
 	}
 
 	r := bytes.NewReader(contents)
-	// reset properties to empty before doing overwrite
-	blobRef.Properties = azure.BlobProperties{}
-	return blobRef.CreateBlockBlobFromReader(r, nil)
+	return d.client.CreateBlockBlobFromReader(d.container, path, uint64(len(contents)), r, nil)
 }
 
 // Reader retrieves an io.ReadCloser for the content stored at "path" with a
 // given byte offset.
 func (d *driver) Reader(ctx context.Context, path string, offset int64) (io.ReadCloser, error) {
-	blobRef := d.client.GetContainerReference(d.container).GetBlobReference(path)
-	if ok, err := blobRef.Exists(); err != nil {
+	if ok, err := d.client.BlobExists(d.container, path); err != nil {
 		return nil, err
 	} else if !ok {
 		return nil, storagedriver.PathNotFoundError{Path: path}
 	}
 
-	err := blobRef.GetProperties(nil)
+	info, err := d.client.GetBlobProperties(d.container, path)
 	if err != nil {
 		return nil, err
 	}
-	info := blobRef.Properties
+
 	size := int64(info.ContentLength)
 	if offset >= size {
 		return ioutil.NopCloser(bytes.NewReader(nil)), nil
 	}
 
-	resp, err := blobRef.GetRange(&azure.GetBlobRangeOptions{
-		Range: &azure.BlobRange{
-			Start: uint64(offset),
-			End:   0,
-		},
-	})
+	bytesRange := fmt.Sprintf("%v-", offset)
+	resp, err := d.client.GetBlobRange(d.container, path, bytesRange, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -189,22 +177,20 @@ func (d *driver) Reader(ctx context.Context, path string, offset int64) (io.Read
 // Writer returns a FileWriter which will store the content written to it
 // at the location designated by "path" after the call to Commit.
 func (d *driver) Writer(ctx context.Context, path string, append bool) (storagedriver.FileWriter, error) {
-	blobRef := d.client.GetContainerReference(d.container).GetBlobReference(path)
-	blobExists, err := blobRef.Exists()
+	blobExists, err := d.client.BlobExists(d.container, path)
 	if err != nil {
 		return nil, err
 	}
 	var size int64
 	if blobExists {
 		if append {
-			err = blobRef.GetProperties(nil)
+			blobProperties, err := d.client.GetBlobProperties(d.container, path)
 			if err != nil {
 				return nil, err
 			}
-			blobProperties := blobRef.Properties
 			size = blobProperties.ContentLength
 		} else {
-			err = blobRef.Delete(nil)
+			err := d.client.DeleteBlob(d.container, path, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -213,7 +199,7 @@ func (d *driver) Writer(ctx context.Context, path string, append bool) (storaged
 		if append {
 			return nil, storagedriver.PathNotFoundError{Path: path}
 		}
-		err = blobRef.PutAppendBlob(nil)
+		err := d.client.PutAppendBlob(d.container, path, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -225,21 +211,24 @@ func (d *driver) Writer(ctx context.Context, path string, append bool) (storaged
 // Stat retrieves the FileInfo for the given path, including the current size
 // in bytes and the creation time.
 func (d *driver) Stat(ctx context.Context, path string) (storagedriver.FileInfo, error) {
-	blobRef := d.client.GetContainerReference(d.container).GetBlobReference(path)
 	// Check if the path is a blob
-	if ok, err := blobRef.Exists(); err != nil {
+	if ok, err := d.client.BlobExists(d.container, path); err != nil {
 		return nil, err
 	} else if ok {
-		err = blobRef.GetProperties(nil)
+		blob, err := d.client.GetBlobProperties(d.container, path)
 		if err != nil {
 			return nil, err
 		}
-		blobProperties := blobRef.Properties
+
+		mtim, err := time.Parse(http.TimeFormat, blob.LastModified)
+		if err != nil {
+			return nil, err
+		}
 
 		return storagedriver.FileInfoInternal{FileInfoFields: storagedriver.FileInfoFields{
 			Path:    path,
-			Size:    int64(blobProperties.ContentLength),
-			ModTime: time.Time(blobProperties.LastModified),
+			Size:    int64(blob.ContentLength),
+			ModTime: mtim,
 			IsDir:   false,
 		}}, nil
 	}
@@ -292,10 +281,8 @@ func (d *driver) List(ctx context.Context, path string) ([]string, error) {
 // Move moves an object stored at sourcePath to destPath, removing the original
 // object.
 func (d *driver) Move(ctx context.Context, sourcePath string, destPath string) error {
-	srcBlobRef := d.client.GetContainerReference(d.container).GetBlobReference(sourcePath)
-	sourceBlobURL := srcBlobRef.GetURL()
-	destBlobRef := d.client.GetContainerReference(d.container).GetBlobReference(destPath)
-	err := destBlobRef.Copy(sourceBlobURL, nil)
+	sourceBlobURL := d.client.GetBlobURL(d.container, sourcePath)
+	err := d.client.CopyBlob(d.container, destPath, sourceBlobURL)
 	if err != nil {
 		if is404(err) {
 			return storagedriver.PathNotFoundError{Path: sourcePath}
@@ -303,13 +290,12 @@ func (d *driver) Move(ctx context.Context, sourcePath string, destPath string) e
 		return err
 	}
 
-	return srcBlobRef.Delete(nil)
+	return d.client.DeleteBlob(d.container, sourcePath, nil)
 }
 
 // Delete recursively deletes all objects stored at "path" and its subpaths.
 func (d *driver) Delete(ctx context.Context, path string) error {
-	blobRef := d.client.GetContainerReference(d.container).GetBlobReference(path)
-	ok, err := blobRef.DeleteIfExists(nil)
+	ok, err := d.client.DeleteBlobIfExists(d.container, path, nil)
 	if err != nil {
 		return err
 	}
@@ -324,8 +310,7 @@ func (d *driver) Delete(ctx context.Context, path string) error {
 	}
 
 	for _, b := range blobs {
-		blobRef = d.client.GetContainerReference(d.container).GetBlobReference(b)
-		if err = blobRef.Delete(nil); err != nil {
+		if err = d.client.DeleteBlob(d.container, b, nil); err != nil {
 			return err
 		}
 	}
@@ -348,21 +333,7 @@ func (d *driver) URLFor(ctx context.Context, path string, options map[string]int
 			expiresTime = t
 		}
 	}
-	blobRef := d.client.GetContainerReference(d.container).GetBlobReference(path)
-	return blobRef.GetSASURI(azure.BlobSASOptions{
-		BlobServiceSASPermissions: azure.BlobServiceSASPermissions{
-			Read: true,
-		},
-		SASOptions: azure.SASOptions{
-			Expiry: expiresTime,
-		},
-	})
-}
-
-// Walk traverses a filesystem defined within driver, starting
-// from the given path, calling f on each file
-func (d *driver) Walk(ctx context.Context, path string, f storagedriver.WalkFn) error {
-	return storagedriver.WalkFallback(ctx, d, path, f)
+	return d.client.GetBlobSASURI(d.container, path, expiresTime, "r")
 }
 
 // directDescendants will find direct descendants (blobs or virtual containers)
@@ -490,8 +461,7 @@ func (w *writer) Cancel() error {
 		return fmt.Errorf("already committed")
 	}
 	w.cancelled = true
-	blobRef := w.driver.client.GetContainerReference(w.driver.container).GetBlobReference(w.path)
-	return blobRef.Delete(nil)
+	return w.driver.client.DeleteBlob(w.driver.container, w.path, nil)
 }
 
 func (w *writer) Commit() error {
@@ -514,13 +484,12 @@ type blockWriter struct {
 
 func (bw *blockWriter) Write(p []byte) (int, error) {
 	n := 0
-	blobRef := bw.client.GetContainerReference(bw.container).GetBlobReference(bw.path)
 	for offset := 0; offset < len(p); offset += maxChunkSize {
 		chunkSize := maxChunkSize
 		if offset+chunkSize > len(p) {
 			chunkSize = len(p) - offset
 		}
-		err := blobRef.AppendBlock(p[offset:offset+chunkSize], nil)
+		err := bw.client.AppendBlock(bw.container, bw.path, p[offset:offset+chunkSize], nil)
 		if err != nil {
 			return n, err
 		}

@@ -28,9 +28,14 @@ import (
 // To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized,
 // talk to an administrator. If you're an administrator who needs to write policies to give users access, see
 // Getting Started with Policies (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/policygetstarted.htm).
+// **Warning:** Oracle recommends that you avoid using any confidential information when you
+// supply string values using the API.
 type VirtualCircuit struct {
 
-	// The provisioned data rate of the connection.
+	// The provisioned data rate of the connection.  To get a list of the
+	// available bandwidth levels (that is, shapes), see
+	// ListFastConnectProviderVirtualCircuitBandwidthShapes.
+	// Example: `10 Gbps`
 	BandwidthShapeName *string `mandatory:"false" json:"bandwidthShapeName"`
 
 	// BGP management option.
@@ -90,7 +95,7 @@ type VirtualCircuit struct {
 	ProviderState VirtualCircuitProviderStateEnum `mandatory:"false" json:"providerState,omitempty"`
 
 	// For a public virtual circuit. The public IP prefixes (CIDRs) the customer wants to
-	// advertise across the connection. Each prefix must be /24 or less specific.
+	// advertise across the connection. Each prefix must be /31 or less specific.
 	PublicPrefixes []string `mandatory:"false" json:"publicPrefixes"`
 
 	// Provider-supplied reference information about this virtual circuit

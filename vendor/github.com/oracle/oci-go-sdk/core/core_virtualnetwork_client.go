@@ -75,6 +75,9 @@ func (client VirtualNetworkClient) AttachServiceId(ctx context.Context, request 
 	}
 	ociResponse, err = common.Retry(ctx, request, client.attachServiceId, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = AttachServiceIdResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(AttachServiceIdResponse); ok {
@@ -186,6 +189,9 @@ func (client VirtualNetworkClient) ConnectLocalPeeringGateways(ctx context.Conte
 	}
 	ociResponse, err = common.Retry(ctx, request, client.connectLocalPeeringGateways, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ConnectLocalPeeringGatewaysResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ConnectLocalPeeringGatewaysResponse); ok {
@@ -231,6 +237,9 @@ func (client VirtualNetworkClient) ConnectRemotePeeringConnections(ctx context.C
 	}
 	ociResponse, err = common.Retry(ctx, request, client.connectRemotePeeringConnections, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ConnectRemotePeeringConnectionsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ConnectRemotePeeringConnectionsResponse); ok {
@@ -261,7 +270,7 @@ func (client VirtualNetworkClient) connectRemotePeeringConnections(ctx context.C
 	return response, err
 }
 
-// CreateCpe Creates a new virtual Customer-Premises Equipment (CPE) object in the specified compartment. For
+// CreateCpe Creates a new virtual customer-premises equipment (CPE) object in the specified compartment. For
 // more information, see IPSec VPNs (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Tasks/managingIPsec.htm).
 // For the purposes of access control, you must provide the OCID of the compartment where you want
 // the CPE to reside. Notice that the CPE doesn't have to be in the same compartment as the IPSec
@@ -279,8 +288,16 @@ func (client VirtualNetworkClient) CreateCpe(ctx context.Context, request Create
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createCpe, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateCpeResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateCpeResponse); ok {
@@ -333,8 +350,16 @@ func (client VirtualNetworkClient) CreateCrossConnect(ctx context.Context, reque
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createCrossConnect, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateCrossConnectResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateCrossConnectResponse); ok {
@@ -384,8 +409,16 @@ func (client VirtualNetworkClient) CreateCrossConnectGroup(ctx context.Context, 
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createCrossConnectGroup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateCrossConnectGroupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateCrossConnectGroupResponse); ok {
@@ -432,8 +465,16 @@ func (client VirtualNetworkClient) CreateDhcpOptions(ctx context.Context, reques
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createDhcpOptions, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateDhcpOptionsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateDhcpOptionsResponse); ok {
@@ -464,7 +505,7 @@ func (client VirtualNetworkClient) createDhcpOptions(ctx context.Context, reques
 	return response, err
 }
 
-// CreateDrg Creates a new Dynamic Routing Gateway (DRG) in the specified compartment. For more information,
+// CreateDrg Creates a new dynamic routing gateway (DRG) in the specified compartment. For more information,
 // see Dynamic Routing Gateways (DRGs) (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Tasks/managingDRGs.htm).
 // For the purposes of access control, you must provide the OCID of the compartment where you want
 // the DRG to reside. Notice that the DRG doesn't have to be in the same compartment as the VCN,
@@ -480,8 +521,16 @@ func (client VirtualNetworkClient) CreateDrg(ctx context.Context, request Create
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createDrg, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateDrgResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateDrgResponse); ok {
@@ -527,8 +576,16 @@ func (client VirtualNetworkClient) CreateDrgAttachment(ctx context.Context, requ
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createDrgAttachment, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateDrgAttachmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateDrgAttachmentResponse); ok {
@@ -586,8 +643,16 @@ func (client VirtualNetworkClient) CreateIPSecConnection(ctx context.Context, re
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createIPSecConnection, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateIPSecConnectionResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateIPSecConnectionResponse); ok {
@@ -618,20 +683,20 @@ func (client VirtualNetworkClient) createIPSecConnection(ctx context.Context, re
 	return response, err
 }
 
-// CreateInternetGateway Creates a new Internet Gateway for the specified VCN. For more information, see
+// CreateInternetGateway Creates a new internet gateway for the specified VCN. For more information, see
 // Access to the Internet (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Tasks/managingIGs.htm).
 // For the purposes of access control, you must provide the OCID of the compartment where you want the Internet
-// Gateway to reside. Notice that the Internet Gateway doesn't have to be in the same compartment as the VCN or
+// Gateway to reside. Notice that the internet gateway doesn't have to be in the same compartment as the VCN or
 // other Networking Service components. If you're not sure which compartment to use, put the Internet
 // Gateway in the same compartment with the VCN. For more information about compartments and access control, see
 // Overview of the IAM Service (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/overview.htm). For information about OCIDs, see
 // Resource Identifiers (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/identifiers.htm).
-// You may optionally specify a *display name* for the Internet Gateway, otherwise a default is provided. It
+// You may optionally specify a *display name* for the internet gateway, otherwise a default is provided. It
 // does not have to be unique, and you can change it. Avoid entering confidential information.
-// For traffic to flow between a subnet and an Internet Gateway, you must create a route rule accordingly in
-// the subnet's route table (for example, 0.0.0.0/0 > Internet Gateway). See
+// For traffic to flow between a subnet and an internet gateway, you must create a route rule accordingly in
+// the subnet's route table (for example, 0.0.0.0/0 > internet gateway). See
 // UpdateRouteTable.
-// You must specify whether the Internet Gateway is enabled when you create it. If it's disabled, that means no
+// You must specify whether the internet gateway is enabled when you create it. If it's disabled, that means no
 // traffic will flow to/from the internet even if there's a route rule that enables that traffic. You can later
 // use UpdateInternetGateway to easily disable/enable
 // the gateway without changing the route rule.
@@ -641,8 +706,16 @@ func (client VirtualNetworkClient) CreateInternetGateway(ctx context.Context, re
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createInternetGateway, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateInternetGatewayResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateInternetGatewayResponse); ok {
@@ -680,8 +753,16 @@ func (client VirtualNetworkClient) CreateLocalPeeringGateway(ctx context.Context
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createLocalPeeringGateway, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateLocalPeeringGatewayResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateLocalPeeringGatewayResponse); ok {
@@ -712,6 +793,54 @@ func (client VirtualNetworkClient) createLocalPeeringGateway(ctx context.Context
 	return response, err
 }
 
+// CreateNatGateway Creates a new NAT gateway for the specified VCN. You must also set up a route rule with the
+// NAT gateway as the rule's target. See RouteTable.
+func (client VirtualNetworkClient) CreateNatGateway(ctx context.Context, request CreateNatGatewayRequest) (response CreateNatGatewayResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.createNatGateway, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = CreateNatGatewayResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(CreateNatGatewayResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into CreateNatGatewayResponse")
+	}
+	return
+}
+
+// createNatGateway implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) createNatGateway(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/natGateways")
+	if err != nil {
+		return nil, err
+	}
+
+	var response CreateNatGatewayResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // CreatePrivateIp Creates a secondary private IP for the specified VNIC.
 // For more information about secondary private IPs, see
 // IP Addresses (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Tasks/managingIPaddresses.htm).
@@ -721,8 +850,16 @@ func (client VirtualNetworkClient) CreatePrivateIp(ctx context.Context, request 
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createPrivateIp, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreatePrivateIpResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreatePrivateIpResponse); ok {
@@ -756,11 +893,12 @@ func (client VirtualNetworkClient) createPrivateIp(ctx context.Context, request 
 // CreatePublicIp Creates a public IP. Use the `lifetime` property to specify whether it's an ephemeral or
 // reserved public IP. For information about limits on how many you can create, see
 // Public IP Addresses (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Tasks/managingpublicIPs.htm).
-// * **For an ephemeral public IP:** You must also specify a `privateIpId` with the OCID of
-// the primary private IP you want to assign the public IP to. The public IP is created in
-// the same Availability Domain as the private IP. An ephemeral public IP must always be
+// * **For an ephemeral public IP assigned to a private IP:** You must also specify a `privateIpId`
+// with the OCID of the primary private IP you want to assign the public IP to. The public IP is
+// created in the same availability domain as the private IP. An ephemeral public IP must always be
 // assigned to a private IP, and only to the *primary* private IP on a VNIC, not a secondary
-// private IP.
+// private IP. Exception: If you create a NatGateway, Oracle
+// automatically assigns the NAT gateway a regional ephemeral public IP that you cannot remove.
 // * **For a reserved public IP:** You may also optionally assign the public IP to a private
 // IP by specifying `privateIpId`. Or you can later assign the public IP with
 // UpdatePublicIp.
@@ -775,8 +913,16 @@ func (client VirtualNetworkClient) CreatePublicIp(ctx context.Context, request C
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createPublicIp, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreatePublicIpResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreatePublicIpResponse); ok {
@@ -814,8 +960,16 @@ func (client VirtualNetworkClient) CreateRemotePeeringConnection(ctx context.Con
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createRemotePeeringConnection, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateRemotePeeringConnectionResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateRemotePeeringConnectionResponse); ok {
@@ -865,8 +1019,16 @@ func (client VirtualNetworkClient) CreateRouteTable(ctx context.Context, request
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createRouteTable, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateRouteTableResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateRouteTableResponse); ok {
@@ -915,8 +1077,16 @@ func (client VirtualNetworkClient) CreateSecurityList(ctx context.Context, reque
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createSecurityList, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateSecurityListResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateSecurityListResponse); ok {
@@ -960,8 +1130,16 @@ func (client VirtualNetworkClient) CreateServiceGateway(ctx context.Context, req
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createServiceGateway, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateServiceGatewayResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateServiceGatewayResponse); ok {
@@ -1023,8 +1201,16 @@ func (client VirtualNetworkClient) CreateSubnet(ctx context.Context, request Cre
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createSubnet, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateSubnetResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateSubnetResponse); ok {
@@ -1055,7 +1241,7 @@ func (client VirtualNetworkClient) createSubnet(ctx context.Context, request com
 	return response, err
 }
 
-// CreateVcn Creates a new Virtual Cloud Network (VCN). For more information, see
+// CreateVcn Creates a new virtual cloud network (VCN). For more information, see
 // VCNs and Subnets (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Tasks/managingVCNs.htm).
 // For the VCN you must specify a single, contiguous IPv4 CIDR block. Oracle recommends using one of the
 // private IP address ranges specified in RFC 1918 (https://tools.ietf.org/html/rfc1918) (10.0.0.0/8,
@@ -1075,7 +1261,7 @@ func (client VirtualNetworkClient) createSubnet(ctx context.Context, request com
 // The VCN automatically comes with a default route table, default security list, and default set of DHCP options.
 // The OCID for each is returned in the response. You can't delete these default objects, but you can change their
 // contents (that is, change the route rules, security list rules, and so on).
-// The VCN and subnets you create are not accessible until you attach an Internet Gateway or set up an IPSec VPN
+// The VCN and subnets you create are not accessible until you attach an internet gateway or set up an IPSec VPN
 // or FastConnect. For more information, see
 // Overview of the Networking Service (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Concepts/overview.htm).
 func (client VirtualNetworkClient) CreateVcn(ctx context.Context, request CreateVcnRequest) (response CreateVcnResponse, err error) {
@@ -1084,8 +1270,16 @@ func (client VirtualNetworkClient) CreateVcn(ctx context.Context, request Create
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createVcn, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateVcnResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateVcnResponse); ok {
@@ -1140,8 +1334,16 @@ func (client VirtualNetworkClient) CreateVirtualCircuit(ctx context.Context, req
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createVirtualCircuit, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateVirtualCircuitResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateVirtualCircuitResponse); ok {
@@ -1183,6 +1385,9 @@ func (client VirtualNetworkClient) DeleteCpe(ctx context.Context, request Delete
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteCpe, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteCpeResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteCpeResponse); ok {
@@ -1223,6 +1428,9 @@ func (client VirtualNetworkClient) DeleteCrossConnect(ctx context.Context, reque
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteCrossConnect, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteCrossConnectResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteCrossConnectResponse); ok {
@@ -1264,6 +1472,9 @@ func (client VirtualNetworkClient) DeleteCrossConnectGroup(ctx context.Context, 
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteCrossConnectGroup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteCrossConnectGroupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteCrossConnectGroupResponse); ok {
@@ -1306,6 +1517,9 @@ func (client VirtualNetworkClient) DeleteDhcpOptions(ctx context.Context, reques
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteDhcpOptions, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteDhcpOptionsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteDhcpOptionsResponse); ok {
@@ -1348,6 +1562,9 @@ func (client VirtualNetworkClient) DeleteDrg(ctx context.Context, request Delete
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteDrg, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteDrgResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteDrgResponse); ok {
@@ -1389,6 +1606,9 @@ func (client VirtualNetworkClient) DeleteDrgAttachment(ctx context.Context, requ
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteDrgAttachment, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteDrgAttachmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteDrgAttachmentResponse); ok {
@@ -1434,6 +1654,9 @@ func (client VirtualNetworkClient) DeleteIPSecConnection(ctx context.Context, re
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteIPSecConnection, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteIPSecConnectionResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteIPSecConnectionResponse); ok {
@@ -1464,7 +1687,7 @@ func (client VirtualNetworkClient) deleteIPSecConnection(ctx context.Context, re
 	return response, err
 }
 
-// DeleteInternetGateway Deletes the specified Internet Gateway. The Internet Gateway does not have to be disabled, but
+// DeleteInternetGateway Deletes the specified internet gateway. The internet gateway does not have to be disabled, but
 // there must not be a route table that lists it as a target.
 // This is an asynchronous operation. The gateway's `lifecycleState` will change to TERMINATING temporarily
 // until the gateway is completely removed.
@@ -1476,6 +1699,9 @@ func (client VirtualNetworkClient) DeleteInternetGateway(ctx context.Context, re
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteInternetGateway, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteInternetGatewayResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteInternetGatewayResponse); ok {
@@ -1517,6 +1743,9 @@ func (client VirtualNetworkClient) DeleteLocalPeeringGateway(ctx context.Context
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteLocalPeeringGateway, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteLocalPeeringGatewayResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteLocalPeeringGatewayResponse); ok {
@@ -1547,6 +1776,51 @@ func (client VirtualNetworkClient) deleteLocalPeeringGateway(ctx context.Context
 	return response, err
 }
 
+// DeleteNatGateway Deletes the specified NAT gateway. The NAT gateway does not have to be disabled, but there
+// must not be a route rule that lists the NAT gateway as a target.
+// This is an asynchronous operation. The NAT gateway's `lifecycleState` will change to
+// TERMINATING temporarily until the NAT gateway is completely removed.
+func (client VirtualNetworkClient) DeleteNatGateway(ctx context.Context, request DeleteNatGatewayRequest) (response DeleteNatGatewayResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.deleteNatGateway, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = DeleteNatGatewayResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(DeleteNatGatewayResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into DeleteNatGatewayResponse")
+	}
+	return
+}
+
+// deleteNatGateway implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) deleteNatGateway(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/natGateways/{natGatewayId}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response DeleteNatGatewayResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // DeletePrivateIp Unassigns and deletes the specified private IP. You must
 // specify the object's OCID. The private IP address is returned to
 // the subnet's pool of available addresses.
@@ -1564,6 +1838,9 @@ func (client VirtualNetworkClient) DeletePrivateIp(ctx context.Context, request 
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deletePrivateIp, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeletePrivateIpResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeletePrivateIpResponse); ok {
@@ -1597,6 +1874,9 @@ func (client VirtualNetworkClient) deletePrivateIp(ctx context.Context, request 
 // DeletePublicIp Unassigns and deletes the specified public IP (either ephemeral or reserved).
 // You must specify the object's OCID. The public IP address is returned to the
 // Oracle Cloud Infrastructure public IP pool.
+// **Note:** You cannot update, unassign, or delete the public IP that Oracle automatically
+// assigned to an entity for you (such as a load balancer or NAT gateway). The public IP is
+// automatically deleted if the assigned entity is terminated.
 // For an assigned reserved public IP, the initial unassignment portion of this operation
 // is asynchronous. Poll the public IP's `lifecycleState` to determine
 // if the operation succeeded.
@@ -1611,6 +1891,9 @@ func (client VirtualNetworkClient) DeletePublicIp(ctx context.Context, request D
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deletePublicIp, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeletePublicIpResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeletePublicIpResponse); ok {
@@ -1652,6 +1935,9 @@ func (client VirtualNetworkClient) DeleteRemotePeeringConnection(ctx context.Con
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteRemotePeeringConnection, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteRemotePeeringConnectionResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteRemotePeeringConnectionResponse); ok {
@@ -1694,6 +1980,9 @@ func (client VirtualNetworkClient) DeleteRouteTable(ctx context.Context, request
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteRouteTable, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteRouteTableResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteRouteTableResponse); ok {
@@ -1736,6 +2025,9 @@ func (client VirtualNetworkClient) DeleteSecurityList(ctx context.Context, reque
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteSecurityList, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteSecurityListResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteSecurityListResponse); ok {
@@ -1776,6 +2068,9 @@ func (client VirtualNetworkClient) DeleteServiceGateway(ctx context.Context, req
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteServiceGateway, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteServiceGatewayResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteServiceGatewayResponse); ok {
@@ -1817,6 +2112,9 @@ func (client VirtualNetworkClient) DeleteSubnet(ctx context.Context, request Del
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteSubnet, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteSubnetResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteSubnetResponse); ok {
@@ -1858,6 +2156,9 @@ func (client VirtualNetworkClient) DeleteVcn(ctx context.Context, request Delete
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteVcn, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteVcnResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteVcnResponse); ok {
@@ -1900,6 +2201,9 @@ func (client VirtualNetworkClient) DeleteVirtualCircuit(ctx context.Context, req
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteVirtualCircuit, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteVirtualCircuitResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteVirtualCircuitResponse); ok {
@@ -1950,6 +2254,9 @@ func (client VirtualNetworkClient) DetachServiceId(ctx context.Context, request 
 	}
 	ociResponse, err = common.Retry(ctx, request, client.detachServiceId, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DetachServiceIdResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DetachServiceIdResponse); ok {
@@ -1989,6 +2296,9 @@ func (client VirtualNetworkClient) GetCpe(ctx context.Context, request GetCpeReq
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getCpe, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetCpeResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetCpeResponse); ok {
@@ -2028,6 +2338,9 @@ func (client VirtualNetworkClient) GetCrossConnect(ctx context.Context, request 
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getCrossConnect, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetCrossConnectResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetCrossConnectResponse); ok {
@@ -2067,6 +2380,9 @@ func (client VirtualNetworkClient) GetCrossConnectGroup(ctx context.Context, req
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getCrossConnectGroup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetCrossConnectGroupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetCrossConnectGroupResponse); ok {
@@ -2106,6 +2422,9 @@ func (client VirtualNetworkClient) GetCrossConnectLetterOfAuthority(ctx context.
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getCrossConnectLetterOfAuthority, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetCrossConnectLetterOfAuthorityResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetCrossConnectLetterOfAuthorityResponse); ok {
@@ -2145,6 +2464,9 @@ func (client VirtualNetworkClient) GetCrossConnectStatus(ctx context.Context, re
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getCrossConnectStatus, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetCrossConnectStatusResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetCrossConnectStatusResponse); ok {
@@ -2184,6 +2506,9 @@ func (client VirtualNetworkClient) GetDhcpOptions(ctx context.Context, request G
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getDhcpOptions, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetDhcpOptionsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetDhcpOptionsResponse); ok {
@@ -2223,6 +2548,9 @@ func (client VirtualNetworkClient) GetDrg(ctx context.Context, request GetDrgReq
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getDrg, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetDrgResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetDrgResponse); ok {
@@ -2262,6 +2590,9 @@ func (client VirtualNetworkClient) GetDrgAttachment(ctx context.Context, request
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getDrgAttachment, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetDrgAttachmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetDrgAttachmentResponse); ok {
@@ -2302,6 +2633,9 @@ func (client VirtualNetworkClient) GetFastConnectProviderService(ctx context.Con
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getFastConnectProviderService, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetFastConnectProviderServiceResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetFastConnectProviderServiceResponse); ok {
@@ -2343,6 +2677,9 @@ func (client VirtualNetworkClient) GetIPSecConnection(ctx context.Context, reque
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getIPSecConnection, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetIPSecConnectionResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetIPSecConnectionResponse); ok {
@@ -2383,6 +2720,9 @@ func (client VirtualNetworkClient) GetIPSecConnectionDeviceConfig(ctx context.Co
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getIPSecConnectionDeviceConfig, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetIPSecConnectionDeviceConfigResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetIPSecConnectionDeviceConfigResponse); ok {
@@ -2422,6 +2762,9 @@ func (client VirtualNetworkClient) GetIPSecConnectionDeviceStatus(ctx context.Co
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getIPSecConnectionDeviceStatus, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetIPSecConnectionDeviceStatusResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetIPSecConnectionDeviceStatusResponse); ok {
@@ -2452,7 +2795,7 @@ func (client VirtualNetworkClient) getIPSecConnectionDeviceStatus(ctx context.Co
 	return response, err
 }
 
-// GetInternetGateway Gets the specified Internet Gateway's information.
+// GetInternetGateway Gets the specified internet gateway's information.
 func (client VirtualNetworkClient) GetInternetGateway(ctx context.Context, request GetInternetGatewayRequest) (response GetInternetGatewayResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -2461,6 +2804,9 @@ func (client VirtualNetworkClient) GetInternetGateway(ctx context.Context, reque
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getInternetGateway, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetInternetGatewayResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetInternetGatewayResponse); ok {
@@ -2500,6 +2846,9 @@ func (client VirtualNetworkClient) GetLocalPeeringGateway(ctx context.Context, r
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getLocalPeeringGateway, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetLocalPeeringGatewayResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetLocalPeeringGatewayResponse); ok {
@@ -2530,6 +2879,48 @@ func (client VirtualNetworkClient) getLocalPeeringGateway(ctx context.Context, r
 	return response, err
 }
 
+// GetNatGateway Gets the specified NAT gateway's information.
+func (client VirtualNetworkClient) GetNatGateway(ctx context.Context, request GetNatGatewayRequest) (response GetNatGatewayResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.getNatGateway, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = GetNatGatewayResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(GetNatGatewayResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into GetNatGatewayResponse")
+	}
+	return
+}
+
+// getNatGateway implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) getNatGateway(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/natGateways/{natGatewayId}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetNatGatewayResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // GetPrivateIp Gets the specified private IP. You must specify the object's OCID.
 // Alternatively, you can get the object by using
 // ListPrivateIps
@@ -2542,6 +2933,9 @@ func (client VirtualNetworkClient) GetPrivateIp(ctx context.Context, request Get
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getPrivateIp, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetPrivateIpResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetPrivateIpResponse); ok {
@@ -2579,7 +2973,7 @@ func (client VirtualNetworkClient) getPrivateIp(ctx context.Context, request com
 // with the OCID of the private IP that the public IP is assigned to.
 // **Note:** If you're fetching a reserved public IP that is in the process of being
 // moved to a different private IP, the service returns the public IP object with
-// `lifecycleState` = ASSIGNING and `privateIpId` = OCID of the target private IP.
+// `lifecycleState` = ASSIGNING and `assignedEntityId` = OCID of the target private IP.
 func (client VirtualNetworkClient) GetPublicIp(ctx context.Context, request GetPublicIpRequest) (response GetPublicIpResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -2588,6 +2982,9 @@ func (client VirtualNetworkClient) GetPublicIp(ctx context.Context, request GetP
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getPublicIp, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetPublicIpResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetPublicIpResponse); ok {
@@ -2621,7 +3018,7 @@ func (client VirtualNetworkClient) getPublicIp(ctx context.Context, request comm
 // GetPublicIpByIpAddress Gets the public IP based on the public IP address (for example, 129.146.2.1).
 // **Note:** If you're fetching a reserved public IP that is in the process of being
 // moved to a different private IP, the service returns the public IP object with
-// `lifecycleState` = ASSIGNING and `privateIpId` = OCID of the target private IP.
+// `lifecycleState` = ASSIGNING and `assignedEntityId` = OCID of the target private IP.
 func (client VirtualNetworkClient) GetPublicIpByIpAddress(ctx context.Context, request GetPublicIpByIpAddressRequest) (response GetPublicIpByIpAddressResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -2630,6 +3027,9 @@ func (client VirtualNetworkClient) GetPublicIpByIpAddress(ctx context.Context, r
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getPublicIpByIpAddress, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetPublicIpByIpAddressResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetPublicIpByIpAddressResponse); ok {
@@ -2668,8 +3068,8 @@ func (client VirtualNetworkClient) getPublicIpByIpAddress(ctx context.Context, r
 // private IP, or if you instead call
 // GetPublicIp or
 // GetPublicIpByIpAddress, the
-// service returns the public IP object with `lifecycleState` = ASSIGNING and `privateIpId` = OCID
-// of the target private IP.
+// service returns the public IP object with `lifecycleState` = ASSIGNING and
+// `assignedEntityId` = OCID of the target private IP.
 func (client VirtualNetworkClient) GetPublicIpByPrivateIpId(ctx context.Context, request GetPublicIpByPrivateIpIdRequest) (response GetPublicIpByPrivateIpIdResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -2678,6 +3078,9 @@ func (client VirtualNetworkClient) GetPublicIpByPrivateIpId(ctx context.Context,
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getPublicIpByPrivateIpId, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetPublicIpByPrivateIpIdResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetPublicIpByPrivateIpIdResponse); ok {
@@ -2717,6 +3120,9 @@ func (client VirtualNetworkClient) GetRemotePeeringConnection(ctx context.Contex
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getRemotePeeringConnection, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetRemotePeeringConnectionResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetRemotePeeringConnectionResponse); ok {
@@ -2756,6 +3162,9 @@ func (client VirtualNetworkClient) GetRouteTable(ctx context.Context, request Ge
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getRouteTable, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetRouteTableResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetRouteTableResponse); ok {
@@ -2795,6 +3204,9 @@ func (client VirtualNetworkClient) GetSecurityList(ctx context.Context, request 
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getSecurityList, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetSecurityListResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetSecurityListResponse); ok {
@@ -2834,6 +3246,9 @@ func (client VirtualNetworkClient) GetService(ctx context.Context, request GetSe
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getService, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetServiceResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetServiceResponse); ok {
@@ -2873,6 +3288,9 @@ func (client VirtualNetworkClient) GetServiceGateway(ctx context.Context, reques
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getServiceGateway, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetServiceGatewayResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetServiceGatewayResponse); ok {
@@ -2912,6 +3330,9 @@ func (client VirtualNetworkClient) GetSubnet(ctx context.Context, request GetSub
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getSubnet, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetSubnetResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetSubnetResponse); ok {
@@ -2951,6 +3372,9 @@ func (client VirtualNetworkClient) GetVcn(ctx context.Context, request GetVcnReq
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getVcn, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetVcnResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetVcnResponse); ok {
@@ -2990,6 +3414,9 @@ func (client VirtualNetworkClient) GetVirtualCircuit(ctx context.Context, reques
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getVirtualCircuit, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetVirtualCircuitResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetVirtualCircuitResponse); ok {
@@ -3032,6 +3459,9 @@ func (client VirtualNetworkClient) GetVnic(ctx context.Context, request GetVnicR
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getVnic, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetVnicResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetVnicResponse); ok {
@@ -3072,6 +3502,9 @@ func (client VirtualNetworkClient) ListAllowedPeerRegionsForRemotePeering(ctx co
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listAllowedPeerRegionsForRemotePeering, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListAllowedPeerRegionsForRemotePeeringResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListAllowedPeerRegionsForRemotePeeringResponse); ok {
@@ -3102,7 +3535,7 @@ func (client VirtualNetworkClient) listAllowedPeerRegionsForRemotePeering(ctx co
 	return response, err
 }
 
-// ListCpes Lists the Customer-Premises Equipment objects (CPEs) in the specified compartment.
+// ListCpes Lists the customer-premises equipment objects (CPEs) in the specified compartment.
 func (client VirtualNetworkClient) ListCpes(ctx context.Context, request ListCpesRequest) (response ListCpesResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -3111,6 +3544,9 @@ func (client VirtualNetworkClient) ListCpes(ctx context.Context, request ListCpe
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listCpes, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListCpesResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListCpesResponse); ok {
@@ -3150,6 +3586,9 @@ func (client VirtualNetworkClient) ListCrossConnectGroups(ctx context.Context, r
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listCrossConnectGroups, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListCrossConnectGroupsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListCrossConnectGroupsResponse); ok {
@@ -3190,6 +3629,9 @@ func (client VirtualNetworkClient) ListCrossConnectLocations(ctx context.Context
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listCrossConnectLocations, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListCrossConnectLocationsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListCrossConnectLocationsResponse); ok {
@@ -3230,6 +3672,9 @@ func (client VirtualNetworkClient) ListCrossConnects(ctx context.Context, reques
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listCrossConnects, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListCrossConnectsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListCrossConnectsResponse); ok {
@@ -3271,6 +3716,9 @@ func (client VirtualNetworkClient) ListCrossconnectPortSpeedShapes(ctx context.C
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listCrossconnectPortSpeedShapes, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListCrossconnectPortSpeedShapesResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListCrossconnectPortSpeedShapesResponse); ok {
@@ -3312,6 +3760,9 @@ func (client VirtualNetworkClient) ListDhcpOptions(ctx context.Context, request 
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listDhcpOptions, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListDhcpOptionsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListDhcpOptionsResponse); ok {
@@ -3352,6 +3803,9 @@ func (client VirtualNetworkClient) ListDrgAttachments(ctx context.Context, reque
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listDrgAttachments, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListDrgAttachmentsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListDrgAttachmentsResponse); ok {
@@ -3391,6 +3845,9 @@ func (client VirtualNetworkClient) ListDrgs(ctx context.Context, request ListDrg
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listDrgs, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListDrgsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListDrgsResponse); ok {
@@ -3434,6 +3891,9 @@ func (client VirtualNetworkClient) ListFastConnectProviderServices(ctx context.C
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listFastConnectProviderServices, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListFastConnectProviderServicesResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListFastConnectProviderServicesResponse); ok {
@@ -3475,6 +3935,9 @@ func (client VirtualNetworkClient) ListFastConnectProviderVirtualCircuitBandwidt
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listFastConnectProviderVirtualCircuitBandwidthShapes, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListFastConnectProviderVirtualCircuitBandwidthShapesResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListFastConnectProviderVirtualCircuitBandwidthShapesResponse); ok {
@@ -3515,6 +3978,9 @@ func (client VirtualNetworkClient) ListIPSecConnections(ctx context.Context, req
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listIPSecConnections, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListIPSecConnectionsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListIPSecConnectionsResponse); ok {
@@ -3545,7 +4011,7 @@ func (client VirtualNetworkClient) listIPSecConnections(ctx context.Context, req
 	return response, err
 }
 
-// ListInternetGateways Lists the Internet Gateways in the specified VCN and the specified compartment.
+// ListInternetGateways Lists the internet gateways in the specified VCN and the specified compartment.
 func (client VirtualNetworkClient) ListInternetGateways(ctx context.Context, request ListInternetGatewaysRequest) (response ListInternetGatewaysResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -3554,6 +4020,9 @@ func (client VirtualNetworkClient) ListInternetGateways(ctx context.Context, req
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listInternetGateways, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListInternetGatewaysResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListInternetGatewaysResponse); ok {
@@ -3594,6 +4063,9 @@ func (client VirtualNetworkClient) ListLocalPeeringGateways(ctx context.Context,
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listLocalPeeringGateways, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListLocalPeeringGatewaysResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListLocalPeeringGatewaysResponse); ok {
@@ -3612,6 +4084,49 @@ func (client VirtualNetworkClient) listLocalPeeringGateways(ctx context.Context,
 	}
 
 	var response ListLocalPeeringGatewaysResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ListNatGateways Lists the NAT gateways in the specified compartment. You may optionally specify a VCN OCID
+// to filter the results by VCN.
+func (client VirtualNetworkClient) ListNatGateways(ctx context.Context, request ListNatGatewaysRequest) (response ListNatGatewaysResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listNatGateways, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ListNatGatewaysResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListNatGatewaysResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListNatGatewaysResponse")
+	}
+	return
+}
+
+// listNatGateways implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) listNatGateways(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/natGateways")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListNatGatewaysResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)
@@ -3643,6 +4158,9 @@ func (client VirtualNetworkClient) ListPrivateIps(ctx context.Context, request L
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listPrivateIps, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListPrivateIpsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListPrivateIpsResponse); ok {
@@ -3673,13 +4191,22 @@ func (client VirtualNetworkClient) listPrivateIps(ctx context.Context, request c
 	return response, err
 }
 
-// ListPublicIps Lists either the ephemeral or reserved PublicIp objects
-// in the specified compartment.
-// To list your reserved public IPs, set `scope` = `REGION`, and leave the
-// `availabilityDomain` parameter empty.
-// To list your ephemeral public IPs, set `scope` = `AVAILABILITY_DOMAIN`, and set the
-// `availabilityDomain` parameter to the desired Availability Domain. An ephemeral public IP
-// is always in the same Availability Domain and compartment as the private IP it's assigned to.
+// ListPublicIps Lists the PublicIp objects
+// in the specified compartment. You can filter the list by using query parameters.
+// To list your reserved public IPs:
+//   * Set `scope` = `REGION`  (required)
+//   * Leave the `availabilityDomain` parameter empty
+//   * Set `lifetime` = `RESERVED`
+// To list the ephemeral public IPs assigned to a regional entity such as a NAT gateway:
+//   * Set `scope` = `REGION`  (required)
+//   * Leave the `availabilityDomain` parameter empty
+//   * Set `lifetime` = `EPHEMERAL`
+// To list the ephemeral public IPs assigned to private IPs:
+//   * Set `scope` = `AVAILABILITY_DOMAIN` (required)
+//   * Set the `availabilityDomain` parameter to the desired availability domain (required)
+//   * Set `lifetime` = `EPHEMERAL`
+// **Note:** An ephemeral public IP assigned to a private IP
+// is always in the same availability domain and compartment as the private IP.
 func (client VirtualNetworkClient) ListPublicIps(ctx context.Context, request ListPublicIpsRequest) (response ListPublicIpsResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -3688,6 +4215,9 @@ func (client VirtualNetworkClient) ListPublicIps(ctx context.Context, request Li
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listPublicIps, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListPublicIpsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListPublicIpsResponse); ok {
@@ -3728,6 +4258,9 @@ func (client VirtualNetworkClient) ListRemotePeeringConnections(ctx context.Cont
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listRemotePeeringConnections, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListRemotePeeringConnectionsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListRemotePeeringConnectionsResponse); ok {
@@ -3769,6 +4302,9 @@ func (client VirtualNetworkClient) ListRouteTables(ctx context.Context, request 
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listRouteTables, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListRouteTablesResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListRouteTablesResponse); ok {
@@ -3808,6 +4344,9 @@ func (client VirtualNetworkClient) ListSecurityLists(ctx context.Context, reques
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listSecurityLists, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListSecurityListsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListSecurityListsResponse); ok {
@@ -3848,6 +4387,9 @@ func (client VirtualNetworkClient) ListServiceGateways(ctx context.Context, requ
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listServiceGateways, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListServiceGatewaysResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListServiceGatewaysResponse); ok {
@@ -3887,6 +4429,9 @@ func (client VirtualNetworkClient) ListServices(ctx context.Context, request Lis
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listServices, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListServicesResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListServicesResponse); ok {
@@ -3926,6 +4471,9 @@ func (client VirtualNetworkClient) ListSubnets(ctx context.Context, request List
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listSubnets, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListSubnetsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListSubnetsResponse); ok {
@@ -3956,7 +4504,7 @@ func (client VirtualNetworkClient) listSubnets(ctx context.Context, request comm
 	return response, err
 }
 
-// ListVcns Lists the Virtual Cloud Networks (VCNs) in the specified compartment.
+// ListVcns Lists the virtual cloud networks (VCNs) in the specified compartment.
 func (client VirtualNetworkClient) ListVcns(ctx context.Context, request ListVcnsRequest) (response ListVcnsResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -3965,6 +4513,9 @@ func (client VirtualNetworkClient) ListVcns(ctx context.Context, request ListVcn
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listVcns, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListVcnsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListVcnsResponse); ok {
@@ -4004,6 +4555,9 @@ func (client VirtualNetworkClient) ListVirtualCircuitBandwidthShapes(ctx context
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listVirtualCircuitBandwidthShapes, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListVirtualCircuitBandwidthShapesResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListVirtualCircuitBandwidthShapesResponse); ok {
@@ -4044,6 +4598,9 @@ func (client VirtualNetworkClient) ListVirtualCircuitPublicPrefixes(ctx context.
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listVirtualCircuitPublicPrefixes, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListVirtualCircuitPublicPrefixesResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListVirtualCircuitPublicPrefixesResponse); ok {
@@ -4083,6 +4640,9 @@ func (client VirtualNetworkClient) ListVirtualCircuits(ctx context.Context, requ
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listVirtualCircuits, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListVirtualCircuitsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListVirtualCircuitsResponse); ok {
@@ -4123,6 +4683,9 @@ func (client VirtualNetworkClient) UpdateCpe(ctx context.Context, request Update
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateCpe, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateCpeResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateCpeResponse); ok {
@@ -4162,6 +4725,9 @@ func (client VirtualNetworkClient) UpdateCrossConnect(ctx context.Context, reque
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateCrossConnect, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateCrossConnectResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateCrossConnectResponse); ok {
@@ -4202,6 +4768,9 @@ func (client VirtualNetworkClient) UpdateCrossConnectGroup(ctx context.Context, 
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateCrossConnectGroup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateCrossConnectGroupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateCrossConnectGroupResponse); ok {
@@ -4243,6 +4812,9 @@ func (client VirtualNetworkClient) UpdateDhcpOptions(ctx context.Context, reques
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateDhcpOptions, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateDhcpOptionsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateDhcpOptionsResponse); ok {
@@ -4282,6 +4854,9 @@ func (client VirtualNetworkClient) UpdateDrg(ctx context.Context, request Update
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateDrg, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateDrgResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateDrgResponse); ok {
@@ -4322,6 +4897,9 @@ func (client VirtualNetworkClient) UpdateDrgAttachment(ctx context.Context, requ
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateDrgAttachment, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateDrgAttachmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateDrgAttachmentResponse); ok {
@@ -4362,6 +4940,9 @@ func (client VirtualNetworkClient) UpdateIPSecConnection(ctx context.Context, re
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateIPSecConnection, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateIPSecConnectionResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateIPSecConnectionResponse); ok {
@@ -4392,7 +4973,7 @@ func (client VirtualNetworkClient) updateIPSecConnection(ctx context.Context, re
 	return response, err
 }
 
-// UpdateInternetGateway Updates the specified Internet Gateway. You can disable/enable it, or change its display name
+// UpdateInternetGateway Updates the specified internet gateway. You can disable/enable it, or change its display name
 // or tags. Avoid entering confidential information.
 // If the gateway is disabled, that means no traffic will flow to/from the internet even if there's
 // a route rule that enables that traffic.
@@ -4404,6 +4985,9 @@ func (client VirtualNetworkClient) UpdateInternetGateway(ctx context.Context, re
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateInternetGateway, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateInternetGatewayResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateInternetGatewayResponse); ok {
@@ -4443,6 +5027,9 @@ func (client VirtualNetworkClient) UpdateLocalPeeringGateway(ctx context.Context
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateLocalPeeringGateway, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateLocalPeeringGatewayResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateLocalPeeringGatewayResponse); ok {
@@ -4473,6 +5060,48 @@ func (client VirtualNetworkClient) updateLocalPeeringGateway(ctx context.Context
 	return response, err
 }
 
+// UpdateNatGateway Updates the specified NAT gateway.
+func (client VirtualNetworkClient) UpdateNatGateway(ctx context.Context, request UpdateNatGatewayRequest) (response UpdateNatGatewayResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.updateNatGateway, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = UpdateNatGatewayResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(UpdateNatGatewayResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into UpdateNatGatewayResponse")
+	}
+	return
+}
+
+// updateNatGateway implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) updateNatGateway(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/natGateways/{natGatewayId}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response UpdateNatGatewayResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // UpdatePrivateIp Updates the specified private IP. You must specify the object's OCID.
 // Use this operation if you want to:
 //   - Move a secondary private IP to a different VNIC in the same subnet.
@@ -4489,6 +5118,9 @@ func (client VirtualNetworkClient) UpdatePrivateIp(ctx context.Context, request 
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updatePrivateIp, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdatePrivateIpResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdatePrivateIpResponse); ok {
@@ -4559,6 +5191,9 @@ func (client VirtualNetworkClient) UpdatePublicIp(ctx context.Context, request U
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updatePublicIp, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdatePublicIpResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdatePublicIpResponse); ok {
@@ -4598,6 +5233,9 @@ func (client VirtualNetworkClient) UpdateRemotePeeringConnection(ctx context.Con
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateRemotePeeringConnection, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateRemotePeeringConnectionResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateRemotePeeringConnectionResponse); ok {
@@ -4639,6 +5277,9 @@ func (client VirtualNetworkClient) UpdateRouteTable(ctx context.Context, request
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateRouteTable, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateRouteTableResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateRouteTableResponse); ok {
@@ -4681,6 +5322,9 @@ func (client VirtualNetworkClient) UpdateSecurityList(ctx context.Context, reque
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateSecurityList, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateSecurityListResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateSecurityListResponse); ok {
@@ -4721,6 +5365,9 @@ func (client VirtualNetworkClient) UpdateServiceGateway(ctx context.Context, req
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateServiceGateway, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateServiceGatewayResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateServiceGatewayResponse); ok {
@@ -4760,6 +5407,9 @@ func (client VirtualNetworkClient) UpdateSubnet(ctx context.Context, request Upd
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateSubnet, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateSubnetResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateSubnetResponse); ok {
@@ -4800,6 +5450,9 @@ func (client VirtualNetworkClient) UpdateVcn(ctx context.Context, request Update
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateVcn, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateVcnResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateVcnResponse); ok {
@@ -4860,6 +5513,9 @@ func (client VirtualNetworkClient) UpdateVirtualCircuit(ctx context.Context, req
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateVirtualCircuit, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateVirtualCircuitResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateVirtualCircuitResponse); ok {
@@ -4899,6 +5555,9 @@ func (client VirtualNetworkClient) UpdateVnic(ctx context.Context, request Updat
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateVnic, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateVnicResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateVnicResponse); ok {

@@ -1,7 +1,6 @@
 package notifications
 
 import (
-	"github.com/docker/distribution/configuration"
 	"net/http"
 	"time"
 )
@@ -15,7 +14,6 @@ type EndpointConfig struct {
 	Backoff           time.Duration
 	IgnoredMediaTypes []string
 	Transport         *http.Transport `json:"-"`
-	Ignore            configuration.Ignore
 }
 
 // defaults set any zero-valued fields to a reasonable default.
@@ -65,8 +63,7 @@ func NewEndpoint(name, url string, config EndpointConfig) *Endpoint {
 		endpoint.Transport, endpoint.metrics.httpStatusListener())
 	endpoint.Sink = newRetryingSink(endpoint.Sink, endpoint.Threshold, endpoint.Backoff)
 	endpoint.Sink = newEventQueue(endpoint.Sink, endpoint.metrics.eventQueueListener())
-	mediaTypes := append(config.Ignore.MediaTypes, config.IgnoredMediaTypes...)
-	endpoint.Sink = newIgnoredSink(endpoint.Sink, mediaTypes, config.Ignore.Actions)
+	endpoint.Sink = newIgnoredMediaTypesSink(endpoint.Sink, config.IgnoredMediaTypes)
 
 	register(&endpoint)
 	return &endpoint

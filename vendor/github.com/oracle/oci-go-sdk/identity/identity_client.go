@@ -67,8 +67,16 @@ func (client IdentityClient) AddUserToGroup(ctx context.Context, request AddUser
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.addUserToGroup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = AddUserToGroupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(AddUserToGroupResponse); ok {
@@ -113,8 +121,16 @@ func (client IdentityClient) CreateAuthToken(ctx context.Context, request Create
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createAuthToken, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateAuthTokenResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateAuthTokenResponse); ok {
@@ -165,8 +181,16 @@ func (client IdentityClient) CreateCompartment(ctx context.Context, request Crea
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createCompartment, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateCompartmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateCompartmentResponse); ok {
@@ -212,8 +236,16 @@ func (client IdentityClient) CreateCustomerSecretKey(ctx context.Context, reques
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createCustomerSecretKey, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateCustomerSecretKeyResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateCustomerSecretKeyResponse); ok {
@@ -264,8 +296,16 @@ func (client IdentityClient) CreateDynamicGroup(ctx context.Context, request Cre
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createDynamicGroup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateDynamicGroupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateDynamicGroupResponse); ok {
@@ -318,8 +358,16 @@ func (client IdentityClient) CreateGroup(ctx context.Context, request CreateGrou
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createGroup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateGroupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateGroupResponse); ok {
@@ -370,8 +418,16 @@ func (client IdentityClient) CreateIdentityProvider(ctx context.Context, request
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createIdentityProvider, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateIdentityProviderResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateIdentityProviderResponse); ok {
@@ -410,8 +466,16 @@ func (client IdentityClient) CreateIdpGroupMapping(ctx context.Context, request 
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createIdpGroupMapping, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateIdpGroupMappingResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateIdpGroupMappingResponse); ok {
@@ -457,8 +521,16 @@ func (client IdentityClient) CreateOrResetUIPassword(ctx context.Context, reques
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createOrResetUIPassword, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateOrResetUIPasswordResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateOrResetUIPasswordResponse); ok {
@@ -507,8 +579,16 @@ func (client IdentityClient) CreatePolicy(ctx context.Context, request CreatePol
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createPolicy, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreatePolicyResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreatePolicyResponse); ok {
@@ -546,8 +626,16 @@ func (client IdentityClient) CreateRegionSubscription(ctx context.Context, reque
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createRegionSubscription, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateRegionSubscriptionResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateRegionSubscriptionResponse); ok {
@@ -588,8 +676,16 @@ func (client IdentityClient) CreateSmtpCredential(ctx context.Context, request C
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createSmtpCredential, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateSmtpCredentialResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateSmtpCredentialResponse); ok {
@@ -635,8 +731,16 @@ func (client IdentityClient) CreateSwiftPassword(ctx context.Context, request Cr
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createSwiftPassword, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateSwiftPasswordResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateSwiftPasswordResponse); ok {
@@ -682,8 +786,16 @@ func (client IdentityClient) CreateTag(ctx context.Context, request CreateTagReq
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createTag, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateTagResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateTagResponse); ok {
@@ -733,8 +845,16 @@ func (client IdentityClient) CreateTagNamespace(ctx context.Context, request Cre
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createTagNamespace, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateTagNamespaceResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateTagNamespaceResponse); ok {
@@ -800,8 +920,16 @@ func (client IdentityClient) CreateUser(ctx context.Context, request CreateUserR
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createUser, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateUserResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateUserResponse); ok {
@@ -845,6 +973,9 @@ func (client IdentityClient) DeleteApiKey(ctx context.Context, request DeleteApi
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteApiKey, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteApiKeyResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteApiKeyResponse); ok {
@@ -884,6 +1015,9 @@ func (client IdentityClient) DeleteAuthToken(ctx context.Context, request Delete
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteAuthToken, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteAuthTokenResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteAuthTokenResponse); ok {
@@ -923,6 +1057,9 @@ func (client IdentityClient) DeleteCustomerSecretKey(ctx context.Context, reques
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteCustomerSecretKey, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteCustomerSecretKeyResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteCustomerSecretKeyResponse); ok {
@@ -962,6 +1099,9 @@ func (client IdentityClient) DeleteDynamicGroup(ctx context.Context, request Del
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteDynamicGroup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteDynamicGroupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteDynamicGroupResponse); ok {
@@ -1001,6 +1141,9 @@ func (client IdentityClient) DeleteGroup(ctx context.Context, request DeleteGrou
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteGroup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteGroupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteGroupResponse); ok {
@@ -1041,6 +1184,9 @@ func (client IdentityClient) DeleteIdentityProvider(ctx context.Context, request
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteIdentityProvider, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteIdentityProviderResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteIdentityProviderResponse); ok {
@@ -1080,6 +1226,9 @@ func (client IdentityClient) DeleteIdpGroupMapping(ctx context.Context, request 
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteIdpGroupMapping, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteIdpGroupMappingResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteIdpGroupMappingResponse); ok {
@@ -1119,6 +1268,9 @@ func (client IdentityClient) DeletePolicy(ctx context.Context, request DeletePol
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deletePolicy, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeletePolicyResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeletePolicyResponse); ok {
@@ -1158,6 +1310,9 @@ func (client IdentityClient) DeleteSmtpCredential(ctx context.Context, request D
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteSmtpCredential, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteSmtpCredentialResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteSmtpCredentialResponse); ok {
@@ -1198,6 +1353,9 @@ func (client IdentityClient) DeleteSwiftPassword(ctx context.Context, request De
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteSwiftPassword, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteSwiftPasswordResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteSwiftPasswordResponse); ok {
@@ -1237,6 +1395,9 @@ func (client IdentityClient) DeleteUser(ctx context.Context, request DeleteUserR
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteUser, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteUserResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteUserResponse); ok {
@@ -1282,6 +1443,9 @@ func (client IdentityClient) GetCompartment(ctx context.Context, request GetComp
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getCompartment, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetCompartmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetCompartmentResponse); ok {
@@ -1321,6 +1485,9 @@ func (client IdentityClient) GetDynamicGroup(ctx context.Context, request GetDyn
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getDynamicGroup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetDynamicGroupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetDynamicGroupResponse); ok {
@@ -1363,6 +1530,9 @@ func (client IdentityClient) GetGroup(ctx context.Context, request GetGroupReque
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getGroup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetGroupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetGroupResponse); ok {
@@ -1402,6 +1572,9 @@ func (client IdentityClient) GetIdentityProvider(ctx context.Context, request Ge
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getIdentityProvider, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetIdentityProviderResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetIdentityProviderResponse); ok {
@@ -1441,6 +1614,9 @@ func (client IdentityClient) GetIdpGroupMapping(ctx context.Context, request Get
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getIdpGroupMapping, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetIdpGroupMappingResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetIdpGroupMappingResponse); ok {
@@ -1480,6 +1656,9 @@ func (client IdentityClient) GetPolicy(ctx context.Context, request GetPolicyReq
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getPolicy, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetPolicyResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetPolicyResponse); ok {
@@ -1519,6 +1698,9 @@ func (client IdentityClient) GetTag(ctx context.Context, request GetTagRequest) 
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getTag, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetTagResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetTagResponse); ok {
@@ -1558,6 +1740,9 @@ func (client IdentityClient) GetTagNamespace(ctx context.Context, request GetTag
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getTagNamespace, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetTagNamespaceResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetTagNamespaceResponse); ok {
@@ -1597,6 +1782,9 @@ func (client IdentityClient) GetTenancy(ctx context.Context, request GetTenancyR
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getTenancy, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetTenancyResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetTenancyResponse); ok {
@@ -1636,6 +1824,9 @@ func (client IdentityClient) GetUser(ctx context.Context, request GetUserRequest
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getUser, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetUserResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetUserResponse); ok {
@@ -1675,6 +1866,9 @@ func (client IdentityClient) GetUserGroupMembership(ctx context.Context, request
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getUserGroupMembership, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetUserGroupMembershipResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetUserGroupMembershipResponse); ok {
@@ -1716,6 +1910,9 @@ func (client IdentityClient) ListApiKeys(ctx context.Context, request ListApiKey
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listApiKeys, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListApiKeysResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListApiKeysResponse); ok {
@@ -1756,6 +1953,9 @@ func (client IdentityClient) ListAuthTokens(ctx context.Context, request ListAut
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listAuthTokens, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListAuthTokensResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListAuthTokensResponse); ok {
@@ -1786,9 +1986,11 @@ func (client IdentityClient) listAuthTokens(ctx context.Context, request common.
 	return response, err
 }
 
-// ListAvailabilityDomains Lists the Availability Domains in your tenancy. Specify the OCID of either the tenancy or another
+// ListAvailabilityDomains Lists the availability domains in your tenancy. Specify the OCID of either the tenancy or another
 // of your compartments as the value for the compartment ID (remember that the tenancy is simply the root compartment).
 // See Where to Get the Tenancy's OCID and User's OCID (https://docs.us-phoenix-1.oraclecloud.com/Content/API/Concepts/apisigningkey.htm#five).
+// Note that the order of the results returned can change if availability domains are added or removed; therefore, do not
+// create a dependency on the list order.
 func (client IdentityClient) ListAvailabilityDomains(ctx context.Context, request ListAvailabilityDomainsRequest) (response ListAvailabilityDomainsResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -1797,6 +1999,9 @@ func (client IdentityClient) ListAvailabilityDomains(ctx context.Context, reques
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listAvailabilityDomains, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListAvailabilityDomainsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListAvailabilityDomainsResponse); ok {
@@ -1838,6 +2043,9 @@ func (client IdentityClient) ListCompartments(ctx context.Context, request ListC
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listCompartments, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListCompartmentsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListCompartmentsResponse); ok {
@@ -1878,6 +2086,9 @@ func (client IdentityClient) ListCustomerSecretKeys(ctx context.Context, request
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listCustomerSecretKeys, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListCustomerSecretKeysResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListCustomerSecretKeysResponse); ok {
@@ -1919,6 +2130,9 @@ func (client IdentityClient) ListDynamicGroups(ctx context.Context, request List
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listDynamicGroups, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListDynamicGroupsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListDynamicGroupsResponse); ok {
@@ -1949,6 +2163,50 @@ func (client IdentityClient) listDynamicGroups(ctx context.Context, request comm
 	return response, err
 }
 
+// ListFaultDomains Lists the Fault Domains in your tenancy. Specify the OCID of either the tenancy or another
+// of your compartments as the value for the compartment ID (remember that the tenancy is simply the root compartment).
+// See Where to Get the Tenancy's OCID and User's OCID (https://docs.us-phoenix-1.oraclecloud.com/Content/API/Concepts/apisigningkey.htm#five).
+func (client IdentityClient) ListFaultDomains(ctx context.Context, request ListFaultDomainsRequest) (response ListFaultDomainsResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listFaultDomains, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ListFaultDomainsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListFaultDomainsResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListFaultDomainsResponse")
+	}
+	return
+}
+
+// listFaultDomains implements the OCIOperation interface (enables retrying operations)
+func (client IdentityClient) listFaultDomains(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/faultDomains/")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListFaultDomainsResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // ListGroups Lists the groups in your tenancy. You must specify your tenancy's OCID as the value for
 // the compartment ID (remember that the tenancy is simply the root compartment).
 // See Where to Get the Tenancy's OCID and User's OCID (https://docs.us-phoenix-1.oraclecloud.com/Content/API/Concepts/apisigningkey.htm#five).
@@ -1960,6 +2218,9 @@ func (client IdentityClient) ListGroups(ctx context.Context, request ListGroupsR
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listGroups, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListGroupsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListGroupsResponse); ok {
@@ -2018,6 +2279,9 @@ func (client IdentityClient) ListIdentityProviders(ctx context.Context, request 
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listIdentityProviders, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListIdentityProvidersResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListIdentityProvidersResponse); ok {
@@ -2057,6 +2321,9 @@ func (client IdentityClient) ListIdpGroupMappings(ctx context.Context, request L
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listIdpGroupMappings, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListIdpGroupMappingsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListIdpGroupMappingsResponse); ok {
@@ -2099,6 +2366,9 @@ func (client IdentityClient) ListPolicies(ctx context.Context, request ListPolic
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listPolicies, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListPoliciesResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListPoliciesResponse); ok {
@@ -2138,6 +2408,9 @@ func (client IdentityClient) ListRegionSubscriptions(ctx context.Context, reques
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listRegionSubscriptions, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListRegionSubscriptionsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListRegionSubscriptionsResponse); ok {
@@ -2173,6 +2446,9 @@ func (client IdentityClient) ListRegions(ctx context.Context) (response ListRegi
 	var ociResponse common.OCIResponse
 	ociResponse, err = client.listRegions(ctx)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListRegionsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListRegionsResponse); ok {
@@ -2211,6 +2487,9 @@ func (client IdentityClient) ListSmtpCredentials(ctx context.Context, request Li
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listSmtpCredentials, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListSmtpCredentialsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListSmtpCredentialsResponse); ok {
@@ -2252,6 +2531,9 @@ func (client IdentityClient) ListSwiftPasswords(ctx context.Context, request Lis
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listSwiftPasswords, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListSwiftPasswordsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListSwiftPasswordsResponse); ok {
@@ -2291,6 +2573,9 @@ func (client IdentityClient) ListTagNamespaces(ctx context.Context, request List
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listTagNamespaces, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListTagNamespacesResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListTagNamespacesResponse); ok {
@@ -2330,6 +2615,9 @@ func (client IdentityClient) ListTags(ctx context.Context, request ListTagsReque
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listTags, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListTagsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListTagsResponse); ok {
@@ -2377,6 +2665,9 @@ func (client IdentityClient) ListUserGroupMemberships(ctx context.Context, reque
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listUserGroupMemberships, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListUserGroupMembershipsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListUserGroupMembershipsResponse); ok {
@@ -2418,6 +2709,9 @@ func (client IdentityClient) ListUsers(ctx context.Context, request ListUsersReq
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listUsers, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListUsersResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListUsersResponse); ok {
@@ -2457,6 +2751,9 @@ func (client IdentityClient) RemoveUserFromGroup(ctx context.Context, request Re
 	}
 	ociResponse, err = common.Retry(ctx, request, client.removeUserFromGroup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = RemoveUserFromGroupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(RemoveUserFromGroupResponse); ok {
@@ -2496,6 +2793,9 @@ func (client IdentityClient) UpdateAuthToken(ctx context.Context, request Update
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateAuthToken, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateAuthTokenResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateAuthTokenResponse); ok {
@@ -2535,6 +2835,9 @@ func (client IdentityClient) UpdateCompartment(ctx context.Context, request Upda
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateCompartment, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateCompartmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateCompartmentResponse); ok {
@@ -2574,6 +2877,9 @@ func (client IdentityClient) UpdateCustomerSecretKey(ctx context.Context, reques
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateCustomerSecretKey, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateCustomerSecretKeyResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateCustomerSecretKeyResponse); ok {
@@ -2613,6 +2919,9 @@ func (client IdentityClient) UpdateDynamicGroup(ctx context.Context, request Upd
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateDynamicGroup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateDynamicGroupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateDynamicGroupResponse); ok {
@@ -2652,6 +2961,9 @@ func (client IdentityClient) UpdateGroup(ctx context.Context, request UpdateGrou
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateGroup, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateGroupResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateGroupResponse); ok {
@@ -2691,6 +3003,9 @@ func (client IdentityClient) UpdateIdentityProvider(ctx context.Context, request
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateIdentityProvider, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateIdentityProviderResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateIdentityProviderResponse); ok {
@@ -2730,6 +3045,9 @@ func (client IdentityClient) UpdateIdpGroupMapping(ctx context.Context, request 
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateIdpGroupMapping, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateIdpGroupMappingResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateIdpGroupMappingResponse); ok {
@@ -2770,6 +3088,9 @@ func (client IdentityClient) UpdatePolicy(ctx context.Context, request UpdatePol
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updatePolicy, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdatePolicyResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdatePolicyResponse); ok {
@@ -2809,6 +3130,9 @@ func (client IdentityClient) UpdateSmtpCredential(ctx context.Context, request U
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateSmtpCredential, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateSmtpCredentialResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateSmtpCredentialResponse); ok {
@@ -2849,6 +3173,9 @@ func (client IdentityClient) UpdateSwiftPassword(ctx context.Context, request Up
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateSwiftPassword, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateSwiftPasswordResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateSwiftPasswordResponse); ok {
@@ -2888,6 +3215,9 @@ func (client IdentityClient) UpdateTag(ctx context.Context, request UpdateTagReq
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateTag, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateTagResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateTagResponse); ok {
@@ -2933,6 +3263,9 @@ func (client IdentityClient) UpdateTagNamespace(ctx context.Context, request Upd
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateTagNamespace, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateTagNamespaceResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateTagNamespaceResponse); ok {
@@ -2972,6 +3305,9 @@ func (client IdentityClient) UpdateUser(ctx context.Context, request UpdateUserR
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateUser, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateUserResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateUserResponse); ok {
@@ -3011,6 +3347,9 @@ func (client IdentityClient) UpdateUserState(ctx context.Context, request Update
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateUserState, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateUserStateResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateUserStateResponse); ok {
@@ -3059,8 +3398,16 @@ func (client IdentityClient) UploadApiKey(ctx context.Context, request UploadApi
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.uploadApiKey, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UploadApiKeyResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UploadApiKeyResponse); ok {

@@ -25,9 +25,11 @@ import (
 // To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized,
 // talk to an administrator. If you're an administrator who needs to write policies to give users access, see
 // Getting Started with Policies (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/policygetstarted.htm).
+// **Warning:** Oracle recommends that you avoid using any confidential information when you
+// supply string values using the API.
 type Vnic struct {
 
-	// The VNIC's Availability Domain.
+	// The VNIC's availability domain.
 	// Example: `Uocm:PHX-AD-1`
 	AvailabilityDomain *string `mandatory:"true" json:"availabilityDomain"`
 
@@ -39,11 +41,6 @@ type Vnic struct {
 
 	// The current state of the VNIC.
 	LifecycleState VnicLifecycleStateEnum `mandatory:"true" json:"lifecycleState"`
-
-	// The private IP address of the primary `privateIp` object on the VNIC.
-	// The address is within the CIDR of the VNIC's subnet.
-	// Example: `10.0.3.3`
-	PrivateIp *string `mandatory:"true" json:"privateIp"`
 
 	// The OCID of the subnet the VNIC is in.
 	SubnetId *string `mandatory:"true" json:"subnetId"`
@@ -85,6 +82,11 @@ type Vnic struct {
 	// The MAC address of the VNIC.
 	// Example: `00:00:17:B6:4D:DD`
 	MacAddress *string `mandatory:"false" json:"macAddress"`
+
+	// The private IP address of the primary `privateIp` object on the VNIC.
+	// The address is within the CIDR of the VNIC's subnet.
+	// Example: `10.0.3.3`
+	PrivateIp *string `mandatory:"false" json:"privateIp"`
 
 	// The public IP address of the VNIC, if one is assigned.
 	PublicIp *string `mandatory:"false" json:"publicIp"`

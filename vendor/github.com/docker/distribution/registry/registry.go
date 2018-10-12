@@ -1,7 +1,6 @@
 package registry
 
 import (
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -15,13 +14,12 @@ import (
 	logstash "github.com/bshuster-repo/logrus-logstash-hook"
 	"github.com/bugsnag/bugsnag-go"
 	"github.com/docker/distribution/configuration"
-	dcontext "github.com/docker/distribution/context"
+	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/health"
 	"github.com/docker/distribution/registry/handlers"
 	"github.com/docker/distribution/registry/listener"
 	"github.com/docker/distribution/uuid"
 	"github.com/docker/distribution/version"
-	"github.com/docker/go-metrics"
 	gorhandlers "github.com/gorilla/handlers"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -36,7 +34,7 @@ var ServeCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		// setup context
-		ctx := dcontext.WithVersion(dcontext.Background(), version.Version)
+		ctx := context.WithVersion(context.Background(), version.Version)
 
 		config, err := resolveConfiguration(args)
 		if err != nil {
@@ -57,15 +55,6 @@ var ServeCmd = &cobra.Command{
 		registry, err := NewRegistry(ctx, config)
 		if err != nil {
 			log.Fatalln(err)
-		}
-
-		if config.HTTP.Debug.Prometheus.Enabled {
-			path := config.HTTP.Debug.Prometheus.Path
-			if path == "" {
-				path = "/metrics"
-			}
-			log.Info("providing prometheus metrics on ", path)
-			http.Handle(path, metrics.Handler())
 		}
 
 		if err = registry.ListenAndServe(); err != nil {
@@ -92,7 +81,7 @@ func NewRegistry(ctx context.Context, config *configuration.Configuration) (*Reg
 
 	// inject a logger into the uuid library. warns us if there is a problem
 	// with uuid generation under low entropy.
-	uuid.Loggerf = dcontext.GetLogger(ctx).Warnf
+	uuid.Loggerf = context.GetLogger(ctx).Warnf
 
 	app := handlers.NewApp(ctx, config)
 	// TODO(aaronl): The global scope of the health checks means NewRegistry
@@ -157,9 +146,6 @@ func (registry *Registry) ListenAndServe() error {
 					return err
 				}
 			}
-			if len(config.HTTP.TLS.LetsEncrypt.Hosts) > 0 {
-				m.SetHosts(config.HTTP.TLS.LetsEncrypt.Hosts)
-			}
 			tlsConf.GetCertificate = m.GetCertificate
 		} else {
 			tlsConf.Certificates = make([]tls.Certificate, 1)
@@ -184,7 +170,7 @@ func (registry *Registry) ListenAndServe() error {
 			}
 
 			for _, subj := range pool.Subjects() {
-				dcontext.GetLogger(registry.app).Debugf("CA Subject: %s", string(subj))
+				context.GetLogger(registry.app).Debugf("CA Subject: %s", string(subj))
 			}
 
 			tlsConf.ClientAuth = tls.RequireAndVerifyClientCert
@@ -192,9 +178,9 @@ func (registry *Registry) ListenAndServe() error {
 		}
 
 		ln = tls.NewListener(ln, tlsConf)
-		dcontext.GetLogger(registry.app).Infof("listening on %v, tls", ln.Addr())
+		context.GetLogger(registry.app).Infof("listening on %v, tls", ln.Addr())
 	} else {
-		dcontext.GetLogger(registry.app).Infof("listening on %v", ln.Addr())
+		context.GetLogger(registry.app).Infof("listening on %v", ln.Addr())
 	}
 
 	return registry.server.Serve(ln)
@@ -242,7 +228,7 @@ func configureLogging(ctx context.Context, config *configuration.Configuration) 
 	if config.Log.Level == "" && config.Log.Formatter == "" {
 		// If no config for logging is set, fallback to deprecated "Loglevel".
 		log.SetLevel(logLevel(config.Loglevel))
-		ctx = dcontext.WithLogger(ctx, dcontext.GetLogger(ctx))
+		ctx = context.WithLogger(ctx, context.GetLogger(ctx))
 		return ctx, nil
 	}
 
@@ -284,8 +270,8 @@ func configureLogging(ctx context.Context, config *configuration.Configuration) 
 			fields = append(fields, k)
 		}
 
-		ctx = dcontext.WithValues(ctx, config.Log.Fields)
-		ctx = dcontext.WithLogger(ctx, dcontext.GetLogger(ctx, fields...))
+		ctx = context.WithValues(ctx, config.Log.Fields)
+		ctx = context.WithLogger(ctx, context.GetLogger(ctx, fields...))
 	}
 
 	return ctx, nil
