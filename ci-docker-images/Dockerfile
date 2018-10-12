@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM oraclelinux:7.5
+FROM oraclelinux:7-slim
 
 RUN yum install --enablerepo=ol7_developer_EPEL -y \
     ca-certificates \
@@ -26,7 +26,7 @@ RUN yum install --enablerepo=ol7_developer_EPEL -y \
     python-pip \
     python-yaml \
     unzip && \
-    yum clean all
+    yum clean all && rm -rf /var/cache/yum
 
 # Install golang environment
 RUN curl https://storage.googleapis.com/golang/go1.11.1.linux-amd64.tar.gz -O && \
@@ -48,10 +48,13 @@ RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.11.0/b
 RUN go get -u github.com/onsi/ginkgo/ginkgo && \
     go get -u github.com/onsi/gomega/...
 
+# Install golint
+RUN go get -u golang.org/x/lint/golint
+
 # Install Terraform
 RUN curl https://releases.hashicorp.com/terraform/0.10.7/terraform_0.10.7_linux_amd64.zip -LO && \
     unzip terraform_0.10.7_linux_amd64.zip && \
-    mv terraform /usr/bin && \ 
+    mv terraform /usr/bin && \
     rm -f terraform terraform_0.10.7_linux_amd64.zip
 
 # Installs the OCI terraform provider

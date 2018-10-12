@@ -32,6 +32,5 @@ build:
 
 .PHONY: push
 push: build
-	@docker login -u '$(OCIRUSERNAME)' -p '$(OCIRPASSWORD)' $(OCIREGISTRY)
 	docker push $(IMAGE):$(VERSION)
 
