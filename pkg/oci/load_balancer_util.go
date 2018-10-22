@@ -370,9 +370,9 @@ func getListenerChanges(actual map[string]loadbalancer.Listener, desired map[str
 			listenerActions = append(listenerActions, &ListenerAction{
 				Listener: loadbalancer.ListenerDetails{
 					DefaultBackendSetName: actualListener.DefaultBackendSetName,
-					Port:             actualListener.Port,
-					Protocol:         actualListener.Protocol,
-					SslConfiguration: sslConfigurationToDetails(actualListener.SslConfiguration),
+					Port:                  actualListener.Port,
+					Protocol:              actualListener.Protocol,
+					SslConfiguration:      sslConfigurationToDetails(actualListener.SslConfiguration),
 				},
 				name:       name,
 				actionType: Delete,

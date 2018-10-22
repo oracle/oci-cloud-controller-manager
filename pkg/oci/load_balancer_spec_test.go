@@ -60,8 +60,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Listeners: map[string]loadbalancer.ListenerDetails{
 					"TCP-80": loadbalancer.ListenerDetails{
 						DefaultBackendSetName: common.String("TCP-80"),
-						Port:     common.Int(80),
-						Protocol: common.String("TCP"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
 					},
 				},
 				BackendSets: map[string]loadbalancer.BackendSetDetails{
@@ -115,8 +115,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Listeners: map[string]loadbalancer.ListenerDetails{
 					"TCP-80": loadbalancer.ListenerDetails{
 						DefaultBackendSetName: common.String("TCP-80"),
-						Port:     common.Int(80),
-						Protocol: common.String("TCP"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
 					},
 				},
 				BackendSets: map[string]loadbalancer.BackendSetDetails{
@@ -171,8 +171,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Listeners: map[string]loadbalancer.ListenerDetails{
 					"TCP-80": loadbalancer.ListenerDetails{
 						DefaultBackendSetName: common.String("TCP-80"),
-						Port:     common.Int(80),
-						Protocol: common.String("TCP"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
 					},
 				},
 				BackendSets: map[string]loadbalancer.BackendSetDetails{
@@ -227,8 +227,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Listeners: map[string]loadbalancer.ListenerDetails{
 					"TCP-80": loadbalancer.ListenerDetails{
 						DefaultBackendSetName: common.String("TCP-80"),
-						Port:     common.Int(80),
-						Protocol: common.String("TCP"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
 					},
 				},
 				BackendSets: map[string]loadbalancer.BackendSetDetails{
@@ -282,8 +282,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Listeners: map[string]loadbalancer.ListenerDetails{
 					"TCP-80": loadbalancer.ListenerDetails{
 						DefaultBackendSetName: common.String("TCP-80"),
-						Port:     common.Int(80),
-						Protocol: common.String("TCP"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
 						ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
 							IdleTimeout: common.Int64(404),
 						},
@@ -342,8 +342,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Listeners: map[string]loadbalancer.ListenerDetails{
 					"HTTP-80": loadbalancer.ListenerDetails{
 						DefaultBackendSetName: common.String("TCP-80"),
-						Port:     common.Int(80),
-						Protocol: common.String("HTTP"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("HTTP"),
 					},
 				},
 				BackendSets: map[string]loadbalancer.BackendSetDetails{
@@ -399,8 +399,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Listeners: map[string]loadbalancer.ListenerDetails{
 					"TCP-80": loadbalancer.ListenerDetails{
 						DefaultBackendSetName: common.String("TCP-80"),
-						Port:     common.Int(80),
-						Protocol: common.String("TCP"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
 					},
 				},
 				BackendSets: map[string]loadbalancer.BackendSetDetails{
@@ -456,8 +456,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Listeners: map[string]loadbalancer.ListenerDetails{
 					"TCP-80": loadbalancer.ListenerDetails{
 						DefaultBackendSetName: common.String("TCP-80"),
-						Port:     common.Int(80),
-						Protocol: common.String("TCP"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
 					},
 				},
 				BackendSets: map[string]loadbalancer.BackendSetDetails{

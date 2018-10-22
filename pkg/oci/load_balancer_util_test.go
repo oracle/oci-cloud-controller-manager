@@ -411,7 +411,7 @@ func TestGetListenerChanges(t *testing.T) {
 			},
 			actual: map[string]loadbalancer.Listener{
 				"TCP-80": loadbalancer.Listener{
-					Name: common.String("TCP-80"),
+					Name:                  common.String("TCP-80"),
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("TCP"),
 					Port:                  common.Int(80),
@@ -440,13 +440,13 @@ func TestGetListenerChanges(t *testing.T) {
 			},
 			actual: map[string]loadbalancer.Listener{
 				"TCP-443": loadbalancer.Listener{
-					Name: common.String("TCP-443"),
+					Name:                  common.String("TCP-443"),
 					DefaultBackendSetName: common.String("TCP-443"),
 					Protocol:              common.String("TCP"),
 					Port:                  common.Int(443),
 				},
 				"TCP-80": loadbalancer.Listener{
-					Name: common.String("TCP-80"),
+					Name:                  common.String("TCP-80"),
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("TCP"),
 					Port:                  common.Int(80),
@@ -475,7 +475,7 @@ func TestGetListenerChanges(t *testing.T) {
 			},
 			actual: map[string]loadbalancer.Listener{
 				"TCP-80": loadbalancer.Listener{
-					Name: common.String("TCP-80"),
+					Name:                  common.String("TCP-80"),
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("TCP"),
 					Port:                  common.Int(80),
@@ -497,7 +497,7 @@ func TestGetListenerChanges(t *testing.T) {
 			},
 			actual: map[string]loadbalancer.Listener{
 				"TCP-80": loadbalancer.Listener{
-					Name: common.String("TCP-80"),
+					Name:                  common.String("TCP-80"),
 					DefaultBackendSetName: common.String("TCP-80"),
 					Protocol:              common.String("TCP"),
 					Port:                  common.Int(80),

@@ -1,9 +1,7 @@
-box: golang:1.9
+box: iad.ocir.io/spinnaker/oci-kube-ci:1.0.3
 no-response-timeout: 30
 command-timeout: 30
-dev:
-  steps:
-    - internal/shell
+
 build:
   base-path: "/go/src/github.com/oracle/oci-cloud-controller-manager"
   steps:
@@ -18,7 +16,6 @@ build:
     - script:
       name: golint
       code: |
-        go get -u github.com/golang/lint/golint
         make golint
 
     - script:
@@ -43,7 +40,6 @@ build:
         make version > dist/VERSION.txt
         cat dist/VERSION.txt
 
-
 copy:
   steps:
     - script:
@@ -62,7 +58,6 @@ copy:
         cp -R pkg ${WERCKER_OUTPUT_DIR}/
         cp -R test ${WERCKER_OUTPUT_DIR}/
         cp -R vendor ${WERCKER_OUTPUT_DIR}/
-
 
 push:
   box:
@@ -124,14 +119,11 @@ push:
         username: $OCIRUSERNAME
         password: $OCIRPASSWORD
 
-
 e2e-test:
   base-path: "/go/src/github.com/oracle/oci-cloud-controller-manager"
   box:
-    id: iad.ocir.io/oracle/oci-cloud-controller-manager-ci-e2e:1.0.0
+    id: iad.ocir.io/spinnaker/oci-kube-ci:1.0.3
     registry: https://iad.ocir.io/v2
-    username: $OCIRUSERNAME
-    password: $OCIRPASSWORD
   steps:
     - script:
       name: set ENV vars
@@ -155,14 +147,11 @@ e2e-test:
       name: rollback original CCM
       code: make rollback
 
-
 push-canary:
   base-path: "/go/src/github.com/oracle/oci-cloud-controller-manager"
   box:
-    id: iad.ocir.io/oracle/oci-cloud-controller-manager-ci-e2e:1.0.1
+    id: iad.ocir.io/spinnaker/oci-kube-ci:1.0.2
     registry: https://iad.ocir.io/v2
-    username: $OCIRUSERNAME
-    password: $OCIRPASSWORD
   steps:
     - script:
       name: set ENV vars
@@ -181,13 +170,10 @@ push-canary:
       username: $OCIRUSERNAME
       password: $OCIRPASSWORD
 
-
 validate-canary:
   box:
-    id: iad.ocir.io/oracle/oci-cloud-controller-manager-ci-e2e:1.0.1
+    id: iad.ocir.io/spinnaker/oci-kube-ci:1.0.3
     registry: https://iad.ocir.io/v2
-    username: $OCIRUSERNAME
-    password: $OCIRPASSWORD
   steps:
     - script:
       name: set ENV vars

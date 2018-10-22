@@ -12,15 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM oraclelinux:7.4
+FROM oraclelinux:7-slim
 
-RUN yum install -y ca-certificates make openssl git jq && yum clean all
+RUN yum install --enablerepo=ol7_developer_EPEL -y \
+    ca-certificates \
+    gcc \
+    git \
+    jq \
+    make \
+    openssl \
+    pwgen \
+    python \
+    python-pip \
+    python-yaml \
+    unzip && \
+    yum clean all && rm -rf /var/cache/yum
 
 # Install golang environment
-RUN curl https://storage.googleapis.com/golang/go1.10.3.linux-amd64.tar.gz -O && \
+RUN curl https://storage.googleapis.com/golang/go1.11.1.linux-amd64.tar.gz -O && \
     mkdir /tools && \
-    tar xzf go1.10.3.linux-amd64.tar.gz -C /tools && \
-    rm go1.10.3.linux-amd64.tar.gz && \
+    tar xzf go1.11.1.linux-amd64.tar.gz -C /tools && \
+    rm go1.11.1.linux-amd64.tar.gz && \
     mkdir -p /go/bin
 
 ENV PATH=/tools/go/bin:/go/bin:/tools/linux-amd64:$PATH \
@@ -33,4 +45,25 @@ RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.11.0/b
     mv ./kubectl /usr/local/bin/kubectl
 
 # Install Ginkgo
-RUN go get -u github.com/onsi/ginkgo/ginkgo
+RUN go get -u github.com/onsi/ginkgo/ginkgo && \
+    go get -u github.com/onsi/gomega/...
+
+# Install golint
+RUN go get -u golang.org/x/lint/golint
+
+# Install Terraform
+RUN curl https://releases.hashicorp.com/terraform/0.10.7/terraform_0.10.7_linux_amd64.zip -LO && \
+    unzip terraform_0.10.7_linux_amd64.zip && \
+    mv terraform /usr/bin && \
+    rm -f terraform terraform_0.10.7_linux_amd64.zip
+
+# Installs the OCI terraform provider
+RUN curl -LO https://github.com/oracle/terraform-provider-oci/releases/download/2.0.2/linux.tar.gz && \
+    tar -xvf linux.tar.gz -C / && \
+    echo "providers { oci = \"/linux_amd64/terraform-provider-oci_v2.0.2\" }" > ~/.terraformrc && \
+    rm -f linux.tar.gz
+
+# Install OCI client
+RUN pip install \
+    oci \
+    requests[security]
