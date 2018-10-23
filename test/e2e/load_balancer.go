@@ -24,15 +24,13 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
+	cloudprovider "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci"
+	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
-
-	cloudprovider "github.com/oracle/oci-cloud-controller-manager/pkg/oci"
-	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
 )
 
 var _ = Describe("Service [Slow]", func() {

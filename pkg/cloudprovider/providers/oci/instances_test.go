@@ -22,14 +22,14 @@ import (
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/core"
 
-	api "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 )
 
 func TestExtractNodeAddressesFromVNIC(t *testing.T) {
 	testCases := []struct {
 		name string
 		in   *core.Vnic
-		out  []api.NodeAddress
+		out  []v1.NodeAddress
 		err  error
 	}{
 		{
@@ -38,9 +38,9 @@ func TestExtractNodeAddressesFromVNIC(t *testing.T) {
 				PrivateIp: common.String("10.0.0.1"),
 				PublicIp:  common.String("0.0.0.1"),
 			},
-			out: []api.NodeAddress{
-				api.NodeAddress{Type: api.NodeInternalIP, Address: "10.0.0.1"},
-				api.NodeAddress{Type: api.NodeExternalIP, Address: "0.0.0.1"},
+			out: []v1.NodeAddress{
+				v1.NodeAddress{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
+				v1.NodeAddress{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
 			},
 			err: nil,
 		},
@@ -49,8 +49,8 @@ func TestExtractNodeAddressesFromVNIC(t *testing.T) {
 			in: &core.Vnic{
 				PrivateIp: common.String("10.0.0.1"),
 			},
-			out: []api.NodeAddress{
-				api.NodeAddress{Type: api.NodeInternalIP, Address: "10.0.0.1"},
+			out: []v1.NodeAddress{
+				v1.NodeAddress{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
 			},
 			err: nil,
 		},
@@ -59,8 +59,8 @@ func TestExtractNodeAddressesFromVNIC(t *testing.T) {
 			in: &core.Vnic{
 				PublicIp: common.String("0.0.0.1"),
 			},
-			out: []api.NodeAddress{
-				api.NodeAddress{Type: api.NodeExternalIP, Address: "0.0.0.1"},
+			out: []v1.NodeAddress{
+				v1.NodeAddress{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
 			},
 			err: nil,
 		},

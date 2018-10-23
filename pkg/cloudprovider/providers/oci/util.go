@@ -12,20 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package util
+package oci
 
 import (
 	"strings"
 
 	"github.com/pkg/errors"
 	api "k8s.io/api/core/v1"
-)
-
-const (
-	// ProviderName uniquely identifies the Oracle Bare Metal Cloud Services (OCI)
-	// cloud-provider.
-	ProviderName   = "oci"
-	providerPrefix = ProviderName + "://"
 )
 
 // MapProviderIDToInstanceID parses the provider id and returns the instance ocid.
