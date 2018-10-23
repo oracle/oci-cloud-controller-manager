@@ -26,9 +26,11 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci" // register oci cloud provider
+	client "github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	common "github.com/oracle/oci-go-sdk/common"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,10 +39,6 @@ import (
 	clientcmd "k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/cloudprovider"
-
-	oci "github.com/oracle/oci-cloud-controller-manager/pkg/oci" // register oci cloud provider
-	client "github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	common "github.com/oracle/oci-go-sdk/common"
 )
 
 const (

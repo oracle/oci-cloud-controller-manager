@@ -20,15 +20,12 @@ import (
 	"net"
 	"strings"
 
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/core"
 	"github.com/pkg/errors"
-
 	api "k8s.io/api/core/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	cloudprovider "k8s.io/kubernetes/pkg/cloudprovider"
-
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/util"
 )
 
 var _ cloudprovider.Instances = &CloudProvider{}
@@ -96,7 +93,7 @@ func (cp *CloudProvider) NodeAddresses(ctx context.Context, name types.NodeName)
 // in this method to obtain nodeaddresses.
 func (cp *CloudProvider) NodeAddressesByProviderID(ctx context.Context, providerID string) ([]api.NodeAddress, error) {
 	cp.logger.With("instanceID", providerID).Debug("Getting node addresses by provider id")
-	instanceID, err := util.MapProviderIDToInstanceID(providerID)
+	instanceID, err := MapProviderIDToInstanceID(providerID)
 	if err != nil {
 		return nil, errors.Wrap(err, "MapProviderIDToInstanceID")
 	}
@@ -137,7 +134,7 @@ func (cp *CloudProvider) InstanceType(ctx context.Context, name types.NodeName) 
 func (cp *CloudProvider) InstanceTypeByProviderID(ctx context.Context, providerID string) (string, error) {
 	cp.logger.With("instanceID", providerID).Debug("Getting instance type by provider id")
 
-	instanceID, err := util.MapProviderIDToInstanceID(providerID)
+	instanceID, err := MapProviderIDToInstanceID(providerID)
 	if err != nil {
 		return "", errors.Wrap(err, "MapProviderIDToInstanceID")
 	}
@@ -166,7 +163,7 @@ func (cp *CloudProvider) CurrentNodeName(ctx context.Context, hostname string) (
 // instance will be immediately deleted by the cloud controller manager.
 func (cp *CloudProvider) InstanceExistsByProviderID(ctx context.Context, providerID string) (bool, error) {
 	cp.logger.With("instanceID", providerID).Debug("Checking instance exists by provider id")
-	instanceID, err := util.MapProviderIDToInstanceID(providerID)
+	instanceID, err := MapProviderIDToInstanceID(providerID)
 	if err != nil {
 		return false, err
 	}

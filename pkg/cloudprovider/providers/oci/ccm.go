@@ -20,27 +20,23 @@ import (
 	"context"
 	"fmt"
 	"io"
-
 	"time"
 
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/common/auth"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	wait "k8s.io/apimachinery/pkg/util/wait"
-	informers "k8s.io/client-go/informers"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/informers"
 	clientset "k8s.io/client-go/kubernetes"
 	listersv1 "k8s.io/client-go/listers/core/v1"
-	cache "k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/flowcontrol"
-	cloudprovider "k8s.io/kubernetes/pkg/cloudprovider"
-	controller "k8s.io/kubernetes/pkg/controller"
-
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instancemeta"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/util"
+	"k8s.io/kubernetes/pkg/cloudprovider"
+	"k8s.io/kubernetes/pkg/controller"
 )
 
 const (
@@ -48,10 +44,17 @@ const (
 	rateLimitBucketDefault = 5
 )
 
+const (
+	// providerName uniquely identifies the Oracle Cloud Infrastructure
+	// (OCI) cloud-provider.
+	providerName   = "oci"
+	providerPrefix = providerName + "://"
+)
+
 // ProviderName uniquely identifies the Oracle Bare Metal Cloud Services (OCI)
 // cloud-provider.
 func ProviderName() string {
-	return util.ProviderName
+	return providerName
 }
 
 // CloudProvider is an implementation of the cloud-provider interface for OCI.
@@ -94,7 +97,7 @@ func NewCloudProvider(config *Config) (cloudprovider.Interface, error) {
 
 	if config.CompartmentID == "" {
 		logger.Info("Compartment not supplied in config: attempting to infer from instance metadata")
-		metadata, err := instancemeta.New().Get()
+		metadata, err := metadata.New().Get()
 		if err != nil {
 			return nil, err
 		}

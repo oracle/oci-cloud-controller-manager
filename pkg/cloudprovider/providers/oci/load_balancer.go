@@ -17,19 +17,16 @@ package oci
 import (
 	"context"
 
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/core"
 	"github.com/oracle/oci-go-sdk/loadbalancer"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	sets "k8s.io/apimachinery/pkg/util/sets"
 	k8sports "k8s.io/kubernetes/pkg/master/ports"
-
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/util"
 )
 
 const (
@@ -145,12 +142,12 @@ func getSubnetsForNodes(ctx context.Context, nodes []*v1.Node, client client.Int
 	)
 
 	for _, node := range nodes {
-		ipSet.Insert(util.NodeInternalIP(node))
+		ipSet.Insert(NodeInternalIP(node))
 	}
 
 	for _, node := range nodes {
 		// First see if the IP of the node belongs to a subnet in the cache.
-		ip := util.NodeInternalIP(node)
+		ip := NodeInternalIP(node)
 		subnet, err := client.Networking().GetSubnetFromCacheByIP(ip)
 		if err != nil {
 			return nil, err
@@ -169,7 +166,7 @@ func getSubnetsForNodes(ctx context.Context, nodes []*v1.Node, client client.Int
 			return nil, errors.Errorf(".spec.providerID was not present on node %q", node.Name)
 		}
 
-		id, err := util.MapProviderIDToInstanceID(node.Spec.ProviderID)
+		id, err := MapProviderIDToInstanceID(node.Spec.ProviderID)
 		if err != nil {
 			return nil, errors.Wrap(err, "MapProviderIDToInstanceID")
 		}
@@ -525,7 +522,7 @@ func (cp *CloudProvider) getNodesByIPs(backendIPs []string) ([]*v1.Node, error) 
 
 	ipToNodeLookup := make(map[string]*v1.Node)
 	for _, node := range nodeList {
-		ip := util.NodeInternalIP(node)
+		ip := NodeInternalIP(node)
 		ipToNodeLookup[ip] = node
 	}
 

@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package instancemeta
+package metadata
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
+
+	"github.com/pkg/errors"
 )
 
 const (
@@ -54,23 +55,23 @@ func New() Interface {
 func (m *metadataGetter) Get() (*InstanceMetadata, error) {
 	req, err := http.NewRequest("GET", m.baseURL+metadataEndpoint, nil)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	resp, err := m.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get instance metadata: %v", err)
+		return nil, errors.Wrap(err, "getting instance metadata")
 
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("metadata endpoint returned status %d; expected 200 OK", resp.StatusCode)
+		return nil, errors.Errorf("metadata endpoint returned status %d; expected 200 OK", resp.StatusCode)
 	}
 
 	md := &InstanceMetadata{}
 	err = json.NewDecoder(resp.Body).Decode(md)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "decoding instance metadata response")
 	}
 
 	return md, nil

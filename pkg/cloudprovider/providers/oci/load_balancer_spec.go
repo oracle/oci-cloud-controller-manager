@@ -22,12 +22,9 @@ import (
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/loadbalancer"
 	"github.com/pkg/errors"
-
 	"k8s.io/api/core/v1"
 	sets "k8s.io/apimachinery/pkg/util/sets"
 	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
-
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/util"
 )
 
 // certificateData is a structure containing the data about a K8S secret required
@@ -255,7 +252,7 @@ func getBackends(nodes []*v1.Node, nodePort int32) []loadbalancer.BackendDetails
 	backends := make([]loadbalancer.BackendDetails, len(nodes))
 	for i, node := range nodes {
 		backends[i] = loadbalancer.BackendDetails{
-			IpAddress: common.String(util.NodeInternalIP(node)),
+			IpAddress: common.String(NodeInternalIP(node)),
 			Port:      common.Int(int(nodePort)),
 			Weight:    common.Int(1),
 		}
