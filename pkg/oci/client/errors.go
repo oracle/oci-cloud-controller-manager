@@ -50,6 +50,17 @@ func IsRetryable(err error) bool {
 	return ok && serviceErr.GetHTTPStatusCode() == http.StatusTooManyRequests
 }
 
+// IsConflict returns true if the given error is a conflict.
+func IsConflict(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	err = errors.Cause(err)
+	serviceErr, ok := common.IsServiceError(err)
+	return ok && serviceErr.GetHTTPStatusCode() == http.StatusConflict
+}
+
 // RateLimitError produces an Errorf for rate limiting.
 func RateLimitError(isWrite bool, opName string) error {
 	opType := "read"

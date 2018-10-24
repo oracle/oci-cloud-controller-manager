@@ -20,19 +20,17 @@ import (
 	"reflect"
 	"sort"
 
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/core"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-
 	api "k8s.io/api/core/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	sets "k8s.io/apimachinery/pkg/util/sets"
 	informersv1 "k8s.io/client-go/informers/core/v1"
 	listersv1 "k8s.io/client-go/listers/core/v1"
 	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
-
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 )
 
 const (
@@ -54,16 +52,6 @@ const (
 	// ManagementModeNone denotes the management of no security list rules.
 	ManagementModeNone = "None"
 )
-
-// SecurityListManagementModeChoices are the supported security list management
-// modes.
-var SecurityListManagementModeChoices = []string{ManagementModeAll, ManagementModeFrontend, ManagementModeNone}
-
-// IsValidSecurityListManagementMode checks if a given security list management
-// mode is valid.
-func IsValidSecurityListManagementMode(mode string) bool {
-	return sets.NewString(SecurityListManagementModeChoices...).Has(mode)
-}
 
 type portSpec struct {
 	ListenerPort      int

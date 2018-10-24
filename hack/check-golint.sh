@@ -23,7 +23,7 @@ set -o pipefail
 TARGETS=$(for d in "$@"; do echo ./$d/...; done)
 
 echo -n "Checking golint: "
-ERRS=$(golint ${TARGETS} 2>&1 || true)
+ERRS=$(golint ${TARGETS} 2>&1 | grep -v pkg/util/mount || true)
 if [ -n "${ERRS}" ]; then
     echo "FAIL"
     echo "${ERRS}"

@@ -127,6 +127,22 @@ func (c *mockComputeClient) ListVnicAttachments(ctx context.Context, request cor
 	return core.ListVnicAttachmentsResponse{}, nil
 }
 
+func (c *mockComputeClient) GetVolumeAttachment(ctx context.Context, request core.GetVolumeAttachmentRequest) (response core.GetVolumeAttachmentResponse, err error) {
+	return core.GetVolumeAttachmentResponse{}, nil
+}
+
+func (c *mockComputeClient) ListVolumeAttachments(ctx context.Context, request core.ListVolumeAttachmentsRequest) (response core.ListVolumeAttachmentsResponse, err error) {
+	return core.ListVolumeAttachmentsResponse{}, nil
+}
+
+func (c *mockComputeClient) AttachVolume(ctx context.Context, request core.AttachVolumeRequest) (response core.AttachVolumeResponse, err error) {
+	return core.AttachVolumeResponse{}, nil
+}
+
+func (c *mockComputeClient) DetachVolume(ctx context.Context, request core.DetachVolumeRequest) (response core.DetachVolumeResponse, err error) {
+	return core.DetachVolumeResponse{}, nil
+}
+
 /* Mock NetworkClient interface implementations */
 func (c *mockVirtualNetworkClient) GetVnic(ctx context.Context, request core.GetVnicRequest) (response core.GetVnicResponse, err error) {
 	return core.GetVnicResponse{}, nil

@@ -27,6 +27,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci" // register oci cloud provider
+	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	client "github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	common "github.com/oracle/oci-go-sdk/common"
 	"github.com/pkg/errors"
@@ -74,11 +75,11 @@ type Framework struct {
 	ClientSet         clientset.Interface
 	InternalClientset internalclientset.Interface
 
-	CloudProviderConfig *oci.Config      // If specified, the CloudProviderConfig. This provides information on the configuration of the test cluster.
-	Client              client.Interface // An OCI client for checking the state of any provisioned OCI infrastructure during testing.
-	NodePortTest        bool             // An optional configuration for E2E testing. If set to true, then will run additional E2E nodePort connectivity checks during testing.
-	CCMSecListID        string           // An optional configuration for E2E testing. If present can be used to run additional checks against seclist during testing.
-	K8SSecListID        string           // An optional configuration for E2E testing. If present can be used to run additional checks against seclist during testing.
+	CloudProviderConfig *providercfg.Config // If specified, the CloudProviderConfig. This provides information on the configuration of the test cluster.
+	Client              client.Interface    // An OCI client for checking the state of any provisioned OCI infrastructure during testing.
+	NodePortTest        bool                // An optional configuration for E2E testing. If set to true, then will run additional E2E nodePort connectivity checks during testing.
+	CCMSecListID        string              // An optional configuration for E2E testing. If present can be used to run additional checks against seclist during testing.
+	K8SSecListID        string              // An optional configuration for E2E testing. If present can be used to run additional checks against seclist during testing.
 
 	SkipNamespaceCreation bool            // Whether to skip creating a namespace
 	Namespace             *v1.Namespace   // Every test has at least one namespace unless creation is skipped
@@ -275,13 +276,13 @@ func (f *Framework) AfterEach() {
 
 // createCloudProviderConfig unmarshalls the CCM's cloud provider config from
 // the specified location so it can be used for testing.
-func createCloudProviderConfig(cloudConfigFile string) (*oci.Config, error) {
+func createCloudProviderConfig(cloudConfigFile string) (*providercfg.Config, error) {
 	file, err := os.Open(cloudConfigFile)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Couldn't open cloud provider configuration: %s.", cloudConfigFile)
 	}
 	defer file.Close()
-	cloudProviderConfig, err := oci.ReadConfig(file)
+	cloudProviderConfig, err := providercfg.ReadConfig(file)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Couldn't create cloud provider configuration: %s.", cloudConfigFile)
 	}
@@ -289,7 +290,7 @@ func createCloudProviderConfig(cloudConfigFile string) (*oci.Config, error) {
 }
 
 // createOCIClient creates an OCI client derived from the CCM's cloud provider config file.
-func createOCIClient(cloudProviderConfig *oci.Config) (client.Interface, error) {
+func createOCIClient(cloudProviderConfig *providercfg.Config) (client.Interface, error) {
 	cpc := cloudProviderConfig.Auth
 	ociClientConfig := common.NewRawConfigurationProvider(cpc.TenancyID, cpc.UserID, cpc.Region, cpc.Fingerprint, cpc.PrivateKey, &cpc.PrivateKeyPassphrase)
 	logger := zap.L()

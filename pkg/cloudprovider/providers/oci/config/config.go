@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package oci
+package config
 
 import (
 	"io"
@@ -39,6 +39,17 @@ type AuthConfig struct {
 	PrivateKeyPassphrase string `yaml:"key_passphrase"`
 	Passphrase           string `yaml:"passphrase"`
 }
+
+const (
+	// ManagementModeAll denotes the management of security list rules for load
+	// balancer ingress/egress, health checkers, and worker ingress/egress.
+	ManagementModeAll = "All"
+	// ManagementModeFrontend denotes the management of security list rules for load
+	// balancer ingress only.
+	ManagementModeFrontend = "Frontend"
+	// ManagementModeNone denotes the management of no security list rules.
+	ManagementModeNone = "None"
+)
 
 // LoadBalancerConfig holds the configuration options for OCI load balancers.
 type LoadBalancerConfig struct {
