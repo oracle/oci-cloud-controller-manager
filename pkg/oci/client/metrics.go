@@ -34,17 +34,23 @@ var (
 type resource string
 
 const (
-	instanceResource         resource = "instance"
-	vnicAttachmentResource   resource = "vnic_attachment"
-	vnicResource             resource = "vnic"
-	subnetResource           resource = "subnet"
-	loadBalancerResource     resource = "load_balancer"
-	backendSetResource       resource = "load_balancer_backend_set"
-	listenerResource         resource = "load_balancer_listener"
-	certificateResource      resource = "load_balancer_certificate"
-	workRequestResource      resource = "load_balancer_work_request"
-	securityListResource     resource = "security_list"
-	volumeAttachmentResource resource = "volume_attachment"
+	instanceResource           resource = "instance"
+	vnicAttachmentResource     resource = "vnic_attachment"
+	vnicResource               resource = "vnic"
+	subnetResource             resource = "subnet"
+	loadBalancerResource       resource = "load_balancer"
+	backendSetResource         resource = "load_balancer_backend_set"
+	listenerResource           resource = "load_balancer_listener"
+	certificateResource        resource = "load_balancer_certificate"
+	workRequestResource        resource = "load_balancer_work_request"
+	securityListResource       resource = "security_list"
+	volumeResource             resource = "volume"
+	volumeAttachmentResource   resource = "volume_attachment"
+	fileSystemResource         resource = "file_system"
+	mountTargetResource        resource = "mount_target"
+	exportResource             resource = "export"
+	privateIPResource          resource = "private_ip"
+	availabilityDomainResource resource = "availability_domain"
 )
 
 type verb string

@@ -159,3 +159,7 @@ func (c *mockVirtualNetworkClient) GetSecurityList(ctx context.Context, request 
 func (c *mockVirtualNetworkClient) UpdateSecurityList(ctx context.Context, request core.UpdateSecurityListRequest) (response core.UpdateSecurityListResponse, err error) {
 	return core.UpdateSecurityListResponse{}, nil
 }
+
+func (c *mockVirtualNetworkClient) GetPrivateIp(ctx context.Context, request core.GetPrivateIpRequest) (response core.GetPrivateIpResponse, err error) {
+	return core.GetPrivateIpResponse{}, nil
+}

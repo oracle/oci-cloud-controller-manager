@@ -30,6 +30,8 @@ type NetworkingInterface interface {
 
 	GetSecurityList(ctx context.Context, id string) (core.GetSecurityListResponse, error)
 	UpdateSecurityList(ctx context.Context, request core.UpdateSecurityListRequest) (core.UpdateSecurityListResponse, error)
+
+	GetPrivateIP(ctx context.Context, id string) (*core.PrivateIp, error)
 }
 
 func (c *client) GetVNIC(ctx context.Context, id string) (*core.Vnic, error) {
@@ -120,4 +122,19 @@ func (c *client) UpdateSecurityList(ctx context.Context, request core.UpdateSecu
 
 func subnetCacheKeyFn(obj interface{}) (string, error) {
 	return *obj.(*core.Subnet).Id, nil
+}
+
+func (c *client) GetPrivateIP(ctx context.Context, id string) (*core.PrivateIp, error) {
+	if !c.rateLimiter.Reader.TryAccept() {
+		return nil, RateLimitError(false, "GetPrivateIp")
+	}
+
+	resp, err := c.network.GetPrivateIp(ctx, core.GetPrivateIpRequest{PrivateIpId: &id})
+	incRequestCounter(err, getVerb, privateIPResource)
+
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return &resp.PrivateIp, nil
 }
