@@ -2,6 +2,10 @@ box: iad.ocir.io/spinnaker/oci-kube-ci:1.0.3
 no-response-timeout: 30
 command-timeout: 30
 
+#============================================
+# New cloud-provider-oci build pipeline
+#============================================
+
 unit-test:
   base-path: "/go/src/github.com/oracle/oci-cloud-controller-manager"
   steps:
@@ -50,9 +54,42 @@ publish-docker-image:
     - script:
         name: Install docker
         code: apk --no-cache add docker
+
+    - script:
+        name: Docker login
+        code: echo "Docker login"
+
     - script:
         name: Build cloud-provider-oci Dockerfile
-        code: docker build -t oci-cloud-provider .
+        code: docker build -t iad.ocir.io/oracle/oci-cloud-provider:latest .
+
+    - script:
+        name: Push image
+        code: echo "Pushing Docker image to iad.ocir.io/oracle/oci-cloud-provider:latest"
+
+ccm-e2e-test:
+  base-path: "/go/src/github.com/oracle/oci-cloud-controller-manager"
+  steps:
+    - script:
+      name: Run CCM E2E tests
+      code: |
+        echo "Running CCM E2E tests"
+
+volume-provisioner-e2e-test:
+  base-path: "/go/src/github.com/oracle/oci-cloud-controller-manager"
+  steps:
+    - script:
+      name: Run volume provisioner E2E tests
+      code: |
+        echo "Running volume provisioner E2E tests"
+
+#============================================
+# New cloud-provider-oci release pipeline
+#============================================
+
+# =============================
+# Old pipeline
+# =============================
 
 build:
   base-path: "/go/src/github.com/oracle/oci-cloud-controller-manager"
