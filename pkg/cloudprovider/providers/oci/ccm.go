@@ -22,6 +22,7 @@ import (
 	"io"
 	"time"
 
+	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 	"github.com/oracle/oci-go-sdk/common"
@@ -68,7 +69,7 @@ type CloudProvider struct {
 	kubeclient clientset.Interface
 
 	securityListManagerFactory securityListManagerFactory
-	config                     *Config
+	config                     *providercfg.Config
 
 	logger *zap.SugaredLogger
 }
@@ -78,7 +79,7 @@ type CloudProvider struct {
 var _ cloudprovider.Interface = &CloudProvider{}
 
 // NewCloudProvider creates a new oci.CloudProvider.
-func NewCloudProvider(config *Config) (cloudprovider.Interface, error) {
+func NewCloudProvider(config *providercfg.Config) (cloudprovider.Interface, error) {
 	// The global logger has been replaced with the logger we constructed in
 	// main.go so capture it here and then pass it into all components.
 	logger := zap.L()
@@ -122,7 +123,7 @@ func NewCloudProvider(config *Config) (cloudprovider.Interface, error) {
 
 func init() {
 	cloudprovider.RegisterCloudProvider(ProviderName(), func(config io.Reader) (cloudprovider.Interface, error) {
-		cfg, err := ReadConfig(config)
+		cfg, err := providercfg.ReadConfig(config)
 		if err != nil {
 			return nil, err
 		}
@@ -217,7 +218,7 @@ func (cp *CloudProvider) HasClusterID() bool {
 	return true
 }
 
-func buildConfigurationProvider(logger *zap.Logger, config *Config) (common.ConfigurationProvider, error) {
+func buildConfigurationProvider(logger *zap.Logger, config *providercfg.Config) (common.ConfigurationProvider, error) {
 	if config.Auth.UseInstancePrincipals {
 		logger.Info("Using instance principals configuration provider")
 		cp, err := auth.InstancePrincipalConfigurationProvider()
@@ -240,9 +241,9 @@ func buildConfigurationProvider(logger *zap.Logger, config *Config) (common.Conf
 
 // NewRateLimiter builds and returns a struct containing read and write
 // rate limiters. Defaults are used where no (0) value is provided.
-func NewRateLimiter(logger *zap.SugaredLogger, config *RateLimiterConfig) client.RateLimiter {
+func NewRateLimiter(logger *zap.SugaredLogger, config *providercfg.RateLimiterConfig) client.RateLimiter {
 	if config == nil {
-		config = &RateLimiterConfig{}
+		config = &providercfg.RateLimiterConfig{}
 	}
 
 	// Set to default values if configuration not declared

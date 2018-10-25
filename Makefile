@@ -60,8 +60,8 @@ check: gofmt govet golint
 build-dirs:
 	@mkdir -p dist/
 
-.PHONY: build
-build: build-dirs manifests
+.PHONY: oci-cloud-controller-manager
+oci-cloud-controller-manager: build-dirs
 	@GOOS=$(GOOS) GOARCH=$(ARCH) go build     \
 	    -i                                    \
 	    -o dist/oci-cloud-controller-manager  \
@@ -69,9 +69,20 @@ build: build-dirs manifests
 	    -ldflags "-X main.version=$(VERSION) -X main.build=$(BUILD)" \
 	    ./cmd/oci-cloud-controller-manager
 
+.PHONY: oci-flexvolume-driver
+oci-flexvolume-driver: build-dirs
+	@GOOS=$(GOOS) GOARCH=$(ARCH) CGO_ENABLED=0 go build                    \
+	    -i                                                                 \
+	    -o dist/oci-flexvolume-driver                                      \
+	    -ldflags="-s -w -X main.version=$(VERSION) -X main.build=$(BUILD)" \
+	    ./cmd/oci-flexvolume-driver/
+
+.PHONY: build
+build: oci-cloud-controller-manager oci-flexvolume-driver
+
 .PHONY: manifests
 manifests: build-dirs
-	@cp -a manifests/* dist
+	@cp -a manifests/**/*.yaml dist
 	@sed $(SED_INPLACE)                                            \
 	    's#${IMAGE}:[0-9]\+.[0-9]\+.[0-9]\+#${IMAGE}:${VERSION}#g' \
 	    dist/oci-cloud-controller-manager.yaml
@@ -108,7 +119,7 @@ canary-run-once:
 canary-monitor:
 	@./hack/test-canary.sh monitor
 
-# Validate the generated canary test image. Runs test once 
+# Validate the generated canary test image. Runs test once
 # and monitors from sidecar.
 .PHONY: validate-canary
 validate-canary:

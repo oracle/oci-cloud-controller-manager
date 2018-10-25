@@ -17,6 +17,7 @@ package oci
 import (
 	"testing"
 
+	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"go.uber.org/zap"
 )
 
@@ -26,7 +27,7 @@ func TestBuildRateLimiterWithConfig(t *testing.T) {
 	qpsWrite := float32(8.0)
 	bucketWrite := 20
 
-	rateLimiterConfig := &RateLimiterConfig{
+	rateLimiterConfig := &providercfg.RateLimiterConfig{
 		RateLimitQPSRead:     qpsRead,
 		RateLimitBucketRead:  bucketRead,
 		RateLimitQPSWrite:    qpsWrite,
@@ -45,7 +46,7 @@ func TestBuildRateLimiterWithConfig(t *testing.T) {
 }
 
 func TestBuildRateLimiterWithDefaults(t *testing.T) {
-	rateLimiterConfig := &RateLimiterConfig{}
+	rateLimiterConfig := &providercfg.RateLimiterConfig{}
 
 	rateLimiter := NewRateLimiter(zap.S(), rateLimiterConfig)
 

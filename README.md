@@ -107,8 +107,8 @@ Lastly deploy the controller manager and associated RBAC rules if your cluster
 is configured to use RBAC:
 
 ```bash
-$ kubectl apply -f https://raw.githubusercontent.com/oracle/oci-cloud-controller-manager/master/manifests/oci-cloud-controller-manager.yaml
-$ kubectl apply -f https://raw.githubusercontent.com/oracle/oci-cloud-controller-manager/master/manifests/oci-cloud-controller-manager-rbac.yaml
+$ kubectl apply -f https://raw.githubusercontent.com/oracle/oci-cloud-controller-manager/master/manifests/cloud-controller-manager/oci-cloud-controller-manager.yaml
+$ kubectl apply -f https://raw.githubusercontent.com/oracle/oci-cloud-controller-manager/master/manifests/cloud-controller-manager/oci-cloud-controller-manager-rbac.yaml
 ```
 
 Check the CCM logs to ensure it's running correctly:
@@ -170,7 +170,7 @@ See [LICENSE](LICENSE) for more details.
 [4]: https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/
 [5]: https://github.com/kubernetes/kubernetes/pull/49017
 [6]: https://kubernetes.io/docs/concepts/containers/images/#creating-a-secret-with-a-docker-config
-[7]: https://github.com/oracle/oci-cloud-controller-manager/tree/master/manifests/cloud-provider-example.yaml
+[7]: https://github.com/oracle/oci-cloud-controller-manager/tree/master/manifests/provider-config-example.yaml
 [8]: https://github.com/oracle/oci-cloud-controller-manager/blob/master/docs/tutorial.md
 [9]: https://github.com/oracle/oci-cloud-controller-manager/blob/master/docs/tutorial-ssl.md
 [10]: https://github.com/oracle/oci-cloud-controller-manager/blob/master/docs/rate-limiter-configuration.md

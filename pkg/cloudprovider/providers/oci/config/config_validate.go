@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package oci
+package config
 
 import (
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -59,6 +60,16 @@ func validateAuthConfig(c *AuthConfig, fldPath *field.Path) field.ErrorList {
 		allErrs = append(allErrs, field.Required(fldPath.Child("fingerprint"), ""))
 	}
 	return allErrs
+}
+
+// SecurityListManagementModeChoices are the supported security list management
+// modes.
+var SecurityListManagementModeChoices = []string{ManagementModeAll, ManagementModeFrontend, ManagementModeNone}
+
+// IsValidSecurityListManagementMode checks if a given security list management
+// mode is valid.
+func IsValidSecurityListManagementMode(mode string) bool {
+	return sets.NewString(SecurityListManagementModeChoices...).Has(mode)
 }
 
 // validateLoadBalancerConfig provides basic validation of LoadBalancerConfig

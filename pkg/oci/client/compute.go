@@ -26,11 +26,14 @@ import (
 type ComputeInterface interface {
 	// GetInstance gets information about the specified instance.
 	GetInstance(ctx context.Context, id string) (*core.Instance, error)
+
 	// GetInstanceByNodeName gets the OCI instance corresponding to the given
 	// Kubernetes node name.
 	GetInstanceByNodeName(ctx context.Context, compartmentID, vcnID, nodeName string) (*core.Instance, error)
 
 	GetPrimaryVNICForInstance(ctx context.Context, compartmentID, instanceID string) (*core.Vnic, error)
+
+	VolumeAttachmentInterface
 }
 
 func (c *client) GetInstance(ctx context.Context, id string) (*core.Instance, error) {
