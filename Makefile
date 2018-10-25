@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-REGISTRY := iad.ocir.io/oracle
 PKG := github.com/oracle/oci-cloud-controller-manager
-BIN := oci-cloud-controller-manager
-IMAGE := $(REGISTRY)/$(BIN)
+IMAGE ?= iad.ocir.io/spinnaker/cloud-provider-oci
 
 
 BUILD := $(shell git describe --always --dirty)
@@ -137,10 +135,6 @@ validate-canary:
 .PHONY: clean
 clean:
 	@rm -rf dist
-
-.PHONY: deploy
-deploy:
-	kubectl -n kube-system set image ds/$(BIN) $(BIN)=$(IMAGE):$(VERSION)
 
 .PHONY: run-dev
 run-dev: build

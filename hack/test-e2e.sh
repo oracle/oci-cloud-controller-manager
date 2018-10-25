@@ -24,7 +24,7 @@ function run_e2e_tests() {
     echo "Running e2e tests..."
     # Just run the canary for now... we are limite don loadbalancers.
     ginkgo -v -progress \
-        test/e2e \
+        test/e2e/cloud-controller-manager \
         -- --kubeconfig=${KUBECONFIG} --cloud-config=${CLOUDCONFIG} --delete-namespace=true
 }
 

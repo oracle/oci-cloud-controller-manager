@@ -6,7 +6,7 @@ E2E tests.
 ## Running
 
 ```bash
-$ ginkgo -v -progress test/e2e -- --kubeconfig=${HOME}/.kube/config --delete-namespace=false
+$ ginkgo -v -progress test/e2e/cloud-controller-manager -- --kubeconfig=${HOME}/.kube/config --delete-namespace=false
 ```
 
 NOTE: Test suite will fail if executed behind a `$HTTP_PROXY` that returns a
@@ -14,7 +14,7 @@ NOTE: Test suite will fail if executed behind a `$HTTP_PROXY` that returns a
 
 ## Additional Options
 
-Additional seclist count based sanity checks can be applied during e2e testing 
+Additional seclist count based sanity checks can be applied during e2e testing
 by providing the appropriate seclist ocids. Both must be supplied.
 
 ```bash
@@ -25,7 +25,7 @@ export K8S_SECLIST_ID="ocid1.securitylist.$k8sworkerid"
 Alternatively, these values can be specified as command line parameters.
 
 ```bash
-$ ginkgo -v -progress test/e2e -- \
+$ ginkgo -v -progress test/e2e/cloud-controller-manager -- \
     --kubeconfig=${HOME}/.kube/config \
     --delete-namespace=false \
     --ccm-seclist-id=ocid1.securitylist.$ccmloadblancerid \

@@ -21,11 +21,9 @@ import (
 
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
-
+	"github.com/oracle/oci-cloud-controller-manager/test/e2e/cloud-controller-manager/framework"
+	"github.com/oracle/oci-cloud-controller-manager/test/e2e/cloud-controller-manager/framework/ginkgowrapper"
 	"k8s.io/apiserver/pkg/util/logs"
-
-	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
-	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework/ginkgowrapper"
 )
 
 func TestE2E(t *testing.T) {

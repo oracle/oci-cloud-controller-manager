@@ -20,13 +20,11 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
+	"github.com/oracle/oci-cloud-controller-manager/test/e2e/cloud-controller-manager/framework"
 	"k8s.io/api/core/v1"
 	apitypes "k8s.io/apimachinery/pkg/types"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/cloudprovider"
-
-	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
 )
 
 func assertNodeAddressesContainValidIPs(addrs []v1.NodeAddress) {

@@ -25,6 +25,7 @@ spec:
         - image: iad.ocir.io/__DOCKER_REGISTRY_TENANCY__/oci-flexvolume-driver:__VERSION__
           imagePullPolicy: Always
           name: oci-flexvolume-driver
+          command: ["/bin/bash", "/usr/local/bin/install.sh"]
           securityContext:
             privileged: true
           volumeMounts:
@@ -64,6 +65,7 @@ spec:
         - image: iad.ocir.io/__DOCKER_REGISTRY_TENANCY__/oci-flexvolume-driver:__VERSION__
           imagePullPolicy: Always
           name: oci-flexvolume-driver
+          command: ["/bin/bash", "/usr/local/bin/install.sh"]
           securityContext:
             privileged: true
           volumeMounts:
