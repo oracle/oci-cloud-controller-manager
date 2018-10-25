@@ -27,6 +27,8 @@ import (
 
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/core"
+	"github.com/oracle/oci-go-sdk/filestorage"
+	"github.com/oracle/oci-go-sdk/identity"
 	"github.com/oracle/oci-go-sdk/loadbalancer"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -39,6 +41,9 @@ type Interface interface {
 	Compute() ComputeInterface
 	LoadBalancer() LoadBalancerInterface
 	Networking() NetworkingInterface
+	BlockStorage() BlockStorageInterface
+	FSS() FileStorageInterface
+	Identity() IdentityInterface
 }
 
 // RateLimiter reader and writer.
@@ -63,6 +68,8 @@ type virtualNetworkClient interface {
 	GetSubnet(ctx context.Context, request core.GetSubnetRequest) (response core.GetSubnetResponse, err error)
 	GetSecurityList(ctx context.Context, request core.GetSecurityListRequest) (response core.GetSecurityListResponse, err error)
 	UpdateSecurityList(ctx context.Context, request core.UpdateSecurityListRequest) (response core.UpdateSecurityListResponse, err error)
+
+	GetPrivateIp(ctx context.Context, request core.GetPrivateIpRequest) (response core.GetPrivateIpResponse, err error)
 }
 
 type loadBalancerClient interface {
@@ -81,10 +88,37 @@ type loadBalancerClient interface {
 	DeleteListener(ctx context.Context, request loadbalancer.DeleteListenerRequest) (response loadbalancer.DeleteListenerResponse, err error)
 }
 
+type filestorageClient interface {
+	CreateFileSystem(ctx context.Context, request filestorage.CreateFileSystemRequest) (response filestorage.CreateFileSystemResponse, err error)
+	GetFileSystem(ctx context.Context, request filestorage.GetFileSystemRequest) (response filestorage.GetFileSystemResponse, err error)
+	ListFileSystems(ctx context.Context, request filestorage.ListFileSystemsRequest) (response filestorage.ListFileSystemsResponse, err error)
+	DeleteFileSystem(ctx context.Context, request filestorage.DeleteFileSystemRequest) (response filestorage.DeleteFileSystemResponse, err error)
+
+	CreateExport(ctx context.Context, request filestorage.CreateExportRequest) (response filestorage.CreateExportResponse, err error)
+	ListExports(ctx context.Context, request filestorage.ListExportsRequest) (response filestorage.ListExportsResponse, err error)
+	GetExport(ctx context.Context, request filestorage.GetExportRequest) (response filestorage.GetExportResponse, err error)
+	DeleteExport(ctx context.Context, request filestorage.DeleteExportRequest) (response filestorage.DeleteExportResponse, err error)
+
+	GetMountTarget(ctx context.Context, request filestorage.GetMountTargetRequest) (response filestorage.GetMountTargetResponse, err error)
+}
+
+type blockstorageClient interface {
+	GetVolume(ctx context.Context, request core.GetVolumeRequest) (response core.GetVolumeResponse, err error)
+	CreateVolume(ctx context.Context, request core.CreateVolumeRequest) (response core.CreateVolumeResponse, err error)
+	DeleteVolume(ctx context.Context, request core.DeleteVolumeRequest) (response core.DeleteVolumeResponse, err error)
+}
+
+type identityClient interface {
+	ListAvailabilityDomains(ctx context.Context, request identity.ListAvailabilityDomainsRequest) (*identity.ListAvailabilityDomainsResponse, error)
+}
+
 type client struct {
 	compute      computeClient
 	network      virtualNetworkClient
 	loadbalancer loadBalancerClient
+	filestorage  filestorageClient
+	bs           blockstorageClient
+	identity     identityClient
 
 	rateLimiter RateLimiter
 
@@ -121,13 +155,44 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 
 	err = configureCustomTransport(logger, &lb.BaseClient)
 	if err != nil {
-		return nil, errors.Wrap(err, "configuring load balancer client custom transport")
+		return nil, errors.Wrap(err, "configuring loadbalancer client custom transport")
+	}
+
+	identity, err := identity.NewIdentityClientWithConfigurationProvider(cp)
+	if err != nil {
+		return nil, errors.Wrap(err, "NewIdentityClientWithConfigurationProvider")
+	}
+
+	err = configureCustomTransport(logger, &identity.BaseClient)
+	if err != nil {
+		return nil, errors.Wrap(err, "configuring identity service client custom transport")
+	}
+
+	bs, err := core.NewBlockstorageClientWithConfigurationProvider(cp)
+	if err != nil {
+		return nil, errors.Wrap(err, "NewBlockstorageClientWithConfigurationProvider")
+	}
+
+	err = configureCustomTransport(logger, &bs.BaseClient)
+	if err != nil {
+		return nil, errors.Wrap(err, "configuring block storage service client custom transport")
+	}
+
+	fss, err := filestorage.NewFileStorageClientWithConfigurationProvider(cp)
+	if err != nil {
+		return nil, errors.Wrap(err, "NewFileStorageClientWithConfigurationProvider")
+	}
+
+	err = configureCustomTransport(logger, &fss.BaseClient)
+	if err != nil {
+		return nil, errors.Wrap(err, "configuring file storage service client custom transport")
 	}
 
 	c := &client{
 		compute:      &compute,
 		network:      &network,
 		loadbalancer: &lb,
+		filestorage:  &fss,
 		rateLimiter:  *opRateLimiter,
 
 		subnetCache: cache.NewTTLStore(subnetCacheKeyFn, time.Duration(24)*time.Hour),
@@ -146,6 +211,18 @@ func (c *client) Networking() NetworkingInterface {
 }
 
 func (c *client) Compute() ComputeInterface {
+	return c
+}
+
+func (c *client) Identity() IdentityInterface {
+	return c
+}
+
+func (c *client) BlockStorage() BlockStorageInterface {
+	return c
+}
+
+func (c *client) FSS() FileStorageInterface {
 	return c
 }
 

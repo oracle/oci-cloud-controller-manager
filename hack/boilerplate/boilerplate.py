@@ -142,6 +142,7 @@ skipped_dirs = [
     "hack/boilerplate/test",
     "hack/verify-boilerplate.sh",
     "pkg/util/mount",
+    "pkg/util/signals",
 
     "test/e2e/e2e_test.go",
     "test/e2e/load_balancer.go",

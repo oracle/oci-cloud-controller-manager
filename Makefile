@@ -69,6 +69,15 @@ oci-cloud-controller-manager: build-dirs
 	    -ldflags "-X main.version=$(VERSION) -X main.build=$(BUILD)" \
 	    ./cmd/oci-cloud-controller-manager
 
+.PHONY: oci-volume-provisioner
+oci-volume-provisioner: build-dirs
+	@GOOS=$(GOOS) GOARCH=$(ARCH) CGO_ENABLED=0 go build                                    \
+	-i                                                                                     \
+	-o dist/oci-volume-provisioner                                                         \
+	-ldflags="-s -w -X main.version=${VERSION} -X main.build=${BUILD} -extldflags -static" \
+	./cmd/oci-volume-provisioner
+
+
 .PHONY: oci-flexvolume-driver
 oci-flexvolume-driver: build-dirs
 	@GOOS=$(GOOS) GOARCH=$(ARCH) CGO_ENABLED=0 go build                    \
@@ -78,7 +87,7 @@ oci-flexvolume-driver: build-dirs
 	    ./cmd/oci-flexvolume-driver/
 
 .PHONY: build
-build: oci-cloud-controller-manager oci-flexvolume-driver
+build: oci-cloud-controller-manager oci-volume-provisioner oci-flexvolume-driver
 
 .PHONY: manifests
 manifests: build-dirs

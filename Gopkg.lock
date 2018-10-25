@@ -347,6 +347,20 @@
   version = "1.1.4"
 
 [[projects]]
+  digest = "1:a5167620f170506681907c48fe41b857ddc1564292015f0d6cef8e1486b4dd37"
+  name = "github.com/kubernetes-incubator/external-storage"
+  packages = [
+    "lib/controller",
+    "lib/controller/metrics",
+    "lib/leaderelection",
+    "lib/leaderelection/resourcelock",
+    "lib/util",
+  ]
+  pruneopts = "N"
+  revision = "34df13b0427c75ff57890219cf21d0ecfabb3284"
+  version = "v4.0.0"
+
+[[projects]]
   branch = "master"
   digest = "1:28b0520f4e0c592ccd88fe6886f3f5cd1c71af6decd629485cf04854eb7ed9f3"
   name = "github.com/mailru/easyjson"
@@ -445,6 +459,8 @@
     "common",
     "common/auth",
     "core",
+    "filestorage",
+    "identity",
     "loadbalancer",
   ]
   pruneopts = "N"
@@ -486,7 +502,10 @@
 [[projects]]
   digest = "1:97017d91fb75c4ddbfcce52a8445450e745dc3abb07b7e0c13446e149d1f5f3f"
   name = "github.com/prometheus/client_golang"
-  packages = ["prometheus"]
+  packages = [
+    "prometheus",
+    "prometheus/promhttp",
+  ]
   pruneopts = "N"
   revision = "c5b7fccd204277076155f10851dad72b76a49317"
   version = "v0.8.0"
@@ -573,7 +592,9 @@
     "internal/bufferpool",
     "internal/color",
     "internal/exit",
+    "internal/ztest",
     "zapcore",
+    "zaptest",
   ]
   pruneopts = "N"
   revision = "ff33455a0e382e8a81d14dd7c922020b6b5e7982"
@@ -1340,17 +1361,21 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/kubernetes-incubator/external-storage/lib/controller",
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",
     "github.com/oracle/oci-go-sdk/common",
     "github.com/oracle/oci-go-sdk/common/auth",
     "github.com/oracle/oci-go-sdk/core",
+    "github.com/oracle/oci-go-sdk/filestorage",
+    "github.com/oracle/oci-go-sdk/identity",
     "github.com/oracle/oci-go-sdk/loadbalancer",
     "github.com/pkg/errors",
     "github.com/prometheus/client_golang/prometheus",
     "github.com/spf13/pflag",
     "go.uber.org/zap",
     "go.uber.org/zap/zapcore",
+    "go.uber.org/zap/zaptest",
     "gopkg.in/natefinch/lumberjack.v2",
     "gopkg.in/yaml.v2",
     "k8s.io/api/batch/v1",
@@ -1358,6 +1383,7 @@
     "k8s.io/api/extensions/v1beta1",
     "k8s.io/api/policy/v1beta1",
     "k8s.io/apimachinery/pkg/api/errors",
+    "k8s.io/apimachinery/pkg/api/resource",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/apimachinery/pkg/fields",
     "k8s.io/apimachinery/pkg/labels",
@@ -1379,6 +1405,7 @@
     "k8s.io/client-go/listers/core/v1",
     "k8s.io/client-go/tools/cache",
     "k8s.io/client-go/tools/clientcmd",
+    "k8s.io/client-go/util/flowcontrol",
     "k8s.io/client-go/util/retry",
     "k8s.io/kubernetes/cmd/cloud-controller-manager/app",
     "k8s.io/kubernetes/pkg/api/testapi",
@@ -1393,11 +1420,12 @@
     "k8s.io/kubernetes/pkg/cloudprovider",
     "k8s.io/kubernetes/pkg/controller",
     "k8s.io/kubernetes/pkg/controller/nodelifecycle",
-    "k8s.io/kubernetes/pkg/kubectl",
+    "k8s.io/kubernetes/pkg/kubelet/apis",
     "k8s.io/kubernetes/pkg/master/ports",
     "k8s.io/kubernetes/pkg/scheduler/algorithm/predicates",
     "k8s.io/kubernetes/pkg/scheduler/cache",
     "k8s.io/kubernetes/pkg/version/prometheus",
+    "k8s.io/kubernetes/pkg/volume/util",
     "k8s.io/kubernetes/test/utils",
     "k8s.io/kubernetes/test/utils/image",
     "k8s.io/utils/exec",
