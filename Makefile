@@ -82,7 +82,7 @@ build: oci-cloud-controller-manager oci-flexvolume-driver
 
 .PHONY: manifests
 manifests: build-dirs
-	@cp -a manifests/* dist
+	@cp -a manifests/**/*.yaml dist
 	@sed $(SED_INPLACE)                                            \
 	    's#${IMAGE}:[0-9]\+.[0-9]\+.[0-9]\+#${IMAGE}:${VERSION}#g' \
 	    dist/oci-cloud-controller-manager.yaml

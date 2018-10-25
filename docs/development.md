@@ -57,9 +57,9 @@ using [`dep`][2].
 
 ## DaemonSet manifests
 
-You can template `manifests/oci-cloud-controller-manager.yaml` using
-`make manifests`. This enables running specific versions of the CCM with the
-proviso that the version has been pushed to Github, the CI pipeline has
+You can template `manifests/cloud-controller-manager/oci-cloud-controller-manager.yaml`
+using `make manifests`. This enables running specific versions of the CCM with
+the proviso that the version has been pushed to Github, the CI pipeline has
 passed, and `HEAD` is pointed to the commit in question. You can then execute
 the following to run the CCM as a DaemonSet (RBAC optional):
 
