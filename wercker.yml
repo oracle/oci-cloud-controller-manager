@@ -2,7 +2,7 @@ box: iad.ocir.io/spinnaker/oci-kube-ci:1.0.3
 no-response-timeout: 30
 command-timeout: 30
 
-build:
+test:
   base-path: "/go/src/github.com/oracle/oci-cloud-controller-manager"
   steps:
     - script:
@@ -26,6 +26,9 @@ build:
       name: unit tests
       code: make test
 
+build:
+  base-path: "/go/src/github.com/oracle/oci-cloud-controller-manager"
+  steps:
     - script:
       name: build
       code: make build
