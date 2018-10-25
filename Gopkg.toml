@@ -72,6 +72,10 @@
   version = "1.11.1"
 
 [[constraint]]
+ name = "github.com/kubernetes-incubator/external-storage"
+ version = "4.0.0"
+
+[[constraint]]
   branch = "v2"
   name = "gopkg.in/yaml.v2"
 
