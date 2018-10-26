@@ -59,7 +59,7 @@ func RegisterFlags() {
 	flag.StringVar(&TestContext.RepoRoot, "repo-root", "../../", "Root directory of kubernetes repository, for finding test files.")
 	flag.StringVar(&TestContext.KubeConfig, "kubeconfig", "", "Path to Kubeconfig file with authorization and master location information.")
 	flag.StringVar(&TestContext.OCIConfig, "ociconfig", "", "Path to OCIconfig file with cloud provider config.")
-	flag.StringVar(&TestContext.AD, "ad", "PHX-AD-2", "The availability domain is specified to identify in which to create the volumes.")
+	flag.StringVar(&TestContext.AD, "ad", "AD-2", "The availability domain is specified to identify in which to create the volumes.")
 	flag.StringVar(&TestContext.MntTargetOCID, "mnt-target-id", "", "Mount Target ID is specified to identify the mount target to be attached to the volumes")
 	flag.StringVar(&TestContext.SubnetOCID, "subnet-id", "", "Subnet ID is specified to identify where to look for a mount target, such that a FSS can be mounted.")
 	flag.StringVar(&TestContext.Image, "image", "", "Image name and version to build images")
