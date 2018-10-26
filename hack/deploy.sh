@@ -271,12 +271,15 @@ function rollback-original-ccm() {
     local dist_dir=$(dirname "${hack_dir}")/dist
     local build_version_manifest="${dist_dir}/oci-cloud-controller-manager.yaml"
     local rollback_manifest="${dist_dir}/oci-cloud-controller-manager-rollback.yaml"
-    local rollback_image=$(get-ccm-ds-image)
+    # TODO(apryde): Undo hardcode rollback to ccm image once we've got a release
+    # of cloud-provider-oci.
+    # local rollback_image=$(get-ccm-ds-image)
+    local rollback_image=iad.ocir.io/oracle/oci-cloud-controller-manager
     local rollback_version=$(get_latest_ccm_release)
 
     # Generate a roll-back manifest based on the latest CCM release.
     if [ ! -f ${rollback_manifest} ]; then
-        sed s#${rollback_image}:.*#${rollback_image}:${rollback_version}#g < ${build_version_manifest} > ${rollback_manifest}
+        sed s#$(get-ccm-ds-image):.*#${rollback_image}:${rollback_version}#g < ${build_version_manifest} > ${rollback_manifest}
     fi
 
     # Apply original CCM daemon-set manifest.
