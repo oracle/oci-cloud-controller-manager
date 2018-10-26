@@ -109,7 +109,7 @@ volume-provisioner-e2e-test:
         export KUBECONFIG="/tmp/kubeconfig"
         echo -n "${KUBECONFIG_VAR}" | openssl enc -base64 -d -A > "${KUBECONFIG}"
 
-        export MOUNT_TARGET_ID="ocid1.mounttarget.oc1.iad.aaaaaby27ve2k3isnfqwillqojxwiotjmfsc2ylefuyqaaaa"
+        export MOUNT_TARGET_ID="ocid1.mounttarget.oc1.iad.aaaaaby27vezbb5cnfqwillqojxwiotjmfsc2ylefuzqaaaa"
 
         ginkgo \
           -v \
