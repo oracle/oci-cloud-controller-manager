@@ -74,7 +74,7 @@ The e2e test suite requires the version of the CCM under test to be installed in
 the cluster referenced via the `--kubeconfig` flag.
 
 ```console
-$ ginkgo -v -progress test/e2e  -- --kubeconfig=$HOME/.kube/config --cloud-config="$(pwd)/cloud-provider.yaml"
+$ ginkgo -v -progress test/e2e/cloud-controller-manager  -- --kubeconfig=$HOME/.kube/config --cloud-config="$(pwd)/cloud-provider.yaml"
 ```
 
 [1]: https://www.docker.com/

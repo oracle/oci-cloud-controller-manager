@@ -2,6 +2,10 @@ box: iad.ocir.io/spinnaker/oci-kube-ci:1.0.3
 no-response-timeout: 30
 command-timeout: 30
 
+#============================================
+# New cloud-provider-oci build pipeline
+#============================================
+
 build:
   base-path: "/go/src/github.com/oracle/oci-cloud-controller-manager"
   steps:
@@ -27,108 +31,52 @@ build:
       code: make test
 
     - script:
-      name: build
+      name: Build binaries
       code: make build
 
     - script:
-      name: manifests
+      name: Template manifests
       code: make manifests
 
     - script:
-      name: write VERSION.txt
-      code: |
-        make version > dist/VERSION.txt
-        cat dist/VERSION.txt
-
-copy:
-  steps:
-    - script:
-      name: copy output
-      code: |
-        cp -a dist/* ${WERCKER_OUTPUT_DIR}
-
-    - script:
-      name: copy e2e test artifacts
-      code: |
-        cp -R .git ${WERCKER_OUTPUT_DIR}/
-        cp Makefile ${WERCKER_OUTPUT_DIR}/
-        cp -R cmd ${WERCKER_OUTPUT_DIR}/
-        cp -R dist ${WERCKER_OUTPUT_DIR}/
-        cp -R hack ${WERCKER_OUTPUT_DIR}/
-        cp -R pkg ${WERCKER_OUTPUT_DIR}/
-        cp -R test ${WERCKER_OUTPUT_DIR}/
-        cp -R vendor ${WERCKER_OUTPUT_DIR}/
-
-push:
-  box:
-    id: oraclelinux:7-slim
-  steps:
-    - script:
-        name: set ENV vars
+        name: Write VERSION.txt
         code: |
+          echo "$(make version)" > VERSION.txt
+
+publish-docker-image:
+  box: alpine
+  docker: true
+  steps:
+    - script:
+        name: Set ENV vars
+        code: |
+          export IMAGE="iad.ocir.io/spinnaker/cloud-provider-oci"
           export VERSION=$(cat VERSION.txt)
           echo "${VERSION}"
 
     - script:
-        name: Ensure version is unique
-        code: |
-          if curl -s https://api.github.com/repos/oracle/oci-cloud-controller-manager/git/refs/tags | grep "tags/$VERSION"; then
-            echo "Tag $VERSION already exists. Doing nothing."
-            exit 1
-          fi
+        name: Install docker
+        code: apk --no-cache add docker
 
     - script:
-        name: prepare
-        code: |
-          mv ./oci-cloud-controller-manager /oci-cloud-controller-manager
-          chmod +x /oci-cloud-controller-manager
+        name: Docker login
+        code: docker login iad.ocir.io -u $OCIRUSERNAME -p "$OCIRPASSWORD"
 
-    - internal/docker-push:
-        repository: iad.ocir.io/oracle/oci-cloud-controller-manager
-        tag: $VERSION
-        entrypoint: /oci-cloud-controller-manager
-        user: 65534 # nobody
-        registry: https://iad.ocir.io/v2
-        username: $OCIRUSERNAME
-        password: $OCIRPASSWORD
+    - script:
+        name: Build cloud-provider-oci Dockerfile
+        code: docker build -t ${IMAGE}:${VERSION} .
 
-    - internal/docker-push:
-        repository: lhr.ocir.io/oracle/oci-cloud-controller-manager
-        tag: $VERSION
-        entrypoint: /oci-cloud-controller-manager
-        user: 65534 # nobody
-        registry: https://lhr.ocir.io/v2
-        username: $OCIRUSERNAME
-        password: $OCIRPASSWORD
+    - script:
+        name: Push image
+        code: docker push ${IMAGE}:${VERSION}
 
-    - internal/docker-push:
-        repository: phx.ocir.io/oracle/oci-cloud-controller-manager
-        tag: $VERSION
-        entrypoint: /oci-cloud-controller-manager
-        user: 65534 # nobody
-        registry: https://phx.ocir.io/v2
-        username: $OCIRUSERNAME
-        password: $OCIRPASSWORD
-
-    - internal/docker-push:
-        repository: fra.ocir.io/oracle/oci-cloud-controller-manager
-        tag: $VERSION
-        entrypoint: /oci-cloud-controller-manager
-        user: 65534 # nobody
-        registry: https://fra.ocir.io/v2
-        username: $OCIRUSERNAME
-        password: $OCIRPASSWORD
-
-e2e-test:
+ccm-e2e-test:
   base-path: "/go/src/github.com/oracle/oci-cloud-controller-manager"
-  box:
-    id: iad.ocir.io/spinnaker/oci-kube-ci:1.0.3
-    registry: https://iad.ocir.io/v2
   steps:
     - script:
       name: set ENV vars
       code: |
-        export VERSION=$(cat VERSION.txt)
+        export VERSION=$(make version)
         echo "${VERSION}"
         export NODEPORT_TEST="true"
         export CCM_SECLIST_ID="ocid1.securitylist.oc1.iad.aaaaaaaagekgnvc75yxb66xj2qgocejhyk5xuhojm6wimmteqa5fj43kk5lq"
@@ -147,53 +95,13 @@ e2e-test:
       name: rollback original CCM
       code: make rollback
 
-push-canary:
+volume-provisioner-e2e-test:
   base-path: "/go/src/github.com/oracle/oci-cloud-controller-manager"
-  box:
-    id: iad.ocir.io/spinnaker/oci-kube-ci:1.0.2
-    registry: https://iad.ocir.io/v2
   steps:
     - script:
-      name: set ENV vars
+      name: Run volume provisioner E2E tests
       code: |
-        export VERSION=$(cat dist/VERSION.txt)
-        echo "Pushing test version ${VERSION}"
-    - script:
-        name: configure oci canary entrypoint
-        code: mkdir -p /oci/scripts/ && cp ./hack/ccm-canary-entrypoint.sh /oci/scripts/ccm-canary-entrypoint.sh
-    - internal/docker-push:
-      repository: iad.ocir.io/oracle/oci-cloud-controller-manager-canary
-      tag: $VERSION
-      working-dir: /oci/scripts/
-      entrypoint: ccm-canary-entrypoint.sh
-      registry: https://iad.ocir.io/v2
-      username: $OCIRUSERNAME
-      password: $OCIRPASSWORD
-
-validate-canary:
-  box:
-    id: iad.ocir.io/spinnaker/oci-kube-ci:1.0.3
-    registry: https://iad.ocir.io/v2
-  steps:
-    - script:
-      name: set ENV vars
-      code: |
-        export VERSION=$(cat VERSION.txt)
-        echo "Canary image version ${VERSION}"
-
-    - script:
-      name: deploy latest CCM
-      code: make upgrade
-
-    - script:
-      name: validate canary tests
-      code: make validate-canary
-
-  after-steps:
-    - script:
-      name: rollback original CCM
-      code: make rollback
-
+        echo "Running volume provisioner E2E tests"
 
 release:
   box:

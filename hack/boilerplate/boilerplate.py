@@ -144,15 +144,16 @@ skipped_dirs = [
     "pkg/util/mount",
     "pkg/util/signals",
 
-    "test/e2e/e2e_test.go",
-    "test/e2e/load_balancer.go",
-    "test/e2e/framework/cleanup.go",
-    "test/e2e/framework/framework.go",
-    "test/e2e/framework/seclist_util.go",
-    "test/e2e/framework/service_util.go",
-    "test/e2e/framework/util.go",
-    "test/e2e/framework/networking_util.go",
-    "test/e2e/framework/ginkgowrapper/wrapper.go",
+    "test/e2e/cloud-controller-manager/e2e_test.go",
+    "test/e2e/cloud-controller-manager/load_balancer.go",
+    "test/e2e/cloud-controller-manager/framework/cleanup.go",
+    "test/e2e/cloud-controller-manager/framework/framework.go",
+    "test/e2e/cloud-controller-manager/framework/seclist_util.go",
+    "test/e2e/cloud-controller-manager/framework/service_util.go",
+    "test/e2e/cloud-controller-manager/framework/util.go",
+    "test/e2e/cloud-controller-manager/framework/networking_util.go",
+    "test/e2e/cloud-controller-manager/framework/ginkgowrapper/wrapper.go",
+    "test/e2e/volume-provisioner/framework/ginkgowrapper/wrapper.go",
 ]
 
 

@@ -17,27 +17,27 @@
 
 # Utility functions for managing the version of the CCM running in a Kubernetes
 # cluster.
-# 
-# Functions for deploying the specified version of the CCM in a K8s cluster that 
-# that already has a DaemonSet deployed CCM. The version should be defined by the  
+#
+# Functions for deploying the specified version of the CCM in a K8s cluster that
+# that already has a DaemonSet deployed CCM. The version should be defined by the
 # environment variable VERSION.
-# 
-# Functions for managing a soft (no-threadsafe) lock on the CCM daemonset to 
+#
+# Functions for managing a soft (no-threadsafe) lock on the CCM daemonset to
 # minimise it being upgraded/downgraded during integration tests.
 #
-# Kubectl configured to point to the required target cluster is required on the 
+# Kubectl configured to point to the required target cluster is required on the
 # host machine.
 
 
 # The root name of the CCM daemon-set and pods.
 CCM_NAME="oci-cloud-controller-manager"
 # The name of an annotation that can be used to 'lock' the CCM from upgrade/
-# downgrade operations. 
+# downgrade operations.
 CCM_LOCK_LABEL="ccm-deployment-lock"
 
 function ts() {
     local res=$(date '+%Y-%m-%d %H:%M:%S')
-    echo "${res}" 
+    echo "${res}"
 }
 
 # Kubernetes Cluster CCM Functions ********************************************
@@ -45,12 +45,12 @@ function ts() {
 
 function get-k8s-api-server() {
     local res=$(cat $KUBECONFIG | grep 'server:' | awk '{print $2}')
-    echo "${res}" 
+    echo "${res}"
 }
 
 function get-k8s-master() {
     local res=$(kubectl get nodes | grep master | head -n 1 | awk '{print $1}')
-    echo "${res}" 
+    echo "${res}"
 }
 
 function get-ccm-ds-image-version() {
@@ -119,7 +119,7 @@ function wait-for-ccm-pod-version-ready() {
         sleep ${sleep}
     done
     echo "Failed to wait for pod version '${version}' to be ready."
-    exit 1 
+    exit 1
 }
 
 # Kubernetes Manifest CCM Functions *******************************************
@@ -149,12 +149,12 @@ function get-ccm-manifest-version() {
 # NB: The date is used to help auto-release a lock that has been placed.
 function lock-ccm-deployment() {
     kubectl -n kube-system annotate ds "${CCM_NAME}" "${CCM_LOCK_LABEL}"=$(date +%s)
-    echo "$(ts) : Locked ccm deployment." 
+    echo "$(ts) : Locked ccm deployment."
 }
 
 function unlock-ccm-deployment() {
     kubectl -n kube-system annotate ds "${CCM_NAME}" "${CCM_LOCK_LABEL}-"
-    echo "$(ts) : Unlocked ccm deployment." 
+    echo "$(ts) : Unlocked ccm deployment."
 }
 
 function get-ccm-deployment-lock() {
@@ -175,10 +175,10 @@ function is-ccm-deployment-locked() {
 function auto-release-lock() {
     local locked=$(get-ccm-deployment-lock)
     if [ ! -z "${locked}" ]; then
-        local timeout=$((${locked} + 3600)) 
+        local timeout=$((${locked} + 3600))
         local now=$(date +%s)
         if [ $now -gt $timeout ]; then
-           unlock-ccm-deployment 
+           unlock-ccm-deployment
         fi
     fi
 }
@@ -197,7 +197,7 @@ function wait-for-ccm-deployment-permitted() {
         sleep ${sleep}
     done
     echo "$(ts) : Failed to wait for ccm to finish running existing ci pipeline tests."
-    exit 1 
+    exit 1
 }
 
 # Obtain the deployment lock and ensure that all test namespaces have been cleaned up.
@@ -243,20 +243,20 @@ function deploy-build-version-ccm() {
         echo "Error: The CCM deployment manifest '${build_version_manifest}' did not exist."
         exit 1
     fi
-    local build_version_image=$(get-ccm-manifest-image ${build_version_manifest}) 
+    local build_version_image=$(get-ccm-manifest-image ${build_version_manifest})
     local build_version=$(get-ccm-manifest-version ${build_version_manifest})
 
-    # Wait for there to be no lock on CCM deployment; then take the lock. 
+    # Wait for there to be no lock on CCM deployment; then take the lock.
     # NB: Not threadsafe, but, better then nothing...
     obtain-ccm-deployment-lock
-    
+
     # Apply the build daemon-set manifest.
     echo "deploying test build '${build_version}' CCM '${build_version_image}:${build_version}' to cluster '$(get-k8s-master)'."
     kubectl apply -f ${build_version_manifest}
-    
+
     # Wait for CCM to be ready...
-    wait-for-ccm-pod-version-ready "${build_version}" 
-    
+    wait-for-ccm-pod-version-ready "${build_version}"
+
     # Display Info
     echo "currently deployed CCM daemon-set version: $(get-ccm-ds-image-version)"
     echo "currently deployed CCM pod version       : $(get-ccm-pod-image-version)"
@@ -265,35 +265,8 @@ function deploy-build-version-ccm() {
 
 }
 
-# Rollback to the CCM version the cluster originally used before it was upgraded.
-function rollback-original-ccm() {
-    local hack_dir=$(cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd)
-    local dist_dir=$(dirname "${hack_dir}")/dist
-    local build_version_manifest="${dist_dir}/oci-cloud-controller-manager.yaml"
-    local rollback_manifest="${dist_dir}/oci-cloud-controller-manager-rollback.yaml"
-    local rollback_image=$(get-ccm-ds-image) 
-    local rollback_version=$(get_latest_ccm_release)
-
-    # Generate a roll-back manifest based on the latest CCM release.
-    if [ ! -f ${rollback_manifest} ]; then
-        sed s#${rollback_image}:.*#${rollback_image}:${rollback_version}#g < ${build_version_manifest} > ${rollback_manifest}
-    fi
-    
-    # Apply original CCM daemon-set manifest.
-    echo "rolling back CCM '${rollback_image}:${rollback_version}' to cluster '$(get-k8s-master)'."
-    kubectl apply -f ${rollback_manifest}
-    
-    # Wait for CCM to be ready after rollback...
-    wait-for-ccm-pod-version-ready "${rollback_version}" 
-    
-    # Release the lock on the CCM deployment mechanism.
-    release-ccm-deployment-lock
-    
-    # Display Info
-    echo "currently deployed CCM daemon-set version: $(get-ccm-ds-image-version)"
-    echo "currently deployed CCM pod version       : $(get-ccm-pod-image-version)"
-    echo "currently deployed CCM pod ready state   : $(get-ccm-pod-ready)"
-    echo "CCM locked?                              : $(is-ccm-deployment-locked)"
+function delete-ccm-ds() {
+    kubectl -n kube-system delete ds "${CCM_NAME}"
 }
 
 

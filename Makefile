@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-REGISTRY := iad.ocir.io/oracle
 PKG := github.com/oracle/oci-cloud-controller-manager
-BIN := oci-cloud-controller-manager
-IMAGE := $(REGISTRY)/$(BIN)
+IMAGE ?= iad.ocir.io/spinnaker/cloud-provider-oci
 
 
 BUILD := $(shell git describe --always --dirty)
@@ -107,12 +105,9 @@ upgrade:
 	# Upgrade the current CCM to the specified version
 	@./hack/deploy.sh deploy-build-version-ccm
 
-# Deploys the current version to a specified cluster.
-# Requires a 'dist/oci-cloud-controller-manager-rollback.yaml' manifest. Requires $KUBECONFIG set.
 .PHONY: rollback
 rollback:
-	# Rollback the current CCM to the specified version.
-	@./hack/deploy.sh rollback-original-ccm
+	@./hack/deploy.sh delete-ccm-ds
 
 .PHONY: e2e
 e2e:
@@ -137,10 +132,6 @@ validate-canary:
 .PHONY: clean
 clean:
 	@rm -rf dist
-
-.PHONY: deploy
-deploy:
-	kubectl -n kube-system set image ds/$(BIN) $(BIN)=$(IMAGE):$(VERSION)
 
 .PHONY: run-dev
 run-dev: build
