@@ -265,38 +265,8 @@ function deploy-build-version-ccm() {
 
 }
 
-# Rollback to the CCM version the cluster originally used before it was upgraded.
-function rollback-original-ccm() {
-    local hack_dir=$(cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd)
-    local dist_dir=$(dirname "${hack_dir}")/dist
-    local build_version_manifest="${dist_dir}/oci-cloud-controller-manager.yaml"
-    local rollback_manifest="${dist_dir}/oci-cloud-controller-manager-rollback.yaml"
-    # TODO(apryde): Undo hardcode rollback to ccm image once we've got a release
-    # of cloud-provider-oci.
-    # local rollback_image=$(get-ccm-ds-image)
-    local rollback_image=iad.ocir.io/oracle/oci-cloud-controller-manager
-    local rollback_version=$(get_latest_ccm_release)
-
-    # Generate a roll-back manifest based on the latest CCM release.
-    if [ ! -f ${rollback_manifest} ]; then
-        sed s#$(get-ccm-ds-image):.*#${rollback_image}:${rollback_version}#g < ${build_version_manifest} > ${rollback_manifest}
-    fi
-
-    # Apply original CCM daemon-set manifest.
-    echo "rolling back CCM '${rollback_image}:${rollback_version}' to cluster '$(get-k8s-master)'."
-    kubectl apply -f ${rollback_manifest}
-
-    # Wait for CCM to be ready after rollback...
-    wait-for-ccm-pod-version-ready "${rollback_version}"
-
-    # Release the lock on the CCM deployment mechanism.
-    release-ccm-deployment-lock
-
-    # Display Info
-    echo "currently deployed CCM daemon-set version: $(get-ccm-ds-image-version)"
-    echo "currently deployed CCM pod version       : $(get-ccm-pod-image-version)"
-    echo "currently deployed CCM pod ready state   : $(get-ccm-pod-ready)"
-    echo "CCM locked?                              : $(is-ccm-deployment-locked)"
+function delete-ccm-ds() {
+    kubectl -n kube-system delete ds "${CCM_NAME}"
 }
 
 

@@ -105,12 +105,9 @@ upgrade:
 	# Upgrade the current CCM to the specified version
 	@./hack/deploy.sh deploy-build-version-ccm
 
-# Deploys the current version to a specified cluster.
-# Requires a 'dist/oci-cloud-controller-manager-rollback.yaml' manifest. Requires $KUBECONFIG set.
 .PHONY: rollback
 rollback:
-	# Rollback the current CCM to the specified version.
-	@./hack/deploy.sh rollback-original-ccm
+	@./hack/deploy.sh delete-ccm-ds
 
 .PHONY: e2e
 e2e:
