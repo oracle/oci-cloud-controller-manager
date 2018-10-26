@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	ociprovider "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/flexvolume"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util/iscsi"
@@ -218,14 +219,20 @@ func (d OCIFlexvolumeDriver) Attach(opts flexvolume.Options, nodeName string) fl
 
 	id, err := lookupNodeID(d.K, nodeName)
 	if err != nil {
-		return flexvolume.Fail(err)
+		return flexvolume.Fail("failed to look up node id: ", err)
+	}
+
+	// Handle possible oci:// prefix.
+	id, err = ociprovider.MapProviderIDToInstanceID(id)
+	if err != nil {
+		return flexvolume.Fail("failed to map nodes provider id to instance id: ", err)
 	}
 
 	ctx := context.Background()
 
 	instance, err := c.Compute().GetInstance(ctx, id)
 	if err != nil {
-		return flexvolume.Fail(err)
+		return flexvolume.Fail("failed to get instance: ", err)
 	}
 
 	volumeOCID := deriveVolumeOCID(config.Auth.RegionKey, opts["kubernetes.io/pvOrVolumeName"])
@@ -236,14 +243,14 @@ func (d OCIFlexvolumeDriver) Attach(opts flexvolume.Options, nodeName string) fl
 	if err != nil {
 		if !client.IsConflict(err) {
 			log.Printf("AttachVolume: %+v", err)
-			return flexvolume.Fail(err)
+			return flexvolume.Fail("failed to attach volume: ", err)
 		}
 		// If we get a 409 conflict response when attaching we
 		// presume that the device is already attached.
 		log.Printf("Attach(): Volume %q already attached.", volumeOCID)
 		attachment, err = c.Compute().FindVolumeAttachment(ctx, config.Auth.CompartmentOCID, volumeOCID)
 		if err != nil {
-			return flexvolume.Fail(err)
+			return flexvolume.Fail("failed to find volume attachment: ", err)
 		}
 		if *attachment.GetInstanceId() != *instance.Id {
 			return flexvolume.Fail("Already attached to anoter instance: ", *instance.Id)

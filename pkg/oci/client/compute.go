@@ -41,9 +41,7 @@ func (c *client) GetInstance(ctx context.Context, id string) (*core.Instance, er
 		return nil, RateLimitError(false, "GetInstance")
 	}
 
-	resp, err := c.compute.GetInstance(ctx, core.GetInstanceRequest{
-		InstanceId: &id,
-	})
+	resp, err := c.compute.GetInstance(ctx, core.GetInstanceRequest{InstanceId: &id})
 	incRequestCounter(err, getVerb, instanceResource)
 
 	if err != nil {
