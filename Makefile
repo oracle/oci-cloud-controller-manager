@@ -15,11 +15,10 @@
 PKG := github.com/oracle/oci-cloud-controller-manager
 IMAGE ?= iad.ocir.io/spinnaker/cloud-provider-oci
 
-
-BUILD := $(shell git describe --always --dirty)
-# allow overriding for release versions
-# Else just equal the build (git hash)
+BUILD := $(shell git describe --exact-match 2> /dev/null || git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
+# Allow overriding for release versions else just equal the build (git hash)
 VERSION ?= ${BUILD}
+
 GOOS ?= linux
 ARCH ?= amd64
 
