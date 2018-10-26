@@ -104,7 +104,7 @@ func (fsp *filesystemProvisioner) getOrCreateFileSystem(ctx context.Context, log
 
 func (fsp *filesystemProvisioner) getOrCreateExport(ctx context.Context, logger *zap.SugaredLogger, fsID, exportSetID string) (*fss.Export, error) {
 	summary, err := fsp.client.FSS().FindExport(ctx, fsp.compartmentID, fsID, exportSetID)
-	if err != nil && err != errNotFound {
+	if err != nil && !client.IsNotFound(err) {
 		return nil, err
 	}
 	if summary != nil {
