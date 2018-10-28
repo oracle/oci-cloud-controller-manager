@@ -244,7 +244,7 @@ func (d OCIFlexvolumeDriver) Attach(opts flexvolume.Options, nodeName string) fl
 		// If we get a 409 conflict response when attaching we
 		// presume that the device is already attached.
 		log.Printf("Attach(): Volume %q already attached.", volumeOCID)
-		attachment, err = c.Compute().FindVolumeAttachment(ctx, config.Auth.CompartmentOCID, volumeOCID)
+		attachment, err = c.Compute().FindVolumeAttachment(ctx, config.Auth.CompartmentID, volumeOCID)
 		if err != nil {
 			return flexvolume.Fail("failed to find volume attachment: ", err)
 		}
@@ -283,7 +283,7 @@ func (d OCIFlexvolumeDriver) Detach(pvOrVolumeName, nodeName string) flexvolume.
 
 	volumeOCID := deriveVolumeOCID(config.Auth.RegionKey, pvOrVolumeName)
 	ctx := context.Background()
-	attachment, err := c.Compute().FindVolumeAttachment(ctx, config.Auth.CompartmentOCID, volumeOCID)
+	attachment, err := c.Compute().FindVolumeAttachment(ctx, config.Auth.CompartmentID, volumeOCID)
 	if err != nil {
 		return flexvolume.Fail(err)
 	}
@@ -325,7 +325,7 @@ func (d OCIFlexvolumeDriver) IsAttached(opts flexvolume.Options, nodeName string
 
 	ctx := context.Background()
 	volumeOCID := deriveVolumeOCID(config.Auth.RegionKey, opts["kubernetes.io/pvOrVolumeName"])
-	attachment, err := c.Compute().FindVolumeAttachment(ctx, config.Auth.CompartmentOCID, volumeOCID)
+	attachment, err := c.Compute().FindVolumeAttachment(ctx, config.Auth.CompartmentID, volumeOCID)
 	if err != nil {
 		return flexvolume.DriverStatus{
 			Status:   flexvolume.StatusSuccess,

@@ -26,6 +26,7 @@ import (
 // API.
 type AuthConfig struct {
 	Region      string `yaml:"region"`
+	RegionKey   string `yaml:"regionKey"`
 	TenancyID   string `yaml:"tenancy"`
 	UserID      string `yaml:"user"`
 	PrivateKey  string `yaml:"key"`
@@ -33,7 +34,8 @@ type AuthConfig struct {
 	Passphrase  string `yaml:"passphrase"`
 
 	// TODO(apryde): depreciate
-	UseInstancePrincipals bool `yaml:"useInstancePrincipals"`
+	UseInstancePrincipals bool   `yaml:"useInstancePrincipals"`
+	VCNID                 string `yaml:"vcn"`
 
 	// CompartmentID is DEPRECIATED and should be set on the top level Config
 	// struct.
@@ -91,13 +93,12 @@ type RateLimiterConfig struct {
 // Config holds the OCI cloud-provider config passed to Kubernetes compontents
 // via the --cloud-config option.
 type Config struct {
-	Auth AuthConfig `yaml:"auth"`
-
-	UseInstancePrincipals bool `yaml:"useInstancePrincipals"`
-
+	Auth         AuthConfig         `yaml:"auth"`
 	LoadBalancer LoadBalancerConfig `yaml:"loadBalancer"`
 	RateLimiter  *RateLimiterConfig `yaml:"rateLimiter"`
 
+	// TODO(apryde): use in CCM.
+	UseInstancePrincipals bool `yaml:"useInstancePrincipals"`
 	// CompartmentID is the OCID of the Compartment within which the cluster
 	// resides.
 	CompartmentID string `yaml:"compartment"`
