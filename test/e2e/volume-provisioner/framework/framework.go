@@ -304,8 +304,8 @@ func (f *Framework) newConfigurationProvider(cfg *core.Config) (common.Configura
 		}
 		Logf("Using raw configuration provider")
 		conf = common.NewRawConfigurationProvider(
-			cfg.Auth.TenancyOCID,
-			cfg.Auth.UserOCID,
+			cfg.Auth.TenancyID,
+			cfg.Auth.UserID,
 			cfg.Auth.Region,
 			cfg.Auth.Fingerprint,
 			cfg.Auth.PrivateKey,

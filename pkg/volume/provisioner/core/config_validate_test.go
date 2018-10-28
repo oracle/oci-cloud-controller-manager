@@ -18,6 +18,7 @@ import (
 	"reflect"
 	"testing"
 
+	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -30,23 +31,27 @@ func TestValidateConfig(t *testing.T) {
 		{
 			name: "valid",
 			in: &Config{
-				Auth: AuthConfig{
-					Region:      "us-phoenix-1",
-					TenancyOCID: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
-					UserOCID:    "ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q",
-					PrivateKey:  "-----BEGIN RSA PRIVATE KEY----- (etc)",
-					Fingerprint: "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
+				providercfg.Config{
+					Auth: providercfg.AuthConfig{
+						Region:      "us-phoenix-1",
+						TenancyID:   "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
+						UserID:      "ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q",
+						PrivateKey:  "-----BEGIN RSA PRIVATE KEY----- (etc)",
+						Fingerprint: "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
+					},
 				},
 			},
 			errs: field.ErrorList{},
 		}, {
 			name: "missing_region",
 			in: &Config{
-				Auth: AuthConfig{
-					TenancyOCID: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
-					UserOCID:    "ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q",
-					PrivateKey:  "-----BEGIN RSA PRIVATE KEY----- (etc)",
-					Fingerprint: "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
+				providercfg.Config{
+					Auth: providercfg.AuthConfig{
+						TenancyID:   "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
+						UserID:      "ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q",
+						PrivateKey:  "-----BEGIN RSA PRIVATE KEY----- (etc)",
+						Fingerprint: "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
+					},
 				},
 			},
 			errs: field.ErrorList{
@@ -55,11 +60,13 @@ func TestValidateConfig(t *testing.T) {
 		}, {
 			name: "missing_tenancy",
 			in: &Config{
-				Auth: AuthConfig{
-					Region:      "us-phoenix-1",
-					UserOCID:    "ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q",
-					PrivateKey:  "-----BEGIN RSA PRIVATE KEY----- (etc)",
-					Fingerprint: "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
+				providercfg.Config{
+					Auth: providercfg.AuthConfig{
+						Region:      "us-phoenix-1",
+						UserID:      "ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q",
+						PrivateKey:  "-----BEGIN RSA PRIVATE KEY----- (etc)",
+						Fingerprint: "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
+					},
 				},
 			},
 			errs: field.ErrorList{
@@ -68,11 +75,13 @@ func TestValidateConfig(t *testing.T) {
 		}, {
 			name: "missing_user",
 			in: &Config{
-				Auth: AuthConfig{
-					Region:      "us-phoenix-1",
-					TenancyOCID: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
-					PrivateKey:  "-----BEGIN RSA PRIVATE KEY----- (etc)",
-					Fingerprint: "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
+				providercfg.Config{
+					Auth: providercfg.AuthConfig{
+						Region:      "us-phoenix-1",
+						TenancyID:   "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
+						PrivateKey:  "-----BEGIN RSA PRIVATE KEY----- (etc)",
+						Fingerprint: "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
+					},
 				},
 			},
 			errs: field.ErrorList{
@@ -81,11 +90,13 @@ func TestValidateConfig(t *testing.T) {
 		}, {
 			name: "missing_key",
 			in: &Config{
-				Auth: AuthConfig{
-					Region:      "us-phoenix-1",
-					TenancyOCID: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
-					UserOCID:    "ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q",
-					Fingerprint: "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
+				providercfg.Config{
+					Auth: providercfg.AuthConfig{
+						Region:      "us-phoenix-1",
+						TenancyID:   "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
+						UserID:      "ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q",
+						Fingerprint: "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
+					},
 				},
 			},
 			errs: field.ErrorList{
@@ -94,11 +105,13 @@ func TestValidateConfig(t *testing.T) {
 		}, {
 			name: "missing_figerprint",
 			in: &Config{
-				Auth: AuthConfig{
-					Region:      "us-phoenix-1",
-					TenancyOCID: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
-					UserOCID:    "ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q",
-					PrivateKey:  "-----BEGIN RSA PRIVATE KEY----- (etc)",
+				providercfg.Config{
+					Auth: providercfg.AuthConfig{
+						Region:     "us-phoenix-1",
+						TenancyID:  "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
+						UserID:     "ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q",
+						PrivateKey: "-----BEGIN RSA PRIVATE KEY----- (etc)",
+					},
 				},
 			},
 			errs: field.ErrorList{
@@ -107,21 +120,25 @@ func TestValidateConfig(t *testing.T) {
 		}, {
 			name: "valid with instance principals enabled",
 			in: &Config{
-				UseInstancePrincipals: true,
+				providercfg.Config{
+					UseInstancePrincipals: true,
+				},
 			},
 			errs: field.ErrorList{},
 		}, {
 			name: "mixing instance principals with other auth flags",
 			in: &Config{
-				Auth: AuthConfig{
+				providercfg.Config{
+					Auth: providercfg.AuthConfig{
 
-					Region:      "us-phoenix-1",
-					TenancyOCID: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
-					UserOCID:    "ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q",
-					PrivateKey:  "-----BEGIN RSA PRIVATE KEY----- (etc)",
-					Fingerprint: "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
+						Region:      "us-phoenix-1",
+						TenancyID:   "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
+						UserID:      "ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q",
+						PrivateKey:  "-----BEGIN RSA PRIVATE KEY----- (etc)",
+						Fingerprint: "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
+					},
+					UseInstancePrincipals: true,
 				},
-				UseInstancePrincipals: true,
 			},
 			errs: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeForbidden, Field: "auth.region", Detail: "cannot be used when useInstancePrincipals is enabled", BadValue: ""},

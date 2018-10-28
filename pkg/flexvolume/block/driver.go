@@ -180,16 +180,12 @@ func deriveVolumeOCID(regionKey string, volumeName string) string {
 // constructKubeClient uses a kubeconfig layed down by a secret via deploy.sh to return
 // a kube clientset.
 func constructKubeClient() (*kubernetes.Clientset, error) {
-	fp := GetKubeconfigPath()
-
-	c, err := clientcmd.BuildConfigFromFlags("", fp)
+	c, err := clientcmd.BuildConfigFromFlags("", GetKubeconfigPath())
 	if err != nil {
 		return nil, err
 	}
 
-	k, err := kubernetes.NewForConfig(c)
-
-	return k, err
+	return kubernetes.NewForConfig(c)
 }
 
 // lookupNodeID returns the OCID for the given nodeName.

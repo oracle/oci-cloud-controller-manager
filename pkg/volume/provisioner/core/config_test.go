@@ -65,10 +65,13 @@ func TestLoadClientConfigShouldHaveNoDefaultRegionIfNoneSpecified(t *testing.T) 
 }
 
 func TestLoadConfigShouldHaveCompartment(t *testing.T) {
-	config, _ := LoadConfig(strings.NewReader(validConfig))
+	config, err := LoadConfig(strings.NewReader(validConfig))
+	if err != nil {
+		t.Fatalf("Unexpected error loading config: %+v", err)
+	}
 	expected := "ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq"
-	actual := config.Auth.CompartmentOCID
+	actual := config.Auth.CompartmentID
 	if actual != expected {
-		t.Errorf("expected compartment %s but found %s", expected, actual)
+		t.Errorf("expected compartment %q but found %q (%#v)", expected, actual, config)
 	}
 }

@@ -18,6 +18,7 @@ import (
 	"io"
 	"io/ioutil"
 
+	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/common/auth"
 	"github.com/pkg/errors"
@@ -25,27 +26,9 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// AuthConfig holds the configuration required for communicating with the OCI
-// API.
-type AuthConfig struct {
-	TenancyOCID string `yaml:"tenancy"`
-	UserOCID    string `yaml:"user"`
-	// CompartmentOCID is DEPRECATED and should be set on the top level Config
-	// struct.
-	CompartmentOCID      string `yaml:"compartment"`
-	PrivateKey           string `yaml:"key"`
-	Fingerprint          string `yaml:"fingerprint"`
-	Region               string `yaml:"region"`
-	PrivateKeyPassphrase string `yaml:"passphrase"`
-}
-
 // Config holds the OCI cloud-provider config passed to Kubernetes compontents.
 type Config struct {
-	Auth                  AuthConfig `yaml:"auth"`
-	UseInstancePrincipals bool       `yaml:"useInstancePrincipals"`
-	// CompartmentOCID is the OCID of the Compartment within which the cluster
-	// resides.
-	CompartmentOCID string `yaml:"compartment"`
+	providercfg.Config `yaml:",inline"`
 }
 
 // Validate validates the OCI config.
@@ -78,9 +61,9 @@ func LoadConfig(r io.Reader) (*Config, error) {
 
 // Complete the config applying defaults / overrides.
 func (c *Config) Complete() {
-	if c.CompartmentOCID == "" && c.Auth.CompartmentOCID != "" {
+	if c.CompartmentID == "" && c.Auth.CompartmentID != "" {
 		zap.S().Warn("cloud-provider config: \"auth.compartment\" is DEPRECATED and will be removed in a later release. Please set \"compartment\".")
-		c.CompartmentOCID = c.Auth.CompartmentOCID
+		c.CompartmentID = c.Auth.CompartmentID
 	}
 }
 
@@ -100,8 +83,8 @@ func newConfigurationProvider(logger *zap.SugaredLogger, cfg *Config) (common.Co
 			return cp, nil
 		}
 		conf = common.NewRawConfigurationProvider(
-			cfg.Auth.TenancyOCID,
-			cfg.Auth.UserOCID,
+			cfg.Auth.TenancyID,
+			cfg.Auth.UserID,
 			cfg.Auth.Region,
 			cfg.Auth.Fingerprint,
 			cfg.Auth.PrivateKey,

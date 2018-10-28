@@ -16,7 +16,6 @@ package config
 
 import (
 	"io"
-	"io/ioutil"
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -26,18 +25,21 @@ import (
 // AuthConfig holds the configuration required for communicating with the OCI
 // API.
 type AuthConfig struct {
-	UseInstancePrincipals bool   `yaml:"useInstancePrincipals"`
-	Region                string `yaml:"region"`
-	TenancyID             string `yaml:"tenancy"`
+	Region      string `yaml:"region"`
+	TenancyID   string `yaml:"tenancy"`
+	UserID      string `yaml:"user"`
+	PrivateKey  string `yaml:"key"`
+	Fingerprint string `yaml:"fingerprint"`
+	Passphrase  string `yaml:"passphrase"`
+
+	// TODO(apryde): depreciate
+	UseInstancePrincipals bool `yaml:"useInstancePrincipals"`
+
 	// CompartmentID is DEPRECIATED and should be set on the top level Config
 	// struct.
 	CompartmentID string `yaml:"compartment"`
-	UserID        string `yaml:"user"`
-	PrivateKey    string `yaml:"key"`
-	Fingerprint   string `yaml:"fingerprint"`
 	// PrivateKeyPassphrase is DEPRECIATED in favour of Passphrase.
 	PrivateKeyPassphrase string `yaml:"key_passphrase"`
-	Passphrase           string `yaml:"passphrase"`
 }
 
 const (
@@ -89,7 +91,10 @@ type RateLimiterConfig struct {
 // Config holds the OCI cloud-provider config passed to Kubernetes compontents
 // via the --cloud-config option.
 type Config struct {
-	Auth         AuthConfig         `yaml:"auth"`
+	Auth AuthConfig `yaml:"auth"`
+
+	UseInstancePrincipals bool `yaml:"useInstancePrincipals"`
+
 	LoadBalancer LoadBalancerConfig `yaml:"loadBalancer"`
 	RateLimiter  *RateLimiterConfig `yaml:"rateLimiter"`
 
@@ -131,13 +136,8 @@ func ReadConfig(r io.Reader) (*Config, error) {
 		return nil, errors.New("no cloud-provider config file given")
 	}
 
-	b, err := ioutil.ReadAll(r)
-	if err != nil {
-		return nil, errors.Wrap(err, "reading cloud-provider config")
-	}
-
 	cfg := &Config{}
-	err = yaml.Unmarshal(b, &cfg)
+	err := yaml.NewDecoder(r).Decode(&cfg)
 	if err != nil {
 		return nil, errors.Wrap(err, "unmarshalling cloud-provider config")
 	}

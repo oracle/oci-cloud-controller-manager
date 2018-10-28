@@ -25,10 +25,10 @@ func validateAuthConfig(c Config, fldPath *field.Path) field.ErrorList {
 		if c.Auth.Region != "" {
 			allErrs = append(allErrs, field.Forbidden(fldPath.Child("region"), "cannot be used when useInstancePrincipals is enabled"))
 		}
-		if c.Auth.TenancyOCID != "" {
+		if c.Auth.TenancyID != "" {
 			allErrs = append(allErrs, field.Forbidden(fldPath.Child("tenancy"), "cannot be used when useInstancePrincipals is enabled"))
 		}
-		if c.Auth.UserOCID != "" {
+		if c.Auth.UserID != "" {
 			allErrs = append(allErrs, field.Forbidden(fldPath.Child("user"), "cannot be used when useInstancePrincipals is enabled"))
 		}
 		if c.Auth.PrivateKey != "" {
@@ -43,10 +43,10 @@ func validateAuthConfig(c Config, fldPath *field.Path) field.ErrorList {
 	if c.Auth.Region == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("region"), ""))
 	}
-	if c.Auth.TenancyOCID == "" {
+	if c.Auth.TenancyID == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("tenancy"), ""))
 	}
-	if c.Auth.UserOCID == "" {
+	if c.Auth.UserID == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("user"), ""))
 	}
 	if c.Auth.PrivateKey == "" {
