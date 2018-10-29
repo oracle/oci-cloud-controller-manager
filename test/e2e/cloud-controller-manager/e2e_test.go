@@ -17,24 +17,44 @@ limitations under the License.
 package e2e
 
 import (
+	"os"
 	"testing"
 
 	"github.com/onsi/ginkgo"
-	"github.com/onsi/gomega"
+	. "github.com/onsi/gomega"
 	"github.com/oracle/oci-cloud-controller-manager/test/e2e/cloud-controller-manager/framework"
 	"github.com/oracle/oci-cloud-controller-manager/test/e2e/cloud-controller-manager/framework/ginkgowrapper"
 	"k8s.io/apiserver/pkg/util/logs"
 )
 
+var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
+	version := os.Getenv("VERSION")
+	Ω(version).ShouldNot(BeEmpty(), "$VERSION must be set")
+
+	cs, err := framework.NewClientSetFromFlags()
+	Ω(err).ShouldNot(HaveOccurred())
+
+	err = framework.InstallCCM(cs, version)
+	Ω(err).ShouldNot(HaveOccurred())
+
+	return nil
+}, func(data []byte) {})
+
 func TestE2E(t *testing.T) {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	gomega.RegisterFailHandler(ginkgowrapper.Fail)
+	RegisterFailHandler(ginkgowrapper.Fail)
 	ginkgo.RunSpecs(t, "CCM E2E suite")
 }
 
 var _ = ginkgo.SynchronizedAfterSuite(func() {
 	framework.Logf("Running AfterSuite actions on all node")
 	framework.RunCleanupActions()
+
+	cs, err := framework.NewClientSetFromFlags()
+	Ω(err).ShouldNot(HaveOccurred())
+
+	err = framework.DeleteCCM(cs)
+	Ω(err).ShouldNot(HaveOccurred())
 }, func() {})

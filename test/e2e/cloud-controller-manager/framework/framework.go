@@ -32,6 +32,7 @@ import (
 	common "github.com/oracle/oci-go-sdk/common"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -300,4 +301,140 @@ func createOCIClient(cloudProviderConfig *providercfg.Config) (client.Interface,
 		return nil, errors.Wrapf(err, "Couldn't create oci client from configuration: %s.", cloudConfigFile)
 	}
 	return ociClient, nil
+}
+
+// NewClientSetFromFlags builds a kubernetes client from flags.
+func NewClientSetFromFlags() (clientset.Interface, error) {
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	if err != nil {
+		return nil, err
+	}
+	cs, err := clientset.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	return cs, nil
+}
+
+// InstallCCM installs the given version of the CCM into the cluster.
+func InstallCCM(client clientset.Interface, version string) error {
+	Logf("Installing version %q of oci-cloud-controller-manager", version)
+
+	desired := &appsv1.DaemonSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "oci-cloud-controller-manager",
+			Namespace: "kube-system",
+			Labels: map[string]string{
+				"k8s-app": "oci-cloud-controller-manager",
+			},
+		},
+		Spec: appsv1.DaemonSetSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"k8s-app": "oci-cloud-controller-manager",
+				},
+			},
+			UpdateStrategy: appsv1.DaemonSetUpdateStrategy{
+				Type: appsv1.RollingUpdateDaemonSetStrategyType,
+			},
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"k8s-app": "oci-cloud-controller-manager",
+					},
+				},
+				Spec: v1.PodSpec{
+					HostNetwork: true,
+					NodeSelector: map[string]string{
+						"node-role.kubernetes.io/master": "",
+					},
+					Tolerations: []v1.Toleration{{
+						Key:    "node.cloudprovider.kubernetes.io/uninitialized",
+						Value:  "true",
+						Effect: v1.TaintEffectNoSchedule,
+					}, {
+						Key:      "node-role.kubernetes.io/master",
+						Operator: v1.TolerationOpExists,
+						Effect:   v1.TaintEffectNoSchedule,
+					}},
+					ServiceAccountName: "cloud-controller-manager",
+					Volumes: []v1.Volume{{
+						Name: "cfg",
+						VolumeSource: v1.VolumeSource{
+							Secret: &v1.SecretVolumeSource{
+								SecretName: "oci-cloud-controller-manager",
+							},
+						},
+					}, {
+						Name: "kubernetes",
+						VolumeSource: v1.VolumeSource{
+							HostPath: &v1.HostPathVolumeSource{
+								Path: "/etc/kubernetes",
+							},
+						},
+					}},
+					Containers: []v1.Container{{
+						Name:    "oci-cloud-controller-manager",
+						Image:   "iad.ocir.io/spinnaker/cloud-provider-oci:" + version,
+						Command: []string{"/usr/local/bin/oci-cloud-controller-manager"},
+						Args: []string{
+							"--cloud-config=/etc/oci/cloud-provider.yaml",
+							"--cloud-provider=oci",
+							"--leader-elect-resource-lock=configmaps",
+							"--log-level=debug",
+							"-v=4",
+						},
+						VolumeMounts: []v1.VolumeMount{{
+							Name:      "cfg",
+							MountPath: "/etc/oci",
+							ReadOnly:  true,
+						}, {
+							Name:      "kubernetes",
+							MountPath: "/etc/kubernetes",
+							ReadOnly:  true,
+						}},
+					}},
+				},
+			},
+		},
+	}
+
+	actual, err := client.AppsV1().DaemonSets(desired.Namespace).Create(desired)
+	if err != nil {
+		if !apierrors.IsAlreadyExists(err) {
+			return errors.Wrap(err, "creating CCM DaemonSet")
+		}
+
+		Logf("Cloud Controller Manager DaemonSet already exists. Updating.")
+		actual, err = client.AppsV1().DaemonSets(desired.Namespace).Update(desired)
+		if err != nil {
+			return errors.Wrap(err, "updating existing CCM DaemonSet")
+		}
+	} else {
+		Logf("oci-cloud-controller-manager DaemonSet created")
+	}
+
+	return wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+		actual, err := client.AppsV1().DaemonSets(actual.Namespace).Get(actual.Name, metav1.GetOptions{})
+		if err != nil {
+			return false, errors.Wrap(err, "waiting for CCM DaemonSet to be ready")
+		}
+		if actual.Status.DesiredNumberScheduled != 0 && actual.Status.NumberReady != actual.Status.DesiredNumberScheduled {
+			Logf("oci-cloud-controller-manager DaemonSet not yet ready (diesired=%d, ready=%d). Waiting...",
+				actual.Status.DesiredNumberScheduled, actual.Status.NumberReady)
+			return false, nil
+		}
+		return true, nil
+	})
+}
+
+// DeleteCCM deletes the CCM.
+func DeleteCCM(client clientset.Interface) error {
+	Logf("Deleteing CCM DaemonSet")
+
+	err := client.AppsV1().DaemonSets("kube-system").Delete("oci-cloud-controller-manager", nil)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return errors.Wrap(err, "deleting CCM")
+	}
+	return nil
 }
