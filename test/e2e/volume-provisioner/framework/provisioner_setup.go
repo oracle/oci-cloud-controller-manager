@@ -18,7 +18,6 @@ import (
 	"io/ioutil"
 
 	. "github.com/onsi/ginkgo"
-
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	rbacv1beta1 "k8s.io/api/rbac/v1beta1"
@@ -198,6 +197,7 @@ func (f *Framework) createProvisioner(secretName string, serviceAccountName stri
 			{
 				Name:            secret.Name,
 				Image:           TestContext.Image,
+				Command:         []string{"/usr/local/bin/oci-volume-provisioner"},
 				ImagePullPolicy: v1.PullAlways,
 				Env: []v1.EnvVar{
 					{

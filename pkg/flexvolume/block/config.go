@@ -23,6 +23,7 @@ import (
 	"os"
 	"strings"
 
+	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/common/auth"
@@ -37,27 +38,11 @@ var ociRegions = map[string]string{
 	"lhr": "uk-london-1",
 }
 
-// AuthConfig holds the configuration required for communicating with the OCI
-// API.
-type AuthConfig struct {
-	Region               string `yaml:"region"`
-	RegionKey            string `yaml:"regionKey"`
-	TenancyOCID          string `yaml:"tenancy"`
-	CompartmentOCID      string `yaml:"compartment"` // DEPRECATED (we no longer directly use this)
-	UserOCID             string `yaml:"user"`
-	PrivateKey           string `yaml:"key"`
-	Passphrase           string `yaml:"passphrase"`
-	PrivateKeyPassphrase string `yaml:"key_passphase"` // DEPRECATED
-	Fingerprint          string `yaml:"fingerprint"`
-	VcnOCID              string `yaml:"vcn"`
-}
-
 // Config holds the configuration for the OCI flexvolume driver.
 type Config struct {
-	Auth AuthConfig `yaml:"auth"`
+	providercfg.Config `yaml:",inline"`
 
-	metadata              metadata.Interface
-	UseInstancePrincipals bool `yaml:"useInstancePrincipals"`
+	metadata metadata.Interface
 }
 
 // NewConfig creates a new Config based on the contents of the given io.Reader.
@@ -104,7 +89,7 @@ func ConfigFromFile(path string) (*Config, error) {
 }
 
 func (c *Config) setDefaults() error {
-	if c.Auth.Region == "" || c.Auth.CompartmentOCID == "" {
+	if c.Auth.Region == "" || c.Auth.CompartmentID == "" {
 		meta, err := c.metadata.Get()
 		if err != nil {
 			return err
@@ -113,8 +98,8 @@ func (c *Config) setDefaults() error {
 		if c.Auth.Region == "" {
 			c.Auth.Region = meta.Region
 		}
-		if c.Auth.CompartmentOCID == "" {
-			c.Auth.CompartmentOCID = meta.CompartmentOCID
+		if c.Auth.CompartmentID == "" {
+			c.Auth.CompartmentID = meta.CompartmentOCID
 		}
 	}
 
@@ -171,13 +156,13 @@ func validateAuthConfig(c *Config, fldPath *field.Path) field.ErrorList {
 		if c.Auth.Region != "" {
 			errList = append(errList, field.Forbidden(fldPath.Child("region"), "cannot be used when useInstancePrincipals is enabled"))
 		}
-		if c.Auth.CompartmentOCID != "" {
+		if c.Auth.CompartmentID != "" {
 			errList = append(errList, field.Forbidden(fldPath.Child("compartment"), "cannot be used when useInstancePrincipals is enabled"))
 		}
-		if c.Auth.TenancyOCID != "" {
+		if c.Auth.TenancyID != "" {
 			errList = append(errList, field.Forbidden(fldPath.Child("tenancy"), "cannot be used when useInstancePrincipals is enabled"))
 		}
-		if c.Auth.UserOCID != "" {
+		if c.Auth.UserID != "" {
 			errList = append(errList, field.Forbidden(fldPath.Child("user"), "cannot be used when useInstancePrincipals is enabled"))
 		}
 		if c.Auth.PrivateKey != "" {
@@ -190,10 +175,10 @@ func validateAuthConfig(c *Config, fldPath *field.Path) field.ErrorList {
 		if c.Auth.Region == "" {
 			errList = append(errList, field.Required(fldPath.Child("region"), ""))
 		}
-		if c.Auth.TenancyOCID == "" {
+		if c.Auth.TenancyID == "" {
 			errList = append(errList, field.Required(fldPath.Child("tenancy"), ""))
 		}
-		if c.Auth.UserOCID == "" {
+		if c.Auth.UserID == "" {
 			errList = append(errList, field.Required(fldPath.Child("user"), ""))
 		}
 		if c.Auth.PrivateKey == "" {
@@ -208,7 +193,7 @@ func validateAuthConfig(c *Config, fldPath *field.Path) field.ErrorList {
 		errList = append(errList, field.Required(fldPath.Child("region_key"), ""))
 	}
 
-	if c.Auth.VcnOCID == "" {
+	if c.Auth.VCNID == "" {
 		errList = append(errList, field.Required(fldPath.Child("vcn"), ""))
 	}
 
@@ -232,8 +217,8 @@ func configurationProviderFromConfig(config *Config) (common.ConfigurationProvid
 	}
 
 	return common.NewRawConfigurationProvider(
-		config.Auth.TenancyOCID,
-		config.Auth.UserOCID,
+		config.Auth.TenancyID,
+		config.Auth.UserID,
 		config.Auth.Region,
 		config.Auth.Fingerprint,
 		config.Auth.PrivateKey,

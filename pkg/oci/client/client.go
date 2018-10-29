@@ -109,7 +109,7 @@ type blockstorageClient interface {
 }
 
 type identityClient interface {
-	ListAvailabilityDomains(ctx context.Context, request identity.ListAvailabilityDomainsRequest) (*identity.ListAvailabilityDomainsResponse, error)
+	ListAvailabilityDomains(ctx context.Context, request identity.ListAvailabilityDomainsRequest) (identity.ListAvailabilityDomainsResponse, error)
 }
 
 type client struct {
@@ -191,9 +191,12 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 	c := &client{
 		compute:      &compute,
 		network:      &network,
+		identity:     &identity,
 		loadbalancer: &lb,
+		bs:           &bs,
 		filestorage:  &fss,
-		rateLimiter:  *opRateLimiter,
+
+		rateLimiter: *opRateLimiter,
 
 		subnetCache: cache.NewTTLStore(subnetCacheKeyFn, time.Duration(24)*time.Hour),
 		logger:      logger,

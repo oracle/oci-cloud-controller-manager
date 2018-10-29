@@ -102,12 +102,12 @@ func NewOCIProvisioner(
 		logger.With(zap.Error(mdErr)).Warnf("Unable to retrieve instance metadata.")
 	}
 
-	if cfg.CompartmentOCID == "" {
+	if cfg.CompartmentID == "" {
 		if metadata == nil {
 			return nil, errors.Wrap(mdErr, "unable to get compartment OCID")
 		}
 		logger.With("compartmentID", metadata.CompartmentOCID).Infof("'CompartmentID' not given. Using compartment OCID from instance metadata.")
-		cfg.CompartmentOCID = metadata.CompartmentOCID
+		cfg.CompartmentID = metadata.CompartmentOCID
 	}
 
 	cp, err := newConfigurationProvider(logger, cfg)
@@ -121,7 +121,7 @@ func NewOCIProvisioner(
 	}
 
 	logger = logger.With(
-		"compartmentID", cfg.CompartmentOCID,
+		"compartmentID", cfg.CompartmentID,
 		"tenancyID", tenancyID,
 	)
 
@@ -154,12 +154,12 @@ func NewOCIProvisioner(
 			logger,
 			client,
 			region,
-			cfg.CompartmentOCID,
+			cfg.CompartmentID,
 			volumeRoundingEnabled,
 			minVolumeSize,
 		)
 	case ProvisionerNameFss:
-		provisioner = fss.NewFilesystemProvisioner(logger, client, region, cfg.CompartmentOCID)
+		provisioner = fss.NewFilesystemProvisioner(logger, client, region, cfg.CompartmentID)
 	default:
 		return nil, errors.Errorf("invalid provisioner type %q", provisionerType)
 	}
@@ -169,7 +169,7 @@ func NewOCIProvisioner(
 		nodeLister:       nodeInformer.Lister(),
 		nodeListerSynced: nodeInformer.Informer().HasSynced,
 		provisioner:      provisioner,
-		compartmentID:    cfg.CompartmentOCID,
+		compartmentID:    cfg.CompartmentID,
 		logger:           logger,
 	}, nil
 }

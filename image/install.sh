@@ -37,7 +37,7 @@ if [ ! -d "$driver_dir" ]; then
   mkdir "$driver_dir"
 fi
 
-cp "/$DRIVER" "$driver_dir/.$DRIVER"
+cp "/usr/local/bin/oci-flexvolume-driver" "$driver_dir/.$DRIVER"
 mv -f "$driver_dir/.$DRIVER" "$driver_dir/$DRIVER"
 
 if [ -f "$CONFIG_FILE" ]; then

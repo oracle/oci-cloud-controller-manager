@@ -41,7 +41,7 @@ build:
     - script:
         name: Write VERSION.txt
         code: |
-          echo "$(make version)" > VERSION.txt
+          echo "$(make version)" > dist/VERSION.txt
 
 publish-docker-image:
   box: alpine
@@ -51,7 +51,7 @@ publish-docker-image:
         name: Set ENV vars
         code: |
           export IMAGE="iad.ocir.io/spinnaker/cloud-provider-oci"
-          export VERSION=$(cat VERSION.txt)
+          export VERSION=$(cat dist/VERSION.txt)
           echo "${VERSION}"
 
     - script:
@@ -101,7 +101,24 @@ volume-provisioner-e2e-test:
     - script:
       name: Run volume provisioner E2E tests
       code: |
-        echo "Running volume provisioner E2E tests"
+        export VERSION=$(cat dist/VERSION.txt)
+
+        export OCI_CONFIG="/tmp/ociconfig"
+        echo -n "${OCI_CONFIG_VAR}" | openssl enc -base64 -d -A > "${OCI_CONFIG}"
+
+        export KUBECONFIG="/tmp/kubeconfig"
+        echo -n "${KUBECONFIG_VAR}" | openssl enc -base64 -d -A > "${KUBECONFIG}"
+
+        export MOUNT_TARGET_ID="ocid1.mounttarget.oc1.iad.aaaaaby27vezbb5cnfqwillqojxwiotjmfsc2ylefuzqaaaa"
+
+        ginkgo \
+          -v \
+          test/e2e/volume-provisioner -- \
+          --kubeconfig="${KUBECONFIG}" \
+          --ociconfig="${OCI_CONFIG}" \
+          --mnt-target-id="${MOUNT_TARGET_ID}" \
+          --delete-namespace-on-failure=true \
+          --image="iad.ocir.io/spinnaker/cloud-provider-oci:${VERSION}"
 
 release:
   box:
@@ -111,7 +128,7 @@ release:
     - script:
         name: set ENV vars
         code: |
-          export VERSION=$(cat VERSION.txt)
+          export VERSION=$(cat dist/VERSION.txt)
           echo "${VERSION}"
 
     - script:
