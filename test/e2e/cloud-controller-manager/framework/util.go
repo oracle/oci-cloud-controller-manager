@@ -29,7 +29,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/oracle/oci-cloud-controller-manager/test/e2e/cloud-controller-manager/framework/ginkgowrapper"
+	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework/ginkgowrapper"
 	batch "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"

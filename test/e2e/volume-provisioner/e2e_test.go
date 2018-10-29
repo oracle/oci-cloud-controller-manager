@@ -15,20 +15,35 @@
 package e2e
 
 import (
+	"os"
 	"testing"
 
 	"github.com/onsi/ginkgo"
-	"github.com/onsi/gomega"
+	. "github.com/onsi/gomega"
+	sharedfw "github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
+	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework/ginkgowrapper"
 	"github.com/oracle/oci-cloud-controller-manager/test/e2e/volume-provisioner/framework"
-	"github.com/oracle/oci-cloud-controller-manager/test/e2e/volume-provisioner/framework/ginkgowrapper"
 	"k8s.io/apiserver/pkg/util/logs"
 )
+
+var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
+	version := os.Getenv("VERSION")
+	Ω(version).ShouldNot(BeEmpty(), "$VERSION must be set")
+
+	cs, err := framework.NewClientSetFromFlags()
+	Ω(err).ShouldNot(HaveOccurred())
+
+	err = sharedfw.AquireRunLock(cs, "oci-volume-provisioner-e2e-tests")
+	Ω(err).ShouldNot(HaveOccurred())
+
+	return nil
+}, func(data []byte) {})
 
 func TestE2E(t *testing.T) {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	gomega.RegisterFailHandler(ginkgowrapper.Fail)
+	RegisterFailHandler(ginkgowrapper.Fail)
 	ginkgo.RunSpecs(t, "Volume Provisioner E2E Test Suite")
 }
 

@@ -315,3 +315,16 @@ func (f *Framework) newConfigurationProvider(cfg *core.Config) (common.Configura
 	}
 	return conf, nil
 }
+
+// NewClientSetFromFlags builds a kubernetes client from flags.
+func NewClientSetFromFlags() (clientset.Interface, error) {
+	config, err := clientcmd.BuildConfigFromFlags("", TestContext.KubeConfig)
+	if err != nil {
+		return nil, err
+	}
+	cs, err := clientset.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	return cs, nil
+}

@@ -23,7 +23,8 @@ import (
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/oracle/oci-cloud-controller-manager/test/e2e/cloud-controller-manager/framework"
-	"github.com/oracle/oci-cloud-controller-manager/test/e2e/cloud-controller-manager/framework/ginkgowrapper"
+	sharedfw "github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
+	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework/ginkgowrapper"
 	"k8s.io/apiserver/pkg/util/logs"
 )
 
@@ -34,7 +35,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	cs, err := framework.NewClientSetFromFlags()
 	Ω(err).ShouldNot(HaveOccurred())
 
-	err = framework.AquireRunLock(cs, "oci-cloud-controller-manager-e2e-tests")
+	err = sharedfw.AquireRunLock(cs, "oci-cloud-controller-manager-e2e-tests")
 	Ω(err).ShouldNot(HaveOccurred())
 
 	err = framework.InstallCCM(cs, version)

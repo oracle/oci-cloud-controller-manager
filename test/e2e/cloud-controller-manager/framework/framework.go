@@ -36,14 +36,9 @@ import (
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/uuid"
 	wait "k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
 	clientcmd "k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/leaderelection"
-	"k8s.io/client-go/tools/leaderelection/resourcelock"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/cloudprovider"
 )
@@ -442,80 +437,4 @@ func DeleteCCM(client clientset.Interface) error {
 		return errors.Wrap(err, "deleting CCM")
 	}
 	return nil
-}
-
-// AquireRunLock blocks until the test run lock is required or a timeout
-// elapses. A lock is required as only one test run can safely be executed on
-// the same cluster at any given time.
-func AquireRunLock(client clientset.Interface, lockName string) error {
-	lec, err := makeLeaderElectionConfig(client, lockName)
-	if err != nil {
-		return err
-	}
-
-	readyCh := make(chan struct{})
-	lec.Callbacks = leaderelection.LeaderCallbacks{
-		OnStartedLeading: func(stop <-chan struct{}) {
-			Logf("Test run lock aquired")
-			readyCh <- struct{}{}
-		},
-		OnStoppedLeading: func() {
-			Failf("Lost test run lock unexpectedly")
-		},
-	}
-
-	le, err := leaderelection.NewLeaderElector(*lec)
-	if err != nil {
-		return err
-	}
-
-	go le.Run()
-
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-readyCh:
-			return nil
-		case <-ticker.C:
-			Logf("Waiting to aquire test run lock. %q currently has it.", le.GetLeader())
-		case <-time.After(30 * time.Minute):
-			return errors.New("timed out trying to aquire test run lock")
-		}
-	}
-	panic("unreachable")
-}
-
-func makeLeaderElectionConfig(client clientset.Interface, lockName string) (*leaderelection.LeaderElectionConfig, error) {
-	eventBroadcaster := record.NewBroadcaster()
-	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: lockName})
-
-	id := os.Getenv("WERCKER_STEP_ID")
-	if id == "" {
-		id = string(uuid.NewUUID())
-	}
-
-	Logf("Election id: %q", id)
-
-	rl, err := resourcelock.New(
-		resourcelock.ConfigMapsResourceLock,
-		"kube-system",
-		lockName,
-		client.CoreV1(),
-		resourcelock.ResourceLockConfig{
-			Identity:      id,
-			EventRecorder: recorder,
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't create resource lock: %v", err)
-	}
-
-	return &leaderelection.LeaderElectionConfig{
-		Lock:          rl,
-		LeaseDuration: 10 * time.Second,
-		RenewDeadline: 5 * time.Second,
-		RetryPeriod:   1 * time.Second,
-	}, nil
 }
