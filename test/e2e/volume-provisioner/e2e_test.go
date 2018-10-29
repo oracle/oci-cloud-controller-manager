@@ -15,7 +15,6 @@
 package e2e
 
 import (
-	"os"
 	"testing"
 
 	"github.com/onsi/ginkgo"
@@ -27,13 +26,13 @@ import (
 )
 
 var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
-	version := os.Getenv("VERSION")
-	Ω(version).ShouldNot(BeEmpty(), "$VERSION must be set")
-
 	cs, err := framework.NewClientSetFromFlags()
 	Ω(err).ShouldNot(HaveOccurred())
 
 	err = sharedfw.AquireRunLock(cs, "oci-volume-provisioner-e2e-tests")
+	Ω(err).ShouldNot(HaveOccurred())
+
+	err = framework.InstallVolumeProvisioner(cs)
 	Ω(err).ShouldNot(HaveOccurred())
 
 	return nil
@@ -50,4 +49,10 @@ func TestE2E(t *testing.T) {
 var _ = ginkgo.SynchronizedAfterSuite(func() {
 	framework.Logf("Running AfterSuite actions on all node")
 	framework.RunCleanupActions()
+
+	cs, err := framework.NewClientSetFromFlags()
+	Ω(err).ShouldNot(HaveOccurred())
+
+	err = framework.DeleteVolumeProvisioner(cs)
+	Ω(err).ShouldNot(HaveOccurred())
 }, func() {})

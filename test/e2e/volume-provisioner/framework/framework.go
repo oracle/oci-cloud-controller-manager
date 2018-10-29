@@ -28,6 +28,7 @@ import (
 	"github.com/oracle/oci-go-sdk/common/auth"
 	ocicore "github.com/oracle/oci-go-sdk/core"
 	"github.com/pkg/errors"
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -57,9 +58,7 @@ const (
 
 // Framework is used in the execution of e2e tests.
 type Framework struct {
-	BaseName                  string
-	ProvisionerFSSInstalled   bool
-	ProvisionerBlockInstalled bool
+	BaseName string
 
 	ClientSet clientset.Interface
 
@@ -86,11 +85,9 @@ func NewDefaultFramework(baseName string) *Framework {
 // NewFramework constructs a new e2e test Framework.
 func NewFramework(baseName string, client clientset.Interface, backup bool) *Framework {
 	f := &Framework{
-		BaseName:                  baseName,
-		ClientSet:                 client,
-		IsBackup:                  backup,
-		ProvisionerBlockInstalled: false,
-		ProvisionerFSSInstalled:   false,
+		BaseName:  baseName,
+		ClientSet: client,
+		IsBackup:  backup,
 	}
 
 	BeforeEach(f.BeforeEach)
@@ -205,14 +202,6 @@ func (f *Framework) BeforeEach() {
 	if f.IsBackup {
 		f.BlockStorageClient = f.createStorageClient()
 	}
-
-	if !f.ProvisionerFSSInstalled {
-		f.ProvisionerFSSInstalled = f.CheckandInstallProvisioner(FSSProv, core.ProvisionerNameFss)
-	}
-
-	if !f.ProvisionerBlockInstalled {
-		f.ProvisionerBlockInstalled = f.CheckandInstallProvisioner(OCIProv, core.ProvisionerNameDefault)
-	}
 }
 
 // AfterEach deletes the namespace(s).
@@ -258,9 +247,6 @@ func (f *Framework) AfterEach() {
 		}
 		Failf(strings.Join(messages, ","))
 	}
-
-	f.ProvisionerBlockInstalled = false
-	f.ProvisionerFSSInstalled = false
 }
 
 func (f *Framework) createStorageClient() ocicore.BlockstorageClient {
@@ -327,4 +313,179 @@ func NewClientSetFromFlags() (clientset.Interface, error) {
 		return nil, err
 	}
 	return cs, nil
+}
+
+// InstallVolumeProvisioner installs both block and fss volume provisioners and
+// waits for them to be ready.
+func InstallVolumeProvisioner(client clientset.Interface) error {
+	replica := int32(1)
+
+	blockDeployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "oci-block-volume-provisioner",
+			Namespace: "kube-system",
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &replica,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"app": "oci-block-volume-provisioner"},
+			},
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{"app": "oci-block-volume-provisioner"},
+				},
+				Spec: v1.PodSpec{
+					ServiceAccountName: "oci-volume-provisioner",
+					Containers: []v1.Container{{
+						Name:            "oci-block-volume-provisioner",
+						Image:           TestContext.Image,
+						Command:         []string{"/usr/local/bin/oci-volume-provisioner"},
+						ImagePullPolicy: v1.PullAlways,
+						Env: []v1.EnvVar{{
+							Name: "NODE_NAME",
+							ValueFrom: &v1.EnvVarSource{
+								FieldRef: &v1.ObjectFieldSelector{
+									FieldPath: "spec.nodeName",
+								},
+							},
+						}, {
+							Name:  "PROVISIONER_TYPE",
+							Value: core.ProvisionerNameBlock,
+						}},
+						VolumeMounts: []v1.VolumeMount{{
+							Name:      "config",
+							MountPath: "/etc/oci/",
+							ReadOnly:  true,
+						}},
+					},
+					},
+					Volumes: []v1.Volume{{
+						Name: "config",
+						VolumeSource: v1.VolumeSource{
+							Secret: &v1.SecretVolumeSource{
+								SecretName: "oci-volume-provisioner",
+							},
+						},
+					}},
+				},
+			},
+		},
+	}
+
+	// TODO(apryde): Decide whether we're adding --controllers="block,filesystem"
+	// to run both provisioners from the same binary and if not dedup this
+	// code. Otherwise it won't be needed :D
+	fssDeployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "oci-file-system-volume-provisioner",
+			Namespace: "kube-system",
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &replica,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"app": "oci-file-system-volume-provisioner"},
+			},
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{"app": "oci-file-system-volume-provisioner"},
+				},
+				Spec: v1.PodSpec{
+					ServiceAccountName: "oci-volume-provisioner",
+					Containers: []v1.Container{{
+						Name:            "oci-file-system-volume-provisioner",
+						Image:           TestContext.Image,
+						Command:         []string{"/usr/local/bin/oci-volume-provisioner"},
+						ImagePullPolicy: v1.PullAlways,
+						Env: []v1.EnvVar{{
+							Name: "NODE_NAME",
+							ValueFrom: &v1.EnvVarSource{
+								FieldRef: &v1.ObjectFieldSelector{
+									FieldPath: "spec.nodeName",
+								},
+							},
+						}, {
+							Name:  "PROVISIONER_TYPE",
+							Value: core.ProvisionerNameFss,
+						}},
+						VolumeMounts: []v1.VolumeMount{{
+							Name:      "config",
+							MountPath: "/etc/oci/",
+							ReadOnly:  true,
+						}},
+					},
+					},
+					Volumes: []v1.Volume{{
+						Name: "config",
+						VolumeSource: v1.VolumeSource{
+							Secret: &v1.SecretVolumeSource{
+								SecretName: "oci-volume-provisioner",
+							},
+						},
+					}},
+				},
+			},
+		},
+	}
+
+	err := createAndAwaitDeployment(client, blockDeployment)
+	if err != nil {
+		return errors.Wrap(err, "deploying block volume provisioner")
+	}
+
+	err = createAndAwaitDeployment(client, fssDeployment)
+	if err != nil {
+		return errors.Wrap(err, "deploying fss volume provisioner")
+	}
+
+	return nil
+}
+
+func createAndAwaitDeployment(client clientset.Interface, desired *appsv1.Deployment) error {
+	actual, err := client.AppsV1().Deployments("kube-system").Create(desired)
+	if err != nil {
+		if !apierrors.IsAlreadyExists(err) {
+			return errors.Wrapf(err, "failed to create %q Deployment", desired.Name)
+		}
+		Logf("Provisioner already exists. Updating.")
+		actual, err = client.AppsV1().Deployments("kube-system").Update(desired)
+		if err != nil {
+			return errors.Wrapf(err, "updating volume provisioner Deployment %q", desired.Name)
+		}
+	} else {
+		Logf("Created Deployment %q in namespace %q", actual.Name, actual.Namespace)
+	}
+
+	return wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+		actual, err := client.AppsV1().Deployments(actual.Namespace).Get(actual.Name, metav1.GetOptions{})
+		if err != nil {
+			return false, errors.Wrap(err, "waiting for Deployment to be ready")
+		}
+		if actual.Status.ReadyReplicas != 0 && actual.Status.ReadyReplicas != actual.Status.Replicas {
+			Logf("%s Deployment not yet ready (replicas=%d, readyReplicas=%d). Waiting...",
+				actual.Name, actual.Status.Replicas, actual.Status.ReadyReplicas)
+			return false, nil
+		}
+		return true, nil
+	})
+}
+
+// DeleteVolumeProvisioner deletes both the block and fss volume provisioners.
+func DeleteVolumeProvisioner(client clientset.Interface) error {
+	Logf("Deleteing oci-block-volume-provisioner Deployment")
+
+	// TODO(apryde): We can probably use a label selector to delete both at
+	// once as this currently leaves dangling resources if the first delete
+	// fails.
+	err := client.AppsV1().Deployments("kube-system").Delete("oci-block-volume-provisioner", nil)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return errors.Wrap(err, "deleting oci-block-volume-provisioner")
+	}
+
+	Logf("Deleteing oci-file-system-volume-provisioner Deployment")
+
+	err = client.AppsV1().Deployments("kube-system").Delete("oci-file-system-volume-provisioner", nil)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return errors.Wrap(err, "deleting oci-file-system-volume-provisioner")
+	}
+	return nil
 }

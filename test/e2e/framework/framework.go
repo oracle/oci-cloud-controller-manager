@@ -78,7 +78,7 @@ func makeLeaderElectionConfig(client clientset.Interface, lockName string) (*lea
 
 	id := os.Getenv("WERCKER_STEP_ID")
 	if id == "" {
-		id = string(uuid.NewUUID())
+		id = uuid.NewUUID().String()
 	}
 
 	Logf("Election id: %q", id)
