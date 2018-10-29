@@ -34,6 +34,9 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	cs, err := framework.NewClientSetFromFlags()
 	Ω(err).ShouldNot(HaveOccurred())
 
+	err = framework.AquireRunLock(cs, "oci-cloud-controller-manager-e2e-tests")
+	Ω(err).ShouldNot(HaveOccurred())
+
 	err = framework.InstallCCM(cs, version)
 	Ω(err).ShouldNot(HaveOccurred())
 
