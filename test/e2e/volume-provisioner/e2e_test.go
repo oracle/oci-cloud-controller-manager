@@ -63,10 +63,7 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 		cs, err := framework.NewClientSetFromFlags()
 		Ω(err).ShouldNot(HaveOccurred())
 
-		err = framework.DeleteFlexvolumeDriver(cs)
-		Ω(err).ShouldNot(HaveOccurred())
-
-		err = framework.DeleteVolumeProvisioner(cs)
-		Ω(err).ShouldNot(HaveOccurred())
+		framework.DeleteFlexvolumeDriver(cs)
+		framework.DeleteVolumeProvisioner(cs)
 	}
 }, func() {})

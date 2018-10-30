@@ -24,6 +24,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/core"
+	sharedfw "github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/common/auth"
 	ocicore "github.com/oracle/oci-go-sdk/core"
@@ -426,12 +427,12 @@ func InstallVolumeProvisioner(client clientset.Interface) error {
 		},
 	}
 
-	err := createAndAwaitDeployment(client, blockDeployment)
+	err := sharedfw.CreateAndAwaitDeployment(client, blockDeployment)
 	if err != nil {
 		return errors.Wrap(err, "deploying block volume provisioner")
 	}
 
-	err = createAndAwaitDeployment(client, fssDeployment)
+	err = sharedfw.CreateAndAwaitDeployment(client, fssDeployment)
 	if err != nil {
 		return errors.Wrap(err, "deploying fss volume provisioner")
 	}
@@ -439,57 +440,24 @@ func InstallVolumeProvisioner(client clientset.Interface) error {
 	return nil
 }
 
-func createAndAwaitDeployment(client clientset.Interface, desired *appsv1.Deployment) error {
-	actual, err := client.AppsV1().Deployments("kube-system").Create(desired)
-	if err != nil {
-		if !apierrors.IsAlreadyExists(err) {
-			return errors.Wrapf(err, "failed to create %q Deployment", desired.Name)
-		}
-		Logf("Provisioner already exists. Updating.")
-		actual, err = client.AppsV1().Deployments("kube-system").Update(desired)
-		if err != nil {
-			return errors.Wrapf(err, "updating volume provisioner Deployment %q", desired.Name)
-		}
-	} else {
-		Logf("Created Deployment %q in namespace %q", actual.Name, actual.Namespace)
-	}
-
-	return wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
-		actual, err := client.AppsV1().Deployments(actual.Namespace).Get(actual.Name, metav1.GetOptions{})
-		if err != nil {
-			return false, errors.Wrap(err, "waiting for Deployment to be ready")
-		}
-		if actual.Status.Replicas != 0 && actual.Status.Replicas == actual.Status.ReadyReplicas {
-			return true, nil
-		}
-		Logf("%s Deployment not yet ready (replicas=%d, readyReplicas=%d). Waiting...",
-			actual.Name, actual.Status.Replicas, actual.Status.ReadyReplicas)
-		return false, nil
-	})
-}
-
 // DeleteVolumeProvisioner deletes both the block and fss volume provisioners.
-func DeleteVolumeProvisioner(client clientset.Interface) error {
-	Logf("Deleteing oci-block-volume-provisioner Deployment")
+func DeleteVolumeProvisioner(client clientset.Interface) {
+	Logf("Deleting oci-block-volume-provisioner Deployment")
 
-	// TODO(apryde): We can probably use a label selector to delete both at
-	// once as this currently leaves dangling resources if the first delete
-	// fails.
 	err := client.AppsV1().Deployments("kube-system").Delete("oci-block-volume-provisioner", nil)
 	if err != nil && !apierrors.IsNotFound(err) {
-		return errors.Wrap(err, "deleting oci-block-volume-provisioner")
+		Logf("Error deleting oci-block-volume-provisioner: %+v", err)
 	}
 
-	Logf("Deleteing oci-file-system-volume-provisioner Deployment")
+	Logf("Deleting oci-file-system-volume-provisioner Deployment")
 
 	err = client.AppsV1().Deployments("kube-system").Delete("oci-file-system-volume-provisioner", nil)
 	if err != nil && !apierrors.IsNotFound(err) {
-		return errors.Wrap(err, "deleting oci-file-system-volume-provisioner")
+		Logf("Error deleting oci-file-system-volume-provisioner: %+v", err)
 	}
-	return nil
 }
 
-// InstallFlexvolumeDriver installs the fexvolume driver and waits for it to be
+// InstallFlexvolumeDriver installs the flexvolume driver and waits for it to be
 // ready.
 func InstallFlexvolumeDriver(client clientset.Interface) error {
 	hostPathDirectoryOrCreate := v1.HostPathDirectoryOrCreate
@@ -520,7 +488,7 @@ func InstallFlexvolumeDriver(client clientset.Interface) error {
 						Effect:   v1.TaintEffectNoSchedule,
 					}},
 					Containers: []v1.Container{{
-						Name:    "oci-fexvolume-driver",
+						Name:    "oci-flexvolume-driver",
 						Image:   TestContext.Image,
 						Command: []string{"/bin/bash", "/usr/local/bin/install.sh"},
 						SecurityContext: &v1.SecurityContext{
@@ -584,7 +552,7 @@ func InstallFlexvolumeDriver(client clientset.Interface) error {
 				Spec: v1.PodSpec{
 					ServiceAccountName: "oci-flexvolume-driver",
 					Containers: []v1.Container{{
-						Name:    "oci-fexvolume-driver",
+						Name:    "oci-flexvolume-driver",
 						Image:   TestContext.Image,
 						Command: []string{"/bin/bash", "/usr/local/bin/install.sh"},
 						SecurityContext: &v1.SecurityContext{
@@ -609,66 +577,31 @@ func InstallFlexvolumeDriver(client clientset.Interface) error {
 		},
 	}
 
-	if err := createAndAwaitDaemonSet(client, masterDS); err != nil {
+	if err := sharedfw.CreateAndAwaitDaemonSet(client, masterDS); err != nil {
 		return errors.Wrap(err, "installing flexvolume driver master DaemonSet")
 	}
 
-	if err := createAndAwaitDaemonSet(client, workerDS); err != nil {
+	if err := sharedfw.CreateAndAwaitDaemonSet(client, workerDS); err != nil {
 		return errors.Wrap(err, "installing flexvolume driver worker DaemonSet")
 	}
 
 	return nil
 }
 
-func createAndAwaitDaemonSet(client clientset.Interface, desired *appsv1.DaemonSet) error {
-	actual, err := client.AppsV1().DaemonSets("kube-system").Create(desired)
-	if err != nil {
-		if !apierrors.IsAlreadyExists(err) {
-			return errors.Wrapf(err, "failed to create %q DaemonSet", desired.Name)
-		}
-		Logf("Flexvolume Driver DaemonSet already exists. Updating.")
-		actual, err = client.AppsV1().DaemonSets("kube-system").Update(desired)
-		if err != nil {
-			return errors.Wrapf(err, "updating flexvolume driver DaemonSet %q", desired.Name)
-		}
-	} else {
-		Logf("Created DaemonSet %q in namespace %q", actual.Name, actual.Namespace)
-	}
-
-	return wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
-		actual, err := client.AppsV1().DaemonSets(actual.Namespace).Get(actual.Name, metav1.GetOptions{})
-		if err != nil {
-			return false, errors.Wrap(err, "waiting for DaemonSet to be ready")
-		}
-
-		if actual.Status.DesiredNumberScheduled != 0 && actual.Status.NumberReady == actual.Status.DesiredNumberScheduled {
-			return true, nil
-		}
-
-		Logf("%s DaemonSet not yet ready DaemonSet not yet ready (diesired=%d, ready=%d). Waiting...",
-			actual.Name, actual.Status.DesiredNumberScheduled, actual.Status.NumberReady)
-		return false, nil
-	})
-}
-
 // DeleteFlexvolumeDriver deletes both the master and worker flexvolume driver
 // DaemonSets.
-func DeleteFlexvolumeDriver(client clientset.Interface) error {
-	Logf("Deleteing oci-flexvolume-driver-master DaemonSet")
+func DeleteFlexvolumeDriver(client clientset.Interface) {
+	Logf("Deleting oci-flexvolume-driver-master DaemonSet")
 
-	// TODO(apryde): We can probably use a label selector to delete both at
-	// once as this currently leaves dangling resources if the first delete
-	// fails.
 	err := client.AppsV1().DaemonSets("kube-system").Delete("oci-flexvolume-driver-master", nil)
 	if err != nil && !apierrors.IsNotFound(err) {
-		return errors.Wrap(err, "deleting oci-flexvolume-driver-master")
+		Logf("Error deleting oci-flexvolume-driver-master: %+v", err)
 	}
 
-	Logf("Deleteing oci-flexvolume-driver-worker DaemonSet")
+	Logf("Deleting oci-flexvolume-driver-worker DaemonSet")
 
 	err = client.AppsV1().DaemonSets("kube-system").Delete("oci-flexvolume-driver-worker", nil)
 	if err != nil && !apierrors.IsNotFound(err) {
-		return errors.Wrap(err, "deleting oci-flexvolume-driver-worker")
+		Logf("Error deleting oci-flexvolume-driver-worker: %+v", err)
 	}
-	return nil
 }

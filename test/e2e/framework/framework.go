@@ -15,13 +15,17 @@
 package framework
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"time"
 
 	"github.com/pborman/uuid"
+	"github.com/pkg/errors"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/leaderelection"
@@ -103,4 +107,68 @@ func makeLeaderElectionConfig(client clientset.Interface, lockName string) (*lea
 		RenewDeadline: 5 * time.Second,
 		RetryPeriod:   1 * time.Second,
 	}, nil
+}
+
+// CreateAndAwaitDaemonSet creates/updates the given DaemonSet and waits for it
+// to be ready.
+func CreateAndAwaitDaemonSet(client clientset.Interface, desired *appsv1.DaemonSet) error {
+	actual, err := client.AppsV1().DaemonSets(desired.Namespace).Create(desired)
+	if err != nil {
+		if !apierrors.IsAlreadyExists(err) {
+			return errors.Wrapf(err, "failed to create %q DaemonSet", desired.Name)
+		}
+		Logf("%q DaemonSet already exists. Updating.", desired.Name)
+		actual, err = client.AppsV1().DaemonSets(desired.Namespace).Update(desired)
+		if err != nil {
+			return errors.Wrapf(err, "updating DaemonSet %q", desired.Name)
+		}
+	} else {
+		Logf("Created DaemonSet %q in namespace %q", actual.Name, actual.Namespace)
+	}
+
+	return wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+		actual, err := client.AppsV1().DaemonSets(actual.Namespace).Get(actual.Name, metav1.GetOptions{})
+		if err != nil {
+			return false, errors.Wrap(err, "waiting for DaemonSet to be ready")
+		}
+
+		if actual.Status.DesiredNumberScheduled != 0 && actual.Status.NumberReady == actual.Status.DesiredNumberScheduled {
+			return true, nil
+		}
+
+		Logf("%q DaemonSet not yet ready (diesired=%d, ready=%d). Waiting...",
+			actual.Name, actual.Status.DesiredNumberScheduled, actual.Status.NumberReady)
+		return false, nil
+	})
+}
+
+// CreateAndAwaitDeployment creates/updates the given Deployment and waits for
+// it to be ready.
+func CreateAndAwaitDeployment(client clientset.Interface, desired *appsv1.Deployment) error {
+	actual, err := client.AppsV1().Deployments(desired.Namespace).Create(desired)
+	if err != nil {
+		if !apierrors.IsAlreadyExists(err) {
+			return errors.Wrapf(err, "failed to create Deployment %q", desired.Name)
+		}
+		Logf("Deployment %q already exists. Updating.", desired.Name)
+		actual, err = client.AppsV1().Deployments(desired.Namespace).Update(desired)
+		if err != nil {
+			return errors.Wrapf(err, "updating Deployment %q", desired.Name)
+		}
+	} else {
+		Logf("Created Deployment %q in namespace %q", actual.Name, actual.Namespace)
+	}
+
+	return wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+		actual, err := client.AppsV1().Deployments(actual.Namespace).Get(actual.Name, metav1.GetOptions{})
+		if err != nil {
+			return false, errors.Wrap(err, "waiting for Deployment to be ready")
+		}
+		if actual.Status.Replicas != 0 && actual.Status.Replicas == actual.Status.ReadyReplicas {
+			return true, nil
+		}
+		Logf("%s Deployment not yet ready (replicas=%d, readyReplicas=%d). Waiting...",
+			actual.Name, actual.Status.Replicas, actual.Status.ReadyReplicas)
+		return false, nil
+	})
 }

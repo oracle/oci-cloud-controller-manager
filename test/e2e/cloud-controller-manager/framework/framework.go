@@ -29,6 +29,7 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci" // register oci cloud provider
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	client "github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	sharedfw "github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
 	common "github.com/oracle/oci-go-sdk/common"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -399,33 +400,7 @@ func InstallCCM(client clientset.Interface, version string) error {
 		},
 	}
 
-	actual, err := client.AppsV1().DaemonSets(desired.Namespace).Create(desired)
-	if err != nil {
-		if !apierrors.IsAlreadyExists(err) {
-			return errors.Wrap(err, "creating CCM DaemonSet")
-		}
-
-		Logf("Cloud Controller Manager DaemonSet already exists. Updating.")
-		actual, err = client.AppsV1().DaemonSets(desired.Namespace).Update(desired)
-		if err != nil {
-			return errors.Wrap(err, "updating existing CCM DaemonSet")
-		}
-	} else {
-		Logf("oci-cloud-controller-manager DaemonSet created")
-	}
-
-	return wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
-		actual, err := client.AppsV1().DaemonSets(actual.Namespace).Get(actual.Name, metav1.GetOptions{})
-		if err != nil {
-			return false, errors.Wrap(err, "waiting for CCM DaemonSet to be ready")
-		}
-		if actual.Status.DesiredNumberScheduled != 0 && actual.Status.NumberReady != actual.Status.DesiredNumberScheduled {
-			Logf("oci-cloud-controller-manager DaemonSet not yet ready (diesired=%d, ready=%d). Waiting...",
-				actual.Status.DesiredNumberScheduled, actual.Status.NumberReady)
-			return false, nil
-		}
-		return true, nil
-	})
+	return sharedfw.CreateAndAwaitDaemonSet(client, desired)
 }
 
 // DeleteCCM deletes the CCM.
