@@ -20,9 +20,11 @@ import (
 // To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized,
 // talk to an administrator. If you're an administrator who needs to write policies to give users access, see
 // Getting Started with Policies (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/policygetstarted.htm).
+// **Warning:** Oracle recommends that you avoid using any confidential information when you
+// supply string values using the API.
 type Instance struct {
 
-	// The Availability Domain the instance is running in.
+	// The availability domain the instance is running in.
 	// Example: `Uocm:PHX-AD-1`
 	AvailabilityDomain *string `mandatory:"true" json:"availabilityDomain"`
 
@@ -35,7 +37,7 @@ type Instance struct {
 	// The current state of the instance.
 	LifecycleState InstanceLifecycleStateEnum `mandatory:"true" json:"lifecycleState"`
 
-	// The region that contains the Availability Domain the instance is running in.
+	// The region that contains the availability domain the instance is running in.
 	// Example: `phx`
 	Region *string `mandatory:"true" json:"region"`
 
@@ -58,10 +60,20 @@ type Instance struct {
 	// Example: `My bare metal instance`
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
-	// Additional metadata key/value pairs that you provide.  They serve a similar purpose and functionality from fields in the 'metadata' object.
+	// Additional metadata key/value pairs that you provide. They serve the same purpose and functionality as fields in the 'metadata' object.
 	// They are distinguished from 'metadata' fields in that these can be nested JSON objects (whereas 'metadata' fields are string/string maps only).
-	// If you don't need nested metadata values, it is strongly advised to avoid using this object and use the Metadata object instead.
 	ExtendedMetadata map[string]interface{} `mandatory:"false" json:"extendedMetadata"`
+
+	// The name of the fault domain the instance is running in.
+	// A fault domain is a grouping of hardware and infrastructure within an availability domain.
+	// Each availability domain contains three fault domains. Fault domains let you distribute your
+	// instances so that they are not on the same physical hardware within a single availability domain.
+	// A hardware failure or Compute hardware maintenance that affects one fault domain does not affect
+	// instances in other fault domains.
+	// If you do not specify the fault domain, the system selects one for you. To change the fault
+	// domain for an instance, terminate it and launch a new instance in the preferred fault domain.
+	// Example: `FAULT-DOMAIN-1`
+	FaultDomain *string `mandatory:"false" json:"faultDomain"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
 	// predefined name, type, or namespace. For more information, see
@@ -95,6 +107,7 @@ type Instance struct {
 	// Specifies the configuration mode for launching virtual machine (VM) instances. The configuration modes are:
 	// * `NATIVE` - VM instances launch with iSCSI boot and VFIO devices. The default value for Oracle-provided images.
 	// * `EMULATED` - VM instances launch with emulated devices, such as the E1000 network driver and emulated SCSI disk controller.
+	// * `PARAVIRTUALIZED` - VM instances launch with paravirtualized devices using virtio drivers.
 	// * `CUSTOM` - VM instances launch with custom configuration settings specified in the `LaunchOptions` parameter.
 	LaunchMode InstanceLaunchModeEnum `mandatory:"false" json:"launchMode,omitempty"`
 
@@ -117,6 +130,7 @@ func (m *Instance) UnmarshalJSON(data []byte) (e error) {
 		DefinedTags        map[string]map[string]interface{} `json:"definedTags"`
 		DisplayName        *string                           `json:"displayName"`
 		ExtendedMetadata   map[string]interface{}            `json:"extendedMetadata"`
+		FaultDomain        *string                           `json:"faultDomain"`
 		FreeformTags       map[string]string                 `json:"freeformTags"`
 		ImageId            *string                           `json:"imageId"`
 		IpxeScript         *string                           `json:"ipxeScript"`
@@ -140,6 +154,7 @@ func (m *Instance) UnmarshalJSON(data []byte) (e error) {
 	m.DefinedTags = model.DefinedTags
 	m.DisplayName = model.DisplayName
 	m.ExtendedMetadata = model.ExtendedMetadata
+	m.FaultDomain = model.FaultDomain
 	m.FreeformTags = model.FreeformTags
 	m.ImageId = model.ImageId
 	m.IpxeScript = model.IpxeScript
@@ -150,7 +165,11 @@ func (m *Instance) UnmarshalJSON(data []byte) (e error) {
 	if e != nil {
 		return
 	}
-	m.SourceDetails = nn.(InstanceSourceDetails)
+	if nn != nil {
+		m.SourceDetails = nn.(InstanceSourceDetails)
+	} else {
+		m.SourceDetails = nil
+	}
 	m.AvailabilityDomain = model.AvailabilityDomain
 	m.CompartmentId = model.CompartmentId
 	m.Id = model.Id
@@ -166,15 +185,17 @@ type InstanceLaunchModeEnum string
 
 // Set of constants representing the allowable values for InstanceLaunchMode
 const (
-	InstanceLaunchModeNative   InstanceLaunchModeEnum = "NATIVE"
-	InstanceLaunchModeEmulated InstanceLaunchModeEnum = "EMULATED"
-	InstanceLaunchModeCustom   InstanceLaunchModeEnum = "CUSTOM"
+	InstanceLaunchModeNative          InstanceLaunchModeEnum = "NATIVE"
+	InstanceLaunchModeEmulated        InstanceLaunchModeEnum = "EMULATED"
+	InstanceLaunchModeParavirtualized InstanceLaunchModeEnum = "PARAVIRTUALIZED"
+	InstanceLaunchModeCustom          InstanceLaunchModeEnum = "CUSTOM"
 )
 
 var mappingInstanceLaunchMode = map[string]InstanceLaunchModeEnum{
-	"NATIVE":   InstanceLaunchModeNative,
-	"EMULATED": InstanceLaunchModeEmulated,
-	"CUSTOM":   InstanceLaunchModeCustom,
+	"NATIVE":          InstanceLaunchModeNative,
+	"EMULATED":        InstanceLaunchModeEmulated,
+	"PARAVIRTUALIZED": InstanceLaunchModeParavirtualized,
+	"CUSTOM":          InstanceLaunchModeCustom,
 }
 
 // GetInstanceLaunchModeEnumValues Enumerates the set of values for InstanceLaunchMode

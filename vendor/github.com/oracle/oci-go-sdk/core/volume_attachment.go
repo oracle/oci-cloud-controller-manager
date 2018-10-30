@@ -18,9 +18,11 @@ import (
 // IScsiVolumeAttachment.
 // For general information about volume attachments, see
 // Overview of Block Volume Storage (https://docs.us-phoenix-1.oraclecloud.com/Content/Block/Concepts/overview.htm).
+// **Warning:** Oracle recommends that you avoid using any confidential information when you
+// supply string values using the API.
 type VolumeAttachment interface {
 
-	// The Availability Domain of an instance.
+	// The availability domain of an instance.
 	// Example: `Uocm:PHX-AD-1`
 	GetAvailabilityDomain() *string
 
@@ -93,6 +95,11 @@ func (m *volumeattachment) UnmarshalJSON(data []byte) error {
 
 // UnmarshalPolymorphicJSON unmarshals polymorphic json
 func (m *volumeattachment) UnmarshalPolymorphicJSON(data []byte) (interface{}, error) {
+
+	if data == nil || string(data) == "null" {
+		return nil, nil
+	}
+
 	var err error
 	switch m.AttachmentType {
 	case "iscsi":
@@ -104,7 +111,7 @@ func (m *volumeattachment) UnmarshalPolymorphicJSON(data []byte) (interface{}, e
 		err = json.Unmarshal(data, &mm)
 		return mm, err
 	default:
-		return m, nil
+		return *m, nil
 	}
 }
 

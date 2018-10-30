@@ -17,7 +17,7 @@ import (
 // Use the `sourceDetails` parameter to specify whether a boot volume or an image should be used to launch a new instance.
 type LaunchInstanceDetails struct {
 
-	// The Availability Domain of the instance.
+	// The availability domain of the instance.
 	// Example: `Uocm:PHX-AD-1`
 	AvailabilityDomain *string `mandatory:"true" json:"availabilityDomain"`
 
@@ -43,10 +43,22 @@ type LaunchInstanceDetails struct {
 	// Example: `My bare metal instance`
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
-	// Additional metadata key/value pairs that you provide.  They serve a similar purpose and functionality from fields in the 'metadata' object.
+	// Additional metadata key/value pairs that you provide. They serve the same purpose and functionality as fields in the 'metadata' object.
 	// They are distinguished from 'metadata' fields in that these can be nested JSON objects (whereas 'metadata' fields are string/string maps only).
-	// If you don't need nested metadata values, it is strongly advised to avoid using this object and use the Metadata object instead.
 	ExtendedMetadata map[string]interface{} `mandatory:"false" json:"extendedMetadata"`
+
+	// A fault domain is a grouping of hardware and infrastructure within an availability domain.
+	// Each availability domain contains three fault domains. Fault domains let you distribute your
+	// instances so that they are not on the same physical hardware within a single availability domain.
+	// A hardware failure or Compute hardware maintenance that affects one fault domain does not affect
+	// instances in other fault domains.
+	// If you do not specify the fault domain, the system selects one for you. To change the fault
+	// domain for an instance, terminate it and launch a new instance in the preferred fault domain.
+	// To get a list of fault domains, use the
+	// ListFaultDomains operation in the
+	// Identity and Access Management Service API.
+	// Example: `FAULT-DOMAIN-1`
+	FaultDomain *string `mandatory:"false" json:"faultDomain"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
 	// predefined name, type, or namespace. For more information, see
@@ -150,6 +162,7 @@ func (m *LaunchInstanceDetails) UnmarshalJSON(data []byte) (e error) {
 		DefinedTags        map[string]map[string]interface{} `json:"definedTags"`
 		DisplayName        *string                           `json:"displayName"`
 		ExtendedMetadata   map[string]interface{}            `json:"extendedMetadata"`
+		FaultDomain        *string                           `json:"faultDomain"`
 		FreeformTags       map[string]string                 `json:"freeformTags"`
 		HostnameLabel      *string                           `json:"hostnameLabel"`
 		ImageId            *string                           `json:"imageId"`
@@ -170,6 +183,7 @@ func (m *LaunchInstanceDetails) UnmarshalJSON(data []byte) (e error) {
 	m.DefinedTags = model.DefinedTags
 	m.DisplayName = model.DisplayName
 	m.ExtendedMetadata = model.ExtendedMetadata
+	m.FaultDomain = model.FaultDomain
 	m.FreeformTags = model.FreeformTags
 	m.HostnameLabel = model.HostnameLabel
 	m.ImageId = model.ImageId
@@ -179,7 +193,11 @@ func (m *LaunchInstanceDetails) UnmarshalJSON(data []byte) (e error) {
 	if e != nil {
 		return
 	}
-	m.SourceDetails = nn.(InstanceSourceDetails)
+	if nn != nil {
+		m.SourceDetails = nn.(InstanceSourceDetails)
+	} else {
+		m.SourceDetails = nil
+	}
 	m.SubnetId = model.SubnetId
 	m.AvailabilityDomain = model.AvailabilityDomain
 	m.CompartmentId = model.CompartmentId

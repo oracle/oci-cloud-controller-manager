@@ -50,6 +50,8 @@ spec:
             - name: kubernetes
               mountPath: /etc/kubernetes
               readOnly: true
+            - name: var-run-kubernetes
+              mountPath: /var/run/kubernetes
       volumes:
         - name: cfg
           secret:
@@ -57,3 +59,5 @@ spec:
         - name: kubernetes
           hostPath:
             path: /etc/kubernetes
+        - name: var-run-kubernetes
+          emptyDir: {}

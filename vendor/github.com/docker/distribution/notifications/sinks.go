@@ -210,15 +210,14 @@ func (eq *eventQueue) next() []Event {
 	return block
 }
 
-// ignoredSink discards events with ignored target media types and actions.
+// ignoredMediaTypesSink discards events with ignored target media types and
 // passes the rest along.
-type ignoredSink struct {
+type ignoredMediaTypesSink struct {
 	Sink
-	ignoreMediaTypes map[string]bool
-	ignoreActions    map[string]bool
+	ignored map[string]bool
 }
 
-func newIgnoredSink(sink Sink, ignored []string, ignoreActions []string) Sink {
+func newIgnoredMediaTypesSink(sink Sink, ignored []string) Sink {
 	if len(ignored) == 0 {
 		return sink
 	}
@@ -228,41 +227,25 @@ func newIgnoredSink(sink Sink, ignored []string, ignoreActions []string) Sink {
 		ignoredMap[mediaType] = true
 	}
 
-	ignoredActionsMap := make(map[string]bool)
-	for _, action := range ignoreActions {
-		ignoredActionsMap[action] = true
-	}
-
-	return &ignoredSink{
-		Sink:             sink,
-		ignoreMediaTypes: ignoredMap,
-		ignoreActions:    ignoredActionsMap,
+	return &ignoredMediaTypesSink{
+		Sink:    sink,
+		ignored: ignoredMap,
 	}
 }
 
 // Write discards events with ignored target media types and passes the rest
 // along.
-func (imts *ignoredSink) Write(events ...Event) error {
+func (imts *ignoredMediaTypesSink) Write(events ...Event) error {
 	var kept []Event
 	for _, e := range events {
-		if !imts.ignoreMediaTypes[e.Target.MediaType] {
+		if !imts.ignored[e.Target.MediaType] {
 			kept = append(kept, e)
 		}
 	}
 	if len(kept) == 0 {
 		return nil
 	}
-
-	var results []Event
-	for _, e := range kept {
-		if !imts.ignoreActions[e.Action] {
-			results = append(results, e)
-		}
-	}
-	if len(results) == 0 {
-		return nil
-	}
-	return imts.Sink.Write(results...)
+	return imts.Sink.Write(kept...)
 }
 
 // retryingSink retries the write until success or an ErrSinkClosed is

@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"path"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -41,6 +40,11 @@ func toStringValue(v reflect.Value, field reflect.StructField) (string, error) {
 	if v.Type() == timeType {
 		t := v.Interface().(SDKTime)
 		return formatTime(t), nil
+	}
+
+	if v.Type() == sdkDateType {
+		t := v.Interface().(SDKDate)
+		return formatDate(t), nil
 	}
 
 	switch v.Kind() {
@@ -166,7 +170,8 @@ func omitNilFieldsInJSON(data interface{}, value reflect.Value) (interface{}, er
 				continue
 			}
 
-			if currentFieldValue.Type() == timeType || currentFieldValue.Type() == timeTypePtr {
+			if currentFieldValue.Type() == timeType || currentFieldValue.Type() == timeTypePtr ||
+				currentField.Type == sdkDateType || currentField.Type == sdkDateTypePtr {
 				continue
 			}
 			// does it need to be adjusted?
@@ -180,7 +185,14 @@ func omitNilFieldsInJSON(data interface{}, value reflect.Value) (interface{}, er
 		}
 		return jsonMap, nil
 	case reflect.Slice, reflect.Array:
-		jsonList := data.([]interface{})
+		// Special case: a []byte may have been marshalled as a string
+		if reflect.TypeOf(data).Kind() == reflect.String && value.Type().Elem().Kind() == reflect.Uint8 {
+			return data, nil
+		}
+		jsonList, ok := data.([]interface{})
+		if !ok {
+			return nil, fmt.Errorf("can not omit nil fields, data was expected to be a list")
+		}
 		newList := make([]interface{}, len(jsonList))
 		var err error
 		for i, val := range jsonList {
@@ -191,7 +203,10 @@ func omitNilFieldsInJSON(data interface{}, value reflect.Value) (interface{}, er
 		}
 		return newList, nil
 	case reflect.Map:
-		jsonMap := data.(map[string]interface{})
+		jsonMap, ok := data.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("can not omit nil fields, data was expected to be a map")
+		}
 		newMap := make(map[string]interface{}, len(jsonMap))
 		var err error
 		for key, val := range jsonMap {
@@ -356,8 +371,7 @@ func addToPath(request *http.Request, value reflect.Value, field reflect.StructF
 	if !templatedPathRegex.MatchString(currentURLPath) {
 		Debugln("Marshaling request to path by appending field:", field.Name)
 		allPath := []string{currentURLPath, additionalURLPathPart}
-		newPath := strings.Join(allPath, "/")
-		request.URL.Path = path.Clean(newPath)
+		request.URL.Path = strings.Join(allPath, "/")
 	} else {
 		var fieldName string
 		if fieldName = field.Tag.Get("name"); fieldName == "" {
@@ -366,7 +380,7 @@ func addToPath(request *http.Request, value reflect.Value, field reflect.StructF
 		}
 		urlTemplate := currentURLPath
 		Debugln("Marshaling to path from field:", field.Name, "in template:", urlTemplate)
-		request.URL.Path = path.Clean(strings.Replace(urlTemplate, "{"+fieldName+"}", additionalURLPathPart, -1))
+		request.URL.Path = strings.Replace(urlTemplate, "{"+fieldName+"}", additionalURLPathPart, -1)
 	}
 	return
 }
@@ -419,7 +433,7 @@ func addToHeader(request *http.Request, value reflect.Value, field reflect.Struc
 		return
 	}
 
-	request.Header.Set(headerName, headerValue)
+	request.Header.Add(headerName, headerValue)
 	return
 }
 
@@ -634,6 +648,16 @@ func analyzeValue(stringValue string, kind reflect.Kind, field reflect.StructFie
 		sdkTime := sdkTimeFromTime(t)
 		val = reflect.ValueOf(sdkTime)
 		valPointer = reflect.ValueOf(&sdkTime)
+		return
+	case sdkDateType.Kind():
+		var t time.Time
+		t, err = tryParsingTimeWithValidFormatsForHeaders([]byte(stringValue), field.Name)
+		if err != nil {
+			return
+		}
+		sdkDate := sdkDateFromTime(t)
+		val = reflect.ValueOf(sdkDate)
+		valPointer = reflect.ValueOf(&sdkDate)
 		return
 	case reflect.Bool:
 		var bVal bool
