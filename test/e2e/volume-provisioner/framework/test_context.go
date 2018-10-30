@@ -35,9 +35,6 @@ type TestContextType struct {
 	// MntTargetOCID used mount a volume to the specific mount id
 	MntTargetOCID string
 
-	// SubnetOCID used to mount a volume looking for a mount in the specified subnet
-	SubnetOCID string
-
 	// Image is the docker image to which we are building
 	Image string
 
@@ -61,7 +58,6 @@ func RegisterFlags() {
 	flag.StringVar(&TestContext.OCIConfig, "ociconfig", "", "Path to OCIconfig file with cloud provider config.")
 	flag.StringVar(&TestContext.AD, "ad", "AD-2", "The availability domain is specified to identify in which to create the volumes.")
 	flag.StringVar(&TestContext.MntTargetOCID, "mnt-target-id", "", "Mount Target ID is specified to identify the mount target to be attached to the volumes")
-	flag.StringVar(&TestContext.SubnetOCID, "subnet-id", "", "Subnet ID is specified to identify where to look for a mount target, such that a FSS can be mounted.")
 	flag.StringVar(&TestContext.Image, "image", "", "Image name and version to build images")
 	flag.StringVar(&TestContext.Namespace, "namespace", "", "Name of an existing Namespace to run tests in.")
 	flag.BoolVar(&TestContext.DeleteNamespace, "delete-namespace", true, "If true tests will delete namespace after completion. It is only designed to make debugging easier, DO NOT turn it off by default.")
