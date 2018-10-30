@@ -36,7 +36,7 @@ spec:
       serviceAccountName: cloud-controller-manager
       containers:
         - name: oci-cloud-controller-manager
-          image: iad.ocir.io/spinnaker/cloud-provider-oci:0.7.0
+          image: iad.ocir.io/oracle/cloud-provider-oci:0.7.0
           command: ["/usr/local/bin/oci-cloud-controller-manager"]
           args:
             - --cloud-config=/etc/oci/cloud-provider.yaml
