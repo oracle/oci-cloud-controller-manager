@@ -36,6 +36,9 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 
 	lockAquired = true
 
+	err = framework.InstallFlexvolumeDriver(cs)
+	Ω(err).ShouldNot(HaveOccurred())
+
 	err = framework.InstallVolumeProvisioner(cs)
 	Ω(err).ShouldNot(HaveOccurred())
 
@@ -58,6 +61,9 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 	// first place.
 	if lockAquired {
 		cs, err := framework.NewClientSetFromFlags()
+		Ω(err).ShouldNot(HaveOccurred())
+
+		err = framework.DeleteFlexvolumeDriver(cs)
 		Ω(err).ShouldNot(HaveOccurred())
 
 		err = framework.DeleteVolumeProvisioner(cs)

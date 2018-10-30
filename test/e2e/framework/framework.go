@@ -81,7 +81,7 @@ func makeLeaderElectionConfig(client clientset.Interface, lockName string) (*lea
 		id = uuid.NewUUID().String()
 	}
 
-	Logf("Election id: %q", id)
+	Logf("Test run lock id: %q", id)
 
 	rl, err := resourcelock.New(
 		resourcelock.ConfigMapsResourceLock,

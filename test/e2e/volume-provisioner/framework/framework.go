@@ -35,6 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+	utilpointer "k8s.io/kubernetes/pkg/util/pointer"
 )
 
 const (
@@ -318,15 +319,13 @@ func NewClientSetFromFlags() (clientset.Interface, error) {
 // InstallVolumeProvisioner installs both block and fss volume provisioners and
 // waits for them to be ready.
 func InstallVolumeProvisioner(client clientset.Interface) error {
-	replica := int32(1)
-
 	blockDeployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "oci-block-volume-provisioner",
 			Namespace: "kube-system",
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: &replica,
+			Replicas: utilpointer.Int32Ptr(int32(1)),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{"app": "oci-block-volume-provisioner"},
 			},
@@ -381,7 +380,7 @@ func InstallVolumeProvisioner(client clientset.Interface) error {
 			Namespace: "kube-system",
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: &replica,
+			Replicas: utilpointer.Int32Ptr(int32(1)),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{"app": "oci-file-system-volume-provisioner"},
 			},
@@ -486,6 +485,190 @@ func DeleteVolumeProvisioner(client clientset.Interface) error {
 	err = client.AppsV1().Deployments("kube-system").Delete("oci-file-system-volume-provisioner", nil)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return errors.Wrap(err, "deleting oci-file-system-volume-provisioner")
+	}
+	return nil
+}
+
+// InstallFlexvolumeDriver installs the fexvolume driver and waits for it to be
+// ready.
+func InstallFlexvolumeDriver(client clientset.Interface) error {
+	hostPathDirectoryOrCreate := v1.HostPathDirectoryOrCreate
+	masterDS := &appsv1.DaemonSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "oci-flexvolume-driver-master",
+			Namespace: "kube-system",
+		},
+		Spec: appsv1.DaemonSetSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"app": "oci-flexvolume-driver-master"},
+			},
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   "oci-flexvolume-driver-master",
+					Labels: map[string]string{"app": "oci-flexvolume-driver-master"},
+				},
+				Spec: v1.PodSpec{
+					ServiceAccountName: "oci-flexvolume-driver",
+					NodeSelector:       map[string]string{"node-role.kubernetes.io/master": ""},
+					Tolerations: []v1.Toleration{{
+						Key:    "node.cloudprovider.kubernetes.io/uninitialized",
+						Value:  "true",
+						Effect: v1.TaintEffectNoSchedule,
+					}, {
+						Key:      "node-role.kubernetes.io/master",
+						Operator: v1.TolerationOpExists,
+						Effect:   v1.TaintEffectNoSchedule,
+					}},
+					Containers: []v1.Container{{
+						Name:    "oci-fexvolume-driver",
+						Image:   TestContext.Image,
+						Command: []string{"/bin/bash", "/usr/local/bin/install.sh"},
+						SecurityContext: &v1.SecurityContext{
+							Privileged: utilpointer.BoolPtr(true),
+						},
+						VolumeMounts: []v1.VolumeMount{{
+							Name:      "flexvolume-mount",
+							MountPath: "/flexmnt",
+						}, {
+							Name:      "config",
+							MountPath: "/tmp",
+							ReadOnly:  true,
+						}, {
+							Name:      "kubeconfig",
+							MountPath: "/tmp2",
+							ReadOnly:  true,
+						}},
+					}},
+					Volumes: []v1.Volume{{
+						Name: "config",
+						VolumeSource: v1.VolumeSource{
+							Secret: &v1.SecretVolumeSource{
+								SecretName: "oci-flexvolume-driver",
+							},
+						},
+					}, {
+						Name: "kubeconfig",
+						VolumeSource: v1.VolumeSource{
+							Secret: &v1.SecretVolumeSource{
+								SecretName: "oci-flexvolume-driver-kubeconfig",
+							},
+						},
+					}, {
+						Name: "flexvolume-mount",
+						VolumeSource: v1.VolumeSource{
+							HostPath: &v1.HostPathVolumeSource{
+								Path: "/usr/libexec/kubernetes/kubelet-plugins/volume/exec/",
+								Type: &hostPathDirectoryOrCreate,
+							},
+						},
+					}},
+				},
+			},
+		},
+	}
+
+	workerDS := &appsv1.DaemonSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "oci-flexvolume-driver-worker",
+			Namespace: "kube-system",
+		},
+		Spec: appsv1.DaemonSetSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"app": "oci-flexvolume-driver-worker"},
+			},
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   "oci-flexvolume-driver-worker",
+					Labels: map[string]string{"app": "oci-flexvolume-driver-worker"},
+				},
+				Spec: v1.PodSpec{
+					ServiceAccountName: "oci-flexvolume-driver",
+					Containers: []v1.Container{{
+						Name:    "oci-fexvolume-driver",
+						Image:   TestContext.Image,
+						Command: []string{"/bin/bash", "/usr/local/bin/install.sh"},
+						SecurityContext: &v1.SecurityContext{
+							Privileged: utilpointer.BoolPtr(true),
+						},
+						VolumeMounts: []v1.VolumeMount{{
+							Name:      "flexvolume-mount",
+							MountPath: "/flexmnt",
+						}},
+					}},
+					Volumes: []v1.Volume{{
+						Name: "flexvolume-mount",
+						VolumeSource: v1.VolumeSource{
+							HostPath: &v1.HostPathVolumeSource{
+								Path: "/usr/libexec/kubernetes/kubelet-plugins/volume/exec/",
+								Type: &hostPathDirectoryOrCreate,
+							},
+						},
+					}},
+				},
+			},
+		},
+	}
+
+	if err := createAndAwaitDaemonSet(client, masterDS); err != nil {
+		return errors.Wrap(err, "installing flexvolume driver master DaemonSet")
+	}
+
+	if err := createAndAwaitDaemonSet(client, workerDS); err != nil {
+		return errors.Wrap(err, "installing flexvolume driver worker DaemonSet")
+	}
+
+	return nil
+}
+
+func createAndAwaitDaemonSet(client clientset.Interface, desired *appsv1.DaemonSet) error {
+	actual, err := client.AppsV1().DaemonSets("kube-system").Create(desired)
+	if err != nil {
+		if !apierrors.IsAlreadyExists(err) {
+			return errors.Wrapf(err, "failed to create %q DaemonSet", desired.Name)
+		}
+		Logf("Flexvolume Driver DaemonSet already exists. Updating.")
+		actual, err = client.AppsV1().DaemonSets("kube-system").Update(desired)
+		if err != nil {
+			return errors.Wrapf(err, "updating flexvolume driver DaemonSet %q", desired.Name)
+		}
+	} else {
+		Logf("Created DaemonSet %q in namespace %q", actual.Name, actual.Namespace)
+	}
+
+	return wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+		actual, err := client.AppsV1().DaemonSets(actual.Namespace).Get(actual.Name, metav1.GetOptions{})
+		if err != nil {
+			return false, errors.Wrap(err, "waiting for DaemonSet to be ready")
+		}
+
+		if actual.Status.DesiredNumberScheduled != 0 && actual.Status.NumberReady == actual.Status.DesiredNumberScheduled {
+			return true, nil
+		}
+
+		Logf("%s DaemonSet not yet ready DaemonSet not yet ready (diesired=%d, ready=%d). Waiting...",
+			actual.Name, actual.Status.DesiredNumberScheduled, actual.Status.NumberReady)
+		return false, nil
+	})
+}
+
+// DeleteFlexvolumeDriver deletes both the master and worker flexvolume driver
+// DaemonSets.
+func DeleteFlexvolumeDriver(client clientset.Interface) error {
+	Logf("Deleteing oci-flexvolume-driver-master DaemonSet")
+
+	// TODO(apryde): We can probably use a label selector to delete both at
+	// once as this currently leaves dangling resources if the first delete
+	// fails.
+	err := client.AppsV1().DaemonSets("kube-system").Delete("oci-flexvolume-driver-master", nil)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return errors.Wrap(err, "deleting oci-flexvolume-driver-master")
+	}
+
+	Logf("Deleteing oci-flexvolume-driver-worker DaemonSet")
+
+	err = client.AppsV1().DaemonSets("kube-system").Delete("oci-flexvolume-driver-worker", nil)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return errors.Wrap(err, "deleting oci-flexvolume-driver-worker")
 	}
 	return nil
 }
