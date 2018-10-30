@@ -25,12 +25,16 @@ import (
 	"k8s.io/apiserver/pkg/util/logs"
 )
 
+var lockAquired bool
+
 var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	cs, err := framework.NewClientSetFromFlags()
 	Ω(err).ShouldNot(HaveOccurred())
 
 	err = sharedfw.AquireRunLock(cs, "oci-volume-provisioner-e2e-tests")
 	Ω(err).ShouldNot(HaveOccurred())
+
+	lockAquired = true
 
 	err = framework.InstallVolumeProvisioner(cs)
 	Ω(err).ShouldNot(HaveOccurred())
@@ -50,9 +54,13 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 	framework.Logf("Running AfterSuite actions on all node")
 	framework.RunCleanupActions()
 
-	cs, err := framework.NewClientSetFromFlags()
-	Ω(err).ShouldNot(HaveOccurred())
+	// Only delete resources if we aquired the lock and deployed them in the
+	// first place.
+	if lockAquired {
+		cs, err := framework.NewClientSetFromFlags()
+		Ω(err).ShouldNot(HaveOccurred())
 
-	err = framework.DeleteVolumeProvisioner(cs)
-	Ω(err).ShouldNot(HaveOccurred())
+		err = framework.DeleteVolumeProvisioner(cs)
+		Ω(err).ShouldNot(HaveOccurred())
+	}
 }, func() {})

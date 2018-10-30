@@ -350,7 +350,7 @@ func InstallVolumeProvisioner(client clientset.Interface) error {
 							},
 						}, {
 							Name:  "PROVISIONER_TYPE",
-							Value: core.ProvisionerNameBlock,
+							Value: core.ProvisionerNameDefault,
 						}},
 						VolumeMounts: []v1.VolumeMount{{
 							Name:      "config",
@@ -460,12 +460,12 @@ func createAndAwaitDeployment(client clientset.Interface, desired *appsv1.Deploy
 		if err != nil {
 			return false, errors.Wrap(err, "waiting for Deployment to be ready")
 		}
-		if actual.Status.ReadyReplicas != 0 && actual.Status.ReadyReplicas != actual.Status.Replicas {
-			Logf("%s Deployment not yet ready (replicas=%d, readyReplicas=%d). Waiting...",
-				actual.Name, actual.Status.Replicas, actual.Status.ReadyReplicas)
-			return false, nil
+		if actual.Status.Replicas != 0 && actual.Status.Replicas == actual.Status.ReadyReplicas {
+			return true, nil
 		}
-		return true, nil
+		Logf("%s Deployment not yet ready (replicas=%d, readyReplicas=%d). Waiting...",
+			actual.Name, actual.Status.Replicas, actual.Status.ReadyReplicas)
+		return false, nil
 	})
 }
 

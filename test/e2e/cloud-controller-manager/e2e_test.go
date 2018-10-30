@@ -28,6 +28,8 @@ import (
 	"k8s.io/apiserver/pkg/util/logs"
 )
 
+var lockAquired bool
+
 var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	version := os.Getenv("VERSION")
 	Ω(version).ShouldNot(BeEmpty(), "$VERSION must be set")
@@ -37,6 +39,8 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 
 	err = sharedfw.AquireRunLock(cs, "oci-cloud-controller-manager-e2e-tests")
 	Ω(err).ShouldNot(HaveOccurred())
+
+	lockAquired = true
 
 	err = framework.InstallCCM(cs, version)
 	Ω(err).ShouldNot(HaveOccurred())
@@ -56,9 +60,13 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 	framework.Logf("Running AfterSuite actions on all node")
 	framework.RunCleanupActions()
 
-	cs, err := framework.NewClientSetFromFlags()
-	Ω(err).ShouldNot(HaveOccurred())
+	// Only delete resources if we aquired the lock and deployed them in the
+	// first place.
+	if lockAquired {
+		cs, err := framework.NewClientSetFromFlags()
+		Ω(err).ShouldNot(HaveOccurred())
 
-	err = framework.DeleteCCM(cs)
-	Ω(err).ShouldNot(HaveOccurred())
+		err = framework.DeleteCCM(cs)
+		Ω(err).ShouldNot(HaveOccurred())
+	}
 }, func() {})
