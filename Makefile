@@ -94,21 +94,6 @@ manifests: build-dirs
 test:
 	@./hack/test.sh $(SRC_DIRS)
 
-# Deploys the current version to a specified cluster.
-# Requires binary, manifests, images to be built and pushed. Requires $KUBECONFIG set.
-.PHONY: upgrade
-upgrade:
-	# Upgrade the current CCM to the specified version
-	@./hack/deploy.sh deploy-build-version-ccm
-
-.PHONY: rollback
-rollback:
-	@./hack/deploy.sh delete-ccm-ds
-
-.PHONY: e2e
-e2e:
-	@./hack/test-e2e.sh
-
 # Run the canary tests - in single run mode.
 .PHONY: canary-run-once
 canary-run-once:

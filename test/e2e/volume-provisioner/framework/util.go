@@ -20,7 +20,7 @@ import (
 	"time"
 
 	. "github.com/onsi/ginkgo"
-	"github.com/oracle/oci-cloud-controller-manager/test/e2e/volume-provisioner/framework/ginkgowrapper"
+	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework/ginkgowrapper"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
 )

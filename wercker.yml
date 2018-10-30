@@ -74,26 +74,43 @@ ccm-e2e-test:
   base-path: "/go/src/github.com/oracle/oci-cloud-controller-manager"
   steps:
     - script:
-      name: set ENV vars
+      name: Run CCM E2E tests
       code: |
         export VERSION=$(make version)
-        echo "${VERSION}"
+        echo "Running CCM tests version: ${VERSION}"
         export NODEPORT_TEST="true"
         export CCM_SECLIST_ID="ocid1.securitylist.oc1.iad.aaaaaaaagekgnvc75yxb66xj2qgocejhyk5xuhojm6wimmteqa5fj43kk5lq"
         export K8S_SECLIST_ID="ocid1.securitylist.oc1.iad.aaaaaaaajzgrgfma2xzzdv4erczaiphuyaflazbt2bvzw2cwj2pxo3fygo5a"
 
-    - script:
-      name: deploy latest CCM
-      code: make upgrade
+        if [ -z "${KUBECONFIG}" ]; then
+            if [ -z "${KUBECONFIG_VAR}" ]; then
+                echo "KUBECONFIG or KUBECONFIG_VAR must be set"
+                exit 1
+            else
+                # NB: Wercker environment variables are base64 encoded.
+                echo "$KUBECONFIG_VAR" | openssl enc -base64 -d -A > /tmp/kubeconfig
+                export KUBECONFIG=/tmp/kubeconfig
+            fi
+        fi
 
-    - script:
-      name: e2e default tests
-      code: make e2e
+        if [ -z "${CLOUDCONFIG}" ]; then
+            if [ -z "${CLOUDCONFIG_VAR}" ]; then
+                echo "CLOUDCONFIG or CLOUDCONFIG_VAR must be set"
+                exit 1
+            else
+                # NB: Wercker environment variables are base64 encoded.
+                echo "$CLOUDCONFIG_VAR" | openssl enc -base64 -d -A > /tmp/cloudconfig
+                export CLOUDCONFIG=/tmp/cloudconfig
+            fi
+        fi
 
-  after-steps:
-    - script:
-      name: rollback original CCM
-      code: make rollback
+        ginkgo                                 \
+          -v                                   \
+          -progress                            \
+          test/e2e/cloud-controller-manager -- \
+          --kubeconfig=${KUBECONFIG}           \
+          --cloud-config=${CLOUDCONFIG}        \
+          --delete-namespace=true
 
 volume-provisioner-e2e-test:
   base-path: "/go/src/github.com/oracle/oci-cloud-controller-manager"

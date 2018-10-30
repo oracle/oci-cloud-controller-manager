@@ -29,9 +29,11 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci" // register oci cloud provider
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	client "github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	sharedfw "github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
 	common "github.com/oracle/oci-go-sdk/common"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -300,4 +302,114 @@ func createOCIClient(cloudProviderConfig *providercfg.Config) (client.Interface,
 		return nil, errors.Wrapf(err, "Couldn't create oci client from configuration: %s.", cloudConfigFile)
 	}
 	return ociClient, nil
+}
+
+// NewClientSetFromFlags builds a kubernetes client from flags.
+func NewClientSetFromFlags() (clientset.Interface, error) {
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	if err != nil {
+		return nil, err
+	}
+	cs, err := clientset.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	return cs, nil
+}
+
+// InstallCCM installs the given version of the CCM into the cluster.
+func InstallCCM(client clientset.Interface, version string) error {
+	Logf("Installing version %q of oci-cloud-controller-manager", version)
+
+	desired := &appsv1.DaemonSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "oci-cloud-controller-manager",
+			Namespace: "kube-system",
+			Labels: map[string]string{
+				"k8s-app": "oci-cloud-controller-manager",
+			},
+		},
+		Spec: appsv1.DaemonSetSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"k8s-app": "oci-cloud-controller-manager",
+				},
+			},
+			UpdateStrategy: appsv1.DaemonSetUpdateStrategy{
+				Type: appsv1.RollingUpdateDaemonSetStrategyType,
+			},
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"k8s-app": "oci-cloud-controller-manager",
+					},
+				},
+				Spec: v1.PodSpec{
+					HostNetwork: true,
+					NodeSelector: map[string]string{
+						"node-role.kubernetes.io/master": "",
+					},
+					Tolerations: []v1.Toleration{{
+						Key:    "node.cloudprovider.kubernetes.io/uninitialized",
+						Value:  "true",
+						Effect: v1.TaintEffectNoSchedule,
+					}, {
+						Key:      "node-role.kubernetes.io/master",
+						Operator: v1.TolerationOpExists,
+						Effect:   v1.TaintEffectNoSchedule,
+					}},
+					ServiceAccountName: "cloud-controller-manager",
+					Volumes: []v1.Volume{{
+						Name: "cfg",
+						VolumeSource: v1.VolumeSource{
+							Secret: &v1.SecretVolumeSource{
+								SecretName: "oci-cloud-controller-manager",
+							},
+						},
+					}, {
+						Name: "kubernetes",
+						VolumeSource: v1.VolumeSource{
+							HostPath: &v1.HostPathVolumeSource{
+								Path: "/etc/kubernetes",
+							},
+						},
+					}},
+					Containers: []v1.Container{{
+						Name:    "oci-cloud-controller-manager",
+						Image:   "iad.ocir.io/spinnaker/cloud-provider-oci:" + version,
+						Command: []string{"/usr/local/bin/oci-cloud-controller-manager"},
+						Args: []string{
+							"--cloud-config=/etc/oci/cloud-provider.yaml",
+							"--cloud-provider=oci",
+							"--leader-elect-resource-lock=configmaps",
+							"--log-level=debug",
+							"-v=4",
+						},
+						VolumeMounts: []v1.VolumeMount{{
+							Name:      "cfg",
+							MountPath: "/etc/oci",
+							ReadOnly:  true,
+						}, {
+							Name:      "kubernetes",
+							MountPath: "/etc/kubernetes",
+							ReadOnly:  true,
+						}},
+					}},
+				},
+			},
+		},
+	}
+
+	return sharedfw.CreateAndAwaitDaemonSet(client, desired)
+}
+
+// DeleteCCM deletes the CCM.
+func DeleteCCM(client clientset.Interface) error {
+	Logf("Deleteing CCM DaemonSet")
+
+	err := client.AppsV1().DaemonSets("kube-system").Delete("oci-cloud-controller-manager", nil)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return errors.Wrap(err, "deleting CCM")
+	}
+	return nil
 }

@@ -258,8 +258,8 @@ func (fsp *filesystemProvisioner) Delete(volume *v1.PersistentVolume) error {
 	}
 
 	logger := fsp.logger.With(
-		"volumeOCID", volume,
-		"exportOCID", exportID,
+		"fileSystemID", filesystemID,
+		"exportID", exportID,
 	)
 
 	logger.Info("Deleting export")
