@@ -42,7 +42,6 @@ import (
 const (
 	OCIConfigVar       = "OCICONFIG_VAR"
 	KubeConfigVar      = "KUBECONFIG_VAR"
-	SubnetOCID         = "SUBNET_OCID"
 	MntTargetOCID      = "MNT_TARGET_OCID"
 	AD                 = "AD"
 	KubeSystemNS       = "kube-system"

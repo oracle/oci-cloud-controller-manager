@@ -1,15 +1,21 @@
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: oci-flexvolume-driver-master
   namespace: kube-system
 spec:
+  selector:
+    matchLabels:
+      component: oci-flexvolume-driver
+      tier: control-plane
+  updateStrategy:
+    type: RollingUpdate
   template:
     metadata:
-      name: oci-flexvolume-driver-master
       labels:
-        app: oci-flexvolume-driver
+        component: oci-flexvolume-driver
+        tier: control-plane
     spec:
       serviceAccountName: oci-flexvolume-driver
       nodeSelector:
@@ -21,10 +27,20 @@ spec:
       - key: node-role.kubernetes.io/master
         operator: Exists
         effect: NoSchedule
+      volumes:
+        - name: flexvolume-mount
+          hostPath:
+            path: /usr/libexec/kubernetes/kubelet-plugins/volume/exec/
+            type: DirectoryOrCreate
+        - name: config
+          secret:
+            secretName: oci-flexvolume-driver
+        - name: kubeconfig
+          secret:
+            secretName: oci-flexvolume-driver-kubeconfig
       containers:
-        - image: iad.ocir.io/__DOCKER_REGISTRY_TENANCY__/oci-flexvolume-driver:__VERSION__
-          imagePullPolicy: Always
-          name: oci-flexvolume-driver
+        - name: oci-flexvolume-driver
+          image: iad.ocir.io/oracle/cloud-provider-oci:latest
           command: ["/bin/bash", "/usr/local/bin/install.sh"]
           securityContext:
             privileged: true
@@ -37,42 +53,36 @@ spec:
             - mountPath: /tmp2
               name: kubeconfig
               readOnly: true
-      volumes:
-        - name: flexvolume-mount
-          hostPath:
-            path: /usr/libexec/kubernetes/kubelet-plugins/volume/exec/
-            type: DirectoryOrCreate
-        - name: config
-          secret:
-            secretName: oci-flexvolume-driver
-        - name: kubeconfig
-          secret:
-            secretName: oci-flexvolume-driver-kubeconfig
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: oci-flexvolume-driver-worker
   namespace: kube-system
 spec:
+  selector:
+    matchLabels:
+      component: oci-flexvolume-driver
+      tier: node
+  updateStrategy:
+    type: RollingUpdate
   template:
     metadata:
-      name: oci-flexvolume-driver-worker
       labels:
-        app: oci-flexvolume-driver
+        component: oci-flexvolume-driver
+        tier: node
     spec:
+      volumes:
+        - name: flexvolume-mount
+          hostPath:
+            path: /usr/libexec/kubernetes/kubelet-plugins/volume/exec
+            type: DirectoryOrCreate
       containers:
-        - image: iad.ocir.io/__DOCKER_REGISTRY_TENANCY__/oci-flexvolume-driver:__VERSION__
-          imagePullPolicy: Always
-          name: oci-flexvolume-driver
+        - name: oci-flexvolume-driver
+          image: iad.ocir.io/oracle/cloud-provider-oci:latest
           command: ["/bin/bash", "/usr/local/bin/install.sh"]
           securityContext:
             privileged: true
           volumeMounts:
             - mountPath: /flexmnt
               name: flexvolume-mount
-      volumes:
-        - name: flexvolume-mount
-          hostPath:
-            path: /usr/libexec/kubernetes/kubelet-plugins/volume/exec
-            type: DirectoryOrCreate
