@@ -59,26 +59,26 @@ build-dirs:
 
 .PHONY: oci-cloud-controller-manager
 oci-cloud-controller-manager: build-dirs
-	@GOOS=$(GOOS) GOARCH=$(ARCH) go build                            \
-	    -o dist/oci-cloud-controller-manager                         \
-	    -installsuffix "static"                                      \
-	    -ldflags "-X main.version=$(VERSION) -X main.build=$(BUILD)" \
-	    ./cmd/oci-cloud-controller-manager
+	@GOOS=$(GOOS) GOARCH=$(ARCH) go build                          \
+	  -o dist/oci-cloud-controller-manager                         \
+	  -installsuffix "static"                                      \
+	  -ldflags "-X main.version=$(VERSION) -X main.build=$(BUILD)" \
+	  ./cmd/oci-cloud-controller-manager
 
 .PHONY: oci-volume-provisioner
 oci-volume-provisioner: build-dirs
-	@GOOS=$(GOOS) GOARCH=$(ARCH) CGO_ENABLED=0 go build                                    \
-	-o dist/oci-volume-provisioner                                                         \
-	-ldflags="-s -w -X main.version=${VERSION} -X main.build=${BUILD} -extldflags -static" \
-	./cmd/oci-volume-provisioner
+	@GOOS=$(GOOS) GOARCH=$(ARCH) CGO_ENABLED=0 go build                                      \
+	  -o dist/oci-volume-provisioner                                                         \
+	  -ldflags="-s -w -X main.version=${VERSION} -X main.build=${BUILD} -extldflags -static" \
+	  ./cmd/oci-volume-provisioner
 
 
 .PHONY: oci-flexvolume-driver
 oci-flexvolume-driver: build-dirs
-	@GOOS=$(GOOS) GOARCH=$(ARCH) CGO_ENABLED=0 go build                    \
-	    -o dist/oci-flexvolume-driver                                      \
-	    -ldflags="-s -w -X main.version=$(VERSION) -X main.build=$(BUILD)" \
-	    ./cmd/oci-flexvolume-driver/
+	@GOOS=$(GOOS) GOARCH=$(ARCH) CGO_ENABLED=0 go build                  \
+	  -o dist/oci-flexvolume-driver                                      \
+	  -ldflags="-s -w -X main.version=$(VERSION) -X main.build=$(BUILD)" \
+	  ./cmd/oci-flexvolume-driver/
 
 .PHONY: build
 build: oci-cloud-controller-manager oci-volume-provisioner oci-flexvolume-driver
@@ -86,9 +86,9 @@ build: oci-cloud-controller-manager oci-volume-provisioner oci-flexvolume-driver
 .PHONY: manifests
 manifests: build-dirs
 	@cp -a manifests/**/*.yaml dist
-	@sed $(SED_INPLACE)                                            \
-	    's#${IMAGE}:[0-9]\+.[0-9]\+.[0-9]\+#${IMAGE}:${VERSION}#g' \
-	    dist/oci-cloud-controller-manager.yaml
+	@sed $(SED_INPLACE)                         \
+	  's#${IMAGE}:latest#${IMAGE}:${VERSION}#g' \
+	  dist/*.yaml
 
 .PHONY: test
 test:
@@ -117,12 +117,12 @@ clean:
 .PHONY: run-dev
 run-dev: build
 	@dist/oci-cloud-controller-manager          \
-	    --kubeconfig=$(KUBECONFIG)              \
-	    --cloud-config=$(CLOUD_PROVIDER_CFG)    \
-	    --cluster-cidr=10.244.0.0/16            \
-	    --leader-elect-resource-lock=configmaps \
-	    --cloud-provider=oci                    \
-	    -v=4
+	  --kubeconfig=$(KUBECONFIG)              \
+	  --cloud-config=$(CLOUD_PROVIDER_CFG)    \
+	  --cluster-cidr=10.244.0.0/16            \
+	  --leader-elect-resource-lock=configmaps \
+	  --cloud-provider=oci                    \
+	  -v=4
 
 .PHONY: version
 version:

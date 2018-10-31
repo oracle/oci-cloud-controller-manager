@@ -68,7 +68,12 @@ publish-docker-image:
 
     - script:
         name: Push image
-        code: docker push ${IMAGE}:${VERSION}
+        code: |
+          docker push ${IMAGE}:${VERSION}
+          if [ "${WERCKER_GIT_BRANCH}" = "master" ]; then
+            docker tag ${IMAGE}:${VERSION} ${IMAGE}:latest
+            docker push ${IMAGE}:latest
+          fi
 
 ccm-e2e-test:
   base-path: "/go/src/github.com/oracle/oci-cloud-controller-manager"
