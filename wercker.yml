@@ -50,7 +50,7 @@ publish-docker-image:
     - script:
         name: Set ENV vars
         code: |
-          export IMAGE="iad.ocir.io/spinnaker/cloud-provider-oci"
+          export IMAGE="iad.ocir.io/oracle/cloud-provider-oci"
           export VERSION=$(cat dist/VERSION.txt)
           echo "${VERSION}"
 
@@ -135,7 +135,7 @@ volume-provisioner-e2e-test:
           --ociconfig="${OCI_CONFIG}" \
           --mnt-target-id="${MOUNT_TARGET_ID}" \
           --delete-namespace-on-failure=true \
-          --image="iad.ocir.io/spinnaker/cloud-provider-oci:${VERSION}"
+          --image="iad.ocir.io/oracle/cloud-provider-oci:${VERSION}"
 
 release:
   box:

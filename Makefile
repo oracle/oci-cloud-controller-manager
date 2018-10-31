@@ -13,7 +13,7 @@
 # limitations under the License.
 
 PKG := github.com/oracle/oci-cloud-controller-manager
-IMAGE ?= iad.ocir.io/spinnaker/cloud-provider-oci
+IMAGE ?= iad.ocir.io/oracle/cloud-provider-oci
 
 BUILD := $(shell git describe --exact-match 2> /dev/null || git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
 # Allow overriding for release versions else just equal the build (git hash)

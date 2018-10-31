@@ -376,7 +376,7 @@ func InstallCCM(client clientset.Interface, version string) error {
 					}},
 					Containers: []v1.Container{{
 						Name:    "oci-cloud-controller-manager",
-						Image:   "iad.ocir.io/spinnaker/cloud-provider-oci:" + version,
+						Image:   "iad.ocir.io/oracle/cloud-provider-oci:" + version,
 						Command: []string{"/usr/local/bin/oci-cloud-controller-manager"},
 						Args: []string{
 							"--cloud-config=/etc/oci/cloud-provider.yaml",
