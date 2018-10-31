@@ -1,148 +1,17 @@
-# OCI Cloud Controller Manager (CCM)
-
-`oci-cloud-controller-manager` is a Kubernetes Cloud Controller Manager
-implementation (or out-of-tree cloud-provider) for [Oracle Cloud
-Infrastucture][1] (OCI).
+# cloud-provider-oci
 
 [![wercker status](https://app.wercker.com/status/17a52304e0309d138ad41f7ae9f9ea49/s/master "wercker status")](https://app.wercker.com/project/byKey/17a52304e0309d138ad41f7ae9f9ea49)
 [![Go Report Card](https://goreportcard.com/badge/github.com/oracle/oci-cloud-controller-manager)](https://goreportcard.com/report/github.com/oracle/oci-cloud-controller-manager)
 
-**WARNING**: this project is under active development and should be considered alpha.
+**WARNING**: this project is under active development and should be considered beta.
 
-## Introduction
+## Documentation
 
-External cloud providers were introduced as an _Alpha_ feature in Kubernetes
-1.6 with the addition of the [Cloud Controller Manager][2] binary. External
-cloud providers are Kubernetes (master) controllers that implement the
-cloud-provider specific control loops required for Kubernetes to function.
-
-This functionality is implemented in-tree in the `kube-controller-manger` binary
-for _existing_ cloud-providers (e.g. AWS, GCE, etc.), however, in-tree
-cloud-providers have entered maintenance mode and _no additional providers will
-be accepted_. Furthermore, there is an ongoing effort to remove all existing
-cloud-provider specific code out of the Kubernetes codebase.
-
-## Compatibility matrix
-
-|       | Kubernetes &lt; 1.7.2 | Kubernetes 1.7.{2..5} | Kubernetes 1.7.{6..} | Kubernetes 1.8 | Kubernetes 1.9 | Kubernetes 1.10
-|-------|-----------------------|-----------------------|----------------------|------------------|----------------------|------------------|
-| v 0.1 | ✗                     | †                     | ✓                    | ✓                | ✗                |  ✗               |
-| v 0.2 | ✗                     | †                     | ✓                    | ✓                | ✗                |  ✗               |
-| v 0.3 | ✗                     | †                     | ✓                    | ✓                | ✓                | ✓                |
-| v 0.4 | ✗                     | †                     | ✓                    | ✓                | ✓                | ✓                |
-| v 0.5 | ✗                     | †                     | ✓                    | ✓                | ✓                | ✓                |
-
-
-Key:
-
- * `✓` oci-cloud-controller-manager is fully compatible.
- * `†` oci-cloud-controller-manager is compatible but requires the
-       `--provider-id` flag to be set on the Kubelet of all nodes in the
-       cluster.
- * `✗` oci-cloud-controller-manager is not compatible.
-
-## Implementation
- Currently `oci-cloud-controller-manager` implements:
-
- - NodeController - updates nodes with cloud provider specific labels and
-   addresses, also deletes kubernetes nodes when deleted from the
-   cloud-provider.
- - ServiceController - responsible for creating load balancers when a service
-   of `type: LoadBalancer` is created in Kubernetes.
-
-## Setup and Installation
-
-To get the CCM running in your Kubernetes cluster you will need to do the
-following:
-
- 1. Prepare your Kubernetes cluster for running an external cloud provider.
- 2. Create a Kubernetes secret containing the configuration for the CCM.
- 3. Deploy the CCM as a [DaemonSet][4].
-
-### Preparing Your Cluster
-
-To deploy the Cloud Controller Manager (CCM) your cluster must be configured to
-use an external cloud-provider.
-
-This involves:
- - Setting the `--cloud-provider=external` flag on the `kubelet` on **all
-   nodes** in your cluster.
- - Setting the `--cloud-provider=external` flag on the `kube-controller-manager`
-   in your Kubernetes control plane.
-
-**Depending on how kube-proxy is run you _may_ need the following:**
-
-- Ensuring that `kube-proxy` tolerates the uninitialised cloud taint. The
-  following should appear in the `kube-proxy` pod yaml:
-
-```yaml
-- effect: NoSchedule
-  key: node.cloudprovider.kubernetes.io/uninitialized
-  value: "true"
-```
-
-If your cluster was created using `kubeadm` >= v1.7.2 this toleration will
-already be applied. See [kubernetes/kubernetes#49017][5] for details.
-
-Remember to restart any components that you have reconfigured before continuing.
-
-### Authentication and Configuration
-
-An example configuration file can be found [here][7]. Download this file and
-populate it with values specific to your chosen OCI identity and tenancy.
-Then create the Kubernetes secret with the following command:
-
-```bash
-$ kubectl  create secret generic oci-cloud-controller-manager \
-     -n kube-system                                           \
-     --from-file=cloud-provider.yaml=cloud-provider-example.yaml
-```
-
-Note that you must ensure the secret contains the key `cloud-provider.yaml`
-rather than the name of the file on disk.
-
-### Deployment
-
-Lastly deploy the controller manager and associated RBAC rules if your cluster
-is configured to use RBAC:
-
-```bash
-$ kubectl apply -f https://raw.githubusercontent.com/oracle/oci-cloud-controller-manager/master/manifests/cloud-controller-manager/oci-cloud-controller-manager.yaml
-$ kubectl apply -f https://raw.githubusercontent.com/oracle/oci-cloud-controller-manager/master/manifests/cloud-controller-manager/oci-cloud-controller-manager-rbac.yaml
-```
-
-Check the CCM logs to ensure it's running correctly:
-
-```bash
-$ kubectl -n kube-system get po | grep oci
-oci-cloud-controller-manager-ds-k2txq   1/1       Running   0          19s
-
-$ kubectl -n kube-system logs oci-cloud-controller-manager-ds-k2txq
-I0905 13:44:51.785964       7 flags.go:52] FLAG: --address="0.0.0.0"
-I0905 13:44:51.786063       7 flags.go:52] FLAG: --allocate-node-cidrs="false"
-I0905 13:44:51.786074       7 flags.go:52] FLAG: --alsologtostderr="false"
-I0905 13:44:51.786078       7 flags.go:52] FLAG: --cloud-config="/etc/oci/cloud-config.cfg"
-I0905 13:44:51.786083       7 flags.go:52] FLAG: --cloud-provider="oci"
-```
-
-## Upgrade
-
-The following example shows how to upgrade the CCM from an older version (replace ? with the version you're upgrading to):
-
-```bash
-$ export RELEASE=?
-$ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-cloud-controller-manager-rbac.yaml
-$ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-cloud-controller-manager.yaml
-```
-
-## Examples
-
- - [Service `type: LoadBalancer` basic NGINX example][8]
- - [Service `type: LoadBalancer` NGINX SSL example][9]
+See [docs/getting-started.md](docs/getting-started.md).
 
 ## Development
 
-See [DEVELOPMENT.md](docs/development.md).
+See [docs/development.md](docs/development.md).
 
 ## Support
 
