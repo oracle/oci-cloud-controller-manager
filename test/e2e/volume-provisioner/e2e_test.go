@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"os"
 	"testing"
 
 	"github.com/onsi/ginkgo"
@@ -26,6 +27,7 @@ import (
 )
 
 var lockAquired bool
+var installDisabled bool
 
 var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	cs, err := framework.NewClientSetFromFlags()
@@ -36,11 +38,14 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 
 	lockAquired = true
 
-	err = framework.InstallFlexvolumeDriver(cs)
-	Ω(err).ShouldNot(HaveOccurred())
+	_, installDisabled = os.LookupEnv("INSTALL_DISABLED")
+	if !installDisabled {
+		err = framework.InstallFlexvolumeDriver(cs)
+		Ω(err).ShouldNot(HaveOccurred())
 
-	err = framework.InstallVolumeProvisioner(cs)
-	Ω(err).ShouldNot(HaveOccurred())
+		err = framework.InstallVolumeProvisioner(cs)
+		Ω(err).ShouldNot(HaveOccurred())
+	}
 
 	return nil
 }, func(data []byte) {})
@@ -59,7 +64,7 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 
 	// Only delete resources if we aquired the lock and deployed them in the
 	// first place.
-	if lockAquired {
+	if lockAquired && !installDisabled {
 		cs, err := framework.NewClientSetFromFlags()
 		Ω(err).ShouldNot(HaveOccurred())
 

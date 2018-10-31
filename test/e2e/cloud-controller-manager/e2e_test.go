@@ -29,6 +29,7 @@ import (
 )
 
 var lockAquired bool
+var installDisabled bool
 
 var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	version := os.Getenv("VERSION")
@@ -42,8 +43,11 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 
 	lockAquired = true
 
-	err = framework.InstallCCM(cs, version)
-	Ω(err).ShouldNot(HaveOccurred())
+	_, installDisabled = os.LookupEnv("INSTALL_DISABLED")
+	if !installDisabled {
+		err = framework.InstallCCM(cs, version)
+		Ω(err).ShouldNot(HaveOccurred())
+	}
 
 	return nil
 }, func(data []byte) {})
@@ -62,7 +66,7 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 
 	// Only delete resources if we aquired the lock and deployed them in the
 	// first place.
-	if lockAquired {
+	if lockAquired && !installDisabled {
 		cs, err := framework.NewClientSetFromFlags()
 		Ω(err).ShouldNot(HaveOccurred())
 

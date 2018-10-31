@@ -5,8 +5,13 @@ E2E tests.
 
 ## Running
 
+By default the tests install the provided `$VERSION` of the CCM. To run against
+an existing deployment set `$INSTALL_DISABLED=1`
+
 ```bash
-$ ginkgo -v -progress test/e2e/cloud-controller-manager -- --kubeconfig=${HOME}/.kube/config --delete-namespace=false
+$ INSTALL_DISABLED=1 ginkgo -v -progress test/e2e/cloud-controller-manager -- \
+    --kubeconfig=${HOME}/.kube/config \
+    --delete-namespace=false
 ```
 
 NOTE: Test suite will fail if executed behind a `$HTTP_PROXY` that returns a
