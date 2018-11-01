@@ -15,6 +15,7 @@
 package framework
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -44,7 +45,7 @@ func AquireRunLock(client clientset.Interface, lockName string) error {
 
 	readyCh := make(chan struct{})
 	lec.Callbacks = leaderelection.LeaderCallbacks{
-		OnStartedLeading: func(stop <-chan struct{}) {
+		OnStartedLeading: func(_ context.Context) {
 			Logf("Test run lock aquired")
 			readyCh <- struct{}{}
 		},
@@ -58,7 +59,7 @@ func AquireRunLock(client clientset.Interface, lockName string) error {
 		return err
 	}
 
-	go le.Run()
+	go le.Run(context.Background())
 
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
@@ -73,7 +74,6 @@ func AquireRunLock(client clientset.Interface, lockName string) error {
 			return errors.New("timed out trying to aquire test run lock")
 		}
 	}
-	panic("unreachable")
 }
 
 func makeLeaderElectionConfig(client clientset.Interface, lockName string) (*leaderelection.LeaderElectionConfig, error) {
