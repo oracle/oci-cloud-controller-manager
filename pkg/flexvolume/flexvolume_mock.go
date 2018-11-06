@@ -17,37 +17,37 @@ package flexvolume
 type mockFlexvolumeDriver struct{}
 
 func (driver mockFlexvolumeDriver) Init() DriverStatus {
-	return Succeed()
+	return Succeed(nil)
 }
 
 func (driver mockFlexvolumeDriver) Attach(opts Options, nodeName string) DriverStatus {
-	return NotSupported()
+	return NotSupported(nil)
 }
 
 func (driver mockFlexvolumeDriver) Detach(mountDevice, nodeName string) DriverStatus {
-	return Succeed()
+	return Succeed(nil)
 }
 
 func (driver mockFlexvolumeDriver) WaitForAttach(mountDevice string, opts Options) DriverStatus {
-	return Succeed()
+	return Succeed(nil)
 }
 
 func (driver mockFlexvolumeDriver) IsAttached(opts Options, nodeName string) DriverStatus {
-	return Succeed()
+	return Succeed(nil)
 }
 
 func (driver mockFlexvolumeDriver) MountDevice(mountDir, mountDevice string, opts Options) DriverStatus {
-	return Succeed()
+	return Succeed(nil)
 }
 
 func (driver mockFlexvolumeDriver) UnmountDevice(mountDevice string) DriverStatus {
-	return Succeed()
+	return Succeed(nil)
 }
 
 func (driver mockFlexvolumeDriver) Mount(mountDir string, opts Options) DriverStatus {
-	return Succeed()
+	return Succeed(nil)
 }
 
 func (driver mockFlexvolumeDriver) Unmount(mountDir string) DriverStatus {
-	return Succeed()
+	return Succeed(nil)
 }

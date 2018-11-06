@@ -16,11 +16,12 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/flexvolume"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/flexvolume/block"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/logging"
+	"go.uber.org/zap"
 )
 
 // version/build is set at build time to the version of the driver being built.
@@ -37,24 +38,22 @@ func GetLogPath() string {
 }
 
 func main() {
-	// TODO: Maybe use sirupsen/logrus?
-	f, err := os.OpenFile(GetLogPath(), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error opening log file: %v", err)
-		os.Exit(1)
-	}
-	defer f.Close()
+	l := logging.FileLogger(GetLogPath())
+	defer l.Sync()
+	zap.ReplaceGlobals(l)
+	logger := l.Sugar()
+	logger = logger.With(
+		"pid", os.Getpid(),
+		"version", version,
+		"build", build,
+	)
 
-	log.SetPrefix(fmt.Sprintf("%d ", os.Getpid()))
-
-	log.SetOutput(f)
-
-	log.Printf("OCI FlexVolume Driver version: %s (%s)", version, build)
-	d, err := block.NewOCIFlexvolumeDriver()
+	logger.Info("OCI Flexvolume driver")
+	d, err := block.NewOCIFlexvolumeDriver(logger)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error creating new driver: %v", err)
-		log.Printf("error creating new driver: %v", err)
+		logger.With(zap.Error(err)).Error("Error creating new driver")
 		os.Exit(1)
 	}
-	flexvolume.ExecDriver(d, os.Args)
+	flexvolume.ExecDriver(d, os.Args, logger)
 }
