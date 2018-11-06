@@ -96,10 +96,11 @@ func ExitWithResult(result DriverStatus) {
 	res, err := json.Marshal(result)
 	if err != nil {
 		result.logger.With(zap.Error(err)).Error("Error marshaling result to JSON")
-		//fmt.Fprintln(out, `{"status":"Failure","message":"Error marshaling result to JSON"}`)
+		fmt.Fprintln(out, `{"status":"Failure","message":"Error marshaling result to JSON"}`)
 	} else {
 		s := string(res)
 		result.logger.With("result", s).Info("Command finished")
+		fmt.Fprintln(out, s)
 	}
 	exit(code)
 }
@@ -153,7 +154,7 @@ func ExecDriver(driver Driver, args []string, logger *zap.SugaredLogger) {
 	if len(args) < 2 {
 		ExitWithResult(Fail(logger, "Expected at least one argument"))
 	}
-	logger.With("path", args[0], "binary", args[1], "arguments", args[2:]).Info("Exec called")
+	logger.With("binary", args[0], "command", args[1], "arguments", args[2:]).Info("Exec called")
 
 	switch args[1] {
 	// <driver executable> init

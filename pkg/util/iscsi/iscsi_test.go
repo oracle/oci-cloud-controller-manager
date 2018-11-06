@@ -18,7 +18,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/oracle/oci-cloud-controller-manager/pkg/util/mount"
+	"k8s.io/kubernetes/pkg/util/mount"
 )
 
 type mockMountLister struct {

@@ -272,8 +272,8 @@ func (c *iSCSIMounter) DeviceOpened(path string) (bool, error) {
 
 func (c *iSCSIMounter) FormatAndMount(source string, target string, fstype string, options []string) error {
 	return (&mount.SafeFormatAndMount{
-		c.mounter,
-		c.runner,
+		Interface: c.mounter,
+		Exec:      c.runner,
 	}).FormatAndMount(source, target, fstype, options)
 }
 
