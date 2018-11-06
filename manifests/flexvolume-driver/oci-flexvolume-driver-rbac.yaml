@@ -3,6 +3,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: oci-flexvolume-driver
+  namespace: kube-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRole
