@@ -72,7 +72,6 @@ oci-volume-provisioner: build-dirs
 	  -ldflags="-s -w -X main.version=${VERSION} -X main.build=${BUILD} -extldflags -static" \
 	  ./cmd/oci-volume-provisioner
 
-
 .PHONY: oci-flexvolume-driver
 oci-flexvolume-driver: build-dirs
 	@GOOS=$(GOOS) GOARCH=$(ARCH) CGO_ENABLED=0 go build                  \
@@ -114,15 +113,23 @@ validate-canary:
 clean:
 	@rm -rf dist
 
-.PHONY: run-dev
-run-dev: build
-	@dist/oci-cloud-controller-manager          \
-	  --kubeconfig=$(KUBECONFIG)              \
-	  --cloud-config=$(CLOUD_PROVIDER_CFG)    \
-	  --cluster-cidr=10.244.0.0/16            \
-	  --leader-elect-resource-lock=configmaps \
-	  --cloud-provider=oci                    \
+.PHONY: run-ccm-dev
+run-ccm-dev:
+	@go run cmd/oci-cloud-controller-manager/main.go  \
+	  --kubeconfig=$(KUBECONFIG)                      \
+	  --cloud-config=$(CLOUD_PROVIDER_CFG)            \
+	  --cluster-cidr=10.244.0.0/16                    \
+	  --leader-elect-resource-lock=configmaps         \
+	  --cloud-provider=oci                            \
 	  -v=4
+
+.PHONY: run-volume-provisioner-dev
+run-volume-provisioner-dev:
+	@NODE_NAME=$(shell hostname)                      \
+	CONFIG_YAML_FILENAME=cloud-provider.yaml          \
+	go run cmd/oci-volume-provisioner/main.go         \
+	    --kubeconfig=$(KUBECONFIG)                    \
+	    -v=4
 
 .PHONY: version
 version:
