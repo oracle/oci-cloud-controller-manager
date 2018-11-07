@@ -26,7 +26,8 @@ var volumeOCIDTests = []struct {
 }{
 	{"phx", "aaaaaa", "ocid1.volume.oc1.phx.aaaaaa"},
 	{"iad", "aaaaaa", "ocid1.volume.oc1.iad.aaaaaa"},
-	{"fra", "aaaaaa", "ocid1.volume.oc1.eu-frankfurt-1.aaaaaa"},
+	{"eu-frankfurt-1", "aaaaaa", "ocid1.volume.oc1.eu-frankfurt-1.aaaaaa"},
+	{"uk-london-1", "aaaaaa", "ocid1.volume.oc1.uk-london-1.aaaaaa"},
 }
 
 func TestDeriveVolumeOCID(t *testing.T) {
