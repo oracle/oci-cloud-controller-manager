@@ -193,10 +193,6 @@ func validateAuthConfig(c *Config, fldPath *field.Path) field.ErrorList {
 		errList = append(errList, field.Required(fldPath.Child("region_key"), ""))
 	}
 
-	if c.Auth.VCNID == "" {
-		errList = append(errList, field.Required(fldPath.Child("vcn"), ""))
-	}
-
 	return errList
 }
 
