@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"strings"
 
@@ -106,11 +105,6 @@ func (c *Config) setDefaults() error {
 	err := c.setRegionFields(c.Auth.Region)
 	if err != nil {
 		return fmt.Errorf("setting config region fields: %v", err)
-	}
-
-	if c.Auth.Passphrase == "" && c.Auth.PrivateKeyPassphrase != "" {
-		log.Print("config: auth.key_passphrase is DEPRECIATED and will be removed in a later release. Please set auth.passphrase instead.")
-		c.Auth.Passphrase = c.Auth.PrivateKeyPassphrase
 	}
 
 	return nil

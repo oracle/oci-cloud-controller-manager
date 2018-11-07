@@ -35,6 +35,7 @@ auth:
   key: |
     -----BEGIN RSA PRIVATE KEY-----
     -----END RSA PRIVATE KEY-----
+  passphrase: secret passphrase
   fingerprint: 97:84:f7:26:a3:7b:74:d0:bd:4e:08:a7:79:c9:d0:1d
 `
 const validConfigNoRegion = `

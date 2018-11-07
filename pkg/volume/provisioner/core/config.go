@@ -88,7 +88,7 @@ func newConfigurationProvider(logger *zap.SugaredLogger, cfg *Config) (common.Co
 			cfg.Auth.Region,
 			cfg.Auth.Fingerprint,
 			cfg.Auth.PrivateKey,
-			common.String(cfg.Auth.PrivateKeyPassphrase))
+			common.String(cfg.Auth.Passphrase))
 	} else {
 		conf = common.DefaultConfigProvider()
 	}

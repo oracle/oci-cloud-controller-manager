@@ -40,8 +40,6 @@ type AuthConfig struct {
 	// CompartmentID is DEPRECIATED and should be set on the top level Config
 	// struct.
 	CompartmentID string `yaml:"compartment"`
-	// PrivateKeyPassphrase is DEPRECIATED in favour of Passphrase.
-	PrivateKeyPassphrase string `yaml:"key_passphrase"`
 }
 
 const (
@@ -116,13 +114,10 @@ func (c *Config) Complete() {
 			c.LoadBalancer.SecurityListManagementMode = ManagementModeNone
 		}
 	}
+
 	if c.CompartmentID == "" && c.Auth.CompartmentID != "" {
 		zap.S().Warn("cloud-provider config: \"auth.compartment\" is DEPRECIATED and will be removed in a later release. Please set \"compartment\".")
 		c.CompartmentID = c.Auth.CompartmentID
-	}
-	if c.Auth.Passphrase == "" && c.Auth.PrivateKeyPassphrase != "" {
-		zap.S().Warn("cloud-provider config: \"auth.key_passphrase\" is DEPRECIATED and will be removed in a later release. Please set \"auth.passphrase\".")
-		c.Auth.Passphrase = c.Auth.PrivateKeyPassphrase
 	}
 }
 
