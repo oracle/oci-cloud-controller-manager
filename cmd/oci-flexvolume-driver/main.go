@@ -55,5 +55,5 @@ func main() {
 		logger.With(zap.Error(err)).Error("Error creating new driver")
 		os.Exit(1)
 	}
-	flexvolume.ExecDriver(d, os.Args, logger)
+	flexvolume.ExecDriver(logger, d, os.Args)
 }

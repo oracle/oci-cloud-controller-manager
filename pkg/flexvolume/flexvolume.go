@@ -16,7 +16,6 @@ package flexvolume
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -54,7 +53,6 @@ type DriverStatus struct {
 	Device string `json:"device,omitempty"`
 	// Represents volume is attached on the node.
 	Attached bool `json:"attached,omitempty"`
-	logger   *zap.SugaredLogger
 }
 
 // Option keys
@@ -74,20 +72,20 @@ const (
 
 // Driver is the main Flexvolume interface.
 type Driver interface {
-	Init() DriverStatus
-	Attach(opts Options, nodeName string) DriverStatus
-	Detach(mountDevice, nodeName string) DriverStatus
+	Init(logger *zap.SugaredLogger) DriverStatus
+	Attach(logger *zap.SugaredLogger, opts Options, nodeName string) DriverStatus
+	Detach(logger *zap.SugaredLogger, mountDevice, nodeName string) DriverStatus
 	WaitForAttach(mountDevice string, opts Options) DriverStatus
-	IsAttached(opts Options, nodeName string) DriverStatus
-	MountDevice(mountDir, mountDevice string, opts Options) DriverStatus
-	UnmountDevice(mountDevice string) DriverStatus
-	Mount(mountDir string, opts Options) DriverStatus
-	Unmount(mountDir string) DriverStatus
+	IsAttached(logger *zap.SugaredLogger, opts Options, nodeName string) DriverStatus
+	MountDevice(logger *zap.SugaredLogger, mountDir, mountDevice string, opts Options) DriverStatus
+	UnmountDevice(logger *zap.SugaredLogger, mountDevice string) DriverStatus
+	Mount(logger *zap.SugaredLogger, mountDir string, opts Options) DriverStatus
+	Unmount(logger *zap.SugaredLogger, mountDir string) DriverStatus
 }
 
 // ExitWithResult outputs the given Result and exits with the appropriate exit
 // code.
-func ExitWithResult(result DriverStatus) {
+func ExitWithResult(logger *zap.SugaredLogger, result DriverStatus) {
 	code := 1
 	if result.Status == StatusSuccess || result.Status == StatusNotSupported {
 		code = 0
@@ -95,11 +93,11 @@ func ExitWithResult(result DriverStatus) {
 
 	res, err := json.Marshal(result)
 	if err != nil {
-		result.logger.With(zap.Error(err)).Error("Error marshaling result to JSON")
+		logger.With("result", result, zap.Error(err)).Error("Error marshaling result to JSON")
 		fmt.Fprintln(out, `{"status":"Failure","message":"Error marshaling result to JSON"}`)
 	} else {
 		s := string(res)
-		result.logger.With("result", s).Info("Command finished")
+		logger.With("result", res).Debug("Command finished")
 		fmt.Fprintln(out, s)
 	}
 	exit(code)
@@ -108,29 +106,30 @@ func ExitWithResult(result DriverStatus) {
 // Fail creates a StatusFailure Result with a given message.
 func Fail(logger *zap.SugaredLogger, a ...interface{}) DriverStatus {
 	msg := fmt.Sprint(a...)
-	logger = logger.With(zap.Error(errors.New(msg)))
+	logger.With("status", StatusFailure).Error(msg)
 	return DriverStatus{
 		Status:  StatusFailure,
 		Message: msg,
-		logger:  logger,
 	}
 }
 
 // Succeed creates a StatusSuccess Result with a given message.
 func Succeed(logger *zap.SugaredLogger, a ...interface{}) DriverStatus {
+	msg := fmt.Sprint(a...)
+	logger.With("status", StatusSuccess).Info(msg)
 	return DriverStatus{
 		Status:  StatusSuccess,
-		Message: fmt.Sprint(a...),
-		logger:  logger,
+		Message: msg,
 	}
 }
 
 // NotSupported creates a StatusNotSupported Result with a given message.
 func NotSupported(logger *zap.SugaredLogger, a ...interface{}) DriverStatus {
+	msg := fmt.Sprint(a...)
+	logger.With("status", StatusNotSupported).Warn(msg)
 	return DriverStatus{
 		Status:  StatusNotSupported,
-		Message: fmt.Sprint(a...),
-		logger:  logger,
+		Message: msg,
 	}
 }
 
@@ -150,16 +149,17 @@ func processOpts(optsStr string) (Options, error) {
 
 // ExecDriver executes the appropriate FlexvolumeDriver command based on
 // recieved call-out.
-func ExecDriver(driver Driver, args []string, logger *zap.SugaredLogger) {
+func ExecDriver(logger *zap.SugaredLogger, driver Driver, args []string) {
 	if len(args) < 2 {
-		ExitWithResult(Fail(logger, "Expected at least one argument"))
+		ExitWithResult(logger, Fail(logger, "Expected at least one argument"))
 	}
-	logger.With("binary", args[0], "command", args[1], "arguments", args[2:]).Info("Exec called")
+	logger = logger.With("command", args[1])
+	logger.With("binary", args[0], "arguments", args[2:]).Debug("Exec called")
 
 	switch args[1] {
 	// <driver executable> init
 	case "init":
-		ExitWithResult(driver.Init())
+		ExitWithResult(logger, driver.Init(logger))
 
 	// <driver executable> getvolumename <json options>
 	// Currently broken as of lates kube release (1.6.4). Work around hardcodes
@@ -167,63 +167,63 @@ func ExecDriver(driver Driver, args []string, logger *zap.SugaredLogger) {
 	// TODO(apryde): Investigate current situation and version support
 	// requirements.
 	case "getvolumename":
-		ExitWithResult(NotSupported(logger, "getvolumename is broken as of kube 1.6.4"))
+		ExitWithResult(logger, NotSupported(logger, "getvolumename is broken as of kube 1.6.4"))
 
 	// <driver executable> attach <json options> <node name>
 	case "attach":
 		if len(args) != 4 {
-			ExitWithResult(Fail(logger, "attach expected exactly 4 arguments; got ", args))
+			ExitWithResult(logger, Fail(logger, "attach expected exactly 4 arguments; got ", args))
 		}
 
 		opts, err := processOpts(args[2])
 		if err != nil {
-			ExitWithResult(Fail(logger, err))
+			ExitWithResult(logger, Fail(logger, err))
 		}
 
 		nodeName := args[3]
-		ExitWithResult(driver.Attach(opts, nodeName))
+		ExitWithResult(logger, driver.Attach(logger, opts, nodeName))
 
 	// <driver executable> detach <mount device> <node name>
 	case "detach":
 		if len(args) != 4 {
-			ExitWithResult(Fail(logger, "detach expected exactly 4 arguments; got ", args))
+			ExitWithResult(logger, Fail(logger, "detach expected exactly 4 arguments; got ", args))
 		}
 
 		mountDevice := args[2]
 		nodeName := args[3]
-		ExitWithResult(driver.Detach(mountDevice, nodeName))
+		ExitWithResult(logger, driver.Detach(logger, mountDevice, nodeName))
 
 	// <driver executable> waitforattach <mount device> <json options>
 	case "waitforattach":
 		if len(args) != 4 {
-			ExitWithResult(Fail(logger, "waitforattach expected exactly 4 arguments; got ", args))
+			ExitWithResult(logger, Fail(logger, "waitforattach expected exactly 4 arguments; got ", args))
 		}
 
 		mountDevice := args[2]
 		opts, err := processOpts(args[3])
 		if err != nil {
-			ExitWithResult(Fail(logger, err))
+			ExitWithResult(logger, Fail(logger, err))
 		}
 
-		ExitWithResult(driver.WaitForAttach(mountDevice, opts))
+		ExitWithResult(logger, driver.WaitForAttach(mountDevice, opts))
 
 	// <driver executable> isattached <json options> <node name>
 	case "isattached":
 		if len(args) != 4 {
-			ExitWithResult(Fail(logger, "isattached expected exactly 4 arguments; got ", args))
+			ExitWithResult(logger, Fail(logger, "isattached expected exactly 4 arguments; got ", args))
 		}
 
 		opts, err := processOpts(args[2])
 		if err != nil {
-			ExitWithResult(Fail(logger, err))
+			ExitWithResult(logger, Fail(logger, err))
 		}
 		nodeName := args[3]
-		ExitWithResult(driver.IsAttached(opts, nodeName))
+		ExitWithResult(logger, driver.IsAttached(logger, opts, nodeName))
 
 	// <driver executable> mountdevice <mount dir> <mount device> <json options>
 	case "mountdevice":
 		if len(args) != 5 {
-			ExitWithResult(Fail(logger, "mountdevice expected exactly 5 arguments; got ", args))
+			ExitWithResult(logger, Fail(logger, "mountdevice expected exactly 5 arguments; got ", args))
 		}
 
 		mountDir := args[2]
@@ -231,45 +231,45 @@ func ExecDriver(driver Driver, args []string, logger *zap.SugaredLogger) {
 
 		opts, err := processOpts(args[4])
 		if err != nil {
-			ExitWithResult(Fail(logger, err))
+			ExitWithResult(logger, Fail(logger, err))
 		}
 
-		ExitWithResult(driver.MountDevice(mountDir, mountDevice, opts))
+		ExitWithResult(logger, driver.MountDevice(logger, mountDir, mountDevice, opts))
 
 	// <driver executable> unmountdevice <mount dir>
 	case "unmountdevice":
 		if len(args) != 3 {
-			ExitWithResult(Fail(logger, "unmountdevice expected exactly 3 arguments; got ", args))
+			ExitWithResult(logger, Fail(logger, "unmountdevice expected exactly 3 arguments; got ", args))
 		}
 
 		mountDir := args[2]
-		ExitWithResult(driver.UnmountDevice(mountDir))
+		ExitWithResult(logger, driver.UnmountDevice(logger, mountDir))
 
 	// <driver executable> mount <mount dir> <json options>
 	case "mount":
 		if len(args) != 4 {
-			ExitWithResult(Fail(logger, "mount expected exactly 4 arguments; got ", args))
+			ExitWithResult(logger, Fail(logger, "mount expected exactly 4 arguments; got ", args))
 		}
 
 		mountDir := args[2]
 
 		opts, err := processOpts(args[3])
 		if err != nil {
-			ExitWithResult(Fail(logger, err))
+			ExitWithResult(logger, Fail(logger, err))
 		}
 
-		ExitWithResult(driver.Mount(mountDir, opts))
+		ExitWithResult(logger, driver.Mount(logger, mountDir, opts))
 
 	// <driver executable> unmount <mount dir>
 	case "unmount":
 		if len(args) != 3 {
-			ExitWithResult(Fail(logger, "mount expected exactly 3 arguments; got ", args))
+			ExitWithResult(logger, Fail(logger, "mount expected exactly 3 arguments; got ", args))
 		}
 
 		mountDir := args[2]
-		ExitWithResult(driver.Unmount(mountDir))
+		ExitWithResult(logger, driver.Unmount(logger, mountDir))
 
 	default:
-		ExitWithResult(Fail(logger, "Invalid command; got ", args))
+		ExitWithResult(logger, Fail(logger, "Invalid command; got ", args))
 	}
 }
