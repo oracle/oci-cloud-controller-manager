@@ -272,11 +272,6 @@ func (p *MockProvisionerClient) Timeout() time.Duration {
 	return 30 * time.Second
 }
 
-// CompartmentOCID mocks client CompartmentOCID implementation
-func (p *MockProvisionerClient) CompartmentOCID() (compartmentOCID string) {
-	return ""
-}
-
 // TenancyOCID mocks client TenancyOCID implementation
 func (p *MockProvisionerClient) TenancyOCID() string {
 	return "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq"

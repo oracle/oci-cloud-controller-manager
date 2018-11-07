@@ -24,14 +24,15 @@ import (
 )
 
 func TestConfigDefaulting(t *testing.T) {
-	expectedCompartmentOCID := "ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq"
+	expectedCompartmentID := "ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq"
 	expectedRegion := "us-phoenix-1"
 	expectedRegionKey := "phx"
 
 	cfg := &Config{metadata: metadata.NewMock(
 		&metadata.InstanceMetadata{
-			CompartmentOCID: expectedCompartmentOCID,
-			Region:          expectedRegionKey, // instance metadata API only returns the region key
+			CompartmentID:       expectedCompartmentID,
+			CanonicalRegionName: expectedRegion,
+			Region:              expectedRegionKey, // instance metadata API only returns the region key
 		},
 	)}
 
@@ -43,59 +44,13 @@ func TestConfigDefaulting(t *testing.T) {
 	if cfg.Auth.Region != expectedRegion {
 		t.Fatalf("Expected cfg.Region = %q, got %q", cfg.Auth.Region, expectedRegion)
 	}
+
 	if cfg.Auth.RegionKey != expectedRegionKey {
 		t.Fatalf("Expected cfg.RegionKey = %q, got %q", cfg.Auth.RegionKey, expectedRegionKey)
 	}
 
-	if cfg.Auth.CompartmentID != expectedCompartmentOCID {
-		t.Fatalf("Expected cfg.CompartmentOCID = %q, got %q", cfg.Auth.CompartmentID, expectedCompartmentOCID)
-	}
-}
-
-func TestConfigSetRegion(t *testing.T) {
-	var testCases = []struct {
-		in          string
-		region      string
-		shortRegion string
-		shouldErr   bool
-	}{
-		{"us-phoenix-1", "us-phoenix-1", "phx", false},
-		{"US-PHOENIX-1", "us-phoenix-1", "phx", false},
-		{"phx", "us-phoenix-1", "phx", false},
-		{"PHX", "us-phoenix-1", "phx", false},
-
-		{"us-ashburn-1", "us-ashburn-1", "iad", false},
-		{"US-ASHBURN-1", "us-ashburn-1", "iad", false},
-		{"iad", "us-ashburn-1", "iad", false},
-		{"IAD", "us-ashburn-1", "iad", false},
-
-		{"eu-frankfurt-1", "eu-frankfurt-1", "fra", false},
-		{"EU-FRANKFURT-1", "eu-frankfurt-1", "fra", false},
-		{"fra", "eu-frankfurt-1", "fra", false},
-		{"FRA", "eu-frankfurt-1", "fra", false},
-
-		// error cases
-		{"us-east", "", "", true},
-		{"", "", "", true},
-	}
-
-	for _, tt := range testCases {
-		t.Run(tt.in, func(t *testing.T) {
-			cfg := &Config{}
-			err := cfg.setRegionFields(tt.in)
-			if err != nil {
-				if !tt.shouldErr {
-					t.Errorf("SetRegionFields(%q) unexpected error: %v", tt.in, err)
-				}
-			}
-
-			if cfg.Auth.Region != tt.region {
-				t.Errorf("SetRegionFields(%q) => {Region: %q}; want {Region: %q}", tt.in, cfg.Auth.Region, tt.region)
-			}
-			if cfg.Auth.RegionKey != tt.shortRegion {
-				t.Errorf("SetRegionFields(%q) => {RegionShortName: %q}; want {RegionShortName: %q}", tt.in, cfg.Auth.RegionKey, tt.shortRegion)
-			}
-		})
+	if cfg.Auth.CompartmentID != expectedCompartmentID {
+		t.Fatalf("Expected cfg.CompartmentID = %q, got %q", cfg.Auth.CompartmentID, expectedCompartmentID)
 	}
 }
 

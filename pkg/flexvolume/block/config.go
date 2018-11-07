@@ -87,15 +87,15 @@ func (c *Config) setDefaults() error {
 	}
 
 	if c.Auth.Region == "" {
-		c.Auth.Region = meta.Region
+		c.Auth.Region = meta.CanonicalRegionName
 	}
 
 	if c.Auth.RegionKey == "" {
-		c.Auth.RegionKey = meta.RegionKey
+		c.Auth.RegionKey = meta.Region
 	}
 
-	if c.Auth.CompartmentOCID == "" {
-		c.Auth.CompartmentOCID = meta.CompartmentOCID
+	if c.Auth.CompartmentID == "" {
+		c.Auth.CompartmentID = meta.CompartmentID
 	}
 
 	if c.Auth.Passphrase == "" && c.Auth.PrivateKeyPassphrase != "" {

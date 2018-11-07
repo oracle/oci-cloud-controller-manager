@@ -102,7 +102,7 @@ func NewCloudProvider(config *providercfg.Config) (cloudprovider.Interface, erro
 		if err != nil {
 			return nil, err
 		}
-		config.CompartmentID = metadata.CompartmentOCID
+		config.CompartmentID = metadata.CompartmentID
 	}
 
 	if !config.LoadBalancer.Disabled && config.VCNID == "" {

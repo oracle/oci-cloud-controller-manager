@@ -50,7 +50,7 @@ func TestGetMetadata(t *testing.T) {
 	}
 
 	expected := &InstanceMetadata{
-		CompartmentOCID:     "ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq",
+		CompartmentID:       "ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq",
 		Region:              "phx",
 		CanonicalRegionName: "us-phoenix-1",
 	}
