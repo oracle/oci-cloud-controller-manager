@@ -32,7 +32,7 @@ const (
 type InstanceMetadata struct {
 	CompartmentID       string `json:"compartmentId"`
 	Region              string `json:"region"`
-	CanonicalRegionName string `json:canonicalRegionName`
+	CanonicalRegionName string `json:"canonicalRegionName"`
 }
 
 // Interface defines how consumers access OCI instance metadata.
