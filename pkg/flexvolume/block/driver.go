@@ -258,7 +258,7 @@ func (d OCIFlexvolumeDriver) Attach(opts flexvolume.Options, nodeName string) fl
 		return flexvolume.Fail(d.logger, err)
 	}
 
-	d.logger.With("attachmentID", *attachment.GetId()).Info("attachment made")
+	d.logger.With("attachmentID", *attachment.GetId()).Info("Volume attached")
 	iscsiAttachment, ok := attachment.(core.IScsiVolumeAttachment)
 	if !ok {
 		return flexvolume.Fail(d.logger, "Only ISCSI volume attachments are currently supported")
