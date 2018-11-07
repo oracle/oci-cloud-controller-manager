@@ -33,7 +33,7 @@ func TestInit(t *testing.T) {
 	osexit := exit
 	exit = func(c int) { code = c }
 	defer func() { exit = osexit }()
-	ExecDriver(mockFlexvolumeDriver{logger: logger}, []string{"oci", "init"}, logger)
+	ExecDriver(logger, mockFlexvolumeDriver{}, []string{"oci", "init"})
 
 	if out.(*bytes.Buffer).String() != `{"status":"Success"}`+"\n" {
 		t.Fatalf(`Expected '{"status":"Success"}'; got %q`, out.(*bytes.Buffer).String())
@@ -58,7 +58,7 @@ func TestGetVolumeName(t *testing.T) {
 	exit = func(c int) { code = c }
 	defer func() { exit = osexit }()
 
-	ExecDriver(mockFlexvolumeDriver{logger: logger}, []string{"oci", "getvolumename", defaultTestOps}, logger)
+	ExecDriver(logger, mockFlexvolumeDriver{}, []string{"oci", "getvolumename", defaultTestOps})
 
 	if out.(*bytes.Buffer).String() != `{"status":"Not supported","message":"getvolumename is broken as of kube 1.6.4"}`+"\n" {
 		t.Fatalf(`Expected '{"status":"Not supported","message":"getvolumename is broken as of kube 1.6.4"}}'; got %s`, out.(*bytes.Buffer).String())
@@ -80,7 +80,7 @@ func TestAttachUnsuported(t *testing.T) {
 	exit = func(c int) { code = c }
 	defer func() { exit = osexit }()
 
-	ExecDriver(mockFlexvolumeDriver{logger: logger}, []string{"oci", "attach", defaultTestOps, "nodeName"}, logger)
+	ExecDriver(logger, mockFlexvolumeDriver{}, []string{"oci", "attach", defaultTestOps, "nodeName"})
 
 	if out.(*bytes.Buffer).String() != `{"status":"Not supported"}`+"\n" {
 		t.Fatalf(`Expected '{"status":"Not supported""}'; got %s`, out.(*bytes.Buffer).String())
