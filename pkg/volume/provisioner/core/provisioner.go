@@ -106,8 +106,8 @@ func NewOCIProvisioner(
 		if metadata == nil {
 			return nil, errors.Wrap(mdErr, "unable to get compartment OCID")
 		}
-		logger.With("compartmentID", metadata.CompartmentOCID).Infof("'CompartmentID' not given. Using compartment OCID from instance metadata.")
-		cfg.CompartmentID = metadata.CompartmentOCID
+		logger.With("compartmentID", metadata.CompartmentID).Infof("'CompartmentID' not given. Using compartment OCID from instance metadata.")
+		cfg.CompartmentID = metadata.CompartmentID
 	}
 
 	cp, err := newConfigurationProvider(logger, cfg)

@@ -126,7 +126,7 @@ func TestReadConfigShouldHaveNoDefaultRegionIfNoneSpecified(t *testing.T) {
 	}
 }
 
-func TestReadConfigShouldSetCompartmentOCIDWhenProvidedValidConfig(t *testing.T) {
+func TestReadConfigShouldSetCompartmentIDWhenProvidedValidConfig(t *testing.T) {
 	cfg, err := ReadConfig(strings.NewReader(validConfig))
 	if err != nil {
 		t.Fatalf("expected no error but got '%+v'", err)

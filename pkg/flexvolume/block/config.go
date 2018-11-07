@@ -21,7 +21,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"strings"
 
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
@@ -30,13 +29,6 @@ import (
 	yaml "gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
-
-var ociRegions = map[string]string{
-	"phx": "us-phoenix-1",
-	"iad": "us-ashburn-1",
-	"fra": "eu-frankfurt-1",
-	"lhr": "uk-london-1",
-}
 
 // Config holds the configuration for the OCI flexvolume driver.
 type Config struct {
@@ -89,57 +81,29 @@ func ConfigFromFile(path string) (*Config, error) {
 }
 
 func (c *Config) setDefaults() error {
-	if c.Auth.Region == "" || c.Auth.CompartmentID == "" {
+	if c.Auth.Region == "" || c.Auth.RegionKey == "" || c.Auth.CompartmentID == "" {
 		meta, err := c.metadata.Get()
 		if err != nil {
 			return err
 		}
 
 		if c.Auth.Region == "" {
-			c.Auth.Region = meta.Region
+			c.Auth.Region = meta.CanonicalRegionName
 		}
-		if c.Auth.CompartmentID == "" {
-			c.Auth.CompartmentID = meta.CompartmentOCID
-		}
-	}
 
-	err := c.setRegionFields(c.Auth.Region)
-	if err != nil {
-		return fmt.Errorf("setting config region fields: %v", err)
+		if c.Auth.RegionKey == "" {
+			c.Auth.RegionKey = meta.Region
+		}
+
+		if c.Auth.CompartmentID == "" {
+			c.Auth.CompartmentID = meta.CompartmentID
+		}
 	}
 
 	if c.Auth.Passphrase == "" && c.Auth.PrivateKeyPassphrase != "" {
 		log.Print("config: auth.key_passphrase is DEPRECIATED and will be removed in a later release. Please set auth.passphrase instead.")
 		c.Auth.Passphrase = c.Auth.PrivateKeyPassphrase
 	}
-
-	return nil
-}
-
-// setRegionFields accepts either a region short name or a region long name and
-// sets both the Region and RegionKey fields.
-func (c *Config) setRegionFields(region string) error {
-	input := region
-	region = strings.ToLower(region)
-
-	var name, key string
-	name, ok := ociRegions[region]
-	if !ok {
-		for key, name = range ociRegions {
-			if name == region {
-				ok = true
-				break
-			}
-		}
-		if !ok {
-			return fmt.Errorf("tried to connect to unsupported OCI region %q", input)
-		}
-	} else {
-		key = region
-	}
-
-	c.Auth.Region = name
-	c.Auth.RegionKey = key
 
 	return nil
 }

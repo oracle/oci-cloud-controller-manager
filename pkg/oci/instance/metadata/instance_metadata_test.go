@@ -32,6 +32,7 @@ const exampleResponse = `{
     "ssh_authorized_keys" : "ssh-rsa some-key-data tlangfor@tlangfor-mac\n"
   },
   "region" : "phx",
+  "canonicalRegionName" : "us-phoenix-1",
   "shape" : "VM.Standard1.1",
   "state" : "Provisioning",
   "timeCreated" : 1496415602152
@@ -49,8 +50,9 @@ func TestGetMetadata(t *testing.T) {
 	}
 
 	expected := &InstanceMetadata{
-		CompartmentOCID: "ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq",
-		Region:          "phx",
+		CompartmentID:       "ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq",
+		Region:              "phx",
+		CanonicalRegionName: "us-phoenix-1",
 	}
 	if !reflect.DeepEqual(meta, expected) {
 		t.Errorf("Get() => %+v, want %+v", meta, expected)

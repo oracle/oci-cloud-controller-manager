@@ -30,8 +30,9 @@ const (
 // local OCI instance metadata API endpoint.
 // https://docs.us-phoenix-1.oraclecloud.com/Content/Compute/Tasks/gettingmetadata.htm
 type InstanceMetadata struct {
-	CompartmentOCID string `json:"compartmentId"`
-	Region          string `json:"region"`
+	CompartmentID       string `json:"compartmentId"`
+	Region              string `json:"region"`
+	CanonicalRegionName string `json:"canonicalRegionName"`
 }
 
 // Interface defines how consumers access OCI instance metadata.

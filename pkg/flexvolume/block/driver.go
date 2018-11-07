@@ -158,23 +158,14 @@ func (d OCIFlexvolumeDriver) Init() flexvolume.DriverStatus {
 	return flexvolume.Succeed()
 }
 
-// deriveVolumeOCID will figure out the correct OCID for a volume
-// based solely on the region key and volumeName. Because of differences
-// across regions we need to impose some awkward logic here to get the correct
-// OCID or if it is already an OCID then return the OCID.
+// deriveVolumeOCID will expand a partial OCID to a full OCID
+// based on the region key and volume name.
 func deriveVolumeOCID(regionKey string, volumeName string) string {
 	if strings.HasPrefix(volumeName, ocidPrefix) {
 		return volumeName
 	}
 
-	var volumeOCID string
-	if regionKey == "fra" {
-		volumeOCID = fmt.Sprintf(volumeOCIDTemplate, "eu-frankfurt-1", volumeName)
-	} else {
-		volumeOCID = fmt.Sprintf(volumeOCIDTemplate, regionKey, volumeName)
-	}
-
-	return volumeOCID
+	return fmt.Sprintf(volumeOCIDTemplate, regionKey, volumeName)
 }
 
 // constructKubeClient uses a kubeconfig layed down by a secret via deploy.sh to return
