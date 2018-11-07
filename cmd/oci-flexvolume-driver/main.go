@@ -48,7 +48,7 @@ func main() {
 		"build", build,
 	)
 
-	logger.Info("OCI Flexvolume driver")
+	logger.Debug("OCI Flexvolume driver")
 	d, err := block.NewOCIFlexvolumeDriver(logger)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error creating new driver: %v", err)
