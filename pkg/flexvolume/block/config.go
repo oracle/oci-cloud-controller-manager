@@ -81,21 +81,23 @@ func ConfigFromFile(path string) (*Config, error) {
 }
 
 func (c *Config) setDefaults() error {
-	meta, err := c.metadata.Get()
-	if err != nil {
-		return err
-	}
+	if c.Auth.Region == "" || c.Auth.RegionKey == "" || c.Auth.CompartmentID == "" {
+		meta, err := c.metadata.Get()
+		if err != nil {
+			return err
+		}
 
-	if c.Auth.Region == "" {
-		c.Auth.Region = meta.CanonicalRegionName
-	}
+		if c.Auth.Region == "" {
+			c.Auth.Region = meta.CanonicalRegionName
+		}
 
-	if c.Auth.RegionKey == "" {
-		c.Auth.RegionKey = meta.Region
-	}
+		if c.Auth.RegionKey == "" {
+			c.Auth.RegionKey = meta.Region
+		}
 
-	if c.Auth.CompartmentID == "" {
-		c.Auth.CompartmentID = meta.CompartmentID
+		if c.Auth.CompartmentID == "" {
+			c.Auth.CompartmentID = meta.CompartmentID
+		}
 	}
 
 	if c.Auth.Passphrase == "" && c.Auth.PrivateKeyPassphrase != "" {
