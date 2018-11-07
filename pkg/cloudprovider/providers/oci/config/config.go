@@ -26,21 +26,24 @@ import (
 // API.
 type AuthConfig struct {
 	Region      string `yaml:"region"`
-	RegionKey   string `yaml:"regionKey"`
 	TenancyID   string `yaml:"tenancy"`
 	UserID      string `yaml:"user"`
 	PrivateKey  string `yaml:"key"`
 	Fingerprint string `yaml:"fingerprint"`
 	Passphrase  string `yaml:"passphrase"`
 
-	// TODO(apryde): depreciate
-	UseInstancePrincipals bool   `yaml:"useInstancePrincipals"`
-	VCNID                 string `yaml:"vcn"`
+	// Used by flex driver for OCID expansion only
+	RegionKey string `yaml:"regionKey"`
 
-	// CompartmentID is DEPRECIATED and should be set on the top level Config
+	// TODO (owlewis) remove the fields below to cleanup and simplify
+
+	// UseInstancePrincipals is DEPRECATED and should be set on the top level Config
+	// struct.
+	UseInstancePrincipals bool `yaml:"useInstancePrincipals"`
+	// CompartmentID is DEPRECATED and should be set on the top level Config
 	// struct.
 	CompartmentID string `yaml:"compartment"`
-	// PrivateKeyPassphrase is DEPRECIATED in favour of Passphrase.
+	// PrivateKeyPassphrase is DEPRECATED in favour of Passphrase.
 	PrivateKeyPassphrase string `yaml:"key_passphrase"`
 }
 
@@ -97,7 +100,7 @@ type Config struct {
 	LoadBalancer LoadBalancerConfig `yaml:"loadBalancer"`
 	RateLimiter  *RateLimiterConfig `yaml:"rateLimiter"`
 
-	// TODO(apryde): use in CCM.
+	// UseInstancePrincipals will enable instance principal authentication.
 	UseInstancePrincipals bool `yaml:"useInstancePrincipals"`
 	// CompartmentID is the OCID of the Compartment within which the cluster
 	// resides.
@@ -131,8 +134,8 @@ func (c *Config) Validate() error {
 	return ValidateConfig(c).ToAggregate()
 }
 
-// ReadConfig consumes the config Reader and constructs a Config object.
-func ReadConfig(r io.Reader) (*Config, error) {
+// Read consumes the config Reader and constructs a Config object.
+func Read(r io.Reader) (*Config, error) {
 	if r == nil {
 		return nil, errors.New("no cloud-provider config file given")
 	}

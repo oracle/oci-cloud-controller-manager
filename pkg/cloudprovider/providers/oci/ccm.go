@@ -123,7 +123,7 @@ func NewCloudProvider(config *providercfg.Config) (cloudprovider.Interface, erro
 
 func init() {
 	cloudprovider.RegisterCloudProvider(ProviderName(), func(config io.Reader) (cloudprovider.Interface, error) {
-		cfg, err := providercfg.ReadConfig(config)
+		cfg, err := providercfg.Read(config)
 		if err != nil {
 			return nil, err
 		}
@@ -219,7 +219,7 @@ func (cp *CloudProvider) HasClusterID() bool {
 }
 
 func buildConfigurationProvider(logger *zap.Logger, config *providercfg.Config) (common.ConfigurationProvider, error) {
-	if config.Auth.UseInstancePrincipals {
+	if config.Auth.UseInstancePrincipals || config.UseInstancePrincipals {
 		logger.Info("Using instance principals configuration provider")
 		cp, err := auth.InstancePrincipalConfigurationProvider()
 		if err != nil {
