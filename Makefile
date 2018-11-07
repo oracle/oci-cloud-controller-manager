@@ -128,8 +128,8 @@ run-volume-provisioner-dev:
 	@NODE_NAME=$(shell hostname)                      \
 	CONFIG_YAML_FILENAME=cloud-provider.yaml          \
 	go run cmd/oci-volume-provisioner/main.go         \
-		--kubeconfig=$(KUBECONFIG)                    \
-		-v=4
+	    --kubeconfig=$(KUBECONFIG)                    \
+	    -v=4
 
 .PHONY: version
 version:
