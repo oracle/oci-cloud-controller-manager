@@ -17,13 +17,15 @@ package metadata
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/pkg/errors"
 )
 
 const (
-	baseURL          = "http://169.254.169.254"
-	metadataEndpoint = "/opc/v1/instance/"
+	baseURL            = "http://169.254.169.254"
+	metadataEndpoint   = "/opc/v1/instance/"
+	defaultHTTPTimeout = 5 * time.Second
 )
 
 // InstanceMetadata holds the subset of the instance metadata retrieved from the
@@ -48,7 +50,8 @@ type metadataGetter struct {
 // New returns the instance metadata for the host on which the code is being
 // executed.
 func New() Interface {
-	return &metadataGetter{client: http.DefaultClient, baseURL: baseURL}
+	var client = &http.Client{Timeout: defaultHTTPTimeout}
+	return &metadataGetter{client: client, baseURL: baseURL}
 }
 
 // Get either returns the cached metadata for the current instance or queries
