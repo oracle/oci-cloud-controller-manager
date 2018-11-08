@@ -184,7 +184,6 @@ func (fsp *filesystemProvisioner) Provision(options controller.VolumeOptions, ad
 	// Randomly select a MountTarget IP address to attach to.
 	var ip string
 	{
-
 		id := target.PrivateIpIds[rand.Int()%len(target.PrivateIpIds)]
 		logger = logger.With("privateIPID", id)
 		privateIP, err := fsp.client.Networking().GetPrivateIP(ctx, id)
@@ -218,7 +217,7 @@ func (fsp *filesystemProvisioner) Provision(options controller.VolumeOptions, ad
 
 	return &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: *fs.Id,
+			Name: options.PVName,
 			Annotations: map[string]string{
 				ociVolumeID: *fs.Id,
 				ociExportID: *export.Id,
