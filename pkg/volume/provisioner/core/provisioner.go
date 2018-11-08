@@ -98,7 +98,7 @@ func NewOCIProvisioner(
 	}
 
 	metadata, mdErr := metadata.New().Get()
-	if err != nil {
+	if mdErr != nil {
 		logger.With(zap.Error(mdErr)).Warnf("Unable to retrieve instance metadata.")
 	}
 
