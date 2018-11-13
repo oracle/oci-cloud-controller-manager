@@ -384,7 +384,7 @@ func (mounter *SafeFormatAndMount) formatAndMount(source string, target string, 
 				args = []string{"-F", source}
 			}
 			mounter.Logger.With(
-				"fs type", fstype,
+				"fsType", fstype,
 				"source", source,
 				"argruments", args,
 			).Info("Disk appears to be unformatted, attempting to format.")
