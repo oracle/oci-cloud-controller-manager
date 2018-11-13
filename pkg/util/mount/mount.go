@@ -129,7 +129,7 @@ func GetMountRefs(logger *zap.SugaredLogger, mounter Interface, mountPath string
 	// Find all references to the device.
 	var refs []string
 	if deviceName == "" {
-		logger.With("mount path", mountPath).Info("Could not deterimne device at mount path.")
+		logger.With("mountPath", mountPath).Info("Could not determine device at mount path.")
 	} else {
 		for i := range mps {
 			if mps[i].Device == deviceName && mps[i].Path != slTarget {
