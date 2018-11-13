@@ -17,13 +17,13 @@ package iscsi
 import (
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util/mount"
+	"go.uber.org/zap"
 	"k8s.io/utils/exec"
 )
 
@@ -85,6 +85,7 @@ type iSCSIMounter struct {
 
 	// iscsiadmPath is the cached absolute path to iscsiadm.
 	iscsiadmPath string
+	logger       *zap.SugaredLogger
 }
 
 type iSCSDisk struct {
@@ -98,7 +99,7 @@ func (d *iSCSDisk) Target() string {
 	return fmt.Sprintf("%s:%d", d.IPv4, d.Port)
 }
 
-func newWithMounter(mounter mount.Interface, iqn, ipv4 string, port int) Interface {
+func newWithMounter(logger *zap.SugaredLogger, mounter mount.Interface, iqn, ipv4 string, port int) Interface {
 	return &iSCSIMounter{
 		disk: &iSCSDisk{
 			IQN:  iqn,
@@ -107,18 +108,19 @@ func newWithMounter(mounter mount.Interface, iqn, ipv4 string, port int) Interfa
 		},
 		runner:  exec.New(),
 		mounter: mounter,
+		logger:  logger,
 	}
 }
 
 // New creates a new iSCSI handler.
-func New(iqn, ipv4 string, port int) Interface {
-	return newWithMounter(mount.New(mountCommand), iqn, ipv4, port)
+func New(logger *zap.SugaredLogger, iqn, ipv4 string, port int) Interface {
+	return newWithMounter(logger, mount.New(mountCommand), iqn, ipv4, port)
 }
 
 // NewFromDevicePath extracts the IQN, IPv4 address, and port from a
 // iSCSI mount device path.
 // i.e. /dev/disk/by-path/ip-<ip>:<port>-iscsi-<IQN>-lun-1
-func NewFromDevicePath(mountDevice string) (Interface, error) {
+func NewFromDevicePath(logger *zap.SugaredLogger, mountDevice string) (Interface, error) {
 	m := diskByPathPattern.FindStringSubmatch(mountDevice)
 	if len(m) != 4 {
 		return nil, fmt.Errorf("mount device path %q did not match pattern; got %v", mountDevice, m)
@@ -129,12 +131,12 @@ func NewFromDevicePath(mountDevice string) (Interface, error) {
 		return nil, fmt.Errorf("invalid port: %v", err)
 	}
 
-	return New(m[3], m[1], port), nil
+	return New(logger, m[3], m[1], port), nil
 }
 
 // NewFromMountPointPath gets /dev/disk/by-path/ip-<ip>:<port>-iscsi-<IQN>-lun-1
 // from the given mount point path.
-func NewFromMountPointPath(mountPath string) (Interface, error) {
+func NewFromMountPointPath(logger *zap.SugaredLogger, mountPath string) (Interface, error) {
 	mounter := mount.New(mountCommand)
 	mountPoint, err := getMountPointForPath(mounter, mountPath)
 	if err != nil {
@@ -144,7 +146,7 @@ func NewFromMountPointPath(mountPath string) (Interface, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewFromDevicePath(diskByPath)
+	return NewFromDevicePath(logger, diskByPath)
 }
 
 // getISCSIAdmPath gets the absolute path to the iscsiadm executable on the
@@ -159,7 +161,7 @@ func (c *iSCSIMounter) getISCSIAdmPath() (string, error) {
 		return "", err
 	}
 	c.iscsiadmPath = path
-	log.Printf("Full iscsiadm path: %q", c.iscsiadmPath)
+	c.logger.With("iscsiadm", c.iscsiadmPath).Info("Full iscsiadm path found.")
 	return path, nil
 }
 
@@ -178,7 +180,7 @@ func (c *iSCSIMounter) iscsiadm(parts ...string) (string, error) {
 }
 
 func (c *iSCSIMounter) AddToDB() error {
-	log.Printf("iscsi: adding node record to db IQN=%q target=%q", c.disk.IQN, c.disk.Target())
+	c.logger.With("IQN", c.disk.IQN, "target", c.disk.Target()).Info("Adding node record to db.")
 
 	_, err := c.iscsiadm(
 		"-m", "node",
@@ -189,13 +191,13 @@ func (c *iSCSIMounter) AddToDB() error {
 		return fmt.Errorf("iscsi: error adding node record to db: %v", err)
 	}
 
-	log.Printf("iscsi: added node record to db IQN=%q target=%q", c.disk.IQN, c.disk.Target())
+	c.logger.With("IQN", c.disk.IQN, "target", c.disk.Target()).Info("Added node record to db.")
 
 	return nil
 }
 
 func (c *iSCSIMounter) SetAutomaticLogin() error {
-	log.Printf("iscsi: configuring automatic node login IQN=%q", c.disk.IQN)
+	c.logger.With("IQN", c.disk.IQN).Info("Configuring automatic node login.")
 
 	_, err := c.iscsiadm(
 		"-m", "node",
@@ -207,13 +209,13 @@ func (c *iSCSIMounter) SetAutomaticLogin() error {
 		return fmt.Errorf("iscsi: error configuring automatic node login: %v", err)
 	}
 
-	log.Printf("iscsi: configured automatic node login IQN=%q", c.disk.IQN)
+	c.logger.With("IQN", c.disk.IQN).Info("Configured automatic node login.")
 
 	return nil
 }
 
 func (c *iSCSIMounter) Login() error {
-	log.Printf("iscsi: logging into target IQN=%q target=%q", c.disk.IQN, c.disk.Target())
+	c.logger.With("IQN", c.disk.IQN, "target", c.disk.Target()).Info("Logging in.")
 
 	_, err := c.iscsiadm(
 		"-m", "node",
@@ -224,7 +226,7 @@ func (c *iSCSIMounter) Login() error {
 		return fmt.Errorf("iscsi: error logging in target: %v", err)
 	}
 
-	log.Printf("iscsi: logged into target IQN=%q target=%q", c.disk.IQN, c.disk.Target())
+	c.logger.With("IQN", c.disk.IQN, "target", c.disk.Target()).Info("Logged in.")
 
 	return nil
 }
@@ -232,7 +234,7 @@ func (c *iSCSIMounter) Login() error {
 // Logout logs out the iSCSI target.
 // sudo iscsiadm -m node -T <IQN> -p <ip>:<port>  -u
 func (c *iSCSIMounter) Logout() error {
-	log.Printf("iscsi: logging out target IQN=%q target=%q", c.disk.IQN, c.disk.Target())
+	c.logger.With("IQN", c.disk.IQN, "target", c.disk.Target()).Info("Logging out.")
 	_, err := c.iscsiadm(
 		"-m", "node",
 		"-T", c.disk.IQN,
@@ -242,23 +244,23 @@ func (c *iSCSIMounter) Logout() error {
 		return fmt.Errorf("iscsi: error logging out target: %v", err)
 	}
 
-	log.Printf("iscsi: logged out target IQN=%q target=%q", c.disk.IQN, c.disk.Target())
+	c.logger.With("IQN", c.disk.IQN, "target", c.disk.Target()).Info("Logged out.")
 
 	return nil
 }
 
 func (c *iSCSIMounter) RemoveFromDB() error {
-	log.Printf("iscsi: removing target from db IQN=%q target=%q", c.disk.IQN, c.disk.Target())
+	c.logger.With("IQN", c.disk.IQN, "target", c.disk.Target()).Info("Removing from database.")
 	_, err := c.iscsiadm(
 		"-m", "node",
 		"-o", "delete",
 		"-T", c.disk.IQN,
 		"-p", c.disk.Target())
 	if err != nil {
-		return fmt.Errorf("iscsi: error removing target from db: %v", err)
+		return fmt.Errorf("iscsi: error removing target from database: %v", err)
 	}
 
-	log.Printf("iscsi: removed target from db IQN=%q target=%q", c.disk.IQN, c.disk.Target())
+	c.logger.With("IQN", c.disk.IQN, "target", c.disk.Target()).Info("Removed from database.")
 
 	return nil
 }

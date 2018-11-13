@@ -17,11 +17,14 @@ package flexvolume
 import (
 	"bytes"
 	"testing"
+
+	"go.uber.org/zap/zaptest"
 )
 
 const defaultTestOps = `{"kubernetes.io/fsType":"ext4","kubernetes.io/readwrite":"rw"}`
 
 func TestInit(t *testing.T) {
+	logger := zaptest.NewLogger(t).Sugar()
 	bak := out
 	out = new(bytes.Buffer)
 	defer func() { out = bak }()
@@ -31,10 +34,10 @@ func TestInit(t *testing.T) {
 	exit = func(c int) { code = c }
 	defer func() { exit = osexit }()
 
-	ExecDriver(mockFlexvolumeDriver{}, []string{"oci", "init"})
+	ExecDriver(logger, mockFlexvolumeDriver{}, []string{"oci", "init"})
 
 	if out.(*bytes.Buffer).String() != `{"status":"Success"}`+"\n" {
-		t.Fatalf(`Expected '{"status":"Success"}'; got %s`, out.(*bytes.Buffer).String())
+		t.Fatalf(`Expected '{"status":"Success"}'; got %q`, out.(*bytes.Buffer).String())
 	}
 
 	if code != 0 {
@@ -46,6 +49,7 @@ func TestInit(t *testing.T) {
 // StatusNotSupported as the call-out is broken as of the latest stable Kube
 // release (1.6.4).
 func TestGetVolumeName(t *testing.T) {
+	logger := zaptest.NewLogger(t).Sugar()
 	bak := out
 	out = new(bytes.Buffer)
 	defer func() { out = bak }()
@@ -55,7 +59,7 @@ func TestGetVolumeName(t *testing.T) {
 	exit = func(c int) { code = c }
 	defer func() { exit = osexit }()
 
-	ExecDriver(mockFlexvolumeDriver{}, []string{"oci", "getvolumename", defaultTestOps})
+	ExecDriver(logger, mockFlexvolumeDriver{}, []string{"oci", "getvolumename", defaultTestOps})
 
 	if out.(*bytes.Buffer).String() != `{"status":"Not supported","message":"getvolumename is broken as of kube 1.6.4"}`+"\n" {
 		t.Fatalf(`Expected '{"status":"Not supported","message":"getvolumename is broken as of kube 1.6.4"}}'; got %s`, out.(*bytes.Buffer).String())
@@ -67,6 +71,7 @@ func TestGetVolumeName(t *testing.T) {
 }
 
 func TestAttachUnsuported(t *testing.T) {
+	logger := zaptest.NewLogger(t).Sugar()
 	bak := out
 	out = new(bytes.Buffer)
 	defer func() { out = bak }()
@@ -76,7 +81,7 @@ func TestAttachUnsuported(t *testing.T) {
 	exit = func(c int) { code = c }
 	defer func() { exit = osexit }()
 
-	ExecDriver(mockFlexvolumeDriver{}, []string{"oci", "attach", defaultTestOps, "nodeName"})
+	ExecDriver(logger, mockFlexvolumeDriver{}, []string{"oci", "attach", defaultTestOps, "nodeName"})
 
 	if out.(*bytes.Buffer).String() != `{"status":"Not supported"}`+"\n" {
 		t.Fatalf(`Expected '{"status":"Not supported""}'; got %s`, out.(*bytes.Buffer).String())

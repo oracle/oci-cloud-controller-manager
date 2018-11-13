@@ -19,12 +19,6 @@ limitations under the License.
 package mount
 
 import (
-	"fmt"
-	"log"
-	"path"
-	"path/filepath"
-	"strings"
-
 	"k8s.io/utils/exec"
 )
 
@@ -61,7 +55,7 @@ type Interface interface {
 // the mount interface
 var _ Interface = &Mounter{}
 
-// This represents a single line in /proc/mounts or /etc/fstab.
+// MountPoint represents a single line in /proc/mounts or /etc/fstab.
 type MountPoint struct {
 	Device string
 	Path   string
@@ -101,101 +95,4 @@ func New(mounterPath string) Interface {
 	return &Mounter{
 		mounterPath: mounterPath,
 	}
-}
-
-// GetMountRefs finds all other references to the device referenced
-// by mountPath; returns a list of paths.
-func GetMountRefs(mounter Interface, mountPath string) ([]string, error) {
-	mps, err := mounter.List()
-	if err != nil {
-		return nil, err
-	}
-
-	// Find the device name.
-	deviceName := ""
-	// If mountPath is symlink, need get its target path.
-	slTarget, err := filepath.EvalSymlinks(mountPath)
-	if err != nil {
-		slTarget = mountPath
-	}
-	for i := range mps {
-		if mps[i].Path == slTarget {
-			deviceName = mps[i].Device
-			break
-		}
-	}
-
-	// Find all references to the device.
-	var refs []string
-	if deviceName == "" {
-		log.Printf("could not determine device for path: %q", mountPath)
-	} else {
-		for i := range mps {
-			if mps[i].Device == deviceName && mps[i].Path != slTarget {
-				refs = append(refs, mps[i].Path)
-			}
-		}
-	}
-	return refs, nil
-}
-
-// GetDeviceNameFromMount: given a mnt point, find the device from /proc/mounts
-// returns the device name, reference count, and error code
-func GetDeviceNameFromMount(mounter Interface, mountPath string) (string, int, error) {
-	mps, err := mounter.List()
-	if err != nil {
-		return "", 0, err
-	}
-
-	// Find the device name.
-	// FIXME if multiple devices mounted on the same mount path, only the first one is returned
-	device := ""
-	// If mountPath is symlink, need get its target path.
-	slTarget, err := filepath.EvalSymlinks(mountPath)
-	if err != nil {
-		slTarget = mountPath
-	}
-	for i := range mps {
-		if mps[i].Path == slTarget {
-			device = mps[i].Device
-			break
-		}
-	}
-
-	// Find all references to the device.
-	refCount := 0
-	for i := range mps {
-		if mps[i].Device == device {
-			refCount++
-		}
-	}
-	return device, refCount, nil
-}
-
-// getDeviceNameFromMount find the device name from /proc/mounts in which
-// the mount path reference should match the given plugin directory. In case no mount path reference
-// matches, returns the volume name taken from its given mountPath
-func getDeviceNameFromMount(mounter Interface, mountPath, pluginDir string) (string, error) {
-	refs, err := GetMountRefs(mounter, mountPath)
-	if err != nil {
-		log.Printf("GetMountRefs failed for mount path %q: %v", mountPath, err)
-		return "", err
-	}
-	if len(refs) == 0 {
-		log.Printf("Directory %s is not mounted", mountPath)
-		return "", fmt.Errorf("directory %s is not mounted", mountPath)
-	}
-	basemountPath := path.Join(pluginDir, MountsInGlobalPDPath)
-	for _, ref := range refs {
-		if strings.HasPrefix(ref, basemountPath) {
-			volumeID, err := filepath.Rel(basemountPath, ref)
-			if err != nil {
-				log.Printf("Failed to get volume id from mount %s - %v", mountPath, err)
-				return "", err
-			}
-			return volumeID, nil
-		}
-	}
-
-	return path.Base(mountPath), nil
 }

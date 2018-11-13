@@ -14,40 +14,47 @@
 
 package flexvolume
 
+import (
+	"go.uber.org/zap"
+)
+
 type mockFlexvolumeDriver struct{}
 
-func (driver mockFlexvolumeDriver) Init() DriverStatus {
-	return Succeed()
+func (driver mockFlexvolumeDriver) Init(logger *zap.SugaredLogger) DriverStatus {
+	return Succeed(logger)
 }
 
-func (driver mockFlexvolumeDriver) Attach(opts Options, nodeName string) DriverStatus {
-	return NotSupported()
+func (driver mockFlexvolumeDriver) Attach(logger *zap.SugaredLogger, opts Options, nodeName string) DriverStatus {
+	return NotSupported(logger)
 }
 
-func (driver mockFlexvolumeDriver) Detach(mountDevice, nodeName string) DriverStatus {
-	return Succeed()
+func (driver mockFlexvolumeDriver) Detach(logger *zap.SugaredLogger, mountDevice, nodeName string) DriverStatus {
+	return Succeed(logger)
 }
 
 func (driver mockFlexvolumeDriver) WaitForAttach(mountDevice string, opts Options) DriverStatus {
-	return Succeed()
+	return DriverStatus{
+		Status: StatusSuccess,
+		Device: mountDevice,
+	}
 }
 
-func (driver mockFlexvolumeDriver) IsAttached(opts Options, nodeName string) DriverStatus {
-	return Succeed()
+func (driver mockFlexvolumeDriver) IsAttached(logger *zap.SugaredLogger, opts Options, nodeName string) DriverStatus {
+	return Succeed(logger)
 }
 
-func (driver mockFlexvolumeDriver) MountDevice(mountDir, mountDevice string, opts Options) DriverStatus {
-	return Succeed()
+func (driver mockFlexvolumeDriver) MountDevice(logger *zap.SugaredLogger, mountDir, mountDevice string, opts Options) DriverStatus {
+	return Succeed(logger)
 }
 
-func (driver mockFlexvolumeDriver) UnmountDevice(mountDevice string) DriverStatus {
-	return Succeed()
+func (driver mockFlexvolumeDriver) UnmountDevice(logger *zap.SugaredLogger, mountDevice string) DriverStatus {
+	return Succeed(logger)
 }
 
-func (driver mockFlexvolumeDriver) Mount(mountDir string, opts Options) DriverStatus {
-	return Succeed()
+func (driver mockFlexvolumeDriver) Mount(logger *zap.SugaredLogger, mountDir string, opts Options) DriverStatus {
+	return Succeed(logger)
 }
 
-func (driver mockFlexvolumeDriver) Unmount(mountDir string) DriverStatus {
-	return Succeed()
+func (driver mockFlexvolumeDriver) Unmount(logger *zap.SugaredLogger, mountDir string) DriverStatus {
+	return Succeed(logger)
 }

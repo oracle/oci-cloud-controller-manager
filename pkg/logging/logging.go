@@ -52,6 +52,15 @@ func Level() *zap.AtomicLevel {
 
 // Logger builds a new logger based on the given flags.
 func Logger() *zap.Logger {
+	return logger(logfilePath)
+}
+
+// FileLogger builds a new logger which logs to the given path.
+func FileLogger(path string) *zap.Logger {
+	return logger(path)
+}
+
+func logger(path string) *zap.Logger {
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -73,9 +82,9 @@ func Logger() *zap.Logger {
 		}),
 	}
 
-	if len(logfilePath) > 0 {
+	if len(path) > 0 {
 		w := zapcore.AddSync(&lumberjack.Logger{
-			Filename:   logfilePath,
+			Filename:   path,
 			MaxSize:    10, // megabytes
 			MaxBackups: 3,
 			MaxAge:     28, // days
