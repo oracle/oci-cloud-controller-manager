@@ -401,7 +401,7 @@ func (mounter *SafeFormatAndMount) formatAndMount(source string, target string, 
 			}
 			mounter.Logger.With(
 				zap.Error(err),
-				"fs type", fstype,
+				"fsType", fstype,
 				"source", source,
 				"target", target,
 				"options", options,
