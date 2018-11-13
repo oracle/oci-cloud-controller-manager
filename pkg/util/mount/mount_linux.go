@@ -125,7 +125,7 @@ func doMount(logger *zap.SugaredLogger, mounterPath string, mountCmd string, sou
 			"command", mountCmd,
 			"source", source,
 			"target", target,
-			"fs type", fstype,
+			"fsType", fstype,
 			"options", options,
 			"output", output,
 		).Error("Mount failed.")
