@@ -176,12 +176,13 @@ func GetDeviceNameFromMount(mounter Interface, mountPath string) (string, int, e
 // matches, returns the volume name taken from its given mountPath
 func getDeviceNameFromMount(logger *zap.SugaredLogger, mounter Interface, mountPath, pluginDir string) (string, error) {
 	refs, err := GetMountRefs(logger, mounter, mountPath)
+	logger = logger.With("mountpath", mountPath)
 	if err != nil {
-		logger.With(zap.Error(err), "mount path", mountPath).Error("GetMountRefs failed.")
+		logger.With(zap.Error(err)).Error("GetMountRefs failed.")
 		return "", err
 	}
 	if len(refs) == 0 {
-		logger.With("mount path", mountPath).Info("Directory is not mounted.")
+		logger.Info("Directory is not mounted.")
 		return "", fmt.Errorf("directory %s is not mounted", mountPath)
 	}
 	basemountPath := path.Join(pluginDir, MountsInGlobalPDPath)
@@ -189,7 +190,7 @@ func getDeviceNameFromMount(logger *zap.SugaredLogger, mounter Interface, mountP
 		if strings.HasPrefix(ref, basemountPath) {
 			volumeID, err := filepath.Rel(basemountPath, ref)
 			if err != nil {
-				logger.With(zap.Error(err), "mount path", mountPath).Error("Failed to get volume id from mount.")
+				logger.With(zap.Error(err)).Error("Failed to get volume id from mount.")
 				return "", err
 			}
 			return volumeID, nil
