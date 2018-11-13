@@ -363,7 +363,7 @@ func (mounter *SafeFormatAndMount) formatAndMount(source string, target string, 
 	}
 
 	// Try to mount the disk
-	mounter.Logger.With("fs type", fstype, "source", source, "target", target).Info("Attempting to mount disk.")
+	mounter.Logger.With("fsType", fstype, "source", source, "target", target).Info("Attempting to mount disk.")
 	mountErr := mounter.Interface.Mount(source, target, fstype, options)
 	if mountErr != nil {
 		// Mount failed. This indicates either that the disk is unformatted or
