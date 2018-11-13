@@ -116,7 +116,7 @@ func doMount(logger *zap.SugaredLogger, mounterPath string, mountCmd string, sou
 		mountArgs = append([]string{mountCmd}, mountArgs...)
 		mountCmd = mounterPath
 	}
-	logger.With("mount command", mountCmd, "mount arguments", mountArgs).Info("Mounting.")
+	logger.With("command", mountCmd, "args", mountArgs).Info("Mounting")
 	command := exec.Command(mountCmd, mountArgs...)
 	output, err := command.CombinedOutput()
 	if err != nil {
