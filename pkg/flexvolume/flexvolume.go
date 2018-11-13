@@ -160,7 +160,7 @@ func ExecDriver(logger *zap.SugaredLogger, driver Driver, args []string) {
 	switch args[1] {
 	// <driver executable> init
 	case "init":
-		ExitWithResult(logger, driver.Init(zap.New(nil).Sugar()))
+		ExitWithResult(logger, driver.Init(logger))
 
 	// <driver executable> getvolumename <json options>
 	// Currently broken as of lates kube release (1.6.4). Work around hardcodes

@@ -20,10 +20,11 @@ package mount
 
 import (
 	"fmt"
-	"log"
 	"path"
 	"path/filepath"
 	"strings"
+
+	"go.uber.org/zap"
 
 	"k8s.io/utils/exec"
 )
@@ -77,6 +78,7 @@ type MountPoint struct {
 type SafeFormatAndMount struct {
 	Interface
 	Runner exec.Interface
+	Logger *zap.SugaredLogger
 }
 
 // FormatAndMount formats the given disk, if needed, and mounts it.
@@ -97,15 +99,16 @@ func (mounter *SafeFormatAndMount) FormatAndMount(source string, target string, 
 // New returns a mount.Interface for the current system.
 // It provides options to override the default mounter behavior.
 // mounterPath allows using an alternative to `/bin/mount` for mounting.
-func New(mounterPath string) Interface {
+func New(logger *zap.SugaredLogger, mounterPath string) Interface {
 	return &Mounter{
 		mounterPath: mounterPath,
+		logger:      logger,
 	}
 }
 
 // GetMountRefs finds all other references to the device referenced
 // by mountPath; returns a list of paths.
-func GetMountRefs(mounter Interface, mountPath string) ([]string, error) {
+func GetMountRefs(logger *zap.SugaredLogger, mounter Interface, mountPath string) ([]string, error) {
 	mps, err := mounter.List()
 	if err != nil {
 		return nil, err
@@ -126,7 +129,7 @@ func GetMountRefs(mounter Interface, mountPath string) ([]string, error) {
 	// Find all references to the device.
 	var refs []string
 	if deviceName == "" {
-		log.Printf("could not determine device for path: %q", mountPath)
+		logger.With("mount path", mountPath).Info("Could not deterimne device at mount path.")
 	} else {
 		for i := range mps {
 			if mps[i].Device == deviceName && mps[i].Path != slTarget {
@@ -137,8 +140,8 @@ func GetMountRefs(mounter Interface, mountPath string) ([]string, error) {
 	return refs, nil
 }
 
-// GetDeviceNameFromMount: given a mnt point, find the device from /proc/mounts
-// returns the device name, reference count, and error code
+// GetDeviceNameFromMount finds the device name and reference count
+// of given a mount point from /proc/mounts
 func GetDeviceNameFromMount(mounter Interface, mountPath string) (string, int, error) {
 	mps, err := mounter.List()
 	if err != nil {
@@ -171,14 +174,14 @@ func GetDeviceNameFromMount(mounter Interface, mountPath string) (string, int, e
 // getDeviceNameFromMount find the device name from /proc/mounts in which
 // the mount path reference should match the given plugin directory. In case no mount path reference
 // matches, returns the volume name taken from its given mountPath
-func getDeviceNameFromMount(mounter Interface, mountPath, pluginDir string) (string, error) {
-	refs, err := GetMountRefs(mounter, mountPath)
+func getDeviceNameFromMount(logger *zap.SugaredLogger, mounter Interface, mountPath, pluginDir string) (string, error) {
+	refs, err := GetMountRefs(logger, mounter, mountPath)
 	if err != nil {
-		log.Printf("GetMountRefs failed for mount path %q: %v", mountPath, err)
+		logger.With(zap.Error(err), "mount path", mountPath).Error("GetMountRefs failed.")
 		return "", err
 	}
 	if len(refs) == 0 {
-		log.Printf("Directory %s is not mounted", mountPath)
+		logger.With("mount path", mountPath).Info("Directory is not mounted.")
 		return "", fmt.Errorf("directory %s is not mounted", mountPath)
 	}
 	basemountPath := path.Join(pluginDir, MountsInGlobalPDPath)
@@ -186,7 +189,7 @@ func getDeviceNameFromMount(mounter Interface, mountPath, pluginDir string) (str
 		if strings.HasPrefix(ref, basemountPath) {
 			volumeID, err := filepath.Rel(basemountPath, ref)
 			if err != nil {
-				log.Printf("Failed to get volume id from mount %s - %v", mountPath, err)
+				logger.With(zap.Error(err), "mount path", mountPath).Error("Failed to get volume id from mount.")
 				return "", err
 			}
 			return volumeID, nil

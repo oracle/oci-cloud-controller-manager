@@ -114,7 +114,7 @@ func newWithMounter(logger *zap.SugaredLogger, mounter mount.Interface, iqn, ipv
 
 // New creates a new iSCSI handler.
 func New(logger *zap.SugaredLogger, iqn, ipv4 string, port int) Interface {
-	return newWithMounter(logger, mount.New(mountCommand), iqn, ipv4, port)
+	return newWithMounter(logger, mount.New(logger, mountCommand), iqn, ipv4, port)
 }
 
 // NewFromDevicePath extracts the IQN, IPv4 address, and port from a
@@ -137,7 +137,7 @@ func NewFromDevicePath(logger *zap.SugaredLogger, mountDevice string) (Interface
 // NewFromMountPointPath gets /dev/disk/by-path/ip-<ip>:<port>-iscsi-<IQN>-lun-1
 // from the given mount point path.
 func NewFromMountPointPath(logger *zap.SugaredLogger, mountPath string) (Interface, error) {
-	mounter := mount.New(mountCommand)
+	mounter := mount.New(logger, mountCommand)
 	mountPoint, err := getMountPointForPath(mounter, mountPath)
 	if err != nil {
 		return nil, err
@@ -273,11 +273,12 @@ func (c *iSCSIMounter) FormatAndMount(source string, target string, fstype strin
 	return (&mount.SafeFormatAndMount{
 		Interface: c.mounter,
 		Runner:    c.runner,
+		Logger:    c.logger,
 	}).FormatAndMount(source, target, fstype, options)
 }
 
 func (c *iSCSIMounter) UnmountPath(path string) error {
-	return mount.UnmountPath(path, c.mounter)
+	return mount.UnmountPath(c.logger, path, c.mounter)
 }
 
 // mountLister is a minimal subset of mount.Interface (used to enable testing).

@@ -151,10 +151,10 @@ func (d OCIFlexvolumeDriver) Init(logger *zap.SugaredLogger) flexvolume.DriverSt
 			return flexvolume.Fail(logger, err)
 		}
 	} else {
-		logger.Info("Assuming worker node.")
+		logger.Debug("Assuming worker node.")
 	}
 
-	return flexvolume.Succeed(logger)
+	return flexvolume.Succeed(zap.New(nil).Sugar())
 }
 
 // deriveVolumeOCID will expand a partial OCID to a full OCID

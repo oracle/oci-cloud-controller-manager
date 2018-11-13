@@ -18,8 +18,13 @@ limitations under the License.
 
 package mount
 
+import (
+	"go.uber.org/zap"
+)
+
 type Mounter struct {
 	mounterPath string
+	logger      *zap.SugaredLogger
 }
 
 func (mounter *Mounter) Mount(source string, target string, fstype string, options []string) error {
