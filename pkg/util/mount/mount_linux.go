@@ -122,7 +122,7 @@ func doMount(logger *zap.SugaredLogger, mounterPath string, mountCmd string, sou
 	if err != nil {
 		logger.With(
 			zap.Error(err),
-			"mount command", mountCmd,
+			"command", mountCmd,
 			"source", source,
 			"target", target,
 			"fs type", fstype,
