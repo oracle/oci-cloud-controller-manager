@@ -342,12 +342,18 @@ func readProcMountsFrom(file io.Reader, out *[]MountPoint) (uint32, error) {
 // formatAndMount uses unix utils to format and mount the given disk
 func (mounter *SafeFormatAndMount) formatAndMount(source string, target string, fstype string, options []string) error {
 	options = append(options, "defaults")
-	mounter.Logger = mounter.Logger.With("source", source)
+	mounter.Logger = mounter.Logger.With(
+		"source", source,
+		"target", target,
+		"fstype", fstype,
+		"options", options,
+	)
 	// Run fsck on the disk to fix repairable issues
 	mounter.Logger.Info("Checking disk for issues using 'fsck'.")
 	args := []string{"-a", source}
 	cmd := mounter.Runner.Command("fsck", args...)
 	out, err := cmd.CombinedOutput()
+	mounter.Logger = mounter.Logger.With("output", out)
 	if err != nil {
 		ee, isExitError := err.(utilexec.ExitError)
 		switch {
@@ -356,15 +362,15 @@ func (mounter *SafeFormatAndMount) formatAndMount(source string, target string, 
 		case isExitError && ee.ExitStatus() == fsckErrorsCorrected:
 			mounter.Logger.Info("Device has errors that were corrected with 'fsck'.")
 		case isExitError && ee.ExitStatus() == fsckErrorsUncorrected:
-			mounter.Logger.With("output", out).Info("'fsck' found errors on device but was unable to correct them.")
+			mounter.Logger.Info("'fsck' found errors on device but was unable to correct them.")
 			return fmt.Errorf("'fsck' found errors on device %s but could not correct them: %s.", source, string(out))
 		case isExitError && ee.ExitStatus() > fsckErrorsUncorrected:
-			mounter.Logger.With("output", out).Error("'fsck' error.")
+			mounter.Logger.Error("'fsck' error.")
 		}
 	}
 
 	// Try to mount the disk
-	mounter.Logger.With("fsType", fstype, "source", source, "target", target).Info("Attempting to mount disk.")
+	mounter.Logger.Info("Attempting to mount disk.")
 	mountErr := mounter.Interface.Mount(source, target, fstype, options)
 	if mountErr != nil {
 		// Mount failed. This indicates either that the disk is unformatted or
@@ -384,26 +390,15 @@ func (mounter *SafeFormatAndMount) formatAndMount(source string, target string, 
 			if fstype == "ext4" || fstype == "ext3" {
 				args = []string{"-F", source}
 			}
-			mounter.Logger.With(
-				"fsType", fstype,
-				"argruments", args,
-			).Info("Disk appears to be unformatted, attempting to format.")
+			mounter.Logger.With("argruments", args).Info("Disk appears to be unformatted, attempting to format.")
 			cmd := mounter.Runner.Command("mkfs."+fstype, args...)
 			_, err := cmd.CombinedOutput()
 			if err == nil {
 				// the disk has been formatted successfully try to mount it again.
-				mounter.Logger.With(
-					"fs type", fstype,
-					"target", target,
-				).Info("Disk successfully formatted.")
+				mounter.Logger.Info("Disk successfully formatted.")
 				return mounter.Interface.Mount(source, target, fstype, options)
 			}
-			mounter.Logger.With(
-				zap.Error(err),
-				"fsType", fstype,
-				"target", target,
-				"options", options,
-			).Error("Format of disk failed.")
+			mounter.Logger.With(zap.Error(err)).Error("Format of disk failed.")
 			return err
 		} else {
 			// Disk is already formatted and failed to mount
