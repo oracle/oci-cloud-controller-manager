@@ -82,7 +82,6 @@ func NewOCIProvisioner(
 	volumeRoundingEnabled bool,
 	minVolumeSize resource.Quantity,
 ) (*OCIProvisioner, error) {
-
 	configPath, ok := os.LookupEnv("CONFIG_YAML_FILENAME")
 	if !ok {
 		configPath = configFilePath
@@ -106,7 +105,7 @@ func NewOCIProvisioner(
 		cfg.CompartmentID = metadata.CompartmentID
 	}
 
-	cp, err := newConfigurationProvider(logger, cfg)
+	cp, err := providercfg.NewConfigurationProvider(cfg)
 	if err != nil {
 		logger.With(zap.Error(err)).Fatal("Unable to create volume provisioner client.")
 	}
