@@ -136,7 +136,7 @@ func CreateAndAwaitDaemonSet(client clientset.Interface, desired *appsv1.DaemonS
 			return true, nil
 		}
 
-		Logf("%q DaemonSet not yet ready (diesired=%d, ready=%d). Waiting...",
+		Logf("%q DaemonSet not yet ready (desired=%d, ready=%d). Waiting...",
 			actual.Name, actual.Status.DesiredNumberScheduled, actual.Status.NumberReady)
 		return false, nil
 	})
