@@ -261,8 +261,8 @@ func (d OCIFlexvolumeDriver) Attach(logger *zap.SugaredLogger, opts flexvolume.O
 
 // Detach detaches the volume from the worker node.
 func (d OCIFlexvolumeDriver) Detach(logger *zap.SugaredLogger, pvOrVolumeName, nodeName string) flexvolume.DriverStatus {
-	logger = logger.With("node", nodeName, "pvOrVolumeName", pvOrVolumeName)
-	logger.Info("Detaching.")
+	logger = logger.With("node", nodeName, "volume", pvOrVolumeName)
+	logger.Info("Looking for volume to detach.")
 	config, err := ConfigFromFile(GetConfigPath())
 	if err != nil {
 		return flexvolume.Fail(logger, err)
@@ -278,7 +278,7 @@ func (d OCIFlexvolumeDriver) Detach(logger *zap.SugaredLogger, pvOrVolumeName, n
 	if err != nil {
 		return flexvolume.Fail(logger, "Failed to find volume attachment: ", err)
 	}
-	logger.With("attachmentOCID", *attachment.GetId()).Info("Found attachment to detatch.")
+	logger.Info("Found volume to detatch.")
 	err = c.Compute().DetachVolume(ctx, *attachment.GetId())
 	if err != nil {
 		return flexvolume.Fail(logger, err)
@@ -288,7 +288,7 @@ func (d OCIFlexvolumeDriver) Detach(logger *zap.SugaredLogger, pvOrVolumeName, n
 	if err != nil {
 		return flexvolume.Fail(logger, err)
 	}
-	return flexvolume.Succeed(logger, "Detatchment completed.")
+	return flexvolume.Succeed(logger, "Volume detatchment completed.")
 }
 
 // WaitForAttach searches for the the volume attachment created by Attach() and
