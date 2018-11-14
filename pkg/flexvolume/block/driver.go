@@ -228,7 +228,7 @@ func (d OCIFlexvolumeDriver) Attach(logger *zap.SugaredLogger, opts flexvolume.O
 	attachment, err := c.Compute().AttachVolume(ctx, *instance.Id, volumeOCID)
 	if err != nil {
 		if !client.IsConflict(err) {
-			return flexvolume.Fail(logger, "failed to attach volume: ", err)
+			return flexvolume.Fail(logger, "Failed to attach volume: ", err)
 		}
 		// If we get a 409 conflict response when attaching we
 		// presume that the device is already attached.
@@ -261,6 +261,8 @@ func (d OCIFlexvolumeDriver) Attach(logger *zap.SugaredLogger, opts flexvolume.O
 
 // Detach detaches the volume from the worker node.
 func (d OCIFlexvolumeDriver) Detach(logger *zap.SugaredLogger, pvOrVolumeName, nodeName string) flexvolume.DriverStatus {
+	logger = logger.With("node", nodeName, "pvOrVolumeName", pvOrVolumeName)
+	logger.Info("Detaching.")
 	config, err := ConfigFromFile(GetConfigPath())
 	if err != nil {
 		return flexvolume.Fail(logger, err)
@@ -274,9 +276,9 @@ func (d OCIFlexvolumeDriver) Detach(logger *zap.SugaredLogger, pvOrVolumeName, n
 	ctx := context.Background()
 	attachment, err := c.Compute().FindVolumeAttachment(ctx, config.Auth.CompartmentID, volumeOCID)
 	if err != nil {
-		return flexvolume.Fail(logger, err)
+		return flexvolume.Fail(logger, "Failed to find volume attachment: ", err)
 	}
-
+	logger.With("attachmentOCID", *attachment.GetId()).Info("Found attachment to detatch.")
 	err = c.Compute().DetachVolume(ctx, *attachment.GetId())
 	if err != nil {
 		return flexvolume.Fail(logger, err)
@@ -286,7 +288,7 @@ func (d OCIFlexvolumeDriver) Detach(logger *zap.SugaredLogger, pvOrVolumeName, n
 	if err != nil {
 		return flexvolume.Fail(logger, err)
 	}
-	return flexvolume.Succeed(logger)
+	return flexvolume.Succeed(logger, "Detatchment completed.")
 }
 
 // WaitForAttach searches for the the volume attachment created by Attach() and
