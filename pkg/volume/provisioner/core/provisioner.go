@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/kubernetes-incubator/external-storage/lib/controller"
+	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/block"
@@ -81,20 +82,15 @@ func NewOCIProvisioner(
 	volumeRoundingEnabled bool,
 	minVolumeSize resource.Quantity,
 ) (*OCIProvisioner, error) {
+
 	configPath, ok := os.LookupEnv("CONFIG_YAML_FILENAME")
 	if !ok {
 		configPath = configFilePath
 	}
 
-	f, err := os.Open(configPath)
+	cfg, err := providercfg.FromFile(configPath)
 	if err != nil {
-		logger.With(zap.Error(err), "configPath", configPath).Fatal("Unable to load volume provisioner configuration file.")
-	}
-	defer f.Close()
-
-	cfg, err := LoadConfig(f)
-	if err != nil {
-		logger.With(zap.Error(err)).Fatal("Unable to load volume provisioner client.")
+		logger.With(zap.Error(err)).Fatal("Failed to load configuration file at path %s", configPath)
 	}
 
 	metadata, mdErr := metadata.New().Get()

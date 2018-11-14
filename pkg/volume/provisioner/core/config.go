@@ -15,59 +15,14 @@
 package core
 
 import (
-	"io"
-	"io/ioutil"
-
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/common/auth"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	"gopkg.in/yaml.v2"
 )
 
-// Config holds the OCI cloud-provider config passed to Kubernetes compontents.
-type Config struct {
-	providercfg.Config `yaml:",inline"`
-}
-
-// Validate validates the OCI config.
-func (c *Config) Validate() error {
-	return ValidateConfig(c).ToAggregate()
-}
-
-// LoadConfig consumes the config Reader and constructs a Config object.
-func LoadConfig(r io.Reader) (*Config, error) {
-	if r == nil {
-		return nil, errors.New("no configuration file given")
-	}
-
-	cfg := &Config{}
-
-	b, err := ioutil.ReadAll(r)
-	if err != nil {
-		return nil, err
-	}
-
-	err = yaml.Unmarshal(b, &cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	cfg.Complete()
-
-	return cfg, nil
-}
-
-// Complete the config applying defaults / overrides.
-func (c *Config) Complete() {
-	if c.CompartmentID == "" && c.Auth.CompartmentID != "" {
-		zap.S().Warn("cloud-provider config: \"auth.compartment\" is DEPRECATED and will be removed in a later release. Please set \"compartment\".")
-		c.CompartmentID = c.Auth.CompartmentID
-	}
-}
-
-func newConfigurationProvider(logger *zap.SugaredLogger, cfg *Config) (common.ConfigurationProvider, error) {
+func newConfigurationProvider(logger *zap.SugaredLogger, cfg *providercfg.Config) (common.ConfigurationProvider, error) {
 	var conf common.ConfigurationProvider
 	if cfg != nil {
 		err := cfg.Validate()

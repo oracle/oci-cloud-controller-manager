@@ -15,7 +15,9 @@
 package config
 
 import (
+	"fmt"
 	"io"
+	"os"
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -26,21 +28,23 @@ import (
 // API.
 type AuthConfig struct {
 	Region      string `yaml:"region"`
-	RegionKey   string `yaml:"regionKey"`
 	TenancyID   string `yaml:"tenancy"`
 	UserID      string `yaml:"user"`
 	PrivateKey  string `yaml:"key"`
 	Fingerprint string `yaml:"fingerprint"`
 	Passphrase  string `yaml:"passphrase"`
 
-	// TODO(apryde): depreciate
-	UseInstancePrincipals bool   `yaml:"useInstancePrincipals"`
-	VCNID                 string `yaml:"vcn"`
+	// Used by Flexvolume driver for OCID expansion only. Should be moved to top level eventually.
+	RegionKey string `yaml:"regionKey"`
 
-	// CompartmentID is DEPRECIATED and should be set on the top level Config
+	// The fields below are deprecated and should be removed when appropriate.
+
+	// TODO(apryde): depreciate
+	UseInstancePrincipals bool `yaml:"useInstancePrincipals"`
+	// CompartmentID is DEPRECATED and should be set on the top level Config
 	// struct.
 	CompartmentID string `yaml:"compartment"`
-	// PrivateKeyPassphrase is DEPRECIATED in favour of Passphrase.
+	// PrivateKeyPassphrase is DEPRECATED in favour of Passphrase.
 	PrivateKeyPassphrase string `yaml:"key_passphrase"`
 }
 
@@ -112,17 +116,23 @@ func (c *Config) Complete() {
 	if !c.LoadBalancer.Disabled && c.LoadBalancer.SecurityListManagementMode == "" {
 		c.LoadBalancer.SecurityListManagementMode = ManagementModeAll // default
 		if c.LoadBalancer.DisableSecurityListManagement {
-			zap.S().Warnf("cloud-provider config: \"loadBalancer.disableSecurityListManagement\" is DEPRECIATED and will be removed in a later release. Please set \"loadBalancer.SecurityListManagementMode: %s\".", ManagementModeNone)
+			zap.S().Warnf("cloud-provider config: \"loadBalancer.disableSecurityListManagement\" is DEPRECATED and will be removed in a later release. Please set \"loadBalancer.SecurityListManagementMode: %s\".", ManagementModeNone)
 			c.LoadBalancer.SecurityListManagementMode = ManagementModeNone
 		}
 	}
+
+	// Ensure backwards compatibility fields are set correctly.
 	if c.CompartmentID == "" && c.Auth.CompartmentID != "" {
-		zap.S().Warn("cloud-provider config: \"auth.compartment\" is DEPRECIATED and will be removed in a later release. Please set \"compartment\".")
+		zap.S().Warn("cloud-provider config: \"auth.compartment\" is DEPRECATED and will be removed in a later release. Please set \"compartment\".")
 		c.CompartmentID = c.Auth.CompartmentID
 	}
 	if c.Auth.Passphrase == "" && c.Auth.PrivateKeyPassphrase != "" {
-		zap.S().Warn("cloud-provider config: \"auth.key_passphrase\" is DEPRECIATED and will be removed in a later release. Please set \"auth.passphrase\".")
+		zap.S().Warn("cloud-provider config: \"auth.key_passphrase\" is DEPRECATED and will be removed in a later release. Please set \"auth.passphrase\".")
 		c.Auth.Passphrase = c.Auth.PrivateKeyPassphrase
+	}
+	if c.Auth.UseInstancePrincipals == true {
+		zap.S().Warn("cloud-provider config: \"auth.useInstancePrincipals\" is DEPRECATED and will be removed in a later release. Please set \"auth.useInstancePrincipals\".")
+		c.UseInstancePrincipals = true
 	}
 }
 
@@ -144,4 +154,16 @@ func ReadConfig(r io.Reader) (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// FromFile will load a cloud provider configuration file from a given file path.
+func FromFile(path string) (*Config, error) {
+	f, err := os.Open(path)
+	defer f.Close()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to open config file: %s", err)
+	}
+
+	return ReadConfig(f)
 }

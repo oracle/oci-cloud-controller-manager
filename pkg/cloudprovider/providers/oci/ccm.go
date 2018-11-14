@@ -219,7 +219,7 @@ func (cp *CloudProvider) HasClusterID() bool {
 }
 
 func buildConfigurationProvider(logger *zap.Logger, config *providercfg.Config) (common.ConfigurationProvider, error) {
-	if config.Auth.UseInstancePrincipals {
+	if config.UseInstancePrincipals {
 		logger.Info("Using instance principals configuration provider")
 		cp, err := auth.InstancePrincipalConfigurationProvider()
 		if err != nil {
