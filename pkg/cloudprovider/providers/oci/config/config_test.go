@@ -110,14 +110,14 @@ func TestReadConfigShouldSetCompartmentIDWhenProvidedValidConfig(t *testing.T) {
 func TestBackwardsCompatibilityFieldsAreSetCorrectly(t *testing.T) {
 	cfg, err := ReadConfig(strings.NewReader(validConfigLegacyFormat))
 	if err != nil {
-		t.Fatalf("expected no error but got '%+v'", err)
+		t.Fatalf("expected no error but got '%v'", err)
 	}
 
 	if cfg.CompartmentID != "ocid1.compartment.oc1" {
-		t.Errorf("Compartment ID was not set correctly: cfg.CompartmentID = %s", cfg.CompartmentID)
+		t.Errorf("Compartment ID was not set correctly: cfg.CompartmentID = %v", cfg.CompartmentID)
 	}
 
 	if cfg.Auth.Passphrase != "secretpassphrase" {
-		t.Errorf("Passphrase was not set correctly: cfg.Auth.Passphrase = %s", cfg.Auth.Passphrase)
+		t.Errorf("Passphrase was not set correctly: cfg.Auth.Passphrase = %v", cfg.Auth.Passphrase)
 	}
 }

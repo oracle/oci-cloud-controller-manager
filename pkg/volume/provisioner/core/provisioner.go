@@ -92,6 +92,11 @@ func NewOCIProvisioner(
 		logger.With(zap.Error(err)).Fatal("Failed to load configuration file at path %s", configPath)
 	}
 
+	err = cfg.Validate()
+	if err != nil {
+		logger.With(zap.Error(err)).Fatal("Invalid configuration: %s", err)
+	}
+
 	metadata, mdErr := metadata.New().Get()
 	if mdErr != nil {
 		logger.With(zap.Error(mdErr)).Warnf("Unable to retrieve instance metadata.")
@@ -101,6 +106,7 @@ func NewOCIProvisioner(
 		if metadata == nil {
 			return nil, errors.Wrap(mdErr, "unable to get compartment OCID")
 		}
+
 		logger.With("compartmentID", metadata.CompartmentID).Infof("'CompartmentID' not given. Using compartment OCID from instance metadata.")
 		cfg.CompartmentID = metadata.CompartmentID
 	}

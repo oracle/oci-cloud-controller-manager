@@ -127,7 +127,6 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
-		cfg.Complete()
 
 		if err = cfg.Validate(); err != nil {
 			return nil, err

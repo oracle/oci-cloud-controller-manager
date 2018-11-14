@@ -18,7 +18,8 @@ import (
 	"testing"
 )
 
-var TestADSelectionMap = map[string]string{"UK-LONDON-1-AD-3": "UK-LONDON-1-AD-3",
+var TestADSelectionMap = map[string]string{
+	"UK-LONDON-1-AD-3":      "UK-LONDON-1-AD-3",
 	"UpwH:UK-LONDON-1-AD-3": "UK-LONDON-1-AD-3",
 	"UpwH:US-PHX-1-AD-3":    "US-PHX-1-AD-3"}
 

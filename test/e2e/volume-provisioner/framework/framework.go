@@ -259,12 +259,12 @@ func (f *Framework) createStorageClient() ocicore.BlockstorageClient {
 
 	provider, err := providercfg.NewConfigurationProvider(config)
 	if err != nil {
-		Failf("Unable to create configuration provider %s", err)
+		Failf("Unable to create configuration provider %v", err)
 	}
 
 	blockStorageClient, err := ocicore.NewBlockstorageClientWithConfigurationProvider(provider)
 	if err != nil {
-		Failf("Unable to load volume provisioner client %s", err)
+		Failf("Unable to load volume provisioner client %v", err)
 	}
 
 	return blockStorageClient
