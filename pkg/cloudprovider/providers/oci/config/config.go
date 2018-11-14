@@ -15,7 +15,6 @@
 package config
 
 import (
-	"fmt"
 	"io"
 	"os"
 
@@ -37,12 +36,15 @@ type AuthConfig struct {
 	Fingerprint string `yaml:"fingerprint"`
 	Passphrase  string `yaml:"passphrase"`
 
-	// Used by Flexvolume driver for OCID expansion only. Should be moved to top level eventually.
+	// Used by the flex driver for OCID expansion. This should be moved to top level
+	// as it doesn't strictly relate to OCI authentication.
 	RegionKey string `yaml:"regionKey"`
 
-	// The fields below are deprecated and should be removed when appropriate.
+	// The fields below are deprecated and remain purely for backwards compatibility.
+	// At some point these need to be removed.
 
-	// TODO(apryde): depreciate
+	// When set to true, clients will use an instance principal configuration provider
+	// and ignore auth fields.
 	UseInstancePrincipals bool `yaml:"useInstancePrincipals"`
 	// CompartmentID is DEPRECATED and should be set on the top level Config
 	// struct.
@@ -104,7 +106,7 @@ type Config struct {
 	LoadBalancer LoadBalancerConfig `yaml:"loadBalancer"`
 	RateLimiter  *RateLimiterConfig `yaml:"rateLimiter"`
 
-	// TODO(apryde): use in CCM.
+	// When set to true, clients will use an instance principal configuration provider and ignore auth fields.
 	UseInstancePrincipals bool `yaml:"useInstancePrincipals"`
 	// CompartmentID is the OCID of the Compartment within which the cluster
 	// resides.
@@ -129,10 +131,12 @@ func (c *Config) Complete() {
 		zap.S().Warn("cloud-provider config: \"auth.compartment\" is DEPRECATED and will be removed in a later release. Please set \"compartment\".")
 		c.CompartmentID = c.Auth.CompartmentID
 	}
+
 	if c.Auth.Passphrase == "" && c.Auth.PrivateKeyPassphrase != "" {
 		zap.S().Warn("cloud-provider config: \"auth.key_passphrase\" is DEPRECATED and will be removed in a later release. Please set \"auth.passphrase\".")
 		c.Auth.Passphrase = c.Auth.PrivateKeyPassphrase
 	}
+
 	if c.Auth.UseInstancePrincipals == true {
 		zap.S().Warn("cloud-provider config: \"auth.useInstancePrincipals\" is DEPRECATED and will be removed in a later release. Please set \"auth.useInstancePrincipals\".")
 		c.UseInstancePrincipals = true
@@ -156,6 +160,9 @@ func ReadConfig(r io.Reader) (*Config, error) {
 		return nil, errors.Wrap(err, "unmarshalling cloud-provider config")
 	}
 
+	// Ensure defaults are correctly set
+	cfg.Complete()
+
 	return cfg, nil
 }
 
@@ -165,7 +172,7 @@ func FromFile(path string) (*Config, error) {
 	defer f.Close()
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to open config file: %s", err)
+		return nil, err
 	}
 
 	return ReadConfig(f)
