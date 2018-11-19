@@ -138,7 +138,7 @@ func (c *Config) Complete() {
 	}
 
 	if c.Auth.UseInstancePrincipals == true {
-		zap.S().Warn("cloud-provider config: \"auth.useInstancePrincipals\" is DEPRECATED and will be removed in a later release. Please set \"auth.useInstancePrincipals\".")
+		zap.S().Warn("cloud-provider config: \"auth.useInstancePrincipals\" is DEPRECATED and will be removed in a later release. Please set \"useInstancePrincipals\".")
 		c.UseInstancePrincipals = true
 	}
 }
