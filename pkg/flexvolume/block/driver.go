@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	ociprovider "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci"
+	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/flexvolume"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util/iscsi"
@@ -115,8 +116,8 @@ const (
 	rateLimitBucketDefault = 5
 )
 
-func newClient(config *Config) (client.Interface, error) {
-	cp, err := configurationProviderFromConfig(config)
+func newClient(config *providercfg.Config) (client.Interface, error) {
+	cp, err := providercfg.NewConfigurationProvider(config)
 	if err != nil {
 		return nil, err
 	}
@@ -138,10 +139,11 @@ func newClient(config *Config) (client.Interface, error) {
 func (d OCIFlexvolumeDriver) Init() flexvolume.DriverStatus {
 	path := GetConfigPath()
 	if d.master {
-		config, err := ConfigFromFile(path)
+		config, err := providercfg.FromFile(path)
 		if err != nil {
 			return flexvolume.Fail(err)
 		}
+
 		_, err = newClient(config)
 		if err != nil {
 			return flexvolume.Fail(err)
@@ -194,7 +196,7 @@ func lookupNodeID(k kubernetes.Interface, nodeName string) (string, error) {
 // Attach initiates the attachment of the given OCI volume to the k8s worker
 // node.
 func (d OCIFlexvolumeDriver) Attach(opts flexvolume.Options, nodeName string) flexvolume.DriverStatus {
-	config, err := ConfigFromFile(GetConfigPath())
+	config, err := providercfg.FromFile(GetConfigPath())
 	if err != nil {
 		return flexvolume.Fail(err)
 	}
@@ -263,7 +265,7 @@ func (d OCIFlexvolumeDriver) Attach(opts flexvolume.Options, nodeName string) fl
 
 // Detach detaches the volume from the worker node.
 func (d OCIFlexvolumeDriver) Detach(pvOrVolumeName, nodeName string) flexvolume.DriverStatus {
-	config, err := ConfigFromFile(GetConfigPath())
+	config, err := providercfg.FromFile(GetConfigPath())
 	if err != nil {
 		return flexvolume.Fail(err)
 	}
@@ -305,7 +307,7 @@ func (d OCIFlexvolumeDriver) WaitForAttach(mountDevice string, _ flexvolume.Opti
 // and KCM. Implementation requries credentials which won't be present on nodes
 // but I've only ever seen it called by the KCM.
 func (d OCIFlexvolumeDriver) IsAttached(opts flexvolume.Options, nodeName string) flexvolume.DriverStatus {
-	config, err := ConfigFromFile(GetConfigPath())
+	config, err := providercfg.FromFile(GetConfigPath())
 	if err != nil {
 		return flexvolume.Fail(err)
 	}
