@@ -16,8 +16,12 @@ package config
 
 import (
 	"io"
+	"os"
 
+	"github.com/oracle/oci-go-sdk/common"
+	"github.com/oracle/oci-go-sdk/common/auth"
 	"github.com/pkg/errors"
+
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 )
@@ -26,21 +30,26 @@ import (
 // API.
 type AuthConfig struct {
 	Region      string `yaml:"region"`
-	RegionKey   string `yaml:"regionKey"`
 	TenancyID   string `yaml:"tenancy"`
 	UserID      string `yaml:"user"`
 	PrivateKey  string `yaml:"key"`
 	Fingerprint string `yaml:"fingerprint"`
 	Passphrase  string `yaml:"passphrase"`
 
-	// TODO(apryde): depreciate
-	UseInstancePrincipals bool   `yaml:"useInstancePrincipals"`
-	VCNID                 string `yaml:"vcn"`
+	// Used by the flex driver for OCID expansion. This should be moved to top level
+	// as it doesn't strictly relate to OCI authentication.
+	RegionKey string `yaml:"regionKey"`
 
-	// CompartmentID is DEPRECIATED and should be set on the top level Config
+	// The fields below are deprecated and remain purely for backwards compatibility.
+	// At some point these need to be removed.
+
+	// When set to true, clients will use an instance principal configuration provider
+	// and ignore auth fields.
+	UseInstancePrincipals bool `yaml:"useInstancePrincipals"`
+	// CompartmentID is DEPRECATED and should be set on the top level Config
 	// struct.
 	CompartmentID string `yaml:"compartment"`
-	// PrivateKeyPassphrase is DEPRECIATED in favour of Passphrase.
+	// PrivateKeyPassphrase is DEPRECATED in favour of Passphrase.
 	PrivateKeyPassphrase string `yaml:"key_passphrase"`
 }
 
@@ -97,7 +106,7 @@ type Config struct {
 	LoadBalancer LoadBalancerConfig `yaml:"loadBalancer"`
 	RateLimiter  *RateLimiterConfig `yaml:"rateLimiter"`
 
-	// TODO(apryde): use in CCM.
+	// When set to true, clients will use an instance principal configuration provider and ignore auth fields.
 	UseInstancePrincipals bool `yaml:"useInstancePrincipals"`
 	// CompartmentID is the OCID of the Compartment within which the cluster
 	// resides.
@@ -112,17 +121,25 @@ func (c *Config) Complete() {
 	if !c.LoadBalancer.Disabled && c.LoadBalancer.SecurityListManagementMode == "" {
 		c.LoadBalancer.SecurityListManagementMode = ManagementModeAll // default
 		if c.LoadBalancer.DisableSecurityListManagement {
-			zap.S().Warnf("cloud-provider config: \"loadBalancer.disableSecurityListManagement\" is DEPRECIATED and will be removed in a later release. Please set \"loadBalancer.SecurityListManagementMode: %s\".", ManagementModeNone)
+			zap.S().Warnf("cloud-provider config: \"loadBalancer.disableSecurityListManagement\" is DEPRECATED and will be removed in a later release. Please set \"loadBalancer.SecurityListManagementMode: %s\".", ManagementModeNone)
 			c.LoadBalancer.SecurityListManagementMode = ManagementModeNone
 		}
 	}
+
+	// Ensure backwards compatibility fields are set correctly.
 	if c.CompartmentID == "" && c.Auth.CompartmentID != "" {
-		zap.S().Warn("cloud-provider config: \"auth.compartment\" is DEPRECIATED and will be removed in a later release. Please set \"compartment\".")
+		zap.S().Warn("cloud-provider config: \"auth.compartment\" is DEPRECATED and will be removed in a later release. Please set \"compartment\".")
 		c.CompartmentID = c.Auth.CompartmentID
 	}
+
 	if c.Auth.Passphrase == "" && c.Auth.PrivateKeyPassphrase != "" {
-		zap.S().Warn("cloud-provider config: \"auth.key_passphrase\" is DEPRECIATED and will be removed in a later release. Please set \"auth.passphrase\".")
+		zap.S().Warn("cloud-provider config: \"auth.key_passphrase\" is DEPRECATED and will be removed in a later release. Please set \"auth.passphrase\".")
 		c.Auth.Passphrase = c.Auth.PrivateKeyPassphrase
+	}
+
+	if c.Auth.UseInstancePrincipals == true {
+		zap.S().Warn("cloud-provider config: \"auth.useInstancePrincipals\" is DEPRECATED and will be removed in a later release. Please set \"auth.useInstancePrincipals\".")
+		c.UseInstancePrincipals = true
 	}
 }
 
@@ -143,5 +160,53 @@ func ReadConfig(r io.Reader) (*Config, error) {
 		return nil, errors.Wrap(err, "unmarshalling cloud-provider config")
 	}
 
+	// Ensure defaults are correctly set
+	cfg.Complete()
+
 	return cfg, nil
+}
+
+// FromFile will load a cloud provider configuration file from a given file path.
+func FromFile(path string) (*Config, error) {
+	f, err := os.Open(path)
+	defer f.Close()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return ReadConfig(f)
+}
+
+// NewConfigurationProvider takes a cloud provider config file and returns an OCI ConfigurationProvider
+// to be consumed by the OCI SDK.
+func NewConfigurationProvider(cfg *Config) (common.ConfigurationProvider, error) {
+	var conf common.ConfigurationProvider
+	if cfg != nil {
+		err := cfg.Validate()
+		if err != nil {
+			return nil, errors.Wrap(err, "invalid client config")
+		}
+
+		if cfg.UseInstancePrincipals {
+			cp, err := auth.InstancePrincipalConfigurationProvider()
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to instantiate InstancePrincipalConfigurationProvider")
+			}
+			return cp, nil
+		}
+
+		conf = common.NewRawConfigurationProvider(
+			cfg.Auth.TenancyID,
+			cfg.Auth.UserID,
+			cfg.Auth.Region,
+			cfg.Auth.Fingerprint,
+			cfg.Auth.PrivateKey,
+			common.String(cfg.Auth.PrivateKeyPassphrase))
+
+	} else {
+		conf = common.DefaultConfigProvider()
+	}
+
+	return conf, nil
 }

@@ -17,7 +17,6 @@ package framework
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -25,8 +24,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/core"
 	sharedfw "github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
-	"github.com/oracle/oci-go-sdk/common"
-	"github.com/oracle/oci-go-sdk/common/auth"
 	ocicore "github.com/oracle/oci-go-sdk/core"
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
@@ -37,6 +34,8 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	utilpointer "k8s.io/kubernetes/pkg/util/pointer"
+
+	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 )
 
 const (
@@ -252,55 +251,23 @@ func (f *Framework) AfterEach() {
 
 func (f *Framework) createStorageClient() ocicore.BlockstorageClient {
 	By("Creating an OCI block storage client")
-	configPath := TestContext.OCIConfig
 
-	file, err := os.Open(configPath)
+	config, err := providercfg.FromFile(TestContext.OCIConfig)
 	if err != nil {
-		Failf("Unable to load volume provisioner configuration file: %v", configPath)
+		Failf("Unable to load configuration file: %v", TestContext.OCIConfig)
 	}
-	defer file.Close()
-	cfg, err := core.LoadConfig(file)
+
+	provider, err := providercfg.NewConfigurationProvider(config)
 	if err != nil {
-		Failf("Unable to load volume provisioner configuration file %q: %v", file, err)
+		Failf("Unable to create configuration provider %v", err)
 	}
-	config, err := f.newConfigurationProvider(cfg)
+
+	blockStorageClient, err := ocicore.NewBlockstorageClientWithConfigurationProvider(provider)
 	if err != nil {
-		Failf("Unable to load volume provisioner configuration file %q: %v", cfg, err)
+		Failf("Unable to load volume provisioner client %v", err)
 	}
-	blockStorageClient, err := ocicore.NewBlockstorageClientWithConfigurationProvider(config)
-	if err != nil {
-		Logf("Unable to load volume provisioner client %q: %v", config, err)
-	}
+
 	return blockStorageClient
-}
-
-func (f *Framework) newConfigurationProvider(cfg *core.Config) (common.ConfigurationProvider, error) {
-	var conf common.ConfigurationProvider
-	if cfg != nil {
-		err := cfg.Validate()
-		if err != nil {
-			return nil, errors.Wrap(err, "invalid client config")
-		}
-		if cfg.UseInstancePrincipals {
-			Logf("Using instance principals configuration provider")
-			cp, err := auth.InstancePrincipalConfigurationProvider()
-			if err != nil {
-				return nil, errors.Wrap(err, "InstancePrincipalConfigurationProvider")
-			}
-			return cp, nil
-		}
-		Logf("Using raw configuration provider")
-		conf = common.NewRawConfigurationProvider(
-			cfg.Auth.TenancyID,
-			cfg.Auth.UserID,
-			cfg.Auth.Region,
-			cfg.Auth.Fingerprint,
-			cfg.Auth.PrivateKey,
-			common.String(cfg.Auth.PrivateKeyPassphrase))
-	} else {
-		conf = common.DefaultConfigProvider()
-	}
-	return conf, nil
 }
 
 // NewClientSetFromFlags builds a kubernetes client from flags.

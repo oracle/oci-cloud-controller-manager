@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/kubernetes-incubator/external-storage/lib/controller"
+	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/block"
@@ -86,15 +87,14 @@ func NewOCIProvisioner(
 		configPath = configFilePath
 	}
 
-	f, err := os.Open(configPath)
+	cfg, err := providercfg.FromFile(configPath)
 	if err != nil {
-		logger.With(zap.Error(err), "configPath", configPath).Fatal("Unable to load volume provisioner configuration file.")
+		logger.With(zap.Error(err)).Fatal("Failed to load configuration file at path %s", configPath)
 	}
-	defer f.Close()
 
-	cfg, err := LoadConfig(f)
+	err = cfg.Validate()
 	if err != nil {
-		logger.With(zap.Error(err)).Fatal("Unable to load volume provisioner client.")
+		logger.With(zap.Error(err)).Fatal("Invalid configuration: %s", err)
 	}
 
 	metadata, mdErr := metadata.New().Get()
@@ -106,11 +106,12 @@ func NewOCIProvisioner(
 		if metadata == nil {
 			return nil, errors.Wrap(mdErr, "unable to get compartment OCID")
 		}
+
 		logger.With("compartmentID", metadata.CompartmentID).Infof("'CompartmentID' not given. Using compartment OCID from instance metadata.")
 		cfg.CompartmentID = metadata.CompartmentID
 	}
 
-	cp, err := newConfigurationProvider(logger, cfg)
+	cp, err := providercfg.NewConfigurationProvider(cfg)
 	if err != nil {
 		logger.With(zap.Error(err)).Fatal("Unable to create volume provisioner client.")
 	}

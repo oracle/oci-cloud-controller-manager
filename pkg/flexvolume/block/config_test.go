@@ -183,7 +183,6 @@ func TestValidateConfig(t *testing.T) {
 			in: &Config{
 				Config: providercfg.Config{
 					Auth: providercfg.AuthConfig{
-						VCNID:     "ocid1.user.oc1..aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 						RegionKey: "phx",
 					},
 					UseInstancePrincipals: true,

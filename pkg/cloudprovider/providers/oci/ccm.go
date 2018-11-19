@@ -25,8 +25,6 @@ import (
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
-	"github.com/oracle/oci-go-sdk/common"
-	"github.com/oracle/oci-go-sdk/common/auth"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -84,7 +82,7 @@ func NewCloudProvider(config *providercfg.Config) (cloudprovider.Interface, erro
 	// main.go so capture it here and then pass it into all components.
 	logger := zap.L()
 
-	cp, err := buildConfigurationProvider(logger, config)
+	cp, err := providercfg.NewConfigurationProvider(config)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +125,6 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
-		cfg.Complete()
 
 		if err = cfg.Validate(); err != nil {
 			return nil, err
@@ -216,27 +213,6 @@ func (cp *CloudProvider) ScrubDNS(nameservers, searches []string) (nsOut, srchOu
 // HasClusterID returns true if the cluster has a clusterID.
 func (cp *CloudProvider) HasClusterID() bool {
 	return true
-}
-
-func buildConfigurationProvider(logger *zap.Logger, config *providercfg.Config) (common.ConfigurationProvider, error) {
-	if config.Auth.UseInstancePrincipals {
-		logger.Info("Using instance principals configuration provider")
-		cp, err := auth.InstancePrincipalConfigurationProvider()
-		if err != nil {
-			return nil, errors.Wrap(err, "InstancePrincipalConfigurationProvider")
-		}
-		return cp, nil
-	}
-	logger.Info("Using raw configuration provider")
-	cp := common.NewRawConfigurationProvider(
-		config.Auth.TenancyID,
-		config.Auth.UserID,
-		config.Auth.Region,
-		config.Auth.Fingerprint,
-		config.Auth.PrivateKey,
-		&config.Auth.Passphrase,
-	)
-	return cp, nil
 }
 
 // NewRateLimiter builds and returns a struct containing read and write
