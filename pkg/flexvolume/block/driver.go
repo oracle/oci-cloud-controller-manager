@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -49,7 +48,7 @@ type OCIFlexvolumeDriver struct {
 }
 
 // NewOCIFlexvolumeDriver creates a new driver
-func NewOCIFlexvolumeDriver() (fvd *OCIFlexvolumeDriver, err error) {
+func NewOCIFlexvolumeDriver(logger *zap.SugaredLogger) (fvd *OCIFlexvolumeDriver, err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			fvd = nil
@@ -65,7 +64,7 @@ func NewOCIFlexvolumeDriver() (fvd *OCIFlexvolumeDriver, err error) {
 		}
 		return &OCIFlexvolumeDriver{K: k, master: true}, nil
 	} else if os.IsNotExist(err) {
-		log.Printf("Config file %q does not exist. Assuming worker node.", path)
+		logger.With(zap.Error(err), "path", path).Error("Config file does not exist. Assuming worker node.")
 		return &OCIFlexvolumeDriver{}, nil
 	}
 	return nil, err
@@ -135,27 +134,27 @@ func newClient(config *Config) (client.Interface, error) {
 
 // Init checks that we have the appropriate credentials and metadata API access
 // on driver initialisation.
-func (d OCIFlexvolumeDriver) Init() flexvolume.DriverStatus {
+func (d OCIFlexvolumeDriver) Init(logger *zap.SugaredLogger) flexvolume.DriverStatus {
 	path := GetConfigPath()
 	if d.master {
 		config, err := ConfigFromFile(path)
 		if err != nil {
-			return flexvolume.Fail(err)
+			return flexvolume.Fail(logger, err)
 		}
 		_, err = newClient(config)
 		if err != nil {
-			return flexvolume.Fail(err)
+			return flexvolume.Fail(logger, err)
 		}
 
 		_, err = constructKubeClient()
 		if err != nil {
-			return flexvolume.Fail(err)
+			return flexvolume.Fail(logger, err)
 		}
 	} else {
-		log.Printf("Assuming worker node.")
+		logger.Debug("Assuming worker node.")
 	}
 
-	return flexvolume.Succeed()
+	return flexvolume.Succeed(zap.New(nil).Sugar())
 }
 
 // deriveVolumeOCID will expand a partial OCID to a full OCID
@@ -193,66 +192,65 @@ func lookupNodeID(k kubernetes.Interface, nodeName string) (string, error) {
 
 // Attach initiates the attachment of the given OCI volume to the k8s worker
 // node.
-func (d OCIFlexvolumeDriver) Attach(opts flexvolume.Options, nodeName string) flexvolume.DriverStatus {
+func (d OCIFlexvolumeDriver) Attach(logger *zap.SugaredLogger, opts flexvolume.Options, nodeName string) flexvolume.DriverStatus {
 	config, err := ConfigFromFile(GetConfigPath())
 	if err != nil {
-		return flexvolume.Fail(err)
+		return flexvolume.Fail(logger, err)
 	}
 
 	c, err := newClient(config)
 	if err != nil {
-		return flexvolume.Fail(err)
+		return flexvolume.Fail(logger, err)
 	}
 
 	id, err := lookupNodeID(d.K, nodeName)
 	if err != nil {
-		return flexvolume.Fail("failed to look up node id: ", err)
+		return flexvolume.Fail(logger, "Failed to look up node id: ", err)
 	}
 
 	// Handle possible oci:// prefix.
 	id, err = ociprovider.MapProviderIDToInstanceID(id)
 	if err != nil {
-		return flexvolume.Fail("failed to map nodes provider id to instance id: ", err)
+		return flexvolume.Fail(logger, "Failed to map nodes provider id to instance id: ", err)
 	}
 
 	ctx := context.Background()
 
 	instance, err := c.Compute().GetInstance(ctx, id)
 	if err != nil {
-		return flexvolume.Fail("failed to get instance: ", err)
+		return flexvolume.Fail(logger, "Failed to get instance: ", err)
 	}
 
 	volumeOCID := deriveVolumeOCID(config.Auth.RegionKey, opts["kubernetes.io/pvOrVolumeName"])
 
-	log.Printf("Attaching volume %s -> instance %s", volumeOCID, *instance.Id)
+	logger.With("volumeID", volumeOCID, "instanceID", *instance.Id).Info("Attaching volume to instance")
 
 	attachment, err := c.Compute().AttachVolume(ctx, *instance.Id, volumeOCID)
 	if err != nil {
 		if !client.IsConflict(err) {
-			log.Printf("AttachVolume: %+v", err)
-			return flexvolume.Fail("failed to attach volume: ", err)
+			return flexvolume.Fail(logger, "Failed to attach volume: ", err)
 		}
 		// If we get a 409 conflict response when attaching we
 		// presume that the device is already attached.
-		log.Printf("Attach(): Volume %q already attached.", volumeOCID)
+		logger.With("volumeID", volumeOCID).Info("Volume already attached.")
 		attachment, err = c.Compute().FindVolumeAttachment(ctx, config.Auth.CompartmentID, volumeOCID)
 		if err != nil {
-			return flexvolume.Fail("failed to find volume attachment: ", err)
+			return flexvolume.Fail(logger, "Failed to find volume attachment: ", err)
 		}
 		if *attachment.GetInstanceId() != *instance.Id {
-			return flexvolume.Fail("Already attached to anoter instance: ", *instance.Id)
+			return flexvolume.Fail(logger, "Already attached to anoter instance: ", *instance.Id)
 		}
 	}
 
 	attachment, err = c.Compute().WaitForVolumeAttached(ctx, *attachment.GetId())
 	if err != nil {
-		return flexvolume.Fail(err)
+		return flexvolume.Fail(logger, err)
 	}
 
-	log.Printf("attach: %s attached", *attachment.GetId())
+	logger.With("attachmentID", *attachment.GetId()).Info("Volume attached")
 	iscsiAttachment, ok := attachment.(core.IScsiVolumeAttachment)
 	if !ok {
-		return flexvolume.Fail("Only ISCSI volume attachments are currently supported")
+		return flexvolume.Fail(logger, "Only ISCSI volume attachments are currently supported")
 	}
 
 	return flexvolume.DriverStatus{
@@ -262,33 +260,35 @@ func (d OCIFlexvolumeDriver) Attach(opts flexvolume.Options, nodeName string) fl
 }
 
 // Detach detaches the volume from the worker node.
-func (d OCIFlexvolumeDriver) Detach(pvOrVolumeName, nodeName string) flexvolume.DriverStatus {
+func (d OCIFlexvolumeDriver) Detach(logger *zap.SugaredLogger, pvOrVolumeName, nodeName string) flexvolume.DriverStatus {
+	logger = logger.With("node", nodeName, "volume", pvOrVolumeName)
+	logger.Info("Looking for volume to detach.")
 	config, err := ConfigFromFile(GetConfigPath())
 	if err != nil {
-		return flexvolume.Fail(err)
+		return flexvolume.Fail(logger, err)
 	}
 	c, err := newClient(config)
 	if err != nil {
-		return flexvolume.Fail(err)
+		return flexvolume.Fail(logger, err)
 	}
 
 	volumeOCID := deriveVolumeOCID(config.Auth.RegionKey, pvOrVolumeName)
 	ctx := context.Background()
 	attachment, err := c.Compute().FindVolumeAttachment(ctx, config.Auth.CompartmentID, volumeOCID)
 	if err != nil {
-		return flexvolume.Fail(err)
+		return flexvolume.Fail(logger, "Failed to find volume attachment: ", err)
 	}
-
+	logger.Info("Found volume to detatch.")
 	err = c.Compute().DetachVolume(ctx, *attachment.GetId())
 	if err != nil {
-		return flexvolume.Fail(err)
+		return flexvolume.Fail(logger, err)
 	}
 
 	err = c.Compute().WaitForVolumeDetached(ctx, *attachment.GetId())
 	if err != nil {
-		return flexvolume.Fail(err)
+		return flexvolume.Fail(logger, err)
 	}
-	return flexvolume.Succeed()
+	return flexvolume.Succeed(logger, "Volume detatchment completed.")
 }
 
 // WaitForAttach searches for the the volume attachment created by Attach() and
@@ -304,14 +304,14 @@ func (d OCIFlexvolumeDriver) WaitForAttach(mountDevice string, _ flexvolume.Opti
 // TODO(apryde): The documentation states that this is called from the Kubelet
 // and KCM. Implementation requries credentials which won't be present on nodes
 // but I've only ever seen it called by the KCM.
-func (d OCIFlexvolumeDriver) IsAttached(opts flexvolume.Options, nodeName string) flexvolume.DriverStatus {
+func (d OCIFlexvolumeDriver) IsAttached(logger *zap.SugaredLogger, opts flexvolume.Options, nodeName string) flexvolume.DriverStatus {
 	config, err := ConfigFromFile(GetConfigPath())
 	if err != nil {
-		return flexvolume.Fail(err)
+		return flexvolume.Fail(logger, err)
 	}
 	c, err := newClient(config)
 	if err != nil {
-		return flexvolume.Fail(err)
+		return flexvolume.Fail(logger, err)
 	}
 
 	ctx := context.Background()
@@ -325,7 +325,7 @@ func (d OCIFlexvolumeDriver) IsAttached(opts flexvolume.Options, nodeName string
 		}
 	}
 
-	log.Printf("attach: found volume attachment %s", *attachment.GetId())
+	logger.With("attachmentID", *attachment.GetId()).Info("Found volume attachment")
 
 	return flexvolume.DriverStatus{
 		Status:   flexvolume.StatusSuccess,
@@ -335,30 +335,30 @@ func (d OCIFlexvolumeDriver) IsAttached(opts flexvolume.Options, nodeName string
 
 // MountDevice connects the iSCSI target on the k8s worker node before mounting
 // and (if necessary) formatting the disk.
-func (d OCIFlexvolumeDriver) MountDevice(mountDir, mountDevice string, opts flexvolume.Options) flexvolume.DriverStatus {
-	iSCSIMounter, err := iscsi.NewFromDevicePath(mountDevice)
+func (d OCIFlexvolumeDriver) MountDevice(logger *zap.SugaredLogger, mountDir, mountDevice string, opts flexvolume.Options) flexvolume.DriverStatus {
+	iSCSIMounter, err := iscsi.NewFromDevicePath(logger, mountDevice)
 	if err != nil {
-		return flexvolume.Fail(err)
+		return flexvolume.Fail(logger, err)
 	}
 
 	if isMounted, oErr := iSCSIMounter.DeviceOpened(mountDevice); oErr != nil {
-		return flexvolume.Fail(oErr)
+		return flexvolume.Fail(logger, oErr)
 	} else if isMounted {
-		return flexvolume.Succeed("Device already mounted. Nothing to do.")
+		return flexvolume.Succeed(logger, "Device already mounted. Nothing to do.")
 	}
 
 	if err = iSCSIMounter.AddToDB(); err != nil {
-		return flexvolume.Fail(err)
+		return flexvolume.Fail(logger, err)
 	}
 	if err = iSCSIMounter.SetAutomaticLogin(); err != nil {
-		return flexvolume.Fail(err)
+		return flexvolume.Fail(logger, err)
 	}
 	if err = iSCSIMounter.Login(); err != nil {
-		return flexvolume.Fail(err)
+		return flexvolume.Fail(logger, err)
 	}
 
 	if !waitForPathToExist(mountDevice, 20) {
-		return flexvolume.Fail("Failed waiting for device to exist: ", mountDevice)
+		return flexvolume.Fail(logger, "Failed waiting for device to exist: ", mountDevice)
 	}
 
 	options := []string{}
@@ -367,44 +367,44 @@ func (d OCIFlexvolumeDriver) MountDevice(mountDir, mountDevice string, opts flex
 	}
 	err = iSCSIMounter.FormatAndMount(mountDevice, mountDir, opts[flexvolume.OptionFSType], options)
 	if err != nil {
-		return flexvolume.Fail(err)
+		return flexvolume.Fail(logger, err)
 	}
 
-	return flexvolume.Succeed()
+	return flexvolume.Succeed(logger)
 }
 
 // UnmountDevice unmounts the disk, logs out the iscsi target, and deletes the
 // iscsi node record.
-func (d OCIFlexvolumeDriver) UnmountDevice(mountPath string) flexvolume.DriverStatus {
-	iSCSIMounter, err := iscsi.NewFromMountPointPath(mountPath)
+func (d OCIFlexvolumeDriver) UnmountDevice(logger *zap.SugaredLogger, mountPath string) flexvolume.DriverStatus {
+	iSCSIMounter, err := iscsi.NewFromMountPointPath(logger, mountPath)
 	if err != nil {
 		if err == iscsi.ErrMountPointNotFound {
-			return flexvolume.Succeed("Mount point not found. Nothing to do.")
+			return flexvolume.Succeed(logger, "Mount point not found. Nothing to do.")
 		}
-		return flexvolume.Fail(err)
+		return flexvolume.Fail(logger, err)
 	}
 
 	if err = iSCSIMounter.UnmountPath(mountPath); err != nil {
-		return flexvolume.Fail(err)
+		return flexvolume.Fail(logger, err)
 	}
 	if err = iSCSIMounter.Logout(); err != nil {
-		return flexvolume.Fail(err)
+		return flexvolume.Fail(logger, err)
 	}
 	if err = iSCSIMounter.RemoveFromDB(); err != nil {
-		return flexvolume.Fail(err)
+		return flexvolume.Fail(logger, err)
 	}
 
-	return flexvolume.Succeed()
+	return flexvolume.Succeed(logger)
 }
 
 // Mount is unimplemented as we use the --enable-controller-attach-detach flow
 // and as such mount the drive in MountDevice().
-func (d OCIFlexvolumeDriver) Mount(mountDir string, opts flexvolume.Options) flexvolume.DriverStatus {
-	return flexvolume.NotSupported()
+func (d OCIFlexvolumeDriver) Mount(logger *zap.SugaredLogger, mountDir string, opts flexvolume.Options) flexvolume.DriverStatus {
+	return flexvolume.NotSupported(logger)
 }
 
 // Unmount is unimplemented as we use the --enable-controller-attach-detach flow
 // and as such unmount the drive in UnmountDevice().
-func (d OCIFlexvolumeDriver) Unmount(mountDir string) flexvolume.DriverStatus {
-	return flexvolume.NotSupported()
+func (d OCIFlexvolumeDriver) Unmount(logger *zap.SugaredLogger, mountDir string) flexvolume.DriverStatus {
+	return flexvolume.NotSupported(logger)
 }

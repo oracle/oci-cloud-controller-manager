@@ -23,13 +23,13 @@ import (
 	"fmt"
 	"hash/fnv"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"syscall"
 
+	"go.uber.org/zap"
 	utilexec "k8s.io/utils/exec"
 )
 
@@ -54,6 +54,7 @@ const (
 // kubelet is running in the host's root mount namespace.
 type Mounter struct {
 	mounterPath string
+	logger      *zap.SugaredLogger
 }
 
 // Mount mounts source to target as fstype with given options. 'source' and 'fstype' must
@@ -67,11 +68,11 @@ func (mounter *Mounter) Mount(source string, target string, fstype string, optio
 	mounterPath := ""
 	bind, bindRemountOpts := isBind(options)
 	if bind {
-		err := doMount(mounterPath, defaultMountCommand, source, target, fstype, []string{"bind"})
+		err := doMount(mounter.logger, mounterPath, defaultMountCommand, source, target, fstype, []string{"bind"})
 		if err != nil {
 			return err
 		}
-		return doMount(mounterPath, defaultMountCommand, source, target, fstype, bindRemountOpts)
+		return doMount(mounter.logger, mounterPath, defaultMountCommand, source, target, fstype, bindRemountOpts)
 	}
 	// The list of filesystems that require containerized mounter on GCI image cluster
 	fsTypesNeedMounter := []string{"nfs", "glusterfs", "ceph", "cifs"}
@@ -80,7 +81,7 @@ func (mounter *Mounter) Mount(source string, target string, fstype string, optio
 			mounterPath = mounter.mounterPath
 		}
 	}
-	return doMount(mounterPath, defaultMountCommand, source, target, fstype, options)
+	return doMount(mounter.logger, mounterPath, defaultMountCommand, source, target, fstype, options)
 }
 
 // isBind detects whether a bind mount is being requested and makes the remount options to
@@ -109,18 +110,25 @@ func isBind(options []string) (bool, []string) {
 }
 
 // doMount runs the mount command. mounterPath is the path to mounter binary if containerized mounter is used.
-func doMount(mounterPath string, mountCmd string, source string, target string, fstype string, options []string) error {
+func doMount(logger *zap.SugaredLogger, mounterPath string, mountCmd string, source string, target string, fstype string, options []string) error {
 	mountArgs := makeMountArgs(source, target, fstype, options)
 	if len(mounterPath) > 0 {
 		mountArgs = append([]string{mountCmd}, mountArgs...)
 		mountCmd = mounterPath
 	}
-
-	log.Printf("Mounting cmd (%s) with arguments (%s)", mountCmd, mountArgs)
+	logger.With("command", mountCmd, "args", mountArgs).Info("Mounting")
 	command := exec.Command(mountCmd, mountArgs...)
 	output, err := command.CombinedOutput()
 	if err != nil {
-		log.Printf("Mount failed: %v\nMounting command: %s\nMounting arguments: %s %s %s %v\nOutput: %s\n", err, mountCmd, source, target, fstype, options, string(output))
+		logger.With(
+			zap.Error(err),
+			"command", mountCmd,
+			"source", source,
+			"target", target,
+			"fsType", fstype,
+			"options", options,
+			"output", output,
+		).Error("Mount failed.")
 		return fmt.Errorf("mount failed: %v\nMounting command: %s\nMounting arguments: %s %s %s %v\nOutput: %s\n",
 			err, mountCmd, source, target, fstype, options, string(output))
 	}
@@ -148,10 +156,15 @@ func makeMountArgs(source, target, fstype string, options []string) []string {
 
 // Unmount unmounts the target.
 func (mounter *Mounter) Unmount(target string) error {
-	log.Printf("Unmounting %s", target)
+	mounter.logger.With("target", target).Info("Unmounting.")
 	command := exec.Command("umount", target)
 	output, err := command.CombinedOutput()
 	if err != nil {
+		mounter.logger.With(
+			zap.Error(err),
+			"target", target,
+			"output", output,
+		).Error("Unmount failed.")
 		return fmt.Errorf("Unmount failed: %v\nUnmounting arguments: %s\nOutput: %s\n", err, target, string(output))
 	}
 	return nil
@@ -195,7 +208,7 @@ func IsNotMountPoint(file string) (bool, error) {
 // If open returns nil, return false with nil error.
 // Otherwise, return false with error
 func (mounter *Mounter) DeviceOpened(pathname string) (bool, error) {
-	return exclusiveOpenFailsOnDevice(pathname)
+	return exclusiveOpenFailsOnDevice(mounter.logger, pathname)
 }
 
 // PathIsDevice uses FileInfo returned from os.Stat to check if path refers
@@ -204,7 +217,7 @@ func (mounter *Mounter) PathIsDevice(pathname string) (bool, error) {
 	return pathIsDevice(pathname)
 }
 
-func exclusiveOpenFailsOnDevice(pathname string) (bool, error) {
+func exclusiveOpenFailsOnDevice(logger *zap.SugaredLogger, pathname string) (bool, error) {
 	isDevice, err := pathIsDevice(pathname)
 	if err != nil {
 		return false, fmt.Errorf(
@@ -213,7 +226,7 @@ func exclusiveOpenFailsOnDevice(pathname string) (bool, error) {
 			err)
 	}
 	if !isDevice {
-		log.Printf("Path %q is not refering to a device.", pathname)
+		logger.With("path", pathname).Warn("Path does not refer to a device.")
 		return false, nil
 	}
 	fd, errno := syscall.Open(pathname, syscall.O_RDONLY|syscall.O_EXCL, 0)
@@ -250,7 +263,7 @@ func pathIsDevice(pathname string) (bool, error) {
 
 //GetDeviceNameFromMount: given a mount point, find the device name from its global mount point
 func (mounter *Mounter) GetDeviceNameFromMount(mountPath, pluginDir string) (string, error) {
-	return getDeviceNameFromMount(mounter, mountPath, pluginDir)
+	return getDeviceNameFromMount(mounter.logger, mounter, mountPath, pluginDir)
 }
 
 func listProcMounts(mountFilePath string) ([]MountPoint, error) {
@@ -329,28 +342,35 @@ func readProcMountsFrom(file io.Reader, out *[]MountPoint) (uint32, error) {
 // formatAndMount uses unix utils to format and mount the given disk
 func (mounter *SafeFormatAndMount) formatAndMount(source string, target string, fstype string, options []string) error {
 	options = append(options, "defaults")
-
+	mounter.Logger = mounter.Logger.With(
+		"source", source,
+		"target", target,
+		"fstype", fstype,
+		"options", options,
+	)
 	// Run fsck on the disk to fix repairable issues
-	log.Printf("Checking for issues with fsck on disk: %s", source)
+	mounter.Logger.Info("Checking disk for issues using 'fsck'.")
 	args := []string{"-a", source}
 	cmd := mounter.Runner.Command("fsck", args...)
 	out, err := cmd.CombinedOutput()
+	mounter.Logger = mounter.Logger.With("output", out)
 	if err != nil {
 		ee, isExitError := err.(utilexec.ExitError)
 		switch {
 		case err == utilexec.ErrExecutableNotFound:
-			log.Printf("'fsck' not found on system; continuing mount without running 'fsck'.")
+			mounter.Logger.Info("'fsck' not found on system; continuing mount without running 'fsck'.")
 		case isExitError && ee.ExitStatus() == fsckErrorsCorrected:
-			log.Printf("Device %s has errors which were corrected by fsck.", source)
+			mounter.Logger.Info("Device has errors that were corrected with 'fsck'.")
 		case isExitError && ee.ExitStatus() == fsckErrorsUncorrected:
+			mounter.Logger.Info("'fsck' found errors on device but was unable to correct them.")
 			return fmt.Errorf("'fsck' found errors on device %s but could not correct them: %s.", source, string(out))
 		case isExitError && ee.ExitStatus() > fsckErrorsUncorrected:
-			log.Printf("`fsck` error %s", string(out))
+			mounter.Logger.Error("'fsck' error.")
 		}
 	}
 
 	// Try to mount the disk
-	log.Printf("Attempting to mount disk: %s %s %s", fstype, source, target)
+	mounter.Logger.Info("Attempting to mount disk.")
 	mountErr := mounter.Interface.Mount(source, target, fstype, options)
 	if mountErr != nil {
 		// Mount failed. This indicates either that the disk is unformatted or
@@ -370,15 +390,15 @@ func (mounter *SafeFormatAndMount) formatAndMount(source string, target string, 
 			if fstype == "ext4" || fstype == "ext3" {
 				args = []string{"-F", source}
 			}
-			log.Printf("Disk %q appears to be unformatted, attempting to format as type: %q with options: %v", source, fstype, args)
+			mounter.Logger.With("argruments", args).Info("Disk appears to be unformatted, attempting to format.")
 			cmd := mounter.Runner.Command("mkfs."+fstype, args...)
 			_, err := cmd.CombinedOutput()
 			if err == nil {
 				// the disk has been formatted successfully try to mount it again.
-				log.Printf("Disk successfully formatted (mkfs): %s - %s %s", fstype, source, target)
+				mounter.Logger.Info("Disk successfully formatted.")
 				return mounter.Interface.Mount(source, target, fstype, options)
 			}
-			log.Printf("format of disk %q failed: type:(%q) target:(%q) options:(%q)error:(%v)", source, fstype, target, options, err)
+			mounter.Logger.With(zap.Error(err)).Error("Format of disk failed.")
 			return err
 		} else {
 			// Disk is already formatted and failed to mount
@@ -394,19 +414,19 @@ func (mounter *SafeFormatAndMount) formatAndMount(source string, target string, 
 	return mountErr
 }
 
-// diskLooksUnformatted uses 'lsblk' to see if the given disk is unformated
+// getDiskFormat uses 'lsblk' to determine a given disk's format
 func (mounter *SafeFormatAndMount) getDiskFormat(disk string) (string, error) {
 	args := []string{"-n", "-o", "FSTYPE", disk}
 	cmd := mounter.Runner.Command("lsblk", args...)
-	log.Printf("Attempting to determine if disk %q is formatted using lsblk with args: (%v)", disk, args)
+	mounter.Logger.With("disk", disk, "arguments", args).Info("Attempting to determine if disk is formatted using lsblk.")
 	dataOut, err := cmd.CombinedOutput()
 	output := string(dataOut)
-	log.Printf("Output: %q", output)
 
 	if err != nil {
-		log.Printf("Could not determine if disk %q is formatted (%v)", disk, err)
+		mounter.Logger.With(zap.Error(err), "disk", disk).Error("Could not determine if disk is formatted.")
 		return "", err
 	}
+	mounter.Logger.With("output", output).Info("Disk format determined.")
 
 	// Split lsblk output into lines. Unformatted devices should contain only
 	// "\n". Beware of "\n\n", that's a device with one empty partition.
