@@ -54,9 +54,9 @@ using [`dep`][2].
     your cluster.
 
  4. For CCM execute:
-    `GOOS=darwin make run-ccm-dev`
+    ```GOOS=darwin make run-ccm-dev```
     For Volume Provisioner execute:
-    `GOOS=darwin make run-volume-provisioner-dev`
+    ```GOOS=darwin make run-volume-provisioner-dev```
  
 
 ## DaemonSet manifests
