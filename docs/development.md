@@ -4,7 +4,7 @@ The CCM has a simple build system based on `make`. Dependencies are managed
 using [`dep`][2].
 
 ## Running locally
- 1. Ensure you have the aforementioned development tools installed as well as
+ 1. Ensure you have the aforementioned development tools installed
     as well as the latest release of [Go][3].
 
  2. Create a `cloud-provider.yaml` file in the root of the repository containing
@@ -53,7 +53,11 @@ using [`dep`][2].
  3. Ensure you have [`$KUBECONFIG`][4] to the Kubernetes configuration file for
     your cluster.
 
- 4. Execute `GOOS=darwin make run-dev`
+ 4. For CCM execute:
+    `GOOS=darwin make run-ccm-dev`
+    For Volume Provisioner execute:
+    `GOOS=darwin make run-volume-provisioner-dev`
+ 
 
 ## DaemonSet manifests
 
