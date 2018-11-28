@@ -78,11 +78,20 @@ $ kubectl apply -f dist/oci-cloud-controller-manager-rbac.yaml
 
 ## Running the e2e tests
 
-The e2e test suite requires the version of the CCM under test to be installed in
-the cluster referenced via the `--kubeconfig` flag.
+The e2e test suite makes use of environement variables explained below:
 
+| Environment variable | Required | Description | Value example |
+|----------------------|----------|---------------------------------------------------------------------------------------------------------------------------------|---------------|
+| VERSION | ✓ | The version of the ccm to test against. Can be any value if testing locally running ccm | e4f42f6c |
+| INSTALL_DISABLED | ✗ | Setting this variable to true will run tests against your locally running ccm, rather than installing a ccm pod on your cluster | true |
+
+To test locally running ccm:
 ```console
-$ ginkgo -v -progress test/e2e/cloud-controller-manager  -- --kubeconfig=$HOME/.kube/config --cloud-config="$(pwd)/cloud-provider.yaml"
+$ VERSION=x INSTALL_DISABLED=true ginkgo -v -progress test/e2e/cloud-controller-manager  -- --kubeconfig=$HOME/.kube/config --cloud-config="$(pwd)/cloud-provider.yaml"
+```
+To test a specific version of the ccm in your cluster (change VERSION to the specific version you wish to test):
+```console
+$ VERSION=e4f42f6c ginkgo -v -progress test/e2e/cloud-controller-manager  -- --kubeconfig=$HOME/.kube/config --cloud-config="$(pwd)/cloud-provider.yaml"
 ```
 
 [1]: https://www.docker.com/
