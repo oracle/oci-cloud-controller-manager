@@ -102,9 +102,9 @@ type RateLimiterConfig struct {
 // Config holds the OCI cloud-provider config passed to Kubernetes compontents
 // via the --cloud-config option.
 type Config struct {
-	Auth         AuthConfig         `yaml:"auth"`
-	LoadBalancer LoadBalancerConfig `yaml:"loadBalancer"`
-	RateLimiter  *RateLimiterConfig `yaml:"rateLimiter"`
+	Auth         AuthConfig          `yaml:"auth"`
+	LoadBalancer *LoadBalancerConfig `yaml:"loadBalancer"`
+	RateLimiter  *RateLimiterConfig  `yaml:"rateLimiter"`
 
 	// When set to true, clients will use an instance principal configuration provider and ignore auth fields.
 	UseInstancePrincipals bool `yaml:"useInstancePrincipals"`
@@ -118,7 +118,7 @@ type Config struct {
 
 // Complete the config applying defaults / overrides.
 func (c *Config) Complete() {
-	if !c.LoadBalancer.Disabled && c.LoadBalancer.SecurityListManagementMode == "" {
+	if c.LoadBalancer != nil && !c.LoadBalancer.Disabled && c.LoadBalancer.SecurityListManagementMode == "" {
 		c.LoadBalancer.SecurityListManagementMode = ManagementModeAll // default
 		if c.LoadBalancer.DisableSecurityListManagement {
 			zap.S().Warnf("cloud-provider config: \"loadBalancer.disableSecurityListManagement\" is DEPRECATED and will be removed in a later release. Please set \"loadBalancer.SecurityListManagementMode: %s\".", ManagementModeNone)

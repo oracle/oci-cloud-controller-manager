@@ -25,25 +25,7 @@ func validateAuthConfig(c *AuthConfig, fldPath *field.Path) field.ErrorList {
 	if c == nil {
 		return append(allErrs, field.Required(fldPath, ""))
 	}
-	if c.UseInstancePrincipals {
-		if c.Region != "" {
-			allErrs = append(allErrs, field.Forbidden(fldPath.Child("region"), "cannot be used when useInstancePrincipals is enabled"))
-		}
-		if c.TenancyID != "" {
-			allErrs = append(allErrs, field.Forbidden(fldPath.Child("tenancy"), "cannot be used when useInstancePrincipals is enabled"))
-		}
-		if c.UserID != "" {
-			allErrs = append(allErrs, field.Forbidden(fldPath.Child("user"), "cannot be used when useInstancePrincipals is enabled"))
-		}
-		if c.PrivateKey != "" {
-			allErrs = append(allErrs, field.Forbidden(fldPath.Child("key"), "cannot be used when useInstancePrincipals is enabled"))
-		}
-		if c.Fingerprint != "" {
-			allErrs = append(allErrs, field.Forbidden(fldPath.Child("fingerprint"), "cannot be used when useInstancePrincipals is enabled"))
-		}
 
-		return allErrs
-	}
 	if c.Region == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("region"), ""))
 	}
@@ -93,8 +75,12 @@ func validateLoadBalancerConfig(c *Config, fldPath *field.Path) field.ErrorList 
 // ValidateConfig validates the OCI Cloud Provider config file.
 func ValidateConfig(c *Config) field.ErrorList {
 	allErrs := field.ErrorList{}
-	allErrs = append(allErrs, validateAuthConfig(&c.Auth, field.NewPath("auth"))...)
-	if !c.LoadBalancer.Disabled {
+
+	if !c.UseInstancePrincipals {
+		allErrs = append(allErrs, validateAuthConfig(&c.Auth, field.NewPath("auth"))...)
+	}
+
+	if c.LoadBalancer != nil && !c.LoadBalancer.Disabled {
 		allErrs = append(allErrs, validateLoadBalancerConfig(c, field.NewPath("loadBalancer"))...)
 	}
 	return allErrs

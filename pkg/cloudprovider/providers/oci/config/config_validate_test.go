@@ -28,7 +28,7 @@ func TestValidateConfig(t *testing.T) {
 		errs field.ErrorList
 	}{
 		{
-			name: "valid",
+			name: "valid configuration",
 			in: &Config{
 				Auth: AuthConfig{
 					Region:        "us-phoenix-1",
@@ -38,7 +38,7 @@ func TestValidateConfig(t *testing.T) {
 					PrivateKey:    "-----BEGIN RSA PRIVATE KEY----- (etc)",
 					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
-				LoadBalancer: LoadBalancerConfig{
+				LoadBalancer: &LoadBalancerConfig{
 					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
 				},
@@ -46,42 +46,15 @@ func TestValidateConfig(t *testing.T) {
 			errs: field.ErrorList{},
 		},
 		{
-			name: "valid with instance principals enabled",
+			name: "valid minimal configuration with instance principals auth",
 			in: &Config{
 				Auth: AuthConfig{
 					UseInstancePrincipals: true,
-				},
-				LoadBalancer: LoadBalancerConfig{
-					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
-					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
 				},
 			},
 			errs: field.ErrorList{},
 		}, {
-			name: "mixing instance principals with other auth flags",
-			in: &Config{
-				Auth: AuthConfig{
-					UseInstancePrincipals: true,
-					Region:                "us-phoenix-1",
-					TenancyID:             "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
-					UserID:                "ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q",
-					PrivateKey:            "-----BEGIN RSA PRIVATE KEY----- (etc)",
-					Fingerprint:           "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
-				},
-				LoadBalancer: LoadBalancerConfig{
-					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
-					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
-				},
-			},
-			errs: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeForbidden, Field: "auth.region", Detail: "cannot be used when useInstancePrincipals is enabled", BadValue: ""},
-				&field.Error{Type: field.ErrorTypeForbidden, Field: "auth.tenancy", Detail: "cannot be used when useInstancePrincipals is enabled", BadValue: ""},
-				&field.Error{Type: field.ErrorTypeForbidden, Field: "auth.user", Detail: "cannot be used when useInstancePrincipals is enabled", BadValue: ""},
-				&field.Error{Type: field.ErrorTypeForbidden, Field: "auth.key", Detail: "cannot be used when useInstancePrincipals is enabled", BadValue: ""},
-				&field.Error{Type: field.ErrorTypeForbidden, Field: "auth.fingerprint", Detail: "cannot be used when useInstancePrincipals is enabled", BadValue: ""},
-			},
-		}, {
-			name: "valid_with_non_default_security_list_management_mode",
+			name: "valid with non default security list management mode",
 			in: &Config{
 				Auth: AuthConfig{
 					Region:        "us-phoenix-1",
@@ -91,7 +64,7 @@ func TestValidateConfig(t *testing.T) {
 					PrivateKey:    "-----BEGIN RSA PRIVATE KEY----- (etc)",
 					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
-				LoadBalancer: LoadBalancerConfig{
+				LoadBalancer: &LoadBalancerConfig{
 					Subnet1:                    "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					Subnet2:                    "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
 					SecurityListManagementMode: ManagementModeFrontend,
@@ -99,7 +72,7 @@ func TestValidateConfig(t *testing.T) {
 			},
 			errs: field.ErrorList{},
 		}, {
-			name: "missing_region",
+			name: "missing region",
 			in: &Config{
 				Auth: AuthConfig{
 					TenancyID:     "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
@@ -108,7 +81,7 @@ func TestValidateConfig(t *testing.T) {
 					PrivateKey:    "-----BEGIN RSA PRIVATE KEY----- (etc)",
 					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
-				LoadBalancer: LoadBalancerConfig{
+				LoadBalancer: &LoadBalancerConfig{
 					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
 				},
@@ -117,7 +90,7 @@ func TestValidateConfig(t *testing.T) {
 				&field.Error{Type: field.ErrorTypeRequired, Field: "auth.region", BadValue: ""},
 			},
 		}, {
-			name: "missing_tenancy",
+			name: "missing tenancy",
 			in: &Config{
 				Auth: AuthConfig{
 					Region:        "us-phoenix-1",
@@ -126,7 +99,7 @@ func TestValidateConfig(t *testing.T) {
 					PrivateKey:    "-----BEGIN RSA PRIVATE KEY----- (etc)",
 					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
-				LoadBalancer: LoadBalancerConfig{
+				LoadBalancer: &LoadBalancerConfig{
 					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
 				},
@@ -135,7 +108,7 @@ func TestValidateConfig(t *testing.T) {
 				&field.Error{Type: field.ErrorTypeRequired, Field: "auth.tenancy", BadValue: ""},
 			},
 		}, {
-			name: "missing_compartment",
+			name: "missing compartment",
 			in: &Config{
 				Auth: AuthConfig{
 					Region:      "us-phoenix-1",
@@ -144,14 +117,14 @@ func TestValidateConfig(t *testing.T) {
 					PrivateKey:  "-----BEGIN RSA PRIVATE KEY----- (etc)",
 					Fingerprint: "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
-				LoadBalancer: LoadBalancerConfig{
+				LoadBalancer: &LoadBalancerConfig{
 					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
 				},
 			},
 			errs: field.ErrorList{},
 		}, {
-			name: "missing_user",
+			name: "missing user",
 			in: &Config{
 				Auth: AuthConfig{
 					Region:        "us-phoenix-1",
@@ -160,7 +133,7 @@ func TestValidateConfig(t *testing.T) {
 					PrivateKey:    "-----BEGIN RSA PRIVATE KEY----- (etc)",
 					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
-				LoadBalancer: LoadBalancerConfig{
+				LoadBalancer: &LoadBalancerConfig{
 					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
 				},
@@ -169,7 +142,7 @@ func TestValidateConfig(t *testing.T) {
 				&field.Error{Type: field.ErrorTypeRequired, Field: "auth.user", BadValue: ""},
 			},
 		}, {
-			name: "missing_key",
+			name: "missing key",
 			in: &Config{
 				Auth: AuthConfig{
 					Region:        "us-phoenix-1",
@@ -178,7 +151,7 @@ func TestValidateConfig(t *testing.T) {
 					UserID:        "ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q",
 					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
-				LoadBalancer: LoadBalancerConfig{
+				LoadBalancer: &LoadBalancerConfig{
 					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
 				},
@@ -187,7 +160,7 @@ func TestValidateConfig(t *testing.T) {
 				&field.Error{Type: field.ErrorTypeRequired, Field: "auth.key", BadValue: ""},
 			},
 		}, {
-			name: "missing_figerprint",
+			name: "missing figerprint",
 			in: &Config{
 				Auth: AuthConfig{
 					Region:        "us-phoenix-1",
@@ -196,7 +169,7 @@ func TestValidateConfig(t *testing.T) {
 					UserID:        "ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q",
 					PrivateKey:    "-----BEGIN RSA PRIVATE KEY----- (etc)",
 				},
-				LoadBalancer: LoadBalancerConfig{
+				LoadBalancer: &LoadBalancerConfig{
 					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
 				},
@@ -205,7 +178,7 @@ func TestValidateConfig(t *testing.T) {
 				&field.Error{Type: field.ErrorTypeRequired, Field: "auth.fingerprint", BadValue: ""},
 			},
 		}, {
-			name: "missing_vcnid",
+			name: "missing vcnid",
 			in: &Config{
 				Auth: AuthConfig{
 					Region:        "us-phoenix-1",
@@ -215,13 +188,13 @@ func TestValidateConfig(t *testing.T) {
 					PrivateKey:    "-----BEGIN RSA PRIVATE KEY----- (etc)",
 					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
-				LoadBalancer: LoadBalancerConfig{},
+				LoadBalancer: &LoadBalancerConfig{},
 			},
 			errs: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeRequired, Field: "vcn", BadValue: "", Detail: "VCNID configuration must be provided if configuration for subnet1 is not provided"},
 			},
 		}, {
-			name: "invalid_security_list_management_mode",
+			name: "invalid security list management mode",
 			in: &Config{
 				Auth: AuthConfig{
 					Region:        "us-phoenix-1",
@@ -231,7 +204,7 @@ func TestValidateConfig(t *testing.T) {
 					PrivateKey:    "-----BEGIN RSA PRIVATE KEY----- (etc)",
 					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
-				LoadBalancer: LoadBalancerConfig{
+				LoadBalancer: &LoadBalancerConfig{
 					Subnet1:                    "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					Subnet2:                    "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
 					SecurityListManagementMode: "invalid",
