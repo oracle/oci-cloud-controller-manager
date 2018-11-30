@@ -80,8 +80,8 @@ func validateLoadBalancerConfig(c *Config, fldPath *field.Path) field.ErrorList 
 	if &lbConfig == nil {
 		return append(allErrs, field.Required(fldPath, ""))
 	}
-	if lbConfig.Subnet1 == "" && c.VCNID == "" {
-		allErrs = append(allErrs, field.Required(field.NewPath("vcn"), "VCNID configuration must be provided if configuration for subnet1 is not provided"))
+	if (lbConfig.Subnet1 == "" || len(lbConfig.Subnets) == 0) && c.VCNID == "" {
+		allErrs = append(allErrs, field.Required(field.NewPath("vcn"), "VCNID configuration must be provided if configuration for subnet is not provided"))
 	}
 	if !IsValidSecurityListManagementMode(lbConfig.SecurityListManagementMode) {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("securityListManagementMode"),

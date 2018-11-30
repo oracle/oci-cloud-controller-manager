@@ -26,13 +26,11 @@ compartment: ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx
 vcn: ocid1.vcn.oc1..aaaaaaaask7mpk4mij3pnm6yvnntte25ffadxiivpokxevfxgtsu6ftkqhrq
 
 loadBalancer:
-  # subnet1 configures one of two subnets to which load balancers will be added.
+  # subnets configures the subnets to which load balancers will be added.
   # OCI load balancers require two subnets to ensure high availability.
-  subnet1: ocid1.subnet.oc1.phx.aaaaaaaasa53hlkzk6nzksqfccegk2qnkxmphkblst3riclzs4rhwg7rg57q
-
-  # subnet2 configures the second of two subnets to which load balancers will be
-  # added. OCI load balancers require two subnets to ensure high availability.
-  subnet2: ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq
+  subnets:
+    -ocid1.subnet.oc1.phx.aaaaaaaasa53hlkzk6nzksqfccegk2qnkxmphkblst3riclzs4rhwg7rg57q
+    -ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq
 
   # SecurityListManagementMode configures how security lists are managed by the CCM.
   # If you choose to have security lists managed by the CCM, ensure you have setup the following additional OCI policy:

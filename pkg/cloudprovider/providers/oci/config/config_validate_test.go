@@ -39,8 +39,9 @@ func TestValidateConfig(t *testing.T) {
 					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
 				LoadBalancer: LoadBalancerConfig{
-					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
-					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
+					Subnets: []string{
+						"ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
+					},
 				},
 			},
 			errs: field.ErrorList{},
@@ -52,8 +53,9 @@ func TestValidateConfig(t *testing.T) {
 					UseInstancePrincipals: true,
 				},
 				LoadBalancer: LoadBalancerConfig{
-					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
-					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
+					Subnets: []string{
+						"ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
+					},
 				},
 			},
 			errs: field.ErrorList{},
@@ -69,8 +71,9 @@ func TestValidateConfig(t *testing.T) {
 					Fingerprint:           "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
 				LoadBalancer: LoadBalancerConfig{
-					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
-					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
+					Subnets: []string{
+						"ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
+					},
 				},
 			},
 			errs: field.ErrorList{
@@ -92,8 +95,9 @@ func TestValidateConfig(t *testing.T) {
 					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
 				LoadBalancer: LoadBalancerConfig{
-					Subnet1:                    "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
-					Subnet2:                    "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
+					Subnets: []string{
+						"ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
+					},
 					SecurityListManagementMode: ManagementModeFrontend,
 				},
 			},
@@ -109,8 +113,9 @@ func TestValidateConfig(t *testing.T) {
 					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
 				LoadBalancer: LoadBalancerConfig{
-					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
-					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
+					Subnets: []string{
+						"ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
+					},
 				},
 			},
 			errs: field.ErrorList{
@@ -127,8 +132,9 @@ func TestValidateConfig(t *testing.T) {
 					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
 				LoadBalancer: LoadBalancerConfig{
-					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
-					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
+					Subnets: []string{
+						"ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
+					},
 				},
 			},
 			errs: field.ErrorList{
@@ -145,8 +151,9 @@ func TestValidateConfig(t *testing.T) {
 					Fingerprint: "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
 				LoadBalancer: LoadBalancerConfig{
-					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
-					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
+					Subnets: []string{
+						"ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
+					},
 				},
 			},
 			errs: field.ErrorList{},
@@ -161,8 +168,9 @@ func TestValidateConfig(t *testing.T) {
 					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
 				LoadBalancer: LoadBalancerConfig{
-					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
-					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
+					Subnets: []string{
+						"ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
+					},
 				},
 			},
 			errs: field.ErrorList{
@@ -179,8 +187,9 @@ func TestValidateConfig(t *testing.T) {
 					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
 				LoadBalancer: LoadBalancerConfig{
-					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
-					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
+					Subnets: []string{
+						"ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
+					},
 				},
 			},
 			errs: field.ErrorList{
@@ -197,8 +206,9 @@ func TestValidateConfig(t *testing.T) {
 					PrivateKey:    "-----BEGIN RSA PRIVATE KEY----- (etc)",
 				},
 				LoadBalancer: LoadBalancerConfig{
-					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
-					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
+					Subnets: []string{
+						"ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
+					},
 				},
 			},
 			errs: field.ErrorList{
@@ -232,8 +242,9 @@ func TestValidateConfig(t *testing.T) {
 					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
 				LoadBalancer: LoadBalancerConfig{
-					Subnet1:                    "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
-					Subnet2:                    "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
+					Subnets: []string{
+						"ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
+					},
 					SecurityListManagementMode: "invalid",
 				},
 			},

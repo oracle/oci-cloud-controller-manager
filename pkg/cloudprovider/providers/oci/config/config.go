@@ -83,8 +83,9 @@ type LoadBalancerConfig struct {
 	// and None.
 	SecurityListManagementMode string `yaml:"securityListManagementMode"`
 
-	Subnet1 string `yaml:"subnet1"`
-	Subnet2 string `yaml:"subnet2"`
+	Subnets []string `yaml:"subnets"`
+	Subnet1 string   `yaml:"subnet1"`
+	Subnet2 string   `yaml:"subnet2"`
 
 	// SecurityLists defines the Security List to mutate for each Subnet (
 	// both load balancer and worker).

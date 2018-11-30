@@ -105,9 +105,9 @@ func NewCloudProvider(config *providercfg.Config) (cloudprovider.Interface, erro
 
 	if !config.LoadBalancer.Disabled && config.VCNID == "" {
 		logger.Info("No VCN provided in cloud provider config. Falling back to looking up VCN via LB subnet.")
-		subnet, err := c.Networking().GetSubnet(context.Background(), config.LoadBalancer.Subnet1)
+		subnet, err := c.Networking().GetSubnet(context.Background(), config.LoadBalancer.Subnets[0])
 		if err != nil {
-			return nil, errors.Wrap(err, "get subnet for loadBalancer.subnet1")
+			return nil, errors.Wrap(err, "get subnet for loadBalancer.subnets")
 		}
 		config.VCNID = *subnet.VcnId
 	}
