@@ -94,6 +94,7 @@ To test a specific version of the ccm in your cluster (change VERSION to the spe
 $ VERSION=e4f42f6c ginkgo -v -progress test/e2e/cloud-controller-manager  -- --kubeconfig=$HOME/.kube/config --cloud-config="$(pwd)/cloud-provider.yaml"
 ```
 
+
 [1]: https://www.docker.com/
 [2]: https://github.com/golang/dep
 [3]: https://golang.org/
