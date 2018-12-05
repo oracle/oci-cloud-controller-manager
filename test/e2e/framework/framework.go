@@ -36,14 +36,14 @@ import (
 const (
 	// VarVersion is the environment variable used to defined the
 	// version of the CCM to run tests against
-	VarVersion = "CCM_VERSION"
+	EnvVersion = "CCM_VERSION"
 	// VarInstallDisabled is the environment variable used to prevent
 	// installation of the CCM in the cluster, allowing tests to run
 	// against a locally running version of the CCM
-	VarInstallDisabled = "INSTALL_DISABLED"
+	EnvInstallDisabled = "INSTALL_DISABLED"
 	// VarIgnoreLock is the environment variable used to ignore a test
 	// run lock. Use with caution.
-	VarIgnoreLock = "IGNORE_E2E_LOCK"
+	EnvIgnoreLock = "IGNORE_E2E_LOCK"
 )
 
 // AquireRunLock blocks until the test run lock is required or a timeout

@@ -35,15 +35,15 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 
 	cs, err := framework.NewClientSetFromFlags()
 	Ω(err).ShouldNot(HaveOccurred())
-	_, installDisabled = os.LookupEnv(sharedfw.VarInstallDisabled)
+	_, installDisabled = os.LookupEnv(sharedfw.EnvInstallDisabled)
 	if !installDisabled {
-		version := os.Getenv(sharedfw.VarVersion)
-		Ω(version).ShouldNot(BeEmpty(), "Environment variable '"+sharedfw.VarVersion+"' is empty, either set it or set "+sharedfw.VarInstallDisabled)
+		version := os.Getenv(sharedfw.EnvVersion)
+		Ω(version).ShouldNot(BeEmpty(), "Environment variable '"+sharedfw.EnvVersion+"' is empty, either set it or set "+sharedfw.EnvInstallDisabled)
 		err = framework.InstallCCM(cs, version)
 		Ω(err).ShouldNot(HaveOccurred())
 	}
 
-	_, ignoreLock := os.LookupEnv(sharedfw.VarIgnoreLock)
+	_, ignoreLock := os.LookupEnv(sharedfw.EnvIgnoreLock)
 	if !ignoreLock {
 		err = sharedfw.AquireRunLock(cs, "oci-cloud-controller-manager-e2e-tests")
 		Ω(err).ShouldNot(HaveOccurred())
