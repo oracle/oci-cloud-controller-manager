@@ -30,15 +30,18 @@ var lockAquired bool
 var installDisabled bool
 
 var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
+
 	cs, err := framework.NewClientSetFromFlags()
 	Ω(err).ShouldNot(HaveOccurred())
 
-	err = sharedfw.AquireRunLock(cs, "oci-volume-provisioner-e2e-tests")
-	Ω(err).ShouldNot(HaveOccurred())
-
+	_, ignoreLock := os.LookupEnv(sharedfw.VarIgnoreLock)
+	if !ignoreLock {
+		err = sharedfw.AquireRunLock(cs, "oci-volume-provisioner-e2e-tests")
+		Ω(err).ShouldNot(HaveOccurred())
+	}
 	lockAquired = true
 
-	_, installDisabled = os.LookupEnv("INSTALL_DISABLED")
+	_, installDisabled = os.LookupEnv(sharedfw.VarInstallDisabled)
 	if !installDisabled {
 		err = framework.InstallFlexvolumeDriver(cs)
 		Ω(err).ShouldNot(HaveOccurred())

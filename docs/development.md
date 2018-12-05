@@ -50,8 +50,7 @@ using [`dep`][2].
       subnet1: ocid1.subnet.oc1.phx.aaaaaaaasa53hlkzk6nzksqfccegk2qnkxmphkblst3riclzs4rhwg7rg57q
       subnet2: ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq
     ```
- 3. Ensure you have [`$KUBECONFIG`][4] to the Kubernetes configuration file for
-    your cluster.
+ 3. Ensure you have the environment variable [`$KUBECONFIG`][4] set to the path to your Kubernetes configuration file for your cluster.
 
  4. For CCM execute:
     ```
@@ -78,22 +77,23 @@ $ kubectl apply -f dist/oci-cloud-controller-manager-rbac.yaml
 
 ## Running the e2e tests
 
-The e2e test suite makes use of environement variables explained below:
+The e2e test suite makes use of environment variables explained below:
 
-| Environment variable | Required | Description | Value example |
-|----------------------|----------|---------------------------------------------------------------------------------------------------------------------------------|---------------|
-| VERSION | ✓ | The version of the ccm to test against. Can be any value if testing locally running ccm | e4f42f6c |
-| INSTALL_DISABLED | ✗ | Setting this variable to true will run tests against your locally running ccm, rather than installing a ccm pod on your cluster | true |
+| Environment variable | Required | Description | Expected Value |
+|-|-|-|-|
+| `CCM_VERSION` | Required if `INSTALL_DISABLED` is unset | The version of the ccm to test against. | CCM version, e.g. `e4f42f6c` |
+| `INSTALL_DISABLED` | No | Setting this variable will prevent a CCM pod being installed on your cluster, allowing tests to run against a locally running CCM. | Any value e.g. `x` |
+|`IGNORE_E2E_LOCK` | No | Setting this variable will disable the e2e lock that prevents 2 tests running simaltaneously | Any value e.g. `y`|
 
-To test locally running ccm:
+To test locally running CCM:
 ```console
-$ VERSION=x INSTALL_DISABLED=true ginkgo -v -progress test/e2e/cloud-controller-manager  -- --kubeconfig=$HOME/.kube/config --cloud-config="$(pwd)/cloud-provider.yaml"
+$ INSTALL_DISABLED=foobar ginkgo -v -progress test/e2e/cloud-controller-manager  -- --kubeconfig=$HOME/.kube/config --cloud-config="$(pwd)/cloud-provider.yaml"
 ```
-To test a specific version of the ccm in your cluster (change VERSION to the specific version you wish to test):
+To test a specific version of the CCM in your cluster:
+> **NOTE:** change the value of `CCM_VERSION` to the specific version you wish to test
 ```console
-$ VERSION=e4f42f6c ginkgo -v -progress test/e2e/cloud-controller-manager  -- --kubeconfig=$HOME/.kube/config --cloud-config="$(pwd)/cloud-provider.yaml"
+$ CCM_VERSION=e4f42f6c ginkgo -v -progress test/e2e/cloud-controller-manager  -- --kubeconfig=$HOME/.kube/config --cloud-config="$(pwd)/cloud-provider.yaml"
 ```
-
 
 [1]: https://www.docker.com/
 [2]: https://github.com/golang/dep

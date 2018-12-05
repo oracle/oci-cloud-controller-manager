@@ -32,22 +32,23 @@ var lockAquired bool
 var installDisabled bool
 
 var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
-	version := os.Getenv("VERSION")
-	Ω(version).ShouldNot(BeEmpty(), "$VERSION must be set")
 
 	cs, err := framework.NewClientSetFromFlags()
 	Ω(err).ShouldNot(HaveOccurred())
-
-	err = sharedfw.AquireRunLock(cs, "oci-cloud-controller-manager-e2e-tests")
-	Ω(err).ShouldNot(HaveOccurred())
-
-	lockAquired = true
-
-	_, installDisabled = os.LookupEnv("INSTALL_DISABLED")
+	_, installDisabled = os.LookupEnv(sharedfw.VarInstallDisabled)
 	if !installDisabled {
+		version := os.Getenv(sharedfw.VarVersion)
+		Ω(version).ShouldNot(BeEmpty(), "Environment variable '"+sharedfw.VarVersion+"' is empty, either set it or set "+sharedfw.VarInstallDisabled)
 		err = framework.InstallCCM(cs, version)
 		Ω(err).ShouldNot(HaveOccurred())
 	}
+
+	_, ignoreLock := os.LookupEnv(sharedfw.VarIgnoreLock)
+	if !ignoreLock {
+		err = sharedfw.AquireRunLock(cs, "oci-cloud-controller-manager-e2e-tests")
+		Ω(err).ShouldNot(HaveOccurred())
+	}
+	lockAquired = true
 
 	return nil
 }, func(data []byte) {})
