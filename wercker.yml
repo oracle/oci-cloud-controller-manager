@@ -51,7 +51,7 @@ publish-docker-image:
         name: Set ENV vars
         code: |
           export IMAGE="iad.ocir.io/oracle/cloud-provider-oci"
-          export CCM_VERSION=$(cat dist/VERSION.txt)
+          export VERSION=$(cat dist/VERSION.txt)
           echo "${VERSION}"
 
     - script:
@@ -81,7 +81,7 @@ ccm-e2e-test:
     - script:
       name: Run CCM E2E tests
       code: |
-        export CCM_VERSION=$(make version)
+        export VERSION=$(make version)
         echo "Running CCM tests version: ${VERSION}"
         export NODEPORT_TEST="true"
         export CCM_SECLIST_ID="ocid1.securitylist.oc1.iad.aaaaaaaagekgnvc75yxb66xj2qgocejhyk5xuhojm6wimmteqa5fj43kk5lq"
@@ -123,7 +123,7 @@ volume-provisioner-e2e-test:
     - script:
       name: Run volume provisioner E2E tests
       code: |
-        export CCM_VERSION=$(cat dist/VERSION.txt)
+        export VERSION=$(cat dist/VERSION.txt)
 
         export OCI_CONFIG="/tmp/ociconfig"
         echo -n "${OCI_CONFIG_VAR}" | openssl enc -base64 -d -A > "${OCI_CONFIG}"
@@ -150,7 +150,7 @@ release:
     - script:
         name: set ENV vars
         code: |
-          export CCM_VERSION=$(cat dist/VERSION.txt)
+          export VERSION=$(cat dist/VERSION.txt)
           echo "${VERSION}"
 
     - script:

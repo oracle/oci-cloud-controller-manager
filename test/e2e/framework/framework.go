@@ -36,7 +36,7 @@ import (
 const (
 	// VarVersion is the environment variable used to defined the
 	// version of the CCM to run tests against
-	EnvVersion = "CCM_VERSION"
+	EnvVersion = "VERSION"
 	// VarInstallDisabled is the environment variable used to prevent
 	// installation of the CCM in the cluster, allowing tests to run
 	// against a locally running version of the CCM

@@ -81,7 +81,7 @@ The e2e test suite makes use of environment variables explained below:
 
 | Environment variable | Required | Description | Expected Value |
 |-|-|-|-|
-| `CCM_VERSION` | Required if `INSTALL_DISABLED` is unset | The version of the ccm to test against. | CCM version, e.g. `e4f42f6c` |
+| `VERSION` | Required if `INSTALL_DISABLED` is unset | The version of the ccm to test against. | CCM version, e.g. `e4f42f6c` |
 | `INSTALL_DISABLED` | No | Setting this variable will prevent a CCM pod being installed on your cluster, allowing tests to run against a locally running CCM. | Any value e.g. `x` |
 |`IGNORE_E2E_LOCK` | No | Setting this variable will disable the e2e lock that prevents 2 tests running simaltaneously | Any value e.g. `y`|
 
@@ -90,9 +90,9 @@ To test locally running CCM:
 $ INSTALL_DISABLED=foobar ginkgo -v -progress test/e2e/cloud-controller-manager  -- --kubeconfig=$HOME/.kube/config --cloud-config="$(pwd)/cloud-provider.yaml"
 ```
 To test a specific version of the CCM in your cluster:
-> **NOTE:** change the value of `CCM_VERSION` to the specific version you wish to test
+> **NOTE:** change the value of `VERSION` to the specific version you wish to test
 ```console
-$ CCM_VERSION=e4f42f6c ginkgo -v -progress test/e2e/cloud-controller-manager  -- --kubeconfig=$HOME/.kube/config --cloud-config="$(pwd)/cloud-provider.yaml"
+$ VERSION=e4f42f6c ginkgo -v -progress test/e2e/cloud-controller-manager  -- --kubeconfig=$HOME/.kube/config --cloud-config="$(pwd)/cloud-provider.yaml"
 ```
 
 [1]: https://www.docker.com/
