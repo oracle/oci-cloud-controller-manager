@@ -503,6 +503,90 @@ func TestNewLBSpecSuccess(t *testing.T) {
 	}
 }
 
+func TestNewLBSpecSingleAD(t *testing.T) {
+	testCases := map[string]struct {
+		defaultSubnetOne string
+		defaultSubnetTwo string
+		nodes            []*v1.Node
+		service          *v1.Service
+		expected         *LBSpec
+	}{
+		"single subnet for single AD": {
+			defaultSubnetOne: "one",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerBEProtocol: "",
+						ServiceAnnotationLoadBalancerSubnet1:    "annotation-one",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						v1.ServicePort{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"annotation-one"},
+				Listeners: map[string]loadbalancer.ListenerDetails{
+					"TCP-80": loadbalancer.ListenerDetails{
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]loadbalancer.BackendSetDetails{
+					"TCP-80": loadbalancer.BackendSetDetails{
+						Backends: []loadbalancer.BackendDetails{},
+						HealthChecker: &loadbalancer.HealthCheckerDetails{
+							Protocol: common.String("HTTP"),
+							Port:     common.Int(10256),
+							UrlPath:  common.String("/healthz"),
+						},
+						Policy: common.String("ROUND_ROBIN"),
+					},
+				},
+				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": portSpec{
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager: newSecurityListManagerNOOP(),
+			},
+		},
+	}
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			// we expect the service to be unchanged
+			tc.expected.service = tc.service
+			subnets := []string{tc.defaultSubnetOne}
+			slManagerFactory := func(mode string) securityListManager {
+				return newSecurityListManagerNOOP()
+			}
+			result, err := NewLBSpec(tc.service, tc.nodes, subnets, nil, slManagerFactory)
+			if err != nil {
+				t.Error(err)
+			}
+
+			if !reflect.DeepEqual(result, tc.expected) {
+				t.Errorf("Expected load balancer spec\n%+v\nbut got\n%+v", tc.expected, result)
+			}
+		})
+	}
+}
+
 func TestNewLBSpecFailure(t *testing.T) {
 	testCases := map[string]struct {
 		defaultSubnetOne string

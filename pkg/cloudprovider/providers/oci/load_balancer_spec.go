@@ -95,9 +95,11 @@ type LBSpec struct {
 
 // NewLBSpec creates a LB Spec from a Kubernetes service and a slice of nodes.
 func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslConfig *SSLConfig, secListFactory securityListManagerFactory) (*LBSpec, error) {
-	if len(defaultSubnets) != 2 {
-		return nil, errors.New("default subnets incorrectly configured")
-	}
+	// Disable check for whether there are two subnets, rely on OCI to decide whether the number of subnets is correct
+	// This allows LoadBalancers to be created in single AD regions
+	// if len(defaultSubnets) != 2 {
+	// 	return nil, errors.New("default subnets incorrectly configured")
+	// }
 
 	if err := validateService(svc); err != nil {
 		return nil, errors.Wrap(err, "invalid service")
