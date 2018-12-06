@@ -62,7 +62,7 @@ service it supports. The currently available configuration sections include:
 
 #### Top Level
 
-These configuration options for the OCI cloud provider pertain to its global
+These configuration options for the OCI cloud provider relate to its global
 configuration and should appear at the top level of your `cloud-provider.yaml`
 file.
 
@@ -80,7 +80,7 @@ file.
 
 #### Auth
 
-These configuration options for the OCI cloud provider pertain to authentication
+These configuration options for the OCI cloud provider relate to authentication
 with OCI services via an IAM user and OCI API key. For more information please
 see [here][2].
 
@@ -104,9 +104,9 @@ optional.
    cluster resides (e.g. `iad`).
  - `passphrase`: The passphrase if the provided private key is encrypted.
 
-#### Loadbalancer
+#### Load balancer
 
-These configuration options for the OCI cloud provider pertain to provisioning
+These configuration options for the OCI cloud provider relate to provisioning
 loadbalancers via the cloud controller manager.
 
 ##### Loadbalancer Optional Parameters
@@ -129,11 +129,11 @@ loadbalancers via the cloud controller manager.
    ranges. E.g. 10.82.0.0/16 30000-32000.
  - `subnet1`: The OCID of the first of two required Subnets to which
    loadbalancers will be attached.
- - `subnet1`: The OCID of the second of two required Subnets to which
+ - `subnet2`: The OCID of the second of two required Subnets to which
    loadbalancers will be attached.
  - `securityLists`: A map of Subnet OCIDs to Security List OCIDs to enable
    configuration of which Security Lists the oci-cloud-controller-manager
-   mutates when creating ingress/egress rules to enable traffic to
+   manages when creating ingress/egress rules to enable traffic to
    ingress/egress the Kubernetes cluster via loadbalancers.
 
 

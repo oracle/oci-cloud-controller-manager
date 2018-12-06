@@ -25,7 +25,9 @@ critical to running cloud controller manager for a Kubernetes cluster on OCI.
 All `kubelet`s in your cluster **MUST** set the flag `--cloud-provider=external`.
 `kube-apiserver` and `kube-controller-manager` must **NOT** set the
 `--cloud-provider` flag which will default them to use no cloud provider
-natively.
+natively. This is required as previously Kubernetes included cloud provider
+specific control loops rather than delegating these responsibilities to the
+cloud controller manager.
 
 **WARNING**: setting `--cloud-provider=external` on the `kubelet` will taint all
 Nodes in a cluster with `node.cloudprovider.kubernetes.io/uninitialized`. It is
@@ -51,7 +53,7 @@ Kubernetes Nodes.
 
 When setting the Instance host name as the node name (which is the default),
 Kubernetes will try to reach the Node using its hostname. However, this won't
-neccicarily work depending on your VCN setup since hostnames may not be
+necessarily work depending on your VCN setup since hostnames may not be
 resolvable. For example, when you run `kubectl logs` you may get an error like
 the following:
 
@@ -76,7 +78,7 @@ unique as Node names in Kubernetes must be unique.
 
 Currently `oci-cloud-controller-manager` implements:
  - NodeController - updates nodes with cloud provider specific labels and
-   addresses, also deletes Nodes from Kubernetes when the corosponding instance
+   addresses, also deletes Nodes from Kubernetes when the corresponding instance
    is deleted from the cloud-provider.
  - ServiceController - responsible for creating load balancers when a Service
    of `type: LoadBalancer` is created in Kubernetes.
@@ -88,14 +90,14 @@ your OCI account and Kubernetes cluster. Please see the provider configuration
 documentation [here][5].
 
 ```bash
-$ kubectl  create secret generic oci-cloud-controller-manager \
+$ kubectl create secret generic oci-cloud-controller-manager \
      -n kube-system                                           \
      --from-file=cloud-provider.yaml=cloud-provider.yaml
 ```
 
 ```bash
-kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/0.7.0/oci-cloud-controller-manager-rbac.yaml
-kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/0.7.0/oci-cloud-controller-manager.yaml
+$ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/0.7.0/oci-cloud-controller-manager-rbac.yaml
+$ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/0.7.0/oci-cloud-controller-manager.yaml
 ```
 
 NOTE: the release deployments are meant to serve as an example. They will work
@@ -105,6 +107,6 @@ in a majority of cases but may not work out of the box for your cluster.
 [2]: https://kubernetes.io/docs/concepts/storage/dynamic-provisioning/
 [3]: https://github.com/kubernetes/community/blob/master/contributors/devel/flexvolume.md
 [4]: https://github.com/kubernetes/community/blob/master/contributors/design-proposals/cloud-provider/cloud-provider-refactoring.md
-[5]: https://github.com/oracle/oci-cloud-controller-manager/tree/master/docs/provider-configuration.md
-[6]: https://github.com/oracle/oci-cloud-controller-manager/tree/master/docs/using-oci-volume-provisioner.md
+[5]: /docs/provider-configuration.md
+[6]: /docs/using-oci-volume-provisioner.md
 [7]: https://github.com/oracle/oci-cloud-controller-manager/tree/master/docs/using-oci-flexvolume-driver.md
