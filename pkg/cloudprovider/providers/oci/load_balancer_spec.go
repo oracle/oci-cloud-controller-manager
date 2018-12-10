@@ -95,9 +95,11 @@ type LBSpec struct {
 
 // NewLBSpec creates a LB Spec from a Kubernetes service and a slice of nodes.
 func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslConfig *SSLConfig, secListFactory securityListManagerFactory) (*LBSpec, error) {
-	if len(defaultSubnets) != 2 {
-		return nil, errors.New("default subnets incorrectly configured")
-	}
+	// Disable check for whether there are two subnets, rely on OCI to decide whether the number of subnets is correct
+	// This allows LoadBalancers to be created in single AD regions
+	// if len(defaultSubnets) != 2 {
+	// 	return nil, errors.New("default subnets incorrectly configured")
+	// }
 
 	if err := validateService(svc); err != nil {
 		return nil, errors.Wrap(err, "invalid service")
@@ -134,11 +136,14 @@ func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCo
 			return nil, errors.Errorf("a configuration for subnet1 must be specified for an internal load balancer")
 		}
 		subnets = subnets[:1]
-	} else {
-		if subnets[0] == "" || subnets[1] == "" {
-			return nil, errors.Errorf("a configuration for both subnets must be specified")
-		}
 	}
+	// Disable check for whether there are two subnets, rely on OCI to decide whether the number of subnets is correct
+	// This allows LoadBalancers to be created in single AD regions
+	// else {
+	// 	if subnets[0] == "" || subnets[1] == "" {
+	// 		return nil, errors.Errorf("a configuration for both subnets must be specified")
+	// 	}
+	// }
 
 	listeners, err := getListeners(svc, sslConfig)
 	if err != nil {
