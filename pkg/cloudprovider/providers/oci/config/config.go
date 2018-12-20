@@ -102,9 +102,9 @@ type RateLimiterConfig struct {
 // Config holds the OCI cloud-provider config passed to Kubernetes compontents
 // via the --cloud-config option.
 type Config struct {
-	Auth         AuthConfig         `yaml:"auth"`
-	LoadBalancer LoadBalancerConfig `yaml:"loadBalancer"`
-	RateLimiter  *RateLimiterConfig `yaml:"rateLimiter"`
+	Auth         AuthConfig          `yaml:"auth"`
+	LoadBalancer *LoadBalancerConfig `yaml:"loadBalancer"`
+	RateLimiter  *RateLimiterConfig  `yaml:"rateLimiter"`
 
 	// When set to true, clients will use an instance principal configuration provider and ignore auth fields.
 	UseInstancePrincipals bool `yaml:"useInstancePrincipals"`
