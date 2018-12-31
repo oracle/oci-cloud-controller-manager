@@ -57,6 +57,41 @@ func TestInstanceTerminalState(t *testing.T) {
 	}
 }
 
+func TestInstanceStoppedState(t *testing.T) {
+	testCases := map[string]struct {
+		state    core.InstanceLifecycleStateEnum
+		expected bool
+	}{
+		"not stopped - running": {
+			state:    core.InstanceLifecycleStateRunning,
+			expected: false,
+		},
+		"not stopped - terminated": {
+			state:    core.InstanceLifecycleStateTerminated,
+			expected: false,
+		},
+		"is stopped - stopped": {
+			state:    core.InstanceLifecycleStateStopped,
+			expected: true,
+		},
+		"is stopped - stopping": {
+			state:    core.InstanceLifecycleStateStopping,
+			expected: true,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			result := IsInstanceInStoppedState(&core.Instance{
+				LifecycleState: tc.state,
+			})
+			if result != tc.expected {
+				t.Errorf("IsInstanceInStoppedState(%q) = %v ; wanted %v", tc.state, result, tc.expected)
+			}
+		})
+	}
+}
+
 type mockComputeClient struct{}
 
 type mockVirtualNetworkClient struct{}

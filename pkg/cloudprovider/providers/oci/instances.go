@@ -180,5 +180,16 @@ func (cp *CloudProvider) InstanceExistsByProviderID(ctx context.Context, provide
 
 // InstanceShutdownByProviderID returns true if the instance is shutdown in cloudprovider.
 func (cp *CloudProvider) InstanceShutdownByProviderID(ctx context.Context, providerID string) (bool, error) {
-	return false, cloudprovider.NotImplemented
+	cp.logger.With("instanceID", providerID).Debug("Checking instance is stopped by provider id")
+	instanceID, err := MapProviderIDToInstanceID(providerID)
+	if err != nil {
+		return false, err
+	}
+
+	instance, err := cp.client.Compute().GetInstance(ctx, instanceID)
+	if err != nil {
+		return false, err
+	}
+
+	return client.IsInstanceInStoppedState(instance), nil
 }

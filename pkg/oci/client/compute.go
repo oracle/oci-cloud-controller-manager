@@ -232,6 +232,12 @@ func IsInstanceInTerminalState(instance *core.Instance) bool {
 		instance.LifecycleState == core.InstanceLifecycleStateTerminating
 }
 
+// IsInstanceInStoppedState returns true if the instance is in a stopped or stopping state, false otherwise.
+func IsInstanceInStoppedState(instance *core.Instance) bool {
+	return instance.LifecycleState == core.InstanceLifecycleStateStopped ||
+		instance.LifecycleState == core.InstanceLifecycleStateStopping
+}
+
 func getNonTerminalInstances(instances []core.Instance) []core.Instance {
 	var result []core.Instance
 	for _, instance := range instances {
