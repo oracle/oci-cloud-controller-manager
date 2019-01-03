@@ -38,7 +38,7 @@ func TestValidateConfig(t *testing.T) {
 					PrivateKey:    "-----BEGIN RSA PRIVATE KEY----- (etc)",
 					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
-				LoadBalancer: LoadBalancerConfig{
+				LoadBalancer: &LoadBalancerConfig{
 					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
 				},
@@ -51,7 +51,7 @@ func TestValidateConfig(t *testing.T) {
 				Auth: AuthConfig{
 					UseInstancePrincipals: true,
 				},
-				LoadBalancer: LoadBalancerConfig{
+				LoadBalancer: &LoadBalancerConfig{
 					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
 				},
@@ -68,7 +68,7 @@ func TestValidateConfig(t *testing.T) {
 					PrivateKey:            "-----BEGIN RSA PRIVATE KEY----- (etc)",
 					Fingerprint:           "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
-				LoadBalancer: LoadBalancerConfig{
+				LoadBalancer: &LoadBalancerConfig{
 					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
 				},
@@ -91,7 +91,7 @@ func TestValidateConfig(t *testing.T) {
 					PrivateKey:    "-----BEGIN RSA PRIVATE KEY----- (etc)",
 					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
-				LoadBalancer: LoadBalancerConfig{
+				LoadBalancer: &LoadBalancerConfig{
 					Subnet1:                    "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					Subnet2:                    "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
 					SecurityListManagementMode: ManagementModeFrontend,
@@ -108,7 +108,7 @@ func TestValidateConfig(t *testing.T) {
 					PrivateKey:    "-----BEGIN RSA PRIVATE KEY----- (etc)",
 					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
-				LoadBalancer: LoadBalancerConfig{
+				LoadBalancer: &LoadBalancerConfig{
 					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
 				},
@@ -126,7 +126,7 @@ func TestValidateConfig(t *testing.T) {
 					PrivateKey:    "-----BEGIN RSA PRIVATE KEY----- (etc)",
 					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
-				LoadBalancer: LoadBalancerConfig{
+				LoadBalancer: &LoadBalancerConfig{
 					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
 				},
@@ -144,7 +144,7 @@ func TestValidateConfig(t *testing.T) {
 					PrivateKey:  "-----BEGIN RSA PRIVATE KEY----- (etc)",
 					Fingerprint: "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
-				LoadBalancer: LoadBalancerConfig{
+				LoadBalancer: &LoadBalancerConfig{
 					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
 				},
@@ -160,7 +160,7 @@ func TestValidateConfig(t *testing.T) {
 					PrivateKey:    "-----BEGIN RSA PRIVATE KEY----- (etc)",
 					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
-				LoadBalancer: LoadBalancerConfig{
+				LoadBalancer: &LoadBalancerConfig{
 					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
 				},
@@ -178,7 +178,7 @@ func TestValidateConfig(t *testing.T) {
 					UserID:        "ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q",
 					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
-				LoadBalancer: LoadBalancerConfig{
+				LoadBalancer: &LoadBalancerConfig{
 					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
 				},
@@ -196,7 +196,7 @@ func TestValidateConfig(t *testing.T) {
 					UserID:        "ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q",
 					PrivateKey:    "-----BEGIN RSA PRIVATE KEY----- (etc)",
 				},
-				LoadBalancer: LoadBalancerConfig{
+				LoadBalancer: &LoadBalancerConfig{
 					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
 				},
@@ -215,11 +215,25 @@ func TestValidateConfig(t *testing.T) {
 					PrivateKey:    "-----BEGIN RSA PRIVATE KEY----- (etc)",
 					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
-				LoadBalancer: LoadBalancerConfig{},
+				LoadBalancer: &LoadBalancerConfig{},
 			},
 			errs: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeRequired, Field: "vcn", BadValue: "", Detail: "VCNID configuration must be provided if configuration for subnet1 is not provided"},
 			},
+		}, {
+			name: "missing_lbconfig",
+			in: &Config{
+				Auth: AuthConfig{
+					Region:        "us-phoenix-1",
+					TenancyID:     "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
+					CompartmentID: "ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq",
+					UserID:        "ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q",
+					PrivateKey:    "-----BEGIN RSA PRIVATE KEY----- (etc)",
+					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
+				},
+				LoadBalancer: nil,
+			},
+			errs: field.ErrorList{},
 		}, {
 			name: "invalid_security_list_management_mode",
 			in: &Config{
@@ -231,7 +245,7 @@ func TestValidateConfig(t *testing.T) {
 					PrivateKey:    "-----BEGIN RSA PRIVATE KEY----- (etc)",
 					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
 				},
-				LoadBalancer: LoadBalancerConfig{
+				LoadBalancer: &LoadBalancerConfig{
 					Subnet1:                    "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					Subnet2:                    "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
 					SecurityListManagementMode: "invalid",
@@ -253,7 +267,7 @@ func TestValidateConfig(t *testing.T) {
 			tt.in.Complete()
 			result := ValidateConfig(tt.in)
 			if !reflect.DeepEqual(result, tt.errs) {
-				t.Errorf("ValidateConfig(%#v)\n=>        %q \nExpected: %q", tt.in, result, tt.errs)
+				t.Errorf("ValidateConfig (%s) \n(%#v)\n=>        %q \nExpected: %q", tt.name, tt.in, result, tt.errs)
 			}
 		})
 	}

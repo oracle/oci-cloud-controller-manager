@@ -77,7 +77,7 @@ func IsValidSecurityListManagementMode(mode string) bool {
 func validateLoadBalancerConfig(c *Config, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	lbConfig := c.LoadBalancer
-	if &lbConfig == nil {
+	if lbConfig == nil {
 		return append(allErrs, field.Required(fldPath, ""))
 	}
 	if lbConfig.Subnet1 == "" && c.VCNID == "" {
@@ -94,7 +94,7 @@ func validateLoadBalancerConfig(c *Config, fldPath *field.Path) field.ErrorList 
 func ValidateConfig(c *Config) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, validateAuthConfig(&c.Auth, field.NewPath("auth"))...)
-	if !c.LoadBalancer.Disabled {
+	if c.LoadBalancer != nil && !c.LoadBalancer.Disabled {
 		allErrs = append(allErrs, validateLoadBalancerConfig(c, field.NewPath("loadBalancer"))...)
 	}
 	return allErrs

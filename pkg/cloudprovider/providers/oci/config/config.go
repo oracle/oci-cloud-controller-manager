@@ -118,7 +118,7 @@ type Config struct {
 
 // Complete the config applying defaults / overrides.
 func (c *Config) Complete() {
-	if !c.LoadBalancer.Disabled && c.LoadBalancer.SecurityListManagementMode == "" {
+	if c.LoadBalancer != nil && !c.LoadBalancer.Disabled && c.LoadBalancer.SecurityListManagementMode == "" {
 		c.LoadBalancer.SecurityListManagementMode = ManagementModeAll // default
 		if c.LoadBalancer.DisableSecurityListManagement {
 			zap.S().Warnf("cloud-provider config: \"loadBalancer.disableSecurityListManagement\" is DEPRECATED and will be removed in a later release. Please set \"loadBalancer.SecurityListManagementMode: %s\".", ManagementModeNone)
