@@ -26,7 +26,7 @@ import (
 )
 
 var (
-	lvl         = zapcore.InfoLevel
+	lvl         = zapcore.DebugLevel
 	logJSON     = false
 	logfilePath = ""
 	config      *zap.Config

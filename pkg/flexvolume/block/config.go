@@ -22,12 +22,14 @@ import (
 	"log"
 	"os"
 
-	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
+	"k8s.io/apimachinery/pkg/util/validation/field"
+
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/common/auth"
 	yaml "gopkg.in/yaml.v2"
-	"k8s.io/apimachinery/pkg/util/validation/field"
+
+	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 )
 
 // Config holds the configuration for the OCI flexvolume driver.

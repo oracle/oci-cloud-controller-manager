@@ -18,12 +18,14 @@ import (
 	"os"
 	"testing"
 
+	"k8s.io/apiserver/pkg/util/logs"
+
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
 	sharedfw "github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
 	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework/ginkgowrapper"
 	"github.com/oracle/oci-cloud-controller-manager/test/e2e/volume-provisioner/framework"
-	"k8s.io/apiserver/pkg/util/logs"
 )
 
 var lockAquired bool

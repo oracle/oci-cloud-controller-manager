@@ -19,15 +19,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/kubernetes-incubator/external-storage/lib/controller"
-	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/block"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/fss"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
-	"github.com/pkg/errors"
-	"go.uber.org/zap"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	informersv1 "k8s.io/client-go/informers/core/v1"
@@ -36,6 +27,17 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/flowcontrol"
 	metav1 "k8s.io/kubernetes/pkg/kubelet/apis"
+
+	"github.com/kubernetes-incubator/external-storage/lib/controller"
+	"github.com/pkg/errors"
+	"go.uber.org/zap"
+
+	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/block"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/fss"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
 )
 
 const (
