@@ -92,6 +92,7 @@ func (cp *CloudProvider) NodeAddresses(ctx context.Context, name types.NodeName)
 // nodeaddresses are being queried. i.e. local metadata services cannot be used
 // in this method to obtain nodeaddresses.
 func (cp *CloudProvider) NodeAddressesByProviderID(ctx context.Context, providerID string) ([]api.NodeAddress, error) {
+	addresses := []api.NodeAddress{}
 	cp.logger.With("instanceID", providerID).Debug("Getting node addresses by provider id")
 	instanceID, err := MapProviderIDToInstanceID(providerID)
 	if err != nil {
@@ -101,7 +102,28 @@ func (cp *CloudProvider) NodeAddressesByProviderID(ctx context.Context, provider
 	if err != nil {
 		return nil, errors.Wrap(err, "GetPrimaryVNICForInstance")
 	}
-	return extractNodeAddressesFromVNIC(vnic)
+	vnicAddresses, err := extractNodeAddressesFromVNIC(vnic)
+	if err != nil {
+		return nil, err
+	}
+	addresses = append(addresses, vnicAddresses...)
+	hostname := vnic.HostnameLabel
+	if *hostname == "" {
+		cp.logger.With("instanceID", providerID).Debug("hostname not set, instance won't be resolvable using using the Internet and VCN Resolver")
+		return addresses, nil
+	}
+	subnet, err := cp.client.Networking().GetSubnet(ctx, *vnic.SubnetId)
+	if err != nil {
+		return nil, errors.Wrap(err, "GetSubnetForInstance")
+	}
+	vcn, err := cp.client.Networking().GetVcn(ctx, *subnet.VcnId)
+	if err != nil {
+		return nil, errors.Wrap(err, "GetVcnForInstance")
+	}
+	fqdn := strings.Join([]string{*hostname, *subnet.DnsLabel, *vcn.DnsLabel, "oraclevcn.com"}, ".")
+	addresses = append(addresses, api.NodeAddress{Type: api.NodeHostName, Address: fqdn})
+	addresses = append(addresses, api.NodeAddress{Type: api.NodeInternalDNS, Address: fqdn})
+	return addresses, nil
 }
 
 // InstanceID returns the cloud provider ID of the node with the specified NodeName.

@@ -187,6 +187,10 @@ func (c *mockVirtualNetworkClient) GetSubnet(ctx context.Context, request core.G
 	return core.GetSubnetResponse{}, nil
 }
 
+func (c *mockVirtualNetworkClient) GetVcn(ctx context.Context, request core.GetVcnRequest) (response core.GetVcnResponse, err error)  {
+	return core.GetVcnResponse{} , nil
+}
+
 func (c *mockVirtualNetworkClient) GetSecurityList(ctx context.Context, request core.GetSecurityListRequest) (response core.GetSecurityListResponse, err error) {
 	return core.GetSecurityListResponse{}, nil
 }

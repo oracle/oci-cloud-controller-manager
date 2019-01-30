@@ -209,6 +209,10 @@ func (c *MockVirtualNetworkClient) GetSubnetFromCacheByIP(ip string) (*core.Subn
 	return nil, nil
 }
 
+func (c *MockVirtualNetworkClient) GetVcn(ctx context.Context, id string) (*core.Vcn, error) {
+	return &core.Vcn{}, nil
+}
+
 func (c *MockVirtualNetworkClient) GetSecurityList(ctx context.Context, id string) (core.GetSecurityListResponse, error) {
 	return core.GetSecurityListResponse{}, nil
 }
