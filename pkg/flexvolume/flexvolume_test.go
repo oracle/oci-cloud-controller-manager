@@ -61,8 +61,8 @@ func TestGetVolumeName(t *testing.T) {
 
 	ExecDriver(logger, mockFlexvolumeDriver{}, []string{"oci", "getvolumename", defaultTestOps})
 
-	if out.(*bytes.Buffer).String() != `{"status":"Not supported","message":"getvolumename is broken as of kube 1.6.4"}`+"\n" {
-		t.Fatalf(`Expected '{"status":"Not supported","message":"getvolumename is broken as of kube 1.6.4"}}'; got %s`, out.(*bytes.Buffer).String())
+	if out.(*bytes.Buffer).String() != `{"status":"Success"}`+"\n" {
+		t.Fatalf(`Expected '{"status":"Success"}'; got %s`, out.(*bytes.Buffer).String())
 	}
 
 	if code != 0 {

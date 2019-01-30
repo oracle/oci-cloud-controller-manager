@@ -17,6 +17,8 @@ package block
 import (
 	"os"
 	"testing"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/flexvolume"
 )
 
 var volumeOCIDTests = []struct {
@@ -80,6 +82,49 @@ func TestGetConfigPath(t *testing.T) {
 	}
 }
 
+func TestGetVolumeName(t *testing.T) {
+	testCases := map[string]struct {
+		opts     flexvolume.Options
+		expected flexvolume.DriverStatus
+	}{
+		"real": {
+			opts: flexvolume.Options{
+				"kubernetes.io/fsType":         "ext4",
+				"kubernetes.io/pvOrVolumeName": "ocid1.volume.oc1.iad.abuwcljsd4fjqgn43gsnkj536z5sbb2unwsp35545y4jqm4pbrhf7azqpdtq",
+				"kubernetes.io/readwrite":      "rw"},
+			expected: flexvolume.DriverStatus{
+				Status:     flexvolume.StatusSuccess,
+				VolumeName: "abuwcljsd4fjqgn43gsnkj536z5sbb2unwsp35545y4jqm4pbrhf7azqpdtq",
+			},
+		},
+		"empty": {
+			opts: flexvolume.Options{},
+			expected: flexvolume.DriverStatus{
+				Status: flexvolume.StatusFailure,
+			},
+		},
+		"invalid": {
+			opts: flexvolume.Options{
+				"kubernetes.io/fsType":         "ext4",
+				"kubernetes.io/pvOrVolumeName": "coid1.volume.oc1.iad.abuwcljsd4fjqgn43gsnkj536z5sbb2unwsp35545y4jqm4pbrhf7azqpdtq",
+			},
+			expected: flexvolume.DriverStatus{
+				Status: flexvolume.StatusFailure,
+			},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			result := GetVolumeName(tc.opts)
+			if result.Status != tc.expected.Status || result.VolumeName != tc.expected.VolumeName {
+				t.Errorf("GetVolumeName()\nactual: %#v\nwanted: %#v", result, tc.expected)
+			}
+		})
+	}
+
+}
+
 func TestGetKubeconfigPath(t *testing.T) {
 	testCases := map[string]struct {
 		envvar   string
@@ -122,6 +167,5 @@ func TestGetKubeconfigPath(t *testing.T) {
 				t.Errorf("GetKubeconfigPath() = %q ; wanted %q", result, tc.expected)
 			}
 		})
-
 	}
 }

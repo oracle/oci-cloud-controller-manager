@@ -190,6 +190,29 @@ func lookupNodeID(k kubernetes.Interface, nodeName string) (string, error) {
 	return n.Spec.ProviderID, nil
 }
 
+// GetVolumeName return cluster wide unique name of the volume
+func GetVolumeName(opts flexvolume.Options) flexvolume.DriverStatus {
+	if !strings.HasPrefix(opts[flexvolume.OptionPVOrVolumeName], ocidPrefix) {
+		return flexvolume.DriverStatus{
+			Status:  flexvolume.StatusFailure,
+			Message: fmt.Sprintf("value of kubernetes.io/pvOrVolumeName (%s) should have prefix ocid.", opts[flexvolume.OptionPVOrVolumeName]),
+		}
+	}
+
+	res := strings.Split(opts[flexvolume.OptionPVOrVolumeName], ".")
+	// res shouldn't have 0 lens, because we verified it has prefix "ocid."
+	return flexvolume.DriverStatus{
+		Status:     flexvolume.StatusSuccess,
+		VolumeName: res[len(res)-1],
+	}
+
+}
+
+// GetVolumeName return cluster wide unique name of the volume
+func (d OCIFlexvolumeDriver) GetVolumeName(logger *zap.SugaredLogger, opts flexvolume.Options) flexvolume.DriverStatus {
+	return GetVolumeName(opts)
+}
+
 // Attach initiates the attachment of the given OCI volume to the k8s worker
 // node.
 func (d OCIFlexvolumeDriver) Attach(logger *zap.SugaredLogger, opts flexvolume.Options, nodeName string) flexvolume.DriverStatus {
@@ -221,7 +244,7 @@ func (d OCIFlexvolumeDriver) Attach(logger *zap.SugaredLogger, opts flexvolume.O
 		return flexvolume.Fail(logger, "Failed to get instance: ", err)
 	}
 
-	volumeOCID := deriveVolumeOCID(config.Auth.RegionKey, opts["kubernetes.io/pvOrVolumeName"])
+	volumeOCID := deriveVolumeOCID(config.Auth.RegionKey, opts[flexvolume.OptionPVOrVolumeName])
 
 	logger.With("volumeID", volumeOCID, "instanceID", *instance.Id).Info("Attaching volume to instance")
 

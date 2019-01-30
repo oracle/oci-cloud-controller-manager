@@ -53,15 +53,18 @@ type DriverStatus struct {
 	Device string `json:"device,omitempty"`
 	// Represents volume is attached on the node.
 	Attached bool `json:"attached,omitempty"`
+	// Cluster wide unique name of the volume. Valid only for getvolumename
+	VolumeName string `json:"volumeName,omitempty"`
 }
 
 // Option keys
 const (
-	OptionFSType    = "kubernetes.io/fsType"
-	OptionReadWrite = "kubernetes.io/readwrite"
-	OptionKeySecret = "kubernetes.io/secret"
-	OptionFSGroup   = "kubernetes.io/fsGroup"
-	OptionMountsDir = "kubernetes.io/mountsDir"
+	OptionFSType         = "kubernetes.io/fsType"
+	OptionReadWrite      = "kubernetes.io/readwrite"
+	OptionKeySecret      = "kubernetes.io/secret"
+	OptionFSGroup        = "kubernetes.io/fsGroup"
+	OptionMountsDir      = "kubernetes.io/mountsDir"
+	OptionPVOrVolumeName = "kubernetes.io/pvOrVolumeName"
 
 	OptionKeyPodName      = "kubernetes.io/pod.name"
 	OptionKeyPodNamespace = "kubernetes.io/pod.namespace"
@@ -73,6 +76,7 @@ const (
 // Driver is the main Flexvolume interface.
 type Driver interface {
 	Init(logger *zap.SugaredLogger) DriverStatus
+	GetVolumeName(logger *zap.SugaredLogger, opts Options) DriverStatus
 	Attach(logger *zap.SugaredLogger, opts Options, nodeName string) DriverStatus
 	Detach(logger *zap.SugaredLogger, mountDevice, nodeName string) DriverStatus
 	WaitForAttach(mountDevice string, opts Options) DriverStatus
@@ -163,12 +167,18 @@ func ExecDriver(logger *zap.SugaredLogger, driver Driver, args []string) {
 		ExitWithResult(logger, driver.Init(logger))
 
 	// <driver executable> getvolumename <json options>
-	// Currently broken as of lates kube release (1.6.4). Work around hardcodes
-	// exiting with StatusNotSupported.
-	// TODO(apryde): Investigate current situation and version support
-	// requirements.
+	// GetVolumeName return the very last part of volume ocid separated by "."
+	// Because it doesn't have regional info, cross region is not very supported
 	case "getvolumename":
-		ExitWithResult(logger, NotSupported(logger, "getvolumename is broken as of kube 1.6.4"))
+		if len(args) != 3 {
+			ExitWithResult(logger, Fail(logger, "getvolumename expected exactly 3 arguments; got ", args))
+		}
+
+		opts, err := processOpts(args[2])
+		if err != nil {
+			ExitWithResult(logger, Fail(logger, err))
+		}
+		ExitWithResult(logger, driver.GetVolumeName(logger, opts))
 
 	// <driver executable> attach <json options> <node name>
 	case "attach":

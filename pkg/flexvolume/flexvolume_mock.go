@@ -23,6 +23,9 @@ type mockFlexvolumeDriver struct{}
 func (driver mockFlexvolumeDriver) Init(logger *zap.SugaredLogger) DriverStatus {
 	return Succeed(logger)
 }
+func (driver mockFlexvolumeDriver) GetVolumeName(logger *zap.SugaredLogger, opts Options) DriverStatus {
+	return Succeed(logger)
+}
 
 func (driver mockFlexvolumeDriver) Attach(logger *zap.SugaredLogger, opts Options, nodeName string) DriverStatus {
 	return NotSupported(logger)
