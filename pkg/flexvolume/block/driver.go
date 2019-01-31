@@ -190,7 +190,7 @@ func lookupNodeID(k kubernetes.Interface, nodeName string) (string, error) {
 	return n.Spec.ProviderID, nil
 }
 
-// GetVolumeName return cluster wide unique name of the volume
+// GetVolumeName returns the cluster wide unique name of the volume
 func GetVolumeName(opts flexvolume.Options) flexvolume.DriverStatus {
 	if !strings.HasPrefix(opts[flexvolume.OptionPVOrVolumeName], ocidPrefix) {
 		return flexvolume.DriverStatus{
@@ -208,7 +208,7 @@ func GetVolumeName(opts flexvolume.Options) flexvolume.DriverStatus {
 
 }
 
-// GetVolumeName return cluster wide unique name of the volume
+// GetVolumeName returns the cluster wide unique name of the volume
 func (d OCIFlexvolumeDriver) GetVolumeName(logger *zap.SugaredLogger, opts flexvolume.Options) flexvolume.DriverStatus {
 	return GetVolumeName(opts)
 }
