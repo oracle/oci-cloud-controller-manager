@@ -107,22 +107,28 @@ func (cp *CloudProvider) NodeAddressesByProviderID(ctx context.Context, provider
 		return nil, err
 	}
 	addresses = append(addresses, vnicAddresses...)
-	hostname := vnic.HostnameLabel
-	if *hostname == "" {
-		cp.logger.With("instanceID", providerID).Debug("hostname not set, instance won't be resolvable using using the Internet and VCN Resolver")
-		return addresses, nil
+
+	if vnic != nil {
+		hostname := vnic.HostnameLabel
+		if hostname != nil && *hostname != "" {
+			subnet, err := cp.client.Networking().GetSubnet(ctx, *vnic.SubnetId)
+			if err != nil {
+				return nil, errors.Wrap(err, "GetSubnetForInstance")
+			}
+			if subnet != nil && *subnet.DnsLabel != "" {
+				vcn, err := cp.client.Networking().GetVcn(ctx, *subnet.VcnId)
+				if err != nil {
+					return nil, errors.Wrap(err, "GetVcnForInstance")
+				}
+				if vcn != nil && *vcn.DnsLabel != "" {
+					fqdn := strings.Join([]string{*hostname, *subnet.DnsLabel, *vcn.DnsLabel, "oraclevcn.com"}, ".")
+					addresses = append(addresses, api.NodeAddress{Type: api.NodeHostName, Address: fqdn})
+					addresses = append(addresses, api.NodeAddress{Type: api.NodeInternalDNS, Address: fqdn})
+				}
+			}
+		}
 	}
-	subnet, err := cp.client.Networking().GetSubnet(ctx, *vnic.SubnetId)
-	if err != nil {
-		return nil, errors.Wrap(err, "GetSubnetForInstance")
-	}
-	vcn, err := cp.client.Networking().GetVcn(ctx, *subnet.VcnId)
-	if err != nil {
-		return nil, errors.Wrap(err, "GetVcnForInstance")
-	}
-	fqdn := strings.Join([]string{*hostname, *subnet.DnsLabel, *vcn.DnsLabel, "oraclevcn.com"}, ".")
-	addresses = append(addresses, api.NodeAddress{Type: api.NodeHostName, Address: fqdn})
-	addresses = append(addresses, api.NodeAddress{Type: api.NodeInternalDNS, Address: fqdn})
+
 	return addresses, nil
 }
 
