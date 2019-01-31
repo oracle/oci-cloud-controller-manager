@@ -239,16 +239,11 @@ func (d OCIFlexvolumeDriver) Attach(logger *zap.SugaredLogger, opts flexvolume.O
 
 	ctx := context.Background()
 
-	instance, err := c.Compute().GetInstance(ctx, id)
-	if err != nil {
-		return flexvolume.Fail(logger, "Failed to get instance: ", err)
-	}
-
 	volumeOCID := deriveVolumeOCID(config.Auth.RegionKey, opts[flexvolume.OptionPVOrVolumeName])
 
-	logger.With("volumeID", volumeOCID, "instanceID", *instance.Id).Info("Attaching volume to instance")
+	logger.With("volumeID", volumeOCID, "instanceID", id).Info("Attaching volume to instance")
 
-	attachment, err := c.Compute().AttachVolume(ctx, *instance.Id, volumeOCID)
+	attachment, err := c.Compute().AttachVolume(ctx, id, volumeOCID)
 	if err != nil {
 		if !client.IsConflict(err) {
 			return flexvolume.Fail(logger, "Failed to attach volume: ", err)
@@ -260,8 +255,8 @@ func (d OCIFlexvolumeDriver) Attach(logger *zap.SugaredLogger, opts flexvolume.O
 		if err != nil {
 			return flexvolume.Fail(logger, "Failed to find volume attachment: ", err)
 		}
-		if *attachment.GetInstanceId() != *instance.Id {
-			return flexvolume.Fail(logger, "Already attached to anoter instance: ", *instance.Id)
+		if *attachment.GetInstanceId() != id {
+			return flexvolume.Fail(logger, "Already attached to anoter instance: ", id)
 		}
 	}
 
