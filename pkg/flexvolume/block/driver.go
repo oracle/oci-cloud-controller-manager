@@ -256,7 +256,7 @@ func (d OCIFlexvolumeDriver) Attach(logger *zap.SugaredLogger, opts flexvolume.O
 			return flexvolume.Fail(logger, "Failed to find volume attachment: ", err)
 		}
 		if *attachment.GetInstanceId() != id {
-			return flexvolume.Fail(logger, "Already attached to anoter instance: ", id)
+			return flexvolume.Fail(logger, "Already attached to another instance: ", id)
 		}
 	}
 
