@@ -21,11 +21,10 @@ import (
 	"strings"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-go-sdk/core"
 	"github.com/pkg/errors"
 	api "k8s.io/api/core/v1"
-	types "k8s.io/apimachinery/pkg/types"
-	cloudprovider "k8s.io/kubernetes/pkg/cloudprovider"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/kubernetes/pkg/cloudprovider"
 )
 
 var _ cloudprovider.Instances = &CloudProvider{}
@@ -42,8 +41,13 @@ func mapInstanceNameToNodeName(displayName string) types.NodeName {
 	return types.NodeName(strings.ToLower(displayName))
 }
 
-func extractNodeAddressesFromVNIC(vnic *core.Vnic) ([]api.NodeAddress, error) {
+func (cp *CloudProvider) extractNodeAddresses(ctx context.Context, instanceID string) ([]api.NodeAddress, error) {
 	addresses := []api.NodeAddress{}
+	vnic, err := cp.client.Compute().GetPrimaryVNICForInstance(ctx, cp.config.CompartmentID, instanceID)
+	if err != nil {
+		return nil, errors.Wrap(err, "GetPrimaryVNICForInstance")
+	}
+
 	if vnic == nil {
 		return addresses, nil
 	}
@@ -64,6 +68,24 @@ func extractNodeAddressesFromVNIC(vnic *core.Vnic) ([]api.NodeAddress, error) {
 		addresses = append(addresses, api.NodeAddress{Type: api.NodeExternalIP, Address: ip.String()})
 	}
 
+	if vnic.HostnameLabel != nil && *vnic.HostnameLabel != "" {
+		subnet, err := cp.client.Networking().GetSubnet(ctx, *vnic.SubnetId)
+		if err != nil {
+			return nil, errors.Wrap(err, "GetSubnetForInstance")
+		}
+		if subnet != nil && subnet.DnsLabel != nil && *subnet.DnsLabel != "" {
+			vcn, err := cp.client.Networking().GetVcn(ctx, *subnet.VcnId)
+			if err != nil {
+				return nil, errors.Wrap(err, "GetVcnForInstance")
+			}
+			if vcn != nil && vcn.DnsLabel != nil && *vcn.DnsLabel != "" {
+				fqdn := strings.Join([]string{*vnic.HostnameLabel, *subnet.DnsLabel, *vcn.DnsLabel, "oraclevcn.com"}, ".")
+				addresses = append(addresses, api.NodeAddress{Type: api.NodeHostName, Address: fqdn})
+				addresses = append(addresses, api.NodeAddress{Type: api.NodeInternalDNS, Address: fqdn})
+			}
+		}
+	}
+
 	return addresses, nil
 }
 
@@ -78,12 +100,7 @@ func (cp *CloudProvider) NodeAddresses(ctx context.Context, name types.NodeName)
 	if err != nil {
 		return nil, errors.Wrap(err, "GetInstanceByNodeName")
 	}
-
-	vnic, err := cp.client.Compute().GetPrimaryVNICForInstance(ctx, cp.config.CompartmentID, *inst.Id)
-	if err != nil {
-		return nil, errors.Wrap(err, "GetPrimaryVNICForInstance")
-	}
-	return extractNodeAddressesFromVNIC(vnic)
+	return cp.extractNodeAddresses(ctx, *inst.Id)
 }
 
 // NodeAddressesByProviderID returns the addresses of the specified instance.
@@ -92,44 +109,14 @@ func (cp *CloudProvider) NodeAddresses(ctx context.Context, name types.NodeName)
 // nodeaddresses are being queried. i.e. local metadata services cannot be used
 // in this method to obtain nodeaddresses.
 func (cp *CloudProvider) NodeAddressesByProviderID(ctx context.Context, providerID string) ([]api.NodeAddress, error) {
-	addresses := []api.NodeAddress{}
 	cp.logger.With("instanceID", providerID).Debug("Getting node addresses by provider id")
+
 	instanceID, err := MapProviderIDToInstanceID(providerID)
 	if err != nil {
 		return nil, errors.Wrap(err, "MapProviderIDToInstanceID")
 	}
-	vnic, err := cp.client.Compute().GetPrimaryVNICForInstance(ctx, cp.config.CompartmentID, instanceID)
-	if err != nil {
-		return nil, errors.Wrap(err, "GetPrimaryVNICForInstance")
-	}
-	vnicAddresses, err := extractNodeAddressesFromVNIC(vnic)
-	if err != nil {
-		return nil, err
-	}
-	addresses = append(addresses, vnicAddresses...)
+	return cp.extractNodeAddresses(ctx, instanceID)
 
-	if vnic != nil {
-		hostname := vnic.HostnameLabel
-		if hostname != nil && *hostname != "" {
-			subnet, err := cp.client.Networking().GetSubnet(ctx, *vnic.SubnetId)
-			if err != nil {
-				return nil, errors.Wrap(err, "GetSubnetForInstance")
-			}
-			if subnet != nil && *subnet.DnsLabel != "" {
-				vcn, err := cp.client.Networking().GetVcn(ctx, *subnet.VcnId)
-				if err != nil {
-					return nil, errors.Wrap(err, "GetVcnForInstance")
-				}
-				if vcn != nil && *vcn.DnsLabel != "" {
-					fqdn := strings.Join([]string{*hostname, *subnet.DnsLabel, *vcn.DnsLabel, "oraclevcn.com"}, ".")
-					addresses = append(addresses, api.NodeAddress{Type: api.NodeHostName, Address: fqdn})
-					addresses = append(addresses, api.NodeAddress{Type: api.NodeInternalDNS, Address: fqdn})
-				}
-			}
-		}
-	}
-
-	return addresses, nil
 }
 
 // InstanceID returns the cloud provider ID of the node with the specified NodeName.
