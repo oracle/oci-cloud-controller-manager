@@ -21,6 +21,8 @@ import (
 	"syscall"
 	"time"
 
+	"k8s.io/client-go/tools/cache"
+
 	"github.com/kubernetes-incubator/external-storage/lib/controller"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/logging"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util/signals"
@@ -88,12 +90,15 @@ func main() {
 		logger.With(zap.Error(err)).Fatal("Failed to create Kubernetes client")
 	}
 
-	// The controller needs to know what the server version is because out-of-tree
-	// provisioners aren't officially supported until 1.5
-	serverVersion, err := clientset.Discovery().ServerVersion()
-	if err != nil {
-		logger.With(zap.Error(err)).Fatal("Failed to get kube-apiserver version")
+	sharedInformerFactory := informers.NewSharedInformerFactory(clientset, informerResyncPeriod(minResyncPeriod)())
+	nodeInformer := sharedInformerFactory.Core().V1().Nodes()
+	go sharedInformerFactory.Start(stopCh)
+
+	logger.Info("waiting for caches to sync")
+	if !cache.WaitForCacheSync(stopCh, nodeInformer.Informer().HasSynced) {
+		logger.Fatal("failed to sync caches")
 	}
+	logger.Info("caches have been synced")
 
 	// TODO (owainlewis) ensure this is clearly documented
 	nodeName := os.Getenv("NODE_NAME")
@@ -110,8 +115,6 @@ func main() {
 	logger = logger.With("provisionerType", provisionerType)
 	logger.Infof("Starting volume provisioner in %q mode", provisionerType)
 
-	sharedInformerFactory := informers.NewSharedInformerFactory(clientset, informerResyncPeriod(minResyncPeriod)())
-
 	volumeSizeLowerBound, err := resource.ParseQuantity(*minVolumeSize)
 	if err != nil {
 		logger.With(zap.Error(err), "minimumVolumeSize", *minVolumeSize).Fatal("Failed to parse minimum volume size")
@@ -119,9 +122,16 @@ func main() {
 
 	// Create the provisioner: it implements the Provisioner interface expected by
 	// the controller
-	ociProvisioner, err := core.NewOCIProvisioner(logger, clientset, sharedInformerFactory.Core().V1().Nodes(), provisionerType, nodeName, *volumeRoundingEnabled, volumeSizeLowerBound)
+	ociProvisioner, err := core.NewOCIProvisioner(logger, clientset, nodeInformer, provisionerType, nodeName, *volumeRoundingEnabled, volumeSizeLowerBound)
 	if err != nil {
 		logger.With(zap.Error(err)).Fatal("Cannot create volume provisioner.")
+	}
+
+	// The controller needs to know what the server version is because out-of-tree
+	// provisioners aren't officially supported until 1.5
+	serverVersion, err := clientset.Discovery().ServerVersion()
+	if err != nil {
+		logger.With(zap.Error(err)).Fatal("Failed to get kube-apiserver version")
 	}
 
 	// Start the provision controller which will dynamically provision oci
@@ -139,8 +149,6 @@ func main() {
 		controller.RetryPeriod(retryPeriod),
 		controller.TermLimit(termLimit),
 	)
-
-	go sharedInformerFactory.Start(stopCh)
 
 	// We block waiting for Ready() after the shared informer factory has
 	// started so we don't deadlock waiting for caches to sync.
