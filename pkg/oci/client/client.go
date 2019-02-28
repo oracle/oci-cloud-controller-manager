@@ -66,6 +66,7 @@ type computeClient interface {
 type virtualNetworkClient interface {
 	GetVnic(ctx context.Context, request core.GetVnicRequest) (response core.GetVnicResponse, err error)
 	GetSubnet(ctx context.Context, request core.GetSubnetRequest) (response core.GetSubnetResponse, err error)
+	GetVcn(ctx context.Context, request core.GetVcnRequest) (response core.GetVcnResponse, err error)
 	GetSecurityList(ctx context.Context, request core.GetSecurityListRequest) (response core.GetSecurityListResponse, err error)
 	UpdateSecurityList(ctx context.Context, request core.UpdateSecurityListRequest) (response core.UpdateSecurityListResponse, err error)
 

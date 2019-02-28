@@ -38,6 +38,7 @@ const (
 	vnicAttachmentResource     resource = "vnic_attachment"
 	vnicResource               resource = "vnic"
 	subnetResource             resource = "subnet"
+	vcnResource                resource = "vcn"
 	loadBalancerResource       resource = "load_balancer"
 	backendSetResource         resource = "load_balancer_backend_set"
 	listenerResource           resource = "load_balancer_listener"

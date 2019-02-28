@@ -28,6 +28,8 @@ type NetworkingInterface interface {
 	GetSubnet(ctx context.Context, id string) (*core.Subnet, error)
 	GetSubnetFromCacheByIP(ip string) (*core.Subnet, error)
 
+	GetVcn(ctx context.Context, id string) (*core.Vcn, error)
+
 	GetSecurityList(ctx context.Context, id string) (core.GetSecurityListResponse, error)
 	UpdateSecurityList(ctx context.Context, request core.UpdateSecurityListRequest) (core.UpdateSecurityListResponse, error)
 
@@ -95,6 +97,23 @@ func (c *client) GetSubnetFromCacheByIP(ip string) (*core.Subnet, error) {
 		}
 	}
 	return nil, nil
+}
+
+func (c *client) GetVcn(ctx context.Context, id string) (*core.Vcn, error) {
+	if !c.rateLimiter.Reader.TryAccept() {
+		return nil, RateLimitError(false, "GetVcn")
+	}
+	resp, err := c.network.GetVcn(ctx, core.GetVcnRequest{
+		VcnId: &id,
+	})
+	incRequestCounter(err, getVerb, vcnResource)
+
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	vcn := &resp.Vcn
+	return vcn, nil
 }
 
 func (c *client) GetSecurityList(ctx context.Context, id string) (core.GetSecurityListResponse, error) {
