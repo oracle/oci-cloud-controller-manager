@@ -17,4 +17,4 @@ FROM oraclelinux:7-slim
 COPY dist/oci-cloud-controller-manager /usr/local/bin/
 COPY dist/oci-flexvolume-driver /usr/local/bin/
 COPY dist/oci-volume-provisioner /usr/local/bin/
-COPY image/install.sh /usr/local/bin/install.sh
+COPY image/* /usr/local/bin/

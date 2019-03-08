@@ -15,6 +15,7 @@
 package config
 
 import (
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 	"reflect"
 	"testing"
 
@@ -30,7 +31,9 @@ func TestValidateConfig(t *testing.T) {
 		{
 			name: "valid",
 			in: &Config{
+				metadataSvc: metadata.NewErrorMock(),
 				Auth: AuthConfig{
+					metadataSvc:   metadata.NewErrorMock(),
 					Region:        "us-phoenix-1",
 					TenancyID:     "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					CompartmentID: "ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq",
@@ -48,7 +51,9 @@ func TestValidateConfig(t *testing.T) {
 		{
 			name: "valid with instance principals enabled",
 			in: &Config{
+				metadataSvc: metadata.NewMock(&metadata.InstanceMetadata{CompartmentID: "compartment"}),
 				Auth: AuthConfig{
+					metadataSvc:           metadata.NewMock(&metadata.InstanceMetadata{CompartmentID: "compartment"}),
 					UseInstancePrincipals: true,
 				},
 				LoadBalancer: &LoadBalancerConfig{
@@ -58,32 +63,11 @@ func TestValidateConfig(t *testing.T) {
 			},
 			errs: field.ErrorList{},
 		}, {
-			name: "mixing instance principals with other auth flags",
-			in: &Config{
-				Auth: AuthConfig{
-					UseInstancePrincipals: true,
-					Region:                "us-phoenix-1",
-					TenancyID:             "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
-					UserID:                "ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q",
-					PrivateKey:            "-----BEGIN RSA PRIVATE KEY----- (etc)",
-					Fingerprint:           "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
-				},
-				LoadBalancer: &LoadBalancerConfig{
-					Subnet1: "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
-					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
-				},
-			},
-			errs: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeForbidden, Field: "auth.region", Detail: "cannot be used when useInstancePrincipals is enabled", BadValue: ""},
-				&field.Error{Type: field.ErrorTypeForbidden, Field: "auth.tenancy", Detail: "cannot be used when useInstancePrincipals is enabled", BadValue: ""},
-				&field.Error{Type: field.ErrorTypeForbidden, Field: "auth.user", Detail: "cannot be used when useInstancePrincipals is enabled", BadValue: ""},
-				&field.Error{Type: field.ErrorTypeForbidden, Field: "auth.key", Detail: "cannot be used when useInstancePrincipals is enabled", BadValue: ""},
-				&field.Error{Type: field.ErrorTypeForbidden, Field: "auth.fingerprint", Detail: "cannot be used when useInstancePrincipals is enabled", BadValue: ""},
-			},
-		}, {
 			name: "valid_with_non_default_security_list_management_mode",
 			in: &Config{
+				metadataSvc: metadata.NewErrorMock(),
 				Auth: AuthConfig{
+					metadataSvc:   metadata.NewErrorMock(),
 					Region:        "us-phoenix-1",
 					TenancyID:     "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					CompartmentID: "ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq",
@@ -101,7 +85,9 @@ func TestValidateConfig(t *testing.T) {
 		}, {
 			name: "missing_region",
 			in: &Config{
+				metadataSvc: metadata.NewErrorMock(),
 				Auth: AuthConfig{
+					metadataSvc:   metadata.NewErrorMock(),
 					TenancyID:     "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					CompartmentID: "ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq",
 					UserID:        "ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q",
@@ -114,12 +100,14 @@ func TestValidateConfig(t *testing.T) {
 				},
 			},
 			errs: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeRequired, Field: "auth.region", BadValue: ""},
+				&field.Error{Type: field.ErrorTypeInternal, Field: "auth.region", Detail: "This value is normally discovered automatically if omitted. Continue checking the logs to see if something else is wrong"},
 			},
 		}, {
 			name: "missing_tenancy",
 			in: &Config{
+				metadataSvc: metadata.NewErrorMock(),
 				Auth: AuthConfig{
+					metadataSvc:   metadata.NewErrorMock(),
 					Region:        "us-phoenix-1",
 					CompartmentID: "ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq",
 					UserID:        "ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q",
@@ -137,7 +125,9 @@ func TestValidateConfig(t *testing.T) {
 		}, {
 			name: "missing_compartment",
 			in: &Config{
+				metadataSvc: metadata.NewErrorMock(),
 				Auth: AuthConfig{
+					metadataSvc: metadata.NewErrorMock(),
 					Region:      "us-phoenix-1",
 					TenancyID:   "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					UserID:      "ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q",
@@ -149,11 +139,15 @@ func TestValidateConfig(t *testing.T) {
 					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq",
 				},
 			},
-			errs: field.ErrorList{},
+			errs: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeInternal, Field: "compartment", Detail: "This value is normally discovered automatically if omitted. Continue checking the logs to see if something else is wrong"},
+			},
 		}, {
 			name: "missing_user",
 			in: &Config{
+				metadataSvc: metadata.NewErrorMock(),
 				Auth: AuthConfig{
+					metadataSvc:   metadata.NewErrorMock(),
 					Region:        "us-phoenix-1",
 					TenancyID:     "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					CompartmentID: "ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq",
@@ -171,7 +165,9 @@ func TestValidateConfig(t *testing.T) {
 		}, {
 			name: "missing_key",
 			in: &Config{
+				metadataSvc: metadata.NewErrorMock(),
 				Auth: AuthConfig{
+					metadataSvc:   metadata.NewErrorMock(),
 					Region:        "us-phoenix-1",
 					TenancyID:     "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					CompartmentID: "ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq",
@@ -187,9 +183,11 @@ func TestValidateConfig(t *testing.T) {
 				&field.Error{Type: field.ErrorTypeRequired, Field: "auth.key", BadValue: ""},
 			},
 		}, {
-			name: "missing_figerprint",
+			name: "missing_fingerprint",
 			in: &Config{
+				metadataSvc: metadata.NewErrorMock(),
 				Auth: AuthConfig{
+					metadataSvc:   metadata.NewErrorMock(),
 					Region:        "us-phoenix-1",
 					TenancyID:     "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					CompartmentID: "ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq",
@@ -207,7 +205,9 @@ func TestValidateConfig(t *testing.T) {
 		}, {
 			name: "missing_vcnid",
 			in: &Config{
+				metadataSvc: metadata.NewErrorMock(),
 				Auth: AuthConfig{
+					metadataSvc:   metadata.NewErrorMock(),
 					Region:        "us-phoenix-1",
 					TenancyID:     "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					CompartmentID: "ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq",
@@ -223,7 +223,9 @@ func TestValidateConfig(t *testing.T) {
 		}, {
 			name: "missing_lbconfig",
 			in: &Config{
+				metadataSvc: metadata.NewErrorMock(),
 				Auth: AuthConfig{
+					metadataSvc:   metadata.NewErrorMock(),
 					Region:        "us-phoenix-1",
 					TenancyID:     "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					CompartmentID: "ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq",
@@ -237,7 +239,9 @@ func TestValidateConfig(t *testing.T) {
 		}, {
 			name: "invalid_security_list_management_mode",
 			in: &Config{
+				metadataSvc: metadata.NewErrorMock(),
 				Auth: AuthConfig{
+					metadataSvc:   metadata.NewErrorMock(),
 					Region:        "us-phoenix-1",
 					TenancyID:     "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq",
 					CompartmentID: "ocid1.compartment.oc1..aaaaaaaa3um2atybwhder4qttfhgon4j3hcxgmsvnyvx4flfjyewkkwfzwnq",

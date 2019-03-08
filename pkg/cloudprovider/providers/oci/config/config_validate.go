@@ -15,6 +15,7 @@
 package config
 
 import (
+	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -25,39 +26,21 @@ func validateAuthConfig(c *AuthConfig, fldPath *field.Path) field.ErrorList {
 	if c == nil {
 		return append(allErrs, field.Required(fldPath, ""))
 	}
-	if c.UseInstancePrincipals {
-		if c.Region != "" {
-			allErrs = append(allErrs, field.Forbidden(fldPath.Child("region"), "cannot be used when useInstancePrincipals is enabled"))
-		}
-		if c.TenancyID != "" {
-			allErrs = append(allErrs, field.Forbidden(fldPath.Child("tenancy"), "cannot be used when useInstancePrincipals is enabled"))
-		}
-		if c.UserID != "" {
-			allErrs = append(allErrs, field.Forbidden(fldPath.Child("user"), "cannot be used when useInstancePrincipals is enabled"))
-		}
-		if c.PrivateKey != "" {
-			allErrs = append(allErrs, field.Forbidden(fldPath.Child("key"), "cannot be used when useInstancePrincipals is enabled"))
-		}
-		if c.Fingerprint != "" {
-			allErrs = append(allErrs, field.Forbidden(fldPath.Child("fingerprint"), "cannot be used when useInstancePrincipals is enabled"))
-		}
-
-		return allErrs
+	checkFields := map[string]string{
+		"region":      c.Region,
+		"tenancy":     c.TenancyID,
+		"user":        c.UserID,
+		"key":         c.PrivateKey,
+		"fingerprint": c.Fingerprint,
 	}
-	if c.Region == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child("region"), ""))
-	}
-	if c.TenancyID == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child("tenancy"), ""))
-	}
-	if c.UserID == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child("user"), ""))
-	}
-	if c.PrivateKey == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child("key"), ""))
-	}
-	if c.Fingerprint == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child("fingerprint"), ""))
+	for fieldName, fieldValue := range checkFields {
+		if fieldValue == "" {
+			if fieldName == "region" {
+				allErrs = append(allErrs, field.InternalError(fldPath.Child(fieldName), errors.New("This value is normally discovered automatically if omitted. Continue checking the logs to see if something else is wrong")))
+			} else {
+				allErrs = append(allErrs, field.Required(fldPath.Child(fieldName), ""))
+			}
+		}
 	}
 	return allErrs
 }
@@ -77,9 +60,6 @@ func IsValidSecurityListManagementMode(mode string) bool {
 func validateLoadBalancerConfig(c *Config, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	lbConfig := c.LoadBalancer
-	if lbConfig == nil {
-		return append(allErrs, field.Required(fldPath, ""))
-	}
 	if lbConfig.Subnet1 == "" && c.VCNID == "" {
 		allErrs = append(allErrs, field.Required(field.NewPath("vcn"), "VCNID configuration must be provided if configuration for subnet1 is not provided"))
 	}
@@ -93,7 +73,12 @@ func validateLoadBalancerConfig(c *Config, fldPath *field.Path) field.ErrorList 
 // ValidateConfig validates the OCI Cloud Provider config file.
 func ValidateConfig(c *Config) field.ErrorList {
 	allErrs := field.ErrorList{}
-	allErrs = append(allErrs, validateAuthConfig(&c.Auth, field.NewPath("auth"))...)
+	if len(c.CompartmentID) == 0 {
+		allErrs = append(allErrs, field.InternalError(field.NewPath("compartment"), errors.New("This value is normally discovered automatically if omitted. Continue checking the logs to see if something else is wrong")))
+	}
+	if !c.UseInstancePrincipals {
+		allErrs = append(allErrs, validateAuthConfig(&c.Auth, field.NewPath("auth"))...)
+	}
 	if c.LoadBalancer != nil && !c.LoadBalancer.Disabled {
 		allErrs = append(allErrs, validateLoadBalancerConfig(c, field.NewPath("loadBalancer"))...)
 	}

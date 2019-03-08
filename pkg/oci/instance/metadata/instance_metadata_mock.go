@@ -14,15 +14,28 @@
 
 package metadata
 
+import "errors"
+
 type mockMetadataGetter struct {
 	metadata *InstanceMetadata
 }
+
+type mockMetadataErrorGetter struct{}
 
 // NewMock returns a new mock OCI instance metadata getter.
 func NewMock(metadata *InstanceMetadata) Interface {
 	return &mockMetadataGetter{metadata: metadata}
 }
 
+// NewErrorMock returns a new mock OCI instance metadata getter that returns an error on Get().
+func NewErrorMock() Interface {
+	return &mockMetadataErrorGetter{}
+}
+
 func (m *mockMetadataGetter) Get() (*InstanceMetadata, error) {
 	return m.metadata, nil
+}
+
+func (m *mockMetadataErrorGetter) Get() (*InstanceMetadata, error) {
+	return nil, errors.New("uh oh")
 }
