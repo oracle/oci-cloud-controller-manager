@@ -15,6 +15,7 @@
 package config
 
 import (
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 	"io"
 	"os"
 
@@ -43,14 +44,16 @@ type AuthConfig struct {
 	// The fields below are deprecated and remain purely for backwards compatibility.
 	// At some point these need to be removed.
 
-	// When set to true, clients will use an instance principal configuration provider
-	// and ignore auth fields.
+	// UseInstancePrincipals is DEPRECATED should use top-level UseInstancePrincipals
 	UseInstancePrincipals bool `yaml:"useInstancePrincipals"`
 	// CompartmentID is DEPRECATED and should be set on the top level Config
 	// struct.
 	CompartmentID string `yaml:"compartment"`
 	// PrivateKeyPassphrase is DEPRECATED in favour of Passphrase.
 	PrivateKeyPassphrase string `yaml:"key_passphrase"`
+
+	//Metadata service to help fill in certain fields
+	metadataSvc metadata.Interface
 }
 
 const (
@@ -99,12 +102,14 @@ type RateLimiterConfig struct {
 	RateLimitBucketWrite int     `yaml:"rateLimitBucketWrite"`
 }
 
-// Config holds the OCI cloud-provider config passed to Kubernetes compontents
+// Config holds the OCI cloud-provider config passed to Kubernetes components
 // via the --cloud-config option.
 type Config struct {
 	Auth         AuthConfig          `yaml:"auth"`
 	LoadBalancer *LoadBalancerConfig `yaml:"loadBalancer"`
 	RateLimiter  *RateLimiterConfig  `yaml:"rateLimiter"`
+
+	RegionKey string `yaml:"regionKey"`
 
 	// When set to true, clients will use an instance principal configuration provider and ignore auth fields.
 	UseInstancePrincipals bool `yaml:"useInstancePrincipals"`
@@ -114,32 +119,76 @@ type Config struct {
 	// VCNID is the OCID of the Virtual Cloud Network (VCN) within which the
 	// cluster resides.
 	VCNID string `yaml:"vcn"`
+
+	//Metadata service to help fill in certain fields
+	metadataSvc metadata.Interface
 }
 
-// Complete the config applying defaults / overrides.
-func (c *Config) Complete() {
-	if c.LoadBalancer != nil && !c.LoadBalancer.Disabled && c.LoadBalancer.SecurityListManagementMode == "" {
-		c.LoadBalancer.SecurityListManagementMode = ManagementModeAll // default
-		if c.LoadBalancer.DisableSecurityListManagement {
+// Complete the load balancer config applying defaults / overrides.
+func (c *LoadBalancerConfig) Complete() {
+	if c.Disabled {
+		return
+	}
+	if len(c.SecurityListManagementMode) == 0 {
+		if c.DisableSecurityListManagement {
 			zap.S().Warnf("cloud-provider config: \"loadBalancer.disableSecurityListManagement\" is DEPRECATED and will be removed in a later release. Please set \"loadBalancer.SecurityListManagementMode: %s\".", ManagementModeNone)
-			c.LoadBalancer.SecurityListManagementMode = ManagementModeNone
+			c.SecurityListManagementMode = ManagementModeNone
+		} else {
+			c.SecurityListManagementMode = ManagementModeAll
 		}
 	}
+}
 
+// Complete the authentication config applying defaults / overrides.
+func (c *AuthConfig) Complete() {
+	if len(c.Passphrase) == 0 && len(c.PrivateKeyPassphrase) > 0 {
+		zap.S().Warn("cloud-provider config: auth.key_passphrase is DEPRECIATED and will be removed in a later release. Please set auth.passphrase instead.")
+		c.Passphrase = c.PrivateKeyPassphrase
+	}
+	if c.Region == "" || c.CompartmentID == "" {
+		meta, err := c.metadataSvc.Get()
+		if err != nil {
+			zap.S().Warn("cloud-provider config: Unable to access metadata on instance. Will not be able to complete configuration if items are missing")
+			return
+		}
+		if c.Region == "" {
+			c.Region = meta.CanonicalRegionName
+		}
+
+		if c.CompartmentID == "" {
+			c.CompartmentID = meta.CompartmentID
+		}
+	}
+}
+
+// Complete the top-level config applying defaults / overrides.
+func (c *Config) Complete() {
+	if c.LoadBalancer != nil {
+		c.LoadBalancer.Complete()
+	}
+	c.Auth.Complete()
 	// Ensure backwards compatibility fields are set correctly.
-	if c.CompartmentID == "" && c.Auth.CompartmentID != "" {
+	if len(c.CompartmentID) == 0 && len(c.Auth.CompartmentID) > 0 {
 		zap.S().Warn("cloud-provider config: \"auth.compartment\" is DEPRECATED and will be removed in a later release. Please set \"compartment\".")
 		c.CompartmentID = c.Auth.CompartmentID
 	}
-
-	if c.Auth.Passphrase == "" && c.Auth.PrivateKeyPassphrase != "" {
-		zap.S().Warn("cloud-provider config: \"auth.key_passphrase\" is DEPRECATED and will be removed in a later release. Please set \"auth.passphrase\".")
-		c.Auth.Passphrase = c.Auth.PrivateKeyPassphrase
+	if c.Auth.UseInstancePrincipals {
+		zap.S().Warn("cloud-provider config: \"auth.useInstancePrincipals\" is DEPRECATED and will be removed in a later release. Please set \"useInstancePrincipals\".")
+		c.UseInstancePrincipals = true
 	}
 
-	if c.Auth.UseInstancePrincipals == true {
-		zap.S().Warn("cloud-provider config: \"auth.useInstancePrincipals\" is DEPRECATED and will be removed in a later release. Please set \"auth.useInstancePrincipals\".")
-		c.UseInstancePrincipals = true
+	if len(c.RegionKey) == 0 {
+		if len(c.Auth.RegionKey) > 0 {
+			zap.S().Warn("cloud-provider config: \"auth.RegionKey\" is DEPRECATED and will be removed in a later release. Please set \"RegionKey\".")
+			c.RegionKey = c.Auth.RegionKey
+		} else {
+			meta, err := c.metadataSvc.Get()
+			if err != nil {
+				zap.S().Warn("cloud-provider config: Unable to access metadata on instance. Will not be able to complete configuration if items are missing")
+				return
+			}
+			c.RegionKey = meta.Region
+		}
 	}
 }
 
@@ -160,6 +209,8 @@ func ReadConfig(r io.Reader) (*Config, error) {
 		return nil, errors.Wrap(err, "unmarshalling cloud-provider config")
 	}
 
+	cfg.metadataSvc = metadata.New()
+	cfg.Auth.metadataSvc = cfg.metadataSvc
 	// Ensure defaults are correctly set
 	cfg.Complete()
 

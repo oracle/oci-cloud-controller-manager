@@ -35,13 +35,10 @@ spec:
         - name: config
           secret:
             secretName: oci-flexvolume-driver
-        - name: kubeconfig
-          secret:
-            secretName: oci-flexvolume-driver-kubeconfig
       containers:
         - name: oci-flexvolume-driver
           image: iad.ocir.io/oracle/cloud-provider-oci:latest
-          command: ["/bin/bash", "/usr/local/bin/install.sh"]
+          command: ["/usr/local/bin/install.py", "-c", "/tmp/config.yaml"]
           securityContext:
             privileged: true
           volumeMounts:
@@ -49,9 +46,6 @@ spec:
               name: flexvolume-mount
             - mountPath: /tmp
               name: config
-              readOnly: true
-            - mountPath: /tmp2
-              name: kubeconfig
               readOnly: true
 ---
 apiVersion: apps/v1
@@ -80,7 +74,7 @@ spec:
       containers:
         - name: oci-flexvolume-driver
           image: iad.ocir.io/oracle/cloud-provider-oci:latest
-          command: ["/bin/bash", "/usr/local/bin/install.sh"]
+          command: ["/usr/local/bin/install.py"]
           securityContext:
             privileged: true
           volumeMounts:

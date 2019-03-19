@@ -456,7 +456,7 @@ func InstallFlexvolumeDriver(client clientset.Interface) error {
 					Containers: []v1.Container{{
 						Name:    "oci-flexvolume-driver",
 						Image:   TestContext.Image,
-						Command: []string{"/bin/bash", "/usr/local/bin/install.sh"},
+						Command: []string{"/usr/local/bin/install.py", "-c", "/tmp/config.yaml"},
 						SecurityContext: &v1.SecurityContext{
 							Privileged: utilpointer.BoolPtr(true),
 						},
@@ -466,10 +466,6 @@ func InstallFlexvolumeDriver(client clientset.Interface) error {
 						}, {
 							Name:      "config",
 							MountPath: "/tmp",
-							ReadOnly:  true,
-						}, {
-							Name:      "kubeconfig",
-							MountPath: "/tmp2",
 							ReadOnly:  true,
 						}},
 					}},
@@ -520,7 +516,7 @@ func InstallFlexvolumeDriver(client clientset.Interface) error {
 					Containers: []v1.Container{{
 						Name:    "oci-flexvolume-driver",
 						Image:   TestContext.Image,
-						Command: []string{"/bin/bash", "/usr/local/bin/install.sh"},
+						Command: []string{"/usr/local/bin/install.py"},
 						SecurityContext: &v1.SecurityContext{
 							Privileged: utilpointer.BoolPtr(true),
 						},

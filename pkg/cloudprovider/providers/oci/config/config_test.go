@@ -15,6 +15,7 @@
 package config
 
 import (
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 	"strings"
 	"testing"
 )
@@ -46,9 +47,18 @@ loadBalancer:
   subnet2: ocid1.subnet.oc1.phx.aaaaaaaahuxrgvs65iwdz7ekwgg3l5gyah7ww5klkwjcso74u3e4i64hvtvq
 `
 
+const validConfigNoLoadbalancing = `
+useInstancePrincipals: true
+vcn: ocid1.vcn.oc1..
+
+loadBalancer:
+  disabled: true
+`
+
 const validConfigLegacyFormat = `
 auth:
   region: us-phoenix-1
+  regionKey: phx
   tenancy: ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq
   user: ocid1.user.oc1..aaaaaaaai77mql2xerv7cn6wu3nhxang3y4jk56vo5bn5l5lysl34avnui3q
   key: |
@@ -59,6 +69,8 @@ auth:
   key_passphrase: secretpassphrase
   useInstancePrincipals: true
   compartment: ocid1.compartment.oc1
+loadBalancer:
+  disableSecurityListManagement: true
 `
 
 const validConfigNoRegion = `
@@ -119,5 +131,48 @@ func TestBackwardsCompatibilityFieldsAreSetCorrectly(t *testing.T) {
 
 	if cfg.Auth.Passphrase != "secretpassphrase" {
 		t.Errorf("Passphrase was not set correctly: cfg.Auth.Passphrase = %v", cfg.Auth.Passphrase)
+	}
+
+	if cfg.LoadBalancer.SecurityListManagementMode != ManagementModeNone {
+		t.Errorf("Management mode should be set to None. It was set to %v", cfg.LoadBalancer.SecurityListManagementMode)
+	}
+
+	if cfg.RegionKey != "phx" {
+		t.Errorf("Region key was not set correctly: cfg.RegionKey = %v", cfg.RegionKey)
+	}
+}
+
+func TestLoadBalancingDisabled(t *testing.T) {
+	cfg, err := ReadConfig(strings.NewReader(validConfigNoLoadbalancing))
+	if err != nil {
+		t.Fatalf("expected no error but got '%v'", err)
+	}
+
+	if !cfg.LoadBalancer.Disabled {
+		t.Errorf("Load balancing should be disabled")
+	}
+}
+
+func TestMetadataSvcSetsOmittedFields(t *testing.T) {
+	mockMetadataSvc := metadata.NewMock(&metadata.InstanceMetadata{
+		Region:              "mockRegion",
+		CanonicalRegionName: "mockCanonicalRegionName",
+		CompartmentID:       "mockCompartmentId",
+	})
+	cfg := &Config{
+		Auth: AuthConfig{},
+	}
+	cfg.metadataSvc = mockMetadataSvc
+	cfg.Auth.metadataSvc = mockMetadataSvc
+	cfg.Complete()
+
+	if cfg.CompartmentID != "mockCompartmentId" {
+		t.Errorf("Metadata service does not set compartmentID")
+	}
+	if cfg.RegionKey != "mockRegion" {
+		t.Errorf("Metadata service does not set the Region Key")
+	}
+	if cfg.Auth.Region != "mockCanonicalRegionName" {
+		t.Errorf("Metadata service does not set the Region")
 	}
 }
