@@ -1,0 +1,3 @@
+[[ rewrite ]]
+   package = "bitbucket.oci.oraclecorp.com/sdk/oci-go-sdk"
+   source = "ssh://git@bitbucket.oci.oraclecorp.com:7999/sdk/oci-go-sdk.git"

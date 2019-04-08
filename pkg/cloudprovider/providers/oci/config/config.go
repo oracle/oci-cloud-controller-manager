@@ -15,9 +15,10 @@
 package config
 
 import (
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 	"io"
 	"os"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/common/auth"
@@ -120,8 +121,12 @@ type Config struct {
 	// cluster resides.
 	VCNID string `yaml:"vcn"`
 
-	//Metadata service to help fill in certain fields
+	// Metadata service to help fill in certain fields
 	metadataSvc metadata.Interface
+
+	// UseServicePrincipals when set to true, clients will use an instance principal to fetch the s2s token
+	// from identity.
+	UseServicePrincipals bool `yaml:"UseServicePrincipals"`
 }
 
 // Complete the load balancer config applying defaults / overrides.
@@ -232,32 +237,18 @@ func FromFile(path string) (*Config, error) {
 // NewConfigurationProvider takes a cloud provider config file and returns an OCI ConfigurationProvider
 // to be consumed by the OCI SDK.
 func NewConfigurationProvider(cfg *Config) (common.ConfigurationProvider, error) {
-	var conf common.ConfigurationProvider
+
 	if cfg != nil {
 		err := cfg.Validate()
 		if err != nil {
 			return nil, errors.Wrap(err, "invalid client config")
 		}
-
-		if cfg.UseInstancePrincipals {
-			cp, err := auth.InstancePrincipalConfigurationProvider()
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to instantiate InstancePrincipalConfigurationProvider")
-			}
-			return cp, nil
-		}
-
-		conf = common.NewRawConfigurationProvider(
-			cfg.Auth.TenancyID,
-			cfg.Auth.UserID,
-			cfg.Auth.Region,
-			cfg.Auth.Fingerprint,
-			cfg.Auth.PrivateKey,
-			common.String(cfg.Auth.PrivateKeyPassphrase))
-
-	} else {
-		conf = common.DefaultConfigProvider()
 	}
 
-	return conf, nil
+	cp, err := auth.NewServicePrincipalWithInstancePrincipalConfigurationProvider("")
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to instantiate ServicePrincipalWithInstancePrincipalConfigurationProvider")
+	}
+
+	return cp, nil
 }

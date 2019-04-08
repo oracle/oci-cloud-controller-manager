@@ -13,11 +13,11 @@
 # limitations under the License.
 
 PKG := github.com/oracle/oci-cloud-controller-manager
-IMAGE ?= iad.ocir.io/oracle/cloud-provider-oci
+IMAGE ?= iad.ocir.io/odx-oke/oke/cloud-provider-oci
 
 BUILD := $(shell git describe --exact-match 2> /dev/null || git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
 # Allow overriding for release versions else just equal the build (git hash)
-VERSION ?= ${BUILD}
+VERSION ?= oke-${BUILD}
 
 GOOS ?= linux
 ARCH ?= amd64
@@ -130,6 +130,15 @@ run-volume-provisioner-dev:
 	go run cmd/oci-volume-provisioner/main.go         \
 	    --kubeconfig=$(KUBECONFIG)                    \
 	    -v=4
+
+.PHONY: image
+image: build
+	@docker build \
+		-t $(IMAGE):$(VERSION) .
+
+.PHONY: push
+push: image
+	docker push $(IMAGE):$(VERSION)
 
 .PHONY: version
 version:
