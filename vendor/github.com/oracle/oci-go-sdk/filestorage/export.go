@@ -36,7 +36,8 @@ import (
 // No two non-'DELETED' export resources in the same export set can
 // reference the same file system.
 // Use `exportOptions` to control access to an export. For more information, see
-// Export Options (https://docs.us-phoenix-1.oraclecloud.com/Content/File/Tasks/exportoptions.htm).
+// Export Options (https://docs.cloud.oracle.com/Content/File/Tasks/exportoptions.htm).
+// **Warning:** Oracle recommends that you avoid using any confidential information when you supply string values using the API.
 type Export struct {
 
 	// Policies that apply to NFS requests made through this
@@ -92,7 +93,7 @@ func (m Export) String() string {
 // ExportLifecycleStateEnum Enum with underlying type: string
 type ExportLifecycleStateEnum string
 
-// Set of constants representing the allowable values for ExportLifecycleState
+// Set of constants representing the allowable values for ExportLifecycleStateEnum
 const (
 	ExportLifecycleStateCreating ExportLifecycleStateEnum = "CREATING"
 	ExportLifecycleStateActive   ExportLifecycleStateEnum = "ACTIVE"
@@ -107,7 +108,7 @@ var mappingExportLifecycleState = map[string]ExportLifecycleStateEnum{
 	"DELETED":  ExportLifecycleStateDeleted,
 }
 
-// GetExportLifecycleStateEnumValues Enumerates the set of values for ExportLifecycleState
+// GetExportLifecycleStateEnumValues Enumerates the set of values for ExportLifecycleStateEnum
 func GetExportLifecycleStateEnumValues() []ExportLifecycleStateEnum {
 	values := make([]ExportLifecycleStateEnum, 0)
 	for _, v := range mappingExportLifecycleState {

@@ -90,7 +90,7 @@
 [[constraint]]
   name = "github.com/oracle/oci-go-sdk"
   source = "bitbucket.oci.oraclecorp.com/sdk/oci-go-sdk"
-  branch = "preview"
+  revision = "dec5beed03d47c2919ba15fd898c23f23202f273"
 
 [prune]
   non-go = true

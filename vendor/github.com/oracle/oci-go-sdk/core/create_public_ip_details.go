@@ -21,11 +21,11 @@ type CreatePublicIpDetails struct {
 
 	// Defines when the public IP is deleted and released back to the Oracle Cloud
 	// Infrastructure public IP pool. For more information, see
-	// Public IP Addresses (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Tasks/managingpublicIPs.htm).
+	// Public IP Addresses (https://docs.cloud.oracle.com/Content/Network/Tasks/managingpublicIPs.htm).
 	Lifetime CreatePublicIpDetailsLifetimeEnum `mandatory:"true" json:"lifetime"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -35,7 +35,7 @@ type CreatePublicIpDetails struct {
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
 	// predefined name, type, or namespace. For more information, see
-	// Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
@@ -55,7 +55,7 @@ func (m CreatePublicIpDetails) String() string {
 // CreatePublicIpDetailsLifetimeEnum Enum with underlying type: string
 type CreatePublicIpDetailsLifetimeEnum string
 
-// Set of constants representing the allowable values for CreatePublicIpDetailsLifetime
+// Set of constants representing the allowable values for CreatePublicIpDetailsLifetimeEnum
 const (
 	CreatePublicIpDetailsLifetimeEphemeral CreatePublicIpDetailsLifetimeEnum = "EPHEMERAL"
 	CreatePublicIpDetailsLifetimeReserved  CreatePublicIpDetailsLifetimeEnum = "RESERVED"
@@ -66,7 +66,7 @@ var mappingCreatePublicIpDetailsLifetime = map[string]CreatePublicIpDetailsLifet
 	"RESERVED":  CreatePublicIpDetailsLifetimeReserved,
 }
 
-// GetCreatePublicIpDetailsLifetimeEnumValues Enumerates the set of values for CreatePublicIpDetailsLifetime
+// GetCreatePublicIpDetailsLifetimeEnumValues Enumerates the set of values for CreatePublicIpDetailsLifetimeEnum
 func GetCreatePublicIpDetailsLifetimeEnumValues() []CreatePublicIpDetailsLifetimeEnum {
 	values := make([]CreatePublicIpDetailsLifetimeEnum, 0)
 	for _, v := range mappingCreatePublicIpDetailsLifetime {

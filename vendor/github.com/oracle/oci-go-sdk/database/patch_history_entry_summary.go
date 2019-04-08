@@ -15,14 +15,14 @@ import (
 // PatchHistoryEntrySummary The record of a patch action on a specified target.
 type PatchHistoryEntrySummary struct {
 
-	// The OCID of the patch history entry.
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the patch history entry.
 	Id *string `mandatory:"true" json:"id"`
+
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the patch.
+	PatchId *string `mandatory:"true" json:"patchId"`
 
 	// The current state of the action.
 	LifecycleState PatchHistoryEntrySummaryLifecycleStateEnum `mandatory:"true" json:"lifecycleState"`
-
-	// The OCID of the patch.
-	PatchId *string `mandatory:"true" json:"patchId"`
 
 	// The date and time when the patch action started.
 	TimeStarted *common.SDKTime `mandatory:"true" json:"timeStarted"`
@@ -45,7 +45,7 @@ func (m PatchHistoryEntrySummary) String() string {
 // PatchHistoryEntrySummaryActionEnum Enum with underlying type: string
 type PatchHistoryEntrySummaryActionEnum string
 
-// Set of constants representing the allowable values for PatchHistoryEntrySummaryAction
+// Set of constants representing the allowable values for PatchHistoryEntrySummaryActionEnum
 const (
 	PatchHistoryEntrySummaryActionApply    PatchHistoryEntrySummaryActionEnum = "APPLY"
 	PatchHistoryEntrySummaryActionPrecheck PatchHistoryEntrySummaryActionEnum = "PRECHECK"
@@ -56,7 +56,7 @@ var mappingPatchHistoryEntrySummaryAction = map[string]PatchHistoryEntrySummaryA
 	"PRECHECK": PatchHistoryEntrySummaryActionPrecheck,
 }
 
-// GetPatchHistoryEntrySummaryActionEnumValues Enumerates the set of values for PatchHistoryEntrySummaryAction
+// GetPatchHistoryEntrySummaryActionEnumValues Enumerates the set of values for PatchHistoryEntrySummaryActionEnum
 func GetPatchHistoryEntrySummaryActionEnumValues() []PatchHistoryEntrySummaryActionEnum {
 	values := make([]PatchHistoryEntrySummaryActionEnum, 0)
 	for _, v := range mappingPatchHistoryEntrySummaryAction {
@@ -68,7 +68,7 @@ func GetPatchHistoryEntrySummaryActionEnumValues() []PatchHistoryEntrySummaryAct
 // PatchHistoryEntrySummaryLifecycleStateEnum Enum with underlying type: string
 type PatchHistoryEntrySummaryLifecycleStateEnum string
 
-// Set of constants representing the allowable values for PatchHistoryEntrySummaryLifecycleState
+// Set of constants representing the allowable values for PatchHistoryEntrySummaryLifecycleStateEnum
 const (
 	PatchHistoryEntrySummaryLifecycleStateInProgress PatchHistoryEntrySummaryLifecycleStateEnum = "IN_PROGRESS"
 	PatchHistoryEntrySummaryLifecycleStateSucceeded  PatchHistoryEntrySummaryLifecycleStateEnum = "SUCCEEDED"
@@ -81,7 +81,7 @@ var mappingPatchHistoryEntrySummaryLifecycleState = map[string]PatchHistoryEntry
 	"FAILED":      PatchHistoryEntrySummaryLifecycleStateFailed,
 }
 
-// GetPatchHistoryEntrySummaryLifecycleStateEnumValues Enumerates the set of values for PatchHistoryEntrySummaryLifecycleState
+// GetPatchHistoryEntrySummaryLifecycleStateEnumValues Enumerates the set of values for PatchHistoryEntrySummaryLifecycleStateEnum
 func GetPatchHistoryEntrySummaryLifecycleStateEnumValues() []PatchHistoryEntrySummaryLifecycleStateEnum {
 	values := make([]PatchHistoryEntrySummaryLifecycleStateEnum, 0)
 	for _, v := range mappingPatchHistoryEntrySummaryLifecycleState {

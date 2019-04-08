@@ -20,9 +20,6 @@ import (
 )
 
 const (
-	// DefaultHostURLTemplate The default url template for service hosts
-	DefaultHostURLTemplate = "%s.%s.oraclecloud.com"
-
 	// requestHeaderAccept The key for passing a header to indicate Accept
 	requestHeaderAccept = "Accept"
 
@@ -197,10 +194,6 @@ func (client *BaseClient) prepareRequest(request *http.Request) (err error) {
 	request.Header.Set(requestHeaderUserAgent, client.UserAgent)
 	request.Header.Set(requestHeaderDate, time.Now().UTC().Format(http.TimeFormat))
 
-	if request.Header.Get(requestHeaderOpcRetryToken) == "" {
-		request.Header.Set(requestHeaderOpcRetryToken, generateRetryToken())
-	}
-
 	if !strings.Contains(client.Host, "http") &&
 		!strings.Contains(client.Host, "https") {
 		client.Host = fmt.Sprintf("%s://%s", defaultScheme, client.Host)
@@ -257,8 +250,19 @@ type OCIResponse interface {
 // OCIOperation is the generalization of a request-response cycle undergone by an OCI service.
 type OCIOperation func(context.Context, OCIRequest) (OCIResponse, error)
 
+//ClientCallDetails a set of settings used by the a single Call operation of the http Client
+type ClientCallDetails struct {
+	Signer HTTPRequestSigner
+}
+
 // Call executes the http request with the given context
 func (client BaseClient) Call(ctx context.Context, request *http.Request) (response *http.Response, err error) {
+	return client.CallWithDetails(ctx, request, ClientCallDetails{Signer: client.Signer})
+}
+
+// CallWithDetails executes the http request, the given context using details specified in the paremeters, this function
+// provides a way to override some settings present in the client
+func (client BaseClient) CallWithDetails(ctx context.Context, request *http.Request, details ClientCallDetails) (response *http.Response, err error) {
 	Debugln("Atempting to call downstream service")
 	request = request.WithContext(ctx)
 
@@ -274,7 +278,7 @@ func (client BaseClient) Call(ctx context.Context, request *http.Request) (respo
 	}
 
 	//Sign the request
-	err = client.Signer.Sign(request)
+	err = details.Signer.Sign(request)
 	if err != nil {
 		return
 	}
@@ -282,13 +286,14 @@ func (client BaseClient) Call(ctx context.Context, request *http.Request) (respo
 	IfDebug(func() {
 		dumpBody := true
 		if request.ContentLength > maxBodyLenForDebug {
-			Logln("not dumping body too big")
+			Debugf("not dumping body too big\n")
 			dumpBody = false
 		}
-		if dump, e := httputil.DumpRequest(request, dumpBody); e == nil {
-			Logf("Dump Request %v", string(dump))
+		dumpBody = dumpBody && defaultLogger.LogLevel() == verboseLogging
+		if dump, e := httputil.DumpRequestOut(request, dumpBody); e == nil {
+			Debugf("Dump Request %s", string(dump))
 		} else {
-			Debugln(e)
+			Debugf("%v\n", e)
 		}
 	})
 
@@ -297,20 +302,21 @@ func (client BaseClient) Call(ctx context.Context, request *http.Request) (respo
 
 	IfDebug(func() {
 		if err != nil {
-			Logln(err)
+			Debugf("%v\n", err)
 			return
 		}
 
 		dumpBody := true
 		if response.ContentLength > maxBodyLenForDebug {
-			Logln("not dumping body too big")
+			Debugf("not dumping body too big\n")
 			dumpBody = false
 		}
 
+		dumpBody = dumpBody && defaultLogger.LogLevel() == verboseLogging
 		if dump, e := httputil.DumpResponse(response, dumpBody); e == nil {
-			Logf("Dump Response %v", string(dump))
+			Debugf("Dump Response %s", string(dump))
 		} else {
-			Debugln(e)
+			Debugf("%v\n", e)
 		}
 	})
 

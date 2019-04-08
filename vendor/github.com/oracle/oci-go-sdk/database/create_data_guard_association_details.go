@@ -14,12 +14,7 @@ import (
 )
 
 // CreateDataGuardAssociationDetails The configuration details for creating a Data Guard association between databases.
-// **NOTE:**
-// "ExistingDbSystem" is the only supported `creationType` value. Therefore, all
-// CreateDataGuardAssociation
-// requests must include the `peerDbSystemId` parameter found in the
-// CreateDataGuardAssociationToExistingDbSystemDetails
-// object.
+// **Warning:** Oracle recommends that you avoid using any confidential information when you supply string values using the API.
 type CreateDataGuardAssociationDetails interface {
 
 	// A strong password for the `SYS`, `SYSTEM`, and `PDB Admin` users to apply during standby creation.
@@ -34,7 +29,7 @@ type CreateDataGuardAssociationDetails interface {
 	// The protection mode to set up between the primary and standby databases. For more information, see
 	// Oracle Data Guard Protection Modes (http://docs.oracle.com/database/122/SBYDB/oracle-data-guard-protection-modes.htm#SBYDB02000)
 	// in the Oracle Data Guard documentation.
-	// **IMPORTANT** - The only protection mode currently supported by the Database Service is MAXIMUM_PERFORMANCE.
+	// **IMPORTANT** - The only protection mode currently supported by the Database service is MAXIMUM_PERFORMANCE.
 	GetProtectionMode() CreateDataGuardAssociationDetailsProtectionModeEnum
 
 	// The redo transport type to use for this Data Guard association.  Valid values depend on the specified `protectionMode`:
@@ -44,7 +39,7 @@ type CreateDataGuardAssociationDetails interface {
 	// For more information, see
 	// Redo Transport Services (http://docs.oracle.com/database/122/SBYDB/oracle-data-guard-redo-transport-services.htm#SBYDB00400)
 	// in the Oracle Data Guard documentation.
-	// **IMPORTANT** - The only transport type currently supported by the Database Service is ASYNC.
+	// **IMPORTANT** - The only transport type currently supported by the Database service is ASYNC.
 	GetTransportType() CreateDataGuardAssociationDetailsTransportTypeEnum
 }
 
@@ -77,14 +72,23 @@ func (m *createdataguardassociationdetails) UnmarshalJSON(data []byte) error {
 
 // UnmarshalPolymorphicJSON unmarshals polymorphic json
 func (m *createdataguardassociationdetails) UnmarshalPolymorphicJSON(data []byte) (interface{}, error) {
+
+	if data == nil || string(data) == "null" {
+		return nil, nil
+	}
+
 	var err error
 	switch m.CreationType {
+	case "NewDbSystem":
+		mm := CreateDataGuardAssociationWithNewDbSystemDetails{}
+		err = json.Unmarshal(data, &mm)
+		return mm, err
 	case "ExistingDbSystem":
 		mm := CreateDataGuardAssociationToExistingDbSystemDetails{}
 		err = json.Unmarshal(data, &mm)
 		return mm, err
 	default:
-		return m, nil
+		return *m, nil
 	}
 }
 
@@ -110,7 +114,7 @@ func (m createdataguardassociationdetails) String() string {
 // CreateDataGuardAssociationDetailsProtectionModeEnum Enum with underlying type: string
 type CreateDataGuardAssociationDetailsProtectionModeEnum string
 
-// Set of constants representing the allowable values for CreateDataGuardAssociationDetailsProtectionMode
+// Set of constants representing the allowable values for CreateDataGuardAssociationDetailsProtectionModeEnum
 const (
 	CreateDataGuardAssociationDetailsProtectionModeAvailability CreateDataGuardAssociationDetailsProtectionModeEnum = "MAXIMUM_AVAILABILITY"
 	CreateDataGuardAssociationDetailsProtectionModePerformance  CreateDataGuardAssociationDetailsProtectionModeEnum = "MAXIMUM_PERFORMANCE"
@@ -123,7 +127,7 @@ var mappingCreateDataGuardAssociationDetailsProtectionMode = map[string]CreateDa
 	"MAXIMUM_PROTECTION":   CreateDataGuardAssociationDetailsProtectionModeProtection,
 }
 
-// GetCreateDataGuardAssociationDetailsProtectionModeEnumValues Enumerates the set of values for CreateDataGuardAssociationDetailsProtectionMode
+// GetCreateDataGuardAssociationDetailsProtectionModeEnumValues Enumerates the set of values for CreateDataGuardAssociationDetailsProtectionModeEnum
 func GetCreateDataGuardAssociationDetailsProtectionModeEnumValues() []CreateDataGuardAssociationDetailsProtectionModeEnum {
 	values := make([]CreateDataGuardAssociationDetailsProtectionModeEnum, 0)
 	for _, v := range mappingCreateDataGuardAssociationDetailsProtectionMode {
@@ -135,7 +139,7 @@ func GetCreateDataGuardAssociationDetailsProtectionModeEnumValues() []CreateData
 // CreateDataGuardAssociationDetailsTransportTypeEnum Enum with underlying type: string
 type CreateDataGuardAssociationDetailsTransportTypeEnum string
 
-// Set of constants representing the allowable values for CreateDataGuardAssociationDetailsTransportType
+// Set of constants representing the allowable values for CreateDataGuardAssociationDetailsTransportTypeEnum
 const (
 	CreateDataGuardAssociationDetailsTransportTypeSync     CreateDataGuardAssociationDetailsTransportTypeEnum = "SYNC"
 	CreateDataGuardAssociationDetailsTransportTypeAsync    CreateDataGuardAssociationDetailsTransportTypeEnum = "ASYNC"
@@ -148,7 +152,7 @@ var mappingCreateDataGuardAssociationDetailsTransportType = map[string]CreateDat
 	"FASTSYNC": CreateDataGuardAssociationDetailsTransportTypeFastsync,
 }
 
-// GetCreateDataGuardAssociationDetailsTransportTypeEnumValues Enumerates the set of values for CreateDataGuardAssociationDetailsTransportType
+// GetCreateDataGuardAssociationDetailsTransportTypeEnumValues Enumerates the set of values for CreateDataGuardAssociationDetailsTransportTypeEnum
 func GetCreateDataGuardAssociationDetailsTransportTypeEnumValues() []CreateDataGuardAssociationDetailsTransportTypeEnum {
 	values := make([]CreateDataGuardAssociationDetailsTransportTypeEnum, 0)
 	for _, v := range mappingCreateDataGuardAssociationDetailsTransportType {

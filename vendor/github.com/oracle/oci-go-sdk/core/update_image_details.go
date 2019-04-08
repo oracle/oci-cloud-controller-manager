@@ -16,7 +16,7 @@ import (
 type UpdateImageDetails struct {
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -27,9 +27,17 @@ type UpdateImageDetails struct {
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
 	// predefined name, type, or namespace. For more information, see
-	// Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
+
+	// Operating system
+	// Example: `Oracle Linux`
+	OperatingSystem *string `mandatory:"false" json:"operatingSystem"`
+
+	// Operating system version
+	// Example: `7.4`
+	OperatingSystemVersion *string `mandatory:"false" json:"operatingSystemVersion"`
 }
 
 func (m UpdateImageDetails) String() string {

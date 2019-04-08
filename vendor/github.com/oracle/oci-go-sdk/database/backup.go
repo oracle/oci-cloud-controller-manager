@@ -12,55 +12,86 @@ import (
 	"github.com/oracle/oci-go-sdk/common"
 )
 
-// Backup A database backup
-// To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized, talk to an administrator. If you're an administrator who needs to write policies to give users access, see Getting Started with Policies (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/policygetstarted.htm).
+// Backup The representation of Backup
 type Backup struct {
 
-	// The name of the Availability Domain that the backup is located in.
-	AvailabilityDomain *string `mandatory:"false" json:"availabilityDomain"`
-
-	// The OCID of the compartment.
-	CompartmentId *string `mandatory:"false" json:"compartmentId"`
-
-	// The Oracle Database Edition of the DbSystem on which the backup was taken.
-	DatabaseEdition *string `mandatory:"false" json:"databaseEdition"`
-
-	// The OCID of the database.
-	DatabaseId *string `mandatory:"false" json:"databaseId"`
-
-	// Size of the database in mega-bytes at the time the backup was taken.
-	DbDataSizeInMBs *int `mandatory:"false" json:"dbDataSizeInMBs"`
-
-	// The user-friendly name for the backup. It does not have to be unique.
-	DisplayName *string `mandatory:"false" json:"displayName"`
-
-	// The OCID of the backup.
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the backup.
 	Id *string `mandatory:"false" json:"id"`
 
-	// Additional information about the current lifecycleState.
-	LifecycleDetails *string `mandatory:"false" json:"lifecycleDetails"`
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the compartment.
+	CompartmentId *string `mandatory:"false" json:"compartmentId"`
 
-	// The current state of the backup.
-	LifecycleState BackupLifecycleStateEnum `mandatory:"false" json:"lifecycleState,omitempty"`
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the database.
+	DatabaseId *string `mandatory:"false" json:"databaseId"`
+
+	// The user-friendly name for the backup. The name does not have to be unique.
+	DisplayName *string `mandatory:"false" json:"displayName"`
+
+	// The type of backup.
+	Type BackupTypeEnum `mandatory:"false" json:"type,omitempty"`
+
+	// The date and time the backup started.
+	TimeStarted *common.SDKTime `mandatory:"false" json:"timeStarted"`
 
 	// The date and time the backup was completed.
 	TimeEnded *common.SDKTime `mandatory:"false" json:"timeEnded"`
 
-	// The date and time the backup starts.
-	TimeStarted *common.SDKTime `mandatory:"false" json:"timeStarted"`
+	// Additional information about the current lifecycleState.
+	LifecycleDetails *string `mandatory:"false" json:"lifecycleDetails"`
 
-	// The type of backup.
-	Type BackupTypeEnum `mandatory:"false" json:"type,omitempty"`
+	// The name of the availability domain where the database backup is stored.
+	AvailabilityDomain *string `mandatory:"false" json:"availabilityDomain"`
+
+	// The current state of the backup.
+	LifecycleState BackupLifecycleStateEnum `mandatory:"false" json:"lifecycleState,omitempty"`
+
+	// The Oracle Database edition of the DB system from which the database backup was taken.
+	DatabaseEdition BackupDatabaseEditionEnum `mandatory:"false" json:"databaseEdition,omitempty"`
+
+	// The size of the database in gigabytes at the time the backup was taken.
+	DatabaseSizeInGBs *float64 `mandatory:"false" json:"databaseSizeInGBs"`
+
+	// The region location of the source database.
+	SourceDbRegion *string `mandatory:"false" json:"sourceDbRegion"`
+
+	// The name (`dbName`) of the database from which the backup was created.
+	SourceDbName *string `mandatory:"false" json:"sourceDbName"`
+
+	// The DB system name of the source database.
+	SourceDbSystemName *string `mandatory:"false" json:"sourceDbSystemName"`
 }
 
 func (m Backup) String() string {
 	return common.PointerString(m)
 }
 
+// BackupTypeEnum Enum with underlying type: string
+type BackupTypeEnum string
+
+// Set of constants representing the allowable values for BackupTypeEnum
+const (
+	BackupTypeIncremental BackupTypeEnum = "INCREMENTAL"
+	BackupTypeFull        BackupTypeEnum = "FULL"
+)
+
+var mappingBackupType = map[string]BackupTypeEnum{
+	"INCREMENTAL": BackupTypeIncremental,
+	"FULL":        BackupTypeFull,
+}
+
+// GetBackupTypeEnumValues Enumerates the set of values for BackupTypeEnum
+func GetBackupTypeEnumValues() []BackupTypeEnum {
+	values := make([]BackupTypeEnum, 0)
+	for _, v := range mappingBackupType {
+		values = append(values, v)
+	}
+	return values
+}
+
 // BackupLifecycleStateEnum Enum with underlying type: string
 type BackupLifecycleStateEnum string
 
-// Set of constants representing the allowable values for BackupLifecycleState
+// Set of constants representing the allowable values for BackupLifecycleStateEnum
 const (
 	BackupLifecycleStateCreating  BackupLifecycleStateEnum = "CREATING"
 	BackupLifecycleStateActive    BackupLifecycleStateEnum = "ACTIVE"
@@ -79,7 +110,7 @@ var mappingBackupLifecycleState = map[string]BackupLifecycleStateEnum{
 	"RESTORING": BackupLifecycleStateRestoring,
 }
 
-// GetBackupLifecycleStateEnumValues Enumerates the set of values for BackupLifecycleState
+// GetBackupLifecycleStateEnumValues Enumerates the set of values for BackupLifecycleStateEnum
 func GetBackupLifecycleStateEnumValues() []BackupLifecycleStateEnum {
 	values := make([]BackupLifecycleStateEnum, 0)
 	for _, v := range mappingBackupLifecycleState {
@@ -88,24 +119,28 @@ func GetBackupLifecycleStateEnumValues() []BackupLifecycleStateEnum {
 	return values
 }
 
-// BackupTypeEnum Enum with underlying type: string
-type BackupTypeEnum string
+// BackupDatabaseEditionEnum Enum with underlying type: string
+type BackupDatabaseEditionEnum string
 
-// Set of constants representing the allowable values for BackupType
+// Set of constants representing the allowable values for BackupDatabaseEditionEnum
 const (
-	BackupTypeIncremental BackupTypeEnum = "INCREMENTAL"
-	BackupTypeFull        BackupTypeEnum = "FULL"
+	BackupDatabaseEditionStandardEdition                     BackupDatabaseEditionEnum = "STANDARD_EDITION"
+	BackupDatabaseEditionEnterpriseEdition                   BackupDatabaseEditionEnum = "ENTERPRISE_EDITION"
+	BackupDatabaseEditionEnterpriseEditionHighPerformance    BackupDatabaseEditionEnum = "ENTERPRISE_EDITION_HIGH_PERFORMANCE"
+	BackupDatabaseEditionEnterpriseEditionExtremePerformance BackupDatabaseEditionEnum = "ENTERPRISE_EDITION_EXTREME_PERFORMANCE"
 )
 
-var mappingBackupType = map[string]BackupTypeEnum{
-	"INCREMENTAL": BackupTypeIncremental,
-	"FULL":        BackupTypeFull,
+var mappingBackupDatabaseEdition = map[string]BackupDatabaseEditionEnum{
+	"STANDARD_EDITION":                       BackupDatabaseEditionStandardEdition,
+	"ENTERPRISE_EDITION":                     BackupDatabaseEditionEnterpriseEdition,
+	"ENTERPRISE_EDITION_HIGH_PERFORMANCE":    BackupDatabaseEditionEnterpriseEditionHighPerformance,
+	"ENTERPRISE_EDITION_EXTREME_PERFORMANCE": BackupDatabaseEditionEnterpriseEditionExtremePerformance,
 }
 
-// GetBackupTypeEnumValues Enumerates the set of values for BackupType
-func GetBackupTypeEnumValues() []BackupTypeEnum {
-	values := make([]BackupTypeEnum, 0)
-	for _, v := range mappingBackupType {
+// GetBackupDatabaseEditionEnumValues Enumerates the set of values for BackupDatabaseEditionEnum
+func GetBackupDatabaseEditionEnumValues() []BackupDatabaseEditionEnum {
+	values := make([]BackupDatabaseEditionEnum, 0)
+	for _, v := range mappingBackupDatabaseEdition {
 		values = append(values, v)
 	}
 	return values

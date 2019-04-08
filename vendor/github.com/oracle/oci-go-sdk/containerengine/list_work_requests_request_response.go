@@ -26,10 +26,13 @@ type ListWorkRequestsRequest struct {
 	// A work request status to filter on. Can have multiple parameters of this name.
 	Status []ListWorkRequestsStatusEnum `contributesTo:"query" name:"status" omitEmpty:"true" collectionFormat:"multi"`
 
-	// The maximum number of items to return in a paginated "List" call.
+	// For list pagination. The maximum number of results per page, or items to return in a paginated "List" call.
+	// 1 is the minimum, 1000 is the maximum. For important details about how pagination works,
+	// see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	Limit *int `mandatory:"false" contributesTo:"query" name:"limit"`
 
-	// The value of the `opc-next-page` response header from the previous "List" call.
+	// For list pagination. The value of the `opc-next-page` response header from the previous "List" call.
+	// For important details about how pagination works, see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	Page *string `mandatory:"false" contributesTo:"query" name:"page"`
 
 	// The optional order in which to sort the results.
@@ -70,9 +73,8 @@ type ListWorkRequestsResponse struct {
 	// A list of []WorkRequestSummary instances
 	Items []WorkRequestSummary `presentIn:"body"`
 
-	// For pagination of a list of items. When paging through a list, if this header appears in the response,
-	// then there might be additional items still to get. Include this value as the `page` parameter for the
-	// subsequent GET request.
+	// For list pagination. When this header appears in the response, additional pages of results remain.
+	// For important details about how pagination works, see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	OpcNextPage *string `presentIn:"header" name:"opc-next-page"`
 
 	// Unique Oracle-assigned identifier for the request. If you need to contact Oracle about a
@@ -92,7 +94,7 @@ func (response ListWorkRequestsResponse) HTTPResponse() *http.Response {
 // ListWorkRequestsResourceTypeEnum Enum with underlying type: string
 type ListWorkRequestsResourceTypeEnum string
 
-// Set of constants representing the allowable values for ListWorkRequestsResourceType
+// Set of constants representing the allowable values for ListWorkRequestsResourceTypeEnum
 const (
 	ListWorkRequestsResourceTypeCluster  ListWorkRequestsResourceTypeEnum = "CLUSTER"
 	ListWorkRequestsResourceTypeNodepool ListWorkRequestsResourceTypeEnum = "NODEPOOL"
@@ -103,7 +105,7 @@ var mappingListWorkRequestsResourceType = map[string]ListWorkRequestsResourceTyp
 	"NODEPOOL": ListWorkRequestsResourceTypeNodepool,
 }
 
-// GetListWorkRequestsResourceTypeEnumValues Enumerates the set of values for ListWorkRequestsResourceType
+// GetListWorkRequestsResourceTypeEnumValues Enumerates the set of values for ListWorkRequestsResourceTypeEnum
 func GetListWorkRequestsResourceTypeEnumValues() []ListWorkRequestsResourceTypeEnum {
 	values := make([]ListWorkRequestsResourceTypeEnum, 0)
 	for _, v := range mappingListWorkRequestsResourceType {
@@ -115,7 +117,7 @@ func GetListWorkRequestsResourceTypeEnumValues() []ListWorkRequestsResourceTypeE
 // ListWorkRequestsStatusEnum Enum with underlying type: string
 type ListWorkRequestsStatusEnum string
 
-// Set of constants representing the allowable values for ListWorkRequestsStatus
+// Set of constants representing the allowable values for ListWorkRequestsStatusEnum
 const (
 	ListWorkRequestsStatusAccepted   ListWorkRequestsStatusEnum = "ACCEPTED"
 	ListWorkRequestsStatusInProgress ListWorkRequestsStatusEnum = "IN_PROGRESS"
@@ -134,7 +136,7 @@ var mappingListWorkRequestsStatus = map[string]ListWorkRequestsStatusEnum{
 	"CANCELED":    ListWorkRequestsStatusCanceled,
 }
 
-// GetListWorkRequestsStatusEnumValues Enumerates the set of values for ListWorkRequestsStatus
+// GetListWorkRequestsStatusEnumValues Enumerates the set of values for ListWorkRequestsStatusEnum
 func GetListWorkRequestsStatusEnumValues() []ListWorkRequestsStatusEnum {
 	values := make([]ListWorkRequestsStatusEnum, 0)
 	for _, v := range mappingListWorkRequestsStatus {
@@ -146,7 +148,7 @@ func GetListWorkRequestsStatusEnumValues() []ListWorkRequestsStatusEnum {
 // ListWorkRequestsSortOrderEnum Enum with underlying type: string
 type ListWorkRequestsSortOrderEnum string
 
-// Set of constants representing the allowable values for ListWorkRequestsSortOrder
+// Set of constants representing the allowable values for ListWorkRequestsSortOrderEnum
 const (
 	ListWorkRequestsSortOrderAsc  ListWorkRequestsSortOrderEnum = "ASC"
 	ListWorkRequestsSortOrderDesc ListWorkRequestsSortOrderEnum = "DESC"
@@ -157,7 +159,7 @@ var mappingListWorkRequestsSortOrder = map[string]ListWorkRequestsSortOrderEnum{
 	"DESC": ListWorkRequestsSortOrderDesc,
 }
 
-// GetListWorkRequestsSortOrderEnumValues Enumerates the set of values for ListWorkRequestsSortOrder
+// GetListWorkRequestsSortOrderEnumValues Enumerates the set of values for ListWorkRequestsSortOrderEnum
 func GetListWorkRequestsSortOrderEnumValues() []ListWorkRequestsSortOrderEnum {
 	values := make([]ListWorkRequestsSortOrderEnum, 0)
 	for _, v := range mappingListWorkRequestsSortOrder {
@@ -169,7 +171,7 @@ func GetListWorkRequestsSortOrderEnumValues() []ListWorkRequestsSortOrderEnum {
 // ListWorkRequestsSortByEnum Enum with underlying type: string
 type ListWorkRequestsSortByEnum string
 
-// Set of constants representing the allowable values for ListWorkRequestsSortBy
+// Set of constants representing the allowable values for ListWorkRequestsSortByEnum
 const (
 	ListWorkRequestsSortById            ListWorkRequestsSortByEnum = "ID"
 	ListWorkRequestsSortByOperationType ListWorkRequestsSortByEnum = "OPERATION_TYPE"
@@ -188,7 +190,7 @@ var mappingListWorkRequestsSortBy = map[string]ListWorkRequestsSortByEnum{
 	"TIME_FINISHED":  ListWorkRequestsSortByTimeFinished,
 }
 
-// GetListWorkRequestsSortByEnumValues Enumerates the set of values for ListWorkRequestsSortBy
+// GetListWorkRequestsSortByEnumValues Enumerates the set of values for ListWorkRequestsSortByEnum
 func GetListWorkRequestsSortByEnumValues() []ListWorkRequestsSortByEnum {
 	values := make([]ListWorkRequestsSortByEnum, 0)
 	for _, v := range mappingListWorkRequestsSortBy {

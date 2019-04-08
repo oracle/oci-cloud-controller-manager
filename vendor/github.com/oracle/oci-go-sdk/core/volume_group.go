@@ -13,7 +13,10 @@ import (
 	"github.com/oracle/oci-go-sdk/common"
 )
 
-// VolumeGroup Specifies a volume group which is a collection of volumes. For more information, see Volume Groups (https://docs.us-phoenix-1.oraclecloud.com/Content/Block/Concepts/volumegroups.htm).
+// VolumeGroup Specifies a volume group which is a collection of
+// volumes. For more information, see Volume Groups (https://docs.cloud.oracle.com/Content/Block/Concepts/volumegroups.htm).
+// **Warning:** Oracle recommends that you avoid using any confidential information when you
+// supply string values using the API.
 type VolumeGroup struct {
 
 	// The availability domain of the volume group.
@@ -38,13 +41,13 @@ type VolumeGroup struct {
 	VolumeIds []string `mandatory:"true" json:"volumeIds"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
 	// predefined name, type, or namespace. For more information, see
-	// Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
@@ -57,6 +60,9 @@ type VolumeGroup struct {
 	// The volume group source. The source is either another a list of
 	// volume IDs in the same availability domain, another volume group, or a volume group backup.
 	SourceDetails VolumeGroupSourceDetails `mandatory:"false" json:"sourceDetails"`
+
+	// Specifies whether the newly created cloned volume group's data has finished copying from the source volume group or backup.
+	IsHydrated *bool `mandatory:"false" json:"isHydrated"`
 }
 
 func (m VolumeGroup) String() string {
@@ -71,6 +77,7 @@ func (m *VolumeGroup) UnmarshalJSON(data []byte) (e error) {
 		LifecycleState     VolumeGroupLifecycleStateEnum     `json:"lifecycleState"`
 		SizeInGBs          *int64                            `json:"sizeInGBs"`
 		SourceDetails      volumegroupsourcedetails          `json:"sourceDetails"`
+		IsHydrated         *bool                             `json:"isHydrated"`
 		AvailabilityDomain *string                           `json:"availabilityDomain"`
 		CompartmentId      *string                           `json:"compartmentId"`
 		DisplayName        *string                           `json:"displayName"`
@@ -92,7 +99,12 @@ func (m *VolumeGroup) UnmarshalJSON(data []byte) (e error) {
 	if e != nil {
 		return
 	}
-	m.SourceDetails = nn.(VolumeGroupSourceDetails)
+	if nn != nil {
+		m.SourceDetails = nn.(VolumeGroupSourceDetails)
+	} else {
+		m.SourceDetails = nil
+	}
+	m.IsHydrated = model.IsHydrated
 	m.AvailabilityDomain = model.AvailabilityDomain
 	m.CompartmentId = model.CompartmentId
 	m.DisplayName = model.DisplayName
@@ -109,7 +121,7 @@ func (m *VolumeGroup) UnmarshalJSON(data []byte) (e error) {
 // VolumeGroupLifecycleStateEnum Enum with underlying type: string
 type VolumeGroupLifecycleStateEnum string
 
-// Set of constants representing the allowable values for VolumeGroupLifecycleState
+// Set of constants representing the allowable values for VolumeGroupLifecycleStateEnum
 const (
 	VolumeGroupLifecycleStateProvisioning VolumeGroupLifecycleStateEnum = "PROVISIONING"
 	VolumeGroupLifecycleStateAvailable    VolumeGroupLifecycleStateEnum = "AVAILABLE"
@@ -126,7 +138,7 @@ var mappingVolumeGroupLifecycleState = map[string]VolumeGroupLifecycleStateEnum{
 	"FAULTY":       VolumeGroupLifecycleStateFaulty,
 }
 
-// GetVolumeGroupLifecycleStateEnumValues Enumerates the set of values for VolumeGroupLifecycleState
+// GetVolumeGroupLifecycleStateEnumValues Enumerates the set of values for VolumeGroupLifecycleStateEnum
 func GetVolumeGroupLifecycleStateEnumValues() []VolumeGroupLifecycleStateEnum {
 	values := make([]VolumeGroupLifecycleStateEnum, 0)
 	for _, v := range mappingVolumeGroupLifecycleState {

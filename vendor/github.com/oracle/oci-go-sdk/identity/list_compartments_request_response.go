@@ -20,6 +20,40 @@ type ListCompartmentsRequest struct {
 	// The maximum number of items to return in a paginated "List" call.
 	Limit *int `mandatory:"false" contributesTo:"query" name:"limit"`
 
+	// Valid values are `ANY` and `ACCESSIBLE`. Default is `ANY`.
+	// Setting this to `ACCESSIBLE` returns only those compartments for which the
+	// user has INSPECT permissions directly or indirectly (permissions can be on a
+	// resource in a subcompartment). For the compartments on which the user indirectly has
+	// INSPECT permissions, a restricted set of fields is returned.
+	// When set to `ANY` permissions are not checked.
+	AccessLevel ListCompartmentsAccessLevelEnum `mandatory:"false" contributesTo:"query" name:"accessLevel" omitEmpty:"true"`
+
+	// Default is false. Can only be set to true when performing
+	// ListCompartments on the tenancy (root compartment).
+	// When set to true, the hierarchy of compartments is traversed
+	// and all compartments and subcompartments in the tenancy are
+	// returned depending on the the setting of `accessLevel`.
+	CompartmentIdInSubtree *bool `mandatory:"false" contributesTo:"query" name:"compartmentIdInSubtree"`
+
+	// A filter to only return resources that match the given name exactly.
+	Name *string `mandatory:"false" contributesTo:"query" name:"name"`
+
+	// The field to sort by. You can provide one sort order (`sortOrder`). Default order for
+	// TIMECREATED is descending. Default order for NAME is ascending. The NAME
+	// sort order is case sensitive.
+	// **Note:** In general, some "List" operations (for example, `ListInstances`) let you
+	// optionally filter by Availability Domain if the scope of the resource type is within a
+	// single Availability Domain. If you call one of these "List" operations without specifying
+	// an Availability Domain, the resources are grouped by Availability Domain, then sorted.
+	SortBy ListCompartmentsSortByEnum `mandatory:"false" contributesTo:"query" name:"sortBy" omitEmpty:"true"`
+
+	// The sort order to use, either ascending (`ASC`) or descending (`DESC`). The NAME sort order
+	// is case sensitive.
+	SortOrder ListCompartmentsSortOrderEnum `mandatory:"false" contributesTo:"query" name:"sortOrder" omitEmpty:"true"`
+
+	// A filter to only return resources that match the given lifecycle state.  The state value is case-insensitive.
+	LifecycleState CompartmentLifecycleStateEnum `mandatory:"false" contributesTo:"query" name:"lifecycleState" omitEmpty:"true"`
+
 	// Unique Oracle-assigned identifier for the request.
 	// If you need to contact Oracle about a particular request, please provide the request ID.
 	OpcRequestId *string `mandatory:"false" contributesTo:"header" name:"opc-request-id"`
@@ -69,4 +103,73 @@ func (response ListCompartmentsResponse) String() string {
 // HTTPResponse implements the OCIResponse interface
 func (response ListCompartmentsResponse) HTTPResponse() *http.Response {
 	return response.RawResponse
+}
+
+// ListCompartmentsAccessLevelEnum Enum with underlying type: string
+type ListCompartmentsAccessLevelEnum string
+
+// Set of constants representing the allowable values for ListCompartmentsAccessLevelEnum
+const (
+	ListCompartmentsAccessLevelAny        ListCompartmentsAccessLevelEnum = "ANY"
+	ListCompartmentsAccessLevelAccessible ListCompartmentsAccessLevelEnum = "ACCESSIBLE"
+)
+
+var mappingListCompartmentsAccessLevel = map[string]ListCompartmentsAccessLevelEnum{
+	"ANY":        ListCompartmentsAccessLevelAny,
+	"ACCESSIBLE": ListCompartmentsAccessLevelAccessible,
+}
+
+// GetListCompartmentsAccessLevelEnumValues Enumerates the set of values for ListCompartmentsAccessLevelEnum
+func GetListCompartmentsAccessLevelEnumValues() []ListCompartmentsAccessLevelEnum {
+	values := make([]ListCompartmentsAccessLevelEnum, 0)
+	for _, v := range mappingListCompartmentsAccessLevel {
+		values = append(values, v)
+	}
+	return values
+}
+
+// ListCompartmentsSortByEnum Enum with underlying type: string
+type ListCompartmentsSortByEnum string
+
+// Set of constants representing the allowable values for ListCompartmentsSortByEnum
+const (
+	ListCompartmentsSortByTimecreated ListCompartmentsSortByEnum = "TIMECREATED"
+	ListCompartmentsSortByName        ListCompartmentsSortByEnum = "NAME"
+)
+
+var mappingListCompartmentsSortBy = map[string]ListCompartmentsSortByEnum{
+	"TIMECREATED": ListCompartmentsSortByTimecreated,
+	"NAME":        ListCompartmentsSortByName,
+}
+
+// GetListCompartmentsSortByEnumValues Enumerates the set of values for ListCompartmentsSortByEnum
+func GetListCompartmentsSortByEnumValues() []ListCompartmentsSortByEnum {
+	values := make([]ListCompartmentsSortByEnum, 0)
+	for _, v := range mappingListCompartmentsSortBy {
+		values = append(values, v)
+	}
+	return values
+}
+
+// ListCompartmentsSortOrderEnum Enum with underlying type: string
+type ListCompartmentsSortOrderEnum string
+
+// Set of constants representing the allowable values for ListCompartmentsSortOrderEnum
+const (
+	ListCompartmentsSortOrderAsc  ListCompartmentsSortOrderEnum = "ASC"
+	ListCompartmentsSortOrderDesc ListCompartmentsSortOrderEnum = "DESC"
+)
+
+var mappingListCompartmentsSortOrder = map[string]ListCompartmentsSortOrderEnum{
+	"ASC":  ListCompartmentsSortOrderAsc,
+	"DESC": ListCompartmentsSortOrderDesc,
+}
+
+// GetListCompartmentsSortOrderEnumValues Enumerates the set of values for ListCompartmentsSortOrderEnum
+func GetListCompartmentsSortOrderEnumValues() []ListCompartmentsSortOrderEnum {
+	values := make([]ListCompartmentsSortOrderEnum, 0)
+	for _, v := range mappingListCompartmentsSortOrder {
+		values = append(values, v)
+	}
+	return values
 }

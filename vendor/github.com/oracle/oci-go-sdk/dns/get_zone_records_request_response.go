@@ -88,10 +88,9 @@ type GetZoneRecordsResponse struct {
 	// A list of RecordCollection instances
 	RecordCollection `presentIn:"body"`
 
-	// For pagination of a list of items. When paging through a list, if
-	// this header appears in the response, then a partial list might have
-	// been returned. Include this value as the `page` parameter for the
-	// subsequent GET request to get the next batch of items.
+	// For list pagination. When this header appears in the response, additional pages
+	// of results remain. For important details about how pagination works,
+	// see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	OpcNextPage *string `presentIn:"header" name:"opc-next-page"`
 
 	// The total number of items that match the query.
@@ -120,7 +119,7 @@ func (response GetZoneRecordsResponse) HTTPResponse() *http.Response {
 // GetZoneRecordsSortByEnum Enum with underlying type: string
 type GetZoneRecordsSortByEnum string
 
-// Set of constants representing the allowable values for GetZoneRecordsSortBy
+// Set of constants representing the allowable values for GetZoneRecordsSortByEnum
 const (
 	GetZoneRecordsSortByDomain GetZoneRecordsSortByEnum = "domain"
 	GetZoneRecordsSortByRtype  GetZoneRecordsSortByEnum = "rtype"
@@ -133,7 +132,7 @@ var mappingGetZoneRecordsSortBy = map[string]GetZoneRecordsSortByEnum{
 	"ttl":    GetZoneRecordsSortByTtl,
 }
 
-// GetGetZoneRecordsSortByEnumValues Enumerates the set of values for GetZoneRecordsSortBy
+// GetGetZoneRecordsSortByEnumValues Enumerates the set of values for GetZoneRecordsSortByEnum
 func GetGetZoneRecordsSortByEnumValues() []GetZoneRecordsSortByEnum {
 	values := make([]GetZoneRecordsSortByEnum, 0)
 	for _, v := range mappingGetZoneRecordsSortBy {
@@ -145,7 +144,7 @@ func GetGetZoneRecordsSortByEnumValues() []GetZoneRecordsSortByEnum {
 // GetZoneRecordsSortOrderEnum Enum with underlying type: string
 type GetZoneRecordsSortOrderEnum string
 
-// Set of constants representing the allowable values for GetZoneRecordsSortOrder
+// Set of constants representing the allowable values for GetZoneRecordsSortOrderEnum
 const (
 	GetZoneRecordsSortOrderAsc  GetZoneRecordsSortOrderEnum = "ASC"
 	GetZoneRecordsSortOrderDesc GetZoneRecordsSortOrderEnum = "DESC"
@@ -156,7 +155,7 @@ var mappingGetZoneRecordsSortOrder = map[string]GetZoneRecordsSortOrderEnum{
 	"DESC": GetZoneRecordsSortOrderDesc,
 }
 
-// GetGetZoneRecordsSortOrderEnumValues Enumerates the set of values for GetZoneRecordsSortOrder
+// GetGetZoneRecordsSortOrderEnumValues Enumerates the set of values for GetZoneRecordsSortOrderEnum
 func GetGetZoneRecordsSortOrderEnumValues() []GetZoneRecordsSortOrderEnum {
 	values := make([]GetZoneRecordsSortOrderEnum, 0)
 	for _, v := range mappingGetZoneRecordsSortOrder {

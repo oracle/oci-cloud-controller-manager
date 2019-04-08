@@ -15,17 +15,17 @@ import (
 // CreateInternetGatewayDetails The representation of CreateInternetGatewayDetails
 type CreateInternetGatewayDetails struct {
 
-	// The OCID of the compartment to contain the Internet Gateway.
+	// The OCID of the compartment to contain the internet gateway.
 	CompartmentId *string `mandatory:"true" json:"compartmentId"`
 
 	// Whether the gateway is enabled upon creation.
 	IsEnabled *bool `mandatory:"true" json:"isEnabled"`
 
-	// The OCID of the VCN the Internet Gateway is attached to.
+	// The OCID of the VCN the internet gateway is attached to.
 	VcnId *string `mandatory:"true" json:"vcnId"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -34,7 +34,7 @@ type CreateInternetGatewayDetails struct {
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
 	// predefined name, type, or namespace. For more information, see
-	// Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 }

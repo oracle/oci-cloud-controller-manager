@@ -15,7 +15,7 @@ import (
 
 // Saml2IdentityProvider A special type of IdentityProvider that
 // supports the SAML 2.0 protocol. For more information, see
-// Identity Providers and Federation (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/federation.htm).
+// Identity Providers and Federation (https://docs.cloud.oracle.com/Content/Identity/Concepts/federation.htm).
 type Saml2IdentityProvider struct {
 
 	// The OCID of the `IdentityProvider`.
@@ -64,14 +64,37 @@ type Saml2IdentityProvider struct {
 	InactiveStatus *int64 `mandatory:"false" json:"inactiveStatus"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no predefined name, type, or namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
+
+	// Extra name value pairs associated with this identity provider.
+	// Example: `{"clientId": "app_sf3kdjf3"}`
+	FreeformAttributes map[string]string `mandatory:"false" json:"freeformAttributes"`
+
+	// When set to true, the service provider expects the SAML assertion to be encrypted by the identity provider,
+	// using the service provider's encryption key. In this case, the service provider is Oracle Cloud
+	// Infrastructure Authentication service.
+	EncryptAssertion *bool `mandatory:"false" json:"encryptAssertion"`
+
+	// If set to true, when the user is redirected to the identity provider, the identity provider forces the
+	// user to provide credentials and re-authenticate, even if there is an active login session.
+	ForceAuthentication *bool `mandatory:"false" json:"forceAuthentication"`
+
+	// Authentication contexts requested when sending a SAML request to the identity provider. There could be one or
+	// more requested contexts. Usually identity provider uses the one that has the highest authentication strength.
+	// Example: `["urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport",
+	// "urn:oasis:names:tc:SAML:2.0:ac:classes:TLSClient"]`
+	AuthnContextClassRefs []string `mandatory:"false" json:"authnContextClassRefs"`
+
+	// A status message for this identity provider.
+	// Example: SAML metadata for this identity provider has expired.
+	StatusMessage *string `mandatory:"false" json:"statusMessage"`
 
 	// The current state. After creating an `IdentityProvider`, make sure its
 	// `lifecycleState` changes from CREATING to ACTIVE before using it.

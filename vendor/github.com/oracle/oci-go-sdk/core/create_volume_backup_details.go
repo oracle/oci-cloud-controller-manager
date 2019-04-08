@@ -19,7 +19,7 @@ type CreateVolumeBackupDetails struct {
 	VolumeId *string `mandatory:"true" json:"volumeId"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -29,7 +29,7 @@ type CreateVolumeBackupDetails struct {
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
 	// predefined name, type, or namespace. For more information, see
-	// Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
@@ -44,7 +44,7 @@ func (m CreateVolumeBackupDetails) String() string {
 // CreateVolumeBackupDetailsTypeEnum Enum with underlying type: string
 type CreateVolumeBackupDetailsTypeEnum string
 
-// Set of constants representing the allowable values for CreateVolumeBackupDetailsType
+// Set of constants representing the allowable values for CreateVolumeBackupDetailsTypeEnum
 const (
 	CreateVolumeBackupDetailsTypeFull        CreateVolumeBackupDetailsTypeEnum = "FULL"
 	CreateVolumeBackupDetailsTypeIncremental CreateVolumeBackupDetailsTypeEnum = "INCREMENTAL"
@@ -55,7 +55,7 @@ var mappingCreateVolumeBackupDetailsType = map[string]CreateVolumeBackupDetailsT
 	"INCREMENTAL": CreateVolumeBackupDetailsTypeIncremental,
 }
 
-// GetCreateVolumeBackupDetailsTypeEnumValues Enumerates the set of values for CreateVolumeBackupDetailsType
+// GetCreateVolumeBackupDetailsTypeEnumValues Enumerates the set of values for CreateVolumeBackupDetailsTypeEnum
 func GetCreateVolumeBackupDetailsTypeEnumValues() []CreateVolumeBackupDetailsTypeEnum {
 	values := make([]CreateVolumeBackupDetailsTypeEnum, 0)
 	for _, v := range mappingCreateVolumeBackupDetailsType {

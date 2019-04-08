@@ -3,11 +3,14 @@
 package auth
 
 import (
+	"bytes"
 	"crypto/rsa"
+	"encoding/json"
 	"fmt"
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -19,7 +22,7 @@ func TestInstancePrincipalKeyProvider_getRegionForFederationClient(t *testing.T)
 	}))
 	defer regionServer.Close()
 
-	actualRegion, err := getRegionForFederationClient(regionServer.URL)
+	actualRegion, err := getRegionForFederationClient(&http.Client{}, regionServer.URL)
 
 	assert.NoError(t, err)
 	assert.Equal(t, common.RegionPHX, actualRegion)
@@ -29,7 +32,7 @@ func TestInstancePrincipalKeyProvider_getRegionForFederationClientNotFound(t *te
 	regionServer := httptest.NewServer(http.NotFoundHandler())
 	defer regionServer.Close()
 
-	_, err := getRegionForFederationClient(regionServer.URL)
+	_, err := getRegionForFederationClient(&http.Client{}, regionServer.URL)
 
 	assert.Error(t, err)
 }
@@ -38,9 +41,16 @@ func TestInstancePrincipalKeyProvider_getRegionForFederationClientInternalServer
 	regionServer := httptest.NewServer(http.HandlerFunc(internalServerError))
 	defer regionServer.Close()
 
-	_, err := getRegionForFederationClient(regionServer.URL)
+	_, err := getRegionForFederationClient(&http.Client{}, regionServer.URL)
 
 	assert.Error(t, err)
+}
+
+func TestInstancePrincipalKeyProvider_RegionForFederationClient(t *testing.T) {
+	expectedRegion := common.StringToRegion("sea")
+	keyProvider := &instancePrincipalKeyProvider{Region: expectedRegion}
+	returnedRegion := keyProvider.RegionForFederationClient()
+	assert.Equal(t, returnedRegion, expectedRegion)
 }
 
 func TestInstancePrincipalKeyProvider_PrivateRSAKey(t *testing.T) {
@@ -48,7 +58,7 @@ func TestInstancePrincipalKeyProvider_PrivateRSAKey(t *testing.T) {
 	expectedPrivateKey := new(rsa.PrivateKey)
 	mockFederationClient.On("PrivateKey").Return(expectedPrivateKey, nil).Once()
 
-	keyProvider := &instancePrincipalKeyProvider{federationClient: mockFederationClient}
+	keyProvider := &instancePrincipalKeyProvider{FederationClient: mockFederationClient}
 
 	actualPrivateKey, err := keyProvider.PrivateRSAKey()
 
@@ -63,7 +73,7 @@ func TestInstancePrincipalKeyProvider_PrivateRSAKeyError(t *testing.T) {
 	expectedErrorMessage := "TestPrivateRSAKeyError"
 	mockFederationClient.On("PrivateKey").Return(nilPtr, fmt.Errorf(expectedErrorMessage)).Once()
 
-	keyProvider := &instancePrincipalKeyProvider{federationClient: mockFederationClient}
+	keyProvider := &instancePrincipalKeyProvider{FederationClient: mockFederationClient}
 
 	actualPrivateKey, actualError := keyProvider.PrivateRSAKey()
 
@@ -76,7 +86,7 @@ func TestInstancePrincipalKeyProvider_KeyID(t *testing.T) {
 	mockFederationClient := new(mockFederationClient)
 	mockFederationClient.On("SecurityToken").Return("TestSecurityTokenString", nil).Once()
 
-	keyProvider := &instancePrincipalKeyProvider{federationClient: mockFederationClient}
+	keyProvider := &instancePrincipalKeyProvider{FederationClient: mockFederationClient}
 
 	actualKeyID, err := keyProvider.KeyID()
 
@@ -84,12 +94,46 @@ func TestInstancePrincipalKeyProvider_KeyID(t *testing.T) {
 	assert.Equal(t, "ST$TestSecurityTokenString", actualKeyID)
 }
 
+type requestVerifier struct {
+	t               *testing.T
+	expectedPurpose string
+}
+
+func (r requestVerifier) Do(req *http.Request) (*http.Response, error) {
+	bts, _ := ioutil.ReadAll(req.Body)
+	fedRequest := X509FederationDetails{}
+	err := json.Unmarshal(bts, &fedRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	assert.Equal(r.t, r.expectedPurpose, fedRequest.Purpose)
+
+	jsonBody := fmt.Sprintf(`{"token":"%s"}`, expectedSecurityToken)
+	buff := bytes.NewBufferString(jsonBody)
+	return &http.Response{Body: ioutil.NopCloser(buff)}, nil
+
+}
+
+func TestInstancePrincipalKeyProviderCustomClient(t *testing.T) {
+
+	modifier := func(d common.HTTPRequestDispatcher) (common.HTTPRequestDispatcher, error) {
+		return requestVerifier{t, servicePrincipalTokenPurpose}, nil
+	}
+
+	provider, e := instancePrincipalConfigurationWithCertsAndPurpose(common.RegionPHX, []byte(leafCertPem), []byte(""),
+		[]byte(leafCertPrivateKeyPem), [][]byte{[]byte(intermediateCertPem)}, servicePrincipalTokenPurpose, modifier)
+	assert.NoError(t, e)
+	_, e = provider.KeyID()
+	assert.NoError(t, e)
+}
+
 func TestInstancePrincipalKeyProvider_KeyIDError(t *testing.T) {
 	mockFederationClient := new(mockFederationClient)
 	expectedErrorMessage := "TestSecurityTokenError"
 	mockFederationClient.On("SecurityToken").Return("", fmt.Errorf(expectedErrorMessage)).Once()
 
-	keyProvider := &instancePrincipalKeyProvider{federationClient: mockFederationClient}
+	keyProvider := &instancePrincipalKeyProvider{FederationClient: mockFederationClient}
 
 	actualKeyID, actualError := keyProvider.KeyID()
 

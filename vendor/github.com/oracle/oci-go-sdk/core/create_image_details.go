@@ -20,7 +20,7 @@ type CreateImageDetails struct {
 	CompartmentId *string `mandatory:"true" json:"compartmentId"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -32,7 +32,7 @@ type CreateImageDetails struct {
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
 	// predefined name, type, or namespace. For more information, see
-	// Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
@@ -43,8 +43,9 @@ type CreateImageDetails struct {
 	InstanceId *string `mandatory:"false" json:"instanceId"`
 
 	// Specifies the configuration mode for launching virtual machine (VM) instances. The configuration modes are:
-	// * `NATIVE` - VM instances launch with iSCSI boot and VFIO devices. The default value for Oracle-provided images.
+	// * `NATIVE` - VM instances launch with paravirtualized boot and VFIO devices. The default value for Oracle-provided images.
 	// * `EMULATED` - VM instances launch with emulated devices, such as the E1000 network driver and emulated SCSI disk controller.
+	// * `PARAVIRTUALIZED` - VM instances launch with paravirtualized devices using virtio drivers.
 	// * `CUSTOM` - VM instances launch with custom configuration settings specified in the `LaunchOptions` parameter.
 	LaunchMode CreateImageDetailsLaunchModeEnum `mandatory:"false" json:"launchMode,omitempty"`
 }
@@ -76,7 +77,11 @@ func (m *CreateImageDetails) UnmarshalJSON(data []byte) (e error) {
 	if e != nil {
 		return
 	}
-	m.ImageSourceDetails = nn.(ImageSourceDetails)
+	if nn != nil {
+		m.ImageSourceDetails = nn.(ImageSourceDetails)
+	} else {
+		m.ImageSourceDetails = nil
+	}
 	m.InstanceId = model.InstanceId
 	m.LaunchMode = model.LaunchMode
 	m.CompartmentId = model.CompartmentId
@@ -86,20 +91,22 @@ func (m *CreateImageDetails) UnmarshalJSON(data []byte) (e error) {
 // CreateImageDetailsLaunchModeEnum Enum with underlying type: string
 type CreateImageDetailsLaunchModeEnum string
 
-// Set of constants representing the allowable values for CreateImageDetailsLaunchMode
+// Set of constants representing the allowable values for CreateImageDetailsLaunchModeEnum
 const (
-	CreateImageDetailsLaunchModeNative   CreateImageDetailsLaunchModeEnum = "NATIVE"
-	CreateImageDetailsLaunchModeEmulated CreateImageDetailsLaunchModeEnum = "EMULATED"
-	CreateImageDetailsLaunchModeCustom   CreateImageDetailsLaunchModeEnum = "CUSTOM"
+	CreateImageDetailsLaunchModeNative          CreateImageDetailsLaunchModeEnum = "NATIVE"
+	CreateImageDetailsLaunchModeEmulated        CreateImageDetailsLaunchModeEnum = "EMULATED"
+	CreateImageDetailsLaunchModeParavirtualized CreateImageDetailsLaunchModeEnum = "PARAVIRTUALIZED"
+	CreateImageDetailsLaunchModeCustom          CreateImageDetailsLaunchModeEnum = "CUSTOM"
 )
 
 var mappingCreateImageDetailsLaunchMode = map[string]CreateImageDetailsLaunchModeEnum{
-	"NATIVE":   CreateImageDetailsLaunchModeNative,
-	"EMULATED": CreateImageDetailsLaunchModeEmulated,
-	"CUSTOM":   CreateImageDetailsLaunchModeCustom,
+	"NATIVE":          CreateImageDetailsLaunchModeNative,
+	"EMULATED":        CreateImageDetailsLaunchModeEmulated,
+	"PARAVIRTUALIZED": CreateImageDetailsLaunchModeParavirtualized,
+	"CUSTOM":          CreateImageDetailsLaunchModeCustom,
 }
 
-// GetCreateImageDetailsLaunchModeEnumValues Enumerates the set of values for CreateImageDetailsLaunchMode
+// GetCreateImageDetailsLaunchModeEnumValues Enumerates the set of values for CreateImageDetailsLaunchModeEnum
 func GetCreateImageDetailsLaunchModeEnumValues() []CreateImageDetailsLaunchModeEnum {
 	values := make([]CreateImageDetailsLaunchModeEnum, 0)
 	for _, v := range mappingCreateImageDetailsLaunchMode {

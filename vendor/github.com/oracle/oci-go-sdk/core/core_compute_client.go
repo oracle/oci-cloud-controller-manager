@@ -37,7 +37,7 @@ func NewComputeClientWithConfigurationProvider(configProvider common.Configurati
 
 // SetRegion overrides the region of this client.
 func (client *ComputeClient) SetRegion(region string) {
-	client.Host = fmt.Sprintf(common.DefaultHostURLTemplate, "iaas", region)
+	client.Host = common.StringToRegion(region).EndpointForTemplate("iaas", "https://iaas.{region}.{secondLevelDomain}")
 }
 
 // SetConfigurationProvider sets the configuration provider including the region, returns an error if is not valid
@@ -58,6 +58,48 @@ func (client *ComputeClient) ConfigurationProvider() *common.ConfigurationProvid
 	return client.config
 }
 
+// AddImageShapeCompatibilityEntry Adds a shape to the compatible shapes list for the image.
+func (client ComputeClient) AddImageShapeCompatibilityEntry(ctx context.Context, request AddImageShapeCompatibilityEntryRequest) (response AddImageShapeCompatibilityEntryResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.addImageShapeCompatibilityEntry, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = AddImageShapeCompatibilityEntryResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(AddImageShapeCompatibilityEntryResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into AddImageShapeCompatibilityEntryResponse")
+	}
+	return
+}
+
+// addImageShapeCompatibilityEntry implements the OCIOperation interface (enables retrying operations)
+func (client ComputeClient) addImageShapeCompatibilityEntry(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/images/{imageId}/shapes/{shapeName}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response AddImageShapeCompatibilityEntryResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // AttachBootVolume Attaches the specified boot volume to the specified instance.
 func (client ComputeClient) AttachBootVolume(ctx context.Context, request AttachBootVolumeRequest) (response AttachBootVolumeResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -65,8 +107,16 @@ func (client ComputeClient) AttachBootVolume(ctx context.Context, request Attach
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.attachBootVolume, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = AttachBootVolumeResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(AttachBootVolumeResponse); ok {
@@ -99,15 +149,23 @@ func (client ComputeClient) attachBootVolume(ctx context.Context, request common
 
 // AttachVnic Creates a secondary VNIC and attaches it to the specified instance.
 // For more information about secondary VNICs, see
-// Virtual Network Interface Cards (VNICs) (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Tasks/managingVNICs.htm).
+// Virtual Network Interface Cards (VNICs) (https://docs.cloud.oracle.com/Content/Network/Tasks/managingVNICs.htm).
 func (client ComputeClient) AttachVnic(ctx context.Context, request AttachVnicRequest) (response AttachVnicResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.attachVnic, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = AttachVnicResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(AttachVnicResponse); ok {
@@ -145,8 +203,16 @@ func (client ComputeClient) AttachVolume(ctx context.Context, request AttachVolu
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.attachVolume, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = AttachVolumeResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(AttachVolumeResponse); ok {
@@ -198,8 +264,16 @@ func (client ComputeClient) CaptureConsoleHistory(ctx context.Context, request C
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.captureConsoleHistory, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CaptureConsoleHistoryResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CaptureConsoleHistoryResponse); ok {
@@ -230,20 +304,114 @@ func (client ComputeClient) captureConsoleHistory(ctx context.Context, request c
 	return response, err
 }
 
+// ChangeInstanceCompartment Moves an instance from one compartment to another
+func (client ComputeClient) ChangeInstanceCompartment(ctx context.Context, request ChangeInstanceCompartmentRequest) (response ChangeInstanceCompartmentResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.changeInstanceCompartment, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ChangeInstanceCompartmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ChangeInstanceCompartmentResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ChangeInstanceCompartmentResponse")
+	}
+	return
+}
+
+// changeInstanceCompartment implements the OCIOperation interface (enables retrying operations)
+func (client ComputeClient) changeInstanceCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/instances/{instanceId}/actions/changeCompartment")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ChangeInstanceCompartmentResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// CreateAppCatalogSubscription Create a subscription for listing resource version for a compartment. It will take some time to propagate to all regions.
+func (client ComputeClient) CreateAppCatalogSubscription(ctx context.Context, request CreateAppCatalogSubscriptionRequest) (response CreateAppCatalogSubscriptionResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.createAppCatalogSubscription, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = CreateAppCatalogSubscriptionResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(CreateAppCatalogSubscriptionResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into CreateAppCatalogSubscriptionResponse")
+	}
+	return
+}
+
+// createAppCatalogSubscription implements the OCIOperation interface (enables retrying operations)
+func (client ComputeClient) createAppCatalogSubscription(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/appCatalogSubscriptions")
+	if err != nil {
+		return nil, err
+	}
+
+	var response CreateAppCatalogSubscriptionResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // CreateImage Creates a boot disk image for the specified instance or imports an exported image from the Oracle Cloud Infrastructure Object Storage service.
 // When creating a new image, you must provide the OCID of the instance you want to use as the basis for the image, and
 // the OCID of the compartment containing that instance. For more information about images,
-// see Managing Custom Images (https://docs.us-phoenix-1.oraclecloud.com/Content/Compute/Tasks/managingcustomimages.htm).
+// see Managing Custom Images (https://docs.cloud.oracle.com/Content/Compute/Tasks/managingcustomimages.htm).
 // When importing an exported image from Object Storage, you specify the source information
 // in ImageSourceDetails.
 // When importing an image based on the namespace, bucket name, and object name,
 // use ImageSourceViaObjectStorageTupleDetails.
 // When importing an image based on the Object Storage URL, use
 // ImageSourceViaObjectStorageUriDetails.
-// See Object Storage URLs (https://docs.us-phoenix-1.oraclecloud.com/Content/Compute/Tasks/imageimportexport.htm#URLs) and pre-authenticated requests (https://docs.us-phoenix-1.oraclecloud.com/Content/Object/Tasks/managingaccess.htm#pre-auth)
+// See Object Storage URLs (https://docs.cloud.oracle.com/Content/Compute/Tasks/imageimportexport.htm#URLs) and Using Pre-Authenticated Requests (https://docs.cloud.oracle.com/Content/Object/Tasks/usingpreauthenticatedrequests.htm)
 // for constructing URLs for image import/export.
 // For more information about importing exported images, see
-// Image Import/Export (https://docs.us-phoenix-1.oraclecloud.com/Content/Compute/Tasks/imageimportexport.htm).
+// Image Import/Export (https://docs.cloud.oracle.com/Content/Compute/Tasks/imageimportexport.htm).
 // You may optionally specify a *display name* for the image, which is simply a friendly name or description.
 // It does not have to be unique, and you can change it. See UpdateImage.
 // Avoid entering confidential information.
@@ -253,8 +421,16 @@ func (client ComputeClient) CreateImage(ctx context.Context, request CreateImage
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createImage, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateImageResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateImageResponse); ok {
@@ -288,15 +464,23 @@ func (client ComputeClient) createImage(ctx context.Context, request common.OCIR
 // CreateInstanceConsoleConnection Creates a new console connection to the specified instance.
 // Once the console connection has been created and is available,
 // you connect to the console using SSH.
-// For more information about console access, see Accessing the Console (https://docs.us-phoenix-1.oraclecloud.com/Content/Compute/References/serialconsole.htm).
+// For more information about console access, see Accessing the Console (https://docs.cloud.oracle.com/Content/Compute/References/serialconsole.htm).
 func (client ComputeClient) CreateInstanceConsoleConnection(ctx context.Context, request CreateInstanceConsoleConnectionRequest) (response CreateInstanceConsoleConnectionResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createInstanceConsoleConnection, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = CreateInstanceConsoleConnectionResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(CreateInstanceConsoleConnectionResponse); ok {
@@ -327,6 +511,48 @@ func (client ComputeClient) createInstanceConsoleConnection(ctx context.Context,
 	return response, err
 }
 
+// DeleteAppCatalogSubscription Delete a subscription for a listing resource version for a compartment.
+func (client ComputeClient) DeleteAppCatalogSubscription(ctx context.Context, request DeleteAppCatalogSubscriptionRequest) (response DeleteAppCatalogSubscriptionResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.deleteAppCatalogSubscription, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = DeleteAppCatalogSubscriptionResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(DeleteAppCatalogSubscriptionResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into DeleteAppCatalogSubscriptionResponse")
+	}
+	return
+}
+
+// deleteAppCatalogSubscription implements the OCIOperation interface (enables retrying operations)
+func (client ComputeClient) deleteAppCatalogSubscription(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/appCatalogSubscriptions")
+	if err != nil {
+		return nil, err
+	}
+
+	var response DeleteAppCatalogSubscriptionResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // DeleteConsoleHistory Deletes the specified console history metadata and the console history data.
 func (client ComputeClient) DeleteConsoleHistory(ctx context.Context, request DeleteConsoleHistoryRequest) (response DeleteConsoleHistoryResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -336,6 +562,9 @@ func (client ComputeClient) DeleteConsoleHistory(ctx context.Context, request De
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteConsoleHistory, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteConsoleHistoryResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteConsoleHistoryResponse); ok {
@@ -375,6 +604,9 @@ func (client ComputeClient) DeleteImage(ctx context.Context, request DeleteImage
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteImage, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteImageResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteImageResponse); ok {
@@ -414,6 +646,9 @@ func (client ComputeClient) DeleteInstanceConsoleConnection(ctx context.Context,
 	}
 	ociResponse, err = common.Retry(ctx, request, client.deleteInstanceConsoleConnection, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DeleteInstanceConsoleConnectionResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DeleteInstanceConsoleConnectionResponse); ok {
@@ -455,6 +690,9 @@ func (client ComputeClient) DetachBootVolume(ctx context.Context, request Detach
 	}
 	ociResponse, err = common.Retry(ctx, request, client.detachBootVolume, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DetachBootVolumeResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DetachBootVolumeResponse); ok {
@@ -491,7 +729,7 @@ func (client ComputeClient) detachBootVolume(ctx context.Context, request common
 // and secondary) are automatically detached and deleted.
 // **Important:** If the VNIC has a
 // PrivateIp that is the
-// target of a route rule (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Tasks/managingroutetables.htm#privateip),
+// target of a route rule (https://docs.cloud.oracle.com/Content/Network/Tasks/managingroutetables.htm#privateip),
 // deleting the VNIC causes that route rule to blackhole and the traffic
 // will be dropped.
 func (client ComputeClient) DetachVnic(ctx context.Context, request DetachVnicRequest) (response DetachVnicResponse, err error) {
@@ -502,6 +740,9 @@ func (client ComputeClient) DetachVnic(ctx context.Context, request DetachVnicRe
 	}
 	ociResponse, err = common.Retry(ctx, request, client.detachVnic, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DetachVnicResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DetachVnicResponse); ok {
@@ -543,6 +784,9 @@ func (client ComputeClient) DetachVolume(ctx context.Context, request DetachVolu
 	}
 	ociResponse, err = common.Retry(ctx, request, client.detachVolume, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = DetachVolumeResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(DetachVolumeResponse); ok {
@@ -575,10 +819,10 @@ func (client ComputeClient) detachVolume(ctx context.Context, request common.OCI
 
 // ExportImage Exports the specified image to the Oracle Cloud Infrastructure Object Storage service. You can use the Object Storage URL,
 // or the namespace, bucket name, and object name when specifying the location to export to.
-// For more information about exporting images, see Image Import/Export (https://docs.us-phoenix-1.oraclecloud.com/Content/Compute/Tasks/imageimportexport.htm).
+// For more information about exporting images, see Image Import/Export (https://docs.cloud.oracle.com/Content/Compute/Tasks/imageimportexport.htm).
 // To perform an image export, you need write access to the Object Storage bucket for the image,
-// see Let Users Write Objects to Object Storage Buckets (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/commonpolicies.htm#Let4).
-// See Object Storage URLs (https://docs.us-phoenix-1.oraclecloud.com/Content/Compute/Tasks/imageimportexport.htm#URLs) and pre-authenticated requests (https://docs.us-phoenix-1.oraclecloud.com/Content/Object/Tasks/managingaccess.htm#pre-auth)
+// see Let Users Write Objects to Object Storage Buckets (https://docs.cloud.oracle.com/Content/Identity/Concepts/commonpolicies.htm#Let4).
+// See Object Storage URLs (https://docs.cloud.oracle.com/Content/Compute/Tasks/imageimportexport.htm#URLs) and Using Pre-Authenticated Requests (https://docs.cloud.oracle.com/Content/Object/Tasks/usingpreauthenticatedrequests.htm)
 // for constructing URLs for image import/export.
 func (client ComputeClient) ExportImage(ctx context.Context, request ExportImageRequest) (response ExportImageResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -586,8 +830,16 @@ func (client ComputeClient) ExportImage(ctx context.Context, request ExportImage
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.exportImage, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ExportImageResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ExportImageResponse); ok {
@@ -618,6 +870,132 @@ func (client ComputeClient) exportImage(ctx context.Context, request common.OCIR
 	return response, err
 }
 
+// GetAppCatalogListing Gets the specified listing.
+func (client ComputeClient) GetAppCatalogListing(ctx context.Context, request GetAppCatalogListingRequest) (response GetAppCatalogListingResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.getAppCatalogListing, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = GetAppCatalogListingResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(GetAppCatalogListingResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into GetAppCatalogListingResponse")
+	}
+	return
+}
+
+// getAppCatalogListing implements the OCIOperation interface (enables retrying operations)
+func (client ComputeClient) getAppCatalogListing(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/appCatalogListings/{listingId}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetAppCatalogListingResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// GetAppCatalogListingAgreements Retrieves the agreements for a particular resource version of a listing.
+func (client ComputeClient) GetAppCatalogListingAgreements(ctx context.Context, request GetAppCatalogListingAgreementsRequest) (response GetAppCatalogListingAgreementsResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.getAppCatalogListingAgreements, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = GetAppCatalogListingAgreementsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(GetAppCatalogListingAgreementsResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into GetAppCatalogListingAgreementsResponse")
+	}
+	return
+}
+
+// getAppCatalogListingAgreements implements the OCIOperation interface (enables retrying operations)
+func (client ComputeClient) getAppCatalogListingAgreements(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/appCatalogListings/{listingId}/resourceVersions/{resourceVersion}/agreements")
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetAppCatalogListingAgreementsResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// GetAppCatalogListingResourceVersion Gets the specified listing resource version.
+func (client ComputeClient) GetAppCatalogListingResourceVersion(ctx context.Context, request GetAppCatalogListingResourceVersionRequest) (response GetAppCatalogListingResourceVersionResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.getAppCatalogListingResourceVersion, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = GetAppCatalogListingResourceVersionResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(GetAppCatalogListingResourceVersionResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into GetAppCatalogListingResourceVersionResponse")
+	}
+	return
+}
+
+// getAppCatalogListingResourceVersion implements the OCIOperation interface (enables retrying operations)
+func (client ComputeClient) getAppCatalogListingResourceVersion(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/appCatalogListings/{listingId}/resourceVersions/{resourceVersion}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetAppCatalogListingResourceVersionResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // GetBootVolumeAttachment Gets information about the specified boot volume attachment.
 func (client ComputeClient) GetBootVolumeAttachment(ctx context.Context, request GetBootVolumeAttachmentRequest) (response GetBootVolumeAttachmentResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -627,6 +1005,9 @@ func (client ComputeClient) GetBootVolumeAttachment(ctx context.Context, request
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getBootVolumeAttachment, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetBootVolumeAttachmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetBootVolumeAttachmentResponse); ok {
@@ -668,6 +1049,9 @@ func (client ComputeClient) GetConsoleHistory(ctx context.Context, request GetCo
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getConsoleHistory, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetConsoleHistoryResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetConsoleHistoryResponse); ok {
@@ -709,6 +1093,9 @@ func (client ComputeClient) GetConsoleHistoryContent(ctx context.Context, reques
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getConsoleHistoryContent, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetConsoleHistoryContentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetConsoleHistoryContentResponse); ok {
@@ -748,6 +1135,9 @@ func (client ComputeClient) GetImage(ctx context.Context, request GetImageReques
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getImage, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetImageResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetImageResponse); ok {
@@ -787,6 +1177,9 @@ func (client ComputeClient) GetInstance(ctx context.Context, request GetInstance
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getInstance, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetInstanceResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetInstanceResponse); ok {
@@ -826,6 +1219,9 @@ func (client ComputeClient) GetInstanceConsoleConnection(ctx context.Context, re
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getInstanceConsoleConnection, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetInstanceConsoleConnectionResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetInstanceConsoleConnectionResponse); ok {
@@ -865,6 +1261,9 @@ func (client ComputeClient) GetVnicAttachment(ctx context.Context, request GetVn
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getVnicAttachment, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetVnicAttachmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetVnicAttachmentResponse); ok {
@@ -904,6 +1303,9 @@ func (client ComputeClient) GetVolumeAttachment(ctx context.Context, request Get
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getVolumeAttachment, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetVolumeAttachmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetVolumeAttachmentResponse); ok {
@@ -944,6 +1346,9 @@ func (client ComputeClient) GetWindowsInstanceInitialCredentials(ctx context.Con
 	}
 	ociResponse, err = common.Retry(ctx, request, client.getWindowsInstanceInitialCredentials, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = GetWindowsInstanceInitialCredentialsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(GetWindowsInstanceInitialCredentialsResponse); ok {
@@ -980,15 +1385,23 @@ func (client ComputeClient) getWindowsInstanceInitialCredentials(ctx context.Con
 // - **SOFTRESET** - Gracefully reboots instance by sending a shutdown command to the operating system and then powers the instance back on.
 // - **SOFTSTOP** - Gracefully shuts down instance by sending a shutdown command to the operating system.
 // - **RESET** - Powers off the instance and then powers it back on.
-// For more information see Stopping and Starting an Instance (https://docs.us-phoenix-1.oraclecloud.com/Content/Compute/Tasks/restartinginstance.htm).
+// For more information see Stopping and Starting an Instance (https://docs.cloud.oracle.com/Content/Compute/Tasks/restartinginstance.htm).
 func (client ComputeClient) InstanceAction(ctx context.Context, request InstanceActionRequest) (response InstanceActionResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.instanceAction, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = InstanceActionResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(InstanceActionResponse); ok {
@@ -1019,14 +1432,14 @@ func (client ComputeClient) instanceAction(ctx context.Context, request common.O
 	return response, err
 }
 
-// LaunchInstance Creates a new instance in the specified compartment and the specified Availability Domain.
+// LaunchInstance Creates a new instance in the specified compartment and the specified availability domain.
 // For general information about instances, see
-// Overview of the Compute Service (https://docs.us-phoenix-1.oraclecloud.com/Content/Compute/Concepts/computeoverview.htm).
+// Overview of the Compute Service (https://docs.cloud.oracle.com/Content/Compute/Concepts/computeoverview.htm).
 // For information about access control and compartments, see
-// Overview of the IAM Service (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/overview.htm).
-// For information about Availability Domains, see
-// Regions and Availability Domains (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/regions.htm).
-// To get a list of Availability Domains, use the `ListAvailabilityDomains` operation
+// Overview of the IAM Service (https://docs.cloud.oracle.com/Content/Identity/Concepts/overview.htm).
+// For information about availability domains, see
+// Regions and Availability Domains (https://docs.cloud.oracle.com/Content/General/Concepts/regions.htm).
+// To get a list of availability domains, use the `ListAvailabilityDomains` operation
 // in the Identity and Access Management Service API.
 // All Oracle Cloud Infrastructure resources, including instances, get an Oracle-assigned,
 // unique ID called an Oracle Cloud Identifier (OCID).
@@ -1043,15 +1456,23 @@ func (client ComputeClient) instanceAction(ctx context.Context, request common.O
 // operation to get the VNIC ID for the instance, and then call
 // GetVnic with the VNIC ID.
 // You can later add secondary VNICs to an instance. For more information, see
-// Virtual Network Interface Cards (VNICs) (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Tasks/managingVNICs.htm).
+// Virtual Network Interface Cards (VNICs) (https://docs.cloud.oracle.com/Content/Network/Tasks/managingVNICs.htm).
 func (client ComputeClient) LaunchInstance(ctx context.Context, request LaunchInstanceRequest) (response LaunchInstanceResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.launchInstance, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = LaunchInstanceResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(LaunchInstanceResponse); ok {
@@ -1082,6 +1503,132 @@ func (client ComputeClient) launchInstance(ctx context.Context, request common.O
 	return response, err
 }
 
+// ListAppCatalogListingResourceVersions Gets all resource versions for a particular listing.
+func (client ComputeClient) ListAppCatalogListingResourceVersions(ctx context.Context, request ListAppCatalogListingResourceVersionsRequest) (response ListAppCatalogListingResourceVersionsResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listAppCatalogListingResourceVersions, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ListAppCatalogListingResourceVersionsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListAppCatalogListingResourceVersionsResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListAppCatalogListingResourceVersionsResponse")
+	}
+	return
+}
+
+// listAppCatalogListingResourceVersions implements the OCIOperation interface (enables retrying operations)
+func (client ComputeClient) listAppCatalogListingResourceVersions(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/appCatalogListings/{listingId}/resourceVersions")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListAppCatalogListingResourceVersionsResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ListAppCatalogListings Lists the published listings.
+func (client ComputeClient) ListAppCatalogListings(ctx context.Context, request ListAppCatalogListingsRequest) (response ListAppCatalogListingsResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listAppCatalogListings, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ListAppCatalogListingsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListAppCatalogListingsResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListAppCatalogListingsResponse")
+	}
+	return
+}
+
+// listAppCatalogListings implements the OCIOperation interface (enables retrying operations)
+func (client ComputeClient) listAppCatalogListings(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/appCatalogListings")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListAppCatalogListingsResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ListAppCatalogSubscriptions Lists subscriptions for a compartment.
+func (client ComputeClient) ListAppCatalogSubscriptions(ctx context.Context, request ListAppCatalogSubscriptionsRequest) (response ListAppCatalogSubscriptionsResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listAppCatalogSubscriptions, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ListAppCatalogSubscriptionsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListAppCatalogSubscriptionsResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListAppCatalogSubscriptionsResponse")
+	}
+	return
+}
+
+// listAppCatalogSubscriptions implements the OCIOperation interface (enables retrying operations)
+func (client ComputeClient) listAppCatalogSubscriptions(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/appCatalogSubscriptions")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListAppCatalogSubscriptionsResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // ListBootVolumeAttachments Lists the boot volume attachments in the specified compartment. You can filter the
 // list by specifying an instance OCID, boot volume OCID, or both.
 func (client ComputeClient) ListBootVolumeAttachments(ctx context.Context, request ListBootVolumeAttachmentsRequest) (response ListBootVolumeAttachmentsResponse, err error) {
@@ -1092,6 +1639,9 @@ func (client ComputeClient) ListBootVolumeAttachments(ctx context.Context, reque
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listBootVolumeAttachments, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListBootVolumeAttachmentsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListBootVolumeAttachmentsResponse); ok {
@@ -1131,6 +1681,9 @@ func (client ComputeClient) ListConsoleHistories(ctx context.Context, request Li
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listConsoleHistories, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListConsoleHistoriesResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListConsoleHistoriesResponse); ok {
@@ -1161,11 +1714,12 @@ func (client ComputeClient) listConsoleHistories(ctx context.Context, request co
 	return response, err
 }
 
-// ListImages Lists the available images in the specified compartment.
-// If you specify a value for the `sortBy` parameter, Oracle-provided images appear first in the list, followed by custom images.
-// For more
-// information about images, see
-// Managing Custom Images (https://docs.us-phoenix-1.oraclecloud.com/Content/Compute/Tasks/managingcustomimages.htm).
+// ListImages Lists the available images in the specified compartment, including both
+// Oracle-provided images (https://docs.cloud.oracle.com/Content/Compute/References/images.htm) and
+// custom images (https://docs.cloud.oracle.com/Content/Compute/Tasks/managingcustomimages.htm) that have
+// been created. The list of images returned is ordered to first show all
+// Oracle-provided images, then all custom images.
+// The order of images returned may change when new images are released.
 func (client ComputeClient) ListImages(ctx context.Context, request ListImagesRequest) (response ListImagesResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -1174,6 +1728,9 @@ func (client ComputeClient) ListImages(ctx context.Context, request ListImagesRe
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listImages, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListImagesResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListImagesResponse); ok {
@@ -1205,7 +1762,7 @@ func (client ComputeClient) listImages(ctx context.Context, request common.OCIRe
 }
 
 // ListInstanceConsoleConnections Lists the console connections for the specified compartment or instance.
-// For more information about console access, see Accessing the Console (https://docs.us-phoenix-1.oraclecloud.com/Content/Compute/References/serialconsole.htm).
+// For more information about console access, see Accessing the Console (https://docs.cloud.oracle.com/Content/Compute/References/serialconsole.htm).
 func (client ComputeClient) ListInstanceConsoleConnections(ctx context.Context, request ListInstanceConsoleConnectionsRequest) (response ListInstanceConsoleConnectionsResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -1214,6 +1771,9 @@ func (client ComputeClient) ListInstanceConsoleConnections(ctx context.Context, 
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listInstanceConsoleConnections, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListInstanceConsoleConnectionsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListInstanceConsoleConnectionsResponse); ok {
@@ -1244,7 +1804,49 @@ func (client ComputeClient) listInstanceConsoleConnections(ctx context.Context, 
 	return response, err
 }
 
-// ListInstances Lists the instances in the specified compartment and the specified Availability Domain.
+// ListInstanceDevices Gets a list of all the devices for given instance. You can optionally filter results by device availability.
+func (client ComputeClient) ListInstanceDevices(ctx context.Context, request ListInstanceDevicesRequest) (response ListInstanceDevicesResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listInstanceDevices, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ListInstanceDevicesResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListInstanceDevicesResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListInstanceDevicesResponse")
+	}
+	return
+}
+
+// listInstanceDevices implements the OCIOperation interface (enables retrying operations)
+func (client ComputeClient) listInstanceDevices(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/instances/{instanceId}/devices")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListInstanceDevicesResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ListInstances Lists the instances in the specified compartment and the specified availability domain.
 // You can filter the results by specifying an instance name (the list will include all the identically-named
 // instances in the compartment).
 func (client ComputeClient) ListInstances(ctx context.Context, request ListInstancesRequest) (response ListInstancesResponse, err error) {
@@ -1255,6 +1857,9 @@ func (client ComputeClient) ListInstances(ctx context.Context, request ListInsta
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listInstances, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListInstancesResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListInstancesResponse); ok {
@@ -1295,6 +1900,9 @@ func (client ComputeClient) ListShapes(ctx context.Context, request ListShapesRe
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listShapes, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListShapesResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListShapesResponse); ok {
@@ -1327,7 +1935,7 @@ func (client ComputeClient) listShapes(ctx context.Context, request common.OCIRe
 
 // ListVnicAttachments Lists the VNIC attachments in the specified compartment. A VNIC attachment
 // resides in the same compartment as the attached instance. The list can be
-// filtered by instance, VNIC, or Availability Domain.
+// filtered by instance, VNIC, or availability domain.
 func (client ComputeClient) ListVnicAttachments(ctx context.Context, request ListVnicAttachmentsRequest) (response ListVnicAttachmentsResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -1336,6 +1944,9 @@ func (client ComputeClient) ListVnicAttachments(ctx context.Context, request Lis
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listVnicAttachments, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListVnicAttachmentsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListVnicAttachmentsResponse); ok {
@@ -1394,6 +2005,9 @@ func (client ComputeClient) ListVolumeAttachments(ctx context.Context, request L
 	}
 	ociResponse, err = common.Retry(ctx, request, client.listVolumeAttachments, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = ListVolumeAttachmentsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(ListVolumeAttachmentsResponse); ok {
@@ -1424,6 +2038,48 @@ func (client ComputeClient) listVolumeAttachments(ctx context.Context, request c
 	return response, err
 }
 
+// RemoveImageShapeCompatibilityEntry Removes a shape from the compatible shapes list for the image.
+func (client ComputeClient) RemoveImageShapeCompatibilityEntry(ctx context.Context, request RemoveImageShapeCompatibilityEntryRequest) (response RemoveImageShapeCompatibilityEntryResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.removeImageShapeCompatibilityEntry, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = RemoveImageShapeCompatibilityEntryResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(RemoveImageShapeCompatibilityEntryResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into RemoveImageShapeCompatibilityEntryResponse")
+	}
+	return
+}
+
+// removeImageShapeCompatibilityEntry implements the OCIOperation interface (enables retrying operations)
+func (client ComputeClient) removeImageShapeCompatibilityEntry(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/images/{imageId}/shapes/{shapeName}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response RemoveImageShapeCompatibilityEntryResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // TerminateInstance Terminates the specified instance. Any attached VNICs and volumes are automatically detached
 // when the instance terminates.
 // To preserve the boot volume associated with the instance, specify `true` for `PreserveBootVolumeQueryParam`.
@@ -1438,6 +2094,9 @@ func (client ComputeClient) TerminateInstance(ctx context.Context, request Termi
 	}
 	ociResponse, err = common.Retry(ctx, request, client.terminateInstance, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = TerminateInstanceResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(TerminateInstanceResponse); ok {
@@ -1477,6 +2136,9 @@ func (client ComputeClient) UpdateConsoleHistory(ctx context.Context, request Up
 	}
 	ociResponse, err = common.Retry(ctx, request, client.updateConsoleHistory, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateConsoleHistoryResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateConsoleHistoryResponse); ok {
@@ -1514,8 +2176,16 @@ func (client ComputeClient) UpdateImage(ctx context.Context, request UpdateImage
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.updateImage, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateImageResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateImageResponse); ok {
@@ -1546,7 +2216,10 @@ func (client ComputeClient) updateImage(ctx context.Context, request common.OCIR
 	return response, err
 }
 
-// UpdateInstance Updates the display name of the specified instance. Avoid entering confidential information.
+// UpdateInstance Updates certain fields on the specified instance. Fields that are not provided in the
+// request will not be updated. Avoid entering confidential information.
+// Changes to metadata fields will be reflected in the instance metadata service (this may take
+// up to a minute).
 // The OCID of the instance remains the same.
 func (client ComputeClient) UpdateInstance(ctx context.Context, request UpdateInstanceRequest) (response UpdateInstanceResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -1554,8 +2227,16 @@ func (client ComputeClient) UpdateInstance(ctx context.Context, request UpdateIn
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.updateInstance, policy)
 	if err != nil {
+		if ociResponse != nil {
+			response = UpdateInstanceResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
 		return
 	}
 	if convertedResponse, ok := ociResponse.(UpdateInstanceResponse); ok {
@@ -1574,6 +2255,48 @@ func (client ComputeClient) updateInstance(ctx context.Context, request common.O
 	}
 
 	var response UpdateInstanceResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// UpdateInstanceConsoleConnection Updates the defined tags and free-form tags for the specified instance console connection.
+func (client ComputeClient) UpdateInstanceConsoleConnection(ctx context.Context, request UpdateInstanceConsoleConnectionRequest) (response UpdateInstanceConsoleConnectionResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.updateInstanceConsoleConnection, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = UpdateInstanceConsoleConnectionResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(UpdateInstanceConsoleConnectionResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into UpdateInstanceConsoleConnectionResponse")
+	}
+	return
+}
+
+// updateInstanceConsoleConnection implements the OCIOperation interface (enables retrying operations)
+func (client ComputeClient) updateInstanceConsoleConnection(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/instanceConsoleConnections/{instanceConsoleConnectionId}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response UpdateInstanceConsoleConnectionResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)

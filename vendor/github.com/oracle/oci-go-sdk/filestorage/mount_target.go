@@ -15,6 +15,7 @@ import (
 // MountTarget Provides access to a collection of file systems through one or more VNICs on a
 // specified subnet. The set of file systems is controlled through the
 // referenced export set.
+// **Warning:** Oracle recommends that you avoid using any confidential information when you supply string values using the API.
 type MountTarget struct {
 
 	// The OCID of the compartment that contains the mount target.
@@ -54,6 +55,17 @@ type MountTarget struct {
 	// systems will be exported through Network File System (NFS) protocol on this
 	// mount target.
 	ExportSetId *string `mandatory:"false" json:"exportSetId"`
+
+	// Free-form tags for this resource. Each tag is a simple key-value pair
+	//  with no predefined name, type, or namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Example: `{"Department": "Finance"}`
+	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
+
+	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Example: `{"Operations": {"CostCenter": "42"}}`
+	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 }
 
 func (m MountTarget) String() string {
@@ -63,7 +75,7 @@ func (m MountTarget) String() string {
 // MountTargetLifecycleStateEnum Enum with underlying type: string
 type MountTargetLifecycleStateEnum string
 
-// Set of constants representing the allowable values for MountTargetLifecycleState
+// Set of constants representing the allowable values for MountTargetLifecycleStateEnum
 const (
 	MountTargetLifecycleStateCreating MountTargetLifecycleStateEnum = "CREATING"
 	MountTargetLifecycleStateActive   MountTargetLifecycleStateEnum = "ACTIVE"
@@ -80,7 +92,7 @@ var mappingMountTargetLifecycleState = map[string]MountTargetLifecycleStateEnum{
 	"FAILED":   MountTargetLifecycleStateFailed,
 }
 
-// GetMountTargetLifecycleStateEnumValues Enumerates the set of values for MountTargetLifecycleState
+// GetMountTargetLifecycleStateEnumValues Enumerates the set of values for MountTargetLifecycleStateEnum
 func GetMountTargetLifecycleStateEnumValues() []MountTargetLifecycleStateEnum {
 	values := make([]MountTargetLifecycleStateEnum, 0)
 	for _, v := range mappingMountTargetLifecycleState {

@@ -3,7 +3,7 @@
 
 // Object Storage Service API
 //
-// Common set of Object and Archive Storage APIs for managing buckets and objects.
+// Common set of Object Storage and Archive Storage APIs for managing buckets, objects, and related resources.
 //
 
 package objectstorage
@@ -14,13 +14,13 @@ import (
 
 // Bucket A bucket is a container for storing objects in a compartment within a namespace. A bucket is associated with a single compartment.
 // The compartment has policies that indicate what actions a user can perform on a bucket and all the objects in the bucket. For more
-// information, see Managing Buckets (https://docs.us-phoenix-1.oraclecloud.com/Content/Object/Tasks/managingbuckets.htm).
-// To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized,
-// talk to an administrator. If you're an administrator who needs to write policies to give users access, see
-// Getting Started with Policies (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/policygetstarted.htm).
+// information, see Managing Buckets (https://docs.cloud.oracle.com/Content/Object/Tasks/managingbuckets.htm).
+// To use any of the API operations, you must be authorized in an IAM policy. If you are not authorized,
+// talk to an administrator. If you are an administrator who needs to write policies to give users access, see
+// Getting Started with Policies (https://docs.cloud.oracle.com/Content/Identity/Concepts/policygetstarted.htm).
 type Bucket struct {
 
-	// The namespace in which the bucket lives.
+	// The Object Storage namespace in which the bucket lives.
 	Namespace *string `mandatory:"true" json:"namespace"`
 
 	// The name of the bucket. Avoid entering confidential information.
@@ -39,7 +39,7 @@ type Bucket struct {
 	// The date and time the bucket was created, as described in RFC 2616 (https://tools.ietf.org/rfc/rfc2616), section 14.29.
 	TimeCreated *common.SDKTime `mandatory:"true" json:"timeCreated"`
 
-	// The entity tag for the bucket.
+	// The entity tag (ETag) for the bucket.
 	Etag *string `mandatory:"true" json:"etag"`
 
 	// The type of public access enabled on this bucket.
@@ -49,21 +49,35 @@ type Bucket struct {
 	// bucket, public access is allowed for the `GetObject` and `HeadObject` operations.
 	PublicAccessType BucketPublicAccessTypeEnum `mandatory:"false" json:"publicAccessType,omitempty"`
 
-	// The type of storage tier of this bucket.
-	// A bucket is set to 'Standard' tier by default, which means the bucket will be put in the standard storage tier.
-	// When 'Archive' tier type is set explicitly, the bucket is put in the archive storage tier. The 'storageTier'
-	// property is immutable after bucket is created.
+	// The storage tier type assigned to the bucket. A bucket is set to 'Standard' tier by default, which means
+	// objects uploaded or copied to the bucket will be in the standard storage tier. When the 'Archive' tier type
+	// is set explicitly for a bucket, objects uploaded or copied to the bucket will be stored in archive storage.
+	// The 'storageTier' property is immutable after bucket is created.
 	StorageTier BucketStorageTierEnum `mandatory:"false" json:"storageTier,omitempty"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no predefined name, type, or namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
+
+	// The OCID of a KMS key id used to call KMS to generate data key or decrypt the encrypted data key.
+	KmsKeyId *string `mandatory:"false" json:"kmsKeyId"`
+
+	// The entity tag (ETag) for the live object lifecycle policy on the bucket.
+	ObjectLifecyclePolicyEtag *string `mandatory:"false" json:"objectLifecyclePolicyEtag"`
+
+	// The approximate number of objects in the bucket. Count statistics are reported periodically. You will see a
+	// lag between what is displayed and the actual object count.
+	ApproximateCount *int64 `mandatory:"false" json:"approximateCount"`
+
+	// The approximate total size in bytes of all objects in the bucket. Size statistics are reported periodically. You will
+	// see a lag between what is displayed and the actual size of the bucket.
+	ApproximateSize *int64 `mandatory:"false" json:"approximateSize"`
 }
 
 func (m Bucket) String() string {
@@ -73,7 +87,7 @@ func (m Bucket) String() string {
 // BucketPublicAccessTypeEnum Enum with underlying type: string
 type BucketPublicAccessTypeEnum string
 
-// Set of constants representing the allowable values for BucketPublicAccessType
+// Set of constants representing the allowable values for BucketPublicAccessTypeEnum
 const (
 	BucketPublicAccessTypeNopublicaccess        BucketPublicAccessTypeEnum = "NoPublicAccess"
 	BucketPublicAccessTypeObjectread            BucketPublicAccessTypeEnum = "ObjectRead"
@@ -86,7 +100,7 @@ var mappingBucketPublicAccessType = map[string]BucketPublicAccessTypeEnum{
 	"ObjectReadWithoutList": BucketPublicAccessTypeObjectreadwithoutlist,
 }
 
-// GetBucketPublicAccessTypeEnumValues Enumerates the set of values for BucketPublicAccessType
+// GetBucketPublicAccessTypeEnumValues Enumerates the set of values for BucketPublicAccessTypeEnum
 func GetBucketPublicAccessTypeEnumValues() []BucketPublicAccessTypeEnum {
 	values := make([]BucketPublicAccessTypeEnum, 0)
 	for _, v := range mappingBucketPublicAccessType {
@@ -98,7 +112,7 @@ func GetBucketPublicAccessTypeEnumValues() []BucketPublicAccessTypeEnum {
 // BucketStorageTierEnum Enum with underlying type: string
 type BucketStorageTierEnum string
 
-// Set of constants representing the allowable values for BucketStorageTier
+// Set of constants representing the allowable values for BucketStorageTierEnum
 const (
 	BucketStorageTierStandard BucketStorageTierEnum = "Standard"
 	BucketStorageTierArchive  BucketStorageTierEnum = "Archive"
@@ -109,7 +123,7 @@ var mappingBucketStorageTier = map[string]BucketStorageTierEnum{
 	"Archive":  BucketStorageTierArchive,
 }
 
-// GetBucketStorageTierEnumValues Enumerates the set of values for BucketStorageTier
+// GetBucketStorageTierEnumValues Enumerates the set of values for BucketStorageTierEnum
 func GetBucketStorageTierEnumValues() []BucketStorageTierEnum {
 	values := make([]BucketStorageTierEnum, 0)
 	for _, v := range mappingBucketStorageTier {

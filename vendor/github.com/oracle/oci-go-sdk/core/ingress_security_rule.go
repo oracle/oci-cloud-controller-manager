@@ -18,21 +18,25 @@ type IngressSecurityRule struct {
 	// The transport protocol. Specify either `all` or an IPv4 protocol number as
 	// defined in
 	// Protocol Numbers (http://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml).
-	// Options are supported only for ICMP ("1"), TCP ("6"), and UDP ("17").
+	// Options are supported only for ICMP ("1"), TCP ("6"), UDP ("17"), and ICMPv6 ("58").
 	Protocol *string `mandatory:"true" json:"protocol"`
 
-	// The source service cidrBlock or source IP address range in CIDR notation for the ingress rule. This is the
-	// range of IP addresses that a packet coming into the instance can come from.
-	// Examples: `10.12.0.0/16`
-	//           `oci-phx-objectstorage`
+	// Conceptually, this is the range of IP addresses that a packet coming into the instance
+	// can come from.
+	// Allowed values:
+	//   * IP address range in CIDR notation. For example: `192.168.1.0/24` or `2001:0db8:0123:45::/56`
+	//   * The `cidrBlock` value for a Service, if you're
+	//     setting up a security list rule for traffic coming from a particular `Service` through
+	//     a service gateway. For example: `oci-phx-objectstorage`.
 	Source *string `mandatory:"true" json:"source"`
 
-	// Optional and valid only for ICMP. Use to specify a particular ICMP type and code
-	// as defined in
-	// ICMP Parameters (http://www.iana.org/assignments/icmp-parameters/icmp-parameters.xhtml).
-	// If you specify ICMP as the protocol but omit this object, then all ICMP types and
+	// Optional and valid only for ICMP and ICMPv6. Use to specify a particular ICMP type and code
+	// as defined in:
+	// * ICMP Parameters (http://www.iana.org/assignments/icmp-parameters/icmp-parameters.xhtml)
+	// * ICMPv6 Parameters (https://www.iana.org/assignments/icmpv6-parameters/icmpv6-parameters.xhtml)
+	// If you specify ICMP or ICMPv6 as the protocol but omit this object, then all ICMP types and
 	// codes are allowed. If you do provide this object, the type is required and the code is optional.
-	// To enable MTU negotiation for ingress internet traffic, make sure to allow type 3 ("Destination
+	// To enable MTU negotiation for ingress internet traffic via IPv4, make sure to allow type 3 ("Destination
 	// Unreachable") code 4 ("Fragmentation Needed and Don't Fragment was Set"). If you need to specify
 	// multiple codes for a single type, create a separate security list rule for each.
 	IcmpOptions *IcmpOptions `mandatory:"false" json:"icmpOptions"`
@@ -44,9 +48,11 @@ type IngressSecurityRule struct {
 	// and a corresponding rule is not necessary for bidirectional traffic.
 	IsStateless *bool `mandatory:"false" json:"isStateless"`
 
-	// Type of source for IngressSecurityRule. SERVICE_CIDR_BLOCK should be used if source is a service cidrBlock.
-	// CIDR_BLOCK should be used if source is IP address range in CIDR notation. It defaults to CIDR_BLOCK, if
-	// not specified.
+	// Type of source for the rule. The default is `CIDR_BLOCK`.
+	//   * `CIDR_BLOCK`: If the rule's `source` is an IP address range in CIDR notation.
+	//   * `SERVICE_CIDR_BLOCK`: If the rule's `source` is the `cidrBlock` value for a
+	//     Service (the rule is for traffic coming from a
+	//     particular `Service` through a service gateway).
 	SourceType IngressSecurityRuleSourceTypeEnum `mandatory:"false" json:"sourceType,omitempty"`
 
 	// Optional and valid only for TCP. Use to specify particular destination ports for TCP rules.
@@ -65,7 +71,7 @@ func (m IngressSecurityRule) String() string {
 // IngressSecurityRuleSourceTypeEnum Enum with underlying type: string
 type IngressSecurityRuleSourceTypeEnum string
 
-// Set of constants representing the allowable values for IngressSecurityRuleSourceType
+// Set of constants representing the allowable values for IngressSecurityRuleSourceTypeEnum
 const (
 	IngressSecurityRuleSourceTypeCidrBlock        IngressSecurityRuleSourceTypeEnum = "CIDR_BLOCK"
 	IngressSecurityRuleSourceTypeServiceCidrBlock IngressSecurityRuleSourceTypeEnum = "SERVICE_CIDR_BLOCK"
@@ -76,7 +82,7 @@ var mappingIngressSecurityRuleSourceType = map[string]IngressSecurityRuleSourceT
 	"SERVICE_CIDR_BLOCK": IngressSecurityRuleSourceTypeServiceCidrBlock,
 }
 
-// GetIngressSecurityRuleSourceTypeEnumValues Enumerates the set of values for IngressSecurityRuleSourceType
+// GetIngressSecurityRuleSourceTypeEnumValues Enumerates the set of values for IngressSecurityRuleSourceTypeEnum
 func GetIngressSecurityRuleSourceTypeEnumValues() []IngressSecurityRuleSourceTypeEnum {
 	values := make([]IngressSecurityRuleSourceTypeEnum, 0)
 	for _, v := range mappingIngressSecurityRuleSourceType {

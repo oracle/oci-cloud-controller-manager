@@ -12,21 +12,34 @@ import (
 	"github.com/oracle/oci-go-sdk/common"
 )
 
-// Service Information about a service that is accessible through a service gateway.
+// Service An object that represents one or multiple Oracle services that you can enable for a
+// ServiceGateway. In the User Guide topic
+// Access to Oracle Services: Service Gateway (https://docs.cloud.oracle.com/Content/Network/Tasks/servicegateway.htm), the
+// term *service CIDR label* is used to refer to the string that represents the regional public
+// IP address ranges of the Oracle service or services covered by a given `Service` object. That
+// unique string is the value of the `Service` object's `cidrBlock` attribute.
 type Service struct {
 
-	// A string that represents the public endpoints for the service. When you set up a route rule
-	// to route traffic to the service gateway, use this value as the destination CIDR block for
-	// the rule. See RouteTable.
+	// A string that represents the regional public IP address ranges for the Oracle service or
+	// services covered by this `Service` object. Also known as the `Service` object's *service
+	// CIDR label*.
+	// When you set up a route rule to route traffic to the service gateway, use this value as the
+	// rule's destination. See RouteTable. Also, when you set up
+	// a security list rule to cover traffic with the service gateway, use the `cidrBlock` value
+	// as the rule's destination (for an egress rule) or the source (for an ingress rule).
+	// See SecurityList.
+	// Example: `oci-phx-objectstorage`
 	CidrBlock *string `mandatory:"true" json:"cidrBlock"`
 
-	// Description of the service.
+	// Description of the Oracle service or services covered by this `Service` object.
+	// Example: `OCI PHX Object Storage`
 	Description *string `mandatory:"true" json:"description"`
 
-	// The service's OCID (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/identifiers.htm).
+	// The `Service` object's OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm).
 	Id *string `mandatory:"true" json:"id"`
 
-	// Name of the service.
+	// Name of the `Service` object. This name can change and is not guaranteed to be unique.
+	// Example: `OCI PHX Object Storage`
 	Name *string `mandatory:"true" json:"name"`
 }
 

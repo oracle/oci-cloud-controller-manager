@@ -3,7 +3,9 @@
 
 // Container Engine for Kubernetes API
 //
-// Container Engine for Kubernetes API
+// API for the Container Engine for Kubernetes service. Use this API to build, deploy,
+// and manage cloud-native applications. For more information, see
+// Overview of Container Engine for Kubernetes (https://docs.cloud.oracle.com/iaas/Content/ContEng/Concepts/contengoverview.htm).
 //
 
 package containerengine
@@ -47,7 +49,7 @@ func (m WorkRequestSummary) String() string {
 // WorkRequestSummaryOperationTypeEnum Enum with underlying type: string
 type WorkRequestSummaryOperationTypeEnum string
 
-// Set of constants representing the allowable values for WorkRequestSummaryOperationType
+// Set of constants representing the allowable values for WorkRequestSummaryOperationTypeEnum
 const (
 	WorkRequestSummaryOperationTypeClusterCreate     WorkRequestSummaryOperationTypeEnum = "CLUSTER_CREATE"
 	WorkRequestSummaryOperationTypeClusterUpdate     WorkRequestSummaryOperationTypeEnum = "CLUSTER_UPDATE"
@@ -68,7 +70,7 @@ var mappingWorkRequestSummaryOperationType = map[string]WorkRequestSummaryOperat
 	"WORKREQUEST_CANCEL": WorkRequestSummaryOperationTypeWorkrequestCancel,
 }
 
-// GetWorkRequestSummaryOperationTypeEnumValues Enumerates the set of values for WorkRequestSummaryOperationType
+// GetWorkRequestSummaryOperationTypeEnumValues Enumerates the set of values for WorkRequestSummaryOperationTypeEnum
 func GetWorkRequestSummaryOperationTypeEnumValues() []WorkRequestSummaryOperationTypeEnum {
 	values := make([]WorkRequestSummaryOperationTypeEnum, 0)
 	for _, v := range mappingWorkRequestSummaryOperationType {
@@ -80,7 +82,7 @@ func GetWorkRequestSummaryOperationTypeEnumValues() []WorkRequestSummaryOperatio
 // WorkRequestSummaryStatusEnum Enum with underlying type: string
 type WorkRequestSummaryStatusEnum string
 
-// Set of constants representing the allowable values for WorkRequestSummaryStatus
+// Set of constants representing the allowable values for WorkRequestSummaryStatusEnum
 const (
 	WorkRequestSummaryStatusAccepted   WorkRequestSummaryStatusEnum = "ACCEPTED"
 	WorkRequestSummaryStatusInProgress WorkRequestSummaryStatusEnum = "IN_PROGRESS"
@@ -99,7 +101,7 @@ var mappingWorkRequestSummaryStatus = map[string]WorkRequestSummaryStatusEnum{
 	"CANCELED":    WorkRequestSummaryStatusCanceled,
 }
 
-// GetWorkRequestSummaryStatusEnumValues Enumerates the set of values for WorkRequestSummaryStatus
+// GetWorkRequestSummaryStatusEnumValues Enumerates the set of values for WorkRequestSummaryStatusEnum
 func GetWorkRequestSummaryStatusEnumValues() []WorkRequestSummaryStatusEnum {
 	values := make([]WorkRequestSummaryStatusEnum, 0)
 	for _, v := range mappingWorkRequestSummaryStatus {

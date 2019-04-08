@@ -56,6 +56,9 @@ type UpdateVirtualCircuitDetails struct {
 	// To be updated only by the provider.
 	ProviderState UpdateVirtualCircuitDetailsProviderStateEnum `mandatory:"false" json:"providerState,omitempty"`
 
+	// The service key name offered by the provider (if the customer is connecting via a provider).
+	ProviderServiceKeyName *string `mandatory:"false" json:"providerServiceKeyName"`
+
 	// Provider-supplied reference information about this virtual circuit.
 	// Relevant only if the customer is using FastConnect via a provider.
 	// To be updated only by the provider.
@@ -69,7 +72,7 @@ func (m UpdateVirtualCircuitDetails) String() string {
 // UpdateVirtualCircuitDetailsProviderStateEnum Enum with underlying type: string
 type UpdateVirtualCircuitDetailsProviderStateEnum string
 
-// Set of constants representing the allowable values for UpdateVirtualCircuitDetailsProviderState
+// Set of constants representing the allowable values for UpdateVirtualCircuitDetailsProviderStateEnum
 const (
 	UpdateVirtualCircuitDetailsProviderStateActive   UpdateVirtualCircuitDetailsProviderStateEnum = "ACTIVE"
 	UpdateVirtualCircuitDetailsProviderStateInactive UpdateVirtualCircuitDetailsProviderStateEnum = "INACTIVE"
@@ -80,7 +83,7 @@ var mappingUpdateVirtualCircuitDetailsProviderState = map[string]UpdateVirtualCi
 	"INACTIVE": UpdateVirtualCircuitDetailsProviderStateInactive,
 }
 
-// GetUpdateVirtualCircuitDetailsProviderStateEnumValues Enumerates the set of values for UpdateVirtualCircuitDetailsProviderState
+// GetUpdateVirtualCircuitDetailsProviderStateEnumValues Enumerates the set of values for UpdateVirtualCircuitDetailsProviderStateEnum
 func GetUpdateVirtualCircuitDetailsProviderStateEnumValues() []UpdateVirtualCircuitDetailsProviderStateEnum {
 	values := make([]UpdateVirtualCircuitDetailsProviderStateEnum, 0)
 	for _, v := range mappingUpdateVirtualCircuitDetailsProviderState {

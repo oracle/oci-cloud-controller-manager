@@ -16,7 +16,7 @@ import (
 type UpdateInstanceDetails struct {
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -27,9 +27,37 @@ type UpdateInstanceDetails struct {
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
 	// predefined name, type, or namespace. For more information, see
-	// Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
+
+	// Instance agent configuration options to choose for updating the instance
+	AgentConfig *UpdateInstanceAgentConfigDetails `mandatory:"false" json:"agentConfig"`
+
+	// Custom metadata key/value string pairs that you provide. Any set of key/value pairs
+	// provided here will completely replace the current set of key/value pairs in the 'metadata'
+	// field on the instance.
+	// Both the 'user_data' and 'ssh_authorized_keys' fields cannot be changed after an instance
+	// has launched. Any request which updates, removes, or adds either of these fields will be
+	// rejected. You must provide the same values for 'user_data' and 'ssh_authorized_keys' that
+	// already exist on the instance.
+	Metadata map[string]string `mandatory:"false" json:"metadata"`
+
+	// Additional metadata key/value pairs that you provide. They serve the same purpose and
+	// functionality as fields in the 'metadata' object.
+	// They are distinguished from 'metadata' fields in that these can be nested JSON objects
+	// (whereas 'metadata' fields are string/string maps only).
+	// Both the 'user_data' and 'ssh_authorized_keys' fields cannot be changed after an instance
+	// has launched. Any request which updates, removes, or adds either of these fields will be
+	// rejected. You must provide the same values for 'user_data' and 'ssh_authorized_keys' that
+	// already exist on the instance.
+	ExtendedMetadata map[string]interface{} `mandatory:"false" json:"extendedMetadata"`
+
+	// The shape of the instance. The shape determines the number of CPUs and the amount of memory
+	// allocated to the instance. You can enumerate all available shapes by calling
+	// ListShapes.
+	// Example: `VM.Standard1.1`
+	Shape *string `mandatory:"false" json:"shape"`
 }
 
 func (m UpdateInstanceDetails) String() string {

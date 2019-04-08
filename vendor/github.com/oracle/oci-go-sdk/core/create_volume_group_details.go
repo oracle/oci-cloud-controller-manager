@@ -16,18 +16,18 @@ import (
 // CreateVolumeGroupDetails The representation of CreateVolumeGroupDetails
 type CreateVolumeGroupDetails struct {
 
-	// The Availability Domain of the volume group.
+	// The availability domain of the volume group.
 	AvailabilityDomain *string `mandatory:"true" json:"availabilityDomain"`
 
 	// The OCID of the compartment that contains the volume group.
 	CompartmentId *string `mandatory:"true" json:"compartmentId"`
 
 	// Specifies the volume group source details for a new volume group. The volume source is either another a list of
-	// volume ids in the same Availability Domain, another volume group or a volume group backup.
+	// volume ids in the same availability domain, another volume group or a volume group backup.
 	SourceDetails VolumeGroupSourceDetails `mandatory:"true" json:"sourceDetails"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -36,7 +36,7 @@ type CreateVolumeGroupDetails struct {
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
 	// predefined name, type, or namespace. For more information, see
-	// Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 }
@@ -69,6 +69,10 @@ func (m *CreateVolumeGroupDetails) UnmarshalJSON(data []byte) (e error) {
 	if e != nil {
 		return
 	}
-	m.SourceDetails = nn.(VolumeGroupSourceDetails)
+	if nn != nil {
+		m.SourceDetails = nn.(VolumeGroupSourceDetails)
+	} else {
+		m.SourceDetails = nil
+	}
 	return
 }
