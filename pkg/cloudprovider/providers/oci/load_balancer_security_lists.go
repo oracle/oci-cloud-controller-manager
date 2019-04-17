@@ -239,7 +239,7 @@ func (s *defaultSecurityListManager) Delete(ctx context.Context, lbSubnets []*co
 		return err
 	}
 
-	return s.updateBackendRules(ctx, noSubnets, backendSubnets, nil, ports)
+	return s.updateBackendRules(ctx, noSubnets, backendSubnets, &ports, ports)
 }
 
 // frontendSecurityListManager manages only the ingress security list rules required for
@@ -408,22 +408,15 @@ func getNodeIngressRules(
 			ingressRules = append(ingressRules, rule)
 			desiredHealthChecker.Delete(*rule.Source)
 			continue
-		}
-
-		inUse, err := healthCheckPortInUse(serviceLister, int32(desiredPorts.HealthCheckerPort))
-		if err != nil {
-			// Unable to determine if this port is in use by another service, so I guess
-			// we better err on the safe side and keep the rule.
-			logger.Errorf("failed to determine if port: %d is still in use: %v", desiredPorts.HealthCheckerPort, err)
-			ingressRules = append(ingressRules, rule)
-			continue
-		}
-		if inUse {
-			// This rule is no longer needed for this service, but is still used
-			// by another service, so we must still keep it.
-			logger.Infof("Port %d still in use by another service.", desiredPorts.HealthCheckerPort)
-			ingressRules = append(ingressRules, rule)
-			continue
+		} else if *r.Max == desiredPorts.HealthCheckerPort {
+			inUse, err := healthCheckPortInUse(serviceLister, int32(desiredPorts.HealthCheckerPort))
+			if err != nil {
+				logger.Errorf("failed to determine if port: %d is still in use: %v", desiredPorts.HealthCheckerPort, err)
+				ingressRules = append(ingressRules, rule)
+			} else if inUse {
+				logger.Infof("Port %d still in use by another service.", desiredPorts.HealthCheckerPort)
+				ingressRules = append(ingressRules, rule)
+			}
 		}
 
 		// else the actual cidr no longer exists so we don't need to do
