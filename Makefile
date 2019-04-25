@@ -59,7 +59,7 @@ build-dirs:
 
 .PHONY: oci-cloud-controller-manager
 oci-cloud-controller-manager: build-dirs
-	@GOOS=$(GOOS) GOARCH=$(ARCH) go build                          \
+	@GOOS=$(GOOS) GOARCH=$(ARCH) CGO_ENABLED=0 go build            \
 	  -o dist/oci-cloud-controller-manager                         \
 	  -installsuffix "static"                                      \
 	  -ldflags "-X main.version=$(VERSION) -X main.build=$(BUILD)" \
@@ -132,7 +132,7 @@ run-volume-provisioner-dev:
 	    -v=4
 
 .PHONY: image
-image: build
+image:
 	@docker build \
 		-t $(IMAGE):$(VERSION) .
 
