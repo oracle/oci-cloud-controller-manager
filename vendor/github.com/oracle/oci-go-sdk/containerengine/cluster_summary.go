@@ -3,7 +3,9 @@
 
 // Container Engine for Kubernetes API
 //
-// Container Engine for Kubernetes API
+// API for the Container Engine for Kubernetes service. Use this API to build, deploy,
+// and manage cloud-native applications. For more information, see
+// Overview of Container Engine for Kubernetes (https://docs.cloud.oracle.com/iaas/Content/ContEng/Concepts/contengoverview.htm).
 //
 
 package containerengine
@@ -56,7 +58,7 @@ func (m ClusterSummary) String() string {
 // ClusterSummaryLifecycleStateEnum Enum with underlying type: string
 type ClusterSummaryLifecycleStateEnum string
 
-// Set of constants representing the allowable values for ClusterSummaryLifecycleState
+// Set of constants representing the allowable values for ClusterSummaryLifecycleStateEnum
 const (
 	ClusterSummaryLifecycleStateCreating ClusterSummaryLifecycleStateEnum = "CREATING"
 	ClusterSummaryLifecycleStateActive   ClusterSummaryLifecycleStateEnum = "ACTIVE"
@@ -75,7 +77,7 @@ var mappingClusterSummaryLifecycleState = map[string]ClusterSummaryLifecycleStat
 	"UPDATING": ClusterSummaryLifecycleStateUpdating,
 }
 
-// GetClusterSummaryLifecycleStateEnumValues Enumerates the set of values for ClusterSummaryLifecycleState
+// GetClusterSummaryLifecycleStateEnumValues Enumerates the set of values for ClusterSummaryLifecycleStateEnum
 func GetClusterSummaryLifecycleStateEnumValues() []ClusterSummaryLifecycleStateEnum {
 	values := make([]ClusterSummaryLifecycleStateEnum, 0)
 	for _, v := range mappingClusterSummaryLifecycleState {

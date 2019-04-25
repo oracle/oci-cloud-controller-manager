@@ -10,14 +10,16 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"github.com/oracle/oci-go-sdk/common"
 	"net/http"
 	"os"
 	"strings"
 	"sync"
+	"time"
+
+	"github.com/oracle/oci-go-sdk/common"
 )
 
-// federationClient is a client to retrieve the security token for an instance principal necessary to sign a request.
+// federationClient is a client to retrieve the security token necessary to sign a request.
 // It also provides the private key whose corresponding public key is used to retrieve the security token.
 type federationClient interface {
 	PrivateKey() (*rsa.PrivateKey, error)
@@ -33,17 +35,58 @@ type x509FederationClient struct {
 	securityToken                     securityToken
 	authClient                        *common.BaseClient
 	mux                               sync.Mutex
+	skipTenancyValidation             bool
+	tokenPurpose                      string
 }
 
-func newX509FederationClient(region common.Region, tenancyID string, leafCertificateRetriever x509CertificateRetriever, intermediateCertificateRetrievers []x509CertificateRetriever) federationClient {
+func newX509FederationClientWithPurpose(region common.Region, tenancyID string, leafCertificateRetriever x509CertificateRetriever, intermediateCertificateRetrievers []x509CertificateRetriever,
+	skipTenancyValidation bool, modifier dispatcherModifier, purpose string) (federationClient, error) {
 	client := &x509FederationClient{
 		tenancyID:                         tenancyID,
 		leafCertificateRetriever:          leafCertificateRetriever,
 		intermediateCertificateRetrievers: intermediateCertificateRetrievers,
+		skipTenancyValidation:             skipTenancyValidation,
+		tokenPurpose:                      purpose,
 	}
 	client.sessionKeySupplier = newSessionKeySupplier()
-	client.authClient = newAuthClient(region, client)
-	return client
+	authClient := newAuthClient(region, client)
+
+	var err error
+
+	if authClient.HTTPClient, err = modifier.Modify(authClient.HTTPClient); err != nil {
+		err = fmt.Errorf("failed to modify client: %s", err.Error())
+		return nil, err
+	}
+
+	client.authClient = authClient
+	return client, nil
+}
+
+func newX509FederationClientWithCerts(region common.Region, tenancyID string, leafCertificate, leafPassphrase, leafPrivateKey []byte,
+	intermediateCertificates [][]byte, modifier dispatcherModifier, purpose string) (federationClient, error) {
+	intermediateRetrievers := make([]x509CertificateRetriever, len(intermediateCertificates))
+	for i, c := range intermediateCertificates {
+		intermediateRetrievers[i] = &staticCertificateRetriever{Passphrase: []byte(""), CertificatePem: c, PrivateKeyPem: nil}
+	}
+
+	client := &x509FederationClient{
+		tenancyID:                         tenancyID,
+		leafCertificateRetriever:          &staticCertificateRetriever{Passphrase: leafPassphrase, CertificatePem: leafCertificate, PrivateKeyPem: leafPrivateKey},
+		intermediateCertificateRetrievers: intermediateRetrievers,
+		tokenPurpose:                      purpose,
+	}
+	client.sessionKeySupplier = newSessionKeySupplier()
+	authClient := newAuthClient(region, client)
+
+	var err error
+
+	if authClient.HTTPClient, err = modifier.Modify(authClient.HTTPClient); err != nil {
+		err = fmt.Errorf("failed to modify client: %s", err.Error())
+		return nil, err
+	}
+
+	client.authClient = authClient
+	return client, nil
 }
 
 var (
@@ -57,7 +100,7 @@ func newAuthClient(region common.Region, provider common.KeyProvider) *common.Ba
 	if regionURL, ok := os.LookupEnv("OCI_SDK_AUTH_CLIENT_REGION_URL"); ok {
 		client.Host = regionURL
 	} else {
-		client.Host = fmt.Sprintf(common.DefaultHostURLTemplate, "auth", string(region))
+		client.Host = region.Endpoint("auth")
 	}
 	client.BasePath = "v1/x509"
 	return &client
@@ -72,7 +115,12 @@ func (c *x509FederationClient) KeyID() (string, error) {
 
 // For authClient to sign requests to X509 Federation Endpoint
 func (c *x509FederationClient) PrivateRSAKey() (*rsa.PrivateKey, error) {
-	return c.leafCertificateRetriever.PrivateKey(), nil
+	key := c.leafCertificateRetriever.PrivateKey()
+	if key == nil {
+		return nil, fmt.Errorf("can not read private key from leaf certificate. Likely an error in the metadata service")
+	}
+
+	return key, nil
 }
 
 func (c *x509FederationClient) PrivateKey() (*rsa.PrivateKey, error) {
@@ -113,10 +161,12 @@ func (c *x509FederationClient) renewSecurityToken() (err error) {
 		return fmt.Errorf("failed to refresh leaf certificate: %s", err.Error())
 	}
 
-	updatedTenancyID := extractTenancyIDFromCertificate(c.leafCertificateRetriever.Certificate())
-	if c.tenancyID != updatedTenancyID {
-		err = fmt.Errorf("unexpected update of tenancy OCID in the leaf certificate. Previous tenancy: %s, Updated: %s", c.tenancyID, updatedTenancyID)
-		return
+	if !c.skipTenancyValidation {
+		updatedTenancyID := extractTenancyIDFromCertificate(c.leafCertificateRetriever.Certificate())
+		if c.tenancyID != updatedTenancyID {
+			err = fmt.Errorf("unexpected update of tenancy OCID in the leaf certificate. Previous tenancy: %s, Updated: %s", c.tenancyID, updatedTenancyID)
+			return
+		}
 	}
 
 	for _, retriever := range c.intermediateCertificateRetrievers {
@@ -125,9 +175,11 @@ func (c *x509FederationClient) renewSecurityToken() (err error) {
 		}
 	}
 
+	common.Logf("Renewing security token at: %v\n", time.Now().Format("15:04:05.000"))
 	if c.securityToken, err = c.getSecurityToken(); err != nil {
 		return fmt.Errorf("failed to get security token: %s", err.Error())
 	}
+	common.Logf("Security token renewed at: %v\n", time.Now().Format("15:04:05.000"))
 
 	return nil
 }
@@ -152,7 +204,7 @@ func (c *x509FederationClient) getSecurityToken() (securityToken, error) {
 		return nil, fmt.Errorf("failed to unmarshal the response: %s", err.Error())
 	}
 
-	return newInstancePrincipalToken(response.Token.Token)
+	return newToken(response.Token.Token)
 }
 
 type x509FederationRequest struct {
@@ -164,6 +216,7 @@ type X509FederationDetails struct {
 	Certificate              string   `mandatory:"true" json:"certificate,omitempty"`
 	PublicKey                string   `mandatory:"true" json:"publicKey,omitempty"`
 	IntermediateCertificates []string `mandatory:"false" json:"intermediateCertificates,omitempty"`
+	Purpose                  string   `mandatory:"true" json:"purpose,omitempty"`
 }
 
 type x509FederationResponse struct {
@@ -187,6 +240,7 @@ func (c *x509FederationClient) makeX509FederationRequest() *x509FederationReques
 		Certificate:              certificate,
 		PublicKey:                publicKey,
 		IntermediateCertificates: intermediateCertificates,
+		Purpose:                  c.tokenPurpose,
 	}
 	return &x509FederationRequest{details}
 }
@@ -271,23 +325,23 @@ type securityToken interface {
 	Valid() bool
 }
 
-type instancePrincipalToken struct {
+type token struct {
 	tokenString string
 	jwtToken    *jwtToken
 }
 
-func newInstancePrincipalToken(tokenString string) (newToken securityToken, err error) {
+func newToken(tokenString string) (newToken securityToken, err error) {
 	var jwtToken *jwtToken
 	if jwtToken, err = parseJwt(tokenString); err != nil {
 		return nil, fmt.Errorf("failed to parse the token string \"%s\": %s", tokenString, err.Error())
 	}
-	return &instancePrincipalToken{tokenString, jwtToken}, nil
+	return &token{tokenString, jwtToken}, nil
 }
 
-func (t *instancePrincipalToken) String() string {
+func (t *token) String() string {
 	return t.tokenString
 }
 
-func (t *instancePrincipalToken) Valid() bool {
+func (t *token) Valid() bool {
 	return !t.jwtToken.expired()
 }

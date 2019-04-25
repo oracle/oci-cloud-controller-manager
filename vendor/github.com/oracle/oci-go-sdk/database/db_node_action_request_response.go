@@ -11,7 +11,7 @@ import (
 // DbNodeActionRequest wrapper for the DbNodeAction operation
 type DbNodeActionRequest struct {
 
-	// The database node OCID (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/identifiers.htm).
+	// The database node OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm).
 	DbNodeId *string `mandatory:"true" contributesTo:"path" name:"dbNodeId"`
 
 	// The action to perform on the DB Node.
@@ -81,7 +81,7 @@ func (response DbNodeActionResponse) HTTPResponse() *http.Response {
 // DbNodeActionActionEnum Enum with underlying type: string
 type DbNodeActionActionEnum string
 
-// Set of constants representing the allowable values for DbNodeActionAction
+// Set of constants representing the allowable values for DbNodeActionActionEnum
 const (
 	DbNodeActionActionStop      DbNodeActionActionEnum = "STOP"
 	DbNodeActionActionStart     DbNodeActionActionEnum = "START"
@@ -96,7 +96,7 @@ var mappingDbNodeActionAction = map[string]DbNodeActionActionEnum{
 	"RESET":     DbNodeActionActionReset,
 }
 
-// GetDbNodeActionActionEnumValues Enumerates the set of values for DbNodeActionAction
+// GetDbNodeActionActionEnumValues Enumerates the set of values for DbNodeActionActionEnum
 func GetDbNodeActionActionEnumValues() []DbNodeActionActionEnum {
 	values := make([]DbNodeActionActionEnum, 0)
 	for _, v := range mappingDbNodeActionAction {

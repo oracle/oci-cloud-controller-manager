@@ -453,7 +453,7 @@
   version = "v1.0.0-rc1"
 
 [[projects]]
-  digest = "1:d28a84a6cb49b4b1e2c867fbdc9c10d7f9998d14727a5b233f18256c22b19d20"
+  digest = "1:af9c07275dfd15c3ea3123615bd3dd56a598ae66f7590808e2ae7e8d42cc732c"
   name = "github.com/oracle/oci-go-sdk"
   packages = [
     "common",
@@ -464,8 +464,8 @@
     "loadbalancer",
   ]
   pruneopts = "N"
-  revision = "23237533ffdc47ef672c697822c2741d23208822"
-  version = "v2.0.0"
+  revision = "dec5beed03d47c2919ba15fd898c23f23202f273"
+  source = "bitbucket.oci.oraclecorp.com/sdk/oci-go-sdk"
 
 [[projects]]
   digest = "1:08cdd8a6c154c08dd1978ccbcc1bbb4db6efc8bf8f42533e97dda153499f1a83"
@@ -1264,6 +1264,7 @@
     "pkg/client/clientset_generated/internalclientset/typed/scheduling/internalversion",
     "pkg/client/clientset_generated/internalclientset/typed/settings/internalversion",
     "pkg/client/clientset_generated/internalclientset/typed/storage/internalversion",
+    "pkg/client/conditions",
     "pkg/client/leaderelectionconfig",
     "pkg/client/metrics/prometheus",
     "pkg/cloudprovider",
@@ -1370,6 +1371,7 @@
     "github.com/oracle/oci-go-sdk/filestorage",
     "github.com/oracle/oci-go-sdk/identity",
     "github.com/oracle/oci-go-sdk/loadbalancer",
+    "github.com/pborman/uuid",
     "github.com/pkg/errors",
     "github.com/prometheus/client_golang/prometheus",
     "github.com/spf13/pflag",
@@ -1378,10 +1380,12 @@
     "go.uber.org/zap/zaptest",
     "gopkg.in/natefinch/lumberjack.v2",
     "gopkg.in/yaml.v2",
+    "k8s.io/api/apps/v1",
     "k8s.io/api/batch/v1",
     "k8s.io/api/core/v1",
     "k8s.io/api/extensions/v1beta1",
     "k8s.io/api/policy/v1beta1",
+    "k8s.io/api/storage/v1beta1",
     "k8s.io/apimachinery/pkg/api/errors",
     "k8s.io/apimachinery/pkg/api/resource",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
@@ -1402,9 +1406,13 @@
     "k8s.io/client-go/informers",
     "k8s.io/client-go/informers/core/v1",
     "k8s.io/client-go/kubernetes",
+    "k8s.io/client-go/kubernetes/scheme",
     "k8s.io/client-go/listers/core/v1",
     "k8s.io/client-go/tools/cache",
     "k8s.io/client-go/tools/clientcmd",
+    "k8s.io/client-go/tools/leaderelection",
+    "k8s.io/client-go/tools/leaderelection/resourcelock",
+    "k8s.io/client-go/tools/record",
     "k8s.io/client-go/util/flowcontrol",
     "k8s.io/client-go/util/retry",
     "k8s.io/kubernetes/cmd/cloud-controller-manager/app",
@@ -1416,6 +1424,7 @@
     "k8s.io/kubernetes/pkg/apis/core",
     "k8s.io/kubernetes/pkg/apis/extensions",
     "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset",
+    "k8s.io/kubernetes/pkg/client/conditions",
     "k8s.io/kubernetes/pkg/client/metrics/prometheus",
     "k8s.io/kubernetes/pkg/cloudprovider",
     "k8s.io/kubernetes/pkg/controller",
@@ -1424,6 +1433,7 @@
     "k8s.io/kubernetes/pkg/master/ports",
     "k8s.io/kubernetes/pkg/scheduler/algorithm/predicates",
     "k8s.io/kubernetes/pkg/scheduler/cache",
+    "k8s.io/kubernetes/pkg/util/pointer",
     "k8s.io/kubernetes/pkg/version/prometheus",
     "k8s.io/kubernetes/pkg/volume/util",
     "k8s.io/kubernetes/test/utils",

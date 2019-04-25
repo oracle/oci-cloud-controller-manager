@@ -25,7 +25,7 @@ func TestUrlBasedX509CertificateRetriever_BadCertificate(t *testing.T) {
 	}))
 	defer certServer.Close()
 
-	retriever := newURLBasedX509CertificateRetriever(certServer.URL, "", "")
+	retriever := newURLBasedX509CertificateRetriever(&http.Client{}, certServer.URL, "", "")
 	err := retriever.Refresh()
 
 	assert.Error(t, err)
@@ -37,7 +37,7 @@ func TestUrlBasedX509CertificateRetriever_RefreshWithoutPrivateKeyUrl(t *testing
 	}))
 	defer certServer.Close()
 
-	retriever := newURLBasedX509CertificateRetriever(certServer.URL, "", "")
+	retriever := newURLBasedX509CertificateRetriever(&http.Client{}, certServer.URL, "", "")
 	err := retriever.Refresh()
 
 	assert.NoError(t, err)
@@ -62,7 +62,7 @@ func TestUrlBasedX509CertificateRetriever_RefreshWithPrivateKeyUrl(t *testing.T)
 	}))
 	defer privateKeyServer.Close()
 
-	retriever := newURLBasedX509CertificateRetriever(certServer.URL, privateKeyServer.URL, "")
+	retriever := newURLBasedX509CertificateRetriever(&http.Client{}, certServer.URL, privateKeyServer.URL, "")
 	err := retriever.Refresh()
 
 	assert.NoError(t, err)
@@ -82,7 +82,7 @@ func TestUrlBasedX509CertificateRetriever_RefreshCertNotFound(t *testing.T) {
 	certServer := httptest.NewServer(http.NotFoundHandler())
 	defer certServer.Close()
 
-	retriever := newURLBasedX509CertificateRetriever(certServer.URL, "", "")
+	retriever := newURLBasedX509CertificateRetriever(&http.Client{}, certServer.URL, "", "")
 	err := retriever.Refresh()
 
 	assert.Error(t, err)
@@ -101,7 +101,7 @@ func TestUrlBasedX509CertificateRetriever_RefreshPrivateKeyNotFound(t *testing.T
 	privateKeyServer := httptest.NewServer(http.NotFoundHandler())
 	defer privateKeyServer.Close()
 
-	retriever := newURLBasedX509CertificateRetriever(certServer.URL, privateKeyServer.URL, "")
+	retriever := newURLBasedX509CertificateRetriever(&http.Client{}, certServer.URL, privateKeyServer.URL, "")
 	err := retriever.Refresh()
 
 	assert.Error(t, err)
@@ -119,7 +119,7 @@ func TestUrlBasedX509CertificateRetriever_RefreshCertInternalServerError(t *test
 	certServer := httptest.NewServer(http.HandlerFunc(internalServerError))
 	defer certServer.Close()
 
-	retriever := newURLBasedX509CertificateRetriever(certServer.URL, "", "")
+	retriever := newURLBasedX509CertificateRetriever(&http.Client{}, certServer.URL, "", "")
 	err := retriever.Refresh()
 
 	assert.Error(t, err)
@@ -138,7 +138,7 @@ func TestUrlBasedX509CertificateRetriever_RefreshPrivateKeyInternalServerError(t
 	privateKeyServer := httptest.NewServer(http.HandlerFunc(internalServerError))
 	defer privateKeyServer.Close()
 
-	retriever := newURLBasedX509CertificateRetriever(certServer.URL, privateKeyServer.URL, "")
+	retriever := newURLBasedX509CertificateRetriever(&http.Client{}, certServer.URL, privateKeyServer.URL, "")
 	err := retriever.Refresh()
 
 	assert.Error(t, err)
@@ -173,7 +173,7 @@ func TestUrlBasedX509CertificateRetriever_FailureAtomicity(t *testing.T) {
 	}))
 	defer privateKeyServer.Close()
 
-	retriever := newURLBasedX509CertificateRetriever(certServer.URL, privateKeyServer.URL, "")
+	retriever := newURLBasedX509CertificateRetriever(&http.Client{}, certServer.URL, privateKeyServer.URL, "")
 	err := retriever.Refresh()
 
 	assert.NoError(t, err)
@@ -220,4 +220,36 @@ func generateRandomCertificate() (privateKeyPem, certPem []byte) {
 	privateKeyPem = pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(privateKey)})
 	certPem = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: newCertBytes})
 	return
+}
+
+func TestStaticCertificateRetriever(t *testing.T) {
+	retriever := staticCertificateRetriever{
+		Passphrase:     []byte(""),
+		CertificatePem: []byte(leafCertPem),
+		PrivateKeyPem:  []byte(leafCertPrivateKeyPem),
+	}
+
+	err := retriever.Refresh()
+	assert.NoError(t, err)
+	key := retriever.PrivateKey()
+	assert.NotNil(t, key)
+	cert := retriever.Certificate()
+	assert.NotNil(t, cert)
+}
+
+func TestBadStaticCertificateRetriever(t *testing.T) {
+	retriever := staticCertificateRetriever{
+		Passphrase:     []byte(""),
+		CertificatePem: []byte(""),
+		PrivateKeyPem:  []byte(""),
+	}
+
+	err := retriever.Refresh()
+	assert.Error(t, err)
+
+	c := retriever.Certificate()
+	assert.Nil(t, c)
+
+	k := retriever.PrivateKey()
+	assert.Nil(t, k)
 }

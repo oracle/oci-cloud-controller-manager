@@ -143,7 +143,37 @@ The signer also allows more granular control on the headers used for signing. Fo
 	// Execute the request
 	c.Do(request)
 
-For more information on the signing algorithm refer to: https://docs.us-phoenix-1.oraclecloud.com/Content/API/Concepts/signingrequests.htm
+You can combine a custom signer with the exposed clients in the SDK.
+This allows you to add custom signed headers to the request. Following is an example:
+
+	//Create a provider of cryptographic keys
+	provider := common.DefaultConfigProvider()
+
+	//Create a client for the service you interested in
+	c, _ := identity.NewIdentityClientWithConfigurationProvider(provider)
+
+	//Define a custom header to be signed, and add it to the list of default headers
+	customHeader := "opc-my-token"
+	allHeaders := append(common.DefaultGenericHeaders(), customHeader)
+
+	//Overwrite the signer in your client to sign the new slice of headers
+	c.Signer = common.RequestSigner(provider, allHeaders, common.DefaultBodyHeaders())
+
+	//Set the value of the header. This can be done with an Interceptor
+	c.Interceptor = func(request *http.Request) error {
+		request.Header.Add(customHeader, "customvalue")
+		return nil
+	}
+
+	//Execute your operation as before
+	c.ListGroups(..)
+
+Bear in mind that some services have a white list of headers that it expects to be signed.
+Therefore, adding an arbitrary header can result in authentications errors.
+To see a runnable example, see https://github.com/oracle/oci-go-sdk/blob/master/example/example_identity_test.go
+
+
+For more information on the signing algorithm refer to: https://docs.cloud.oracle.com/Content/API/Concepts/signingrequests.htm
 
 Polymorphic json requests and responses
 
@@ -192,7 +222,15 @@ Logging and Debugging
 The SDK has a built-in logging mechanism used internally. The internal logging logic is used to record the raw http
 requests, responses and potential errors when (un)marshalling request and responses.
 
-To expose debugging logs, set the environment variable "OCI_GO_SDK_DEBUG" to "1", or some other non empty string.
+Built-in logging in the SDK is controlled via the environment variable "OCI_GO_SDK_DEBUG" and its contents. The below are possible values for the "OCI_GO_SDK_DEBUG" variable
+1. "info" or "i" enables all info logging messages
+2. "debug" or "d"  enables all debug and info logging messages
+3. "verbose" or "v" or "1" enables all verbose, debug and info logging messages
+4. "null" turns all logging messages off.
+
+If the value of the environment variable does not match any of the above then default logging level is "info".
+If the environment variable is not present then no logging messages are emitted.
+
 
 Retry
 

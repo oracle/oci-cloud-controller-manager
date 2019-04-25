@@ -17,23 +17,30 @@ type ListBootVolumeBackupsRequest struct {
 	// The OCID of the boot volume.
 	BootVolumeId *string `mandatory:"false" contributesTo:"query" name:"bootVolumeId"`
 
-	// The maximum number of items to return in a paginated "List" call.
-	// Example: `500`
+	// For list pagination. The maximum number of results per page, or items to return in a paginated
+	// "List" call. For important details about how pagination works, see
+	// List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
+	// Example: `50`
 	Limit *int `mandatory:"false" contributesTo:"query" name:"limit"`
 
-	// The value of the `opc-next-page` response header from the previous "List" call.
+	// For list pagination. The value of the `opc-next-page` response header from the previous "List"
+	// call. For important details about how pagination works, see
+	// List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	Page *string `mandatory:"false" contributesTo:"query" name:"page"`
 
 	// A filter to return only resources that match the given display name exactly.
 	DisplayName *string `mandatory:"false" contributesTo:"query" name:"displayName"`
 
+	// A filter to return only resources that originated from the given source boot volume backup.
+	SourceBootVolumeBackupId *string `mandatory:"false" contributesTo:"query" name:"sourceBootVolumeBackupId"`
+
 	// The field to sort by. You can provide one sort order (`sortOrder`). Default order for
 	// TIMECREATED is descending. Default order for DISPLAYNAME is ascending. The DISPLAYNAME
 	// sort order is case sensitive.
 	// **Note:** In general, some "List" operations (for example, `ListInstances`) let you
-	// optionally filter by Availability Domain if the scope of the resource type is within a
-	// single Availability Domain. If you call one of these "List" operations without specifying
-	// an Availability Domain, the resources are grouped by Availability Domain, then sorted.
+	// optionally filter by availability domain if the scope of the resource type is within a
+	// single availability domain. If you call one of these "List" operations without specifying
+	// an availability domain, the resources are grouped by availability domain, then sorted.
 	SortBy ListBootVolumeBackupsSortByEnum `mandatory:"false" contributesTo:"query" name:"sortBy" omitEmpty:"true"`
 
 	// The sort order to use, either ascending (`ASC`) or descending (`DESC`). The DISPLAYNAME sort order
@@ -75,9 +82,9 @@ type ListBootVolumeBackupsResponse struct {
 	// A list of []BootVolumeBackup instances
 	Items []BootVolumeBackup `presentIn:"body"`
 
-	// For pagination of a list of items. When paging through a list, if this header appears in the response,
-	// then a partial list might have been returned. Include this value as the `page` parameter for the
-	// subsequent GET request to get the next batch of items.
+	// For list pagination. When this header appears in the response, additional pages of
+	// results remain. For important details about how pagination works, see
+	// List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	OpcNextPage *string `presentIn:"header" name:"opc-next-page"`
 
 	// Unique Oracle-assigned identifier for the request. If you need to contact Oracle about
@@ -97,7 +104,7 @@ func (response ListBootVolumeBackupsResponse) HTTPResponse() *http.Response {
 // ListBootVolumeBackupsSortByEnum Enum with underlying type: string
 type ListBootVolumeBackupsSortByEnum string
 
-// Set of constants representing the allowable values for ListBootVolumeBackupsSortBy
+// Set of constants representing the allowable values for ListBootVolumeBackupsSortByEnum
 const (
 	ListBootVolumeBackupsSortByTimecreated ListBootVolumeBackupsSortByEnum = "TIMECREATED"
 	ListBootVolumeBackupsSortByDisplayname ListBootVolumeBackupsSortByEnum = "DISPLAYNAME"
@@ -108,7 +115,7 @@ var mappingListBootVolumeBackupsSortBy = map[string]ListBootVolumeBackupsSortByE
 	"DISPLAYNAME": ListBootVolumeBackupsSortByDisplayname,
 }
 
-// GetListBootVolumeBackupsSortByEnumValues Enumerates the set of values for ListBootVolumeBackupsSortBy
+// GetListBootVolumeBackupsSortByEnumValues Enumerates the set of values for ListBootVolumeBackupsSortByEnum
 func GetListBootVolumeBackupsSortByEnumValues() []ListBootVolumeBackupsSortByEnum {
 	values := make([]ListBootVolumeBackupsSortByEnum, 0)
 	for _, v := range mappingListBootVolumeBackupsSortBy {
@@ -120,7 +127,7 @@ func GetListBootVolumeBackupsSortByEnumValues() []ListBootVolumeBackupsSortByEnu
 // ListBootVolumeBackupsSortOrderEnum Enum with underlying type: string
 type ListBootVolumeBackupsSortOrderEnum string
 
-// Set of constants representing the allowable values for ListBootVolumeBackupsSortOrder
+// Set of constants representing the allowable values for ListBootVolumeBackupsSortOrderEnum
 const (
 	ListBootVolumeBackupsSortOrderAsc  ListBootVolumeBackupsSortOrderEnum = "ASC"
 	ListBootVolumeBackupsSortOrderDesc ListBootVolumeBackupsSortOrderEnum = "DESC"
@@ -131,7 +138,7 @@ var mappingListBootVolumeBackupsSortOrder = map[string]ListBootVolumeBackupsSort
 	"DESC": ListBootVolumeBackupsSortOrderDesc,
 }
 
-// GetListBootVolumeBackupsSortOrderEnumValues Enumerates the set of values for ListBootVolumeBackupsSortOrder
+// GetListBootVolumeBackupsSortOrderEnumValues Enumerates the set of values for ListBootVolumeBackupsSortOrderEnum
 func GetListBootVolumeBackupsSortOrderEnumValues() []ListBootVolumeBackupsSortOrderEnum {
 	values := make([]ListBootVolumeBackupsSortOrderEnum, 0)
 	for _, v := range mappingListBootVolumeBackupsSortOrder {

@@ -14,7 +14,7 @@ import (
 
 // VirtualCircuitPublicPrefix A public IP prefix and its details. With a public virtual circuit, the customer
 // specifies the customer-owned public IP prefixes to advertise across the connection.
-// For more information, see FastConnect Overview (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Concepts/fastconnect.htm).
+// For more information, see FastConnect Overview (https://docs.cloud.oracle.com/Content/Network/Concepts/fastconnect.htm).
 type VirtualCircuitPublicPrefix struct {
 
 	// Publix IP prefix (CIDR) that the customer specified.
@@ -35,7 +35,7 @@ func (m VirtualCircuitPublicPrefix) String() string {
 // VirtualCircuitPublicPrefixVerificationStateEnum Enum with underlying type: string
 type VirtualCircuitPublicPrefixVerificationStateEnum string
 
-// Set of constants representing the allowable values for VirtualCircuitPublicPrefixVerificationState
+// Set of constants representing the allowable values for VirtualCircuitPublicPrefixVerificationStateEnum
 const (
 	VirtualCircuitPublicPrefixVerificationStateInProgress VirtualCircuitPublicPrefixVerificationStateEnum = "IN_PROGRESS"
 	VirtualCircuitPublicPrefixVerificationStateCompleted  VirtualCircuitPublicPrefixVerificationStateEnum = "COMPLETED"
@@ -48,7 +48,7 @@ var mappingVirtualCircuitPublicPrefixVerificationState = map[string]VirtualCircu
 	"FAILED":      VirtualCircuitPublicPrefixVerificationStateFailed,
 }
 
-// GetVirtualCircuitPublicPrefixVerificationStateEnumValues Enumerates the set of values for VirtualCircuitPublicPrefixVerificationState
+// GetVirtualCircuitPublicPrefixVerificationStateEnumValues Enumerates the set of values for VirtualCircuitPublicPrefixVerificationStateEnum
 func GetVirtualCircuitPublicPrefixVerificationStateEnumValues() []VirtualCircuitPublicPrefixVerificationStateEnum {
 	values := make([]VirtualCircuitPublicPrefixVerificationStateEnum, 0)
 	for _, v := range mappingVirtualCircuitPublicPrefixVerificationState {

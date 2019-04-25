@@ -16,7 +16,7 @@ import (
 // CreateVolumeDetails The representation of CreateVolumeDetails
 type CreateVolumeDetails struct {
 
-	// The Availability Domain of the volume.
+	// The availability domain of the volume.
 	// Example: `Uocm:PHX-AD-1`
 	AvailabilityDomain *string `mandatory:"true" json:"availabilityDomain"`
 
@@ -28,7 +28,7 @@ type CreateVolumeDetails struct {
 	BackupPolicyId *string `mandatory:"false" json:"backupPolicyId"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -38,9 +38,12 @@ type CreateVolumeDetails struct {
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
 	// predefined name, type, or namespace. For more information, see
-	// Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
+
+	// The OCID of the KMS key to be used as the master encryption key for the volume.
+	KmsKeyId *string `mandatory:"false" json:"kmsKeyId"`
 
 	// The size of the volume in GBs.
 	SizeInGBs *int64 `mandatory:"false" json:"sizeInGBs"`
@@ -49,7 +52,7 @@ type CreateVolumeDetails struct {
 	// This field is deprecated. Use sizeInGBs instead.
 	SizeInMBs *int64 `mandatory:"false" json:"sizeInMBs"`
 
-	// Specifies the volume source details for a new Block volume. The volume source is either another Block volume in the same Availability Domain or a Block volume backup.
+	// Specifies the volume source details for a new Block volume. The volume source is either another Block volume in the same availability domain or a Block volume backup.
 	// This is an optional field. If not specified or set to null, the new Block volume will be empty.
 	// When specified, the new Block volume will contain data from the source volume or backup.
 	SourceDetails VolumeSourceDetails `mandatory:"false" json:"sourceDetails"`
@@ -71,6 +74,7 @@ func (m *CreateVolumeDetails) UnmarshalJSON(data []byte) (e error) {
 		DefinedTags        map[string]map[string]interface{} `json:"definedTags"`
 		DisplayName        *string                           `json:"displayName"`
 		FreeformTags       map[string]string                 `json:"freeformTags"`
+		KmsKeyId           *string                           `json:"kmsKeyId"`
 		SizeInGBs          *int64                            `json:"sizeInGBs"`
 		SizeInMBs          *int64                            `json:"sizeInMBs"`
 		SourceDetails      volumesourcedetails               `json:"sourceDetails"`
@@ -87,13 +91,18 @@ func (m *CreateVolumeDetails) UnmarshalJSON(data []byte) (e error) {
 	m.DefinedTags = model.DefinedTags
 	m.DisplayName = model.DisplayName
 	m.FreeformTags = model.FreeformTags
+	m.KmsKeyId = model.KmsKeyId
 	m.SizeInGBs = model.SizeInGBs
 	m.SizeInMBs = model.SizeInMBs
 	nn, e := model.SourceDetails.UnmarshalPolymorphicJSON(model.SourceDetails.JsonData)
 	if e != nil {
 		return
 	}
-	m.SourceDetails = nn.(VolumeSourceDetails)
+	if nn != nil {
+		m.SourceDetails = nn.(VolumeSourceDetails)
+	} else {
+		m.SourceDetails = nil
+	}
 	m.VolumeBackupId = model.VolumeBackupId
 	m.AvailabilityDomain = model.AvailabilityDomain
 	m.CompartmentId = model.CompartmentId

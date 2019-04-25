@@ -13,9 +13,11 @@ import (
 )
 
 // BootVolumeAttachment Represents an attachment between a boot volume and an instance.
+// **Warning:** Oracle recommends that you avoid using any confidential information when you
+// supply string values using the API.
 type BootVolumeAttachment struct {
 
-	// The Availability Domain of an instance.
+	// The availability domain of an instance.
 	// Example: `Uocm:PHX-AD-1`
 	AvailabilityDomain *string `mandatory:"true" json:"availabilityDomain"`
 
@@ -42,6 +44,9 @@ type BootVolumeAttachment struct {
 	// Avoid entering confidential information.
 	// Example: `My boot volume`
 	DisplayName *string `mandatory:"false" json:"displayName"`
+
+	// Whether in-transit encryption for the boot volume's paravirtualized attachment is enabled or not.
+	IsPvEncryptionInTransitEnabled *bool `mandatory:"false" json:"isPvEncryptionInTransitEnabled"`
 }
 
 func (m BootVolumeAttachment) String() string {
@@ -51,7 +56,7 @@ func (m BootVolumeAttachment) String() string {
 // BootVolumeAttachmentLifecycleStateEnum Enum with underlying type: string
 type BootVolumeAttachmentLifecycleStateEnum string
 
-// Set of constants representing the allowable values for BootVolumeAttachmentLifecycleState
+// Set of constants representing the allowable values for BootVolumeAttachmentLifecycleStateEnum
 const (
 	BootVolumeAttachmentLifecycleStateAttaching BootVolumeAttachmentLifecycleStateEnum = "ATTACHING"
 	BootVolumeAttachmentLifecycleStateAttached  BootVolumeAttachmentLifecycleStateEnum = "ATTACHED"
@@ -66,7 +71,7 @@ var mappingBootVolumeAttachmentLifecycleState = map[string]BootVolumeAttachmentL
 	"DETACHED":  BootVolumeAttachmentLifecycleStateDetached,
 }
 
-// GetBootVolumeAttachmentLifecycleStateEnumValues Enumerates the set of values for BootVolumeAttachmentLifecycleState
+// GetBootVolumeAttachmentLifecycleStateEnumValues Enumerates the set of values for BootVolumeAttachmentLifecycleStateEnum
 func GetBootVolumeAttachmentLifecycleStateEnumValues() []BootVolumeAttachmentLifecycleStateEnum {
 	values := make([]BootVolumeAttachmentLifecycleStateEnum, 0)
 	for _, v := range mappingBootVolumeAttachmentLifecycleState {

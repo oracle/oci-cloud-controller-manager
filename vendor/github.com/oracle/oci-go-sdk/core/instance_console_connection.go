@@ -15,7 +15,7 @@ import (
 // InstanceConsoleConnection The `InstanceConsoleConnection` API provides you with console access to virtual machine (VM) instances,
 // enabling you to troubleshoot malfunctioning instances remotely.
 // For more information about console access, see
-// Accessing the Console (https://docs.us-phoenix-1.oraclecloud.com/Content/Compute/References/serialconsole.htm).
+// Accessing the Console (https://docs.cloud.oracle.com/Content/Compute/References/serialconsole.htm).
 type InstanceConsoleConnection struct {
 
 	// The OCID of the compartment to contain the console connection.
@@ -25,7 +25,7 @@ type InstanceConsoleConnection struct {
 	ConnectionString *string `mandatory:"false" json:"connectionString"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -34,7 +34,7 @@ type InstanceConsoleConnection struct {
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
 	// predefined name, type, or namespace. For more information, see
-	// Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
@@ -59,7 +59,7 @@ func (m InstanceConsoleConnection) String() string {
 // InstanceConsoleConnectionLifecycleStateEnum Enum with underlying type: string
 type InstanceConsoleConnectionLifecycleStateEnum string
 
-// Set of constants representing the allowable values for InstanceConsoleConnectionLifecycleState
+// Set of constants representing the allowable values for InstanceConsoleConnectionLifecycleStateEnum
 const (
 	InstanceConsoleConnectionLifecycleStateActive   InstanceConsoleConnectionLifecycleStateEnum = "ACTIVE"
 	InstanceConsoleConnectionLifecycleStateCreating InstanceConsoleConnectionLifecycleStateEnum = "CREATING"
@@ -76,7 +76,7 @@ var mappingInstanceConsoleConnectionLifecycleState = map[string]InstanceConsoleC
 	"FAILED":   InstanceConsoleConnectionLifecycleStateFailed,
 }
 
-// GetInstanceConsoleConnectionLifecycleStateEnumValues Enumerates the set of values for InstanceConsoleConnectionLifecycleState
+// GetInstanceConsoleConnectionLifecycleStateEnumValues Enumerates the set of values for InstanceConsoleConnectionLifecycleStateEnum
 func GetInstanceConsoleConnectionLifecycleStateEnumValues() []InstanceConsoleConnectionLifecycleStateEnum {
 	values := make([]InstanceConsoleConnectionLifecycleStateEnum, 0)
 	for _, v := range mappingInstanceConsoleConnectionLifecycleState {

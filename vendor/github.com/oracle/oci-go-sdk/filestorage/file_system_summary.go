@@ -44,6 +44,17 @@ type FileSystemSummary struct {
 	// as a blank or NULL value.
 	// Example: `Uocm:PHX-AD-1`
 	AvailabilityDomain *string `mandatory:"false" json:"availabilityDomain"`
+
+	// Free-form tags for this resource. Each tag is a simple key-value pair
+	//  with no predefined name, type, or namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Example: `{"Department": "Finance"}`
+	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
+
+	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Example: `{"Operations": {"CostCenter": "42"}}`
+	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 }
 
 func (m FileSystemSummary) String() string {
@@ -53,7 +64,7 @@ func (m FileSystemSummary) String() string {
 // FileSystemSummaryLifecycleStateEnum Enum with underlying type: string
 type FileSystemSummaryLifecycleStateEnum string
 
-// Set of constants representing the allowable values for FileSystemSummaryLifecycleState
+// Set of constants representing the allowable values for FileSystemSummaryLifecycleStateEnum
 const (
 	FileSystemSummaryLifecycleStateCreating FileSystemSummaryLifecycleStateEnum = "CREATING"
 	FileSystemSummaryLifecycleStateActive   FileSystemSummaryLifecycleStateEnum = "ACTIVE"
@@ -68,7 +79,7 @@ var mappingFileSystemSummaryLifecycleState = map[string]FileSystemSummaryLifecyc
 	"DELETED":  FileSystemSummaryLifecycleStateDeleted,
 }
 
-// GetFileSystemSummaryLifecycleStateEnumValues Enumerates the set of values for FileSystemSummaryLifecycleState
+// GetFileSystemSummaryLifecycleStateEnumValues Enumerates the set of values for FileSystemSummaryLifecycleStateEnum
 func GetFileSystemSummaryLifecycleStateEnumValues() []FileSystemSummaryLifecycleStateEnum {
 	values := make([]FileSystemSummaryLifecycleStateEnum, 0)
 	for _, v := range mappingFileSystemSummaryLifecycleState {

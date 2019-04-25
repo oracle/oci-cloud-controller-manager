@@ -40,14 +40,14 @@ type ListZonesRequest struct {
 	// all returned resources were created before the indicated time.
 	TimeCreatedLessThan *common.SDKTime `mandatory:"false" contributesTo:"query" name:"timeCreatedLessThan"`
 
+	// The state of a resource.
+	LifecycleState ListZonesLifecycleStateEnum `mandatory:"false" contributesTo:"query" name:"lifecycleState" omitEmpty:"true"`
+
 	// The field by which to sort zones.
 	SortBy ListZonesSortByEnum `mandatory:"false" contributesTo:"query" name:"sortBy" omitEmpty:"true"`
 
 	// The order to sort the resources.
 	SortOrder ListZonesSortOrderEnum `mandatory:"false" contributesTo:"query" name:"sortOrder" omitEmpty:"true"`
-
-	// The state of a resource.
-	LifecycleState ListZonesLifecycleStateEnum `mandatory:"false" contributesTo:"query" name:"lifecycleState" omitEmpty:"true"`
 
 	// Unique Oracle-assigned identifier for the request.
 	// If you need to contact Oracle about a particular request, please provide the request ID.
@@ -81,10 +81,9 @@ type ListZonesResponse struct {
 	// A list of []ZoneSummary instances
 	Items []ZoneSummary `presentIn:"body"`
 
-	// For pagination of a list of items. When paging through a list, if
-	// this header appears in the response, then a partial list might have
-	// been returned. Include this value as the `page` parameter for the
-	// subsequent GET request to get the next batch of items.
+	// For list pagination. When this header appears in the response, additional pages
+	// of results remain. For important details about how pagination works,
+	// see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	OpcNextPage *string `presentIn:"header" name:"opc-next-page"`
 
 	// The total number of items that match the query.
@@ -108,7 +107,7 @@ func (response ListZonesResponse) HTTPResponse() *http.Response {
 // ListZonesZoneTypeEnum Enum with underlying type: string
 type ListZonesZoneTypeEnum string
 
-// Set of constants representing the allowable values for ListZonesZoneType
+// Set of constants representing the allowable values for ListZonesZoneTypeEnum
 const (
 	ListZonesZoneTypePrimary   ListZonesZoneTypeEnum = "PRIMARY"
 	ListZonesZoneTypeSecondary ListZonesZoneTypeEnum = "SECONDARY"
@@ -119,7 +118,7 @@ var mappingListZonesZoneType = map[string]ListZonesZoneTypeEnum{
 	"SECONDARY": ListZonesZoneTypeSecondary,
 }
 
-// GetListZonesZoneTypeEnumValues Enumerates the set of values for ListZonesZoneType
+// GetListZonesZoneTypeEnumValues Enumerates the set of values for ListZonesZoneTypeEnum
 func GetListZonesZoneTypeEnumValues() []ListZonesZoneTypeEnum {
 	values := make([]ListZonesZoneTypeEnum, 0)
 	for _, v := range mappingListZonesZoneType {
@@ -128,58 +127,10 @@ func GetListZonesZoneTypeEnumValues() []ListZonesZoneTypeEnum {
 	return values
 }
 
-// ListZonesSortByEnum Enum with underlying type: string
-type ListZonesSortByEnum string
-
-// Set of constants representing the allowable values for ListZonesSortBy
-const (
-	ListZonesSortByName        ListZonesSortByEnum = "name"
-	ListZonesSortByZonetype    ListZonesSortByEnum = "zoneType"
-	ListZonesSortByTimecreated ListZonesSortByEnum = "timeCreated"
-)
-
-var mappingListZonesSortBy = map[string]ListZonesSortByEnum{
-	"name":        ListZonesSortByName,
-	"zoneType":    ListZonesSortByZonetype,
-	"timeCreated": ListZonesSortByTimecreated,
-}
-
-// GetListZonesSortByEnumValues Enumerates the set of values for ListZonesSortBy
-func GetListZonesSortByEnumValues() []ListZonesSortByEnum {
-	values := make([]ListZonesSortByEnum, 0)
-	for _, v := range mappingListZonesSortBy {
-		values = append(values, v)
-	}
-	return values
-}
-
-// ListZonesSortOrderEnum Enum with underlying type: string
-type ListZonesSortOrderEnum string
-
-// Set of constants representing the allowable values for ListZonesSortOrder
-const (
-	ListZonesSortOrderAsc  ListZonesSortOrderEnum = "ASC"
-	ListZonesSortOrderDesc ListZonesSortOrderEnum = "DESC"
-)
-
-var mappingListZonesSortOrder = map[string]ListZonesSortOrderEnum{
-	"ASC":  ListZonesSortOrderAsc,
-	"DESC": ListZonesSortOrderDesc,
-}
-
-// GetListZonesSortOrderEnumValues Enumerates the set of values for ListZonesSortOrder
-func GetListZonesSortOrderEnumValues() []ListZonesSortOrderEnum {
-	values := make([]ListZonesSortOrderEnum, 0)
-	for _, v := range mappingListZonesSortOrder {
-		values = append(values, v)
-	}
-	return values
-}
-
 // ListZonesLifecycleStateEnum Enum with underlying type: string
 type ListZonesLifecycleStateEnum string
 
-// Set of constants representing the allowable values for ListZonesLifecycleState
+// Set of constants representing the allowable values for ListZonesLifecycleStateEnum
 const (
 	ListZonesLifecycleStateActive   ListZonesLifecycleStateEnum = "ACTIVE"
 	ListZonesLifecycleStateCreating ListZonesLifecycleStateEnum = "CREATING"
@@ -196,10 +147,58 @@ var mappingListZonesLifecycleState = map[string]ListZonesLifecycleStateEnum{
 	"FAILED":   ListZonesLifecycleStateFailed,
 }
 
-// GetListZonesLifecycleStateEnumValues Enumerates the set of values for ListZonesLifecycleState
+// GetListZonesLifecycleStateEnumValues Enumerates the set of values for ListZonesLifecycleStateEnum
 func GetListZonesLifecycleStateEnumValues() []ListZonesLifecycleStateEnum {
 	values := make([]ListZonesLifecycleStateEnum, 0)
 	for _, v := range mappingListZonesLifecycleState {
+		values = append(values, v)
+	}
+	return values
+}
+
+// ListZonesSortByEnum Enum with underlying type: string
+type ListZonesSortByEnum string
+
+// Set of constants representing the allowable values for ListZonesSortByEnum
+const (
+	ListZonesSortByName        ListZonesSortByEnum = "name"
+	ListZonesSortByZonetype    ListZonesSortByEnum = "zoneType"
+	ListZonesSortByTimecreated ListZonesSortByEnum = "timeCreated"
+)
+
+var mappingListZonesSortBy = map[string]ListZonesSortByEnum{
+	"name":        ListZonesSortByName,
+	"zoneType":    ListZonesSortByZonetype,
+	"timeCreated": ListZonesSortByTimecreated,
+}
+
+// GetListZonesSortByEnumValues Enumerates the set of values for ListZonesSortByEnum
+func GetListZonesSortByEnumValues() []ListZonesSortByEnum {
+	values := make([]ListZonesSortByEnum, 0)
+	for _, v := range mappingListZonesSortBy {
+		values = append(values, v)
+	}
+	return values
+}
+
+// ListZonesSortOrderEnum Enum with underlying type: string
+type ListZonesSortOrderEnum string
+
+// Set of constants representing the allowable values for ListZonesSortOrderEnum
+const (
+	ListZonesSortOrderAsc  ListZonesSortOrderEnum = "ASC"
+	ListZonesSortOrderDesc ListZonesSortOrderEnum = "DESC"
+)
+
+var mappingListZonesSortOrder = map[string]ListZonesSortOrderEnum{
+	"ASC":  ListZonesSortOrderAsc,
+	"DESC": ListZonesSortOrderDesc,
+}
+
+// GetListZonesSortOrderEnumValues Enumerates the set of values for ListZonesSortOrderEnum
+func GetListZonesSortOrderEnumValues() []ListZonesSortOrderEnum {
+	values := make([]ListZonesSortOrderEnum, 0)
+	for _, v := range mappingListZonesSortOrder {
 		values = append(values, v)
 	}
 	return values

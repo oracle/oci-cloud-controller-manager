@@ -3,7 +3,7 @@
 
 // Object Storage Service API
 //
-// Common set of Object and Archive Storage APIs for managing buckets and objects.
+// Common set of Object Storage and Archive Storage APIs for managing buckets, objects, and related resources.
 //
 
 package objectstorage
@@ -12,13 +12,13 @@ import (
 	"github.com/oracle/oci-go-sdk/common"
 )
 
-// CreateBucketDetails To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized,
-// talk to an administrator. If you're an administrator who needs to write policies to give users access, see
-// Getting Started with Policies (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/policygetstarted.htm).
+// CreateBucketDetails To use any of the API operations, you must be authorized in an IAM policy. If you are not authorized,
+// talk to an administrator. If you are an administrator who needs to write policies to give users access, see
+// Getting Started with Policies (https://docs.cloud.oracle.com/Content/Identity/Concepts/policygetstarted.htm).
 type CreateBucketDetails struct {
 
-	// The name of the bucket. Valid characters are uppercase or lowercase letters,
-	// numbers, and dashes. Bucket names must be unique within the namespace. Avoid entering confidential information.
+	// The name of the bucket. Valid characters are uppercase or lowercase letters, numbers, and dashes.
+	// Bucket names must be unique within an Object Storage namespace. Avoid entering confidential information.
 	// example: Example: my-new-bucket1
 	Name *string `mandatory:"true" json:"name"`
 
@@ -42,14 +42,17 @@ type CreateBucketDetails struct {
 	StorageTier CreateBucketDetailsStorageTierEnum `mandatory:"false" json:"storageTier,omitempty"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no predefined name, type, or namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
+
+	// The OCID of a KMS key id used to call KMS to generate the data key or decrypt the encrypted data key.
+	KmsKeyId *string `mandatory:"false" json:"kmsKeyId"`
 }
 
 func (m CreateBucketDetails) String() string {
@@ -59,7 +62,7 @@ func (m CreateBucketDetails) String() string {
 // CreateBucketDetailsPublicAccessTypeEnum Enum with underlying type: string
 type CreateBucketDetailsPublicAccessTypeEnum string
 
-// Set of constants representing the allowable values for CreateBucketDetailsPublicAccessType
+// Set of constants representing the allowable values for CreateBucketDetailsPublicAccessTypeEnum
 const (
 	CreateBucketDetailsPublicAccessTypeNopublicaccess        CreateBucketDetailsPublicAccessTypeEnum = "NoPublicAccess"
 	CreateBucketDetailsPublicAccessTypeObjectread            CreateBucketDetailsPublicAccessTypeEnum = "ObjectRead"
@@ -72,7 +75,7 @@ var mappingCreateBucketDetailsPublicAccessType = map[string]CreateBucketDetailsP
 	"ObjectReadWithoutList": CreateBucketDetailsPublicAccessTypeObjectreadwithoutlist,
 }
 
-// GetCreateBucketDetailsPublicAccessTypeEnumValues Enumerates the set of values for CreateBucketDetailsPublicAccessType
+// GetCreateBucketDetailsPublicAccessTypeEnumValues Enumerates the set of values for CreateBucketDetailsPublicAccessTypeEnum
 func GetCreateBucketDetailsPublicAccessTypeEnumValues() []CreateBucketDetailsPublicAccessTypeEnum {
 	values := make([]CreateBucketDetailsPublicAccessTypeEnum, 0)
 	for _, v := range mappingCreateBucketDetailsPublicAccessType {
@@ -84,7 +87,7 @@ func GetCreateBucketDetailsPublicAccessTypeEnumValues() []CreateBucketDetailsPub
 // CreateBucketDetailsStorageTierEnum Enum with underlying type: string
 type CreateBucketDetailsStorageTierEnum string
 
-// Set of constants representing the allowable values for CreateBucketDetailsStorageTier
+// Set of constants representing the allowable values for CreateBucketDetailsStorageTierEnum
 const (
 	CreateBucketDetailsStorageTierStandard CreateBucketDetailsStorageTierEnum = "Standard"
 	CreateBucketDetailsStorageTierArchive  CreateBucketDetailsStorageTierEnum = "Archive"
@@ -95,7 +98,7 @@ var mappingCreateBucketDetailsStorageTier = map[string]CreateBucketDetailsStorag
 	"Archive":  CreateBucketDetailsStorageTierArchive,
 }
 
-// GetCreateBucketDetailsStorageTierEnumValues Enumerates the set of values for CreateBucketDetailsStorageTier
+// GetCreateBucketDetailsStorageTierEnumValues Enumerates the set of values for CreateBucketDetailsStorageTierEnum
 func GetCreateBucketDetailsStorageTierEnumValues() []CreateBucketDetailsStorageTierEnum {
 	values := make([]CreateBucketDetailsStorageTierEnum, 0)
 	for _, v := range mappingCreateBucketDetailsStorageTier {

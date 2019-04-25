@@ -12,129 +12,131 @@ import (
 	"github.com/oracle/oci-go-sdk/common"
 )
 
-// DbSystem The Database Service supports several types of DB Systems, ranging in size, price, and performance. For details about each type of system, see:
-// - Exadata DB Systems (https://docs.us-phoenix-1.oraclecloud.com/Content/Database/Concepts/exaoverview.htm)
-// - Bare Metal and Virtual Machine DB Systems (https://docs.us-phoenix-1.oraclecloud.com/Content/Database/Concepts/overview.htm)
-// To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized, talk to an administrator. If you're an administrator who needs to write policies to give users access, see Getting Started with Policies (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/policygetstarted.htm).
-//
-// For information about access control and compartments, see
-// Overview of the Identity Service (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/overview.htm).
-// For information about Availability Domains, see
-// Regions and Availability Domains (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/regions.htm).
-// To get a list of Availability Domains, use the `ListAvailabilityDomains` operation
-// in the Identity Service API.
+// DbSystem The representation of DbSystem
 type DbSystem struct {
 
-	// The name of the Availability Domain that the DB System is located in.
-	AvailabilityDomain *string `mandatory:"true" json:"availabilityDomain"`
-
-	// The OCID of the compartment.
-	CompartmentId *string `mandatory:"true" json:"compartmentId"`
-
-	// The number of CPU cores enabled on the DB System.
-	CpuCoreCount *int `mandatory:"true" json:"cpuCoreCount"`
-
-	// The Oracle Database Edition that applies to all the databases on the DB System.
-	DatabaseEdition DbSystemDatabaseEditionEnum `mandatory:"true" json:"databaseEdition"`
-
-	// The user-friendly name for the DB System. It does not have to be unique.
-	DisplayName *string `mandatory:"true" json:"displayName"`
-
-	// The domain name for the DB System.
-	Domain *string `mandatory:"true" json:"domain"`
-
-	// The host name for the DB Node.
-	Hostname *string `mandatory:"true" json:"hostname"`
-
-	// The OCID of the DB System.
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the DB system.
 	Id *string `mandatory:"true" json:"id"`
 
-	// The current state of the DB System.
-	LifecycleState DbSystemLifecycleStateEnum `mandatory:"true" json:"lifecycleState"`
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the compartment.
+	CompartmentId *string `mandatory:"true" json:"compartmentId"`
 
-	// The shape of the DB System. The shape determines resources to allocate to the DB system - CPU cores and memory for VM shapes; CPU cores, memory and storage for non-VM (or bare metal) shapes.
-	Shape *string `mandatory:"true" json:"shape"`
+	// The user-friendly name for the DB system. The name does not have to be unique.
+	DisplayName *string `mandatory:"true" json:"displayName"`
 
-	// The public key portion of one or more key pairs used for SSH access to the DB System.
-	SshPublicKeys []string `mandatory:"true" json:"sshPublicKeys"`
+	// The name of the availability domain that the DB system is located in.
+	AvailabilityDomain *string `mandatory:"true" json:"availabilityDomain"`
 
-	// The OCID of the subnet the DB System is associated with.
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the subnet the DB system is associated with.
 	// **Subnet Restrictions:**
-	// - For single node and 2-node (RAC) DB Systems, do not use a subnet that overlaps with 192.168.16.16/28
-	// - For Exadata and VM-based RAC DB Systems, do not use a subnet that overlaps with 192.168.128.0/20
+	// - For bare metal DB systems and for single node virtual machine DB systems, do not use a subnet that overlaps with 192.168.16.16/28.
+	// - For Exadata and virtual machine 2-node RAC DB systems, do not use a subnet that overlaps with 192.168.128.0/20.
 	// These subnets are used by the Oracle Clusterware private interconnect on the database instance.
 	// Specifying an overlapping subnet will cause the private interconnect to malfunction.
 	// This restriction applies to both the client subnet and backup subnet.
 	SubnetId *string `mandatory:"true" json:"subnetId"`
 
-	// The OCID of the backup network subnet the DB System is associated with. Applicable only to Exadata.
-	// **Subnet Restriction:** See above subnetId's 'Subnet Restriction'.
-	// to malfunction.
+	// The shape of the DB system. The shape determines resources to allocate to the DB system.
+	// - For virtual machine shapes, the number of CPU cores and memory
+	// - For bare metal and Exadata shapes, the number of CPU cores, storage, and memory
+	Shape *string `mandatory:"true" json:"shape"`
+
+	// The public key portion of one or more key pairs used for SSH access to the DB system.
+	SshPublicKeys []string `mandatory:"true" json:"sshPublicKeys"`
+
+	// The hostname for the DB system.
+	Hostname *string `mandatory:"true" json:"hostname"`
+
+	// The domain name for the DB system.
+	Domain *string `mandatory:"true" json:"domain"`
+
+	// The number of CPU cores enabled on the DB system.
+	CpuCoreCount *int `mandatory:"true" json:"cpuCoreCount"`
+
+	// The Oracle Database edition that applies to all the databases on the DB system.
+	DatabaseEdition DbSystemDatabaseEditionEnum `mandatory:"true" json:"databaseEdition"`
+
+	// The current state of the DB system.
+	LifecycleState DbSystemLifecycleStateEnum `mandatory:"true" json:"lifecycleState"`
+
+	// List of the Fault Domains in which this DB system is provisioned.
+	FaultDomains []string `mandatory:"false" json:"faultDomains"`
+
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the backup network subnet the DB system is associated with. Applicable only to Exadata DB systems.
+	// **Subnet Restriction:** See the subnet restrictions information for **subnetId**.
 	BackupSubnetId *string `mandatory:"false" json:"backupSubnetId"`
 
-	// Cluster name for Exadata and 2-node RAC DB Systems. The cluster name must begin with an an alphabetic character, and may contain hyphens (-). Underscores (_) are not permitted. The cluster name can be no longer than 11 characters and is not case sensitive.
+	// The time zone of the DB system. For details, see DB System Time Zones (https://docs.cloud.oracle.com/Content/Database/References/timezones.htm).
+	TimeZone *string `mandatory:"false" json:"timeZone"`
+
+	// The Oracle Database version of the DB system.
+	Version *string `mandatory:"false" json:"version"`
+
+	// The cluster name for Exadata and 2-node RAC virtual machine DB systems. The cluster name must begin with an an alphabetic character, and may contain hyphens (-). Underscores (_) are not permitted. The cluster name can be no longer than 11 characters and is not case sensitive.
 	ClusterName *string `mandatory:"false" json:"clusterName"`
 
 	// The percentage assigned to DATA storage (user data and database files).
-	// The remaining percentage is assigned to RECO storage (database redo logs, archive logs, and recovery manager backups). Accepted values are 40 and 80.
+	// The remaining percentage is assigned to RECO storage (database redo logs, archive logs, and recovery manager backups). Accepted values are 40 and 80. The default is 80 percent assigned to DATA storage. Not applicable for virtual machine DB systems.
 	DataStoragePercentage *int `mandatory:"false" json:"dataStoragePercentage"`
 
-	// Data storage size, in GBs, that is currently available to the DB system. This is applicable only for VM-based DBs.
-	DataStorageSizeInGBs *int `mandatory:"false" json:"dataStorageSizeInGBs"`
-
-	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
-	// Example: `{"Operations": {"CostCenter": "42"}}`
-	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
-
-	// The type of redundancy configured for the DB System.
-	// Normal is 2-way redundancy.
-	// High is 3-way redundancy.
-	DiskRedundancy DbSystemDiskRedundancyEnum `mandatory:"false" json:"diskRedundancy,omitempty"`
-
-	// Free-form tags for this resource. Each tag is a simple key-value pair with no predefined name, type, or namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
-	// Example: `{"Department": "Finance"}`
-	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
-
-	// The OCID of the last patch history. This is updated as soon as a patch operation is started.
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the last patch history. This value is updated as soon as a patch operation starts.
 	LastPatchHistoryEntryId *string `mandatory:"false" json:"lastPatchHistoryEntryId"`
 
-	// The Oracle license model that applies to all the databases on the DB System. The default is LICENSE_INCLUDED.
-	LicenseModel DbSystemLicenseModelEnum `mandatory:"false" json:"licenseModel,omitempty"`
+	// The port number configured for the listener on the DB system.
+	ListenerPort *int `mandatory:"false" json:"listenerPort"`
+
+	// The date and time the DB system was created.
+	TimeCreated *common.SDKTime `mandatory:"false" json:"timeCreated"`
 
 	// Additional information about the current lifecycleState.
 	LifecycleDetails *string `mandatory:"false" json:"lifecycleDetails"`
 
-	// The port number configured for the listener on the DB System.
-	ListenerPort *int `mandatory:"false" json:"listenerPort"`
+	// The type of redundancy configured for the DB system.
+	// NORMAL is 2-way redundancy.
+	// HIGH is 3-way redundancy.
+	DiskRedundancy DbSystemDiskRedundancyEnum `mandatory:"false" json:"diskRedundancy,omitempty"`
 
-	// Number of nodes in this DB system. For RAC DBs, this will be greater than 1.
-	NodeCount *int `mandatory:"false" json:"nodeCount"`
+	// True, if Sparse Diskgroup is configured for Exadata dbsystem, False, if Sparse diskgroup was not configured.
+	SparseDiskgroup *bool `mandatory:"false" json:"sparseDiskgroup"`
 
-	// RECO/REDO storage size, in GBs, that is currently allocated to the DB system. This is applicable only for VM-based DBs.
-	RecoStorageSizeInGB *int `mandatory:"false" json:"recoStorageSizeInGB"`
-
-	// The OCID of the DNS record for the SCAN IP addresses that are associated with the DB System.
-	ScanDnsRecordId *string `mandatory:"false" json:"scanDnsRecordId"`
-
-	// The OCID of the Single Client Access Name (SCAN) IP addresses associated with the DB System.
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the Single Client Access Name (SCAN) IP addresses associated with the DB system.
 	// SCAN IP addresses are typically used for load balancing and are not assigned to any interface.
-	// Clusterware directs the requests to the appropriate nodes in the cluster.
-	// - For a single-node DB System, this list is empty.
+	// Oracle Clusterware directs the requests to the appropriate nodes in the cluster.
+	// **Note:** For a single-node DB system, this list is empty.
 	ScanIpIds []string `mandatory:"false" json:"scanIpIds"`
 
-	// The date and time the DB System was created.
-	TimeCreated *common.SDKTime `mandatory:"false" json:"timeCreated"`
-
-	// The version of the DB System.
-	Version *string `mandatory:"false" json:"version"`
-
-	// The OCID of the virtual IP (VIP) addresses associated with the DB System.
-	// The Cluster Ready Services (CRS) creates and maintains one VIP address for each node in the DB System to
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the virtual IP (VIP) addresses associated with the DB system.
+	// The Cluster Ready Services (CRS) creates and maintains one VIP address for each node in the DB system to
 	// enable failover. If one node fails, the VIP is reassigned to another active node in the cluster.
-	// - For a single-node DB System, this list is empty.
+	// **Note:** For a single-node DB system, this list is empty.
 	VipIds []string `mandatory:"false" json:"vipIds"`
+
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the DNS record for the SCAN IP addresses that are associated with the DB system.
+	ScanDnsRecordId *string `mandatory:"false" json:"scanDnsRecordId"`
+
+	// The data storage size, in gigabytes, that is currently available to the DB system. Applies only for virtual machine DB systems.
+	DataStorageSizeInGBs *int `mandatory:"false" json:"dataStorageSizeInGBs"`
+
+	// The RECO/REDO storage size, in gigabytes, that is currently allocated to the DB system. Applies only for virtual machine DB systems.
+	RecoStorageSizeInGB *int `mandatory:"false" json:"recoStorageSizeInGB"`
+
+	// The number of nodes in the DB system. For RAC DB systems, the value is greater than 1.
+	NodeCount *int `mandatory:"false" json:"nodeCount"`
+
+	// The Oracle license model that applies to all the databases on the DB system. The default is LICENSE_INCLUDED.
+	LicenseModel DbSystemLicenseModelEnum `mandatory:"false" json:"licenseModel,omitempty"`
+
+	// Free-form tags for this resource. Each tag is a simple key-value pair with no predefined name, type, or namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Example: `{"Department": "Finance"}`
+	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
+
+	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Example: `{"Operations": {"CostCenter": "42"}}`
+	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
+
+	IormConfigCache *ExadataIormConfig `mandatory:"false" json:"iormConfigCache"`
 }
 
 func (m DbSystem) String() string {
@@ -144,22 +146,22 @@ func (m DbSystem) String() string {
 // DbSystemDatabaseEditionEnum Enum with underlying type: string
 type DbSystemDatabaseEditionEnum string
 
-// Set of constants representing the allowable values for DbSystemDatabaseEdition
+// Set of constants representing the allowable values for DbSystemDatabaseEditionEnum
 const (
 	DbSystemDatabaseEditionStandardEdition                     DbSystemDatabaseEditionEnum = "STANDARD_EDITION"
 	DbSystemDatabaseEditionEnterpriseEdition                   DbSystemDatabaseEditionEnum = "ENTERPRISE_EDITION"
-	DbSystemDatabaseEditionEnterpriseEditionExtremePerformance DbSystemDatabaseEditionEnum = "ENTERPRISE_EDITION_EXTREME_PERFORMANCE"
 	DbSystemDatabaseEditionEnterpriseEditionHighPerformance    DbSystemDatabaseEditionEnum = "ENTERPRISE_EDITION_HIGH_PERFORMANCE"
+	DbSystemDatabaseEditionEnterpriseEditionExtremePerformance DbSystemDatabaseEditionEnum = "ENTERPRISE_EDITION_EXTREME_PERFORMANCE"
 )
 
 var mappingDbSystemDatabaseEdition = map[string]DbSystemDatabaseEditionEnum{
 	"STANDARD_EDITION":                       DbSystemDatabaseEditionStandardEdition,
 	"ENTERPRISE_EDITION":                     DbSystemDatabaseEditionEnterpriseEdition,
-	"ENTERPRISE_EDITION_EXTREME_PERFORMANCE": DbSystemDatabaseEditionEnterpriseEditionExtremePerformance,
 	"ENTERPRISE_EDITION_HIGH_PERFORMANCE":    DbSystemDatabaseEditionEnterpriseEditionHighPerformance,
+	"ENTERPRISE_EDITION_EXTREME_PERFORMANCE": DbSystemDatabaseEditionEnterpriseEditionExtremePerformance,
 }
 
-// GetDbSystemDatabaseEditionEnumValues Enumerates the set of values for DbSystemDatabaseEdition
+// GetDbSystemDatabaseEditionEnumValues Enumerates the set of values for DbSystemDatabaseEditionEnum
 func GetDbSystemDatabaseEditionEnumValues() []DbSystemDatabaseEditionEnum {
 	values := make([]DbSystemDatabaseEditionEnum, 0)
 	for _, v := range mappingDbSystemDatabaseEdition {
@@ -168,56 +170,10 @@ func GetDbSystemDatabaseEditionEnumValues() []DbSystemDatabaseEditionEnum {
 	return values
 }
 
-// DbSystemDiskRedundancyEnum Enum with underlying type: string
-type DbSystemDiskRedundancyEnum string
-
-// Set of constants representing the allowable values for DbSystemDiskRedundancy
-const (
-	DbSystemDiskRedundancyHigh   DbSystemDiskRedundancyEnum = "HIGH"
-	DbSystemDiskRedundancyNormal DbSystemDiskRedundancyEnum = "NORMAL"
-)
-
-var mappingDbSystemDiskRedundancy = map[string]DbSystemDiskRedundancyEnum{
-	"HIGH":   DbSystemDiskRedundancyHigh,
-	"NORMAL": DbSystemDiskRedundancyNormal,
-}
-
-// GetDbSystemDiskRedundancyEnumValues Enumerates the set of values for DbSystemDiskRedundancy
-func GetDbSystemDiskRedundancyEnumValues() []DbSystemDiskRedundancyEnum {
-	values := make([]DbSystemDiskRedundancyEnum, 0)
-	for _, v := range mappingDbSystemDiskRedundancy {
-		values = append(values, v)
-	}
-	return values
-}
-
-// DbSystemLicenseModelEnum Enum with underlying type: string
-type DbSystemLicenseModelEnum string
-
-// Set of constants representing the allowable values for DbSystemLicenseModel
-const (
-	DbSystemLicenseModelLicenseIncluded     DbSystemLicenseModelEnum = "LICENSE_INCLUDED"
-	DbSystemLicenseModelBringYourOwnLicense DbSystemLicenseModelEnum = "BRING_YOUR_OWN_LICENSE"
-)
-
-var mappingDbSystemLicenseModel = map[string]DbSystemLicenseModelEnum{
-	"LICENSE_INCLUDED":       DbSystemLicenseModelLicenseIncluded,
-	"BRING_YOUR_OWN_LICENSE": DbSystemLicenseModelBringYourOwnLicense,
-}
-
-// GetDbSystemLicenseModelEnumValues Enumerates the set of values for DbSystemLicenseModel
-func GetDbSystemLicenseModelEnumValues() []DbSystemLicenseModelEnum {
-	values := make([]DbSystemLicenseModelEnum, 0)
-	for _, v := range mappingDbSystemLicenseModel {
-		values = append(values, v)
-	}
-	return values
-}
-
 // DbSystemLifecycleStateEnum Enum with underlying type: string
 type DbSystemLifecycleStateEnum string
 
-// Set of constants representing the allowable values for DbSystemLifecycleState
+// Set of constants representing the allowable values for DbSystemLifecycleStateEnum
 const (
 	DbSystemLifecycleStateProvisioning DbSystemLifecycleStateEnum = "PROVISIONING"
 	DbSystemLifecycleStateAvailable    DbSystemLifecycleStateEnum = "AVAILABLE"
@@ -236,10 +192,56 @@ var mappingDbSystemLifecycleState = map[string]DbSystemLifecycleStateEnum{
 	"FAILED":       DbSystemLifecycleStateFailed,
 }
 
-// GetDbSystemLifecycleStateEnumValues Enumerates the set of values for DbSystemLifecycleState
+// GetDbSystemLifecycleStateEnumValues Enumerates the set of values for DbSystemLifecycleStateEnum
 func GetDbSystemLifecycleStateEnumValues() []DbSystemLifecycleStateEnum {
 	values := make([]DbSystemLifecycleStateEnum, 0)
 	for _, v := range mappingDbSystemLifecycleState {
+		values = append(values, v)
+	}
+	return values
+}
+
+// DbSystemDiskRedundancyEnum Enum with underlying type: string
+type DbSystemDiskRedundancyEnum string
+
+// Set of constants representing the allowable values for DbSystemDiskRedundancyEnum
+const (
+	DbSystemDiskRedundancyHigh   DbSystemDiskRedundancyEnum = "HIGH"
+	DbSystemDiskRedundancyNormal DbSystemDiskRedundancyEnum = "NORMAL"
+)
+
+var mappingDbSystemDiskRedundancy = map[string]DbSystemDiskRedundancyEnum{
+	"HIGH":   DbSystemDiskRedundancyHigh,
+	"NORMAL": DbSystemDiskRedundancyNormal,
+}
+
+// GetDbSystemDiskRedundancyEnumValues Enumerates the set of values for DbSystemDiskRedundancyEnum
+func GetDbSystemDiskRedundancyEnumValues() []DbSystemDiskRedundancyEnum {
+	values := make([]DbSystemDiskRedundancyEnum, 0)
+	for _, v := range mappingDbSystemDiskRedundancy {
+		values = append(values, v)
+	}
+	return values
+}
+
+// DbSystemLicenseModelEnum Enum with underlying type: string
+type DbSystemLicenseModelEnum string
+
+// Set of constants representing the allowable values for DbSystemLicenseModelEnum
+const (
+	DbSystemLicenseModelLicenseIncluded     DbSystemLicenseModelEnum = "LICENSE_INCLUDED"
+	DbSystemLicenseModelBringYourOwnLicense DbSystemLicenseModelEnum = "BRING_YOUR_OWN_LICENSE"
+)
+
+var mappingDbSystemLicenseModel = map[string]DbSystemLicenseModelEnum{
+	"LICENSE_INCLUDED":       DbSystemLicenseModelLicenseIncluded,
+	"BRING_YOUR_OWN_LICENSE": DbSystemLicenseModelBringYourOwnLicense,
+}
+
+// GetDbSystemLicenseModelEnumValues Enumerates the set of values for DbSystemLicenseModelEnum
+func GetDbSystemLicenseModelEnumValues() []DbSystemLicenseModelEnum {
+	values := make([]DbSystemLicenseModelEnum, 0)
+	for _, v := range mappingDbSystemLicenseModel {
 		values = append(values, v)
 	}
 	return values

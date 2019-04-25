@@ -14,8 +14,8 @@ import (
 
 // Policy A document that specifies the type of access a group has to the resources in a compartment. For information about
 // policies and other IAM Service components, see
-// Overview of the IAM Service (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/overview.htm). If you're new to policies, see
-// Getting Started with Policies (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/policygetstarted.htm).
+// Overview of the IAM Service (https://docs.cloud.oracle.com/Content/Identity/Concepts/overview.htm). If you're new to policies, see
+// Getting Started with Policies (https://docs.cloud.oracle.com/Content/Identity/Concepts/policygetstarted.htm).
 // The word "policy" is used by people in different ways:
 //   * An individual statement written in the policy language
 //   * A collection of statements in a single, named "policy" document (which has an Oracle Cloud ID (OCID) assigned to it)
@@ -54,15 +54,15 @@ type Policy struct {
 	// The version of the policy. If null or set to an empty string, when a request comes in for authorization, the
 	// policy will be evaluated according to the current behavior of the services at that moment. If set to a particular
 	// date (YYYY-MM-DD), the policy will be evaluated according to the behavior of the services on that date.
-	VersionDate *common.SDKTime `mandatory:"false" json:"versionDate"`
+	VersionDate *common.SDKDate `mandatory:"false" json:"versionDate"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no predefined name, type, or namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 }
@@ -74,7 +74,7 @@ func (m Policy) String() string {
 // PolicyLifecycleStateEnum Enum with underlying type: string
 type PolicyLifecycleStateEnum string
 
-// Set of constants representing the allowable values for PolicyLifecycleState
+// Set of constants representing the allowable values for PolicyLifecycleStateEnum
 const (
 	PolicyLifecycleStateCreating PolicyLifecycleStateEnum = "CREATING"
 	PolicyLifecycleStateActive   PolicyLifecycleStateEnum = "ACTIVE"
@@ -91,7 +91,7 @@ var mappingPolicyLifecycleState = map[string]PolicyLifecycleStateEnum{
 	"DELETED":  PolicyLifecycleStateDeleted,
 }
 
-// GetPolicyLifecycleStateEnumValues Enumerates the set of values for PolicyLifecycleState
+// GetPolicyLifecycleStateEnumValues Enumerates the set of values for PolicyLifecycleStateEnum
 func GetPolicyLifecycleStateEnumValues() []PolicyLifecycleStateEnum {
 	values := make([]PolicyLifecycleStateEnum, 0)
 	for _, v := range mappingPolicyLifecycleState {

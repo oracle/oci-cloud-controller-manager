@@ -18,7 +18,7 @@ type VolumeBackupSchedule struct {
 	// The type of backup to create.
 	BackupType VolumeBackupScheduleBackupTypeEnum `mandatory:"true" json:"backupType"`
 
-	// The number of seconds (positive or negative) that the backup time should be shifted from the default interval boundaries specified by the period.
+	// The number of seconds that the backup time should be shifted from the default interval boundaries specified by the period. Backup time = Frequency start time + Offset.
 	OffsetSeconds *int `mandatory:"true" json:"offsetSeconds"`
 
 	// How often the backup should occur.
@@ -26,6 +26,9 @@ type VolumeBackupSchedule struct {
 
 	// How long, in seconds, backups created by this schedule should be kept until being automatically deleted.
 	RetentionSeconds *int `mandatory:"true" json:"retentionSeconds"`
+
+	// Specifies what time zone is the schedule in
+	TimeZone VolumeBackupScheduleTimeZoneEnum `mandatory:"false" json:"timeZone,omitempty"`
 }
 
 func (m VolumeBackupSchedule) String() string {
@@ -35,7 +38,7 @@ func (m VolumeBackupSchedule) String() string {
 // VolumeBackupScheduleBackupTypeEnum Enum with underlying type: string
 type VolumeBackupScheduleBackupTypeEnum string
 
-// Set of constants representing the allowable values for VolumeBackupScheduleBackupType
+// Set of constants representing the allowable values for VolumeBackupScheduleBackupTypeEnum
 const (
 	VolumeBackupScheduleBackupTypeFull        VolumeBackupScheduleBackupTypeEnum = "FULL"
 	VolumeBackupScheduleBackupTypeIncremental VolumeBackupScheduleBackupTypeEnum = "INCREMENTAL"
@@ -46,7 +49,7 @@ var mappingVolumeBackupScheduleBackupType = map[string]VolumeBackupScheduleBacku
 	"INCREMENTAL": VolumeBackupScheduleBackupTypeIncremental,
 }
 
-// GetVolumeBackupScheduleBackupTypeEnumValues Enumerates the set of values for VolumeBackupScheduleBackupType
+// GetVolumeBackupScheduleBackupTypeEnumValues Enumerates the set of values for VolumeBackupScheduleBackupTypeEnum
 func GetVolumeBackupScheduleBackupTypeEnumValues() []VolumeBackupScheduleBackupTypeEnum {
 	values := make([]VolumeBackupScheduleBackupTypeEnum, 0)
 	for _, v := range mappingVolumeBackupScheduleBackupType {
@@ -58,7 +61,7 @@ func GetVolumeBackupScheduleBackupTypeEnumValues() []VolumeBackupScheduleBackupT
 // VolumeBackupSchedulePeriodEnum Enum with underlying type: string
 type VolumeBackupSchedulePeriodEnum string
 
-// Set of constants representing the allowable values for VolumeBackupSchedulePeriod
+// Set of constants representing the allowable values for VolumeBackupSchedulePeriodEnum
 const (
 	VolumeBackupSchedulePeriodHour  VolumeBackupSchedulePeriodEnum = "ONE_HOUR"
 	VolumeBackupSchedulePeriodDay   VolumeBackupSchedulePeriodEnum = "ONE_DAY"
@@ -75,10 +78,33 @@ var mappingVolumeBackupSchedulePeriod = map[string]VolumeBackupSchedulePeriodEnu
 	"ONE_YEAR":  VolumeBackupSchedulePeriodYear,
 }
 
-// GetVolumeBackupSchedulePeriodEnumValues Enumerates the set of values for VolumeBackupSchedulePeriod
+// GetVolumeBackupSchedulePeriodEnumValues Enumerates the set of values for VolumeBackupSchedulePeriodEnum
 func GetVolumeBackupSchedulePeriodEnumValues() []VolumeBackupSchedulePeriodEnum {
 	values := make([]VolumeBackupSchedulePeriodEnum, 0)
 	for _, v := range mappingVolumeBackupSchedulePeriod {
+		values = append(values, v)
+	}
+	return values
+}
+
+// VolumeBackupScheduleTimeZoneEnum Enum with underlying type: string
+type VolumeBackupScheduleTimeZoneEnum string
+
+// Set of constants representing the allowable values for VolumeBackupScheduleTimeZoneEnum
+const (
+	VolumeBackupScheduleTimeZoneUtc                    VolumeBackupScheduleTimeZoneEnum = "UTC"
+	VolumeBackupScheduleTimeZoneRegionalDataCenterTime VolumeBackupScheduleTimeZoneEnum = "REGIONAL_DATA_CENTER_TIME"
+)
+
+var mappingVolumeBackupScheduleTimeZone = map[string]VolumeBackupScheduleTimeZoneEnum{
+	"UTC": VolumeBackupScheduleTimeZoneUtc,
+	"REGIONAL_DATA_CENTER_TIME": VolumeBackupScheduleTimeZoneRegionalDataCenterTime,
+}
+
+// GetVolumeBackupScheduleTimeZoneEnumValues Enumerates the set of values for VolumeBackupScheduleTimeZoneEnum
+func GetVolumeBackupScheduleTimeZoneEnumValues() []VolumeBackupScheduleTimeZoneEnum {
+	values := make([]VolumeBackupScheduleTimeZoneEnum, 0)
+	for _, v := range mappingVolumeBackupScheduleTimeZone {
 		values = append(values, v)
 	}
 	return values

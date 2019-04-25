@@ -17,7 +17,7 @@ import (
 // network connections to provide a single, logical connection between the edge router
 // on the customer's existing network and Oracle Cloud Infrastructure. *Private*
 // virtual circuits support private peering, and *public* virtual circuits support
-// public peering. For more information, see FastConnect Overview (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Concepts/fastconnect.htm).
+// public peering. For more information, see FastConnect Overview (https://docs.cloud.oracle.com/Content/Network/Concepts/fastconnect.htm).
 // Each virtual circuit is made up of information shared between a customer, Oracle,
 // and a provider (if the customer is using FastConnect via a provider). Who fills in
 // a given property of a virtual circuit depends on whether the BGP session related to
@@ -27,13 +27,19 @@ import (
 // provider and Oracle each do their part to provision the virtual circuit.
 // To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized,
 // talk to an administrator. If you're an administrator who needs to write policies to give users access, see
-// Getting Started with Policies (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/policygetstarted.htm).
+// Getting Started with Policies (https://docs.cloud.oracle.com/Content/Identity/Concepts/policygetstarted.htm).
+// **Warning:** Oracle recommends that you avoid using any confidential information when you
+// supply string values using the API.
 type VirtualCircuit struct {
 
-	// The provisioned data rate of the connection.
+	// The provisioned data rate of the connection.  To get a list of the
+	// available bandwidth levels (that is, shapes), see
+	// ListFastConnectProviderVirtualCircuitBandwidthShapes.
+	// Example: `10 Gbps`
 	BandwidthShapeName *string `mandatory:"false" json:"bandwidthShapeName"`
 
-	// BGP management option.
+	// Deprecated. Instead use the information in
+	// FastConnectProviderService.
 	BgpManagement VirtualCircuitBgpManagementEnum `mandatory:"false" json:"bgpManagement,omitempty"`
 
 	// The state of the BGP session associated with the virtual circuit.
@@ -67,7 +73,7 @@ type VirtualCircuit struct {
 
 	// The virtual circuit's current state. For information about
 	// the different states, see
-	// FastConnect Overview (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Concepts/fastconnect.htm).
+	// FastConnect Overview (https://docs.cloud.oracle.com/Content/Network/Concepts/fastconnect.htm).
 	LifecycleState VirtualCircuitLifecycleStateEnum `mandatory:"false" json:"lifecycleState,omitempty"`
 
 	// The Oracle BGP ASN.
@@ -78,6 +84,9 @@ type VirtualCircuit struct {
 
 	// The OCID of the service offered by the provider (if the customer is connecting via a provider).
 	ProviderServiceId *string `mandatory:"false" json:"providerServiceId"`
+
+	// The service key name offered by the provider (if the customer is connecting via a provider).
+	ProviderServiceKeyName *string `mandatory:"false" json:"providerServiceKeyName"`
 
 	// Deprecated. Instead use `providerServiceId`.
 	ProviderServiceName *string `mandatory:"false" json:"providerServiceName"`
@@ -90,7 +99,7 @@ type VirtualCircuit struct {
 	ProviderState VirtualCircuitProviderStateEnum `mandatory:"false" json:"providerState,omitempty"`
 
 	// For a public virtual circuit. The public IP prefixes (CIDRs) the customer wants to
-	// advertise across the connection. Each prefix must be /24 or less specific.
+	// advertise across the connection. Each prefix must be /31 or less specific.
 	PublicPrefixes []string `mandatory:"false" json:"publicPrefixes"`
 
 	// Provider-supplied reference information about this virtual circuit
@@ -110,7 +119,7 @@ type VirtualCircuit struct {
 	TimeCreated *common.SDKTime `mandatory:"false" json:"timeCreated"`
 
 	// Whether the virtual circuit supports private or public peering. For more information,
-	// see FastConnect Overview (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Concepts/fastconnect.htm).
+	// see FastConnect Overview (https://docs.cloud.oracle.com/Content/Network/Concepts/fastconnect.htm).
 	Type VirtualCircuitTypeEnum `mandatory:"false" json:"type,omitempty"`
 }
 
@@ -121,7 +130,7 @@ func (m VirtualCircuit) String() string {
 // VirtualCircuitBgpManagementEnum Enum with underlying type: string
 type VirtualCircuitBgpManagementEnum string
 
-// Set of constants representing the allowable values for VirtualCircuitBgpManagement
+// Set of constants representing the allowable values for VirtualCircuitBgpManagementEnum
 const (
 	VirtualCircuitBgpManagementCustomerManaged VirtualCircuitBgpManagementEnum = "CUSTOMER_MANAGED"
 	VirtualCircuitBgpManagementProviderManaged VirtualCircuitBgpManagementEnum = "PROVIDER_MANAGED"
@@ -134,7 +143,7 @@ var mappingVirtualCircuitBgpManagement = map[string]VirtualCircuitBgpManagementE
 	"ORACLE_MANAGED":   VirtualCircuitBgpManagementOracleManaged,
 }
 
-// GetVirtualCircuitBgpManagementEnumValues Enumerates the set of values for VirtualCircuitBgpManagement
+// GetVirtualCircuitBgpManagementEnumValues Enumerates the set of values for VirtualCircuitBgpManagementEnum
 func GetVirtualCircuitBgpManagementEnumValues() []VirtualCircuitBgpManagementEnum {
 	values := make([]VirtualCircuitBgpManagementEnum, 0)
 	for _, v := range mappingVirtualCircuitBgpManagement {
@@ -146,7 +155,7 @@ func GetVirtualCircuitBgpManagementEnumValues() []VirtualCircuitBgpManagementEnu
 // VirtualCircuitBgpSessionStateEnum Enum with underlying type: string
 type VirtualCircuitBgpSessionStateEnum string
 
-// Set of constants representing the allowable values for VirtualCircuitBgpSessionState
+// Set of constants representing the allowable values for VirtualCircuitBgpSessionStateEnum
 const (
 	VirtualCircuitBgpSessionStateUp   VirtualCircuitBgpSessionStateEnum = "UP"
 	VirtualCircuitBgpSessionStateDown VirtualCircuitBgpSessionStateEnum = "DOWN"
@@ -157,7 +166,7 @@ var mappingVirtualCircuitBgpSessionState = map[string]VirtualCircuitBgpSessionSt
 	"DOWN": VirtualCircuitBgpSessionStateDown,
 }
 
-// GetVirtualCircuitBgpSessionStateEnumValues Enumerates the set of values for VirtualCircuitBgpSessionState
+// GetVirtualCircuitBgpSessionStateEnumValues Enumerates the set of values for VirtualCircuitBgpSessionStateEnum
 func GetVirtualCircuitBgpSessionStateEnumValues() []VirtualCircuitBgpSessionStateEnum {
 	values := make([]VirtualCircuitBgpSessionStateEnum, 0)
 	for _, v := range mappingVirtualCircuitBgpSessionState {
@@ -169,7 +178,7 @@ func GetVirtualCircuitBgpSessionStateEnumValues() []VirtualCircuitBgpSessionStat
 // VirtualCircuitLifecycleStateEnum Enum with underlying type: string
 type VirtualCircuitLifecycleStateEnum string
 
-// Set of constants representing the allowable values for VirtualCircuitLifecycleState
+// Set of constants representing the allowable values for VirtualCircuitLifecycleStateEnum
 const (
 	VirtualCircuitLifecycleStatePendingProvider VirtualCircuitLifecycleStateEnum = "PENDING_PROVIDER"
 	VirtualCircuitLifecycleStateVerifying       VirtualCircuitLifecycleStateEnum = "VERIFYING"
@@ -192,7 +201,7 @@ var mappingVirtualCircuitLifecycleState = map[string]VirtualCircuitLifecycleStat
 	"TERMINATED":       VirtualCircuitLifecycleStateTerminated,
 }
 
-// GetVirtualCircuitLifecycleStateEnumValues Enumerates the set of values for VirtualCircuitLifecycleState
+// GetVirtualCircuitLifecycleStateEnumValues Enumerates the set of values for VirtualCircuitLifecycleStateEnum
 func GetVirtualCircuitLifecycleStateEnumValues() []VirtualCircuitLifecycleStateEnum {
 	values := make([]VirtualCircuitLifecycleStateEnum, 0)
 	for _, v := range mappingVirtualCircuitLifecycleState {
@@ -204,7 +213,7 @@ func GetVirtualCircuitLifecycleStateEnumValues() []VirtualCircuitLifecycleStateE
 // VirtualCircuitProviderStateEnum Enum with underlying type: string
 type VirtualCircuitProviderStateEnum string
 
-// Set of constants representing the allowable values for VirtualCircuitProviderState
+// Set of constants representing the allowable values for VirtualCircuitProviderStateEnum
 const (
 	VirtualCircuitProviderStateActive   VirtualCircuitProviderStateEnum = "ACTIVE"
 	VirtualCircuitProviderStateInactive VirtualCircuitProviderStateEnum = "INACTIVE"
@@ -215,7 +224,7 @@ var mappingVirtualCircuitProviderState = map[string]VirtualCircuitProviderStateE
 	"INACTIVE": VirtualCircuitProviderStateInactive,
 }
 
-// GetVirtualCircuitProviderStateEnumValues Enumerates the set of values for VirtualCircuitProviderState
+// GetVirtualCircuitProviderStateEnumValues Enumerates the set of values for VirtualCircuitProviderStateEnum
 func GetVirtualCircuitProviderStateEnumValues() []VirtualCircuitProviderStateEnum {
 	values := make([]VirtualCircuitProviderStateEnum, 0)
 	for _, v := range mappingVirtualCircuitProviderState {
@@ -227,7 +236,7 @@ func GetVirtualCircuitProviderStateEnumValues() []VirtualCircuitProviderStateEnu
 // VirtualCircuitServiceTypeEnum Enum with underlying type: string
 type VirtualCircuitServiceTypeEnum string
 
-// Set of constants representing the allowable values for VirtualCircuitServiceType
+// Set of constants representing the allowable values for VirtualCircuitServiceTypeEnum
 const (
 	VirtualCircuitServiceTypeColocated VirtualCircuitServiceTypeEnum = "COLOCATED"
 	VirtualCircuitServiceTypeLayer2    VirtualCircuitServiceTypeEnum = "LAYER2"
@@ -240,7 +249,7 @@ var mappingVirtualCircuitServiceType = map[string]VirtualCircuitServiceTypeEnum{
 	"LAYER3":    VirtualCircuitServiceTypeLayer3,
 }
 
-// GetVirtualCircuitServiceTypeEnumValues Enumerates the set of values for VirtualCircuitServiceType
+// GetVirtualCircuitServiceTypeEnumValues Enumerates the set of values for VirtualCircuitServiceTypeEnum
 func GetVirtualCircuitServiceTypeEnumValues() []VirtualCircuitServiceTypeEnum {
 	values := make([]VirtualCircuitServiceTypeEnum, 0)
 	for _, v := range mappingVirtualCircuitServiceType {
@@ -252,7 +261,7 @@ func GetVirtualCircuitServiceTypeEnumValues() []VirtualCircuitServiceTypeEnum {
 // VirtualCircuitTypeEnum Enum with underlying type: string
 type VirtualCircuitTypeEnum string
 
-// Set of constants representing the allowable values for VirtualCircuitType
+// Set of constants representing the allowable values for VirtualCircuitTypeEnum
 const (
 	VirtualCircuitTypePublic  VirtualCircuitTypeEnum = "PUBLIC"
 	VirtualCircuitTypePrivate VirtualCircuitTypeEnum = "PRIVATE"
@@ -263,7 +272,7 @@ var mappingVirtualCircuitType = map[string]VirtualCircuitTypeEnum{
 	"PRIVATE": VirtualCircuitTypePrivate,
 }
 
-// GetVirtualCircuitTypeEnumValues Enumerates the set of values for VirtualCircuitType
+// GetVirtualCircuitTypeEnumValues Enumerates the set of values for VirtualCircuitTypeEnum
 func GetVirtualCircuitTypeEnumValues() []VirtualCircuitTypeEnum {
 	values := make([]VirtualCircuitTypeEnum, 0)
 	for _, v := range mappingVirtualCircuitType {

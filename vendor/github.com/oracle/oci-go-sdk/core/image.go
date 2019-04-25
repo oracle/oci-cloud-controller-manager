@@ -13,10 +13,12 @@ import (
 )
 
 // Image A boot disk image for launching an instance. For more information, see
-// Overview of the Compute Service (https://docs.us-phoenix-1.oraclecloud.com/Content/Compute/Concepts/computeoverview.htm).
+// Overview of the Compute Service (https://docs.cloud.oracle.com/Content/Compute/Concepts/computeoverview.htm).
 // To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized,
 // talk to an administrator. If you're an administrator who needs to write policies to give users access, see
-// Getting Started with Policies (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/policygetstarted.htm).
+// Getting Started with Policies (https://docs.cloud.oracle.com/Content/Identity/Concepts/policygetstarted.htm).
+// **Warning:** Oracle recommends that you avoid using any confidential information when you
+// supply string values using the API.
 type Image struct {
 
 	// The OCID of the compartment containing the instance you want to use as the basis for the image.
@@ -48,7 +50,7 @@ type Image struct {
 	BaseImageId *string `mandatory:"false" json:"baseImageId"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -60,17 +62,20 @@ type Image struct {
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
 	// predefined name, type, or namespace. For more information, see
-	// Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
 	// Specifies the configuration mode for launching virtual machine (VM) instances. The configuration modes are:
 	// * `NATIVE` - VM instances launch with iSCSI boot and VFIO devices. The default value for Oracle-provided images.
 	// * `EMULATED` - VM instances launch with emulated devices, such as the E1000 network driver and emulated SCSI disk controller.
+	// * `PARAVIRTUALIZED` - VM instances launch with paravirtualized devices using virtio drivers.
 	// * `CUSTOM` - VM instances launch with custom configuration settings specified in the `LaunchOptions` parameter.
 	LaunchMode ImageLaunchModeEnum `mandatory:"false" json:"launchMode,omitempty"`
 
 	LaunchOptions *LaunchOptions `mandatory:"false" json:"launchOptions"`
+
+	AgentFeatures *InstanceAgentFeatures `mandatory:"false" json:"agentFeatures"`
 
 	// Image size (1 MB = 1048576 bytes)
 	// Example: `47694`
@@ -84,20 +89,22 @@ func (m Image) String() string {
 // ImageLaunchModeEnum Enum with underlying type: string
 type ImageLaunchModeEnum string
 
-// Set of constants representing the allowable values for ImageLaunchMode
+// Set of constants representing the allowable values for ImageLaunchModeEnum
 const (
-	ImageLaunchModeNative   ImageLaunchModeEnum = "NATIVE"
-	ImageLaunchModeEmulated ImageLaunchModeEnum = "EMULATED"
-	ImageLaunchModeCustom   ImageLaunchModeEnum = "CUSTOM"
+	ImageLaunchModeNative          ImageLaunchModeEnum = "NATIVE"
+	ImageLaunchModeEmulated        ImageLaunchModeEnum = "EMULATED"
+	ImageLaunchModeParavirtualized ImageLaunchModeEnum = "PARAVIRTUALIZED"
+	ImageLaunchModeCustom          ImageLaunchModeEnum = "CUSTOM"
 )
 
 var mappingImageLaunchMode = map[string]ImageLaunchModeEnum{
-	"NATIVE":   ImageLaunchModeNative,
-	"EMULATED": ImageLaunchModeEmulated,
-	"CUSTOM":   ImageLaunchModeCustom,
+	"NATIVE":          ImageLaunchModeNative,
+	"EMULATED":        ImageLaunchModeEmulated,
+	"PARAVIRTUALIZED": ImageLaunchModeParavirtualized,
+	"CUSTOM":          ImageLaunchModeCustom,
 }
 
-// GetImageLaunchModeEnumValues Enumerates the set of values for ImageLaunchMode
+// GetImageLaunchModeEnumValues Enumerates the set of values for ImageLaunchModeEnum
 func GetImageLaunchModeEnumValues() []ImageLaunchModeEnum {
 	values := make([]ImageLaunchModeEnum, 0)
 	for _, v := range mappingImageLaunchMode {
@@ -109,7 +116,7 @@ func GetImageLaunchModeEnumValues() []ImageLaunchModeEnum {
 // ImageLifecycleStateEnum Enum with underlying type: string
 type ImageLifecycleStateEnum string
 
-// Set of constants representing the allowable values for ImageLifecycleState
+// Set of constants representing the allowable values for ImageLifecycleStateEnum
 const (
 	ImageLifecycleStateProvisioning ImageLifecycleStateEnum = "PROVISIONING"
 	ImageLifecycleStateImporting    ImageLifecycleStateEnum = "IMPORTING"
@@ -128,7 +135,7 @@ var mappingImageLifecycleState = map[string]ImageLifecycleStateEnum{
 	"DELETED":      ImageLifecycleStateDeleted,
 }
 
-// GetImageLifecycleStateEnumValues Enumerates the set of values for ImageLifecycleState
+// GetImageLifecycleStateEnumValues Enumerates the set of values for ImageLifecycleStateEnum
 func GetImageLifecycleStateEnumValues() []ImageLifecycleStateEnum {
 	values := make([]ImageLifecycleStateEnum, 0)
 	for _, v := range mappingImageLifecycleState {

@@ -13,12 +13,15 @@ import (
 )
 
 // Shape A compute instance shape that can be used in LaunchInstance.
-// For more information, see Overview of the Compute Service (https://docs.us-phoenix-1.oraclecloud.com/Content/Compute/Concepts/computeoverview.htm).
+// For more information, see Overview of the Compute Service (https://docs.cloud.oracle.com/Content/Compute/Concepts/computeoverview.htm).
 type Shape struct {
 
 	// The name of the shape. You can enumerate all available shapes by calling
 	// ListShapes.
 	Shape *string `mandatory:"true" json:"shape"`
+
+	// The shape's availability domain.
+	AvailabilityDomain *string `mandatory:"false" json:"availabilityDomain"`
 }
 
 func (m Shape) String() string {

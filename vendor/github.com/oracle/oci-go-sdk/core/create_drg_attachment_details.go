@@ -23,6 +23,14 @@ type CreateDrgAttachmentDetails struct {
 
 	// A user-friendly name. Does not have to be unique. Avoid entering confidential information.
 	DisplayName *string `mandatory:"false" json:"displayName"`
+
+	// The OCID of the route table the DRG attachment will use.
+	// If you don't specify a route table here, the DRG attachment is created without an associated route
+	// table. The Networking service does NOT automatically associate the attached VCN's default route table
+	// with the DRG attachment.
+	// For information about why you would associate a route table with a DRG attachment, see
+	// Advanced Scenario: Transit Routing (https://docs.cloud.oracle.com/Content/Network/Tasks/transitrouting.htm).
+	RouteTableId *string `mandatory:"false" json:"routeTableId"`
 }
 
 func (m CreateDrgAttachmentDetails) String() string {

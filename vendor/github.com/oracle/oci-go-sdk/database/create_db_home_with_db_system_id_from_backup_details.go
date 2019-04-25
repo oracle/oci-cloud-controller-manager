@@ -16,7 +16,7 @@ import (
 // CreateDbHomeWithDbSystemIdFromBackupDetails The representation of CreateDbHomeWithDbSystemIdFromBackupDetails
 type CreateDbHomeWithDbSystemIdFromBackupDetails struct {
 
-	// The OCID of the DB System.
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the DB system.
 	DbSystemId *string `mandatory:"true" json:"dbSystemId"`
 
 	Database *CreateDatabaseFromBackupDetails `mandatory:"true" json:"database"`

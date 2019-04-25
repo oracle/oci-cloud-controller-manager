@@ -3,7 +3,7 @@
 
 // Object Storage Service API
 //
-// Common set of Object and Archive Storage APIs for managing buckets and objects.
+// Common set of Object Storage and Archive Storage APIs for managing buckets, objects, and related resources.
 //
 
 package objectstorage
@@ -30,7 +30,8 @@ type PreauthenticatedRequestSummary struct {
 	// The date when the pre-authenticated request was created as per RFC 3339 (https://tools.ietf.org/rfc/rfc3339).
 	TimeCreated *common.SDKTime `mandatory:"true" json:"timeCreated"`
 
-	// The name of object that is being granted access to by the pre-authenticated request. This can be null and if it is, the pre-authenticated request grants access to the entire bucket.
+	// The name of object that is being granted access to by the pre-authenticated request. This can be null and if it is,
+	// the pre-authenticated request grants access to the entire bucket.
 	ObjectName *string `mandatory:"false" json:"objectName"`
 }
 
@@ -41,7 +42,7 @@ func (m PreauthenticatedRequestSummary) String() string {
 // PreauthenticatedRequestSummaryAccessTypeEnum Enum with underlying type: string
 type PreauthenticatedRequestSummaryAccessTypeEnum string
 
-// Set of constants representing the allowable values for PreauthenticatedRequestSummaryAccessType
+// Set of constants representing the allowable values for PreauthenticatedRequestSummaryAccessTypeEnum
 const (
 	PreauthenticatedRequestSummaryAccessTypeObjectread      PreauthenticatedRequestSummaryAccessTypeEnum = "ObjectRead"
 	PreauthenticatedRequestSummaryAccessTypeObjectwrite     PreauthenticatedRequestSummaryAccessTypeEnum = "ObjectWrite"
@@ -56,7 +57,7 @@ var mappingPreauthenticatedRequestSummaryAccessType = map[string]Preauthenticate
 	"AnyObjectWrite":  PreauthenticatedRequestSummaryAccessTypeAnyobjectwrite,
 }
 
-// GetPreauthenticatedRequestSummaryAccessTypeEnumValues Enumerates the set of values for PreauthenticatedRequestSummaryAccessType
+// GetPreauthenticatedRequestSummaryAccessTypeEnumValues Enumerates the set of values for PreauthenticatedRequestSummaryAccessTypeEnum
 func GetPreauthenticatedRequestSummaryAccessTypeEnumValues() []PreauthenticatedRequestSummaryAccessTypeEnum {
 	values := make([]PreauthenticatedRequestSummaryAccessTypeEnum, 0)
 	for _, v := range mappingPreauthenticatedRequestSummaryAccessType {

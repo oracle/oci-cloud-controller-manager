@@ -1,9 +1,10 @@
 // Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
-// Public DNS Service
+// DNS API
 //
-// API for managing DNS zones, records, and policies.
+// API for the DNS service. Use this API to manage DNS zones, records, and other DNS resources.
+// For more information, see Overview of the DNS Service (https://docs.cloud.oracle.com/iaas/Content/DNS/Concepts/dnszonemanagement.htm).
 //
 
 package dns
@@ -13,6 +14,7 @@ import (
 )
 
 // Zone A DNS zone.
+// **Warning:** Oracle recommends that you avoid using any confidential information when you supply string values using the API.
 type Zone struct {
 
 	// The name of the zone.
@@ -24,7 +26,20 @@ type Zone struct {
 	// The OCID of the compartment containing the zone.
 	CompartmentId *string `mandatory:"false" json:"compartmentId"`
 
-	// External master servers for the zone.
+	// Free-form tags for this resource. Each tag is a simple key-value pair with no predefined name, type, or namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	//
+	// **Example:** `{"Department": "Finance"}`
+	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
+
+	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	//
+	// **Example:** `{"Operations": {"CostCenter": "42"}}`
+	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
+
+	// External master servers for the zone. `externalMasters` becomes a
+	// required parameter when the `zoneType` value is `SECONDARY`.
 	ExternalMasters []ExternalMaster `mandatory:"false" json:"externalMasters"`
 
 	// The canonical absolute URL of the resource.
@@ -33,7 +48,7 @@ type Zone struct {
 	// The OCID of the zone.
 	Id *string `mandatory:"false" json:"id"`
 
-	// The date and time the image was created in "YYYY-MM-ddThh:mmZ" format
+	// The date and time the resource was created in "YYYY-MM-ddThh:mmZ" format
 	// with a Z offset, as defined by RFC 3339.
 	// **Example:** `2016-07-22T17:23:59:60Z`
 	TimeCreated *common.SDKTime `mandatory:"false" json:"timeCreated"`
@@ -48,6 +63,9 @@ type Zone struct {
 
 	// The current state of the zone resource.
 	LifecycleState ZoneLifecycleStateEnum `mandatory:"false" json:"lifecycleState,omitempty"`
+
+	// The authoritative nameservers for the zone.
+	Nameservers []Nameserver `mandatory:"false" json:"nameservers"`
 }
 
 func (m Zone) String() string {
@@ -57,7 +75,7 @@ func (m Zone) String() string {
 // ZoneZoneTypeEnum Enum with underlying type: string
 type ZoneZoneTypeEnum string
 
-// Set of constants representing the allowable values for ZoneZoneType
+// Set of constants representing the allowable values for ZoneZoneTypeEnum
 const (
 	ZoneZoneTypePrimary   ZoneZoneTypeEnum = "PRIMARY"
 	ZoneZoneTypeSecondary ZoneZoneTypeEnum = "SECONDARY"
@@ -68,7 +86,7 @@ var mappingZoneZoneType = map[string]ZoneZoneTypeEnum{
 	"SECONDARY": ZoneZoneTypeSecondary,
 }
 
-// GetZoneZoneTypeEnumValues Enumerates the set of values for ZoneZoneType
+// GetZoneZoneTypeEnumValues Enumerates the set of values for ZoneZoneTypeEnum
 func GetZoneZoneTypeEnumValues() []ZoneZoneTypeEnum {
 	values := make([]ZoneZoneTypeEnum, 0)
 	for _, v := range mappingZoneZoneType {
@@ -80,7 +98,7 @@ func GetZoneZoneTypeEnumValues() []ZoneZoneTypeEnum {
 // ZoneLifecycleStateEnum Enum with underlying type: string
 type ZoneLifecycleStateEnum string
 
-// Set of constants representing the allowable values for ZoneLifecycleState
+// Set of constants representing the allowable values for ZoneLifecycleStateEnum
 const (
 	ZoneLifecycleStateActive   ZoneLifecycleStateEnum = "ACTIVE"
 	ZoneLifecycleStateCreating ZoneLifecycleStateEnum = "CREATING"
@@ -97,7 +115,7 @@ var mappingZoneLifecycleState = map[string]ZoneLifecycleStateEnum{
 	"FAILED":   ZoneLifecycleStateFailed,
 }
 
-// GetZoneLifecycleStateEnumValues Enumerates the set of values for ZoneLifecycleState
+// GetZoneLifecycleStateEnumValues Enumerates the set of values for ZoneLifecycleStateEnum
 func GetZoneLifecycleStateEnumValues() []ZoneLifecycleStateEnum {
 	values := make([]ZoneLifecycleStateEnum, 0)
 	for _, v := range mappingZoneLifecycleState {

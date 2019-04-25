@@ -55,6 +55,9 @@ type CreateVirtualCircuitDetails struct {
 	// ListFastConnectProviderServices.
 	ProviderServiceId *string `mandatory:"false" json:"providerServiceId"`
 
+	// The service key name offered by the provider (if the customer is connecting via a provider).
+	ProviderServiceKeyName *string `mandatory:"false" json:"providerServiceKeyName"`
+
 	// Deprecated. Instead use `providerServiceId`.
 	// To get a list of the provider names, see
 	// ListFastConnectProviderServices.
@@ -77,7 +80,7 @@ func (m CreateVirtualCircuitDetails) String() string {
 // CreateVirtualCircuitDetailsTypeEnum Enum with underlying type: string
 type CreateVirtualCircuitDetailsTypeEnum string
 
-// Set of constants representing the allowable values for CreateVirtualCircuitDetailsType
+// Set of constants representing the allowable values for CreateVirtualCircuitDetailsTypeEnum
 const (
 	CreateVirtualCircuitDetailsTypePublic  CreateVirtualCircuitDetailsTypeEnum = "PUBLIC"
 	CreateVirtualCircuitDetailsTypePrivate CreateVirtualCircuitDetailsTypeEnum = "PRIVATE"
@@ -88,7 +91,7 @@ var mappingCreateVirtualCircuitDetailsType = map[string]CreateVirtualCircuitDeta
 	"PRIVATE": CreateVirtualCircuitDetailsTypePrivate,
 }
 
-// GetCreateVirtualCircuitDetailsTypeEnumValues Enumerates the set of values for CreateVirtualCircuitDetailsType
+// GetCreateVirtualCircuitDetailsTypeEnumValues Enumerates the set of values for CreateVirtualCircuitDetailsTypeEnum
 func GetCreateVirtualCircuitDetailsTypeEnumValues() []CreateVirtualCircuitDetailsTypeEnum {
 	values := make([]CreateVirtualCircuitDetailsTypeEnum, 0)
 	for _, v := range mappingCreateVirtualCircuitDetailsType {

@@ -16,10 +16,12 @@ import (
 // with another VCN in the same region. *Peering* means that the two VCNs can
 // communicate using private IP addresses, but without the traffic traversing the
 // internet or routing through your on-premises network. For more information,
-// see VCN Peering (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Tasks/VCNpeering.htm).
+// see VCN Peering (https://docs.cloud.oracle.com/Content/Network/Tasks/VCNpeering.htm).
 // To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized,
 // talk to an administrator. If you're an administrator who needs to write policies to give users access, see
-// Getting Started with Policies (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/policygetstarted.htm).
+// Getting Started with Policies (https://docs.cloud.oracle.com/Content/Identity/Concepts/policygetstarted.htm).
+// **Warning:** Oracle recommends that you avoid using any confidential information when you
+// supply string values using the API.
 type LocalPeeringGateway struct {
 
 	// The OCID of the compartment containing the LPG.
@@ -52,25 +54,36 @@ type LocalPeeringGateway struct {
 	VcnId *string `mandatory:"true" json:"vcnId"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
 	// predefined name, type, or namespace. For more information, see
-	// Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
-	// The range of IP addresses available on the VCN at the other
-	// end of the peering from this LPG. The value is `null` if the LPG is not peered.
-	// You can use this as the destination CIDR for a route rule to route a subnet's
-	// traffic to this LPG.
-	// Example: `192.168.0.0/16`
+	// The smallest aggregate CIDR that contains all the CIDR routes advertised by the VCN
+	// at the other end of the peering from this LPG. See `peerAdvertisedCidrDetails` for
+	// the individual CIDRs. The value is `null` if the LPG is not peered.
+	// Example: `192.168.0.0/16`, or if aggregated with `172.16.0.0/24` then `128.0.0.0/1`
 	PeerAdvertisedCidr *string `mandatory:"false" json:"peerAdvertisedCidr"`
+
+	// The specific ranges of IP addresses available on or via the VCN at the other
+	// end of the peering from this LPG. The value is `null` if the LPG is not peered.
+	// You can use these as destination CIDRs for route rules to route a subnet's
+	// traffic to this LPG.
+	// Example: [`192.168.0.0/16`, `172.16.0.0/24`]
+	PeerAdvertisedCidrDetails []string `mandatory:"false" json:"peerAdvertisedCidrDetails"`
 
 	// Additional information regarding the peering status, if applicable.
 	PeeringStatusDetails *string `mandatory:"false" json:"peeringStatusDetails"`
+
+	// The OCID of the route table the LPG is using. For information about why you
+	// would associate a route table with an LPG, see
+	// Advanced Scenario: Transit Routing (https://docs.cloud.oracle.com/Content/Network/Tasks/transitrouting.htm).
+	RouteTableId *string `mandatory:"false" json:"routeTableId"`
 }
 
 func (m LocalPeeringGateway) String() string {
@@ -80,7 +93,7 @@ func (m LocalPeeringGateway) String() string {
 // LocalPeeringGatewayLifecycleStateEnum Enum with underlying type: string
 type LocalPeeringGatewayLifecycleStateEnum string
 
-// Set of constants representing the allowable values for LocalPeeringGatewayLifecycleState
+// Set of constants representing the allowable values for LocalPeeringGatewayLifecycleStateEnum
 const (
 	LocalPeeringGatewayLifecycleStateProvisioning LocalPeeringGatewayLifecycleStateEnum = "PROVISIONING"
 	LocalPeeringGatewayLifecycleStateAvailable    LocalPeeringGatewayLifecycleStateEnum = "AVAILABLE"
@@ -95,7 +108,7 @@ var mappingLocalPeeringGatewayLifecycleState = map[string]LocalPeeringGatewayLif
 	"TERMINATED":   LocalPeeringGatewayLifecycleStateTerminated,
 }
 
-// GetLocalPeeringGatewayLifecycleStateEnumValues Enumerates the set of values for LocalPeeringGatewayLifecycleState
+// GetLocalPeeringGatewayLifecycleStateEnumValues Enumerates the set of values for LocalPeeringGatewayLifecycleStateEnum
 func GetLocalPeeringGatewayLifecycleStateEnumValues() []LocalPeeringGatewayLifecycleStateEnum {
 	values := make([]LocalPeeringGatewayLifecycleStateEnum, 0)
 	for _, v := range mappingLocalPeeringGatewayLifecycleState {
@@ -107,7 +120,7 @@ func GetLocalPeeringGatewayLifecycleStateEnumValues() []LocalPeeringGatewayLifec
 // LocalPeeringGatewayPeeringStatusEnum Enum with underlying type: string
 type LocalPeeringGatewayPeeringStatusEnum string
 
-// Set of constants representing the allowable values for LocalPeeringGatewayPeeringStatus
+// Set of constants representing the allowable values for LocalPeeringGatewayPeeringStatusEnum
 const (
 	LocalPeeringGatewayPeeringStatusInvalid LocalPeeringGatewayPeeringStatusEnum = "INVALID"
 	LocalPeeringGatewayPeeringStatusNew     LocalPeeringGatewayPeeringStatusEnum = "NEW"
@@ -124,7 +137,7 @@ var mappingLocalPeeringGatewayPeeringStatus = map[string]LocalPeeringGatewayPeer
 	"REVOKED": LocalPeeringGatewayPeeringStatusRevoked,
 }
 
-// GetLocalPeeringGatewayPeeringStatusEnumValues Enumerates the set of values for LocalPeeringGatewayPeeringStatus
+// GetLocalPeeringGatewayPeeringStatusEnumValues Enumerates the set of values for LocalPeeringGatewayPeeringStatusEnum
 func GetLocalPeeringGatewayPeeringStatusEnumValues() []LocalPeeringGatewayPeeringStatusEnum {
 	values := make([]LocalPeeringGatewayPeeringStatusEnum, 0)
 	for _, v := range mappingLocalPeeringGatewayPeeringStatus {

@@ -15,27 +15,36 @@ import (
 // EgressSecurityRule A rule for allowing outbound IP packets.
 type EgressSecurityRule struct {
 
-	// The destination service cidrBlock or destination IP address range in CIDR notation for the egress rule.
-	// This is the range of IP addresses that a packet originating from the instance can go to.
+	// Conceptually, this is the range of IP addresses that a packet originating from the instance
+	// can go to.
+	// Allowed values:
+	//   * IP address range in CIDR notation. For example: `192.168.1.0/24` or `2001:0db8:0123:45::/56`
+	//   * The `cidrBlock` value for a Service, if you're
+	//     setting up a security list rule for traffic destined for a particular `Service` through
+	//     a service gateway. For example: `oci-phx-objectstorage`.
 	Destination *string `mandatory:"true" json:"destination"`
 
 	// The transport protocol. Specify either `all` or an IPv4 protocol number as
 	// defined in
 	// Protocol Numbers (http://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml).
-	// Options are supported only for ICMP ("1"), TCP ("6"), and UDP ("17").
+	// Options are supported only for ICMP ("1"), TCP ("6"), UDP ("17"), and ICMPv6 ("58").
 	Protocol *string `mandatory:"true" json:"protocol"`
 
-	// Type of destination for EgressSecurityRule. SERVICE_CIDR_BLOCK should be used if destination is a service
-	// cidrBlock. CIDR_BLOCK should be used if destination is IP address range in CIDR notation.
-	// It defaults to CIDR_BLOCK, if not specified.
+	// Type of destination for the rule. The default is `CIDR_BLOCK`.
+	// Allowed values:
+	//   * `CIDR_BLOCK`: If the rule's `destination` is an IP address range in CIDR notation.
+	//   * `SERVICE_CIDR_BLOCK`: If the rule's `destination` is the `cidrBlock` value for a
+	//     Service (the rule is for traffic destined for a
+	//     particular `Service` through a service gateway).
 	DestinationType EgressSecurityRuleDestinationTypeEnum `mandatory:"false" json:"destinationType,omitempty"`
 
-	// Optional and valid only for ICMP. Use to specify a particular ICMP type and code
-	// as defined in
-	// ICMP Parameters (http://www.iana.org/assignments/icmp-parameters/icmp-parameters.xhtml).
-	// If you specify ICMP as the protocol but omit this object, then all ICMP types and
+	// Optional and valid only for ICMP and ICMPv6. Use to specify a particular ICMP type and code
+	// as defined in:
+	// * ICMP Parameters (http://www.iana.org/assignments/icmp-parameters/icmp-parameters.xhtml)
+	// * ICMPv6 Parameters (https://www.iana.org/assignments/icmpv6-parameters/icmpv6-parameters.xhtml)
+	// If you specify ICMP or ICMPv6 as the protocol but omit this object, then all ICMP types and
 	// codes are allowed. If you do provide this object, the type is required and the code is optional.
-	// To enable MTU negotiation for ingress internet traffic, make sure to allow type 3 ("Destination
+	// To enable MTU negotiation for ingress internet traffic via IPv4, make sure to allow type 3 ("Destination
 	// Unreachable") code 4 ("Fragmentation Needed and Don't Fragment was Set"). If you need to specify
 	// multiple codes for a single type, create a separate security list rule for each.
 	IcmpOptions *IcmpOptions `mandatory:"false" json:"icmpOptions"`
@@ -63,7 +72,7 @@ func (m EgressSecurityRule) String() string {
 // EgressSecurityRuleDestinationTypeEnum Enum with underlying type: string
 type EgressSecurityRuleDestinationTypeEnum string
 
-// Set of constants representing the allowable values for EgressSecurityRuleDestinationType
+// Set of constants representing the allowable values for EgressSecurityRuleDestinationTypeEnum
 const (
 	EgressSecurityRuleDestinationTypeCidrBlock        EgressSecurityRuleDestinationTypeEnum = "CIDR_BLOCK"
 	EgressSecurityRuleDestinationTypeServiceCidrBlock EgressSecurityRuleDestinationTypeEnum = "SERVICE_CIDR_BLOCK"
@@ -74,7 +83,7 @@ var mappingEgressSecurityRuleDestinationType = map[string]EgressSecurityRuleDest
 	"SERVICE_CIDR_BLOCK": EgressSecurityRuleDestinationTypeServiceCidrBlock,
 }
 
-// GetEgressSecurityRuleDestinationTypeEnumValues Enumerates the set of values for EgressSecurityRuleDestinationType
+// GetEgressSecurityRuleDestinationTypeEnumValues Enumerates the set of values for EgressSecurityRuleDestinationTypeEnum
 func GetEgressSecurityRuleDestinationTypeEnumValues() []EgressSecurityRuleDestinationTypeEnum {
 	values := make([]EgressSecurityRuleDestinationTypeEnum, 0)
 	for _, v := range mappingEgressSecurityRuleDestinationType {

@@ -15,9 +15,11 @@ import (
 // ConsoleHistory An instance's serial console data. It includes configuration messages that occur when the
 // instance boots, such as kernel and BIOS messages, and is useful for checking the status of
 // the instance or diagnosing problems. The console data is minimally formatted ASCII text.
+// **Warning:** Oracle recommends that you avoid using any confidential information when you
+// supply string values using the API.
 type ConsoleHistory struct {
 
-	// The Availability Domain of an instance.
+	// The availability domain of an instance.
 	// Example: `Uocm:PHX-AD-1`
 	AvailabilityDomain *string `mandatory:"true" json:"availabilityDomain"`
 
@@ -38,7 +40,7 @@ type ConsoleHistory struct {
 	TimeCreated *common.SDKTime `mandatory:"true" json:"timeCreated"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -49,7 +51,7 @@ type ConsoleHistory struct {
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
 	// predefined name, type, or namespace. For more information, see
-	// Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 }
@@ -61,7 +63,7 @@ func (m ConsoleHistory) String() string {
 // ConsoleHistoryLifecycleStateEnum Enum with underlying type: string
 type ConsoleHistoryLifecycleStateEnum string
 
-// Set of constants representing the allowable values for ConsoleHistoryLifecycleState
+// Set of constants representing the allowable values for ConsoleHistoryLifecycleStateEnum
 const (
 	ConsoleHistoryLifecycleStateRequested      ConsoleHistoryLifecycleStateEnum = "REQUESTED"
 	ConsoleHistoryLifecycleStateGettingHistory ConsoleHistoryLifecycleStateEnum = "GETTING-HISTORY"
@@ -76,7 +78,7 @@ var mappingConsoleHistoryLifecycleState = map[string]ConsoleHistoryLifecycleStat
 	"FAILED":          ConsoleHistoryLifecycleStateFailed,
 }
 
-// GetConsoleHistoryLifecycleStateEnumValues Enumerates the set of values for ConsoleHistoryLifecycleState
+// GetConsoleHistoryLifecycleStateEnumValues Enumerates the set of values for ConsoleHistoryLifecycleStateEnum
 func GetConsoleHistoryLifecycleStateEnumValues() []ConsoleHistoryLifecycleStateEnum {
 	values := make([]ConsoleHistoryLifecycleStateEnum, 0)
 	for _, v := range mappingConsoleHistoryLifecycleState {

@@ -10,10 +10,10 @@ import (
 )
 
 const (
-	major = "2"
-	minor = "0"
+	major = "1"
+	minor = "25"
 	patch = "0"
-	tag   = ""
+	tag   = "preview"
 )
 
 var once sync.Once

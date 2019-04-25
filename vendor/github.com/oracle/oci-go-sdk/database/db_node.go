@@ -12,32 +12,34 @@ import (
 	"github.com/oracle/oci-go-sdk/common"
 )
 
-// DbNode A server where Oracle database software is running.
-// To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized, talk to an administrator. If you're an administrator who needs to write policies to give users access, see Getting Started with Policies (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/policygetstarted.htm).
+// DbNode The representation of DbNode
 type DbNode struct {
 
-	// The OCID of the DB System.
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the database node.
+	Id *string `mandatory:"true" json:"id"`
+
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the DB system.
 	DbSystemId *string `mandatory:"true" json:"dbSystemId"`
 
-	// The OCID of the DB Node.
-	Id *string `mandatory:"true" json:"id"`
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the VNIC.
+	VnicId *string `mandatory:"true" json:"vnicId"`
 
 	// The current state of the database node.
 	LifecycleState DbNodeLifecycleStateEnum `mandatory:"true" json:"lifecycleState"`
 
-	// The date and time that the DB Node was created.
+	// The date and time that the database node was created.
 	TimeCreated *common.SDKTime `mandatory:"true" json:"timeCreated"`
 
-	// The OCID of the VNIC.
-	VnicId *string `mandatory:"true" json:"vnicId"`
-
-	// The OCID of the backup VNIC.
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the backup VNIC.
 	BackupVnicId *string `mandatory:"false" json:"backupVnicId"`
 
-	// The host name for the DB Node.
+	// The host name for the database node.
 	Hostname *string `mandatory:"false" json:"hostname"`
 
-	// Storage size, in GBs, of the software volume that is allocated to the DB system. This is applicable only for VM-based DBs.
+	// The name of the Fault Domain the instance is contained in.
+	FaultDomain *string `mandatory:"false" json:"faultDomain"`
+
+	// The size (in GB) of the block storage volume allocation for the DB system. This attribute applies only for virtual machine DB systems.
 	SoftwareStorageSizeInGB *int `mandatory:"false" json:"softwareStorageSizeInGB"`
 }
 
@@ -48,7 +50,7 @@ func (m DbNode) String() string {
 // DbNodeLifecycleStateEnum Enum with underlying type: string
 type DbNodeLifecycleStateEnum string
 
-// Set of constants representing the allowable values for DbNodeLifecycleState
+// Set of constants representing the allowable values for DbNodeLifecycleStateEnum
 const (
 	DbNodeLifecycleStateProvisioning DbNodeLifecycleStateEnum = "PROVISIONING"
 	DbNodeLifecycleStateAvailable    DbNodeLifecycleStateEnum = "AVAILABLE"
@@ -73,7 +75,7 @@ var mappingDbNodeLifecycleState = map[string]DbNodeLifecycleStateEnum{
 	"FAILED":       DbNodeLifecycleStateFailed,
 }
 
-// GetDbNodeLifecycleStateEnumValues Enumerates the set of values for DbNodeLifecycleState
+// GetDbNodeLifecycleStateEnumValues Enumerates the set of values for DbNodeLifecycleStateEnum
 func GetDbNodeLifecycleStateEnumValues() []DbNodeLifecycleStateEnum {
 	values := make([]DbNodeLifecycleStateEnum, 0)
 	for _, v := range mappingDbNodeLifecycleState {

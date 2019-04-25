@@ -3,7 +3,9 @@
 
 // Container Engine for Kubernetes API
 //
-// Container Engine for Kubernetes API
+// API for the Container Engine for Kubernetes service. Use this API to build, deploy,
+// and manage cloud-native applications. For more information, see
+// Overview of Container Engine for Kubernetes (https://docs.cloud.oracle.com/iaas/Content/ContEng/Concepts/contengoverview.htm).
 //
 
 package containerengine
@@ -15,7 +17,7 @@ import (
 // NodeError The properties that define an upstream error while managing a node.
 type NodeError struct {
 
-	// A short error code that defines the upstream error, meant for programmatic parsing. See API Errors (https://docs.us-phoenix-1.oraclecloud.com/Content/API/References/apierrors.htm).
+	// A short error code that defines the upstream error, meant for programmatic parsing. See API Errors (https://docs.cloud.oracle.com/Content/API/References/apierrors.htm).
 	Code *string `mandatory:"true" json:"code"`
 
 	// A human-readable error string of the upstream error.

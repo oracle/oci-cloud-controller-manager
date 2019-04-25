@@ -1,0 +1,4 @@
+!dist
+pkg/
+vendor/
+cmd/

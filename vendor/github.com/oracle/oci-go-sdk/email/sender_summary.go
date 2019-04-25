@@ -1,9 +1,10 @@
 // Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
-// Email Delivery Service API
+// Email Delivery API
 //
-// API spec for managing OCI Email Delivery services.
+// API for the Email Delivery service. Use this API to send high-volume, application-generated
+// emails. For more information, see Overview of the Email Delivery Service (https://docs.cloud.oracle.com/iaas/Content/Email/Concepts/overview.htm).
 //
 
 package email
@@ -14,6 +15,9 @@ import (
 
 // SenderSummary The email addresses and `senderId` representing an approved sender.
 type SenderSummary struct {
+
+	// The OCID for the compartment.
+	CompartmentId *string `mandatory:"false" json:"compartmentId"`
 
 	// The email address of the sender.
 	EmailAddress *string `mandatory:"false" json:"emailAddress"`
@@ -27,6 +31,16 @@ type SenderSummary struct {
 	// Date time the approved sender was added, in "YYYY-MM-ddThh:mmZ"
 	// format with a Z offset, as defined by RFC 3339.
 	TimeCreated *common.SDKTime `mandatory:"false" json:"timeCreated"`
+
+	// Free-form tags for this resource. Each tag is a simple key-value pair with no predefined name, type, or namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Example: `{"Department": "Finance"}`
+	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
+
+	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Example: `{"Operations": {"CostCenter": "42"}}`
+	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 }
 
 func (m SenderSummary) String() string {
@@ -36,7 +50,7 @@ func (m SenderSummary) String() string {
 // SenderSummaryLifecycleStateEnum Enum with underlying type: string
 type SenderSummaryLifecycleStateEnum string
 
-// Set of constants representing the allowable values for SenderSummaryLifecycleState
+// Set of constants representing the allowable values for SenderSummaryLifecycleStateEnum
 const (
 	SenderSummaryLifecycleStateCreating SenderSummaryLifecycleStateEnum = "CREATING"
 	SenderSummaryLifecycleStateActive   SenderSummaryLifecycleStateEnum = "ACTIVE"
@@ -51,7 +65,7 @@ var mappingSenderSummaryLifecycleState = map[string]SenderSummaryLifecycleStateE
 	"DELETED":  SenderSummaryLifecycleStateDeleted,
 }
 
-// GetSenderSummaryLifecycleStateEnumValues Enumerates the set of values for SenderSummaryLifecycleState
+// GetSenderSummaryLifecycleStateEnumValues Enumerates the set of values for SenderSummaryLifecycleStateEnum
 func GetSenderSummaryLifecycleStateEnumValues() []SenderSummaryLifecycleStateEnum {
 	values := make([]SenderSummaryLifecycleStateEnum, 0)
 	for _, v := range mappingSenderSummaryLifecycleState {

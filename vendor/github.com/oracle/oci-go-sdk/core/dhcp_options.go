@@ -19,11 +19,13 @@ import (
 // handled in the subnets in your VCN.
 // - DhcpSearchDomainOption: Lets you specify
 // a search domain name to use for DNS queries.
-// For more information, see  DNS in Your Virtual Cloud Network (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Concepts/dns.htm)
-// and DHCP Options (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Tasks/managingDHCP.htm).
+// For more information, see  DNS in Your Virtual Cloud Network (https://docs.cloud.oracle.com/Content/Network/Concepts/dns.htm)
+// and DHCP Options (https://docs.cloud.oracle.com/Content/Network/Tasks/managingDHCP.htm).
 // To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized,
 // talk to an administrator. If you're an administrator who needs to write policies to give users access, see
-// Getting Started with Policies (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/policygetstarted.htm).
+// Getting Started with Policies (https://docs.cloud.oracle.com/Content/Identity/Concepts/policygetstarted.htm).
+// **Warning:** Oracle recommends that you avoid using any confidential information when you
+// supply string values using the API.
 type DhcpOptions struct {
 
 	// The OCID of the compartment containing the set of DHCP options.
@@ -46,7 +48,7 @@ type DhcpOptions struct {
 	VcnId *string `mandatory:"true" json:"vcnId"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -56,7 +58,7 @@ type DhcpOptions struct {
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
 	// predefined name, type, or namespace. For more information, see
-	// Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 }
@@ -95,7 +97,11 @@ func (m *DhcpOptions) UnmarshalJSON(data []byte) (e error) {
 		if err != nil {
 			return err
 		}
-		m.Options[i] = nn.(DhcpOption)
+		if nn != nil {
+			m.Options[i] = nn.(DhcpOption)
+		} else {
+			m.Options[i] = nil
+		}
 	}
 	m.TimeCreated = model.TimeCreated
 	m.VcnId = model.VcnId
@@ -105,7 +111,7 @@ func (m *DhcpOptions) UnmarshalJSON(data []byte) (e error) {
 // DhcpOptionsLifecycleStateEnum Enum with underlying type: string
 type DhcpOptionsLifecycleStateEnum string
 
-// Set of constants representing the allowable values for DhcpOptionsLifecycleState
+// Set of constants representing the allowable values for DhcpOptionsLifecycleStateEnum
 const (
 	DhcpOptionsLifecycleStateProvisioning DhcpOptionsLifecycleStateEnum = "PROVISIONING"
 	DhcpOptionsLifecycleStateAvailable    DhcpOptionsLifecycleStateEnum = "AVAILABLE"
@@ -120,7 +126,7 @@ var mappingDhcpOptionsLifecycleState = map[string]DhcpOptionsLifecycleStateEnum{
 	"TERMINATED":   DhcpOptionsLifecycleStateTerminated,
 }
 
-// GetDhcpOptionsLifecycleStateEnumValues Enumerates the set of values for DhcpOptionsLifecycleState
+// GetDhcpOptionsLifecycleStateEnumValues Enumerates the set of values for DhcpOptionsLifecycleStateEnum
 func GetDhcpOptionsLifecycleStateEnumValues() []DhcpOptionsLifecycleStateEnum {
 	values := make([]DhcpOptionsLifecycleStateEnum, 0)
 	for _, v := range mappingDhcpOptionsLifecycleState {

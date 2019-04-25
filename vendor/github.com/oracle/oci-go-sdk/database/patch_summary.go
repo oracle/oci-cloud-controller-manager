@@ -12,17 +12,17 @@ import (
 	"github.com/oracle/oci-go-sdk/common"
 )
 
-// PatchSummary A Patch for a DB System or DB Home.
+// PatchSummary A Patch for a DB system or DB Home.
 // To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized,
 // talk to an administrator. If you're an administrator who needs to write policies to give users access,
-// see Getting Started with Policies (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/policygetstarted.htm).
+// see Getting Started with Policies (https://docs.cloud.oracle.com/Content/Identity/Concepts/policygetstarted.htm).
 type PatchSummary struct {
+
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the patch.
+	Id *string `mandatory:"true" json:"id"`
 
 	// The text describing this patch package.
 	Description *string `mandatory:"true" json:"description"`
-
-	// The OCID of the patch.
-	Id *string `mandatory:"true" json:"id"`
 
 	// The date and time that the patch was released.
 	TimeReleased *common.SDKTime `mandatory:"true" json:"timeReleased"`
@@ -30,11 +30,11 @@ type PatchSummary struct {
 	// The version of this patch package.
 	Version *string `mandatory:"true" json:"version"`
 
-	// Actions that can possibly be performed using this patch.
-	AvailableActions []PatchSummaryAvailableActionsEnum `mandatory:"false" json:"availableActions,omitempty"`
-
 	// Action that is currently being performed or was completed last.
 	LastAction PatchSummaryLastActionEnum `mandatory:"false" json:"lastAction,omitempty"`
+
+	// Actions that can possibly be performed using this patch.
+	AvailableActions []PatchSummaryAvailableActionsEnum `mandatory:"false" json:"availableActions,omitempty"`
 
 	// A descriptive text associated with the lifecycleState.
 	// Typically can contain additional displayable text.
@@ -48,33 +48,10 @@ func (m PatchSummary) String() string {
 	return common.PointerString(m)
 }
 
-// PatchSummaryAvailableActionsEnum Enum with underlying type: string
-type PatchSummaryAvailableActionsEnum string
-
-// Set of constants representing the allowable values for PatchSummaryAvailableActions
-const (
-	PatchSummaryAvailableActionsApply    PatchSummaryAvailableActionsEnum = "APPLY"
-	PatchSummaryAvailableActionsPrecheck PatchSummaryAvailableActionsEnum = "PRECHECK"
-)
-
-var mappingPatchSummaryAvailableActions = map[string]PatchSummaryAvailableActionsEnum{
-	"APPLY":    PatchSummaryAvailableActionsApply,
-	"PRECHECK": PatchSummaryAvailableActionsPrecheck,
-}
-
-// GetPatchSummaryAvailableActionsEnumValues Enumerates the set of values for PatchSummaryAvailableActions
-func GetPatchSummaryAvailableActionsEnumValues() []PatchSummaryAvailableActionsEnum {
-	values := make([]PatchSummaryAvailableActionsEnum, 0)
-	for _, v := range mappingPatchSummaryAvailableActions {
-		values = append(values, v)
-	}
-	return values
-}
-
 // PatchSummaryLastActionEnum Enum with underlying type: string
 type PatchSummaryLastActionEnum string
 
-// Set of constants representing the allowable values for PatchSummaryLastAction
+// Set of constants representing the allowable values for PatchSummaryLastActionEnum
 const (
 	PatchSummaryLastActionApply    PatchSummaryLastActionEnum = "APPLY"
 	PatchSummaryLastActionPrecheck PatchSummaryLastActionEnum = "PRECHECK"
@@ -85,7 +62,7 @@ var mappingPatchSummaryLastAction = map[string]PatchSummaryLastActionEnum{
 	"PRECHECK": PatchSummaryLastActionPrecheck,
 }
 
-// GetPatchSummaryLastActionEnumValues Enumerates the set of values for PatchSummaryLastAction
+// GetPatchSummaryLastActionEnumValues Enumerates the set of values for PatchSummaryLastActionEnum
 func GetPatchSummaryLastActionEnumValues() []PatchSummaryLastActionEnum {
 	values := make([]PatchSummaryLastActionEnum, 0)
 	for _, v := range mappingPatchSummaryLastAction {
@@ -94,10 +71,33 @@ func GetPatchSummaryLastActionEnumValues() []PatchSummaryLastActionEnum {
 	return values
 }
 
+// PatchSummaryAvailableActionsEnum Enum with underlying type: string
+type PatchSummaryAvailableActionsEnum string
+
+// Set of constants representing the allowable values for PatchSummaryAvailableActionsEnum
+const (
+	PatchSummaryAvailableActionsApply    PatchSummaryAvailableActionsEnum = "APPLY"
+	PatchSummaryAvailableActionsPrecheck PatchSummaryAvailableActionsEnum = "PRECHECK"
+)
+
+var mappingPatchSummaryAvailableActions = map[string]PatchSummaryAvailableActionsEnum{
+	"APPLY":    PatchSummaryAvailableActionsApply,
+	"PRECHECK": PatchSummaryAvailableActionsPrecheck,
+}
+
+// GetPatchSummaryAvailableActionsEnumValues Enumerates the set of values for PatchSummaryAvailableActionsEnum
+func GetPatchSummaryAvailableActionsEnumValues() []PatchSummaryAvailableActionsEnum {
+	values := make([]PatchSummaryAvailableActionsEnum, 0)
+	for _, v := range mappingPatchSummaryAvailableActions {
+		values = append(values, v)
+	}
+	return values
+}
+
 // PatchSummaryLifecycleStateEnum Enum with underlying type: string
 type PatchSummaryLifecycleStateEnum string
 
-// Set of constants representing the allowable values for PatchSummaryLifecycleState
+// Set of constants representing the allowable values for PatchSummaryLifecycleStateEnum
 const (
 	PatchSummaryLifecycleStateAvailable  PatchSummaryLifecycleStateEnum = "AVAILABLE"
 	PatchSummaryLifecycleStateSuccess    PatchSummaryLifecycleStateEnum = "SUCCESS"
@@ -112,7 +112,7 @@ var mappingPatchSummaryLifecycleState = map[string]PatchSummaryLifecycleStateEnu
 	"FAILED":      PatchSummaryLifecycleStateFailed,
 }
 
-// GetPatchSummaryLifecycleStateEnumValues Enumerates the set of values for PatchSummaryLifecycleState
+// GetPatchSummaryLifecycleStateEnumValues Enumerates the set of values for PatchSummaryLifecycleStateEnum
 func GetPatchSummaryLifecycleStateEnumValues() []PatchSummaryLifecycleStateEnum {
 	values := make([]PatchSummaryLifecycleStateEnum, 0)
 	for _, v := range mappingPatchSummaryLifecycleState {

@@ -16,7 +16,7 @@ import (
 // ParavirtualizedVolumeAttachment A paravirtualized volume attachment.
 type ParavirtualizedVolumeAttachment struct {
 
-	// The Availability Domain of an instance.
+	// The availability domain of an instance.
 	// Example: `Uocm:PHX-AD-1`
 	AvailabilityDomain *string `mandatory:"true" json:"availabilityDomain"`
 
@@ -36,6 +36,9 @@ type ParavirtualizedVolumeAttachment struct {
 	// The OCID of the volume.
 	VolumeId *string `mandatory:"true" json:"volumeId"`
 
+	// The device name.
+	Device *string `mandatory:"false" json:"device"`
+
 	// A user-friendly name. Does not have to be unique, and it cannot be changed.
 	// Avoid entering confidential information.
 	// Example: `My volume attachment`
@@ -43,6 +46,12 @@ type ParavirtualizedVolumeAttachment struct {
 
 	// Whether the attachment was created in read-only mode.
 	IsReadOnly *bool `mandatory:"false" json:"isReadOnly"`
+
+	// Whether the attachment should be created in shareable mode. If an attachment is created in shareable mode, then other instances can attach the same volume, provided that they also create their attachments in shareable mode. Only certain volume types can be attached in shareable mode. Defaults to false if not specified.
+	IsShareable *bool `mandatory:"false" json:"isShareable"`
+
+	// Whether in-transit encryption for the data volume's paravirtualized attachment is enabled or not.
+	IsPvEncryptionInTransitEnabled *bool `mandatory:"false" json:"isPvEncryptionInTransitEnabled"`
 
 	// The current state of the volume attachment.
 	LifecycleState VolumeAttachmentLifecycleStateEnum `mandatory:"true" json:"lifecycleState"`
@@ -56,6 +65,11 @@ func (m ParavirtualizedVolumeAttachment) GetAvailabilityDomain() *string {
 //GetCompartmentId returns CompartmentId
 func (m ParavirtualizedVolumeAttachment) GetCompartmentId() *string {
 	return m.CompartmentId
+}
+
+//GetDevice returns Device
+func (m ParavirtualizedVolumeAttachment) GetDevice() *string {
+	return m.Device
 }
 
 //GetDisplayName returns DisplayName
@@ -78,6 +92,11 @@ func (m ParavirtualizedVolumeAttachment) GetIsReadOnly() *bool {
 	return m.IsReadOnly
 }
 
+//GetIsShareable returns IsShareable
+func (m ParavirtualizedVolumeAttachment) GetIsShareable() *bool {
+	return m.IsShareable
+}
+
 //GetLifecycleState returns LifecycleState
 func (m ParavirtualizedVolumeAttachment) GetLifecycleState() VolumeAttachmentLifecycleStateEnum {
 	return m.LifecycleState
@@ -91,6 +110,11 @@ func (m ParavirtualizedVolumeAttachment) GetTimeCreated() *common.SDKTime {
 //GetVolumeId returns VolumeId
 func (m ParavirtualizedVolumeAttachment) GetVolumeId() *string {
 	return m.VolumeId
+}
+
+//GetIsPvEncryptionInTransitEnabled returns IsPvEncryptionInTransitEnabled
+func (m ParavirtualizedVolumeAttachment) GetIsPvEncryptionInTransitEnabled() *bool {
+	return m.IsPvEncryptionInTransitEnabled
 }
 
 func (m ParavirtualizedVolumeAttachment) String() string {

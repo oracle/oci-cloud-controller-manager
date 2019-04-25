@@ -15,17 +15,24 @@ import (
 // CreateServiceGatewayDetails The representation of CreateServiceGatewayDetails
 type CreateServiceGatewayDetails struct {
 
-	// The OCID  (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/identifiers.htm)  of the compartment to contain the Service Gateway.
+	// The OCID  (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the compartment to contain the service gateway.
 	CompartmentId *string `mandatory:"true" json:"compartmentId"`
 
-	// List of the Service OCIDs. These are the Services which will be enabled on the Service Gateway. This list can be empty.
+	// List of the OCIDs of the Service objects to
+	// enable for the service gateway. This list can be empty if you don't want to enable any
+	// `Service` objects when you create the gateway. You can enable a `Service`
+	// object later by using either AttachServiceId
+	// or UpdateServiceGateway.
+	// For each enabled `Service`, make sure there's a route rule with the `Service` object's `cidrBlock`
+	// as the rule's destination and the service gateway as the rule's target. See
+	// RouteTable.
 	Services []ServiceIdRequestDetails `mandatory:"true" json:"services"`
 
-	// The OCID (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/identifiers.htm) of the VCN.
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the VCN.
 	VcnId *string `mandatory:"true" json:"vcnId"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -35,7 +42,7 @@ type CreateServiceGatewayDetails struct {
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
 	// predefined name, type, or namespace. For more information, see
-	// Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 }

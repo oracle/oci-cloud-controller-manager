@@ -5,6 +5,7 @@ package common
 import (
 	"bytes"
 	"crypto/rsa"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -96,7 +97,7 @@ func TestOCIRequestSigner_HTTPRequest(t *testing.T) {
 	err = s.Sign(r)
 	assert.NoError(t, err)
 
-	signature := s.getSigningString(r)
+	signature, _ := s.getSigningStringAndHeaders(r)
 	assert.Equal(t, "date: Thu, 05 Jan 2014 21:31:40 GMT\n(request-target): get /api\nhost: localhost:7000", signature)
 }
 
@@ -117,15 +118,15 @@ func TestOCIRequestSigner_SigningString(t *testing.T) {
 	}
 	r.Header.Set(requestHeaderDate, "Thu, 05 Jan 2014 21:31:40 GMT")
 	r.Method = http.MethodGet
-	signature := s.getSigningString(&r)
+	signature, _ := s.getSigningStringAndHeaders(&r)
 
 	assert.Equal(t, expectedSigningString, signature)
 }
 
-func TestOCIRequestSigner_ComputeSignature(t *testing.T) {
+func TestOCIRequestSigner_SigningString_Uppercase(t *testing.T) {
 	s := ociRequestSigner{
 		KeyProvider:    testKeyProvider{},
-		GenericHeaders: defaultGenericHeaders,
+		GenericHeaders: []string{"Date", "(Request-target)", "host"},
 		ShouldHashBody: defaultBodyHashPredicate,
 		BodyHeaders:    defaultBodyHeaders}
 	url, _ := url.Parse(testURL)
@@ -138,7 +139,7 @@ func TestOCIRequestSigner_ComputeSignature(t *testing.T) {
 	}
 	r.Header.Set(requestHeaderDate, "Thu, 05 Jan 2014 21:31:40 GMT")
 	r.Method = http.MethodGet
-	signature, err := s.computeSignature(&r)
+	signature, _, err := s.computeSignature(&r)
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedSignature, signature)
@@ -195,7 +196,7 @@ func TestOCIRequestSigner_SignString2(t *testing.T) {
 	r.Header.Set(requestHeaderContentLength, strconv.FormatInt(r.ContentLength, 10))
 	r.Method = http.MethodPost
 	calculateHashOfBody(&r)
-	signingString := s.getSigningString(&r)
+	signingString, _ := s.getSigningStringAndHeaders(&r)
 
 	assert.Equal(t, r.ContentLength, int64(316))
 	assert.Equal(t, expectedSigningString2, signingString)
@@ -223,7 +224,7 @@ func TestOCIRequestSigner_ComputeSignature2(t *testing.T) {
 	r.Header.Set(requestHeaderContentLength, strconv.FormatInt(r.ContentLength, 10))
 	r.Method = http.MethodPost
 	calculateHashOfBody(&r)
-	signature, err := s.computeSignature(&r)
+	signature, _, err := s.computeSignature(&r)
 
 	assert.NoError(t, err)
 	assert.Equal(t, r.ContentLength, int64(316))
@@ -284,4 +285,109 @@ func TestOCIRequestSigner_SignEmptyBody(t *testing.T) {
 	assert.Equal(t, r.ContentLength, int64(0))
 	assert.NotEmpty(t, r.Header.Get(requestHeaderAuthorization))
 	assert.NotEmpty(t, r.Header.Get(requestHeaderXContentSHA256))
+}
+
+func TestOCIRequestSigner_SignBinaryBody(t *testing.T) {
+	s := ociRequestSigner{KeyProvider: testKeyProvider{},
+		ShouldHashBody: defaultBodyHashPredicate,
+		GenericHeaders: defaultGenericHeaders,
+		BodyHeaders:    defaultBodyHeaders,
+	}
+	u, _ := url.Parse(testURL2)
+
+	testIO := []struct {
+		request         http.Request
+		bodyOfRequest   *bytes.Buffer
+		expectSignature bool
+	}{
+		{
+			request: http.Request{
+				Proto:      "HTTP/1.1",
+				ProtoMajor: 1,
+				ProtoMinor: 1,
+				Header:     make(http.Header),
+				URL:        u,
+				Method:     http.MethodPost,
+			},
+			bodyOfRequest:   bytes.NewBufferString(testBody),
+			expectSignature: true,
+		},
+		{
+			request: http.Request{
+				Proto:      "HTTP/1.1",
+				ProtoMajor: 1,
+				ProtoMinor: 1,
+				Header:     make(http.Header),
+				URL:        u,
+				Method:     http.MethodPost,
+			},
+			bodyOfRequest:   bytes.NewBufferString(""),
+			expectSignature: true,
+		},
+		{
+			request: http.Request{
+				Proto:      "HTTP/1.1",
+				ProtoMajor: 1,
+				ProtoMinor: 1,
+				Header:     make(http.Header),
+				URL:        u,
+				Method:     http.MethodPost,
+			},
+			bodyOfRequest:   nil,
+			expectSignature: true,
+		},
+	}
+
+	for i, testC := range testIO {
+		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
+			lenOfBody := 0
+			if testC.bodyOfRequest != nil {
+				lenOfBody = testC.bodyOfRequest.Len()
+				testC.request.Body = ioutil.NopCloser(testC.bodyOfRequest)
+			} else {
+				testC.request.Body = nil
+			}
+			testC.request.Header.Set(requestHeaderDate, "Thu, 05 Jan 2014 21:31:40 GMT")
+			testC.request.Header.Set(requestHeaderContentType, "application/json")
+
+			err := s.Sign(&testC.request)
+			assert.NoError(t, err)
+
+			bl, err := strconv.Atoi(testC.request.Header.Get(requestHeaderContentLength))
+			assert.NoError(t, err)
+
+			if testC.request.Body != nil {
+				assert.Equal(t, lenOfBody, int(testC.request.ContentLength))
+				assert.Equal(t, lenOfBody, bl)
+
+			} else {
+				assert.Equal(t, 0, int(testC.request.ContentLength))
+				assert.Equal(t, 0, bl)
+			}
+
+			if testC.expectSignature {
+				assert.NotEmpty(t, testC.request.Header.Get(requestHeaderAuthorization))
+				assert.NotEmpty(t, testC.request.Header.Get(requestHeaderXContentSHA256))
+				assert.Contains(t, testC.request.Header.Get(requestHeaderAuthorization), "content-length")
+				if lenOfBody != 0 {
+					expectedAuthHeader := `Signature version="1",headers="date (request-target) host content-length content-type x-content-sha256",keyId="ocid1.tenancy.oc1..aaaaaaaaba3pv6wkcr4jqae5f15p2b2m2yt2j6rx32uzr4h25vqstifsfdsq/ocid1.user.oc1..aaaaaaaat5nvwcna5j6aqzjcaty5eqbb6qt2jvpkanghtgdaqedqw3rynjq/20:3b:97:13:55:1c:5b:0d:d3:37:d8:50:4e:c5:3a:34",algorithm="rsa-sha256",signature="Mje8vIDPlwIHmD/cTDwRxE7HaAvBg16JnVcsuqaNRim23fFPgQfLoOOxae6WqKb1uPjYEl0qIdazWaBy/Ml8DRhqlocMwoSXv0fbukP8J5N80LCmzT/FFBvIvTB91XuXI3hYfP9Zt1l7S6ieVadHUfqBedWH0itrtPJBgKmrWso="`
+					assert.Equal(t, expectedAuthHeader, testC.request.Header.Get(requestHeaderAuthorization))
+				}
+			}
+		})
+	}
+}
+
+func TestDefaultHeadersReturnsCopy(t *testing.T) {
+	genericHeaders := DefaultGenericHeaders()
+	bodyHeaders := DefaultBodyHeaders()
+
+	assert.Equal(t, defaultGenericHeaders, genericHeaders)
+	assert.Equal(t, defaultBodyHeaders, bodyHeaders)
+
+	genericHeaders[0] = "mutate"
+	bodyHeaders[0] = "mutate"
+
+	assert.NotEqual(t, defaultGenericHeaders, genericHeaders)
+	assert.NotEqual(t, defaultBodyHeaders, bodyHeaders)
 }

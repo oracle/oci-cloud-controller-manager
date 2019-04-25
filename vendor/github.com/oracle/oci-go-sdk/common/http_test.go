@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"math"
 )
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -38,6 +39,8 @@ type updateUserRequest struct {
 	UserID                string `mandatory:"true" contributesTo:"path" name:"userId"`
 	TestupdateUserDetails `contributesTo:"body"`
 	IfMatch               string `mandatory:"false" contributesTo:"header" name:"if-match"`
+	HeaderValueOne        string `mandatory:"false" contributesTo:"header" name:"listInHeader"`
+	HeaderValueTwo        string `mandatory:"false" contributesTo:"header" name:"listInHeader"`
 }
 
 type TestcreateAPIKeyDetails struct {
@@ -59,6 +62,19 @@ type uploadAPIKeyRequestPtr struct {
 	UserID                     *string `mandatory:"true" contributesTo:"path" name:"userId"`
 	TestcreateAPIKeyDetailsPtr `contributesTo:"body"`
 	OpcRetryToken              *string `mandatory:"false" contributesTo:"header" name:"opc-retry-token"`
+}
+
+type EmbeddedByteSlice struct {
+	Key   *[]byte `mandatory:"false" json:"key"`
+	Value []byte  `mandatory:"true" json:"value"`
+}
+
+type KVList struct {
+	KVs []EmbeddedByteSlice `mandatory:"true" json:"kvs"`
+}
+
+type KVRequest struct {
+	KVList `contributesTo:"body"`
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -88,11 +104,21 @@ func TestMakeDefault(t *testing.T) {
 }
 
 func TestHttpMarshallerSimpleHeader(t *testing.T) {
-	s := updateUserRequest{UserID: "id1", IfMatch: "n=as", TestupdateUserDetails: TestupdateUserDetails{Description: "name of"}}
+	s := updateUserRequest{
+		UserID:                "id1",
+		IfMatch:               "n=as",
+		TestupdateUserDetails: TestupdateUserDetails{Description: "name of"},
+		HeaderValueOne:        "1",
+		HeaderValueTwo:        "2",
+	}
 	request := MakeDefaultHTTPRequest(http.MethodPost, "/random")
 	HTTPRequestMarshaller(s, &request)
 	header := request.Header
 	assert.True(t, header.Get(requestHeaderIfMatch) == "n=as")
+	listInHeader := header["Listinheader"]
+	assert.True(t, len(listInHeader) == 2)
+	hone, htwo := listInHeader[0], listInHeader[1]
+	assert.True(t, hone == "1" && htwo == "2")
 }
 
 func TestHttpMarshallerSimpleStruct(t *testing.T) {
@@ -193,8 +219,8 @@ func TestHttpMarshalerAll(t *testing.T) {
 	var content map[string]string
 	body, _ := ioutil.ReadAll(request.Body)
 	json.Unmarshal(body, &content)
-	when := s.When.Format(time.RFC3339)
-	assert.True(t, request.URL.Path == "/101")
+	when := s.When.Format(time.RFC3339Nano)
+	assert.True(t, request.URL.Path == "//101")
 	assert.True(t, request.URL.Query().Get("name") == s.Name)
 	assert.True(t, request.URL.Query().Get("income") == strconv.FormatFloat(float64(s.Income), 'f', 6, 32))
 	assert.True(t, request.URL.Query().Get("when") == when)
@@ -266,7 +292,7 @@ func TestHttpMarshallerSimpleStructPointers(t *testing.T) {
 	assert.Equal(t, "", request.Header.Get(requestHeaderOpcRetryToken))
 	assert.True(t, strings.Contains(request.URL.Path, "111"))
 	assert.True(t, strings.Contains(string(all), "thekey"))
-	assert.Contains(t, string(all), now.Format(time.RFC3339))
+	assert.Contains(t, string(all), now.Format(time.RFC3339Nano))
 }
 
 func TestHttpMarshallerSimpleStructPointersFilled(t *testing.T) {
@@ -357,6 +383,22 @@ func TestHttpMarshalerUnsupportedTypes(t *testing.T) {
 		Debugln(e)
 		assert.Error(t, e)
 	}
+}
+
+func TestHttpMarshallerEmbeddedBytes(t *testing.T) {
+	s := KVRequest{
+		KVList{
+			KVs: []EmbeddedByteSlice{
+				{Value: []byte{1, 2, 3, 4}},
+				{Key: &[]byte{6, 7, 8, 9}, Value: []byte{1, 2, 3, 4}},
+				{Value: []byte{}},
+			},
+		}}
+	request := MakeDefaultHTTPRequest(http.MethodPost, "/random")
+	HTTPRequestMarshaller(s, &request)
+	b, _ := ioutil.ReadAll(request.Body)
+	st := string(b)
+	assert.Equal(t, `{"kvs":[{"value":"AQIDBA=="},{"key":"BgcICQ==","value":"AQIDBA=="},{"value":""}]}`, st)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -610,6 +652,32 @@ func TestMarshalBinaryRequest(t *testing.T) {
 	assert.Equal(t, data, string(all))
 }
 
+func TestMarshalBinaryRequestIsSigned(t *testing.T) {
+	signer := ociRequestSigner{KeyProvider: testKeyProvider{},
+		ShouldHashBody: defaultBodyHashPredicate,
+		GenericHeaders: defaultGenericHeaders,
+		BodyHeaders:    defaultBodyHeaders,
+	}
+	data := "some data in a file"
+	buffer := bytes.NewBufferString(data)
+	r := reqWithBinaryFiled{Content: ioutil.NopCloser(buffer)}
+	httpRequest, err := MakeDefaultHTTPRequestWithTaggedStruct("POST", "/obj", r)
+	assert.NoError(t, err)
+	err = signer.Sign(&httpRequest)
+	assert.NoError(t, err)
+	all, err := ioutil.ReadAll(httpRequest.Body)
+	assert.NoError(t, err)
+	assert.Equal(t, data, string(all))
+
+	assert.Equal(t, fmt.Sprintf("%v", len(data)), httpRequest.Header.Get(requestHeaderContentLength))
+	assert.NotEmpty(t, httpRequest.Header.Get(requestHeaderAuthorization))
+	assert.NotEmpty(t, httpRequest.Header.Get(requestHeaderXContentSHA256))
+	assert.Equal(t, "application/octet-stream", httpRequest.Header.Get(requestHeaderContentType))
+	assert.Contains(t, httpRequest.Header.Get(requestHeaderAuthorization), "content-length")
+	assert.Contains(t, httpRequest.Header.Get(requestHeaderAuthorization), "x-content-sha256")
+	assert.Contains(t, httpRequest.Header.Get(requestHeaderAuthorization), "content-type")
+}
+
 type structWithBinaryField struct {
 	Content io.Reader `presentIn:"body" encoding:"binary"`
 }
@@ -818,17 +886,15 @@ func TestOmitFieldsInJson_SimpleStructWithSliceStruct(t *testing.T) {
 		AString      *string `mandatory:"false" json:"a"`
 		ANilString   *string `mandatory:"false" json:"anil"`
 		EmptyNumbers []int   `mandatory:"false" json:"aempty"`
+		NilNumbers   []int   `mandatory:"false" json:"nilnumbers"`
+		Numbers      []int   `mandatory:"true" json:"numbers"`
 	}
 
 	type Nested struct {
-		//N *string `mandatory:"false" json:"n"`
-		//Numbers []int `mandatory:"false" json:"numbers"`
 		ZComplex []InSstruct `mandatory:"false" json:"complex"`
 	}
 	val := ""
-	//numbers := []int{1, 3}
-	//s := Nested{N:&val, Numbers: numbers, ZComplex:InSstruct{AString:&val, EmptyNumbers:[]int{}}}
-	s := Nested{ZComplex: []InSstruct{{AString: &val, EmptyNumbers: []int{}}}}
+	s := Nested{ZComplex: []InSstruct{{AString: &val, EmptyNumbers: []int{}, NilNumbers: nil, Numbers: []int{1, 2}}}}
 	sVal := reflect.ValueOf(s)
 	jsonIn, _ := json.Marshal(s)
 	m := make(map[string]interface{})
@@ -838,7 +904,28 @@ func TestOmitFieldsInJson_SimpleStructWithSliceStruct(t *testing.T) {
 	jsonRet, err := json.Marshal(mapRet)
 	assert.NotContains(t, "nilnumbers", mapRet)
 	assert.NoError(t, err)
-	assert.Equal(t, `{"complex":[{"a":"","aempty":[]}]}`, string(jsonRet))
+	assert.Equal(t, `{"complex":[{"a":"","aempty":[],"numbers":[1,2]}]}`, string(jsonRet))
+}
+
+func TestOmitFieldsInJson_SimpleStructWithMandatorySliceAndError(t *testing.T) {
+
+	type Nested struct {
+		Numbers []int    `mandatory:"true" json:"numbers"`
+		Letters []string `mandatory:"false" json:"letters"`
+	}
+
+	type Outer struct {
+		Nested Nested `mandatory:"false" json:"aempty"`
+	}
+
+	s := Outer{Nested: Nested{Numbers: nil}}
+	sVal := reflect.ValueOf(s)
+	jsonIn, _ := json.Marshal(s)
+
+	m := make(map[string]interface{})
+	json.Unmarshal(jsonIn, &m)
+	_, err := omitNilFieldsInJSON(m, sVal)
+	assert.Error(t, err)
 }
 
 func TestOmitEmptyEnumInJson_SimpleStructWithEnum(t *testing.T) {
@@ -969,6 +1056,149 @@ func TestOmitFieldsInJson_SimpleStructWithTime(t *testing.T) {
 	assert.Equal(t, theTime, mapRet.(map[string]interface{})["theTime"])
 }
 
+func TestToStringValue_TimeFormat(t *testing.T) {
+	testingData := []struct {
+		TheTime  *SDKTime `mandatory:"true" json:"theTime"`
+		Input    string
+		Expected string
+	}{
+		{
+			Input:    "2018-10-15T19:43:05.080Z",
+			Expected: "2018-10-15T19:43:05.08Z",
+		},
+		{
+			Input:    "2018-10-15T19:43:05Z",
+			Expected: "2018-10-15T19:43:05Z",
+		},
+	}
+
+	for _, item := range testingData {
+		time, err := time.Parse(time.RFC3339, item.Input)
+		assert.NoError(t, err)
+		item.TheTime = &SDKTime{time}
+
+		reflectValue := reflect.ValueOf(item)
+		reflectType := reflectValue.Type()
+
+		str, err := toStringValue(reflectValue.Field(0), reflectType.Field(0))
+		assert.NoError(t, err)
+
+		assert.Equal(t, item.Expected, str)
+	}
+}
+
+func TestSDKDate_Unmarshal(t *testing.T) {
+	type structWithTime struct {
+		Name         string   `json:"name"`
+		Date         *SDKDate `json:"date"`
+		DateOptional *SDKDate `json:"optdate" mandatory:"false"`
+	}
+
+	type req struct {
+		Body structWithTime `presentIn:"body"`
+	}
+
+	sampleDate, _ := time.Parse(time.UnixDate, "Mon Jan 02 15:04:05 MST 2006")
+	sampleDateStr := sampleDate.Format(sdkDateFormat)
+
+	testIO := []struct {
+		name        string
+		expectedReq req
+		jsonRes     string
+		err         error
+	}{
+		{
+			name:        "sdk date with simple date",
+			expectedReq: req{structWithTime{Name: "hello", Date: &SDKDate{Date: sampleDate}}},
+			jsonRes:     fmt.Sprintf(`{"date":"%s","name":"hello"}`, sampleDateStr),
+			err:         nil,
+		},
+		{
+			name:        "sdk date with nil date",
+			expectedReq: req{structWithTime{Name: "hello", Date: nil}},
+			jsonRes:     fmt.Sprintf(`{"date":%s,"name":"hello"}`, "null"),
+			err:         nil,
+		},
+		{
+			name:        "sdk date with nil date with mandatory date field set",
+			expectedReq: req{structWithTime{Name: "hello", Date: nil, DateOptional: &SDKDate{Date: sampleDate}}},
+			jsonRes:     fmt.Sprintf(`{"date":%s,"name":"hello","optdate":"%s"}`, "null", sampleDateStr),
+			err:         nil,
+		},
+	}
+
+	for _, tc := range testIO {
+		response := http.Response{
+			Body: ioutil.NopCloser(bytes.NewBuffer([]byte(tc.jsonRes))),
+		}
+		req := req{}
+		err := UnmarshalResponse(&response, &req)
+		assert.NoError(t, err)
+		assert.Equal(t, tc.expectedReq.Body.Name, req.Body.Name)
+		if tc.expectedReq.Body.Date == nil {
+			assert.Nil(t, req.Body.Date)
+
+		} else {
+			assert.Equal(t, tc.expectedReq.Body.Date.Date.Format(sdkDateFormat), req.Body.Date.Date.Format(sdkDateFormat))
+		}
+		if tc.expectedReq.Body.DateOptional == nil {
+			assert.Nil(t, req.Body.DateOptional)
+
+		} else {
+			assert.Equal(t, tc.expectedReq.Body.DateOptional.Date.Format(sdkDateFormat), req.Body.DateOptional.Date.Format(sdkDateFormat))
+		}
+	}
+
+}
+func TestSDKDate_Marshal(t *testing.T) {
+	type structWithTime struct {
+		Name         string   `json:"name"`
+		Date         *SDKDate `json:"date"`
+		DateOptional *SDKDate `json:"optdate" mandatory:"false"`
+	}
+
+	type req struct {
+		Body structWithTime `contributesTo:"body"`
+	}
+
+	sampleDate, _ := time.Parse(time.UnixDate, "Mon Jan 02 15:04:05 MST 2006")
+	sampleDateStr := sampleDate.Format(sdkDateFormat)
+
+	testIO := []struct {
+		name         string
+		req          req
+		expectedJSON string
+		err          error
+	}{
+		{
+			name:         "sdk date with simple date",
+			req:          req{structWithTime{Name: "hello", Date: &SDKDate{Date: sampleDate}}},
+			expectedJSON: fmt.Sprintf(`{"date":"%s","name":"hello"}`, sampleDateStr),
+			err:          nil,
+		},
+		{
+			name:         "sdk date with nil date",
+			req:          req{structWithTime{Name: "hello", Date: nil}},
+			expectedJSON: fmt.Sprintf(`{"date":%s,"name":"hello"}`, "null"),
+			err:          nil,
+		},
+		{
+			name:         "sdk date with nil date with mandatory date field set",
+			req:          req{structWithTime{Name: "hello", Date: nil, DateOptional: &SDKDate{Date: sampleDate}}},
+			expectedJSON: fmt.Sprintf(`{"date":%s,"name":"hello","optdate":"%s"}`, "null", sampleDateStr),
+			err:          nil,
+		},
+	}
+
+	for _, tc := range testIO {
+		httpRequest, errM := MakeDefaultHTTPRequestWithTaggedStruct("GET", "/", tc.req)
+		assert.NoError(t, errM)
+		all, _ := ioutil.ReadAll(httpRequest.Body)
+		assert.Equal(t, tc.expectedJSON, string(all))
+	}
+
+}
+
 func TestAddRequestID(t *testing.T) {
 	type testStructType struct {
 		OpcRequestID *string `mandatory:"false" contributesTo:"header" name:"opc-request-id"`
@@ -989,4 +1219,179 @@ func TestAddRequestID(t *testing.T) {
 			assert.Equal(t, "testid", request.Header["Opc-Request-Id"][0])
 		}
 	}
+}
+
+type shape interface {
+}
+
+type square struct {
+	Color string `json:"color"`
+}
+
+type triangle struct {
+	Texture string `json:"texture"`
+}
+
+type unknown struct {
+	JSONData []byte
+	Type     string `json:"type"`
+}
+
+func (p *unknown) UnmarshalPolymorphicJSON(data []byte) (interface{}, error) {
+
+	if data == nil || string(data) == "null" {
+		return nil, nil
+	}
+
+	switch p.Type {
+	case "square":
+		n := square{}
+		err := json.Unmarshal(data, &n)
+		return n, err
+	case "triangle":
+		n := triangle{}
+		err := json.Unmarshal(data, &n)
+		return n, err
+	default:
+		return *p, nil
+	}
+}
+func (p *unknown) UnmarshalJSON(data []byte) error {
+	p.JSONData = data
+	type mm unknown
+	s := mm{}
+	err := json.Unmarshal(data, &s)
+	if err != nil {
+		return err
+	}
+	p.Type = s.Type
+	return nil
+}
+
+type bodyWithPolymorphicField struct {
+	Name  string `json:"name"`
+	Shape shape  `json:"shape"`
+}
+
+func (p *bodyWithPolymorphicField) UnmarshalJSON(data []byte) error {
+	model := struct {
+		Name  string  `json:"name"`
+		Shape unknown `json:"shape"`
+	}{}
+
+	e := json.Unmarshal(data, &model)
+	if e != nil {
+		return e
+	}
+
+	p.Name = model.Name
+	ss, e := model.Shape.UnmarshalPolymorphicJSON(model.Shape.JSONData)
+	if e != nil {
+		return e
+	}
+	if ss != nil {
+		p.Shape = ss.(shape)
+	} else {
+		p.Shape = nil
+	}
+	return nil
+}
+
+func TestUnmarshalPolymorphic(t *testing.T) {
+	testIO := []struct {
+		name          string
+		jsonBody      string
+		expectedName  string
+		expectedShape interface{}
+	}{
+		{
+
+			name:          "Nil polymorphic type",
+			jsonBody:      `{"name": "hello", "shape": null }`,
+			expectedShape: nil,
+			expectedName:  "hello",
+		},
+		{
+
+			name:          "polymorphic type set to square",
+			jsonBody:      `{"name": "hello", "shape": {"type": "square", "color": "red" }}`,
+			expectedShape: square{Color: "red"},
+			expectedName:  "hello",
+		},
+		{
+
+			name:          "polymorphic type set to triangle",
+			jsonBody:      `{"name": "hello", "shape": {"type": "triangle", "texture": "soft" }}`,
+			expectedShape: triangle{Texture: "soft"},
+			expectedName:  "hello",
+		},
+		{
+
+			name:          "polymorphic type set to unknown",
+			jsonBody:      `{"name": "hello", "shape": {"type": "random", "value": "one" }}`,
+			expectedShape: unknown{Type: "random", JSONData: []byte(`{"type": "random", "value": "one" }`)},
+			expectedName:  "hello",
+		},
+	}
+	for _, td := range testIO {
+		t.Run(td.name, func(t *testing.T) {
+			type response struct {
+				Content bodyWithPolymorphicField `presentIn:"body"`
+			}
+			r := http.Response{}
+			bodyBuffer := bytes.NewBufferString(td.jsonBody)
+			r.Body = ioutil.NopCloser(bodyBuffer)
+
+			res := response{}
+			err := UnmarshalResponse(&r, &res)
+			assert.Equal(t, td.expectedShape, res.Content.Shape)
+			assert.Equal(t, td.expectedName, res.Content.Name)
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestMarshalStructsNumberLimits(t *testing.T) {
+	type numberLimits struct {
+		Integer64 *int64   `json:"integer64" mandatory:"true"`
+		Float64   *float64 `json:"float64" mandatory:"true"`
+	}
+
+	type req struct {
+		Body numberLimits `contributesTo:"body" presentIn:"body"`
+	}
+
+	s := req{Body: numberLimits{Integer64: Int64(math.MaxInt64), Float64: Float64(math.MaxFloat64)}}
+	request, err := MakeDefaultHTTPRequestWithTaggedStruct("put", "/", &s)
+	assert.NoError(t, err)
+	response := http.Response{Body: request.Body}
+
+	unmarshalledStruct := req{}
+	UnmarshalResponse(&response, &unmarshalledStruct)
+
+	assert.Equal(t, *s.Body.Integer64, *unmarshalledStruct.Body.Integer64)
+	assert.Equal(t, *s.Body.Float64, *unmarshalledStruct.Body.Float64)
+	assert.Equal(t, int64(math.MaxInt64), *unmarshalledStruct.Body.Integer64)
+	assert.Equal(t, float64(math.MaxFloat64), *unmarshalledStruct.Body.Float64)
+
+}
+func TestRemoveNilWithInt64Values(t *testing.T) {
+	type withInt64 struct {
+		Data   *int64 `json:"data"`
+		NoData *int64 `json:"nodata" mandatory:"false"`
+	}
+
+	s := withInt64{Data: Int64(math.MaxInt64)}
+	jsonIn, _ := json.Marshal(s)
+
+	sVal := reflect.ValueOf(s)
+	jsonRet, err := removeNilFieldsInJSONWithTaggedStruct(jsonIn, sVal)
+	assert.NoError(t, err)
+	assert.False(t, strings.Contains(string(jsonRet), "nodata"))
+
+	ss := withInt64{}
+	json.Unmarshal(jsonRet, &ss)
+
+	assert.True(t, strings.Contains(string(jsonRet), "9223372036854775807"))
+	assert.Equal(t, int64(9223372036854775807), *ss.Data)
 }

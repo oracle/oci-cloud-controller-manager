@@ -20,10 +20,13 @@ type ListClustersRequest struct {
 	// The name to filter on.
 	Name *string `mandatory:"false" contributesTo:"query" name:"name"`
 
-	// The maximum number of items to return in a paginated "List" call.
+	// For list pagination. The maximum number of results per page, or items to return in a paginated "List" call.
+	// 1 is the minimum, 1000 is the maximum. For important details about how pagination works,
+	// see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	Limit *int `mandatory:"false" contributesTo:"query" name:"limit"`
 
-	// The value of the `opc-next-page` response header from the previous "List" call.
+	// For list pagination. The value of the `opc-next-page` response header from the previous "List" call.
+	// For important details about how pagination works, see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	Page *string `mandatory:"false" contributesTo:"query" name:"page"`
 
 	// The optional order in which to sort the results.
@@ -64,9 +67,8 @@ type ListClustersResponse struct {
 	// A list of []ClusterSummary instances
 	Items []ClusterSummary `presentIn:"body"`
 
-	// For pagination of a list of items. When paging through a list, if this header appears in the response,
-	// then there might be additional items still to get. Include this value as the `page` parameter for the
-	// subsequent GET request.
+	// For list pagination. When this header appears in the response, additional pages of results remain.
+	// For important details about how pagination works, see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	OpcNextPage *string `presentIn:"header" name:"opc-next-page"`
 
 	// Unique Oracle-assigned identifier for the request. If you need to contact Oracle about a
@@ -86,7 +88,7 @@ func (response ListClustersResponse) HTTPResponse() *http.Response {
 // ListClustersLifecycleStateEnum Enum with underlying type: string
 type ListClustersLifecycleStateEnum string
 
-// Set of constants representing the allowable values for ListClustersLifecycleState
+// Set of constants representing the allowable values for ListClustersLifecycleStateEnum
 const (
 	ListClustersLifecycleStateCreating ListClustersLifecycleStateEnum = "CREATING"
 	ListClustersLifecycleStateActive   ListClustersLifecycleStateEnum = "ACTIVE"
@@ -105,7 +107,7 @@ var mappingListClustersLifecycleState = map[string]ListClustersLifecycleStateEnu
 	"UPDATING": ListClustersLifecycleStateUpdating,
 }
 
-// GetListClustersLifecycleStateEnumValues Enumerates the set of values for ListClustersLifecycleState
+// GetListClustersLifecycleStateEnumValues Enumerates the set of values for ListClustersLifecycleStateEnum
 func GetListClustersLifecycleStateEnumValues() []ListClustersLifecycleStateEnum {
 	values := make([]ListClustersLifecycleStateEnum, 0)
 	for _, v := range mappingListClustersLifecycleState {
@@ -117,7 +119,7 @@ func GetListClustersLifecycleStateEnumValues() []ListClustersLifecycleStateEnum 
 // ListClustersSortOrderEnum Enum with underlying type: string
 type ListClustersSortOrderEnum string
 
-// Set of constants representing the allowable values for ListClustersSortOrder
+// Set of constants representing the allowable values for ListClustersSortOrderEnum
 const (
 	ListClustersSortOrderAsc  ListClustersSortOrderEnum = "ASC"
 	ListClustersSortOrderDesc ListClustersSortOrderEnum = "DESC"
@@ -128,7 +130,7 @@ var mappingListClustersSortOrder = map[string]ListClustersSortOrderEnum{
 	"DESC": ListClustersSortOrderDesc,
 }
 
-// GetListClustersSortOrderEnumValues Enumerates the set of values for ListClustersSortOrder
+// GetListClustersSortOrderEnumValues Enumerates the set of values for ListClustersSortOrderEnum
 func GetListClustersSortOrderEnumValues() []ListClustersSortOrderEnum {
 	values := make([]ListClustersSortOrderEnum, 0)
 	for _, v := range mappingListClustersSortOrder {
@@ -140,7 +142,7 @@ func GetListClustersSortOrderEnumValues() []ListClustersSortOrderEnum {
 // ListClustersSortByEnum Enum with underlying type: string
 type ListClustersSortByEnum string
 
-// Set of constants representing the allowable values for ListClustersSortBy
+// Set of constants representing the allowable values for ListClustersSortByEnum
 const (
 	ListClustersSortById          ListClustersSortByEnum = "ID"
 	ListClustersSortByName        ListClustersSortByEnum = "NAME"
@@ -153,7 +155,7 @@ var mappingListClustersSortBy = map[string]ListClustersSortByEnum{
 	"TIME_CREATED": ListClustersSortByTimeCreated,
 }
 
-// GetListClustersSortByEnumValues Enumerates the set of values for ListClustersSortBy
+// GetListClustersSortByEnumValues Enumerates the set of values for ListClustersSortByEnum
 func GetListClustersSortByEnumValues() []ListClustersSortByEnum {
 	values := make([]ListClustersSortByEnum, 0)
 	for _, v := range mappingListClustersSortBy {

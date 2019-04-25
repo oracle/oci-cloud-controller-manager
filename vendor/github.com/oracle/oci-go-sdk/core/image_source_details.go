@@ -15,16 +15,21 @@ import (
 
 // ImageSourceDetails The representation of ImageSourceDetails
 type ImageSourceDetails interface {
+	GetOperatingSystem() *string
 
-	// The format of the image to be imported.  Exported Oracle images are QCOW2.  Only monolithic
-	// images are supported.
+	GetOperatingSystemVersion() *string
+
+	// The format of the image to be imported.  Only monolithic
+	// images are supported. This attribute is not used for exported Oracle images with the OCI image format.
 	GetSourceImageType() ImageSourceDetailsSourceImageTypeEnum
 }
 
 type imagesourcedetails struct {
-	JsonData        []byte
-	SourceImageType ImageSourceDetailsSourceImageTypeEnum `mandatory:"false" json:"sourceImageType,omitempty"`
-	SourceType      string                                `json:"sourceType"`
+	JsonData               []byte
+	OperatingSystem        *string                               `mandatory:"false" json:"operatingSystem"`
+	OperatingSystemVersion *string                               `mandatory:"false" json:"operatingSystemVersion"`
+	SourceImageType        ImageSourceDetailsSourceImageTypeEnum `mandatory:"false" json:"sourceImageType,omitempty"`
+	SourceType             string                                `json:"sourceType"`
 }
 
 // UnmarshalJSON unmarshals json
@@ -38,6 +43,8 @@ func (m *imagesourcedetails) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
+	m.OperatingSystem = s.Model.OperatingSystem
+	m.OperatingSystemVersion = s.Model.OperatingSystemVersion
 	m.SourceImageType = s.Model.SourceImageType
 	m.SourceType = s.Model.SourceType
 
@@ -46,6 +53,11 @@ func (m *imagesourcedetails) UnmarshalJSON(data []byte) error {
 
 // UnmarshalPolymorphicJSON unmarshals polymorphic json
 func (m *imagesourcedetails) UnmarshalPolymorphicJSON(data []byte) (interface{}, error) {
+
+	if data == nil || string(data) == "null" {
+		return nil, nil
+	}
+
 	var err error
 	switch m.SourceType {
 	case "objectStorageTuple":
@@ -57,8 +69,18 @@ func (m *imagesourcedetails) UnmarshalPolymorphicJSON(data []byte) (interface{},
 		err = json.Unmarshal(data, &mm)
 		return mm, err
 	default:
-		return m, nil
+		return *m, nil
 	}
+}
+
+//GetOperatingSystem returns OperatingSystem
+func (m imagesourcedetails) GetOperatingSystem() *string {
+	return m.OperatingSystem
+}
+
+//GetOperatingSystemVersion returns OperatingSystemVersion
+func (m imagesourcedetails) GetOperatingSystemVersion() *string {
+	return m.OperatingSystemVersion
 }
 
 //GetSourceImageType returns SourceImageType
@@ -73,7 +95,7 @@ func (m imagesourcedetails) String() string {
 // ImageSourceDetailsSourceImageTypeEnum Enum with underlying type: string
 type ImageSourceDetailsSourceImageTypeEnum string
 
-// Set of constants representing the allowable values for ImageSourceDetailsSourceImageType
+// Set of constants representing the allowable values for ImageSourceDetailsSourceImageTypeEnum
 const (
 	ImageSourceDetailsSourceImageTypeQcow2 ImageSourceDetailsSourceImageTypeEnum = "QCOW2"
 	ImageSourceDetailsSourceImageTypeVmdk  ImageSourceDetailsSourceImageTypeEnum = "VMDK"
@@ -84,7 +106,7 @@ var mappingImageSourceDetailsSourceImageType = map[string]ImageSourceDetailsSour
 	"VMDK":  ImageSourceDetailsSourceImageTypeVmdk,
 }
 
-// GetImageSourceDetailsSourceImageTypeEnumValues Enumerates the set of values for ImageSourceDetailsSourceImageType
+// GetImageSourceDetailsSourceImageTypeEnumValues Enumerates the set of values for ImageSourceDetailsSourceImageTypeEnum
 func GetImageSourceDetailsSourceImageTypeEnumValues() []ImageSourceDetailsSourceImageTypeEnum {
 	values := make([]ImageSourceDetailsSourceImageTypeEnum, 0)
 	for _, v := range mappingImageSourceDetailsSourceImageType {

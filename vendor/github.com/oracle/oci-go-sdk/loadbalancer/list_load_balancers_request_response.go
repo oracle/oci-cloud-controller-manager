@@ -11,18 +11,20 @@ import (
 // ListLoadBalancersRequest wrapper for the ListLoadBalancers operation
 type ListLoadBalancersRequest struct {
 
-	// The OCID (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/identifiers.htm) of the compartment containing the load balancers to list.
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the compartment containing the load balancers to list.
 	CompartmentId *string `mandatory:"true" contributesTo:"query" name:"compartmentId"`
 
 	// The unique Oracle-assigned identifier for the request. If you need to contact Oracle about a
 	// particular request, please provide the request ID.
 	OpcRequestId *string `mandatory:"false" contributesTo:"header" name:"opc-request-id"`
 
-	// The maximum number of items to return in a paginated "List" call.
-	// Example: `500`
+	// For list pagination. The maximum number of results per page, or items to return in a paginated "List" call.
+	// For important details about how pagination works, see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
+	// Example: `50`
 	Limit *int64 `mandatory:"false" contributesTo:"query" name:"limit"`
 
-	// The value of the `opc-next-page` response header from the previous "List" call.
+	// For list pagination. The value of the `opc-next-page` response header from the previous "List" call.
+	// For important details about how pagination works, see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	// Example: `3`
 	Page *string `mandatory:"false" contributesTo:"query" name:"page"`
 
@@ -73,9 +75,8 @@ type ListLoadBalancersResponse struct {
 	// A list of []LoadBalancer instances
 	Items []LoadBalancer `presentIn:"body"`
 
-	// For pagination of a list of items. When paging through a list, if this header appears in the response,
-	// then a partial list might have been returned. Include this value as the `page` parameter for the
-	// subsequent GET request to get the next batch of items.
+	// For list pagination. When this header appears in the response, additional pages of results remain.
+	// For important details about how pagination works, see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	OpcNextPage *string `presentIn:"header" name:"opc-next-page"`
 
 	// Unique Oracle-assigned identifier for the request. If you need to contact Oracle about
@@ -95,7 +96,7 @@ func (response ListLoadBalancersResponse) HTTPResponse() *http.Response {
 // ListLoadBalancersSortByEnum Enum with underlying type: string
 type ListLoadBalancersSortByEnum string
 
-// Set of constants representing the allowable values for ListLoadBalancersSortBy
+// Set of constants representing the allowable values for ListLoadBalancersSortByEnum
 const (
 	ListLoadBalancersSortByTimecreated ListLoadBalancersSortByEnum = "TIMECREATED"
 	ListLoadBalancersSortByDisplayname ListLoadBalancersSortByEnum = "DISPLAYNAME"
@@ -106,7 +107,7 @@ var mappingListLoadBalancersSortBy = map[string]ListLoadBalancersSortByEnum{
 	"DISPLAYNAME": ListLoadBalancersSortByDisplayname,
 }
 
-// GetListLoadBalancersSortByEnumValues Enumerates the set of values for ListLoadBalancersSortBy
+// GetListLoadBalancersSortByEnumValues Enumerates the set of values for ListLoadBalancersSortByEnum
 func GetListLoadBalancersSortByEnumValues() []ListLoadBalancersSortByEnum {
 	values := make([]ListLoadBalancersSortByEnum, 0)
 	for _, v := range mappingListLoadBalancersSortBy {
@@ -118,7 +119,7 @@ func GetListLoadBalancersSortByEnumValues() []ListLoadBalancersSortByEnum {
 // ListLoadBalancersSortOrderEnum Enum with underlying type: string
 type ListLoadBalancersSortOrderEnum string
 
-// Set of constants representing the allowable values for ListLoadBalancersSortOrder
+// Set of constants representing the allowable values for ListLoadBalancersSortOrderEnum
 const (
 	ListLoadBalancersSortOrderAsc  ListLoadBalancersSortOrderEnum = "ASC"
 	ListLoadBalancersSortOrderDesc ListLoadBalancersSortOrderEnum = "DESC"
@@ -129,7 +130,7 @@ var mappingListLoadBalancersSortOrder = map[string]ListLoadBalancersSortOrderEnu
 	"DESC": ListLoadBalancersSortOrderDesc,
 }
 
-// GetListLoadBalancersSortOrderEnumValues Enumerates the set of values for ListLoadBalancersSortOrder
+// GetListLoadBalancersSortOrderEnumValues Enumerates the set of values for ListLoadBalancersSortOrderEnum
 func GetListLoadBalancersSortOrderEnumValues() []ListLoadBalancersSortOrderEnum {
 	values := make([]ListLoadBalancersSortOrderEnum, 0)
 	for _, v := range mappingListLoadBalancersSortOrder {
