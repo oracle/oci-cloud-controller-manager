@@ -15,9 +15,16 @@
 PKG := github.com/oracle/oci-cloud-controller-manager
 IMAGE ?= iad.ocir.io/odx-oke/oke/cloud-provider-oci
 
-BUILD := $(shell git describe --exact-match 2> /dev/null || git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
+GIT_COMMIT := $(shell GCOMMIT=`git rev-parse --short HEAD`; if [ -n "`git status . --porcelain`" ]; then echo "$$GCOMMIT-dirty"; else echo $$GCOMMIT; fi)
 # Allow overriding for release versions else just equal the build (git hash)
-VERSION ?= oke-${BUILD}
+ifeq "$(BUILD_NUMBER)" ""
+    VERSION_SUFFIX   ?= $(GIT_COMMIT)
+else
+    VERSION_SUFFIX   ?= $(GIT_COMMIT)-$(BUILD_NUMBER)
+endif
+
+VERSION ?= oke-$(VERSION_SUFFIX)
+BUILD = $(VERSION)
 
 GOOS ?= linux
 ARCH ?= amd64
@@ -132,7 +139,7 @@ run-volume-provisioner-dev:
 	    -v=4
 
 .PHONY: image
-image:
+image: build
 	@docker build \
 		-t $(IMAGE):$(VERSION) .
 
