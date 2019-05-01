@@ -321,7 +321,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		}
 		secretListenerString := service.Annotations[ServiceAnnotationLoadBalancerTLSSecret]
 		secretBackendSetString := service.Annotations[ServiceAnnotationLoadBalancerTLSBackendSetSecret]
-		sslConfig = NewSSLConfig(secretListenerString, secretBackendSetString, ports, cp)
+		sslConfig = NewSSLConfig(secretListenerString, secretBackendSetString, service, ports, cp)
 	}
 	var subnets []string
 	if cp.config.LoadBalancer.Subnet2 != "" {

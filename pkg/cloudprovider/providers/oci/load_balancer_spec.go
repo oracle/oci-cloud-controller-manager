@@ -49,9 +49,13 @@ func (ssr noopSSLSecretReader) readSSLSecret(ns, name string) (sslSecret *certif
 
 // SSLConfig is a description of a SSL certificate.
 type SSLConfig struct {
-	Ports                   sets.Int
-	ListenerSSLSecretName   string
-	BackendSetSSLSecretName string
+	Ports sets.Int
+
+	ListenerSSLSecretName      string
+	ListenerSSLSecretNamespace string
+
+	BackendSetSSLSecretName      string
+	BackendSetSSLSecretNamespace string
 
 	sslSecretReader
 }
@@ -62,15 +66,21 @@ func requiresCertificate(svc *v1.Service) bool {
 }
 
 // NewSSLConfig constructs a new SSLConfig.
-func NewSSLConfig(listenerSecretName, backendSetSecretName string, ports []int, ssr sslSecretReader) *SSLConfig {
+func NewSSLConfig(secretListenerString string, secretBackendSetString string, service *v1.Service, ports []int, ssr sslSecretReader) *SSLConfig {
 	if ssr == nil {
 		ssr = noopSSLSecretReader{}
 	}
+
+	listenerSecretName, listenerSecretNamespace := getSecretParts(secretListenerString, service)
+	backendSecretName, backendSecretNamespace := getSecretParts(secretBackendSetString, service)
+
 	return &SSLConfig{
-		Ports:                   sets.NewInt(ports...),
-		ListenerSSLSecretName:   listenerSecretName,
-		BackendSetSSLSecretName: backendSetSecretName,
-		sslSecretReader:         ssr,
+		Ports:                        sets.NewInt(ports...),
+		ListenerSSLSecretName:        listenerSecretName,
+		ListenerSSLSecretNamespace:   listenerSecretNamespace,
+		BackendSetSSLSecretName:      backendSecretName,
+		BackendSetSSLSecretNamespace: backendSecretNamespace,
+		sslSecretReader:              ssr,
 	}
 }
 
@@ -172,25 +182,32 @@ func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCo
 // Certificates builds a map of required SSL certificates.
 func (s *LBSpec) Certificates() (map[string]loadbalancer.CertificateDetails, error) {
 	certs := make(map[string]loadbalancer.CertificateDetails)
+
 	if s.SSLConfig == nil {
 		return certs, nil
 	}
-	secrets := make([]string, 0, 2)
+
 	if s.SSLConfig.ListenerSSLSecretName != "" {
-		secrets = append(secrets, s.SSLConfig.ListenerSSLSecretName)
-	}
-	if s.SSLConfig.BackendSetSSLSecretName != "" {
-		secrets = append(secrets, s.SSLConfig.BackendSetSSLSecretName)
-	}
-
-	for idx, name := range secrets {
-		cert, err := s.SSLConfig.readSSLSecret(s.service.Namespace, name)
+		cert, err := s.SSLConfig.readSSLSecret(s.SSLConfig.ListenerSSLSecretNamespace, s.SSLConfig.ListenerSSLSecretName)
 		if err != nil {
-			return nil, errors.Wrap(err, "reading SSL BackendSet Secret")
+			return nil, errors.Wrap(err, "reading SSL Listener Secret")
 		}
+		certs[s.SSLConfig.ListenerSSLSecretName] = loadbalancer.CertificateDetails{
+			CertificateName:   &s.SSLConfig.ListenerSSLSecretName,
+			CaCertificate:     common.String(string(cert.CACert)),
+			PublicCertificate: common.String(string(cert.PublicCert)),
+			PrivateKey:        common.String(string(cert.PrivateKey)),
+			Passphrase:        common.String(string(cert.Passphrase)),
+		}
+	}
 
-		certs[name] = loadbalancer.CertificateDetails{
-			CertificateName:   &secrets[idx],
+	if s.SSLConfig.BackendSetSSLSecretName != "" {
+		cert, err := s.SSLConfig.readSSLSecret(s.SSLConfig.BackendSetSSLSecretNamespace, s.SSLConfig.BackendSetSSLSecretName)
+		if err != nil {
+			return nil, errors.Wrap(err, "reading SSL Backend Secret")
+		}
+		certs[s.SSLConfig.BackendSetSSLSecretName] = loadbalancer.CertificateDetails{
+			CertificateName:   &s.SSLConfig.BackendSetSSLSecretName,
 			CaCertificate:     common.String(string(cert.CACert)),
 			PublicCertificate: common.String(string(cert.PublicCert)),
 			PrivateKey:        common.String(string(cert.PrivateKey)),
@@ -373,4 +390,15 @@ func getListeners(svc *v1.Service, sslCfg *SSLConfig) (map[string]loadbalancer.L
 	}
 
 	return listeners, nil
+}
+
+func getSecretParts(secretString string, service *v1.Service) (name string, namespace string) {
+	if secretString == "" {
+		return "", ""
+	}
+	if !strings.Contains(secretString, "/") {
+		return secretString, service.Namespace
+	}
+	parts := strings.Split(secretString, "/")
+	return parts[1], parts[0]
 }
