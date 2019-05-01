@@ -790,44 +790,92 @@ func TestNewLBSpecFailure(t *testing.T) {
 
 func TestNewSSLConfig(t *testing.T) {
 	testCases := map[string]struct {
-		listenerSecretName   string
-		backendSetSecretName string
-		ports                []int
-		ssr                  sslSecretReader
+		secretListenerString   string
+		secretBackendSetString string
+		service                *v1.Service
+		ports                  []int
+		ssr                    sslSecretReader
 
 		expectedResult *SSLConfig
 	}{
-		"noopSSLSecretReader if ssr is nil": {
-			listenerSecretName:   "listenerSecretName",
-			backendSetSecretName: "backendSetSecretName",
-			ports:                []int{8080},
-			ssr:                  nil,
+		"noopSSLSecretReader if ssr is nil and uses the default service namespace": {
+			secretListenerString:   "listenerSecretName",
+			secretBackendSetString: "backendSetSecretName",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "default",
+				},
+			},
+			ports: []int{8080},
+			ssr:   nil,
 
 			expectedResult: &SSLConfig{
-				Ports:                   sets.NewInt(8080),
-				ListenerSSLSecretName:   "listenerSecretName",
-				BackendSetSSLSecretName: "backendSetSecretName",
-				sslSecretReader:         noopSSLSecretReader{},
+				Ports:                        sets.NewInt(8080),
+				ListenerSSLSecretName:        "listenerSecretName",
+				ListenerSSLSecretNamespace:   "default",
+				BackendSetSSLSecretName:      "backendSetSecretName",
+				BackendSetSSLSecretNamespace: "default",
+				sslSecretReader:              noopSSLSecretReader{},
 			},
 		},
-		"ssr is assigned if provided": {
-			listenerSecretName:   "listenerSecretName",
-			backendSetSecretName: "backendSetSecretName",
-			ports:                []int{8080},
-			ssr:                  &mockSSLSecretReader{},
+		"ssr is assigned if provided and uses the default service namespace": {
+			secretListenerString:   "listenerSecretName",
+			secretBackendSetString: "backendSetSecretName",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "default",
+				},
+			},
+			ports: []int{8080},
+			ssr:   &mockSSLSecretReader{},
 
 			expectedResult: &SSLConfig{
-				Ports:                   sets.NewInt(8080),
-				ListenerSSLSecretName:   "listenerSecretName",
-				BackendSetSSLSecretName: "backendSetSecretName",
-				sslSecretReader:         &mockSSLSecretReader{},
+				Ports:                        sets.NewInt(8080),
+				ListenerSSLSecretName:        "listenerSecretName",
+				ListenerSSLSecretNamespace:   "default",
+				BackendSetSSLSecretName:      "backendSetSecretName",
+				BackendSetSSLSecretNamespace: "default",
+				sslSecretReader:              &mockSSLSecretReader{},
+			},
+		},
+		"If namespace is specified in secret string, use it": {
+			secretListenerString:   "namespaceone/listenerSecretName",
+			secretBackendSetString: "namespacetwo/backendSetSecretName",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "default",
+				},
+			},
+			ports: []int{8080},
+			ssr:   &mockSSLSecretReader{},
+
+			expectedResult: &SSLConfig{
+				Ports:                        sets.NewInt(8080),
+				ListenerSSLSecretName:        "listenerSecretName",
+				ListenerSSLSecretNamespace:   "namespaceone",
+				BackendSetSSLSecretName:      "backendSetSecretName",
+				BackendSetSSLSecretNamespace: "namespacetwo",
+				sslSecretReader:              &mockSSLSecretReader{},
+			},
+		},
+		"Empty secret string results in empty name and namespace": {
+			ports: []int{8080},
+			ssr:   &mockSSLSecretReader{},
+
+			expectedResult: &SSLConfig{
+				Ports:                        sets.NewInt(8080),
+				ListenerSSLSecretName:        "",
+				ListenerSSLSecretNamespace:   "",
+				BackendSetSSLSecretName:      "",
+				BackendSetSSLSecretNamespace: "",
+				sslSecretReader:              &mockSSLSecretReader{},
 			},
 		},
 	}
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			result := NewSSLConfig(tc.listenerSecretName, tc.backendSetSecretName, tc.ports, tc.ssr)
+			result := NewSSLConfig(tc.secretListenerString, tc.secretBackendSetString, tc.service, tc.ports, tc.ssr)
 			if !reflect.DeepEqual(result, tc.expectedResult) {
 				t.Errorf("Expected SSlConfig \n%+v\nbut got\n%+v", tc.expectedResult, result)
 			}
@@ -866,14 +914,15 @@ func TestCertificates(t *testing.T) {
 					},
 				},
 				SSLConfig: &SSLConfig{
-					BackendSetSSLSecretName: backendSecret,
+					BackendSetSSLSecretName:      backendSecret,
+					BackendSetSSLSecretNamespace: "backendnamespace",
 					sslSecretReader: &mockSSLSecretReader{
 						returnError: false,
 						returnMap: map[struct {
 							namespaceArg string
 							nameArg      string
 						}]*certificateData{
-							{namespaceArg: "testnamespace", nameArg: backendSecret}: {
+							{namespaceArg: "backendnamespace", nameArg: backendSecret}: {
 								Name:       "certificatename",
 								CACert:     []byte(backendSecretCaCert),
 								PublicCert: []byte(backendSecretPublicCert),
@@ -903,22 +952,24 @@ func TestCertificates(t *testing.T) {
 					},
 				},
 				SSLConfig: &SSLConfig{
-					BackendSetSSLSecretName: backendSecret,
-					ListenerSSLSecretName:   listenerSecret,
+					BackendSetSSLSecretName:      backendSecret,
+					BackendSetSSLSecretNamespace: "backendnamespace",
+					ListenerSSLSecretName:        listenerSecret,
+					ListenerSSLSecretNamespace:   "listenernamespace",
 					sslSecretReader: &mockSSLSecretReader{
 						returnError: false,
 						returnMap: map[struct {
 							namespaceArg string
 							nameArg      string
 						}]*certificateData{
-							{namespaceArg: "testnamespace", nameArg: backendSecret}: {
+							{namespaceArg: "backendnamespace", nameArg: backendSecret}: {
 								Name:       "backendcertificatename",
 								CACert:     []byte(backendSecretCaCert),
 								PublicCert: []byte(backendSecretPublicCert),
 								PrivateKey: []byte(backendSecretPrivateKey),
 								Passphrase: []byte(backendSecretPassphrase),
 							},
-							{namespaceArg: "testnamespace", nameArg: listenerSecret}: {
+							{namespaceArg: "listenernamespace", nameArg: listenerSecret}: {
 								Name:       "listenercertificatename",
 								CACert:     []byte(listenerSecretCaCert),
 								PublicCert: []byte(listenerSecretPublicCert),
