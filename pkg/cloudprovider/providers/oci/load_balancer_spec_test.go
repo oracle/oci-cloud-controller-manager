@@ -15,6 +15,9 @@
 package oci
 
 import (
+	"fmt"
+	"github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"reflect"
 	"testing"
 
@@ -24,6 +27,32 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+var (
+	backendSecret  = "backendsecret"
+	listenerSecret = "listenersecret"
+)
+
+type mockSSLSecretReader struct {
+	returnError bool
+
+	returnMap map[struct {
+		namespaceArg string
+		nameArg      string
+	}]*certificateData
+}
+
+func (ssr mockSSLSecretReader) readSSLSecret(ns, name string) (sslSecret *certificateData, err error) {
+	if ssr.returnError {
+		return nil, errors.New("Oops, something went wrong")
+	}
+	for key, returnValue := range ssr.returnMap {
+		if key.namespaceArg == ns && key.nameArg == name {
+			return returnValue, nil
+		}
+	}
+	return nil, nil
+}
+
 func TestNewLBSpecSuccess(t *testing.T) {
 	testCases := map[string]struct {
 		defaultSubnetOne string
@@ -31,6 +60,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 		nodes            []*v1.Node
 		service          *v1.Service
 		expected         *LBSpec
+		sslConfig        *SSLConfig
 	}{
 		"defaults": {
 			defaultSubnetOne: "one",
@@ -481,6 +511,79 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				securityListManager: newSecurityListManagerNOOP(),
 			},
 		},
+		"LBSpec returned with proper SSLConfiguration": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace:   "kube-system",
+					Name:        "testservice",
+					UID:         "test-uid",
+					Annotations: map[string]string{},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(443),
+						},
+					},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"one", "two"},
+				Listeners: map[string]loadbalancer.ListenerDetails{
+					fmt.Sprintf("TCP-443-%s", listenerSecret): {
+						DefaultBackendSetName: common.String("TCP-443"),
+						Port:                  common.Int(443),
+						Protocol:              common.String("TCP"),
+						SslConfiguration: &loadbalancer.SslConfigurationDetails{
+							CertificateName:       &listenerSecret,
+							VerifyDepth:           common.Int(0),
+							VerifyPeerCertificate: common.Bool(false),
+						},
+					},
+				},
+				BackendSets: map[string]loadbalancer.BackendSetDetails{
+					"TCP-443": {
+						Backends: []loadbalancer.BackendDetails{},
+						HealthChecker: &loadbalancer.HealthCheckerDetails{
+							Protocol: common.String("TCP"),
+							Port:     common.Int(10256),
+							UrlPath:  common.String("/healthz"),
+						},
+						Policy: common.String("ROUND_ROBIN"),
+						SslConfiguration: &loadbalancer.SslConfigurationDetails{
+							CertificateName:       &backendSecret,
+							VerifyDepth:           common.Int(0),
+							VerifyPeerCertificate: common.Bool(false),
+						},
+					},
+				},
+				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-443": {
+						ListenerPort:      443,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager: newSecurityListManagerNOOP(),
+				SSLConfig: &SSLConfig{
+					Ports:                   sets.NewInt(443),
+					ListenerSSLSecretName:   listenerSecret,
+					BackendSetSSLSecretName: backendSecret,
+				},
+			},
+			sslConfig: &SSLConfig{
+				Ports:                   sets.NewInt(443),
+				ListenerSSLSecretName:   listenerSecret,
+				BackendSetSSLSecretName: backendSecret,
+			},
+		},
 	}
 
 	for name, tc := range testCases {
@@ -491,7 +594,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			slManagerFactory := func(mode string) securityListManager {
 				return newSecurityListManagerNOOP()
 			}
-			result, err := NewLBSpec(tc.service, tc.nodes, subnets, nil, slManagerFactory)
+			result, err := NewLBSpec(tc.service, tc.nodes, subnets, tc.sslConfig, slManagerFactory)
 			if err != nil {
 				t.Error(err)
 			}
@@ -680,6 +783,227 @@ func TestNewLBSpecFailure(t *testing.T) {
 			_, err := NewLBSpec(tc.service, tc.nodes, subnets, nil, slManagerFactory)
 			if err == nil || err.Error() != tc.expectedErrMsg {
 				t.Errorf("Expected error with message %q but got %q", tc.expectedErrMsg, err)
+			}
+		})
+	}
+}
+
+func TestNewSSLConfig(t *testing.T) {
+	testCases := map[string]struct {
+		listenerSecretName   string
+		backendSetSecretName string
+		ports                []int
+		ssr                  sslSecretReader
+
+		expectedResult *SSLConfig
+	}{
+		"noopSSLSecretReader if ssr is nil": {
+			listenerSecretName:   "listenerSecretName",
+			backendSetSecretName: "backendSetSecretName",
+			ports:                []int{8080},
+			ssr:                  nil,
+
+			expectedResult: &SSLConfig{
+				Ports:                   sets.NewInt(8080),
+				ListenerSSLSecretName:   "listenerSecretName",
+				BackendSetSSLSecretName: "backendSetSecretName",
+				sslSecretReader:         noopSSLSecretReader{},
+			},
+		},
+		"ssr is assigned if provided": {
+			listenerSecretName:   "listenerSecretName",
+			backendSetSecretName: "backendSetSecretName",
+			ports:                []int{8080},
+			ssr:                  &mockSSLSecretReader{},
+
+			expectedResult: &SSLConfig{
+				Ports:                   sets.NewInt(8080),
+				ListenerSSLSecretName:   "listenerSecretName",
+				BackendSetSSLSecretName: "backendSetSecretName",
+				sslSecretReader:         &mockSSLSecretReader{},
+			},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			result := NewSSLConfig(tc.listenerSecretName, tc.backendSetSecretName, tc.ports, tc.ssr)
+			if !reflect.DeepEqual(result, tc.expectedResult) {
+				t.Errorf("Expected SSlConfig \n%+v\nbut got\n%+v", tc.expectedResult, result)
+			}
+		})
+	}
+}
+
+func TestCertificates(t *testing.T) {
+
+	backendSecretCaCert := "cacert1"
+	backendSecretPublicCert := "publiccert1"
+	backendSecretPrivateKey := "privatekey1"
+	backendSecretPassphrase := "passphrase1"
+
+	listenerSecretCaCert := "cacert2"
+	listenerSecretPublicCert := "publiccert2"
+	listenerSecretPrivateKey := "privatekey2"
+	listenerSecretPassphrase := "passphrase2"
+
+	testCases := map[string]struct {
+		lbSpec         *LBSpec
+		expectedResult map[string]loadbalancer.CertificateDetails
+		expectError    bool
+	}{
+		"No SSLConfig results in empty certificate details array": {
+			expectError:    false,
+			lbSpec:         &LBSpec{},
+			expectedResult: make(map[string]loadbalancer.CertificateDetails),
+		},
+		"Return backend SSL secret": {
+			expectError: false,
+			lbSpec: &LBSpec{
+				service: &v1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "testnamespace",
+					},
+				},
+				SSLConfig: &SSLConfig{
+					BackendSetSSLSecretName: backendSecret,
+					sslSecretReader: &mockSSLSecretReader{
+						returnError: false,
+						returnMap: map[struct {
+							namespaceArg string
+							nameArg      string
+						}]*certificateData{
+							{namespaceArg: "testnamespace", nameArg: backendSecret}: {
+								Name:       "certificatename",
+								CACert:     []byte(backendSecretCaCert),
+								PublicCert: []byte(backendSecretPublicCert),
+								PrivateKey: []byte(backendSecretPrivateKey),
+								Passphrase: []byte(backendSecretPassphrase),
+							},
+						},
+					},
+				},
+			},
+			expectedResult: map[string]loadbalancer.CertificateDetails{
+				backendSecret: {
+					CertificateName:   &backendSecret,
+					CaCertificate:     &backendSecretCaCert,
+					Passphrase:        &backendSecretPassphrase,
+					PrivateKey:        &backendSecretPrivateKey,
+					PublicCertificate: &backendSecretPublicCert,
+				},
+			},
+		},
+		"Return both backend and listener SSL secret": {
+			expectError: false,
+			lbSpec: &LBSpec{
+				service: &v1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "testnamespace",
+					},
+				},
+				SSLConfig: &SSLConfig{
+					BackendSetSSLSecretName: backendSecret,
+					ListenerSSLSecretName:   listenerSecret,
+					sslSecretReader: &mockSSLSecretReader{
+						returnError: false,
+						returnMap: map[struct {
+							namespaceArg string
+							nameArg      string
+						}]*certificateData{
+							{namespaceArg: "testnamespace", nameArg: backendSecret}: {
+								Name:       "backendcertificatename",
+								CACert:     []byte(backendSecretCaCert),
+								PublicCert: []byte(backendSecretPublicCert),
+								PrivateKey: []byte(backendSecretPrivateKey),
+								Passphrase: []byte(backendSecretPassphrase),
+							},
+							{namespaceArg: "testnamespace", nameArg: listenerSecret}: {
+								Name:       "listenercertificatename",
+								CACert:     []byte(listenerSecretCaCert),
+								PublicCert: []byte(listenerSecretPublicCert),
+								PrivateKey: []byte(listenerSecretPrivateKey),
+								Passphrase: []byte(listenerSecretPassphrase),
+							},
+						},
+					},
+				},
+			},
+			expectedResult: map[string]loadbalancer.CertificateDetails{
+				backendSecret: {
+					CertificateName:   &backendSecret,
+					CaCertificate:     &backendSecretCaCert,
+					Passphrase:        &backendSecretPassphrase,
+					PrivateKey:        &backendSecretPrivateKey,
+					PublicCertificate: &backendSecretPublicCert,
+				},
+				listenerSecret: {
+					CertificateName:   &listenerSecret,
+					CaCertificate:     &listenerSecretCaCert,
+					Passphrase:        &listenerSecretPassphrase,
+					PrivateKey:        &listenerSecretPrivateKey,
+					PublicCertificate: &listenerSecretPublicCert,
+				},
+			},
+		},
+		"Error returned from SSL secret reader is handled gracefully": {
+			expectError: true,
+			lbSpec: &LBSpec{
+				service: &v1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "testnamespace",
+					},
+				},
+				SSLConfig: &SSLConfig{
+					BackendSetSSLSecretName: backendSecret,
+					sslSecretReader: &mockSSLSecretReader{
+						returnError: true,
+					},
+				},
+			},
+			expectedResult: nil,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			certDetails, err := tc.lbSpec.Certificates()
+			if err != nil && !tc.expectError {
+				t.Errorf("Was not expected an error to be returned, but got one:\n%+v", err)
+			}
+			if !reflect.DeepEqual(certDetails, tc.expectedResult) {
+				t.Errorf("Expected certificate details \n%+v\nbut got\n%+v", tc.expectedResult, certDetails)
+			}
+		})
+	}
+}
+
+func TestRequiresCertificate(t *testing.T) {
+	testCases := map[string]struct {
+		expected    bool
+		annotations map[string]string
+	}{
+		"Contains the Load Balancer SSL Ports Annotation": {
+			expected: true,
+			annotations: map[string]string{
+				ServiceAnnotationLoadBalancerSSLPorts: "443",
+			},
+		},
+		"Does not container the Load Balancer SSL Ports Annotation": {
+			expected:    false,
+			annotations: make(map[string]string, 0),
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			result := requiresCertificate(&v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: tc.annotations,
+				},
+			})
+			if result != tc.expected {
+				t.Error("Did not get the correct result")
 			}
 		})
 	}
