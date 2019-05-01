@@ -75,7 +75,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Spec: v1.ServiceSpec{
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
-						v1.ServicePort{
+						{
 							Protocol: v1.ProtocolTCP,
 							Port:     int32(80),
 						},
@@ -88,14 +88,14 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Internal: false,
 				Subnets:  []string{"one", "two"},
 				Listeners: map[string]loadbalancer.ListenerDetails{
-					"TCP-80": loadbalancer.ListenerDetails{
+					"TCP-80": {
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
 				BackendSets: map[string]loadbalancer.BackendSetDetails{
-					"TCP-80": loadbalancer.BackendSetDetails{
+					"TCP-80": {
 						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
 							Protocol: common.String("HTTP"),
@@ -107,7 +107,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				SourceCIDRs: []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
-					"TCP-80": portSpec{
+					"TCP-80": {
 						ListenerPort:      80,
 						HealthCheckerPort: 10256,
 					},
@@ -130,7 +130,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Spec: v1.ServiceSpec{
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
-						v1.ServicePort{
+						{
 							Protocol: v1.ProtocolTCP,
 							Port:     int32(80),
 						},
@@ -143,14 +143,14 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Internal: true,
 				Subnets:  []string{"one"},
 				Listeners: map[string]loadbalancer.ListenerDetails{
-					"TCP-80": loadbalancer.ListenerDetails{
+					"TCP-80": {
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
 				BackendSets: map[string]loadbalancer.BackendSetDetails{
-					"TCP-80": loadbalancer.BackendSetDetails{
+					"TCP-80": {
 						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
 							Protocol: common.String("HTTP"),
@@ -162,7 +162,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				SourceCIDRs: []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
-					"TCP-80": portSpec{
+					"TCP-80": {
 						ListenerPort:      80,
 						HealthCheckerPort: 10256,
 					},
@@ -186,7 +186,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Spec: v1.ServiceSpec{
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
-						v1.ServicePort{
+						{
 							Protocol: v1.ProtocolTCP,
 							Port:     int32(80),
 						},
@@ -199,14 +199,14 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Internal: false,
 				Subnets:  []string{"annotation-one", "annotation-two"},
 				Listeners: map[string]loadbalancer.ListenerDetails{
-					"TCP-80": loadbalancer.ListenerDetails{
+					"TCP-80": {
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
 				BackendSets: map[string]loadbalancer.BackendSetDetails{
-					"TCP-80": loadbalancer.BackendSetDetails{
+					"TCP-80": {
 						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
 							Protocol: common.String("HTTP"),
@@ -218,7 +218,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				SourceCIDRs: []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
-					"TCP-80": portSpec{
+					"TCP-80": {
 						ListenerPort:      80,
 						HealthCheckerPort: 10256,
 					},
@@ -242,7 +242,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Spec: v1.ServiceSpec{
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
-						v1.ServicePort{
+						{
 							Protocol: v1.ProtocolTCP,
 							Port:     int32(80),
 						},
@@ -255,14 +255,14 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Internal: false,
 				Subnets:  []string{"one", "two"},
 				Listeners: map[string]loadbalancer.ListenerDetails{
-					"TCP-80": loadbalancer.ListenerDetails{
+					"TCP-80": {
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
 				BackendSets: map[string]loadbalancer.BackendSetDetails{
-					"TCP-80": loadbalancer.BackendSetDetails{
+					"TCP-80": {
 						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
 							Protocol: common.String("HTTP"),
@@ -274,7 +274,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				SourceCIDRs: []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
-					"TCP-80": portSpec{
+					"TCP-80": {
 						ListenerPort:      80,
 						HealthCheckerPort: 10256,
 					},
@@ -297,7 +297,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Spec: v1.ServiceSpec{
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
-						v1.ServicePort{
+						{
 							Protocol: v1.ProtocolTCP,
 							Port:     int32(80),
 						},
@@ -310,7 +310,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Internal: false,
 				Subnets:  []string{"one", "two"},
 				Listeners: map[string]loadbalancer.ListenerDetails{
-					"TCP-80": loadbalancer.ListenerDetails{
+					"TCP-80": {
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
@@ -320,7 +320,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				BackendSets: map[string]loadbalancer.BackendSetDetails{
-					"TCP-80": loadbalancer.BackendSetDetails{
+					"TCP-80": {
 						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
 							Protocol: common.String("HTTP"),
@@ -332,7 +332,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				SourceCIDRs: []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
-					"TCP-80": portSpec{
+					"TCP-80": {
 						ListenerPort:      80,
 						HealthCheckerPort: 10256,
 					},
@@ -357,7 +357,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Spec: v1.ServiceSpec{
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
-						v1.ServicePort{
+						{
 							Protocol: v1.ProtocolTCP,
 							Port:     int32(80),
 						},
@@ -370,14 +370,14 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Internal: false,
 				Subnets:  []string{"annotation-one", "annotation-two"},
 				Listeners: map[string]loadbalancer.ListenerDetails{
-					"HTTP-80": loadbalancer.ListenerDetails{
+					"HTTP-80": {
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("HTTP"),
 					},
 				},
 				BackendSets: map[string]loadbalancer.BackendSetDetails{
-					"TCP-80": loadbalancer.BackendSetDetails{
+					"TCP-80": {
 						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
 							Protocol: common.String("HTTP"),
@@ -389,7 +389,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				SourceCIDRs: []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
-					"TCP-80": portSpec{
+					"TCP-80": {
 						ListenerPort:      80,
 						HealthCheckerPort: 10256,
 					},
@@ -414,7 +414,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Spec: v1.ServiceSpec{
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
-						v1.ServicePort{
+						{
 							Protocol: v1.ProtocolTCP,
 							Port:     int32(80),
 						},
@@ -427,14 +427,14 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Internal: false,
 				Subnets:  []string{"annotation-one", "annotation-two"},
 				Listeners: map[string]loadbalancer.ListenerDetails{
-					"TCP-80": loadbalancer.ListenerDetails{
+					"TCP-80": {
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
 				BackendSets: map[string]loadbalancer.BackendSetDetails{
-					"TCP-80": loadbalancer.BackendSetDetails{
+					"TCP-80": {
 						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
 							Protocol: common.String("HTTP"),
@@ -446,7 +446,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				SourceCIDRs: []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
-					"TCP-80": portSpec{
+					"TCP-80": {
 						ListenerPort:      80,
 						HealthCheckerPort: 10256,
 					},
@@ -471,7 +471,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Spec: v1.ServiceSpec{
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
-						v1.ServicePort{
+						{
 							Protocol: v1.ProtocolTCP,
 							Port:     int32(80),
 						},
@@ -484,14 +484,14 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Internal: false,
 				Subnets:  []string{"annotation-one", "annotation-two"},
 				Listeners: map[string]loadbalancer.ListenerDetails{
-					"TCP-80": loadbalancer.ListenerDetails{
+					"TCP-80": {
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
 				BackendSets: map[string]loadbalancer.BackendSetDetails{
-					"TCP-80": loadbalancer.BackendSetDetails{
+					"TCP-80": {
 						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
 							Protocol: common.String("HTTP"),
@@ -503,7 +503,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				SourceCIDRs: []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
-					"TCP-80": portSpec{
+					"TCP-80": {
 						ListenerPort:      80,
 						HealthCheckerPort: 10256,
 					},
@@ -629,7 +629,7 @@ func TestNewLBSpecSingleAD(t *testing.T) {
 				Spec: v1.ServiceSpec{
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
-						v1.ServicePort{
+						{
 							Protocol: v1.ProtocolTCP,
 							Port:     int32(80),
 						},
@@ -642,14 +642,14 @@ func TestNewLBSpecSingleAD(t *testing.T) {
 				Internal: false,
 				Subnets:  []string{"annotation-one"},
 				Listeners: map[string]loadbalancer.ListenerDetails{
-					"TCP-80": loadbalancer.ListenerDetails{
+					"TCP-80": {
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
 				BackendSets: map[string]loadbalancer.BackendSetDetails{
-					"TCP-80": loadbalancer.BackendSetDetails{
+					"TCP-80": {
 						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
 							Protocol: common.String("HTTP"),
@@ -661,7 +661,7 @@ func TestNewLBSpecSingleAD(t *testing.T) {
 				},
 				SourceCIDRs: []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
-					"TCP-80": portSpec{
+					"TCP-80": {
 						ListenerPort:      80,
 						HealthCheckerPort: 10256,
 					},
