@@ -17,6 +17,9 @@ package oci
 import (
 	"context"
 	"errors"
+	"reflect"
+	"testing"
+
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/common"
@@ -25,9 +28,7 @@ import (
 	"github.com/oracle/oci-go-sdk/identity"
 	"github.com/oracle/oci-go-sdk/loadbalancer"
 	"go.uber.org/zap"
-	"k8s.io/api/core/v1"
-	"reflect"
-	"testing"
+	v1 "k8s.io/api/core/v1"
 )
 
 var (
@@ -327,8 +328,8 @@ func TestExtractNodeAddresses(t *testing.T) {
 			out: []v1.NodeAddress{
 				v1.NodeAddress{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
 				v1.NodeAddress{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
-				v1.NodeAddress{Type: v1.NodeHostName, Address: "basic-complete.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
-				v1.NodeAddress{Type: v1.NodeInternalDNS, Address: "basic-complete.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
+				// v1.NodeAddress{Type: v1.NodeHostName, Address: "basic-complete.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
+				// v1.NodeAddress{Type: v1.NodeInternalDNS, Address: "basic-complete.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
 			},
 			err: nil,
 		},
@@ -337,8 +338,8 @@ func TestExtractNodeAddresses(t *testing.T) {
 			in:   "no-external-ip",
 			out: []v1.NodeAddress{
 				v1.NodeAddress{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
-				v1.NodeAddress{Type: v1.NodeHostName, Address: "no-external-ip.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
-				v1.NodeAddress{Type: v1.NodeInternalDNS, Address: "no-external-ip.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
+				// v1.NodeAddress{Type: v1.NodeHostName, Address: "no-external-ip.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
+				// v1.NodeAddress{Type: v1.NodeInternalDNS, Address: "no-external-ip.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
 			},
 			err: nil,
 		},
@@ -347,8 +348,8 @@ func TestExtractNodeAddresses(t *testing.T) {
 			in:   "no-internal-ip",
 			out: []v1.NodeAddress{
 				v1.NodeAddress{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
-				v1.NodeAddress{Type: v1.NodeHostName, Address: "no-internal-ip.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
-				v1.NodeAddress{Type: v1.NodeInternalDNS, Address: "no-internal-ip.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
+				// v1.NodeAddress{Type: v1.NodeHostName, Address: "no-internal-ip.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
+				// v1.NodeAddress{Type: v1.NodeInternalDNS, Address: "no-internal-ip.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
 			},
 			err: nil,
 		},
