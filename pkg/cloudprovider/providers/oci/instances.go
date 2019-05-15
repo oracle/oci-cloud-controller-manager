@@ -68,23 +68,26 @@ func (cp *CloudProvider) extractNodeAddresses(ctx context.Context, instanceID st
 		addresses = append(addresses, api.NodeAddress{Type: api.NodeExternalIP, Address: ip.String()})
 	}
 
-	if vnic.HostnameLabel != nil && *vnic.HostnameLabel != "" {
-		subnet, err := cp.client.Networking().GetSubnet(ctx, *vnic.SubnetId)
-		if err != nil {
-			return nil, errors.Wrap(err, "GetSubnetForInstance")
-		}
-		if subnet != nil && subnet.DnsLabel != nil && *subnet.DnsLabel != "" {
-			vcn, err := cp.client.Networking().GetVcn(ctx, *subnet.VcnId)
-			if err != nil {
-				return nil, errors.Wrap(err, "GetVcnForInstance")
-			}
-			if vcn != nil && vcn.DnsLabel != nil && *vcn.DnsLabel != "" {
-				fqdn := strings.Join([]string{*vnic.HostnameLabel, *subnet.DnsLabel, *vcn.DnsLabel, "oraclevcn.com"}, ".")
-				addresses = append(addresses, api.NodeAddress{Type: api.NodeHostName, Address: fqdn})
-				addresses = append(addresses, api.NodeAddress{Type: api.NodeInternalDNS, Address: fqdn})
-			}
-		}
-	}
+	// OKE does not support setting DNS since this changes the override hostname we setup to be the ip address.
+	// Changing this can have wide reaching impact.
+	//
+	// if vnic.HostnameLabel != nil && *vnic.HostnameLabel != "" {
+	// 	subnet, err := cp.client.Networking().GetSubnet(ctx, *vnic.SubnetId)
+	// 	if err != nil {
+	// 		return nil, errors.Wrap(err, "GetSubnetForInstance")
+	// 	}
+	// 	if subnet != nil && subnet.DnsLabel != nil && *subnet.DnsLabel != "" {
+	// 		vcn, err := cp.client.Networking().GetVcn(ctx, *subnet.VcnId)
+	// 		if err != nil {
+	// 			return nil, errors.Wrap(err, "GetVcnForInstance")
+	// 		}
+	// 		if vcn != nil && vcn.DnsLabel != nil && *vcn.DnsLabel != "" {
+	// 			fqdn := strings.Join([]string{*vnic.HostnameLabel, *subnet.DnsLabel, *vcn.DnsLabel, "oraclevcn.com"}, ".")
+	// 			addresses = append(addresses, api.NodeAddress{Type: api.NodeHostName, Address: fqdn})
+	// 			addresses = append(addresses, api.NodeAddress{Type: api.NodeInternalDNS, Address: fqdn})
+	// 		}
+	// 	}
+	// }
 
 	return addresses, nil
 }
