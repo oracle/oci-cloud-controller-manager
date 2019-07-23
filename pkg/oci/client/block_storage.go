@@ -23,14 +23,38 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-const volumePollInterval = 5 * time.Second
+const (
+	_ = iota
+	// KiB is 1024 bytes
+	KiB = 1 << (10 * iota)
+	// MiB is 1024KB
+	MiB
+	// GiB is 1024 MB
+	GiB
+	// TiB is 1024 GB
+	TiB
+)
 
-// BlockStorageInterface defines the interface to OCI block storage utilisted
+const (
+	volumePollInterval = 5 * time.Second
+	// OCIVolumeID is the name of the oci volume id.
+	OCIVolumeID = "ociVolumeID"
+	// OCIVolumeBackupID is the name of the oci volume backup id annotation.
+	OCIVolumeBackupID = "volume.beta.kubernetes.io/oci-volume-source"
+	// FSType is the name of the file storage type parameter for storage classes.
+	FSType         = "fsType"
+	configFilePath = "/etc/oci/config.yaml"
+)
+
+// BlockStorageInterface defines the interface to OCI block storage utilised
 // by the volume provisioner.
 type BlockStorageInterface interface {
 	AwaitVolumeAvailable(ctx context.Context, id string) (*core.Volume, error)
+	AwaitVolumeAvailableORTimeout(ctx context.Context, id string, timeout time.Duration) (*core.Volume, error)
 	CreateVolume(ctx context.Context, details core.CreateVolumeDetails) (*core.Volume, error)
 	DeleteVolume(ctx context.Context, id string) error
+	GetVolume(ctx context.Context, id string) (*core.Volume, error)
+	GetVolumesByName(ctx context.Context, volumeName, compartmentID string) ([]core.Volume, error)
 }
 
 func (c *client) GetVolume(ctx context.Context, id string) (*core.Volume, error) {
@@ -77,6 +101,34 @@ func (c *client) AwaitVolumeAvailable(ctx context.Context, id string) (*core.Vol
 	return vol, nil
 }
 
+func (c *client) AwaitVolumeAvailableORTimeout(ctx context.Context, id string, timeout time.Duration) (*core.Volume, error) {
+	var vol *core.Volume
+	if err := wait.PollImmediate(volumePollInterval, timeout, func() (bool, error) {
+		var err error
+		vol, err = c.GetVolume(ctx, id)
+		if err != nil {
+			if !IsRetryable(err) {
+				return false, err
+			}
+			return false, nil
+		}
+
+		switch state := vol.LifecycleState; state {
+		case core.VolumeLifecycleStateAvailable:
+			return true, nil
+		case core.VolumeLifecycleStateFaulty,
+			core.VolumeLifecycleStateTerminated,
+			core.VolumeLifecycleStateTerminating:
+			return false, errors.Errorf("volume did not become available (lifecycleState=%q)", state)
+		}
+		return false, nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return vol, nil
+}
+
 func (c *client) CreateVolume(ctx context.Context, details core.CreateVolumeDetails) (*core.Volume, error) {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return nil, RateLimitError(true, "CreateVolume")
@@ -105,4 +157,19 @@ func (c *client) DeleteVolume(ctx context.Context, id string) error {
 	}
 
 	return nil
+}
+
+func (c *client) GetVolumesByName(ctx context.Context, volumeName, compartmentID string) ([]core.Volume, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return nil, RateLimitError(true, "CreateVolume")
+	}
+
+	listVolumeResponse, err := c.bs.ListVolumes(ctx,
+		core.ListVolumesRequest{
+			CompartmentId: &compartmentID,
+			DisplayName:   &volumeName})
+	if err != nil {
+		return nil, err
+	}
+	return listVolumeResponse.Items, nil
 }

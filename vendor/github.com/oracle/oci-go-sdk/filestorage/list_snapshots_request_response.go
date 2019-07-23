@@ -1,4 +1,5 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
 package filestorage
@@ -14,11 +15,18 @@ type ListSnapshotsRequest struct {
 	// The OCID of the file system.
 	FileSystemId *string `mandatory:"true" contributesTo:"query" name:"fileSystemId"`
 
-	// The maximum number of items to return in a paginated "List" call.
-	// Example: `500`
+	// For list pagination. The maximum number of results per page,
+	// or items to return in a paginated "List" call.
+	// 1 is the minimum, 100 is the maximum.
+	// For important details about how pagination works,
+	// see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
+	// Example: `100`
 	Limit *int `mandatory:"false" contributesTo:"query" name:"limit"`
 
-	// The value of the `opc-next-page` response header from the previous "List" call.
+	// For list pagination. The value of the `opc-next-page` response
+	// header from the previous "List" call.
+	// For important details about how pagination works,
+	// see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	Page *string `mandatory:"false" contributesTo:"query" name:"page"`
 
 	// Filter results by the specified lifecycle state. Must be a valid
@@ -30,10 +38,11 @@ type ListSnapshotsRequest struct {
 	Id *string `mandatory:"false" contributesTo:"query" name:"id"`
 
 	// The sort order to use, either 'asc' or 'desc', where 'asc' is
-	// ascending and 'desc' is descending.
+	// ascending and 'desc' is descending. The default order is 'desc'
+	// except for numeric values.
 	SortOrder ListSnapshotsSortOrderEnum `mandatory:"false" contributesTo:"query" name:"sortOrder" omitEmpty:"true"`
 
-	// Unique Oracle-assigned identifier for the request.
+	// Unique identifier for the request.
 	// If you need to contact Oracle about a particular request, please provide the request ID.
 	OpcRequestId *string `mandatory:"false" contributesTo:"header" name:"opc-request-id"`
 
@@ -65,11 +74,10 @@ type ListSnapshotsResponse struct {
 	// A list of []SnapshotSummary instances
 	Items []SnapshotSummary `presentIn:"body"`
 
-	// For pagination of a list of items. When paging through
-	// a list, if this header appears in the response, then a
-	// partial list might have been returned. Include this
-	// value as the `page` parameter for the subsequent GET
-	// request to get the next batch of items.
+	// For list pagination. When this header appears in the response,
+	// additional pages of results remain.
+	// For important details about how pagination works,
+	// see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	OpcNextPage *string `presentIn:"header" name:"opc-next-page"`
 
 	// Unique Oracle-assigned identifier for the request. If
@@ -90,7 +98,7 @@ func (response ListSnapshotsResponse) HTTPResponse() *http.Response {
 // ListSnapshotsLifecycleStateEnum Enum with underlying type: string
 type ListSnapshotsLifecycleStateEnum string
 
-// Set of constants representing the allowable values for ListSnapshotsLifecycleState
+// Set of constants representing the allowable values for ListSnapshotsLifecycleStateEnum
 const (
 	ListSnapshotsLifecycleStateCreating ListSnapshotsLifecycleStateEnum = "CREATING"
 	ListSnapshotsLifecycleStateActive   ListSnapshotsLifecycleStateEnum = "ACTIVE"
@@ -107,7 +115,7 @@ var mappingListSnapshotsLifecycleState = map[string]ListSnapshotsLifecycleStateE
 	"FAILED":   ListSnapshotsLifecycleStateFailed,
 }
 
-// GetListSnapshotsLifecycleStateEnumValues Enumerates the set of values for ListSnapshotsLifecycleState
+// GetListSnapshotsLifecycleStateEnumValues Enumerates the set of values for ListSnapshotsLifecycleStateEnum
 func GetListSnapshotsLifecycleStateEnumValues() []ListSnapshotsLifecycleStateEnum {
 	values := make([]ListSnapshotsLifecycleStateEnum, 0)
 	for _, v := range mappingListSnapshotsLifecycleState {
@@ -119,7 +127,7 @@ func GetListSnapshotsLifecycleStateEnumValues() []ListSnapshotsLifecycleStateEnu
 // ListSnapshotsSortOrderEnum Enum with underlying type: string
 type ListSnapshotsSortOrderEnum string
 
-// Set of constants representing the allowable values for ListSnapshotsSortOrder
+// Set of constants representing the allowable values for ListSnapshotsSortOrderEnum
 const (
 	ListSnapshotsSortOrderAsc  ListSnapshotsSortOrderEnum = "ASC"
 	ListSnapshotsSortOrderDesc ListSnapshotsSortOrderEnum = "DESC"
@@ -130,7 +138,7 @@ var mappingListSnapshotsSortOrder = map[string]ListSnapshotsSortOrderEnum{
 	"DESC": ListSnapshotsSortOrderDesc,
 }
 
-// GetListSnapshotsSortOrderEnumValues Enumerates the set of values for ListSnapshotsSortOrder
+// GetListSnapshotsSortOrderEnumValues Enumerates the set of values for ListSnapshotsSortOrderEnum
 func GetListSnapshotsSortOrderEnumValues() []ListSnapshotsSortOrderEnum {
 	values := make([]ListSnapshotsSortOrderEnum, 0)
 	for _, v := range mappingListSnapshotsSortOrder {

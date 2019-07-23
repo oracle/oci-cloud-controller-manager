@@ -1,4 +1,5 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
 // Identity and Access Management Service API
@@ -14,15 +15,17 @@ import (
 
 // Group A collection of users who all need the same type of access to a particular set of resources or compartment.
 // For conceptual information about groups and other IAM Service components, see
-// Overview of the IAM Service (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/overview.htm).
+// Overview of the IAM Service (https://docs.cloud.oracle.com/Content/Identity/Concepts/overview.htm).
 // If you're federating with an identity provider (IdP), you need to create mappings between the groups
 // defined in the IdP and groups you define in the IAM service. For more information, see
-// Identity Providers and Federation (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/federation.htm). Also see
+// Identity Providers and Federation (https://docs.cloud.oracle.com/Content/Identity/Concepts/federation.htm). Also see
 // IdentityProvider and
 // IdpGroupMapping.
 // To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized,
 // talk to an administrator. If you're an administrator who needs to write policies to give users access,
-// see Getting Started with Policies (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/policygetstarted.htm).
+// see Getting Started with Policies (https://docs.cloud.oracle.com/Content/Identity/Concepts/policygetstarted.htm).
+// **Warning:** Oracle recommends that you avoid using any confidential information when you supply string values
+// using the API.
 type Group struct {
 
 	// The OCID of the group.
@@ -50,12 +53,12 @@ type Group struct {
 	InactiveStatus *int64 `mandatory:"false" json:"inactiveStatus"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no predefined name, type, or namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 }
@@ -67,7 +70,7 @@ func (m Group) String() string {
 // GroupLifecycleStateEnum Enum with underlying type: string
 type GroupLifecycleStateEnum string
 
-// Set of constants representing the allowable values for GroupLifecycleState
+// Set of constants representing the allowable values for GroupLifecycleStateEnum
 const (
 	GroupLifecycleStateCreating GroupLifecycleStateEnum = "CREATING"
 	GroupLifecycleStateActive   GroupLifecycleStateEnum = "ACTIVE"
@@ -84,7 +87,7 @@ var mappingGroupLifecycleState = map[string]GroupLifecycleStateEnum{
 	"DELETED":  GroupLifecycleStateDeleted,
 }
 
-// GetGroupLifecycleStateEnumValues Enumerates the set of values for GroupLifecycleState
+// GetGroupLifecycleStateEnumValues Enumerates the set of values for GroupLifecycleStateEnum
 func GetGroupLifecycleStateEnumValues() []GroupLifecycleStateEnum {
 	values := make([]GroupLifecycleStateEnum, 0)
 	for _, v := range mappingGroupLifecycleState {

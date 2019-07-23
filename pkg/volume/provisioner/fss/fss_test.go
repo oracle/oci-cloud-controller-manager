@@ -16,10 +16,10 @@ package fss
 
 import (
 	"context"
+	v12 "k8s.io/api/storage/v1"
 	"testing"
 	"time"
 
-	"github.com/kubernetes-incubator/external-storage/lib/controller"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/core"
@@ -30,6 +30,7 @@ import (
 	"go.uber.org/zap/zaptest"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
 )
 
 var (
@@ -51,6 +52,18 @@ var (
 // MockBlockStorageClient mocks BlockStorage client implementation
 type MockBlockStorageClient struct {
 	VolumeState core.VolumeLifecycleStateEnum
+}
+
+func (c *MockBlockStorageClient) AwaitVolumeAvailableORTimeout(ctx context.Context, id string, timeout time.Duration) (*core.Volume, error) {
+	return nil, nil
+}
+
+func (c *MockBlockStorageClient) GetVolume(ctx context.Context, id string) (*core.Volume, error) {
+	return nil, nil
+}
+
+func (c *MockBlockStorageClient) GetVolumesByName(ctx context.Context, volumeName, compartmentID string) ([]core.Volume, error) {
+	return nil, nil
 }
 
 // CreateVolume mocks the BlockStorage CreateVolume implementation
@@ -226,6 +239,10 @@ type MockIdentityClient struct {
 	common.BaseClient
 }
 
+func (client MockIdentityClient) ListAvailabilityDomains(ctx context.Context, compartmentID string) ([]identity.AvailabilityDomain, error) {
+	return nil, nil
+}
+
 // ListAvailabilityDomains mocks the client ListAvailabilityDomains implementation
 func (client MockIdentityClient) GetAvailabilityDomainByName(ctx context.Context, compartmentID, name string) (*identity.AvailabilityDomain, error) {
 	return nil, nil
@@ -277,7 +294,7 @@ func (p *MockProvisionerClient) Timeout() time.Duration {
 
 // TenancyOCID mocks client TenancyOCID implementation
 func (p *MockProvisionerClient) TenancyOCID() string {
-	return "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq"
+	return "ocid1.tenancy.oc1..aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 }
 
 type MockLoadBalancerClient struct{}
@@ -318,6 +335,14 @@ func (c *MockLoadBalancerClient) DeleteBackendSet(ctx context.Context, lbID, nam
 	return "", nil
 }
 
+func (c *MockLoadBalancerClient) CreateBackend(ctx context.Context, lbID, bsName string, details loadbalancer.BackendDetails) (string, error) {
+	return "", nil
+}
+
+func (c *MockLoadBalancerClient) DeleteBackend(ctx context.Context, lbID, bsName, name string) (string, error) {
+	return "", nil
+}
+
 func (c *MockLoadBalancerClient) UpdateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error) {
 	return "", nil
 }
@@ -345,15 +370,22 @@ func TestCreateVolumeWithFSS(t *testing.T) {
 		logger: zaptest.NewLogger(t).Sugar(),
 		region: "phx",
 	}
+
+	persistentVolumeReclaimPolicy := v1.PersistentVolumeReclaimPolicy("Test")
+
+	storageClass := v12.StorageClass{
+		Parameters:    map[string]string{MntTargetID: "dummyMountTargetID"},
+		ReclaimPolicy: &persistentVolumeReclaimPolicy,
+	}
 	_, err := fsp.Provision(
-		controller.VolumeOptions{
-			PVName: "dummyVolumeOptions",
+		controller.ProvisionOptions{
+			StorageClass: &storageClass,
+			PVName:       "dummyVolumeOptions",
 			PVC: &v1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
 					UID: "my-uid",
 				},
 			},
-			Parameters: map[string]string{MntTargetID: "dummyMountTargetID"},
 		},
 		&identity.AvailabilityDomain{
 			Name:          common.String("dummyAdName"),

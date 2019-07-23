@@ -33,14 +33,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	listersv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/flowcontrol"
-	"k8s.io/kubernetes/pkg/cloudprovider"
-	"k8s.io/kubernetes/pkg/controller"
-)
-
-const (
-	rateLimitQPSDefault    = 20.0
-	rateLimitBucketDefault = 5
+	cloudprovider "k8s.io/cloud-provider"
 )
 
 const (
@@ -79,15 +72,16 @@ var _ cloudprovider.Interface = &CloudProvider{}
 // NewCloudProvider creates a new oci.CloudProvider.
 func NewCloudProvider(config *providercfg.Config) (cloudprovider.Interface, error) {
 	// The global logger has been replaced with the logger we constructed in
-	// main.go so capture it here and then pass it into all components.
+	// cloud_provider_oci.go so capture it here and then pass it into all components.
 	logger := zap.L()
+	logger = logger.With(zap.String("component", "cloud-controller-manager"))
 
 	cp, err := providercfg.NewConfigurationProvider(config)
 	if err != nil {
 		return nil, err
 	}
 
-	rateLimiter := NewRateLimiter(logger.Sugar(), config.RateLimiter)
+	rateLimiter := client.NewRateLimiter(logger.Sugar(), config.RateLimiter)
 
 	c, err := client.New(logger.Sugar(), cp, &rateLimiter)
 	if err != nil {
@@ -135,7 +129,7 @@ func init() {
 }
 
 // Initialize passes a Kubernetes clientBuilder interface to the cloud provider.
-func (cp *CloudProvider) Initialize(clientBuilder controller.ControllerClientBuilder) {
+func (cp *CloudProvider) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, stop <-chan struct{}) {
 	var err error
 	cp.kubeclient, err = clientBuilder.Client("cloud-controller-manager")
 	if err != nil {
@@ -213,45 +207,4 @@ func (cp *CloudProvider) ScrubDNS(nameservers, searches []string) (nsOut, srchOu
 // HasClusterID returns true if the cluster has a clusterID.
 func (cp *CloudProvider) HasClusterID() bool {
 	return true
-}
-
-// NewRateLimiter builds and returns a struct containing read and write
-// rate limiters. Defaults are used where no (0) value is provided.
-func NewRateLimiter(logger *zap.SugaredLogger, config *providercfg.RateLimiterConfig) client.RateLimiter {
-	if config == nil {
-		config = &providercfg.RateLimiterConfig{}
-	}
-
-	// Set to default values if configuration not declared
-	if config.RateLimitQPSRead == 0 {
-		config.RateLimitQPSRead = rateLimitQPSDefault
-	}
-	if config.RateLimitBucketRead == 0 {
-		config.RateLimitBucketRead = rateLimitBucketDefault
-	}
-	if config.RateLimitQPSWrite == 0 {
-		config.RateLimitQPSWrite = rateLimitQPSDefault
-	}
-	if config.RateLimitBucketWrite == 0 {
-		config.RateLimitBucketWrite = rateLimitBucketDefault
-	}
-
-	rateLimiter := client.RateLimiter{
-		Reader: flowcontrol.NewTokenBucketRateLimiter(
-			config.RateLimitQPSRead,
-			config.RateLimitBucketRead),
-		Writer: flowcontrol.NewTokenBucketRateLimiter(
-			config.RateLimitQPSWrite,
-			config.RateLimitBucketWrite),
-	}
-
-	logger.Infof("OCI using read rate limit configuration: QPS=%g, bucket=%d",
-		config.RateLimitQPSRead,
-		config.RateLimitBucketRead)
-
-	logger.Infof("OCI using write rate limit configuration: QPS=%g, bucket=%d",
-		config.RateLimitQPSWrite,
-		config.RateLimitBucketWrite)
-
-	return rateLimiter
 }

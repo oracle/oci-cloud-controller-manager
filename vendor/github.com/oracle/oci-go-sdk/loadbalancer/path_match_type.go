@@ -1,9 +1,11 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
-// Load Balancing Service API
+// Load Balancing API
 //
-// API for the Load Balancing Service
+// API for the Load Balancing service. Use this API to manage load balancers, backend sets, and related items. For more
+// information, see Overview of Load Balancing (https://docs.cloud.oracle.com/iaas/Content/Balance/Concepts/balanceoverview.htm).
 //
 
 package loadbalancer
@@ -23,7 +25,7 @@ type PathMatchType struct {
 	// *  **PREFIX_MATCH** - Looks for a `path` string that matches the beginning portion of the incoming URI path.
 	// *  **SUFFIX_MATCH** - Looks for a `path` string that matches the ending portion of the incoming URI path.
 	// For a full description of how the system handles `matchType` in a path route set containing multiple rules, see
-	// Managing Request Routing (https://docs.us-phoenix-1.oraclecloud.com/Content/Balance/Tasks/managingrequest.htm).
+	// Managing Request Routing (https://docs.cloud.oracle.com/Content/Balance/Tasks/managingrequest.htm).
 	MatchType PathMatchTypeMatchTypeEnum `mandatory:"true" json:"matchType"`
 }
 
@@ -34,7 +36,7 @@ func (m PathMatchType) String() string {
 // PathMatchTypeMatchTypeEnum Enum with underlying type: string
 type PathMatchTypeMatchTypeEnum string
 
-// Set of constants representing the allowable values for PathMatchTypeMatchType
+// Set of constants representing the allowable values for PathMatchTypeMatchTypeEnum
 const (
 	PathMatchTypeMatchTypeExactMatch              PathMatchTypeMatchTypeEnum = "EXACT_MATCH"
 	PathMatchTypeMatchTypeForceLongestPrefixMatch PathMatchTypeMatchTypeEnum = "FORCE_LONGEST_PREFIX_MATCH"
@@ -49,7 +51,7 @@ var mappingPathMatchTypeMatchType = map[string]PathMatchTypeMatchTypeEnum{
 	"SUFFIX_MATCH":               PathMatchTypeMatchTypeSuffixMatch,
 }
 
-// GetPathMatchTypeMatchTypeEnumValues Enumerates the set of values for PathMatchTypeMatchType
+// GetPathMatchTypeMatchTypeEnumValues Enumerates the set of values for PathMatchTypeMatchTypeEnum
 func GetPathMatchTypeMatchTypeEnumValues() []PathMatchTypeMatchTypeEnum {
 	values := make([]PathMatchTypeMatchTypeEnum, 0)
 	for _, v := range mappingPathMatchTypeMatchType {

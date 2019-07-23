@@ -22,21 +22,21 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
-	metav1 "k8s.io/kubernetes/pkg/kubelet/apis"
-	"k8s.io/kubernetes/pkg/volume/util"
+	"k8s.io/cloud-provider/volume/helpers"
 )
 
 // chooseAvailabilityDomain selects the availability zone using the ZoneFailureDomain labels
 // on the nodes. This only works if the nodes have been labeled by either the CCM or some other method.
 func (p *OCIProvisioner) chooseAvailabilityDomain(ctx context.Context, pvc *v1.PersistentVolumeClaim) (string, *identity.AvailabilityDomain, error) {
 	var (
-		availabilityDomainName string
-		ok                     bool
+		availabilityDomainName  string
+		availabilityDomainNames sets.String
+		ok                      bool
 	)
 
 	if pvc.Spec.Selector != nil {
 		// Try the standard Kube label
-		availabilityDomainName, ok = pvc.Spec.Selector.MatchLabels[metav1.LabelZoneFailureDomain]
+		availabilityDomainName, ok = pvc.Spec.Selector.MatchLabels[v1.LabelZoneFailureDomain]
 		if !ok {
 			// If not try backwards compat label
 			availabilityDomainName, ok = pvc.Spec.Selector.MatchLabels["oci-availability-domain"]
@@ -50,16 +50,20 @@ func (p *OCIProvisioner) chooseAvailabilityDomain(ctx context.Context, pvc *v1.P
 		}
 		validADs := sets.NewString()
 		for _, node := range nodes {
-			zone, ok := node.Labels[metav1.LabelZoneFailureDomain]
+			zone, ok := node.Labels[v1.LabelZoneFailureDomain]
 			if ok {
 				validADs.Insert(zone)
 			}
 		}
 		if validADs.Len() == 0 {
-			return "", nil, fmt.Errorf("failed to choose availability domain; no zone labels (%q) on nodes", metav1.LabelZoneFailureDomain)
+			return "", nil, fmt.Errorf("failed to choose availability domain; no zone labels (%q) on nodes", v1.LabelZoneFailureDomain)
 		}
-		availabilityDomainName = util.ChooseZoneForVolume(validADs, pvc.Name)
-		p.logger.With("availabilityDomain", availabilityDomainName).Info("No availability domain provided. Selecting one automatically.")
+		availabilityDomainNames = helpers.ChooseZonesForVolume(validADs, pvc.Name, uint32(1))
+		if availabilityDomainNames.Len() == 0 {
+			return "", nil, fmt.Errorf("failed to select a name from an empty list of availability domains")
+		}
+		availabilityDomainName = availabilityDomainNames.List()[0]
+		p.logger.With("availabilityDomain", availabilityDomainNames).Info("No availability domain provided. Selecting one automatically.")
 	}
 
 	availabilityDomain, err := p.client.Identity().GetAvailabilityDomainByName(ctx, p.compartmentID, availabilityDomainName)

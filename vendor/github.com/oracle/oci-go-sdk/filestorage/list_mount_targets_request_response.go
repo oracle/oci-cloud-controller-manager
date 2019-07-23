@@ -1,4 +1,5 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
 package filestorage
@@ -18,11 +19,18 @@ type ListMountTargetsRequest struct {
 	// Example: `Uocm:PHX-AD-1`
 	AvailabilityDomain *string `mandatory:"true" contributesTo:"query" name:"availabilityDomain"`
 
-	// The maximum number of items to return in a paginated "List" call.
+	// For list pagination. The maximum number of results per page,
+	// or items to return in a paginated "List" call.
+	// 1 is the minimum, 1000 is the maximum.
+	// For important details about how pagination works,
+	// see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	// Example: `500`
 	Limit *int `mandatory:"false" contributesTo:"query" name:"limit"`
 
-	// The value of the `opc-next-page` response header from the previous "List" call.
+	// For list pagination. The value of the `opc-next-page` response
+	// header from the previous "List" call.
+	// For important details about how pagination works,
+	// see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	Page *string `mandatory:"false" contributesTo:"query" name:"page"`
 
 	// A user-friendly name. It does not have to be unique, and it is changeable.
@@ -47,10 +55,11 @@ type ListMountTargetsRequest struct {
 	SortBy ListMountTargetsSortByEnum `mandatory:"false" contributesTo:"query" name:"sortBy" omitEmpty:"true"`
 
 	// The sort order to use, either 'asc' or 'desc', where 'asc' is
-	// ascending and 'desc' is descending.
+	// ascending and 'desc' is descending. The default order is 'desc'
+	// except for numeric values.
 	SortOrder ListMountTargetsSortOrderEnum `mandatory:"false" contributesTo:"query" name:"sortOrder" omitEmpty:"true"`
 
-	// Unique Oracle-assigned identifier for the request.
+	// Unique identifier for the request.
 	// If you need to contact Oracle about a particular request, please provide the request ID.
 	OpcRequestId *string `mandatory:"false" contributesTo:"header" name:"opc-request-id"`
 
@@ -82,11 +91,10 @@ type ListMountTargetsResponse struct {
 	// A list of []MountTargetSummary instances
 	Items []MountTargetSummary `presentIn:"body"`
 
-	// For pagination of a list of items. When paging through
-	// a list, if this header appears in the response, then a
-	// partial list might have been returned. Include this
-	// value as the `page` parameter for the subsequent GET
-	// request to get the next batch of items.
+	// For list pagination. When this header appears in the response,
+	// additional pages of results remain.
+	// For important details about how pagination works,
+	// see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	OpcNextPage *string `presentIn:"header" name:"opc-next-page"`
 
 	// Unique Oracle-assigned identifier for the request. If
@@ -107,7 +115,7 @@ func (response ListMountTargetsResponse) HTTPResponse() *http.Response {
 // ListMountTargetsLifecycleStateEnum Enum with underlying type: string
 type ListMountTargetsLifecycleStateEnum string
 
-// Set of constants representing the allowable values for ListMountTargetsLifecycleState
+// Set of constants representing the allowable values for ListMountTargetsLifecycleStateEnum
 const (
 	ListMountTargetsLifecycleStateCreating ListMountTargetsLifecycleStateEnum = "CREATING"
 	ListMountTargetsLifecycleStateActive   ListMountTargetsLifecycleStateEnum = "ACTIVE"
@@ -124,7 +132,7 @@ var mappingListMountTargetsLifecycleState = map[string]ListMountTargetsLifecycle
 	"FAILED":   ListMountTargetsLifecycleStateFailed,
 }
 
-// GetListMountTargetsLifecycleStateEnumValues Enumerates the set of values for ListMountTargetsLifecycleState
+// GetListMountTargetsLifecycleStateEnumValues Enumerates the set of values for ListMountTargetsLifecycleStateEnum
 func GetListMountTargetsLifecycleStateEnumValues() []ListMountTargetsLifecycleStateEnum {
 	values := make([]ListMountTargetsLifecycleStateEnum, 0)
 	for _, v := range mappingListMountTargetsLifecycleState {
@@ -136,7 +144,7 @@ func GetListMountTargetsLifecycleStateEnumValues() []ListMountTargetsLifecycleSt
 // ListMountTargetsSortByEnum Enum with underlying type: string
 type ListMountTargetsSortByEnum string
 
-// Set of constants representing the allowable values for ListMountTargetsSortBy
+// Set of constants representing the allowable values for ListMountTargetsSortByEnum
 const (
 	ListMountTargetsSortByTimecreated ListMountTargetsSortByEnum = "TIMECREATED"
 	ListMountTargetsSortByDisplayname ListMountTargetsSortByEnum = "DISPLAYNAME"
@@ -147,7 +155,7 @@ var mappingListMountTargetsSortBy = map[string]ListMountTargetsSortByEnum{
 	"DISPLAYNAME": ListMountTargetsSortByDisplayname,
 }
 
-// GetListMountTargetsSortByEnumValues Enumerates the set of values for ListMountTargetsSortBy
+// GetListMountTargetsSortByEnumValues Enumerates the set of values for ListMountTargetsSortByEnum
 func GetListMountTargetsSortByEnumValues() []ListMountTargetsSortByEnum {
 	values := make([]ListMountTargetsSortByEnum, 0)
 	for _, v := range mappingListMountTargetsSortBy {
@@ -159,7 +167,7 @@ func GetListMountTargetsSortByEnumValues() []ListMountTargetsSortByEnum {
 // ListMountTargetsSortOrderEnum Enum with underlying type: string
 type ListMountTargetsSortOrderEnum string
 
-// Set of constants representing the allowable values for ListMountTargetsSortOrder
+// Set of constants representing the allowable values for ListMountTargetsSortOrderEnum
 const (
 	ListMountTargetsSortOrderAsc  ListMountTargetsSortOrderEnum = "ASC"
 	ListMountTargetsSortOrderDesc ListMountTargetsSortOrderEnum = "DESC"
@@ -170,7 +178,7 @@ var mappingListMountTargetsSortOrder = map[string]ListMountTargetsSortOrderEnum{
 	"DESC": ListMountTargetsSortOrderDesc,
 }
 
-// GetListMountTargetsSortOrderEnumValues Enumerates the set of values for ListMountTargetsSortOrder
+// GetListMountTargetsSortOrderEnumValues Enumerates the set of values for ListMountTargetsSortOrderEnum
 func GetListMountTargetsSortOrderEnumValues() []ListMountTargetsSortOrderEnum {
 	values := make([]ListMountTargetsSortOrderEnum, 0)
 	for _, v := range mappingListMountTargetsSortOrder {

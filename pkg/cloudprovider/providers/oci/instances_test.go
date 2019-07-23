@@ -17,6 +17,10 @@ package oci
 import (
 	"context"
 	"errors"
+	"reflect"
+	"testing"
+	"time"
+
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/common"
@@ -25,9 +29,7 @@ import (
 	"github.com/oracle/oci-go-sdk/identity"
 	"github.com/oracle/oci-go-sdk/loadbalancer"
 	"go.uber.org/zap"
-	"k8s.io/api/core/v1"
-	"reflect"
-	"testing"
+	v1 "k8s.io/api/core/v1"
 )
 
 var (
@@ -233,6 +235,14 @@ func (c *MockLoadBalancerClient) DeleteBackendSet(ctx context.Context, lbID, nam
 	return "", nil
 }
 
+func (c *MockLoadBalancerClient) CreateBackend(ctx context.Context, lbID, bsName string, details loadbalancer.BackendDetails) (string, error) {
+	return "", nil
+}
+
+func (c *MockLoadBalancerClient) DeleteBackend(ctx context.Context, lbID, bsName, name string) (string, error) {
+	return "", nil
+}
+
 func (c *MockLoadBalancerClient) UpdateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error) {
 	return "", nil
 }
@@ -256,7 +266,19 @@ func (MockBlockStorageClient) AwaitVolumeAvailable(ctx context.Context, id strin
 	return nil, nil
 }
 
+func (MockBlockStorageClient) AwaitVolumeAvailableORTimeout(ctx context.Context, id string, timeout time.Duration) (*core.Volume, error) {
+	return nil, nil
+}
+
 func (MockBlockStorageClient) CreateVolume(ctx context.Context, details core.CreateVolumeDetails) (*core.Volume, error) {
+	return nil, nil
+}
+
+func (MockBlockStorageClient) GetVolume(ctx context.Context, id string) (*core.Volume, error) {
+	return nil, nil
+}
+
+func (MockBlockStorageClient) GetVolumesByName(ctx context.Context, volumeName, compartmentID string) ([]core.Volume, error) {
 	return nil, nil
 }
 
@@ -314,6 +336,10 @@ func (MockIdentityClient) GetAvailabilityDomainByName(ctx context.Context, compa
 	return nil, nil
 }
 
+func (MockIdentityClient) ListAvailabilityDomains(ctx context.Context, compartmentID string) ([]identity.AvailabilityDomain, error) {
+	return nil, nil
+}
+
 func TestExtractNodeAddresses(t *testing.T) {
 	testCases := []struct {
 		name string
@@ -327,8 +353,8 @@ func TestExtractNodeAddresses(t *testing.T) {
 			out: []v1.NodeAddress{
 				v1.NodeAddress{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
 				v1.NodeAddress{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
-				v1.NodeAddress{Type: v1.NodeHostName, Address: "basic-complete.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
-				v1.NodeAddress{Type: v1.NodeInternalDNS, Address: "basic-complete.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
+				// v1.NodeAddress{Type: v1.NodeHostName, Address: "basic-complete.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
+				// v1.NodeAddress{Type: v1.NodeInternalDNS, Address: "basic-complete.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
 			},
 			err: nil,
 		},
@@ -337,8 +363,8 @@ func TestExtractNodeAddresses(t *testing.T) {
 			in:   "no-external-ip",
 			out: []v1.NodeAddress{
 				v1.NodeAddress{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
-				v1.NodeAddress{Type: v1.NodeHostName, Address: "no-external-ip.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
-				v1.NodeAddress{Type: v1.NodeInternalDNS, Address: "no-external-ip.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
+				// v1.NodeAddress{Type: v1.NodeHostName, Address: "no-external-ip.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
+				// v1.NodeAddress{Type: v1.NodeInternalDNS, Address: "no-external-ip.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
 			},
 			err: nil,
 		},
@@ -347,8 +373,8 @@ func TestExtractNodeAddresses(t *testing.T) {
 			in:   "no-internal-ip",
 			out: []v1.NodeAddress{
 				v1.NodeAddress{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
-				v1.NodeAddress{Type: v1.NodeHostName, Address: "no-internal-ip.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
-				v1.NodeAddress{Type: v1.NodeInternalDNS, Address: "no-internal-ip.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
+				// v1.NodeAddress{Type: v1.NodeHostName, Address: "no-internal-ip.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
+				// v1.NodeAddress{Type: v1.NodeInternalDNS, Address: "no-internal-ip.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
 			},
 			err: nil,
 		},

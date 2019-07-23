@@ -31,6 +31,15 @@ import (
 const (
 	iscsiadmCommand = "iscsiadm"
 	mountCommand    = "/bin/mount"
+
+	// ISCSIDEVICE is the map key to get or save iscci device
+	ISCSIDEVICE = "iscsi_device"
+	// ISCSIIQN is the map key to get or save iSCSI IQN
+	ISCSIIQN = "iscci_iqn"
+	// ISCSIIP is the map key to get or save iSCSI IP
+	ISCSIIP = "iscsi_ip"
+	// ISCSIPORT is the map key to get or save iSCSI Port
+	ISCSIPORT = "iscsi_port"
 )
 
 // ErrMountPointNotFound is returned when a given path does not appear to be
@@ -59,6 +68,10 @@ type Interface interface {
 	// formatting.
 	FormatAndMount(source string, target string, fstype string, options []string) error
 
+	//Mount only mounts the disk. In case if formatting is handled by different functionality.
+	// This function doesn't bother for checking the format again.
+	Mount(source string, target string, fstype string, options []string) error
+
 	// Login logs into the iSCSI target.
 	Login() error
 
@@ -79,7 +92,7 @@ type Interface interface {
 
 // iSCSIMounter implements Interface.
 type iSCSIMounter struct {
-	disk *iSCSDisk
+	disk *Disk
 
 	runner  exec.Interface
 	mounter mount.Interface
@@ -89,20 +102,25 @@ type iSCSIMounter struct {
 	logger       *zap.SugaredLogger
 }
 
-type iSCSDisk struct {
+//Disk interface
+type Disk struct {
 	IQN  string
 	IPv4 string
 	Port int
 }
 
-// Returns the target to connect to in the format ip:port.
-func (d *iSCSDisk) Target() string {
-	return fmt.Sprintf("%s:%d", d.IPv4, d.Port)
+func (sd *Disk) String() string {
+	return fmt.Sprintf("%s:%d-%s", sd.IPv4, sd.Port, sd.IQN)
+}
+
+// Target returns the target to connect to in the format ip:port.
+func (sd *Disk) Target() string {
+	return fmt.Sprintf("%s:%d", sd.IPv4, sd.Port)
 }
 
 func newWithMounter(logger *zap.SugaredLogger, mounter mount.Interface, iqn, ipv4 string, port int) Interface {
 	return &iSCSIMounter{
-		disk: &iSCSDisk{
+		disk: &Disk{
 			IQN:  iqn,
 			IPv4: ipv4,
 			Port: port,
@@ -116,6 +134,17 @@ func newWithMounter(logger *zap.SugaredLogger, mounter mount.Interface, iqn, ipv
 // New creates a new iSCSI handler.
 func New(logger *zap.SugaredLogger, iqn, ipv4 string, port int) Interface {
 	return newWithMounter(logger, mount.New(logger, mountCommand), iqn, ipv4, port)
+}
+
+//NewFromISCSIDisk creates a new iSCSI handler from ISCSIDisk.
+func NewFromISCSIDisk(logger *zap.SugaredLogger, sd *Disk) Interface {
+	return &iSCSIMounter{
+		disk: sd,
+
+		runner:  exec.New(),
+		mounter: mount.New(logger, mountCommand),
+		logger:  logger,
+	}
 }
 
 // NewFromDevicePath extracts the IQN, IPv4 address, and port from a
@@ -135,6 +164,17 @@ func NewFromDevicePath(logger *zap.SugaredLogger, mountDevice string) (Interface
 	return New(logger, m[3], m[1], port), nil
 }
 
+// FindFromDevicePath extracts the IQN, IPv4 address, and port from a
+// iSCSI mount device path.
+// i.e. /dev/disk/by-path/ip-<ip>:<port>-iscsi-<IQN>-lun-1
+func FindFromDevicePath(logger *zap.SugaredLogger, mountDevice string) ([]string, error) {
+	m := diskByPathPattern.FindStringSubmatch(mountDevice)
+	if len(m) != 4 {
+		return nil, fmt.Errorf("mount device path %q did not match pattern; got %v", mountDevice, m)
+	}
+	return m, nil
+}
+
 // NewFromMountPointPath gets /dev/disk/by-path/ip-<ip>:<port>-iscsi-<IQN>-lun-1
 // from the given mount point path.
 func NewFromMountPointPath(logger *zap.SugaredLogger, mountPath string) (Interface, error) {
@@ -147,10 +187,31 @@ func NewFromMountPointPath(logger *zap.SugaredLogger, mountPath string) (Interfa
 	if err != nil {
 		return nil, err
 	}
-	for _, diskByPath := range(diskByPaths) {
+	for _, diskByPath := range diskByPaths {
 		iface, err := NewFromDevicePath(logger, diskByPath)
 		if err == nil {
 			return iface, nil
+		}
+	}
+	return nil, errors.New("iSCSI information not found for mount point")
+}
+
+// FindFromMountPointPath gets /dev/disk/by-path/ip-<ip>:<port>-iscsi-<IQN>-lun-1
+// from the given mount point path.
+func FindFromMountPointPath(logger *zap.SugaredLogger, mountPath string) ([]string, error) {
+	mounter := mount.New(logger, mountCommand)
+	mountPoint, err := getMountPointForPath(mounter, mountPath)
+	if err != nil {
+		return nil, err
+	}
+	diskByPaths, err := diskByPathsForMountPoint(mountPoint)
+	if err != nil {
+		return nil, err
+	}
+	for _, diskByPath := range diskByPaths {
+		m, err := FindFromDevicePath(logger, diskByPath)
+		if err == nil {
+			return m, nil
 		}
 	}
 	return nil, errors.New("iSCSI information not found for mount point")
@@ -284,6 +345,13 @@ func (c *iSCSIMounter) FormatAndMount(source string, target string, fstype strin
 	}).FormatAndMount(source, target, fstype, options)
 }
 
+func (c *iSCSIMounter) Mount(source string, target string, fstype string, options []string) error {
+	return (&mount.SafeFormatAndMount{
+		Interface: c.mounter,
+		Runner:    c.runner,
+		Logger:    c.logger,
+	}).Mount(source, target, fstype, options)
+}
 func (c *iSCSIMounter) UnmountPath(path string) error {
 	return mount.UnmountPath(c.logger, path, c.mounter)
 }

@@ -12,9 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+ARG CI_IMAGE_REGISTRY
+
+FROM ${CI_IMAGE_REGISTRY}/oci-kube-ci:1.0.4
+
+ARG COMPONENT
+
+ENV SRC /go/src/github.com/oracle/oci-cloud-controller-manager
+
+ENV GOPATH /go/
+RUN mkdir -p /go/bin $SRC
+ADD . $SRC
+WORKDIR $SRC
+
+RUN COMPONENT=${COMPONENT} make clean build
+
 FROM oraclelinux:7-slim
 
-COPY dist/oci-cloud-controller-manager /usr/local/bin/
-COPY dist/oci-flexvolume-driver /usr/local/bin/
-COPY dist/oci-volume-provisioner /usr/local/bin/
-COPY image/* /usr/local/bin/
+COPY --from=0 /go/src/github.com/oracle/oci-cloud-controller-manager/dist/* /usr/local/bin/
+COPY --from=0 /go/src/github.com/oracle/oci-cloud-controller-manager/image/* /usr/local/bin/
+
+RUN yum install -y iscsi-initiator-utils-6.2.0.874-10.0.5.el7 \
+ && yum install -y e2fsprogs \
+ && yum clean all

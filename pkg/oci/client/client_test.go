@@ -96,8 +96,6 @@ type mockComputeClient struct{}
 
 type mockVirtualNetworkClient struct{}
 
-type mockLoadBalancerClient struct{}
-
 func TestRateLimiting(t *testing.T) {
 	var qpsRead float32 = 5
 	bucketRead := 5

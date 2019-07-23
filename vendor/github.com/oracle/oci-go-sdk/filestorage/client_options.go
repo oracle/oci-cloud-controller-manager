@@ -1,9 +1,10 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
-// File Storage Service API
+// File Storage API
 //
-// The API for the File Storage Service.
+// API for the File Storage service. Use this API to manage file systems, mount targets, and snapshots. For more information, see Overview of File Storage (https://docs.cloud.oracle.com/iaas/Content/File/Concepts/filestorageoverview.htm).
 //
 
 package filestorage
@@ -61,7 +62,7 @@ func (m ClientOptions) String() string {
 // ClientOptionsAccessEnum Enum with underlying type: string
 type ClientOptionsAccessEnum string
 
-// Set of constants representing the allowable values for ClientOptionsAccess
+// Set of constants representing the allowable values for ClientOptionsAccessEnum
 const (
 	ClientOptionsAccessWrite ClientOptionsAccessEnum = "READ_WRITE"
 	ClientOptionsAccessOnly  ClientOptionsAccessEnum = "READ_ONLY"
@@ -72,7 +73,7 @@ var mappingClientOptionsAccess = map[string]ClientOptionsAccessEnum{
 	"READ_ONLY":  ClientOptionsAccessOnly,
 }
 
-// GetClientOptionsAccessEnumValues Enumerates the set of values for ClientOptionsAccess
+// GetClientOptionsAccessEnumValues Enumerates the set of values for ClientOptionsAccessEnum
 func GetClientOptionsAccessEnumValues() []ClientOptionsAccessEnum {
 	values := make([]ClientOptionsAccessEnum, 0)
 	for _, v := range mappingClientOptionsAccess {
@@ -84,7 +85,7 @@ func GetClientOptionsAccessEnumValues() []ClientOptionsAccessEnum {
 // ClientOptionsIdentitySquashEnum Enum with underlying type: string
 type ClientOptionsIdentitySquashEnum string
 
-// Set of constants representing the allowable values for ClientOptionsIdentitySquash
+// Set of constants representing the allowable values for ClientOptionsIdentitySquashEnum
 const (
 	ClientOptionsIdentitySquashNone ClientOptionsIdentitySquashEnum = "NONE"
 	ClientOptionsIdentitySquashRoot ClientOptionsIdentitySquashEnum = "ROOT"
@@ -97,7 +98,7 @@ var mappingClientOptionsIdentitySquash = map[string]ClientOptionsIdentitySquashE
 	"ALL":  ClientOptionsIdentitySquashAll,
 }
 
-// GetClientOptionsIdentitySquashEnumValues Enumerates the set of values for ClientOptionsIdentitySquash
+// GetClientOptionsIdentitySquashEnumValues Enumerates the set of values for ClientOptionsIdentitySquashEnum
 func GetClientOptionsIdentitySquashEnumValues() []ClientOptionsIdentitySquashEnum {
 	values := make([]ClientOptionsIdentitySquashEnum, 0)
 	for _, v := range mappingClientOptionsIdentitySquash {

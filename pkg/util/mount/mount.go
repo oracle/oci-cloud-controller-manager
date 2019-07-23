@@ -96,6 +96,16 @@ func (mounter *SafeFormatAndMount) FormatAndMount(source string, target string, 
 	return mounter.formatAndMount(source, target, fstype, options)
 }
 
+func (mounter *SafeFormatAndMount) Mount(source string, target string, fstype string, options []string) error {
+	// Don't attempt to format if mounting as readonly. Go straight to mounting.
+	for _, option := range options {
+		if option == "ro" {
+			return mounter.Interface.Mount(source, target, fstype, options)
+		}
+	}
+	return mounter.formatAndMount(source, target, fstype, options)
+}
+
 // New returns a mount.Interface for the current system.
 // It provides options to override the default mounter behavior.
 // mounterPath allows using an alternative to `/bin/mount` for mounting.
@@ -103,6 +113,12 @@ func New(logger *zap.SugaredLogger, mounterPath string) Interface {
 	return &Mounter{
 		mounterPath: mounterPath,
 		logger:      logger,
+	}
+}
+
+func NewMount(mounterPath string) Interface {
+	return &Mounter{
+		mounterPath: mounterPath,
 	}
 }
 

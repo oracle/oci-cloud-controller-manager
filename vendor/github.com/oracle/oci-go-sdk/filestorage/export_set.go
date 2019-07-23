@@ -1,9 +1,10 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
-// File Storage Service API
+// File Storage API
 //
-// The API for the File Storage Service.
+// API for the File Storage service. Use this API to manage file systems, mount targets, and snapshots. For more information, see Overview of File Storage (https://docs.cloud.oracle.com/iaas/Content/File/Concepts/filestorageoverview.htm).
 //
 
 package filestorage
@@ -14,6 +15,7 @@ import (
 
 // ExportSet A set of file systems to export through one or more mount
 // targets. Composed of zero or more export resources.
+// **Warning:** Oracle recommends that you avoid using any confidential information when you supply string values using the API.
 type ExportSet struct {
 
 	// The OCID of the compartment that contains the export set.
@@ -73,7 +75,7 @@ func (m ExportSet) String() string {
 // ExportSetLifecycleStateEnum Enum with underlying type: string
 type ExportSetLifecycleStateEnum string
 
-// Set of constants representing the allowable values for ExportSetLifecycleState
+// Set of constants representing the allowable values for ExportSetLifecycleStateEnum
 const (
 	ExportSetLifecycleStateCreating ExportSetLifecycleStateEnum = "CREATING"
 	ExportSetLifecycleStateActive   ExportSetLifecycleStateEnum = "ACTIVE"
@@ -88,7 +90,7 @@ var mappingExportSetLifecycleState = map[string]ExportSetLifecycleStateEnum{
 	"DELETED":  ExportSetLifecycleStateDeleted,
 }
 
-// GetExportSetLifecycleStateEnumValues Enumerates the set of values for ExportSetLifecycleState
+// GetExportSetLifecycleStateEnumValues Enumerates the set of values for ExportSetLifecycleStateEnum
 func GetExportSetLifecycleStateEnumValues() []ExportSetLifecycleStateEnum {
 	values := make([]ExportSetLifecycleStateEnum, 0)
 	for _, v := range mappingExportSetLifecycleState {

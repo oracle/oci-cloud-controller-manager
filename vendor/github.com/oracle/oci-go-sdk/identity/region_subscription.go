@@ -1,4 +1,5 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
 // Identity and Access Management Service API
@@ -13,10 +14,10 @@ import (
 )
 
 // RegionSubscription An object that represents your tenancy's access to a particular region (i.e., a subscription), the status of that
-// access, and whether that region is the home region. For more information, see Managing Regions (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Tasks/managingregions.htm).
+// access, and whether that region is the home region. For more information, see Managing Regions (https://docs.cloud.oracle.com/Content/Identity/Tasks/managingregions.htm).
 // To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized,
 // talk to an administrator. If you're an administrator who needs to write policies to give users access,
-// see Getting Started with Policies (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/policygetstarted.htm).
+// see Getting Started with Policies (https://docs.cloud.oracle.com/Content/Identity/Concepts/policygetstarted.htm).
 type RegionSubscription struct {
 
 	// The region's key.
@@ -25,14 +26,20 @@ type RegionSubscription struct {
 	// - `IAD`
 	// - `FRA`
 	// - `LHR`
+	// - `YYZ`
+	// - `NRT`
+	// - `ICN`
 	RegionKey *string `mandatory:"true" json:"regionKey"`
 
 	// The region's name.
 	// Allowed values are:
-	// - `us-phoenix-1`
-	// - `us-ashburn-1`
+	// - `ap-seoul-1`
+	// - `ap-tokyo-1`
+	// - `ca-toronto-1`
 	// - `eu-frankurt-1`
 	// - `uk-london-1`
+	// - `us-ashburn-1`
+	// - `us-phoenix-1`
 	RegionName *string `mandatory:"true" json:"regionName"`
 
 	// The region subscription status.
@@ -49,7 +56,7 @@ func (m RegionSubscription) String() string {
 // RegionSubscriptionStatusEnum Enum with underlying type: string
 type RegionSubscriptionStatusEnum string
 
-// Set of constants representing the allowable values for RegionSubscriptionStatus
+// Set of constants representing the allowable values for RegionSubscriptionStatusEnum
 const (
 	RegionSubscriptionStatusReady      RegionSubscriptionStatusEnum = "READY"
 	RegionSubscriptionStatusInProgress RegionSubscriptionStatusEnum = "IN_PROGRESS"
@@ -60,7 +67,7 @@ var mappingRegionSubscriptionStatus = map[string]RegionSubscriptionStatusEnum{
 	"IN_PROGRESS": RegionSubscriptionStatusInProgress,
 }
 
-// GetRegionSubscriptionStatusEnumValues Enumerates the set of values for RegionSubscriptionStatus
+// GetRegionSubscriptionStatusEnumValues Enumerates the set of values for RegionSubscriptionStatusEnum
 func GetRegionSubscriptionStatusEnumValues() []RegionSubscriptionStatusEnum {
 	values := make([]RegionSubscriptionStatusEnum, 0)
 	for _, v := range mappingRegionSubscriptionStatus {

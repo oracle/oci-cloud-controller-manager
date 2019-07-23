@@ -14,7 +14,7 @@
 
 FROM oraclelinux:7-slim
 
-RUN yum install --enablerepo=ol7_developer_EPEL -y \
+RUN yum install oracle-softwarecollection-release-el7 -y \
     ca-certificates \
     gcc \
     git \
@@ -23,16 +23,19 @@ RUN yum install --enablerepo=ol7_developer_EPEL -y \
     openssl \
     pwgen \
     python \
-    python-pip \
+    wget \
     python-yaml \
     unzip && \
     yum clean all && rm -rf /var/cache/yum
 
+RUN wget https://bootstrap.pypa.io/get-pip.py
+RUN python get-pip.py
+
 # Install golang environment
-RUN curl https://storage.googleapis.com/golang/go1.11.1.linux-amd64.tar.gz -O && \
+RUN curl https://storage.googleapis.com/golang/go1.12.17.linux-amd64.tar.gz -O && \
     mkdir /tools && \
-    tar xzf go1.11.1.linux-amd64.tar.gz -C /tools && \
-    rm go1.11.1.linux-amd64.tar.gz && \
+    tar xzf go1.12.17.linux-amd64.tar.gz -C /tools && \
+    rm go1.12.17.linux-amd64.tar.gz && \
     mkdir -p /go/bin
 
 ENV PATH=/tools/go/bin:/go/bin:/tools/linux-amd64:$PATH \
@@ -40,7 +43,7 @@ ENV PATH=/tools/go/bin:/go/bin:/tools/linux-amd64:$PATH \
     GOROOT=/tools/go
 
 # Install the kubectl client
-RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.11.0/bin/linux/amd64/kubectl && \
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.16.0/bin/linux/amd64/kubectl && \
     chmod +x ./kubectl && \
     mv ./kubectl /usr/local/bin/kubectl
 

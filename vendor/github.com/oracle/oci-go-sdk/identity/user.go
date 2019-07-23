@@ -1,4 +1,5 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
 // Identity and Access Management Service API
@@ -17,16 +18,18 @@ import (
 // have one or more IAM Service credentials (ApiKey,
 // UIPassword, SwiftPassword and
 // AuthToken).
-// For more information, see User Credentials (https://docs.us-phoenix-1.oraclecloud.com/Content/API/Concepts/usercredentials.htm)). End users of your
+// For more information, see User Credentials (https://docs.cloud.oracle.com/Content/API/Concepts/usercredentials.htm)). End users of your
 // application are not typically IAM Service users. For conceptual information about users and other IAM Service
-// components, see Overview of the IAM Service (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/overview.htm).
+// components, see Overview of the IAM Service (https://docs.cloud.oracle.com/Content/Identity/Concepts/overview.htm).
 // These users are created directly within the Oracle Cloud Infrastructure system, via the IAM service.
 // They are different from *federated users*, who authenticate themselves to the Oracle Cloud Infrastructure
 // Console via an identity provider. For more information, see
-// Identity Providers and Federation (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/federation.htm).
+// Identity Providers and Federation (https://docs.cloud.oracle.com/Content/Identity/Concepts/federation.htm).
 // To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized,
 // talk to an administrator. If you're an administrator who needs to write policies to give users access,
-// see Getting Started with Policies (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/policygetstarted.htm).
+// see Getting Started with Policies (https://docs.cloud.oracle.com/Content/Identity/Concepts/policygetstarted.htm).
+// **Warning:** Oracle recommends that you avoid using any confidential information when you supply string values
+// using the API.
 type User struct {
 
 	// The OCID of the user.
@@ -50,6 +53,19 @@ type User struct {
 	// ACTIVE before using it.
 	LifecycleState UserLifecycleStateEnum `mandatory:"true" json:"lifecycleState"`
 
+	// Flag indicates if MFA has been activated for the user.
+	IsMfaActivated *bool `mandatory:"true" json:"isMfaActivated"`
+
+	// The email address you assign to the user.
+	// The email address must be unique across all users in the tenancy.
+	Email *string `mandatory:"false" json:"email"`
+
+	// The OCID of the `IdentityProvider` this user belongs to.
+	IdentityProviderId *string `mandatory:"false" json:"identityProviderId"`
+
+	// Identifier of the user in the identity provider
+	ExternalIdentifier *string `mandatory:"false" json:"externalIdentifier"`
+
 	// Returned only if the user's `lifecycleState` is INACTIVE. A 16-bit value showing the reason why the user
 	// is inactive:
 	// - bit 0: SUSPENDED (reserved for future use)
@@ -58,14 +74,17 @@ type User struct {
 	InactiveStatus *int64 `mandatory:"false" json:"inactiveStatus"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no predefined name, type, or namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
+
+	// Properties indicating how the user is allowed to authenticate.
+	Capabilities *UserCapabilities `mandatory:"false" json:"capabilities"`
 }
 
 func (m User) String() string {
@@ -75,7 +94,7 @@ func (m User) String() string {
 // UserLifecycleStateEnum Enum with underlying type: string
 type UserLifecycleStateEnum string
 
-// Set of constants representing the allowable values for UserLifecycleState
+// Set of constants representing the allowable values for UserLifecycleStateEnum
 const (
 	UserLifecycleStateCreating UserLifecycleStateEnum = "CREATING"
 	UserLifecycleStateActive   UserLifecycleStateEnum = "ACTIVE"
@@ -92,7 +111,7 @@ var mappingUserLifecycleState = map[string]UserLifecycleStateEnum{
 	"DELETED":  UserLifecycleStateDeleted,
 }
 
-// GetUserLifecycleStateEnumValues Enumerates the set of values for UserLifecycleState
+// GetUserLifecycleStateEnumValues Enumerates the set of values for UserLifecycleStateEnum
 func GetUserLifecycleStateEnumValues() []UserLifecycleStateEnum {
 	values := make([]UserLifecycleStateEnum, 0)
 	for _, v := range mappingUserLifecycleState {

@@ -26,3 +26,16 @@ rateLimiter:
 | `rateLimitBucketRead` | The maximum token bucket burst size for read requests. | 5.0 |
 | `rateLimitQPSWrite` | The maximum queries allwoed per second for write requests. | 20.0 |
 | `rateLimitBucketWrite` | The maximim token bucket burst size for write requests. | 5.0 |
+
+## Disable Rate Limiting
+The rate limiting can be completely disabled by adding a property `disableRateLimiter: true`.
+By default the property is `false`
+
+```yaml
+auth:
+  ...
+loadBalancer:
+  ...
+rateLimiter:
+  disableRateLimiter: true
+```

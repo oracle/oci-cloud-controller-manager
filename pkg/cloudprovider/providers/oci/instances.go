@@ -24,7 +24,7 @@ import (
 	"github.com/pkg/errors"
 	api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/kubernetes/pkg/cloudprovider"
+	"k8s.io/cloud-provider"
 )
 
 var _ cloudprovider.Instances = &CloudProvider{}
@@ -68,23 +68,25 @@ func (cp *CloudProvider) extractNodeAddresses(ctx context.Context, instanceID st
 		addresses = append(addresses, api.NodeAddress{Type: api.NodeExternalIP, Address: ip.String()})
 	}
 
-	if vnic.HostnameLabel != nil && *vnic.HostnameLabel != "" {
-		subnet, err := cp.client.Networking().GetSubnet(ctx, *vnic.SubnetId)
-		if err != nil {
-			return nil, errors.Wrap(err, "GetSubnetForInstance")
-		}
-		if subnet != nil && subnet.DnsLabel != nil && *subnet.DnsLabel != "" {
-			vcn, err := cp.client.Networking().GetVcn(ctx, *subnet.VcnId)
-			if err != nil {
-				return nil, errors.Wrap(err, "GetVcnForInstance")
-			}
-			if vcn != nil && vcn.DnsLabel != nil && *vcn.DnsLabel != "" {
-				fqdn := strings.Join([]string{*vnic.HostnameLabel, *subnet.DnsLabel, *vcn.DnsLabel, "oraclevcn.com"}, ".")
-				addresses = append(addresses, api.NodeAddress{Type: api.NodeHostName, Address: fqdn})
-				addresses = append(addresses, api.NodeAddress{Type: api.NodeInternalDNS, Address: fqdn})
-			}
-		}
-	}
+	// Changing this can have wide reaching impact.
+	//
+	// if vnic.HostnameLabel != nil && *vnic.HostnameLabel != "" {
+	// 	subnet, err := cp.client.Networking().GetSubnet(ctx, *vnic.SubnetId)
+	// 	if err != nil {
+	// 		return nil, errors.Wrap(err, "GetSubnetForInstance")
+	// 	}
+	// 	if subnet != nil && subnet.DnsLabel != nil && *subnet.DnsLabel != "" {
+	// 		vcn, err := cp.client.Networking().GetVcn(ctx, *subnet.VcnId)
+	// 		if err != nil {
+	// 			return nil, errors.Wrap(err, "GetVcnForInstance")
+	// 		}
+	// 		if vcn != nil && vcn.DnsLabel != nil && *vcn.DnsLabel != "" {
+	// 			fqdn := strings.Join([]string{*vnic.HostnameLabel, *subnet.DnsLabel, *vcn.DnsLabel, "oraclevcn.com"}, ".")
+	// 			addresses = append(addresses, api.NodeAddress{Type: api.NodeHostName, Address: fqdn})
+	// 			addresses = append(addresses, api.NodeAddress{Type: api.NodeInternalDNS, Address: fqdn})
+	// 		}
+	// 	}
+	// }
 
 	return addresses, nil
 }

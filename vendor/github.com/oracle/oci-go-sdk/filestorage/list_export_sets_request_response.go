@@ -1,4 +1,5 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
 package filestorage
@@ -18,11 +19,18 @@ type ListExportSetsRequest struct {
 	// Example: `Uocm:PHX-AD-1`
 	AvailabilityDomain *string `mandatory:"true" contributesTo:"query" name:"availabilityDomain"`
 
-	// The maximum number of items to return in a paginated "List" call.
+	// For list pagination. The maximum number of results per page,
+	// or items to return in a paginated "List" call.
+	// 1 is the minimum, 1000 is the maximum.
+	// For important details about how pagination works,
+	// see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	// Example: `500`
 	Limit *int `mandatory:"false" contributesTo:"query" name:"limit"`
 
-	// The value of the `opc-next-page` response header from the previous "List" call.
+	// For list pagination. The value of the `opc-next-page` response
+	// header from the previous "List" call.
+	// For important details about how pagination works,
+	// see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	Page *string `mandatory:"false" contributesTo:"query" name:"page"`
 
 	// A user-friendly name. It does not have to be unique, and it is changeable.
@@ -44,10 +52,11 @@ type ListExportSetsRequest struct {
 	SortBy ListExportSetsSortByEnum `mandatory:"false" contributesTo:"query" name:"sortBy" omitEmpty:"true"`
 
 	// The sort order to use, either 'asc' or 'desc', where 'asc' is
-	// ascending and 'desc' is descending.
+	// ascending and 'desc' is descending. The default order is 'desc'
+	// except for numeric values.
 	SortOrder ListExportSetsSortOrderEnum `mandatory:"false" contributesTo:"query" name:"sortOrder" omitEmpty:"true"`
 
-	// Unique Oracle-assigned identifier for the request.
+	// Unique identifier for the request.
 	// If you need to contact Oracle about a particular request, please provide the request ID.
 	OpcRequestId *string `mandatory:"false" contributesTo:"header" name:"opc-request-id"`
 
@@ -79,11 +88,10 @@ type ListExportSetsResponse struct {
 	// A list of []ExportSetSummary instances
 	Items []ExportSetSummary `presentIn:"body"`
 
-	// For pagination of a list of items. When paging through
-	// a list, if this header appears in the response, then a
-	// partial list might have been returned. Include this
-	// value as the `page` parameter for the subsequent GET
-	// request to get the next batch of items.
+	// For list pagination. When this header appears in the response,
+	// additional pages of results remain.
+	// For important details about how pagination works,
+	// see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	OpcNextPage *string `presentIn:"header" name:"opc-next-page"`
 
 	// Unique Oracle-assigned identifier for the request. If
@@ -104,7 +112,7 @@ func (response ListExportSetsResponse) HTTPResponse() *http.Response {
 // ListExportSetsLifecycleStateEnum Enum with underlying type: string
 type ListExportSetsLifecycleStateEnum string
 
-// Set of constants representing the allowable values for ListExportSetsLifecycleState
+// Set of constants representing the allowable values for ListExportSetsLifecycleStateEnum
 const (
 	ListExportSetsLifecycleStateCreating ListExportSetsLifecycleStateEnum = "CREATING"
 	ListExportSetsLifecycleStateActive   ListExportSetsLifecycleStateEnum = "ACTIVE"
@@ -121,7 +129,7 @@ var mappingListExportSetsLifecycleState = map[string]ListExportSetsLifecycleStat
 	"FAILED":   ListExportSetsLifecycleStateFailed,
 }
 
-// GetListExportSetsLifecycleStateEnumValues Enumerates the set of values for ListExportSetsLifecycleState
+// GetListExportSetsLifecycleStateEnumValues Enumerates the set of values for ListExportSetsLifecycleStateEnum
 func GetListExportSetsLifecycleStateEnumValues() []ListExportSetsLifecycleStateEnum {
 	values := make([]ListExportSetsLifecycleStateEnum, 0)
 	for _, v := range mappingListExportSetsLifecycleState {
@@ -133,7 +141,7 @@ func GetListExportSetsLifecycleStateEnumValues() []ListExportSetsLifecycleStateE
 // ListExportSetsSortByEnum Enum with underlying type: string
 type ListExportSetsSortByEnum string
 
-// Set of constants representing the allowable values for ListExportSetsSortBy
+// Set of constants representing the allowable values for ListExportSetsSortByEnum
 const (
 	ListExportSetsSortByTimecreated ListExportSetsSortByEnum = "TIMECREATED"
 	ListExportSetsSortByDisplayname ListExportSetsSortByEnum = "DISPLAYNAME"
@@ -144,7 +152,7 @@ var mappingListExportSetsSortBy = map[string]ListExportSetsSortByEnum{
 	"DISPLAYNAME": ListExportSetsSortByDisplayname,
 }
 
-// GetListExportSetsSortByEnumValues Enumerates the set of values for ListExportSetsSortBy
+// GetListExportSetsSortByEnumValues Enumerates the set of values for ListExportSetsSortByEnum
 func GetListExportSetsSortByEnumValues() []ListExportSetsSortByEnum {
 	values := make([]ListExportSetsSortByEnum, 0)
 	for _, v := range mappingListExportSetsSortBy {
@@ -156,7 +164,7 @@ func GetListExportSetsSortByEnumValues() []ListExportSetsSortByEnum {
 // ListExportSetsSortOrderEnum Enum with underlying type: string
 type ListExportSetsSortOrderEnum string
 
-// Set of constants representing the allowable values for ListExportSetsSortOrder
+// Set of constants representing the allowable values for ListExportSetsSortOrderEnum
 const (
 	ListExportSetsSortOrderAsc  ListExportSetsSortOrderEnum = "ASC"
 	ListExportSetsSortOrderDesc ListExportSetsSortOrderEnum = "DESC"
@@ -167,7 +175,7 @@ var mappingListExportSetsSortOrder = map[string]ListExportSetsSortOrderEnum{
 	"DESC": ListExportSetsSortOrderDesc,
 }
 
-// GetListExportSetsSortOrderEnumValues Enumerates the set of values for ListExportSetsSortOrder
+// GetListExportSetsSortOrderEnumValues Enumerates the set of values for ListExportSetsSortOrderEnum
 func GetListExportSetsSortOrderEnumValues() []ListExportSetsSortOrderEnum {
 	values := make([]ListExportSetsSortOrderEnum, 0)
 	for _, v := range mappingListExportSetsSortOrder {

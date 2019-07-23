@@ -27,6 +27,7 @@ import (
 // by the volume provisioner.
 type IdentityInterface interface {
 	GetAvailabilityDomainByName(ctx context.Context, compartmentID, name string) (*identity.AvailabilityDomain, error)
+	ListAvailabilityDomains(ctx context.Context, compartmentID string) ([]identity.AvailabilityDomain, error)
 }
 
 func (c *client) ListAvailabilityDomains(ctx context.Context, compartmentID string) ([]identity.AvailabilityDomain, error) {
@@ -52,7 +53,7 @@ func (c *client) GetAvailabilityDomainByName(ctx context.Context, compartmentID,
 	}
 	// TODO: Add paging when implemented in oci-go-sdk.
 	for _, ad := range ads {
-		if strings.HasSuffix(*ad.Name, name) {
+		if strings.HasSuffix(strings.ToLower(*ad.Name), strings.ToLower(name)) {
 			return &ad, nil
 		}
 	}
