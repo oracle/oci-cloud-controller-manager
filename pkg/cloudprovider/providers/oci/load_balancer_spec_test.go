@@ -15,7 +15,6 @@
 package oci
 
 import (
-	"fmt"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"reflect"
@@ -537,7 +536,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Internal: false,
 				Subnets:  []string{"one", "two"},
 				Listeners: map[string]loadbalancer.ListenerDetails{
-					fmt.Sprintf("TCP-443-%s", listenerSecret): {
+					"TCP-443": {
 						DefaultBackendSetName: common.String("TCP-443"),
 						Port:                  common.Int(443),
 						Protocol:              common.String("TCP"),
