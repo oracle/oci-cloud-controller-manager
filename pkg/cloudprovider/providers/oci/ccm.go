@@ -81,6 +81,7 @@ func NewCloudProvider(config *providercfg.Config) (cloudprovider.Interface, erro
 	// The global logger has been replaced with the logger we constructed in
 	// main.go so capture it here and then pass it into all components.
 	logger := zap.L()
+	logger = logger.With(zap.String("component", "cloud-controller-manager"))
 
 	cp, err := providercfg.NewConfigurationProvider(config)
 	if err != nil {
