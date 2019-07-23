@@ -152,7 +152,7 @@ func (block *blockProvisioner) Provision(options controller.VolumeOptions, ad *i
 			logger.Info("Creating volume from block volume.")
 			volumeDetails.SourceDetails = &core.VolumeSourceFromVolumeDetails{Id: &value}
 		} else {
-			logger.Warn("Not a valid volume source option")
+			return nil, errors.Errorf("Invalid oci volume source id \"%s\" specified", value)
 		}
 	}
 
