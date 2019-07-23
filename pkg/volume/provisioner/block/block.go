@@ -42,6 +42,8 @@ const (
 	// FSType is the name of the file storage type parameter for storage classes.
 	FSType                  = "fsType"
 	volumeRoundingUpEnabled = "volumeRoundingUpEnabled"
+	volumeSourceOCIDPrefix  = "ocid1.volume."
+	volumeBackupOCIDPrefix  = "ocid1.volumebackup."
 )
 
 // blockProvisioner is the internal provisioner for OCI block volumes
@@ -143,8 +145,15 @@ func (block *blockProvisioner) Provision(options controller.VolumeOptions, ad *i
 
 	if value, ok := options.PVC.Annotations[OCIVolumeBackupID]; ok {
 		logger = logger.With("volumeBackupOCID", value)
-		logger.Info("Creating volume from backup.")
-		volumeDetails.SourceDetails = &core.VolumeSourceFromVolumeBackupDetails{Id: &value}
+		if strings.HasPrefix(value, volumeBackupOCIDPrefix) {
+			logger.Info("Creating volume from block volume backup.")
+			volumeDetails.SourceDetails = &core.VolumeSourceFromVolumeBackupDetails{Id: &value}
+		} else if strings.HasPrefix(value, volumeSourceOCIDPrefix) {
+			logger.Info("Creating volume from block volume.")
+			volumeDetails.SourceDetails = &core.VolumeSourceFromVolumeDetails{Id: &value}
+		} else {
+			logger.Warn("Not a valid volume source option")
+		}
 	}
 
 	// Create the volume.
