@@ -145,7 +145,7 @@ func (block *blockProvisioner) Provision(options controller.VolumeOptions, ad *i
 
 	if value, ok := options.PVC.Annotations[OCIVolumeBackupID]; ok {
 		logger = logger.With("volumeBackupOCID", value)
-		if ok, _ := regexp.MatchString(volumeBackupOCIDPrefixExp, value) ; ok{
+		if isVolumeBackupOcid(value) {
 			logger.Info("Creating volume from block volume backup.")
 			volumeDetails.SourceDetails = &core.VolumeSourceFromVolumeBackupDetails{Id: &value}
 		} else {
@@ -197,6 +197,11 @@ func (block *blockProvisioner) Provision(options controller.VolumeOptions, ad *i
 	}
 
 	return pv, nil
+}
+
+func isVolumeBackupOcid(ocid string) bool {
+	res, _ := regexp.MatchString(volumeBackupOCIDPrefixExp, ocid)
+	return res
 }
 
 // Delete destroys a OCI volume created by Provision
