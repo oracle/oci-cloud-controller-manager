@@ -17,6 +17,7 @@ package block
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -42,6 +43,7 @@ const (
 	// FSType is the name of the file storage type parameter for storage classes.
 	FSType                  = "fsType"
 	volumeRoundingUpEnabled = "volumeRoundingUpEnabled"
+	volumeBackupOCIDPrefixExp  = `^ocid[v]?[\d+]?[\.:]volumebackup[\.:]`
 )
 
 // blockProvisioner is the internal provisioner for OCI block volumes
@@ -143,8 +145,13 @@ func (block *blockProvisioner) Provision(options controller.VolumeOptions, ad *i
 
 	if value, ok := options.PVC.Annotations[OCIVolumeBackupID]; ok {
 		logger = logger.With("volumeBackupOCID", value)
-		logger.Info("Creating volume from backup.")
-		volumeDetails.SourceDetails = &core.VolumeSourceFromVolumeBackupDetails{Id: &value}
+		if isVolumeBackupOcid(value) {
+			logger.Info("Creating volume from block volume backup.")
+			volumeDetails.SourceDetails = &core.VolumeSourceFromVolumeBackupDetails{Id: &value}
+		} else {
+			logger.Info("Creating volume from block volume.")
+			volumeDetails.SourceDetails = &core.VolumeSourceFromVolumeDetails{Id: &value}
+		}
 	}
 
 	// Create the volume.
@@ -190,6 +197,11 @@ func (block *blockProvisioner) Provision(options controller.VolumeOptions, ad *i
 	}
 
 	return pv, nil
+}
+
+func isVolumeBackupOcid(ocid string) bool {
+	res, _ := regexp.MatchString(volumeBackupOCIDPrefixExp, ocid)
+	return res
 }
 
 // Delete destroys a OCI volume created by Provision
