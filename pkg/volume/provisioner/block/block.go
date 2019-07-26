@@ -17,6 +17,7 @@ package block
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -42,8 +43,7 @@ const (
 	// FSType is the name of the file storage type parameter for storage classes.
 	FSType                  = "fsType"
 	volumeRoundingUpEnabled = "volumeRoundingUpEnabled"
-	volumeSourceOCIDPrefix  = "ocid1.volume."
-	volumeBackupOCIDPrefix  = "ocid1.volumebackup."
+	volumeBackupOCIDPrefixExp  = `^ocid[v]?[\d+]?[\.:]volumebackup[\.:]`
 )
 
 // blockProvisioner is the internal provisioner for OCI block volumes
@@ -145,14 +145,12 @@ func (block *blockProvisioner) Provision(options controller.VolumeOptions, ad *i
 
 	if value, ok := options.PVC.Annotations[OCIVolumeBackupID]; ok {
 		logger = logger.With("volumeBackupOCID", value)
-		if strings.HasPrefix(value, volumeBackupOCIDPrefix) {
+		if ok, _ := regexp.MatchString(volumeBackupOCIDPrefixExp, value) ; ok{
 			logger.Info("Creating volume from block volume backup.")
 			volumeDetails.SourceDetails = &core.VolumeSourceFromVolumeBackupDetails{Id: &value}
-		} else if strings.HasPrefix(value, volumeSourceOCIDPrefix) {
+		} else {
 			logger.Info("Creating volume from block volume.")
 			volumeDetails.SourceDetails = &core.VolumeSourceFromVolumeDetails{Id: &value}
-		} else {
-			return nil, errors.Errorf("Invalid oci volume source id \"%s\" specified", value)
 		}
 	}
 
