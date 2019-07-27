@@ -31,6 +31,7 @@ type BlockStorageInterface interface {
 	AwaitVolumeAvailable(ctx context.Context, id string) (*core.Volume, error)
 	CreateVolume(ctx context.Context, details core.CreateVolumeDetails) (*core.Volume, error)
 	DeleteVolume(ctx context.Context, id string) error
+	GetVolume(ctx context.Context, id string) (*core.Volume, error)
 }
 
 func (c *client) GetVolume(ctx context.Context, id string) (*core.Volume, error) {

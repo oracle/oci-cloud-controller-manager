@@ -54,6 +54,10 @@ type MockBlockStorageClient struct {
 	VolumeState core.VolumeLifecycleStateEnum
 }
 
+func (c *MockBlockStorageClient) GetVolume(ctx context.Context, id string) (*core.Volume, error) {
+	return nil, nil
+}
+
 // CreateVolume mocks the BlockStorage CreateVolume implementation
 func (c *MockBlockStorageClient) CreateVolume(ctx context.Context, details core.CreateVolumeDetails) (*core.Volume, error) {
 	return &core.Volume{Id: &VolumeBackupID}, nil
@@ -235,6 +239,10 @@ func (client MockIdentityClient) GetAvailabilityDomainByName(ctx context.Context
 // MockProvisionerClient mocks client structure
 type MockProvisionerClient struct {
 	Storage *MockBlockStorageClient
+}
+
+func (p *MockProvisionerClient) IdentityMetadataSvc() client.IdentityMetadataSvcInterface {
+	return nil
 }
 
 // BlockStorage mocks client BlockStorage implementation
@@ -442,7 +450,7 @@ func TestVolumeRoundingLogic(t *testing.T) {
 
 func TestVolumeBackupOCID(t *testing.T) {
 	var volumeBackupOcidTests = []struct {
-		in string
+		in  string
 		out bool
 	}{
 		{"ocid1.volumebackup.", true},
