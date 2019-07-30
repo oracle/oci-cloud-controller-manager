@@ -223,6 +223,27 @@ func (d OCIFlexvolumeDriver) Attach(logger *zap.SugaredLogger, opts flexvolume.O
 	}
 
 	volumeOCID := deriveVolumeOCID(cfg.RegionKey, opts["kubernetes.io/pvOrVolumeName"])
+	volume, err := c.BlockStorage().GetVolume(ctx, volumeOCID)
+	if err != nil {
+		return flexvolume.Fail(logger, "Failed to get volume: ", err)
+	}
+
+	// Instance and the volume to be attached to that instance must belong to the same tenant.
+	instanceTenant, err := c.IdentityMetadataSvc().GetTenantByCompartment(ctx, *instance.CompartmentId)
+	if err != nil {
+		return flexvolume.Fail(logger, "Failed to get tenancy for the instance: ", err)
+	}
+	logger.With("instanceID", *instance.Id).Infof("Received instance from tenancy: \"%s\"", *instanceTenant.Id)
+
+	volumeTenant, err := c.IdentityMetadataSvc().GetTenantByCompartment(ctx, *volume.CompartmentId)
+	if err != nil {
+		return flexvolume.Fail(logger, "Failed to get tenancy for volume: ", err)
+	}
+	logger.With("volumeID", volumeOCID).Infof("Received volume from tenancy: \"%s\"", *volumeTenant.Id)
+
+	if *volumeTenant.Id != *instanceTenant.Id {
+		return flexvolume.Fail(logger, "Volume must attach to the compute node of the same tenancy")
+	}
 
 	logger.With("volumeID", volumeOCID, "instanceID", *instance.Id).Info("Attaching volume to instance")
 

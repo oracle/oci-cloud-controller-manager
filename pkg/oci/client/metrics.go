@@ -52,6 +52,7 @@ const (
 	exportResource             resource = "export"
 	privateIPResource          resource = "private_ip"
 	availabilityDomainResource resource = "availability_domain"
+	identityMetadataResource   resource = "identity_metadata"
 )
 
 type verb string
