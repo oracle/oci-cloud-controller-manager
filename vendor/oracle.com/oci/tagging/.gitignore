@@ -1,0 +1,12 @@
+# coverage reports
+coverage.*
+unittest.xml
+
+# Binaries for programs and plugins
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binary, build with `go test -c`
+*.test

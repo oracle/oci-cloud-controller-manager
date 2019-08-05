@@ -1586,7 +1586,7 @@
     "github.com/golang/protobuf/ptypes/wrappers",
     "github.com/kubernetes-csi/csi-lib-utils/protosanitizer",
     "bitbucket.oci.oraclecorp.com/oke/oke-common/resourceprincipals",
-    "github.com/kubernetes-incubator/external-storage/lib/controller",
+    "sigs.k8s.io/sig-storage-lib-external-provisioner/controller",
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",
     "github.com/oracle/oci-go-sdk/common",

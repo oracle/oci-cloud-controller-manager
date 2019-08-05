@@ -3,7 +3,7 @@
 
 package grpc_recovery
 
-import "context"
+import "golang.org/x/net/context"
 
 var (
 	defaultOptions = &options{

@@ -20,7 +20,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/kubernetes-incubator/external-storage/lib/controller"
+	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
@@ -128,13 +128,13 @@ func (fsp *filesystemProvisioner) getOrCreateExport(ctx context.Context, logger 
 }
 
 // getMountTargetID retrieves MountTarget OCID if provided.
-func getMountTargetID(opts controller.VolumeOptions) string {
+func getMountTargetID(opts controller.ProvisionOptions) string {
 	if opts.PVC != nil {
 		if mtID := opts.PVC.Annotations[AnnotationMountTargetID]; mtID != "" {
 			return mtID
 		}
 	}
-	return opts.Parameters[MntTargetID]
+	return opts.StorageClass.Parameters[MntTargetID]
 }
 
 // isReadOnly determines if the given slice of PersistentVolumeAccessModes
@@ -148,7 +148,7 @@ func isReadOnly(modes []v1.PersistentVolumeAccessMode) bool {
 	return true
 }
 
-func (fsp *filesystemProvisioner) Provision(options controller.VolumeOptions, ad *identity.AvailabilityDomain) (*v1.PersistentVolume, error) {
+func (fsp *filesystemProvisioner) Provision(options controller.ProvisionOptions, ad *identity.AvailabilityDomain) (*v1.PersistentVolume, error) {
 	ctx := context.Background()
 	fsDisplayName := fmt.Sprintf("%s%s", provisioner.GetPrefix(), options.PVC.UID)
 	logger := fsp.logger.With(
@@ -225,7 +225,7 @@ func (fsp *filesystemProvisioner) Provision(options controller.VolumeOptions, ad
 			Labels: map[string]string{plugin.LabelZoneRegion: fsp.region},
 		},
 		Spec: v1.PersistentVolumeSpec{
-			PersistentVolumeReclaimPolicy: options.PersistentVolumeReclaimPolicy,
+			PersistentVolumeReclaimPolicy: *options.StorageClass.ReclaimPolicy,
 			AccessModes:                   options.PVC.Spec.AccessModes,
 			//NOTE: fs storage doesn't enforce quota, capacity is meaningless here.
 			Capacity: v1.ResourceList{
@@ -238,7 +238,7 @@ func (fsp *filesystemProvisioner) Provision(options controller.VolumeOptions, ad
 					ReadOnly: isReadOnly(options.PVC.Spec.AccessModes),
 				},
 			},
-			MountOptions: options.MountOptions,
+			MountOptions: options.StorageClass.MountOptions,
 		},
 	}, nil
 }

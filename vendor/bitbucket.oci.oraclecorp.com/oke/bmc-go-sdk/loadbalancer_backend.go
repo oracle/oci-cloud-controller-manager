@@ -21,15 +21,6 @@ type Backend struct {
 	Weight    int    `json:"weight"`
 }
 
-type CreateBackendOpts struct {
-	Backup    bool   `json:"backup"`
-	Drain     bool   `json:"drain"`
-	IPAddress string `json:"ipAddress"`
-	Offline   bool   `json:"offline"`
-	Port      int    `json:"port"`
-	Weight    int    `json:"weight"`
-}
-
 // ListBackends contains a list of backends
 //
 type ListBackends struct {

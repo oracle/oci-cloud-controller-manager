@@ -25,7 +25,7 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/test/e2e/cloud-controller-manager/framework"
 	sharedfw "github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
 	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework/ginkgowrapper"
-	"k8s.io/apiserver/pkg/util/logs"
+	"k8s.io/component-base/logs"
 )
 
 var lockAquired bool

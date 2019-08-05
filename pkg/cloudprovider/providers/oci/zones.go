@@ -19,7 +19,7 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/kubernetes/pkg/cloudprovider"
+	"k8s.io/cloud-provider"
 )
 
 var _ cloudprovider.Zones = &CloudProvider{}

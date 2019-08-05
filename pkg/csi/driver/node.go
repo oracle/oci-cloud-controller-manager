@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	kubeAPI "k8s.io/kubernetes/pkg/kubelet/apis"
+	kubeAPI "k8s.io/api/core/v1"
 )
 
 const (

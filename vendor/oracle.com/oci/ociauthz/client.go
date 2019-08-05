@@ -3,7 +3,6 @@
 package ociauthz
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
@@ -25,8 +24,6 @@ const (
 	HdrContentType    = "Content-Type"
 	HdrXDate          = "x-date"
 )
-
-const defaultBufferSize = 4096
 
 // Default list of headers in the request the signing client will sign.
 var (
@@ -133,18 +130,12 @@ func GetRequestBodySha256(request *http.Request) (body string, err error) {
 		return
 	}
 
-	initialBufferSize := request.ContentLength
-	if initialBufferSize < 0 {
-		initialBufferSize = defaultBufferSize
-	}
-	buffer := bytes.NewBuffer(make([]byte, 0, initialBufferSize))
-
-	_, err = buffer.ReadFrom(reader)
+	rawBody, err := ioutil.ReadAll(reader)
 	if err != nil {
 		return
 	}
 
-	hash := sha256.Sum256(buffer.Bytes())
+	hash := sha256.Sum256(rawBody)
 	body = base64.StdEncoding.EncodeToString(hash[:])
 	return
 }

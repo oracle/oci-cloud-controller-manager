@@ -141,8 +141,6 @@ const (
 	resourceUsers                resourceName = "users"
 	resourceUserGroupMemberships resourceName = "userGroupMemberships"
 	resourceSwiftPasswords       resourceName = "swiftPasswords"
-	resourceTenancies            resourceName = "tenancies"
-	resourceRegions              resourceName = "regions"
 
 	// Core Resources
 	resourceCustomerPremiseEquipment resourceName = "cpes"

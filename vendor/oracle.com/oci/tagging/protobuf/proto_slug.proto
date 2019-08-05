@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package protobuf;
+
+option java_package = "com.oracle.pic.tagging.common.slug";
+option go_package = "oracle.com/oci/tagging/protobuf";
+
+message Slug {
+    /*
+     * The freefrom_tags and defined_tags field can be set explicitly, or left
+     * null. When used a request type, null fields mean that the tags should
+     * left unchanged, whereas non-null tags mean that tags should be created
+     * or overwritten.
+     */
+    StringMap freeform_tags = 1;
+    NamespaceMap defined_tags = 2;
+
+    /* Properties are internal to the tagging implementation and should not be set by callers */
+    StringMap properties = 3;
+}
+
+message StringMap {
+    map<string, string> entries = 1;
+}
+
+message NamespaceMap {
+    map<string, NamespaceDefinedTags> namespaces = 1;
+}
+
+message DefinedTagValue {
+    /* Exactly one tag value is required currently */
+    repeated string value = 1;
+
+    /* The defined_tag_id is internal to the tagging implementation and should not be set by callers */
+    string defined_tag_id = 2;
+}
+
+message NamespaceDefinedTags {
+    map<string, DefinedTagValue> tags = 1;
+}

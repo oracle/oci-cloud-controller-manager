@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kubernetes-incubator/external-storage/lib/controller"
+	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/core"

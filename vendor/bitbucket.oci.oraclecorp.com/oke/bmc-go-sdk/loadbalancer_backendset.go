@@ -166,39 +166,6 @@ func (c *Client) UpdateBackendSet(
 	return
 }
 
-// UpdateBackendSetBackends Updates the backends of a backend set.  This is a workaround for
-// UpdateBackendSet requiring a SSLConfig
-//
-// See: https://docs.us-phoenix-1.oraclecloud.com/api/#/en/loadbalancer/20170115/BackendSet/UpdateBackendSet
-func (c *Client) UpdateBackendSetBackends(
-	loadBalancerID string,
-	backendSetName string,
-	opts *UpdateLoadBalancerBackendSetBackendsOptions,
-) (workRequestID string, e error) {
-
-	details := &requestDetails{
-		name: resourceLoadBalancers,
-		ids: urlParts{
-			loadBalancerID,
-			resourceBackendSets,
-			backendSetName,
-		},
-		optional: opts,
-	}
-
-	var resp *response
-	if resp, e = c.loadBalancerApi.request(http.MethodPut, details); e != nil {
-		return
-	}
-
-	backendset := &BackendSet{}
-	e = resp.unmarshal(backendset)
-	if e == nil {
-		workRequestID = backendset.WorkRequestID
-	}
-	return
-}
-
 // Deletes the specified backend set. Note that deleting a backend set removes its backend servers from the load balancer.
 //
 // See https://docs.us-phoenix-1.oraclecloud.com/api/#/en/loadbalancer/20170115/BackendSet/DeleteBackendSet

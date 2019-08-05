@@ -1,0 +1,10 @@
+site_name: httpsigner
+pages:
+    - Home: index.md
+    - Usage: usage.md
+    - Extension Points: extension.md
+theme: readthedocs
+repo_url: https://oracle.com/oci/httpsigner
+repo_name: GitHub
+markdown_extensions:
+    - smarty

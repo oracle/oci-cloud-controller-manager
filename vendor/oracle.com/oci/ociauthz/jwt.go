@@ -5,10 +5,9 @@ package ociauthz
 import (
 	"encoding/base64"
 	"encoding/json"
+	"oracle.com/oci/httpsigner"
 	"strings"
 	"time"
-
-	"oracle.com/oci/httpsigner"
 )
 
 // HdrClaimPrefix is a prefix added to a claim key that came from the request header
@@ -81,24 +80,6 @@ var (
 	ClaimOPCTenant      = "opc-tenant"
 )
 
-// additionalclaims required for RPT as mentioned in https://confluence.oci.oraclecorp.com/display/ID/Guideline+for+creating+Resource-Principal-Token+aka+RPT+blob+for+resource+principal+v2
-var (
-	ClaimResourceType  = "res_type"
-	ClaimTenantID      = "res_tenant"
-	ClaimCompartmentID = "res_compartment"
-	ClaimResourceID    = "res_id"
-	ClaimResourceTag   = "res_tag"
-	ClaimPublicKey     = "res_pbk"
-)
-
-// OCIJWTSigningAlgorithms maps the JWT format algorithm strings to the algorithms in httpsigner
-var (
-	OCIJWTSigningAlgorithms = httpsigner.Algorithms{
-		"RS256": httpsigner.AlgorithmRSASHA256,
-		"PS256": httpsigner.AlgorithmRSAPSSSHA256,
-	}
-)
-
 // tokenVerificationPolicy type to perform token validation
 type tokenVerificationPolicy func(string) bool
 
@@ -110,11 +91,6 @@ var alwaysVerifyTokenPolicy = func(token string) bool { return true }
 type Token struct {
 	Header Header
 	Claims Claims
-}
-
-// encodeTokenPart decodes part of the JSON Web Token
-func encodeTokenPart(part []byte) string {
-	return strings.TrimRight(base64.URLEncoding.EncodeToString(part), "=")
 }
 
 // NewToken returns a new JWT Token instance using a token string, failing to validate a token returns an error.
@@ -290,62 +266,4 @@ func decodeTokenPart(part string) ([]byte, error) {
 	}
 
 	return base64.URLEncoding.DecodeString(part)
-}
-
-// generateJWT generates a JWT string. It takes a keyID string, claims string, algorithm, key supplier,
-// algorithm supplier used for signing the JWT,  as arguments and constructs the full JWT string
-func generateJWT(keyID string, algName string, claims string, ks httpsigner.KeySupplier, as httpsigner.AlgorithmSupplier) (jwt string, err error) {
-	header := Header{KeyID: keyID, Algorithm: algName}
-
-	headerJSON, err := json.Marshal(header)
-	if err != nil {
-		return "", err
-	}
-
-	message := strings.Join([]string{encodeTokenPart(headerJSON), encodeTokenPart([]byte(claims))}, ".")
-
-	signedJWT, err := signJWT(message, keyID, algName, ks, as)
-	if err != nil {
-		return "", err
-	}
-
-	return signedJWT, nil
-}
-
-// signJWT takes the unsigned JWT and adds a signature to it. Takes as arguments:
-// 1. the unsigned JWT string
-// 2. a keyID and key supplier to obtain the private key to sign the token with
-// 3. algorithm supplier and algorithm to use for signing (PS256 and RS256 are the supported algorithms at the moment)
-// returns the full signed and encoded JWT string
-func signJWT(message string, keyID string, algName string, ks httpsigner.KeySupplier, as httpsigner.AlgorithmSupplier) (string, error) {
-	// extract the private key corresponding to the KeyID to sign the JWT using the key supplier
-	keyIDPrivateKey, err := ks.Key(keyID)
-	if err != nil {
-		if err2, ok := err.(*httpsigner.KeyRotationError); ok {
-			keyID = err2.ReplacementKeyID
-			keyIDPrivateKey, err = ks.Key(keyID)
-			if err != nil {
-				return "", err
-			}
-		} else {
-			return "", err
-		}
-	}
-
-	// get the algorithm for signing the RPT
-	algorithm, err := as.Algorithm(algName)
-	if err != nil {
-		return "", httpsigner.ErrUnsupportedAlgorithm
-	}
-
-	// sign the message
-	m := []byte(message)
-	signature, err := algorithm.Sign(m, keyIDPrivateKey)
-	if err != nil {
-		return "", err
-	}
-
-	// join the signature with the payload and return
-	signedJWT := strings.Join([]string{message, encodeTokenPart(signature)}, ".")
-	return signedJWT, nil
 }
