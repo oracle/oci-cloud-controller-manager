@@ -28,7 +28,7 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	informersv1 "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -135,7 +135,7 @@ func NewOCIProvisioner(
 			rateLimitQPSDefault,
 			rateLimitBucketDefault,
 		),
-	})
+	}, cfg.Auth.TenancyID)
 	if err != nil {
 		logger.With(zap.Error(err)).Fatal("Unable to construct OCI client")
 	}

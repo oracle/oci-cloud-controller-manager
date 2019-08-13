@@ -130,7 +130,7 @@ func newClient(cfg *config.Config) (client.Interface, error) {
 			rateLimitQPSDefault,
 			rateLimitBucketDefault,
 		),
-	})
+	}, cfg.Auth.TenancyID)
 }
 
 // Init checks that we have the appropriate credentials and metadata API access

@@ -76,9 +76,16 @@ func ValidateConfig(c *Config) field.ErrorList {
 	if len(c.CompartmentID) == 0 {
 		allErrs = append(allErrs, field.InternalError(field.NewPath("compartment"), errors.New("This value is normally discovered automatically if omitted. Continue checking the logs to see if something else is wrong")))
 	}
+
 	if !c.UseInstancePrincipals {
 		allErrs = append(allErrs, validateAuthConfig(&c.Auth, field.NewPath("auth"))...)
+	} else {
+		// This is required so we know the target tenancy for requests.
+		if c.Auth.TenancyID == "" {
+			allErrs = append(allErrs, field.Required(field.NewPath("auth").Key("tenancy_id"), ""))
+		}
 	}
+
 	if c.LoadBalancer != nil && !c.LoadBalancer.Disabled {
 		allErrs = append(allErrs, validateLoadBalancerConfig(c, field.NewPath("loadBalancer"))...)
 	}

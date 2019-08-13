@@ -89,7 +89,7 @@ func NewCloudProvider(config *providercfg.Config) (cloudprovider.Interface, erro
 
 	rateLimiter := NewRateLimiter(logger.Sugar(), config.RateLimiter)
 
-	c, err := client.New(logger.Sugar(), cp, &rateLimiter)
+	c, err := client.New(logger.Sugar(), cp, &rateLimiter, config.Auth.TenancyID)
 	if err != nil {
 		return nil, err
 	}
