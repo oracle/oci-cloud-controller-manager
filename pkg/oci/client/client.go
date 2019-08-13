@@ -19,7 +19,6 @@ import (
 	"net/http"
 	"time"
 
-	identitymeta "github.com/oracle/oci-cloud-controller-manager/pkg/oci/identity"
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/core"
 	"github.com/oracle/oci-go-sdk/filestorage"
@@ -39,7 +38,6 @@ type Interface interface {
 	BlockStorage() BlockStorageInterface
 	FSS() FileStorageInterface
 	Identity() IdentityInterface
-	IdentityMetadataSvc() IdentityMetadataSvcInterface
 }
 
 // RateLimiter reader and writer.
@@ -109,10 +107,6 @@ type identityClient interface {
 	ListAvailabilityDomains(ctx context.Context, request identity.ListAvailabilityDomainsRequest) (identity.ListAvailabilityDomainsResponse, error)
 }
 
-type identityMetadataSvcClient interface {
-	GetTenantByCompartment(ctx context.Context, request identitymeta.GetTenantByCompartmentRequest) (response identitymeta.GetTenantByCompartmentResponse, err error)
-}
-
 type client struct {
 	compute      computeClient
 	network      virtualNetworkClient
@@ -120,7 +114,6 @@ type client struct {
 	filestorage  filestorageClient
 	bs           blockstorageClient
 	identity     identityClient
-	metadata     identityMetadataSvcClient
 
 	rateLimiter RateLimiter
 
@@ -190,16 +183,6 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 		return nil, errors.Wrap(err, "configuring identity service client custom transport")
 	}
 
-	metadata, err := identitymeta.NewMetadataClientWithConfigurationProvider(cp)
-	if err != nil {
-		return nil, errors.Wrap(err, "NewMetadataClientWithConfigurationProvider")
-	}
-
-	err = configureCustomTransport(logger, &metadata.BaseClient)
-	if err != nil {
-		return nil, errors.Wrap(err, "configuring metadata service client custom transport")
-	}
-
 	bs, err := core.NewBlockstorageClientWithConfigurationProvider(cp)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewBlockstorageClientWithConfigurationProvider")
@@ -231,7 +214,6 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 		loadbalancer: &lb,
 		bs:           &bs,
 		filestorage:  &fss,
-		metadata:     &metadata,
 
 		rateLimiter: *opRateLimiter,
 
@@ -263,10 +245,6 @@ func (c *client) BlockStorage() BlockStorageInterface {
 }
 
 func (c *client) FSS() FileStorageInterface {
-	return c
-}
-
-func (c *client) IdentityMetadataSvc() IdentityMetadataSvcInterface {
 	return c
 }
 

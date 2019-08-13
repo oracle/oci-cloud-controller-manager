@@ -53,11 +53,6 @@ type MockBlockStorageClient struct {
 	VolumeState core.VolumeLifecycleStateEnum
 }
 
-// GetVolume mocks the BlockStorage GetVolume implementation
-func (c *MockBlockStorageClient) GetVolume(ctx context.Context, id string) (*core.Volume, error) {
-	return nil, nil
-}
-
 // CreateVolume mocks the BlockStorage CreateVolume implementation
 func (c *MockBlockStorageClient) CreateVolume(ctx context.Context, details core.CreateVolumeDetails) (*core.Volume, error) {
 	return &core.Volume{Id: &VolumeBackupID}, nil
@@ -239,11 +234,6 @@ func (client MockIdentityClient) GetAvailabilityDomainByName(ctx context.Context
 // MockProvisionerClient mocks client structure
 type MockProvisionerClient struct {
 	Storage *MockBlockStorageClient
-}
-
-// BlockStorage mocks client IdentityMetadataSvc implementation
-func (p *MockProvisionerClient) IdentityMetadataSvc() client.IdentityMetadataSvcInterface {
-	return nil
 }
 
 // BlockStorage mocks client BlockStorage implementation

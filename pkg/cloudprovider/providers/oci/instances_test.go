@@ -132,10 +132,6 @@ func (MockOCIClient) Identity() client.IdentityInterface {
 	return &MockIdentityClient{}
 }
 
-func (MockOCIClient) IdentityMetadataSvc() client.IdentityMetadataSvcInterface {
-	return &MockIdentityMetadataSvcClient{}
-}
-
 // MockComputeClient mocks Compute client implementation
 type MockComputeClient struct{}
 
@@ -269,10 +265,6 @@ func (MockBlockStorageClient) DeleteVolume(ctx context.Context, id string) error
 	return nil
 }
 
-func (MockBlockStorageClient) GetVolume(ctx context.Context, id string) (*core.Volume, error) {
-	return nil, nil
-}
-
 // MockFileStorageClient mocks FileStorage client implementation.
 type MockFileStorageClient struct{}
 
@@ -320,13 +312,6 @@ func (MockFileStorageClient) DeleteExport(ctx context.Context, id string) error 
 type MockIdentityClient struct{}
 
 func (MockIdentityClient) GetAvailabilityDomainByName(ctx context.Context, compartmentID, name string) (*identity.AvailabilityDomain, error) {
-	return nil, nil
-}
-
-// MockIdentityMetadataSvcClient mocks IdentityMetadataSvc client implementation
-type MockIdentityMetadataSvcClient struct{}
-
-func (MockIdentityMetadataSvcClient) GetTenantByCompartment(ctx context.Context, compartmentID string) (*identity.Tenancy, error) {
 	return nil, nil
 }
 
