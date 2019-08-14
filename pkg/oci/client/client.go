@@ -16,9 +16,9 @@ package client
 
 import (
 	"context"
+	"net/http"
 	"time"
 
-	identitymeta "github.com/oracle/oci-cloud-controller-manager/pkg/oci/identity"
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/core"
 	"github.com/oracle/oci-go-sdk/filestorage"
@@ -38,7 +38,6 @@ type Interface interface {
 	BlockStorage() BlockStorageInterface
 	FSS() FileStorageInterface
 	Identity() IdentityInterface
-	IdentityMetadataSvc() IdentityMetadataSvcInterface
 }
 
 // RateLimiter reader and writer.
@@ -108,10 +107,6 @@ type identityClient interface {
 	ListAvailabilityDomains(ctx context.Context, request identity.ListAvailabilityDomainsRequest) (identity.ListAvailabilityDomainsResponse, error)
 }
 
-type identityMetadataSvcClient interface {
-	GetTenantByCompartment(ctx context.Context, request identitymeta.GetTenantByCompartmentRequest) (response identitymeta.GetTenantByCompartmentResponse, err error)
-}
-
 type client struct {
 	compute      computeClient
 	network      virtualNetworkClient
@@ -119,7 +114,6 @@ type client struct {
 	filestorage  filestorageClient
 	bs           blockstorageClient
 	identity     identityClient
-	metadata     identityMetadataSvcClient
 
 	rateLimiter RateLimiter
 
@@ -127,12 +121,26 @@ type client struct {
 	logger      *zap.SugaredLogger
 }
 
+func setupBaseClient(client *common.BaseClient, signer common.HTTPRequestSigner, interceptor common.RequestInterceptor) {
+	client.Signer = signer
+	client.Interceptor = interceptor
+}
+
 // New constructs an OCI API client.
-func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimiter *RateLimiter) (Interface, error) {
+func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimiter *RateLimiter, targetTenancyID string) (Interface, error) {
+
+	signer := common.RequestSigner(cp, append(common.DefaultGenericHeaders(), "x-cross-tenancy-request"), common.DefaultBodyHeaders())
+	interceptor := func(r *http.Request) error {
+		r.Header.Set("x-cross-tenancy-request", targetTenancyID)
+		return nil
+	}
+
 	compute, err := core.NewComputeClientWithConfigurationProvider(cp)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewComputeClientWithConfigurationProvider")
 	}
+
+	setupBaseClient(&compute.BaseClient, signer, interceptor)
 
 	err = configureCustomTransport(logger, &compute.BaseClient)
 	if err != nil {
@@ -144,6 +152,8 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 		return nil, errors.Wrap(err, "NewVirtualNetworkClientWithConfigurationProvider")
 	}
 
+	setupBaseClient(&network.BaseClient, signer, interceptor)
+
 	err = configureCustomTransport(logger, &network.BaseClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "configuring load balancer client custom transport")
@@ -153,6 +163,8 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 	if err != nil {
 		return nil, errors.Wrap(err, "NewLoadBalancerClientWithConfigurationProvider")
 	}
+
+	setupBaseClient(&lb.BaseClient, signer, interceptor)
 
 	err = configureCustomTransport(logger, &lb.BaseClient)
 	if err != nil {
@@ -164,25 +176,19 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 		return nil, errors.Wrap(err, "NewIdentityClientWithConfigurationProvider")
 	}
 
+	setupBaseClient(&identity.BaseClient, signer, interceptor)
+
 	err = configureCustomTransport(logger, &identity.BaseClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "configuring identity service client custom transport")
-	}
-
-	metadata, err := identitymeta.NewMetadataClientWithConfigurationProvider(cp)
-	if err != nil {
-		return nil, errors.Wrap(err, "NewMetadataClientWithConfigurationProvider")
-	}
-
-	err = configureCustomTransport(logger, &metadata.BaseClient)
-	if err != nil {
-		return nil, errors.Wrap(err, "configuring metadata service client custom transport")
 	}
 
 	bs, err := core.NewBlockstorageClientWithConfigurationProvider(cp)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewBlockstorageClientWithConfigurationProvider")
 	}
+
+	setupBaseClient(&bs.BaseClient, signer, interceptor)
 
 	err = configureCustomTransport(logger, &bs.BaseClient)
 	if err != nil {
@@ -193,6 +199,8 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 	if err != nil {
 		return nil, errors.Wrap(err, "NewFileStorageClientWithConfigurationProvider")
 	}
+
+	setupBaseClient(&fss.BaseClient, signer, interceptor)
 
 	err = configureCustomTransport(logger, &fss.BaseClient)
 	if err != nil {
@@ -206,7 +214,6 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 		loadbalancer: &lb,
 		bs:           &bs,
 		filestorage:  &fss,
-		metadata:     &metadata,
 
 		rateLimiter: *opRateLimiter,
 
@@ -238,10 +245,6 @@ func (c *client) BlockStorage() BlockStorageInterface {
 }
 
 func (c *client) FSS() FileStorageInterface {
-	return c
-}
-
-func (c *client) IdentityMetadataSvc() IdentityMetadataSvcInterface {
 	return c
 }
 
