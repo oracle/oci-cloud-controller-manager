@@ -442,7 +442,7 @@ func TestVolumeRoundingLogic(t *testing.T) {
 
 func TestVolumeBackupOCID(t *testing.T) {
 	var volumeBackupOcidTests = []struct {
-		in string
+		in  string
 		out bool
 	}{
 		{"ocid1.volumebackup.", true},
