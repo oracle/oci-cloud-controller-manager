@@ -41,9 +41,9 @@ const (
 	// OCIVolumeBackupID is the name of the oci volume backup id annotation.
 	OCIVolumeBackupID = "volume.beta.kubernetes.io/oci-volume-source"
 	// FSType is the name of the file storage type parameter for storage classes.
-	FSType                  = "fsType"
-	volumeRoundingUpEnabled = "volumeRoundingUpEnabled"
-	volumeBackupOCIDPrefixExp  = `^ocid[v]?[\d+]?[\.:]volumebackup[\.:]`
+	FSType                    = "fsType"
+	volumeRoundingUpEnabled   = "volumeRoundingUpEnabled"
+	volumeBackupOCIDPrefixExp = `^ocid[v]?[\d+]?[\.:]volumebackup[\.:]`
 )
 
 // blockProvisioner is the internal provisioner for OCI block volumes
