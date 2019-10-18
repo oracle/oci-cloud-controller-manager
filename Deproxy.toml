@@ -1,3 +1,24 @@
 [[ rewrite ]]
    package = "bitbucket.oci.oraclecorp.com/sdk/oci-go-sdk"
    source = "ssh://git@bitbucket.oci.oraclecorp.com:7999/sdk/oci-go-sdk.git"
+
+[[ rewrite ]]
+   package = "bitbucket.oci.oraclecorp.com/oke/oke-common"
+   source = "ssh://git@bitbucket.oci.oraclecorp.com:7999/oke/oke-common.git"
+
+[[ rewrite ]]
+   package = "bitbucket.oci.oraclecorp.com/oke/bmc-go-sdk"
+   source = "ssh://git@bitbucket.oci.oraclecorp.com:7999/oke/bmc-go-sdk.git"
+
+[[ rewrite ]]
+   package = "oracle.com/oci/tagging"
+   source = "ssh://git@bitbucket.oci.oraclecorp.com:7999/goplex/tagging.git"
+
+[[ rewrite ]]
+   package = "oracle.com/oci/httpsigner"
+   source = "ssh://git@bitbucket.oci.oraclecorp.com:7999/goiam/httpsigner.git"
+
+[[ rewrite ]]
+   package = "oracle.com/oci/ociauthz"
+   source = "ssh://git@bitbucket.oci.oraclecorp.com:7999/goiam/ociauthz.git"
+

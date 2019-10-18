@@ -2,6 +2,28 @@
 
 
 [[projects]]
+  digest = "1:aaf521049d715006acb50559f259fb0abaabdb941a6de6f937f2d264a584a0e3"
+  name = "bitbucket.oci.oraclecorp.com/oke/bmc-go-sdk"
+  packages = ["."]
+  pruneopts = "N"
+  revision = "fe578152e621abf4f10010097c2c32818fb3cfb5"
+
+[[projects]]
+  digest = "1:68c3d80111b7365efe93c4135978f403c70e8e233f212f0caecb6f0714d68429"
+  name = "bitbucket.oci.oraclecorp.com/oke/oke-common"
+  packages = [
+    "protobuf",
+    "resourceprincipals",
+    "types",
+    "types/apierrors",
+    "types/lists",
+    "types/nodepools",
+    "types/nodes",
+  ]
+  pruneopts = "NUT"
+  revision = "ba5e028f261dec5eb1d9c87c7f8575a9f1ef3a14"
+
+[[projects]]
   branch = "default"
   digest = "1:72a27d0174cdee846011e8bd958e284902afbc178dc7e7ec3f1e3b7b27ddabe1"
   name = "bitbucket.org/ww/goautoneg"
@@ -176,12 +198,28 @@
   revision = "44e46d280b43ec1531bb25252440e34f1b800b65"
 
 [[projects]]
+  digest = "1:c1f6f595ca22967c11ddb38ae055a82530476e12c4092d9c21b1ff76444b0ba6"
+  name = "github.com/fsnotify/fsnotify"
+  packages = ["."]
+  pruneopts = "N"
+  revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
+  version = "v1.4.7"
+
+[[projects]]
   digest = "1:7b1fd693269fa0f3511542b1acd625afe4e5d0f00a5c9f12c04d541f5a844fdf"
   name = "github.com/ghodss/yaml"
   packages = ["."]
   pruneopts = "N"
   revision = "0ca9ea5df5451ffdf184b4428c902747c2c11cd7"
   version = "v1.0.0"
+
+[[projects]]
+  digest = "1:716fdc0eda2b9174fba23b6cefb3e83d3551c5c81fccb339d30aad14c501b36d"
+  name = "github.com/go-kit/kit"
+  packages = ["metrics"]
+  pruneopts = "N"
+  revision = "150a65a7ec6156b4b640c1fd55f26fd3d475d656"
+  version = "v0.9.0"
 
 [[projects]]
   digest = "1:57a89ed3464237c30f8386e4d7eab486f2ef12b1a4bd10c63efe711382f38c9d"
@@ -252,6 +290,7 @@
     "ptypes",
     "ptypes/any",
     "ptypes/duration",
+    "ptypes/empty",
     "ptypes/timestamp",
   ]
   pruneopts = "N"
@@ -265,6 +304,14 @@
   packages = ["."]
   pruneopts = "N"
   revision = "e89373fe6b4a7413d7acd6da1725b83ef713e6e4"
+
+[[projects]]
+  digest = "1:b08ee366b946aaf9fc34ae3db6b6efa8caa193f30e119e02d2751e56737f482a"
+  name = "github.com/google/go-querystring"
+  packages = ["query"]
+  pruneopts = "N"
+  revision = "44c6ddd0a2342c386950e880b658017258da92fc"
+  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
@@ -298,6 +345,25 @@
   revision = "9cad4c3443a7200dd6400aef47183728de563a38"
 
 [[projects]]
+  digest = "1:57710d97c66b36f74586f98ba18d2a10f40d85d9c090be66e67df82993f57e3c"
+  name = "github.com/grpc-ecosystem/go-grpc-middleware"
+  packages = [
+    ".",
+    "recovery",
+  ]
+  pruneopts = "N"
+  revision = "dd15ed025b6054e5253963e355991f3070d4e593"
+  version = "v1.1.0"
+
+[[projects]]
+  digest = "1:cb2ab6b193b00a19b79f1c5243b4424c97cfa41cd39098b20c65929c98011ba4"
+  name = "github.com/grpc-ecosystem/go-grpc-prometheus"
+  packages = ["."]
+  pruneopts = "N"
+  revision = "c225b8c3b01faf2899099b768856a9e916e5087b"
+  version = "v1.2.0"
+
+[[projects]]
   branch = "master"
   digest = "1:e0fb90a06f8af6e4de7b621e53d3178caf3cb64633fdb5ce718ae1fe4a1f8540"
   name = "github.com/hashicorp/golang-lru"
@@ -307,6 +373,25 @@
   ]
   pruneopts = "N"
   revision = "0fb14efe8c47ae851c0034ed7a448854d3d34cf3"
+
+[[projects]]
+  digest = "1:5d26280a5de27d0ffb5d74f29b7672beb63fcb2c4eec582c3beff3a2721a455d"
+  name = "github.com/hashicorp/hcl"
+  packages = [
+    ".",
+    "hcl/ast",
+    "hcl/parser",
+    "hcl/printer",
+    "hcl/scanner",
+    "hcl/strconv",
+    "hcl/token",
+    "json/parser",
+    "json/scanner",
+    "json/token",
+  ]
+  pruneopts = "N"
+  revision = "8cb6e5b959231cc1119e43259c4a608f9c51a241"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:e54ef480ae0a4de2daf1e4041c5046960e7e0645fd047ca97a92abfd2171d05f"
@@ -347,6 +432,14 @@
   version = "1.1.4"
 
 [[projects]]
+  digest = "1:f0a7a241b674215e794dda4f36ca4fe84bc6be6ef485992447c7cf6162320ad5"
+  name = "github.com/konsorten/go-windows-terminal-sequences"
+  packages = ["."]
+  pruneopts = "N"
+  revision = "f55edac94c9bbba5d6182a4be46d86a2c9b5b50e"
+  version = "v1.0.2"
+
+[[projects]]
   digest = "1:a5167620f170506681907c48fe41b857ddc1564292015f0d6cef8e1486b4dd37"
   name = "github.com/kubernetes-incubator/external-storage"
   packages = [
@@ -359,6 +452,14 @@
   pruneopts = "N"
   revision = "34df13b0427c75ff57890219cf21d0ecfabb3284"
   version = "v4.0.0"
+
+[[projects]]
+  digest = "1:497058c7ddbb9016b59c656388d523958dee3e3b236c7c90fe9472c4ae2b5601"
+  name = "github.com/magiconair/properties"
+  packages = ["."]
+  pruneopts = "N"
+  revision = "de8848e004dd33dc07a2947b3d76f618a7fc7ef1"
+  version = "v1.8.1"
 
 [[projects]]
   branch = "master"
@@ -379,6 +480,14 @@
   pruneopts = "N"
   revision = "c12348ce28de40eed0136aa2b644d0ee0650e56c"
   version = "v1.0.1"
+
+[[projects]]
+  digest = "1:5e1f0fdbcf7cc5d0d48dd6fa7fc2c711eeb4e69803969a41be0d98cf1d33f539"
+  name = "github.com/mitchellh/mapstructure"
+  packages = ["."]
+  pruneopts = "N"
+  revision = "3536a929edddb9a5b34bd6861dc4a9647cb459fe"
+  version = "v1.1.2"
 
 [[projects]]
   digest = "1:f66d87ce300a9e7b87bbfa1d4c89f65e1548b9872c5be28e3274f5f722cb4114"
@@ -465,7 +574,7 @@
   ]
   pruneopts = "N"
   revision = "dec5beed03d47c2919ba15fd898c23f23202f273"
-  source = "bitbucket.oci.oraclecorp.com/sdk/oci-go-sdk"
+  source = "ssh://git@bitbucket.oci.oraclecorp.com:7999/sdk/oci-go-sdk.git"
 
 [[projects]]
   digest = "1:08cdd8a6c154c08dd1978ccbcc1bbb4db6efc8bf8f42533e97dda153499f1a83"
@@ -474,6 +583,14 @@
   pruneopts = "N"
   revision = "e790cca94e6cc75c7064b1332e63811d4aae1a53"
   version = "v1.1"
+
+[[projects]]
+  digest = "1:c6e2a9956b207b91247d34794d0bb54472572e545b36d5627daa1df09e708ed1"
+  name = "github.com/pelletier/go-toml"
+  packages = ["."]
+  pruneopts = "N"
+  revision = "8fe62057ea2d46ce44254c98e84e810044dbe197"
+  version = "v1.5.0"
 
 [[projects]]
   branch = "master"
@@ -544,6 +661,33 @@
   revision = "ae68e2d4c00fed4943b5f6698d504a5fe083da8a"
 
 [[projects]]
+  digest = "1:058a59f2f81568c274e05d03b0540f0a42329d959a87d7628cca5118b52abe0a"
+  name = "github.com/sirupsen/logrus"
+  packages = ["."]
+  pruneopts = "N"
+  revision = "839c75faf7f98a33d445d181f3018b5c3409a45e"
+  version = "v1.4.2"
+
+[[projects]]
+  digest = "1:e639fcb75711759d4ae83766f21623f44668114caf53c99bed165fa9db550c58"
+  name = "github.com/spf13/afero"
+  packages = [
+    ".",
+    "mem",
+  ]
+  pruneopts = "N"
+  revision = "588a75ec4f32903aa5e39a2619ba6a4631e28424"
+  version = "v1.2.2"
+
+[[projects]]
+  digest = "1:ebd4ee07751dcd9dda2f9f14fdae6b4bfec2a253b273636fbb9d15c9bf569e63"
+  name = "github.com/spf13/cast"
+  packages = ["."]
+  pruneopts = "N"
+  revision = "8c9545af88b134710ab1cd196795e7f2388358d7"
+  version = "v1.3.0"
+
+[[projects]]
   digest = "1:279b45afa5bc4efac8d7c6a245066c3b0d385ae228accaa9f6a41b71d3ba6da8"
   name = "github.com/spf13/cobra"
   packages = ["."]
@@ -552,12 +696,28 @@
   version = "v0.0.3"
 
 [[projects]]
+  digest = "1:180662d15b9a11984e3d4ead2efebcd99ba557c8b0ae5a7b573dec2e3c129c65"
+  name = "github.com/spf13/jwalterweatherman"
+  packages = ["."]
+  pruneopts = "N"
+  revision = "94f6ae3ed3bceceafa716478c5fbf8d29ca601a1"
+  version = "v1.1.0"
+
+[[projects]]
   digest = "1:1cbf3a88573f613583256ce220f5cf14546565ebc3d3cb2111c82ab368b55c58"
   name = "github.com/spf13/pflag"
   packages = ["."]
   pruneopts = "N"
   revision = "583c0c0531f06d5278b7d917446061adc344b5cd"
   version = "v1.0.1"
+
+[[projects]]
+  digest = "1:17e999e59f212d24e7314541ddfc32f1c41a81b01ee0fa3221cda3278e086d31"
+  name = "github.com/spf13/viper"
+  packages = ["."]
+  pruneopts = "N"
+  revision = "b5bf975e5823809fb22c7644d008757f78a4259e"
+  version = "v1.4.0"
 
 [[projects]]
   digest = "1:244bc0576794c51a15e39a95f6fd2f31cc65a238b158ecc1026e12ec981b2bd5"
@@ -605,8 +765,13 @@
   digest = "1:5842a9430bdc981f604577b6cb16c812b15e89f3b1078e5f009cc2977b69f3d4"
   name = "golang.org/x/crypto"
   packages = [
+    "curve25519",
     "ed25519",
     "ed25519/internal/edwards25519",
+    "internal/chacha20",
+    "internal/subtle",
+    "poly1305",
+    "ssh",
     "ssh/terminal",
   ]
   pruneopts = "N"
@@ -1351,6 +1516,33 @@
   revision = "73fcbfe1475a06d24a3e101012024bdf9e884cbb"
 
 [[projects]]
+  digest = "1:fe7f50a03b67c2999d559fb43f6c56d55a5b5a51fea8dd7aad97cef7b886d456"
+  name = "oracle.com/oci/httpsigner"
+  packages = ["."]
+  pruneopts = "N"
+  revision = "e8cb27ebf4409946b295b9e22e511a52fc967e91"
+  version = "0.19.0"
+
+[[projects]]
+  digest = "1:68865490bfe69427791fd585397530d5344f37cf17d4fa463f5159d975b9ebf8"
+  name = "oracle.com/oci/ociauthz"
+  packages = ["."]
+  pruneopts = "N"
+  revision = "80158a8cf34203be3d2f817249e980d10686b406"
+  version = "0.46.0"
+
+[[projects]]
+  digest = "1:1f0e71b09ada87462a3a2cab885e55b71fbaba027392adabd544a1eee255d1ac"
+  name = "oracle.com/oci/tagging"
+  packages = [
+    ".",
+    "protobuf",
+  ]
+  pruneopts = "N"
+  revision = "20a2e48911da14e503935718f66588ab14aad8d4"
+  version = "0.8.0"
+
+[[projects]]
   branch = "master"
   digest = "1:cc18d48ec8294b54dc349ebf3c4ab90c9d1972c3a62423338f2877091763befc"
   name = "vbom.ml/util"
@@ -1362,6 +1554,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "bitbucket.oci.oraclecorp.com/oke/oke-common/resourceprincipals",
     "github.com/kubernetes-incubator/external-storage/lib/controller",
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",
@@ -1374,7 +1567,9 @@
     "github.com/pborman/uuid",
     "github.com/pkg/errors",
     "github.com/prometheus/client_golang/prometheus",
+    "github.com/spf13/cobra",
     "github.com/spf13/pflag",
+    "github.com/spf13/viper",
     "go.uber.org/zap",
     "go.uber.org/zap/zapcore",
     "go.uber.org/zap/zaptest",
@@ -1401,6 +1596,7 @@
     "k8s.io/apimachinery/pkg/util/uuid",
     "k8s.io/apimachinery/pkg/util/validation/field",
     "k8s.io/apimachinery/pkg/util/wait",
+    "k8s.io/apimachinery/pkg/version",
     "k8s.io/apiserver/pkg/util/flag",
     "k8s.io/apiserver/pkg/util/logs",
     "k8s.io/client-go/informers",
@@ -1416,6 +1612,8 @@
     "k8s.io/client-go/util/flowcontrol",
     "k8s.io/client-go/util/retry",
     "k8s.io/kubernetes/cmd/cloud-controller-manager/app",
+    "k8s.io/kubernetes/cmd/cloud-controller-manager/app/config",
+    "k8s.io/kubernetes/cmd/cloud-controller-manager/app/options",
     "k8s.io/kubernetes/pkg/api/testapi",
     "k8s.io/kubernetes/pkg/api/v1/pod",
     "k8s.io/kubernetes/pkg/api/v1/service",
@@ -1435,6 +1633,7 @@
     "k8s.io/kubernetes/pkg/scheduler/cache",
     "k8s.io/kubernetes/pkg/util/pointer",
     "k8s.io/kubernetes/pkg/version/prometheus",
+    "k8s.io/kubernetes/pkg/version/verflag",
     "k8s.io/kubernetes/pkg/volume/util",
     "k8s.io/kubernetes/test/utils",
     "k8s.io/kubernetes/test/utils/image",

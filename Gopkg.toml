@@ -48,6 +48,14 @@
   version = "1.0.0"
 
 [[constraint]]
+  name = "github.com/spf13/cobra"
+  version = "0.0.3"
+
+[[constraint]]
+  name = "github.com/spf13/viper"
+  version = "1.2.0"
+
+[[constraint]]
   name = "go.uber.org/zap"
     version = "1.9.0"
 
@@ -92,10 +100,24 @@
   source = "bitbucket.oci.oraclecorp.com/sdk/oci-go-sdk"
   revision = "dec5beed03d47c2919ba15fd898c23f23202f273"
 
+[[constraint]]
+  name = "bitbucket.oci.oraclecorp.com/oke/oke-common"
+  revision = "ba5e028f261dec5eb1d9c87c7f8575a9f1ef3a14"
+
+[[override]]
+  name = "github.com/oracle/oci-go-sdk"
+  source = "ssh://git@bitbucket.oci.oraclecorp.com:7999/sdk/oci-go-sdk.git"
+  revision = "dec5beed03d47c2919ba15fd898c23f23202f273"
+
 [prune]
   non-go = true
 
   [[prune.project]]
     name = "github.com/docker/docker"
+    go-tests = true
+    unused-packages = true
+
+  [[prune.project]]
+    name = "bitbucket.oci.oraclecorp.com/oke/oke-common"
     go-tests = true
     unused-packages = true

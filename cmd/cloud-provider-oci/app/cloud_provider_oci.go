@@ -16,14 +16,19 @@ package app
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	provisioner "github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/core"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	cloudControllerManager "k8s.io/kubernetes/cmd/cloud-controller-manager/app"
 	cloudControllerManagerConfig "k8s.io/kubernetes/cmd/cloud-controller-manager/app/config"
@@ -32,8 +37,9 @@ import (
 )
 
 var (
-	master, kubeconfig, minVolumeSize               string
-	enableVolumeProvisioning, volumeRoundingEnabled bool
+	master, kubeconfig, minVolumeSize, resourcePrincipalFile                                   string
+	enableVolumeProvisioning, volumeRoundingEnabled, useResourcePrincipal, useServicePrincipal bool
+	resourcePrincipalInitialTimeout                                                            time.Duration
 )
 
 // NewCloudProviderOCICommand creates a *cobra.Command object with default parameters
@@ -65,19 +71,40 @@ manager and oci volume provisioner. It embeds the cloud specific control loops s
 		},
 	}
 
+	namedFlagSet := newNamedFlagSet()
 	// cloud controller manager flag set
-	ccmFlagSet := pflag.NewFlagSet("cloud controller manager", pflag.ContinueOnError)
+	ccmFlagSet := namedFlagSet.flagSet("cloud controller manager")
 	s.AddFlags(ccmFlagSet)
 
 	// volume provisioner flag set
-	vpFlagSet := pflag.NewFlagSet("volume provisioner", pflag.ContinueOnError)
+	vpFlagSet := namedFlagSet.flagSet("volume provisioner")
 	vpFlagSet.BoolVar(&enableVolumeProvisioning, "enable-volume-provisioning", true, "When enabled volumes will be provisioned/deleted by cloud controller manager")
 	vpFlagSet.BoolVar(&volumeRoundingEnabled, "rounding-enabled", true, "When enabled volumes will be rounded up if less than 'minVolumeSizeMB'")
 	vpFlagSet.StringVar(&minVolumeSize, "min-volume-size", "50Gi", "The minimum size for a block volume. By default OCI only supports block volumes > 50GB")
 
+	// oci authentication mode flag set
+	ociAuthFlagSet := namedFlagSet.flagSet("oci authentication modes")
+	ociAuthFlagSet.BoolVar(&useResourcePrincipal, "use-resource-principal", false, "If true use resource principal as authentication mode else use service principal as authentication mode")
+	ociAuthFlagSet.StringVar(&resourcePrincipalFile, "resource-principal-file", "", "The filesystem path at which the serialized Resource Principal is stored")
+	ociAuthFlagSet.DurationVar(&resourcePrincipalInitialTimeout, "resource-principal-initial-timeout", 1*time.Minute, "How long to wait for an initial Resource Principal before terminating with an error if one is not supplied")
+
 	// add complete flag set to command
-	command.Flags().AddFlagSet(ccmFlagSet)
-	command.Flags().AddFlagSet(vpFlagSet)
+	for _, fs := range namedFlagSet.flagSets {
+		command.Flags().AddFlagSet(fs)
+	}
+
+	usageFmt := "Usage:\n  %s\n"
+	command.SetUsageFunc(func(cmd *cobra.Command) error {
+		fmt.Fprintf(cmd.OutOrStderr(), usageFmt, cmd.UseLine())
+		printSections(cmd.OutOrStderr(), *namedFlagSet)
+		return nil
+	})
+	command.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		fmt.Fprintf(cmd.OutOrStdout(), "%s\n\n"+usageFmt, cmd.Long, cmd.UseLine())
+		printSections(cmd.OutOrStderr(), *namedFlagSet)
+	})
+
+	viper.BindPFlags(command.Flags())
 
 	return command
 }
@@ -139,4 +166,35 @@ func run(logger *zap.SugaredLogger, config *cloudControllerManagerConfig.Complet
 
 	// wait for all the go routines to finish.
 	wg.Wait()
+}
+
+// wrapper over flagSets to provide sectioned outputs
+type namedFlagSet struct {
+	order    []string
+	flagSets map[string]*pflag.FlagSet
+}
+
+func newNamedFlagSet() *namedFlagSet {
+	return &namedFlagSet{
+		order:    make([]string, 0),
+		flagSets: make(map[string]*pflag.FlagSet),
+	}
+}
+
+func (nfs *namedFlagSet) flagSet(name string) *pflag.FlagSet {
+	if _, exists := nfs.flagSets[name]; !exists {
+		nfs.order = append(nfs.order, name)
+		nfs.flagSets[name] = pflag.NewFlagSet(name, pflag.ContinueOnError)
+	}
+	return nfs.flagSets[name]
+}
+
+func printSections(writer io.Writer, namedFlagSet namedFlagSet) {
+	for _, name := range namedFlagSet.order {
+		flagSet := namedFlagSet.flagSets[name]
+		if !flagSet.HasFlags() {
+			continue
+		}
+		fmt.Fprintf(writer, "\n%s flags:\n\n%s", strings.Title(name), flagSet.FlagUsagesWrapped(0))
+	}
 }

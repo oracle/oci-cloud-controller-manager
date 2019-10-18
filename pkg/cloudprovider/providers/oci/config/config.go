@@ -15,15 +15,17 @@
 package config
 
 import (
+	"context"
 	"io"
 	"os"
 
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
+	"bitbucket.oci.oraclecorp.com/oke/oke-common/resourceprincipals"
 
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/common/auth"
 	"github.com/pkg/errors"
-
+	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 )
@@ -245,10 +247,20 @@ func NewConfigurationProvider(cfg *Config) (common.ConfigurationProvider, error)
 		}
 	}
 
+	if viper.GetBool("use-resource-principal") {
+		timeoutCtx, cancelFunc := context.WithTimeout(context.Background(), viper.GetDuration("resource-principal-initial-timeout"))
+		defer cancelFunc()
+		cp, err := resourceprincipals.NewConfigurationProvider(timeoutCtx, nil, common.Region(cfg.Auth.Region), viper.GetString("resource-principal-file"))
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to instantiate ResourcePrincipalConfigurationProvider")
+		}
+		return cp, nil
+	}
+
 	cp, err := auth.NewServicePrincipalWithInstancePrincipalConfigurationProvider("")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to instantiate ServicePrincipalWithInstancePrincipalConfigurationProvider")
 	}
-
 	return cp, nil
+
 }
