@@ -13,7 +13,8 @@
 # limitations under the License.
 
 PKG := github.com/oracle/oci-cloud-controller-manager
-IMAGE ?= iad.ocir.io/odx-oke/oke/cloud-provider-oci
+REGISTRY ?= clusters-dev-docker-local.artifactory.oci.oraclecorp.com
+IMAGE ?= $(REGISTRY)/odx-oke/oke/cloud-provider-oci
 COMPONENT ?= oci-cloud-controller-manager oci-volume-provisioner oci-flexvolume-driver cloud-provider-oci
 
 GIT_COMMIT := $(shell GCOMMIT=`git rev-parse --short HEAD`; if [ -n "`git status . --porcelain`" ]; then echo "$$GCOMMIT-dirty"; else echo $$GCOMMIT; fi)
