@@ -130,6 +130,7 @@ image: build
 
 .PHONY: push
 push: image
+	docker login --username="${odo_docker_local_username}" --password="${odo_docker_local_password}" $(REGISTRY)
 	docker push $(IMAGE):$(VERSION)
 
 .PHONY: version
