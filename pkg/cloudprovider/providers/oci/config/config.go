@@ -248,6 +248,7 @@ func NewConfigurationProvider(cfg *Config) (common.ConfigurationProvider, error)
 	}
 
 	if viper.GetBool("use-resource-principal") {
+		zap.S().Infof("using resource principal as the authentication mechanism")
 		timeoutCtx, cancelFunc := context.WithTimeout(context.Background(), viper.GetDuration("resource-principal-initial-timeout"))
 		defer cancelFunc()
 		cp, err := resourceprincipals.NewConfigurationProvider(timeoutCtx, nil, common.Region(cfg.Auth.Region), viper.GetString("resource-principal-file"))
