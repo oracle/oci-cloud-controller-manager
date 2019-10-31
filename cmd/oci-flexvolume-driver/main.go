@@ -17,10 +17,12 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/flexvolume"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/flexvolume/block"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/logging"
+	"github.com/spf13/viper"
 
 	"go.uber.org/zap"
 )
@@ -39,6 +41,8 @@ func GetLogPath() string {
 }
 
 func main() {
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+	viper.AutomaticEnv()
 	l := logging.FileLogger(GetLogPath())
 	defer l.Sync()
 	zap.ReplaceGlobals(l)
