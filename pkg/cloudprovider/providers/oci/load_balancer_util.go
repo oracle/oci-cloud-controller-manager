@@ -362,9 +362,13 @@ func hasListenerChanged(actual loadbalancer.Listener, desired loadbalancer.Liste
 
 func getListenerChanges(actual map[string]loadbalancer.Listener, desired map[string]loadbalancer.ListenerDetails) []Action {
 	var listenerActions []Action
+
+	// set to keep track of desired listeners that already exist and should not be created
+	exists := sets.NewString()
+
 	// First check to see if any listeners need to be deleted or updated.
 	for name, actualListener := range actual {
-		desiredListener, ok := desired[name]
+		desiredListener, ok := desired[getSanitizedName(name)]
 		if !ok {
 			// no longer exists
 			listenerActions = append(listenerActions, &ListenerAction{
@@ -379,7 +383,7 @@ func getListenerChanges(actual map[string]loadbalancer.Listener, desired map[str
 			})
 			continue
 		}
-
+		exists.Insert(getSanitizedName(name))
 		if hasListenerChanged(actualListener, desiredListener) {
 			listenerActions = append(listenerActions, &ListenerAction{
 				Listener:   desiredListener,
@@ -391,7 +395,7 @@ func getListenerChanges(actual map[string]loadbalancer.Listener, desired map[str
 
 	// Now check if any need to be created.
 	for name, desiredListener := range desired {
-		if _, ok := actual[name]; !ok {
+		if !exists.Has(name) {
 			// doesn't exist so lets create it
 			listenerActions = append(listenerActions, &ListenerAction{
 				Listener:   desiredListener,
@@ -408,10 +412,17 @@ func sslEnabled(sslConfigMap map[int]*loadbalancer.SslConfiguration) bool {
 	return len(sslConfigMap) > 0
 }
 
-func getListenerName(protocol string, port int, sslConfig *loadbalancer.SslConfigurationDetails) string {
-	if sslConfig != nil {
-		return fmt.Sprintf("%s-%d-%s", protocol, port, *sslConfig.CertificateName)
+// getSanitizedName omits the suffix after protocol-port in the name.
+// FIXME can remove this function if we have made sure that there are no LB listeners with legacy name like <PROTOCOL-PORT-SECRET> for
+func getSanitizedName(name string) string {
+	fields := strings.Split(name, "-")
+	if len(fields) > 2 {
+		return fmt.Sprintf(strings.Join(fields[:2], "-"))
 	}
+	return name
+}
+
+func getListenerName(protocol string, port int) string {
 	return fmt.Sprintf("%s-%d", protocol, port)
 }
 
@@ -478,14 +489,14 @@ func parseSecretString(secretString string) (string, string) {
 // deleted after their associated Listeners.
 func sortAndCombineActions(logger *zap.SugaredLogger, backendSetActions []Action, listenerActions []Action) []Action {
 	actions := append(backendSetActions, listenerActions...)
-	sort.Slice(actions, func(i, j int) bool {
+	sort.SliceStable(actions, func(i, j int) bool {
 		a1 := actions[i]
 		a2 := actions[j]
 
 		// Sort by the name until we get to the point a1 and a2 are Actions upon
 		// an associated Listener and BackendSet (which share the same name).
-		if a1.Name() != a2.Name() {
-			return a1.Name() < a2.Name()
+		if getSanitizedName(a1.Name()) != getSanitizedName(a2.Name()) {
+			return getSanitizedName(a1.Name()) < getSanitizedName(a2.Name())
 		}
 
 		// For Create and Delete (which is what we really care about) the

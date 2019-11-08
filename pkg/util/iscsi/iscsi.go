@@ -147,7 +147,7 @@ func NewFromMountPointPath(logger *zap.SugaredLogger, mountPath string) (Interfa
 	if err != nil {
 		return nil, err
 	}
-	for _, diskByPath := range(diskByPaths) {
+	for _, diskByPath := range diskByPaths {
 		iface, err := NewFromDevicePath(logger, diskByPath)
 		if err == nil {
 			return iface, nil
