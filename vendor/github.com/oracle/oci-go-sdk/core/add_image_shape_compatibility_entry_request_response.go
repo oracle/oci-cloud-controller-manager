@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package core
@@ -11,7 +11,7 @@ import (
 // AddImageShapeCompatibilityEntryRequest wrapper for the AddImageShapeCompatibilityEntry operation
 type AddImageShapeCompatibilityEntryRequest struct {
 
-	// The OCID of the image.
+	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the image.
 	ImageId *string `mandatory:"true" contributesTo:"path" name:"imageId"`
 
 	// Shape name.
@@ -49,8 +49,8 @@ type AddImageShapeCompatibilityEntryResponse struct {
 	// The ImageShapeCompatibilityEntry instance
 	ImageShapeCompatibilityEntry `presentIn:"body"`
 
-	// Unique Oracle-assigned identifier for the request. If you need to contact Oracle about
-	// a particular request, please provide the request ID.
+	// Unique Oracle-assigned identifier for the request. If you need to contact
+	// Oracle about a particular request, please provide the request ID.
 	OpcRequestId *string `presentIn:"header" name:"opc-request-id"`
 }
 

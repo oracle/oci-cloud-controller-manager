@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Database Service API
@@ -33,13 +33,13 @@ type AutonomousContainerDatabase struct {
 	// The current state of the Autonomous Container Database.
 	LifecycleState AutonomousContainerDatabaseLifecycleStateEnum `mandatory:"true" json:"lifecycleState"`
 
-	// Database Patch model preference.
+	// Database patch model preference.
 	PatchModel AutonomousContainerDatabasePatchModelEnum `mandatory:"true" json:"patchModel"`
 
 	// Additional information about the current lifecycleState.
 	LifecycleDetails *string `mandatory:"false" json:"lifecycleDetails"`
 
-	// The date and time the Autonomous was created.
+	// The date and time the Autonomous Container Database was created.
 	TimeCreated *common.SDKTime `mandatory:"false" json:"timeCreated"`
 
 	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the last maintenance run.
@@ -48,6 +48,8 @@ type AutonomousContainerDatabase struct {
 	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the next maintenance run.
 	NextMaintenanceRunId *string `mandatory:"false" json:"nextMaintenanceRunId"`
 
+	MaintenanceWindowDetails *MaintenanceWindow `mandatory:"false" json:"maintenanceWindowDetails"`
+
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no predefined name, type, or namespace.
 	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
@@ -55,7 +57,6 @@ type AutonomousContainerDatabase struct {
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
 	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
-	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
 	// The availability domain of the Autonomous Container Database.
@@ -96,29 +97,31 @@ type AutonomousContainerDatabaseLifecycleStateEnum string
 
 // Set of constants representing the allowable values for AutonomousContainerDatabaseLifecycleStateEnum
 const (
-	AutonomousContainerDatabaseLifecycleStateProvisioning     AutonomousContainerDatabaseLifecycleStateEnum = "PROVISIONING"
-	AutonomousContainerDatabaseLifecycleStateAvailable        AutonomousContainerDatabaseLifecycleStateEnum = "AVAILABLE"
-	AutonomousContainerDatabaseLifecycleStateUpdating         AutonomousContainerDatabaseLifecycleStateEnum = "UPDATING"
-	AutonomousContainerDatabaseLifecycleStateTerminating      AutonomousContainerDatabaseLifecycleStateEnum = "TERMINATING"
-	AutonomousContainerDatabaseLifecycleStateTerminated       AutonomousContainerDatabaseLifecycleStateEnum = "TERMINATED"
-	AutonomousContainerDatabaseLifecycleStateFailed           AutonomousContainerDatabaseLifecycleStateEnum = "FAILED"
-	AutonomousContainerDatabaseLifecycleStateBackupInProgress AutonomousContainerDatabaseLifecycleStateEnum = "BACKUP_IN_PROGRESS"
-	AutonomousContainerDatabaseLifecycleStateRestoring        AutonomousContainerDatabaseLifecycleStateEnum = "RESTORING"
-	AutonomousContainerDatabaseLifecycleStateRestoreFailed    AutonomousContainerDatabaseLifecycleStateEnum = "RESTORE_FAILED"
-	AutonomousContainerDatabaseLifecycleStateRestarting       AutonomousContainerDatabaseLifecycleStateEnum = "RESTARTING"
+	AutonomousContainerDatabaseLifecycleStateProvisioning          AutonomousContainerDatabaseLifecycleStateEnum = "PROVISIONING"
+	AutonomousContainerDatabaseLifecycleStateAvailable             AutonomousContainerDatabaseLifecycleStateEnum = "AVAILABLE"
+	AutonomousContainerDatabaseLifecycleStateUpdating              AutonomousContainerDatabaseLifecycleStateEnum = "UPDATING"
+	AutonomousContainerDatabaseLifecycleStateTerminating           AutonomousContainerDatabaseLifecycleStateEnum = "TERMINATING"
+	AutonomousContainerDatabaseLifecycleStateTerminated            AutonomousContainerDatabaseLifecycleStateEnum = "TERMINATED"
+	AutonomousContainerDatabaseLifecycleStateFailed                AutonomousContainerDatabaseLifecycleStateEnum = "FAILED"
+	AutonomousContainerDatabaseLifecycleStateBackupInProgress      AutonomousContainerDatabaseLifecycleStateEnum = "BACKUP_IN_PROGRESS"
+	AutonomousContainerDatabaseLifecycleStateRestoring             AutonomousContainerDatabaseLifecycleStateEnum = "RESTORING"
+	AutonomousContainerDatabaseLifecycleStateRestoreFailed         AutonomousContainerDatabaseLifecycleStateEnum = "RESTORE_FAILED"
+	AutonomousContainerDatabaseLifecycleStateRestarting            AutonomousContainerDatabaseLifecycleStateEnum = "RESTARTING"
+	AutonomousContainerDatabaseLifecycleStateMaintenanceInProgress AutonomousContainerDatabaseLifecycleStateEnum = "MAINTENANCE_IN_PROGRESS"
 )
 
 var mappingAutonomousContainerDatabaseLifecycleState = map[string]AutonomousContainerDatabaseLifecycleStateEnum{
-	"PROVISIONING":       AutonomousContainerDatabaseLifecycleStateProvisioning,
-	"AVAILABLE":          AutonomousContainerDatabaseLifecycleStateAvailable,
-	"UPDATING":           AutonomousContainerDatabaseLifecycleStateUpdating,
-	"TERMINATING":        AutonomousContainerDatabaseLifecycleStateTerminating,
-	"TERMINATED":         AutonomousContainerDatabaseLifecycleStateTerminated,
-	"FAILED":             AutonomousContainerDatabaseLifecycleStateFailed,
-	"BACKUP_IN_PROGRESS": AutonomousContainerDatabaseLifecycleStateBackupInProgress,
-	"RESTORING":          AutonomousContainerDatabaseLifecycleStateRestoring,
-	"RESTORE_FAILED":     AutonomousContainerDatabaseLifecycleStateRestoreFailed,
-	"RESTARTING":         AutonomousContainerDatabaseLifecycleStateRestarting,
+	"PROVISIONING":            AutonomousContainerDatabaseLifecycleStateProvisioning,
+	"AVAILABLE":               AutonomousContainerDatabaseLifecycleStateAvailable,
+	"UPDATING":                AutonomousContainerDatabaseLifecycleStateUpdating,
+	"TERMINATING":             AutonomousContainerDatabaseLifecycleStateTerminating,
+	"TERMINATED":              AutonomousContainerDatabaseLifecycleStateTerminated,
+	"FAILED":                  AutonomousContainerDatabaseLifecycleStateFailed,
+	"BACKUP_IN_PROGRESS":      AutonomousContainerDatabaseLifecycleStateBackupInProgress,
+	"RESTORING":               AutonomousContainerDatabaseLifecycleStateRestoring,
+	"RESTORE_FAILED":          AutonomousContainerDatabaseLifecycleStateRestoreFailed,
+	"RESTARTING":              AutonomousContainerDatabaseLifecycleStateRestarting,
+	"MAINTENANCE_IN_PROGRESS": AutonomousContainerDatabaseLifecycleStateMaintenanceInProgress,
 }
 
 // GetAutonomousContainerDatabaseLifecycleStateEnumValues Enumerates the set of values for AutonomousContainerDatabaseLifecycleStateEnum

@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Marketplace Service API
@@ -16,7 +16,7 @@ import (
 // ListingPackage A base object for all types of listing packages.
 type ListingPackage interface {
 
-	// The OCID of the listing this package belongs to.
+	// The id of the listing this package belongs to.
 	GetListingId() *string
 
 	// The version of this package.
@@ -25,10 +25,13 @@ type ListingPackage interface {
 	// Description of this package.
 	GetDescription() *string
 
-	// The unique identifier of the package resource.
+	GetPricing() *PricingModel
+
+	// The unique identifier for the package resource.
 	GetResourceId() *string
 
-	// The date and time this listing package was created, in the format defined by RFC3339.
+	// The date and time this listing package was created, expressed in RFC 3339 (https://tools.ietf.org/html/rfc3339)
+	// timestamp format.
 	// Example: `2016-08-25T21:10:29.600Z`
 	GetTimeCreated() *common.SDKTime
 }
@@ -38,6 +41,7 @@ type listingpackage struct {
 	ListingId   *string         `mandatory:"true" json:"listingId"`
 	Version     *string         `mandatory:"true" json:"version"`
 	Description *string         `mandatory:"false" json:"description"`
+	Pricing     *PricingModel   `mandatory:"false" json:"pricing"`
 	ResourceId  *string         `mandatory:"false" json:"resourceId"`
 	TimeCreated *common.SDKTime `mandatory:"false" json:"timeCreated"`
 	PackageType string          `json:"packageType"`
@@ -57,6 +61,7 @@ func (m *listingpackage) UnmarshalJSON(data []byte) error {
 	m.ListingId = s.Model.ListingId
 	m.Version = s.Model.Version
 	m.Description = s.Model.Description
+	m.Pricing = s.Model.Pricing
 	m.ResourceId = s.Model.ResourceId
 	m.TimeCreated = s.Model.TimeCreated
 	m.PackageType = s.Model.PackageType
@@ -73,7 +78,11 @@ func (m *listingpackage) UnmarshalPolymorphicJSON(data []byte) (interface{}, err
 
 	var err error
 	switch m.PackageType {
-	case "Image":
+	case "ORCHESTRATION":
+		mm := OrchestrationListingPackage{}
+		err = json.Unmarshal(data, &mm)
+		return mm, err
+	case "IMAGE":
 		mm := ImageListingPackage{}
 		err = json.Unmarshal(data, &mm)
 		return mm, err
@@ -95,6 +104,11 @@ func (m listingpackage) GetVersion() *string {
 //GetDescription returns Description
 func (m listingpackage) GetDescription() *string {
 	return m.Description
+}
+
+//GetPricing returns Pricing
+func (m listingpackage) GetPricing() *PricingModel {
+	return m.Pricing
 }
 
 //GetResourceId returns ResourceId

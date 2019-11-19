@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package keymanagement
@@ -27,7 +27,7 @@ type ListKeyVersionsRequest struct {
 	OpcRequestId *string `mandatory:"false" contributesTo:"header" name:"opc-request-id"`
 
 	// The field to sort by. You can specify only one sort order. The default
-	// order for TIMECREATED is descending. The default order for DISPLAYNAME
+	// order for `TIMECREATED` is descending. The default order for `DISPLAYNAME`
 	// is ascending.
 	SortBy ListKeyVersionsSortByEnum `mandatory:"false" contributesTo:"query" name:"sortBy" omitEmpty:"true"`
 

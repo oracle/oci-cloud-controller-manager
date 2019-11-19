@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Functions Service API
@@ -28,6 +28,11 @@ type CreateFunctionDetails struct {
 
 	// Maximum usable memory for the function (MiB).
 	MemoryInMBs *int64 `mandatory:"true" json:"memoryInMBs"`
+
+	// The image digest for the version of the image that will be pulled when invoking this function.
+	// If no value is specified, the digest currently associated with the image in the OCI Registry will be used.
+	// Example: `sha256:ca0eeb6fb05351dfc8759c20733c91def84cb8007aa89a5bf606bc8b315b9fc7`
+	ImageDigest *string `mandatory:"false" json:"imageDigest"`
 
 	// Function configuration. These values are passed on to the function as environment variables, this overrides application configuration values.
 	// Keys must be ASCII strings consisting solely of letters, digits, and the '_' (underscore) character, and must not begin with a digit. Values should be limited to printable unicode characters.

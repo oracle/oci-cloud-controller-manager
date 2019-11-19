@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Database Service API
@@ -51,6 +51,7 @@ type LaunchDbSystemBase interface {
 	// The number of CPU cores to enable for a bare metal or Exadata DB system. The valid values depend on the specified shape:
 	// - BM.DenseIO1.36 - Specify a multiple of 2, from 2 to 36.
 	// - BM.DenseIO2.52 - Specify a multiple of 2, from 2 to 52.
+	// - Exadata.Base.48 - Specify a multiple of 2, from 0 to 48.
 	// - Exadata.Quarter1.84 - Specify a multiple of 2, from 22 to 84.
 	// - Exadata.Half1.168 - Specify a multiple of 4, from 44 to 168.
 	// - Exadata.Full1.336 - Specify a multiple of 8, from 88 to 336.
@@ -83,8 +84,16 @@ type LaunchDbSystemBase interface {
 	// **Subnet Restrictions:** See the subnet restrictions information for **subnetId**.
 	GetBackupSubnetId() *string
 
+	// A list of the OCIDs (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the network security groups (NSGs) that this DB system belongs to. Setting this to an empty array after the list is created removes the resource from all NSGs. For more information about NSGs, see Security Rules (https://docs.cloud.oracle.com/Content/Network/Concepts/securityrules.htm).
+	GetNsgIds() []string
+
+	// A list of the OCIDs (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the network security groups (NSGs) that the backup network of this DB system belongs to. Setting this to an empty array after the list is created removes the resource from all NSGs. For more information about NSGs, see Security Rules (https://docs.cloud.oracle.com/Content/Network/Concepts/securityrules.htm). Applicable only to Exadata DB systems.
+	GetBackupNetworkNsgIds() []string
+
 	// The time zone to use for the DB system. For details, see DB System Time Zones (https://docs.cloud.oracle.com/Content/Database/References/timezones.htm).
 	GetTimeZone() *string
+
+	GetDbSystemOptions() *DbSystemOptions
 
 	// If true, Sparse Diskgroup is configured for Exadata dbsystem. If False, Sparse diskgroup is not configured.
 	GetSparseDiskgroup() *bool
@@ -105,6 +114,12 @@ type LaunchDbSystemBase interface {
 	// Size (in GB) of the initial data volume that will be created and attached to a virtual machine DB system. You can scale up storage after provisioning, as needed. Note that the total storage size attached will be more than the amount you specify to allow for REDO/RECO space and software volume.
 	GetInitialDataStorageSizeInGB() *int
 
+	// The OCID of the key container that is used as the master encryption key in database transparent data encryption (TDE) operations.
+	GetKmsKeyId() *string
+
+	// The OCID of the key container version that is used in database transparent data encryption (TDE) operations KMS Key can have multiple key versions. If none is specified, the current key version (latest) of the Key Id is used for the operation.
+	GetKmsKeyVersionId() *string
+
 	// The number of nodes to launch for a 2-node RAC virtual machine DB system.
 	GetNodeCount() *int
 
@@ -115,7 +130,6 @@ type LaunchDbSystemBase interface {
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
 	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
-	// Example: `{"Operations": {"CostCenter": "42"}}`
 	GetDefinedTags() map[string]map[string]interface{}
 }
 
@@ -131,12 +145,17 @@ type launchdbsystembase struct {
 	FaultDomains               []string                          `mandatory:"false" json:"faultDomains"`
 	DisplayName                *string                           `mandatory:"false" json:"displayName"`
 	BackupSubnetId             *string                           `mandatory:"false" json:"backupSubnetId"`
+	NsgIds                     []string                          `mandatory:"false" json:"nsgIds"`
+	BackupNetworkNsgIds        []string                          `mandatory:"false" json:"backupNetworkNsgIds"`
 	TimeZone                   *string                           `mandatory:"false" json:"timeZone"`
+	DbSystemOptions            *DbSystemOptions                  `mandatory:"false" json:"dbSystemOptions"`
 	SparseDiskgroup            *bool                             `mandatory:"false" json:"sparseDiskgroup"`
 	Domain                     *string                           `mandatory:"false" json:"domain"`
 	ClusterName                *string                           `mandatory:"false" json:"clusterName"`
 	DataStoragePercentage      *int                              `mandatory:"false" json:"dataStoragePercentage"`
 	InitialDataStorageSizeInGB *int                              `mandatory:"false" json:"initialDataStorageSizeInGB"`
+	KmsKeyId                   *string                           `mandatory:"false" json:"kmsKeyId"`
+	KmsKeyVersionId            *string                           `mandatory:"false" json:"kmsKeyVersionId"`
 	NodeCount                  *int                              `mandatory:"false" json:"nodeCount"`
 	FreeformTags               map[string]string                 `mandatory:"false" json:"freeformTags"`
 	DefinedTags                map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
@@ -164,12 +183,17 @@ func (m *launchdbsystembase) UnmarshalJSON(data []byte) error {
 	m.FaultDomains = s.Model.FaultDomains
 	m.DisplayName = s.Model.DisplayName
 	m.BackupSubnetId = s.Model.BackupSubnetId
+	m.NsgIds = s.Model.NsgIds
+	m.BackupNetworkNsgIds = s.Model.BackupNetworkNsgIds
 	m.TimeZone = s.Model.TimeZone
+	m.DbSystemOptions = s.Model.DbSystemOptions
 	m.SparseDiskgroup = s.Model.SparseDiskgroup
 	m.Domain = s.Model.Domain
 	m.ClusterName = s.Model.ClusterName
 	m.DataStoragePercentage = s.Model.DataStoragePercentage
 	m.InitialDataStorageSizeInGB = s.Model.InitialDataStorageSizeInGB
+	m.KmsKeyId = s.Model.KmsKeyId
+	m.KmsKeyVersionId = s.Model.KmsKeyVersionId
 	m.NodeCount = s.Model.NodeCount
 	m.FreeformTags = s.Model.FreeformTags
 	m.DefinedTags = s.Model.DefinedTags
@@ -254,9 +278,24 @@ func (m launchdbsystembase) GetBackupSubnetId() *string {
 	return m.BackupSubnetId
 }
 
+//GetNsgIds returns NsgIds
+func (m launchdbsystembase) GetNsgIds() []string {
+	return m.NsgIds
+}
+
+//GetBackupNetworkNsgIds returns BackupNetworkNsgIds
+func (m launchdbsystembase) GetBackupNetworkNsgIds() []string {
+	return m.BackupNetworkNsgIds
+}
+
 //GetTimeZone returns TimeZone
 func (m launchdbsystembase) GetTimeZone() *string {
 	return m.TimeZone
+}
+
+//GetDbSystemOptions returns DbSystemOptions
+func (m launchdbsystembase) GetDbSystemOptions() *DbSystemOptions {
+	return m.DbSystemOptions
 }
 
 //GetSparseDiskgroup returns SparseDiskgroup
@@ -284,6 +323,16 @@ func (m launchdbsystembase) GetInitialDataStorageSizeInGB() *int {
 	return m.InitialDataStorageSizeInGB
 }
 
+//GetKmsKeyId returns KmsKeyId
+func (m launchdbsystembase) GetKmsKeyId() *string {
+	return m.KmsKeyId
+}
+
+//GetKmsKeyVersionId returns KmsKeyVersionId
+func (m launchdbsystembase) GetKmsKeyVersionId() *string {
+	return m.KmsKeyVersionId
+}
+
 //GetNodeCount returns NodeCount
 func (m launchdbsystembase) GetNodeCount() *int {
 	return m.NodeCount
@@ -301,4 +350,29 @@ func (m launchdbsystembase) GetDefinedTags() map[string]map[string]interface{} {
 
 func (m launchdbsystembase) String() string {
 	return common.PointerString(m)
+}
+
+// LaunchDbSystemBaseSourceEnum Enum with underlying type: string
+type LaunchDbSystemBaseSourceEnum string
+
+// Set of constants representing the allowable values for LaunchDbSystemBaseSourceEnum
+const (
+	LaunchDbSystemBaseSourceNone     LaunchDbSystemBaseSourceEnum = "NONE"
+	LaunchDbSystemBaseSourceDbBackup LaunchDbSystemBaseSourceEnum = "DB_BACKUP"
+	LaunchDbSystemBaseSourceDatabase LaunchDbSystemBaseSourceEnum = "DATABASE"
+)
+
+var mappingLaunchDbSystemBaseSource = map[string]LaunchDbSystemBaseSourceEnum{
+	"NONE":      LaunchDbSystemBaseSourceNone,
+	"DB_BACKUP": LaunchDbSystemBaseSourceDbBackup,
+	"DATABASE":  LaunchDbSystemBaseSourceDatabase,
+}
+
+// GetLaunchDbSystemBaseSourceEnumValues Enumerates the set of values for LaunchDbSystemBaseSourceEnum
+func GetLaunchDbSystemBaseSourceEnumValues() []LaunchDbSystemBaseSourceEnum {
+	values := make([]LaunchDbSystemBaseSourceEnum, 0)
+	for _, v := range mappingLaunchDbSystemBaseSource {
+		values = append(values, v)
+	}
+	return values
 }

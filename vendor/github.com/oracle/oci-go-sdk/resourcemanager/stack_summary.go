@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Resource Manager API
@@ -31,6 +31,9 @@ type StackSummary struct {
 	TimeCreated *common.SDKTime `mandatory:"false" json:"timeCreated"`
 
 	LifecycleState StackLifecycleStateEnum `mandatory:"false" json:"lifecycleState,omitempty"`
+
+	// The version of Terraform specified for the stack. Example: `0.12.x`
+	TerraformVersion *string `mandatory:"false" json:"terraformVersion"`
 
 	// Free-form tags associated with this resource. Each tag is a key-value pair with no predefined name, type, or namespace.
 	// For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).

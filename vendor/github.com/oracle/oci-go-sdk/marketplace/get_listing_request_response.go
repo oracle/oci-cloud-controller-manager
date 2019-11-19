@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package marketplace
@@ -11,7 +11,7 @@ import (
 // GetListingRequest wrapper for the GetListing operation
 type GetListingRequest struct {
 
-	// The unique identifier of the listing.
+	// The unique identifier for the listing.
 	ListingId *string `mandatory:"true" contributesTo:"path" name:"listingId"`
 
 	// Unique Oracle-assigned identifier for the request. If you need to contact Oracle about a particular request,

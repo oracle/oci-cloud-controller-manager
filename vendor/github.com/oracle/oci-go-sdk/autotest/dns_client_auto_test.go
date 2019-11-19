@@ -22,7 +22,142 @@ func createDnsClientWithProvider(p common.ConfigurationProvider, testConfig Test
 	return client, err
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
+func TestDnsClientChangeSteeringPolicyCompartment(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("dns", "ChangeSteeringPolicyCompartment")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ChangeSteeringPolicyCompartment is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("dns", "Dns", "ChangeSteeringPolicyCompartment", createDnsClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(dns.DnsClient)
+
+	body, err := testClient.getRequests("dns", "ChangeSteeringPolicyCompartment")
+	assert.NoError(t, err)
+
+	type ChangeSteeringPolicyCompartmentRequestInfo struct {
+		ContainerId string
+		Request     dns.ChangeSteeringPolicyCompartmentRequest
+	}
+
+	var requests []ChangeSteeringPolicyCompartmentRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.ChangeSteeringPolicyCompartment(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
+func TestDnsClientChangeTsigKeyCompartment(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("dns", "ChangeTsigKeyCompartment")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ChangeTsigKeyCompartment is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("dns", "Dns", "ChangeTsigKeyCompartment", createDnsClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(dns.DnsClient)
+
+	body, err := testClient.getRequests("dns", "ChangeTsigKeyCompartment")
+	assert.NoError(t, err)
+
+	type ChangeTsigKeyCompartmentRequestInfo struct {
+		ContainerId string
+		Request     dns.ChangeTsigKeyCompartmentRequest
+	}
+
+	var requests []ChangeTsigKeyCompartmentRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.ChangeTsigKeyCompartment(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
+func TestDnsClientChangeZoneCompartment(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("dns", "ChangeZoneCompartment")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ChangeZoneCompartment is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("dns", "Dns", "ChangeZoneCompartment", createDnsClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(dns.DnsClient)
+
+	body, err := testClient.getRequests("dns", "ChangeZoneCompartment")
+	assert.NoError(t, err)
+
+	type ChangeZoneCompartmentRequestInfo struct {
+		ContainerId string
+		Request     dns.ChangeZoneCompartmentRequest
+	}
+
+	var requests []ChangeZoneCompartmentRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.ChangeZoneCompartment(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientCreateSteeringPolicy(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -54,7 +189,9 @@ func TestDnsClientCreateSteeringPolicy(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.CreateSteeringPolicy(context.Background(), req.Request)
@@ -65,7 +202,7 @@ func TestDnsClientCreateSteeringPolicy(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientCreateSteeringPolicyAttachment(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -97,7 +234,9 @@ func TestDnsClientCreateSteeringPolicyAttachment(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.CreateSteeringPolicyAttachment(context.Background(), req.Request)
@@ -108,7 +247,52 @@ func TestDnsClientCreateSteeringPolicyAttachment(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
+func TestDnsClientCreateTsigKey(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("dns", "CreateTsigKey")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("CreateTsigKey is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("dns", "Dns", "CreateTsigKey", createDnsClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(dns.DnsClient)
+
+	body, err := testClient.getRequests("dns", "CreateTsigKey")
+	assert.NoError(t, err)
+
+	type CreateTsigKeyRequestInfo struct {
+		ContainerId string
+		Request     dns.CreateTsigKeyRequest
+	}
+
+	var requests []CreateTsigKeyRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.CreateTsigKey(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientCreateZone(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -131,16 +315,30 @@ func TestDnsClientCreateZone(t *testing.T) {
 	}
 
 	var requests []CreateZoneRequestInfo
-	var dataHolder []map[string]interface{}
-	err = json.Unmarshal([]byte(body), &dataHolder)
+	var pr []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &pr)
 	assert.NoError(t, err)
-	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
-	assert.NoError(t, err)
+	requests = make([]CreateZoneRequestInfo, len(pr))
+	polymorphicRequestInfo := map[string]PolymorphicRequestUnmarshallingInfo{}
+	polymorphicRequestInfo["CreateZoneBaseDetails"] =
+		PolymorphicRequestUnmarshallingInfo{
+			DiscriminatorName: "migrationSource",
+			DiscriminatorValuesAndTypes: map[string]interface{}{
+				"NONE":   &dns.CreateZoneDetails{},
+				"DYNECT": &dns.CreateMigratedDynectZoneDetails{},
+			},
+		}
+
+	for i, ppr := range pr {
+		conditionalStructCopy(ppr, &requests[i], polymorphicRequestInfo, testClient.Log)
+	}
 
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.CreateZone(context.Background(), req.Request)
@@ -151,7 +349,7 @@ func TestDnsClientCreateZone(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientDeleteDomainRecords(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -183,7 +381,9 @@ func TestDnsClientDeleteDomainRecords(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.DeleteDomainRecords(context.Background(), req.Request)
@@ -194,7 +394,7 @@ func TestDnsClientDeleteDomainRecords(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientDeleteRRSet(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -226,7 +426,9 @@ func TestDnsClientDeleteRRSet(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.DeleteRRSet(context.Background(), req.Request)
@@ -237,7 +439,7 @@ func TestDnsClientDeleteRRSet(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientDeleteSteeringPolicy(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -269,7 +471,9 @@ func TestDnsClientDeleteSteeringPolicy(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.DeleteSteeringPolicy(context.Background(), req.Request)
@@ -280,7 +484,7 @@ func TestDnsClientDeleteSteeringPolicy(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientDeleteSteeringPolicyAttachment(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -312,7 +516,9 @@ func TestDnsClientDeleteSteeringPolicyAttachment(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.DeleteSteeringPolicyAttachment(context.Background(), req.Request)
@@ -323,7 +529,52 @@ func TestDnsClientDeleteSteeringPolicyAttachment(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
+func TestDnsClientDeleteTsigKey(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("dns", "DeleteTsigKey")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("DeleteTsigKey is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("dns", "Dns", "DeleteTsigKey", createDnsClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(dns.DnsClient)
+
+	body, err := testClient.getRequests("dns", "DeleteTsigKey")
+	assert.NoError(t, err)
+
+	type DeleteTsigKeyRequestInfo struct {
+		ContainerId string
+		Request     dns.DeleteTsigKeyRequest
+	}
+
+	var requests []DeleteTsigKeyRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.DeleteTsigKey(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientDeleteZone(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -355,7 +606,9 @@ func TestDnsClientDeleteZone(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.DeleteZone(context.Background(), req.Request)
@@ -366,7 +619,7 @@ func TestDnsClientDeleteZone(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientGetDomainRecords(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -398,7 +651,9 @@ func TestDnsClientGetDomainRecords(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*dns.GetDomainRecordsRequest)
@@ -418,7 +673,7 @@ func TestDnsClientGetDomainRecords(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientGetRRSet(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -450,7 +705,9 @@ func TestDnsClientGetRRSet(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*dns.GetRRSetRequest)
@@ -470,7 +727,7 @@ func TestDnsClientGetRRSet(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientGetSteeringPolicy(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -502,7 +759,9 @@ func TestDnsClientGetSteeringPolicy(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetSteeringPolicy(context.Background(), req.Request)
@@ -513,7 +772,7 @@ func TestDnsClientGetSteeringPolicy(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientGetSteeringPolicyAttachment(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -545,7 +804,9 @@ func TestDnsClientGetSteeringPolicyAttachment(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetSteeringPolicyAttachment(context.Background(), req.Request)
@@ -556,7 +817,52 @@ func TestDnsClientGetSteeringPolicyAttachment(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
+func TestDnsClientGetTsigKey(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("dns", "GetTsigKey")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("GetTsigKey is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("dns", "Dns", "GetTsigKey", createDnsClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(dns.DnsClient)
+
+	body, err := testClient.getRequests("dns", "GetTsigKey")
+	assert.NoError(t, err)
+
+	type GetTsigKeyRequestInfo struct {
+		ContainerId string
+		Request     dns.GetTsigKeyRequest
+	}
+
+	var requests []GetTsigKeyRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.GetTsigKey(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientGetZone(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -588,7 +894,9 @@ func TestDnsClientGetZone(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetZone(context.Background(), req.Request)
@@ -599,7 +907,7 @@ func TestDnsClientGetZone(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientGetZoneRecords(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -631,7 +939,9 @@ func TestDnsClientGetZoneRecords(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*dns.GetZoneRecordsRequest)
@@ -651,7 +961,7 @@ func TestDnsClientGetZoneRecords(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientListSteeringPolicies(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -683,7 +993,9 @@ func TestDnsClientListSteeringPolicies(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*dns.ListSteeringPoliciesRequest)
@@ -703,7 +1015,7 @@ func TestDnsClientListSteeringPolicies(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientListSteeringPolicyAttachments(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -735,7 +1047,9 @@ func TestDnsClientListSteeringPolicyAttachments(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*dns.ListSteeringPolicyAttachmentsRequest)
@@ -755,7 +1069,61 @@ func TestDnsClientListSteeringPolicyAttachments(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
+func TestDnsClientListTsigKeys(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("dns", "ListTsigKeys")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ListTsigKeys is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("dns", "Dns", "ListTsigKeys", createDnsClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(dns.DnsClient)
+
+	body, err := testClient.getRequests("dns", "ListTsigKeys")
+	assert.NoError(t, err)
+
+	type ListTsigKeysRequestInfo struct {
+		ContainerId string
+		Request     dns.ListTsigKeysRequest
+	}
+
+	var requests []ListTsigKeysRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, request := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			request.Request.RequestMetadata.RetryPolicy = retryPolicy
+			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
+				r := req.(*dns.ListTsigKeysRequest)
+				return c.ListTsigKeys(context.Background(), *r)
+			}
+
+			listResponses, err := testClient.generateListResponses(&request.Request, listFn)
+			typedListResponses := make([]dns.ListTsigKeysResponse, len(listResponses))
+			for i, lr := range listResponses {
+				typedListResponses[i] = lr.(dns.ListTsigKeysResponse)
+			}
+
+			message, err := testClient.validateResult(request.ContainerId, request.Request, typedListResponses, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientListZones(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -787,7 +1155,9 @@ func TestDnsClientListZones(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*dns.ListZonesRequest)
@@ -807,7 +1177,7 @@ func TestDnsClientListZones(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientPatchDomainRecords(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -839,7 +1209,9 @@ func TestDnsClientPatchDomainRecords(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.PatchDomainRecords(context.Background(), req.Request)
@@ -850,7 +1222,7 @@ func TestDnsClientPatchDomainRecords(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientPatchRRSet(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -882,7 +1254,9 @@ func TestDnsClientPatchRRSet(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.PatchRRSet(context.Background(), req.Request)
@@ -893,7 +1267,7 @@ func TestDnsClientPatchRRSet(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientPatchZoneRecords(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -925,7 +1299,9 @@ func TestDnsClientPatchZoneRecords(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.PatchZoneRecords(context.Background(), req.Request)
@@ -936,7 +1312,7 @@ func TestDnsClientPatchZoneRecords(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientUpdateDomainRecords(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -968,7 +1344,9 @@ func TestDnsClientUpdateDomainRecords(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateDomainRecords(context.Background(), req.Request)
@@ -979,7 +1357,7 @@ func TestDnsClientUpdateDomainRecords(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientUpdateRRSet(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -1011,7 +1389,9 @@ func TestDnsClientUpdateRRSet(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateRRSet(context.Background(), req.Request)
@@ -1022,7 +1402,7 @@ func TestDnsClientUpdateRRSet(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientUpdateSteeringPolicy(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -1054,7 +1434,9 @@ func TestDnsClientUpdateSteeringPolicy(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateSteeringPolicy(context.Background(), req.Request)
@@ -1065,7 +1447,7 @@ func TestDnsClientUpdateSteeringPolicy(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientUpdateSteeringPolicyAttachment(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -1097,7 +1479,9 @@ func TestDnsClientUpdateSteeringPolicyAttachment(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateSteeringPolicyAttachment(context.Background(), req.Request)
@@ -1108,7 +1492,52 @@ func TestDnsClientUpdateSteeringPolicyAttachment(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
+func TestDnsClientUpdateTsigKey(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("dns", "UpdateTsigKey")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("UpdateTsigKey is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("dns", "Dns", "UpdateTsigKey", createDnsClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(dns.DnsClient)
+
+	body, err := testClient.getRequests("dns", "UpdateTsigKey")
+	assert.NoError(t, err)
+
+	type UpdateTsigKeyRequestInfo struct {
+		ContainerId string
+		Request     dns.UpdateTsigKeyRequest
+	}
+
+	var requests []UpdateTsigKeyRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.UpdateTsigKey(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientUpdateZone(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -1140,7 +1569,9 @@ func TestDnsClientUpdateZone(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateZone(context.Background(), req.Request)
@@ -1151,7 +1582,7 @@ func TestDnsClientUpdateZone(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_pubdns_dev_us_grp@oracle.com" jiraProject="PD" opsJiraProject="PUBDNS"
 func TestDnsClientUpdateZoneRecords(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -1183,7 +1614,9 @@ func TestDnsClientUpdateZoneRecords(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateZoneRecords(context.Background(), req.Request)

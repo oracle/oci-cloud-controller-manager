@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Database Service API
@@ -13,7 +13,7 @@ import (
 	"github.com/oracle/oci-go-sdk/common"
 )
 
-// LaunchDbSystemFromBackupDetails The representation of LaunchDbSystemFromBackupDetails
+// LaunchDbSystemFromBackupDetails Used for creating a new DB system from a database backup.
 type LaunchDbSystemFromBackupDetails struct {
 
 	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the compartment the DB system  belongs in.
@@ -50,6 +50,7 @@ type LaunchDbSystemFromBackupDetails struct {
 	// The number of CPU cores to enable for a bare metal or Exadata DB system. The valid values depend on the specified shape:
 	// - BM.DenseIO1.36 - Specify a multiple of 2, from 2 to 36.
 	// - BM.DenseIO2.52 - Specify a multiple of 2, from 2 to 52.
+	// - Exadata.Base.48 - Specify a multiple of 2, from 0 to 48.
 	// - Exadata.Quarter1.84 - Specify a multiple of 2, from 22 to 84.
 	// - Exadata.Half1.168 - Specify a multiple of 4, from 44 to 168.
 	// - Exadata.Full1.336 - Specify a multiple of 8, from 88 to 336.
@@ -84,8 +85,16 @@ type LaunchDbSystemFromBackupDetails struct {
 	// **Subnet Restrictions:** See the subnet restrictions information for **subnetId**.
 	BackupSubnetId *string `mandatory:"false" json:"backupSubnetId"`
 
+	// A list of the OCIDs (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the network security groups (NSGs) that this DB system belongs to. Setting this to an empty array after the list is created removes the resource from all NSGs. For more information about NSGs, see Security Rules (https://docs.cloud.oracle.com/Content/Network/Concepts/securityrules.htm).
+	NsgIds []string `mandatory:"false" json:"nsgIds"`
+
+	// A list of the OCIDs (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the network security groups (NSGs) that the backup network of this DB system belongs to. Setting this to an empty array after the list is created removes the resource from all NSGs. For more information about NSGs, see Security Rules (https://docs.cloud.oracle.com/Content/Network/Concepts/securityrules.htm). Applicable only to Exadata DB systems.
+	BackupNetworkNsgIds []string `mandatory:"false" json:"backupNetworkNsgIds"`
+
 	// The time zone to use for the DB system. For details, see DB System Time Zones (https://docs.cloud.oracle.com/Content/Database/References/timezones.htm).
 	TimeZone *string `mandatory:"false" json:"timeZone"`
+
+	DbSystemOptions *DbSystemOptions `mandatory:"false" json:"dbSystemOptions"`
 
 	// If true, Sparse Diskgroup is configured for Exadata dbsystem. If False, Sparse diskgroup is not configured.
 	SparseDiskgroup *bool `mandatory:"false" json:"sparseDiskgroup"`
@@ -106,6 +115,12 @@ type LaunchDbSystemFromBackupDetails struct {
 	// Size (in GB) of the initial data volume that will be created and attached to a virtual machine DB system. You can scale up storage after provisioning, as needed. Note that the total storage size attached will be more than the amount you specify to allow for REDO/RECO space and software volume.
 	InitialDataStorageSizeInGB *int `mandatory:"false" json:"initialDataStorageSizeInGB"`
 
+	// The OCID of the key container that is used as the master encryption key in database transparent data encryption (TDE) operations.
+	KmsKeyId *string `mandatory:"false" json:"kmsKeyId"`
+
+	// The OCID of the key container version that is used in database transparent data encryption (TDE) operations KMS Key can have multiple key versions. If none is specified, the current key version (latest) of the Key Id is used for the operation.
+	KmsKeyVersionId *string `mandatory:"false" json:"kmsKeyVersionId"`
+
 	// The number of nodes to launch for a 2-node RAC virtual machine DB system.
 	NodeCount *int `mandatory:"false" json:"nodeCount"`
 
@@ -116,7 +131,6 @@ type LaunchDbSystemFromBackupDetails struct {
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
 	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
-	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
 	// The Oracle Database Edition that applies to all the databases on the DB system.
@@ -162,6 +176,16 @@ func (m LaunchDbSystemFromBackupDetails) GetBackupSubnetId() *string {
 	return m.BackupSubnetId
 }
 
+//GetNsgIds returns NsgIds
+func (m LaunchDbSystemFromBackupDetails) GetNsgIds() []string {
+	return m.NsgIds
+}
+
+//GetBackupNetworkNsgIds returns BackupNetworkNsgIds
+func (m LaunchDbSystemFromBackupDetails) GetBackupNetworkNsgIds() []string {
+	return m.BackupNetworkNsgIds
+}
+
 //GetShape returns Shape
 func (m LaunchDbSystemFromBackupDetails) GetShape() *string {
 	return m.Shape
@@ -170,6 +194,11 @@ func (m LaunchDbSystemFromBackupDetails) GetShape() *string {
 //GetTimeZone returns TimeZone
 func (m LaunchDbSystemFromBackupDetails) GetTimeZone() *string {
 	return m.TimeZone
+}
+
+//GetDbSystemOptions returns DbSystemOptions
+func (m LaunchDbSystemFromBackupDetails) GetDbSystemOptions() *DbSystemOptions {
+	return m.DbSystemOptions
 }
 
 //GetSparseDiskgroup returns SparseDiskgroup
@@ -210,6 +239,16 @@ func (m LaunchDbSystemFromBackupDetails) GetDataStoragePercentage() *int {
 //GetInitialDataStorageSizeInGB returns InitialDataStorageSizeInGB
 func (m LaunchDbSystemFromBackupDetails) GetInitialDataStorageSizeInGB() *int {
 	return m.InitialDataStorageSizeInGB
+}
+
+//GetKmsKeyId returns KmsKeyId
+func (m LaunchDbSystemFromBackupDetails) GetKmsKeyId() *string {
+	return m.KmsKeyId
+}
+
+//GetKmsKeyVersionId returns KmsKeyVersionId
+func (m LaunchDbSystemFromBackupDetails) GetKmsKeyVersionId() *string {
+	return m.KmsKeyVersionId
 }
 
 //GetNodeCount returns NodeCount

@@ -1,9 +1,13 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// APIs for Networking Service, Compute Service, and Block Volume Service.
+// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
+// to manage resources such as virtual cloud networks (VCNs), compute instances, and
+// block storage volumes.
 //
 
 package core
@@ -15,8 +19,8 @@ import (
 // UpdateInstanceDetails The representation of UpdateInstanceDetails
 type UpdateInstanceDetails struct {
 
-	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Defined tags for this resource. Each key is predefined and scoped to a
+	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -26,8 +30,7 @@ type UpdateInstanceDetails struct {
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
-	// predefined name, type, or namespace. For more information, see
-	// Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
@@ -58,8 +61,38 @@ type UpdateInstanceDetails struct {
 	// ListShapes.
 	// Example: `VM.Standard1.1`
 	Shape *string `mandatory:"false" json:"shape"`
+
+	ShapeConfig *UpdateInstanceShapeConfigDetails `mandatory:"false" json:"shapeConfig"`
+
+	// The preferred maintenance action for an instance. The default is LIVE_MIGRATE, if live migration is supported.
+	// * `LIVE_MIGRATE` - Run maintenance using a live migration.
+	// * `REBOOT` - Run maintenance using a reboot.
+	PreferredMaintenanceAction UpdateInstanceDetailsPreferredMaintenanceActionEnum `mandatory:"false" json:"preferredMaintenanceAction,omitempty"`
 }
 
 func (m UpdateInstanceDetails) String() string {
 	return common.PointerString(m)
+}
+
+// UpdateInstanceDetailsPreferredMaintenanceActionEnum Enum with underlying type: string
+type UpdateInstanceDetailsPreferredMaintenanceActionEnum string
+
+// Set of constants representing the allowable values for UpdateInstanceDetailsPreferredMaintenanceActionEnum
+const (
+	UpdateInstanceDetailsPreferredMaintenanceActionLiveMigrate UpdateInstanceDetailsPreferredMaintenanceActionEnum = "LIVE_MIGRATE"
+	UpdateInstanceDetailsPreferredMaintenanceActionReboot      UpdateInstanceDetailsPreferredMaintenanceActionEnum = "REBOOT"
+)
+
+var mappingUpdateInstanceDetailsPreferredMaintenanceAction = map[string]UpdateInstanceDetailsPreferredMaintenanceActionEnum{
+	"LIVE_MIGRATE": UpdateInstanceDetailsPreferredMaintenanceActionLiveMigrate,
+	"REBOOT":       UpdateInstanceDetailsPreferredMaintenanceActionReboot,
+}
+
+// GetUpdateInstanceDetailsPreferredMaintenanceActionEnumValues Enumerates the set of values for UpdateInstanceDetailsPreferredMaintenanceActionEnum
+func GetUpdateInstanceDetailsPreferredMaintenanceActionEnumValues() []UpdateInstanceDetailsPreferredMaintenanceActionEnum {
+	values := make([]UpdateInstanceDetailsPreferredMaintenanceActionEnum, 0)
+	for _, v := range mappingUpdateInstanceDetailsPreferredMaintenanceAction {
+		values = append(values, v)
+	}
+	return values
 }

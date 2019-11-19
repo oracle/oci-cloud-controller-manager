@@ -33,6 +33,7 @@ type UploadRequest struct {
 	ObjectName *string `mandatory:"true"`
 
 	// [Optional] Override the default part size of 128 MiB, value is in bytes.
+	// The max part size is 50GiB
 	PartSize *int64 `mandatory:"false"`
 
 	// [Optional] Whether or not this UploadManager supports performing mulitpart uploads. Defaults to True.
@@ -43,9 +44,8 @@ type UploadRequest struct {
 	AllowParrallelUploads *bool `mandatory:"false"`
 
 	// The number of go routines for uploading individual parts of a multipart upload.
-	// This setting is only used if allow_parallel_uploads is set to True. Defaults to 10.
-	// TODO: check with service team for upper bounds of the concurrent number of uploads
-	// and update the document here
+	// This setting is only used if allow_parallel_uploads is set to True. Defaults to 5.
+	// The upper bounds of the number is 10,000.
 	NumberOfGoroutines *int `mandatory:"false"`
 
 	// A configured object storage client to use for interacting with the Object Storage service.
@@ -80,6 +80,12 @@ type UploadRequest struct {
 	// Metadata about the request. This information will not be transmitted to the service, but
 	// represents information that the SDK will consume to drive retry behavior.
 	RequestMetadata common.RequestMetadata
+
+	// [Optional] Callback API that can be invoked during multiPartUploads
+	CallBack UploadCallBack `mandatory:"false"`
+
+	// [Optional] Whether or not this UploadManager supports performing multipart uploads md5 checksum verification. Defaults to False.
+	EnableMultipartChecksumVerification *bool `mandatory:"false"`
 }
 
 // RetryPolicy implements the OCIRetryableRequest interface. This retrieves the specified retry policy.
@@ -212,3 +218,20 @@ func getUploadManagerDefaultRetryPolicy() *common.RetryPolicy {
 
 	return &policy
 }
+
+//
+// MultiPartUploadPart holds the details of Part that is uploaded
+//
+type MultiPartUploadPart struct {
+	PartNum    int
+	TotalParts int
+	Size       int64
+	Offset     int64
+	Hash       *string
+	OpcMD5     *string
+	Etag       *string
+	Err        error
+}
+
+// UploadCallBack API that gets invoked after a Part is successuly uploaded
+type UploadCallBack func(multiPartUploadPart MultiPartUploadPart)

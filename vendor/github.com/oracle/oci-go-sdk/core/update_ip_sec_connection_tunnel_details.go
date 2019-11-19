@@ -1,9 +1,13 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// APIs for Networking Service, Compute Service, and Block Volume Service.
+// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
+// to manage resources such as virtual cloud networks (VCNs), compute instances, and
+// block storage volumes.
 //
 
 package core
@@ -21,6 +25,9 @@ type UpdateIpSecConnectionTunnelDetails struct {
 
 	// The type of routing to use for this tunnel (either BGP dynamic routing or static routing).
 	Routing UpdateIpSecConnectionTunnelDetailsRoutingEnum `mandatory:"false" json:"routing,omitempty"`
+
+	// Internet Key Exchange protocol version.
+	IkeVersion UpdateIpSecConnectionTunnelDetailsIkeVersionEnum `mandatory:"false" json:"ikeVersion,omitempty"`
 
 	// Information for establishing a BGP session for the IPSec tunnel.
 	BgpSessionConfig *UpdateIpSecTunnelBgpSessionDetails `mandatory:"false" json:"bgpSessionConfig"`
@@ -48,6 +55,29 @@ var mappingUpdateIpSecConnectionTunnelDetailsRouting = map[string]UpdateIpSecCon
 func GetUpdateIpSecConnectionTunnelDetailsRoutingEnumValues() []UpdateIpSecConnectionTunnelDetailsRoutingEnum {
 	values := make([]UpdateIpSecConnectionTunnelDetailsRoutingEnum, 0)
 	for _, v := range mappingUpdateIpSecConnectionTunnelDetailsRouting {
+		values = append(values, v)
+	}
+	return values
+}
+
+// UpdateIpSecConnectionTunnelDetailsIkeVersionEnum Enum with underlying type: string
+type UpdateIpSecConnectionTunnelDetailsIkeVersionEnum string
+
+// Set of constants representing the allowable values for UpdateIpSecConnectionTunnelDetailsIkeVersionEnum
+const (
+	UpdateIpSecConnectionTunnelDetailsIkeVersionV1 UpdateIpSecConnectionTunnelDetailsIkeVersionEnum = "V1"
+	UpdateIpSecConnectionTunnelDetailsIkeVersionV2 UpdateIpSecConnectionTunnelDetailsIkeVersionEnum = "V2"
+)
+
+var mappingUpdateIpSecConnectionTunnelDetailsIkeVersion = map[string]UpdateIpSecConnectionTunnelDetailsIkeVersionEnum{
+	"V1": UpdateIpSecConnectionTunnelDetailsIkeVersionV1,
+	"V2": UpdateIpSecConnectionTunnelDetailsIkeVersionV2,
+}
+
+// GetUpdateIpSecConnectionTunnelDetailsIkeVersionEnumValues Enumerates the set of values for UpdateIpSecConnectionTunnelDetailsIkeVersionEnum
+func GetUpdateIpSecConnectionTunnelDetailsIkeVersionEnumValues() []UpdateIpSecConnectionTunnelDetailsIkeVersionEnum {
+	values := make([]UpdateIpSecConnectionTunnelDetailsIkeVersionEnum, 0)
+	for _, v := range mappingUpdateIpSecConnectionTunnelDetailsIkeVersion {
 		values = append(values, v)
 	}
 	return values

@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Functions Service API
@@ -22,8 +22,8 @@ type FunctionsInvokeClient struct {
 }
 
 // NewFunctionsInvokeClientWithConfigurationProvider Creates a new default FunctionsInvoke client with the given configuration provider.
-// the configuration provider will be used for the default signer as well as reading the region
-func NewFunctionsInvokeClientWithConfigurationProvider(configProvider common.ConfigurationProvider) (client FunctionsInvokeClient, err error) {
+// the configuration provider will be used for the default signer
+func NewFunctionsInvokeClientWithConfigurationProvider(configProvider common.ConfigurationProvider, endpoint string) (client FunctionsInvokeClient, err error) {
 	baseClient, err := common.NewClientWithConfig(configProvider)
 	if err != nil {
 		return
@@ -31,13 +31,9 @@ func NewFunctionsInvokeClientWithConfigurationProvider(configProvider common.Con
 
 	client = FunctionsInvokeClient{BaseClient: baseClient}
 	client.BasePath = "20181201"
+	client.Host = endpoint
 	err = client.setConfigurationProvider(configProvider)
 	return
-}
-
-// SetRegion overrides the region of this client.
-func (client *FunctionsInvokeClient) SetRegion(region string) {
-	client.Host = common.StringToRegion(region).EndpointForTemplate("functions", "https://functions.{region}.{secondLevelDomain}")
 }
 
 // SetConfigurationProvider sets the configuration provider including the region, returns an error if is not valid
@@ -46,9 +42,6 @@ func (client *FunctionsInvokeClient) setConfigurationProvider(configProvider com
 		return err
 	}
 
-	// Error has been checked already
-	region, _ := configProvider.Region()
-	client.SetRegion(region)
 	client.config = &configProvider
 	return nil
 }

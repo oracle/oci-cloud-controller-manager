@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Streaming Service API
@@ -37,7 +37,7 @@ func NewStreamAdminClientWithConfigurationProvider(configProvider common.Configu
 
 // SetRegion overrides the region of this client.
 func (client *StreamAdminClient) SetRegion(region string) {
-	client.Host = common.StringToRegion(region).EndpointForTemplate("streams", "https://streams.{region}.streaming.oci.{secondLevelDomain}")
+	client.Host = common.StringToRegion(region).EndpointForTemplate("streams", "https://streaming.{region}.oci.{secondLevelDomain}")
 }
 
 // SetConfigurationProvider sets the configuration provider including the region, returns an error if is not valid
@@ -56,6 +56,48 @@ func (client *StreamAdminClient) setConfigurationProvider(configProvider common.
 // ConfigurationProvider the ConfigurationProvider used in this client, or null if none set
 func (client *StreamAdminClient) ConfigurationProvider() *common.ConfigurationProvider {
 	return client.config
+}
+
+// ChangeStreamCompartment Moves a resource into a different compartment. When provided, If-Match is checked against ETag values of the resource.
+func (client StreamAdminClient) ChangeStreamCompartment(ctx context.Context, request ChangeStreamCompartmentRequest) (response ChangeStreamCompartmentResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.changeStreamCompartment, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ChangeStreamCompartmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ChangeStreamCompartmentResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ChangeStreamCompartmentResponse")
+	}
+	return
+}
+
+// changeStreamCompartment implements the OCIOperation interface (enables retrying operations)
+func (client StreamAdminClient) changeStreamCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/streams/{streamId}/actions/changeCompartment")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ChangeStreamCompartmentResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
 }
 
 // CreateArchiver Starts the provisioning of a new stream archiver.
@@ -239,6 +281,48 @@ func (client StreamAdminClient) getArchiver(ctx context.Context, request common.
 	return response, err
 }
 
+// GetDefaultStreamPool Gets detailed information about the default stream pool, such as user and connection settings.
+func (client StreamAdminClient) GetDefaultStreamPool(ctx context.Context, request GetDefaultStreamPoolRequest) (response GetDefaultStreamPoolResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.getDefaultStreamPool, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = GetDefaultStreamPoolResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(GetDefaultStreamPoolResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into GetDefaultStreamPoolResponse")
+	}
+	return
+}
+
+// getDefaultStreamPool implements the OCIOperation interface (enables retrying operations)
+func (client StreamAdminClient) getDefaultStreamPool(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/defaultStreamPool/{defaultStreamPoolId}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetDefaultStreamPoolResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // GetStream Gets detailed information about a stream, including the number of partitions.
 func (client StreamAdminClient) GetStream(ctx context.Context, request GetStreamRequest) (response GetStreamResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -269,6 +353,48 @@ func (client StreamAdminClient) getStream(ctx context.Context, request common.OC
 	}
 
 	var response GetStreamResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ListDefaultStreamPool Gets detailed information about the default stream pool, such as user and connection settings.
+func (client StreamAdminClient) ListDefaultStreamPool(ctx context.Context, request ListDefaultStreamPoolRequest) (response ListDefaultStreamPoolResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listDefaultStreamPool, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ListDefaultStreamPoolResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListDefaultStreamPoolResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListDefaultStreamPoolResponse")
+	}
+	return
+}
+
+// listDefaultStreamPool implements the OCIOperation interface (enables retrying operations)
+func (client StreamAdminClient) listDefaultStreamPool(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/defaultStreamPool")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListDefaultStreamPoolResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)
@@ -437,6 +563,48 @@ func (client StreamAdminClient) updateArchiver(ctx context.Context, request comm
 	}
 
 	var response UpdateArchiverResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// UpdateDefaultStreamPool Updates the user settings applied to the streams in the default pool.
+func (client StreamAdminClient) UpdateDefaultStreamPool(ctx context.Context, request UpdateDefaultStreamPoolRequest) (response UpdateDefaultStreamPoolResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.updateDefaultStreamPool, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = UpdateDefaultStreamPoolResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(UpdateDefaultStreamPoolResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into UpdateDefaultStreamPoolResponse")
+	}
+	return
+}
+
+// updateDefaultStreamPool implements the OCIOperation interface (enables retrying operations)
+func (client StreamAdminClient) updateDefaultStreamPool(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/defaultStreamPool/{defaultStreamPoolId}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response UpdateDefaultStreamPoolResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)

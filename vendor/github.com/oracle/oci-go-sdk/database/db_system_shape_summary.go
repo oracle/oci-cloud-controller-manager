@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Database Service API
@@ -24,6 +24,9 @@ type DbSystemShapeSummary struct {
 
 	// The maximum number of CPU cores that can be enabled on the DB system for this shape.
 	AvailableCoreCount *int `mandatory:"true" json:"availableCoreCount"`
+
+	// The family of the shape used for the DB system.
+	ShapeFamily *string `mandatory:"false" json:"shapeFamily"`
 
 	// Deprecated. Use `name` instead of `shape`.
 	Shape *string `mandatory:"false" json:"shape"`

@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Load Balancing API
@@ -61,9 +61,21 @@ type LoadBalancer struct {
 	// An array of subnet OCIDs (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm).
 	SubnetIds []string `mandatory:"false" json:"subnetIds"`
 
+	// An array of NSG OCIDs (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) associated with the load
+	// balancer.
+	// During the load balancer's creation, the service adds the new load balancer to the specified NSGs.
+	// The benefits of associating the load balancer with NSGs include:
+	// *  NSGs define network security rules to govern ingress and egress traffic for the load balancer.
+	// *  The network security rules of other resources can reference the NSGs associated with the load balancer
+	//    to ensure access.
+	// Example: ["ocid1.nsg.oc1.phx.unique_ID"]
+	NetworkSecurityGroupIds []string `mandatory:"false" json:"networkSecurityGroupIds"`
+
 	Listeners map[string]Listener `mandatory:"false" json:"listeners"`
 
 	Hostnames map[string]Hostname `mandatory:"false" json:"hostnames"`
+
+	SslCipherSuites map[string]SslCipherSuite `mandatory:"false" json:"sslCipherSuites"`
 
 	Certificates map[string]Certificate `mandatory:"false" json:"certificates"`
 
@@ -80,6 +92,12 @@ type LoadBalancer struct {
 	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
+
+	// System tags for this resource. Each key is predefined and scoped to a namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// System tags can be viewed by users, but can only be created by the system.
+	// Example: `{"orcl-cloud": {"free-tier-retained": "true"}}`
+	SystemTags map[string]map[string]interface{} `mandatory:"false" json:"systemTags"`
 
 	RuleSets map[string]RuleSet `mandatory:"false" json:"ruleSets"`
 }

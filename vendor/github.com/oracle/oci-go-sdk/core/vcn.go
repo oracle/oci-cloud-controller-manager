@@ -1,9 +1,13 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// APIs for Networking Service, Compute Service, and Block Volume Service.
+// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
+// to manage resources such as virtual cloud networks (VCNs), compute instances, and
+// block storage volumes.
 //
 
 package core
@@ -43,8 +47,8 @@ type Vcn struct {
 	// The OCID for the VCN's default security list.
 	DefaultSecurityListId *string `mandatory:"false" json:"defaultSecurityListId"`
 
-	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Defined tags for this resource. Each key is predefined and scoped to a
+	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -65,15 +69,15 @@ type Vcn struct {
 	DnsLabel *string `mandatory:"false" json:"dnsLabel"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
-	// predefined name, type, or namespace. For more information, see
-	// Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
 	// For an IPv6-enabled VCN, this is the IPv6 CIDR block for the VCN's private IP address space.
 	// The VCN size is always /48. If you don't provide a value when creating the VCN, Oracle
 	// provides one and uses that *same* CIDR for the `ipv6PublicCidrBlock`. If you do provide a
-	// value, Oracle provides a *different* CIDR for the `ipv6PublicCidrBlock`.
+	// value, Oracle provides a *different* CIDR for the `ipv6PublicCidrBlock`. Note that IPv6
+	// addressing is currently supported only in the Government Cloud.
 	// Example: `2001:0db8:0123::/48`
 	Ipv6CidrBlock *string `mandatory:"false" json:"ipv6CidrBlock"`
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package marketplace
@@ -14,11 +14,14 @@ type ListListingsRequest struct {
 	// The name of the listing.
 	Name *string `mandatory:"false" contributesTo:"query" name:"name"`
 
-	// The unique identifier of the listing.
+	// The unique identifier for the listing.
 	ListingId *string `mandatory:"false" contributesTo:"query" name:"listingId"`
 
-	// Limit listings to just this publisher.
+	// Limit results to just this publisher.
 	PublisherId *string `mandatory:"false" contributesTo:"query" name:"publisherId"`
+
+	// A filter to return only packages that match the given package type exactly.
+	PackageType *string `mandatory:"false" contributesTo:"query" name:"packageType"`
 
 	// Unique Oracle-assigned identifier for the request. If you need to contact Oracle about a particular request,
 	// please provide the request ID.
@@ -30,13 +33,24 @@ type ListListingsRequest struct {
 	// The value of the `opc-next-page` response header from the previous "List" call.
 	Page *string `mandatory:"false" contributesTo:"query" name:"page"`
 
-	// The field that is used to sort listed results. You can only specify one field to sort by.
-	// `TIMERELEASED` displays results in descending order by default. `NAME` displays results in
-	// ascending order by default. You can change your preference by specifying a different sort order.
+	// The field to use to sort listed results. You can only specify one field to sort by.
+	// `TIMERELEASED` displays results in descending order by default.
+	// You can change your preference by specifying a different sort order.
 	SortBy ListListingsSortByEnum `mandatory:"false" contributesTo:"query" name:"sortBy" omitEmpty:"true"`
 
-	// The sort order to use, either 'asc' or 'desc'.
+	// The sort order to use, either `ASC` or `DESC`.
 	SortOrder ListListingsSortOrderEnum `mandatory:"false" contributesTo:"query" name:"sortOrder" omitEmpty:"true"`
+
+	// Name of the product category or categories. If you specify multiple categories, then Marketplace returns any listing with
+	// one or more matching categories.
+	Category []string `contributesTo:"query" name:"category" collectionFormat:"multi"`
+
+	// Name of the pricing type. If multiple pricing types are provided, then any listing with
+	// one or more matching pricing models will be returned.
+	Pricing []ListListingsPricingEnum `contributesTo:"query" name:"pricing" omitEmpty:"true" collectionFormat:"multi"`
+
+	// Indicates whether to show only featured listings. If this is set to `false` or is omitted, then all listings will be returned.
+	IsFeatured *bool `mandatory:"false" contributesTo:"query" name:"isFeatured"`
 
 	// Metadata about the request. This information will not be transmitted to the service, but
 	// represents information that the SDK will consume to drive retry behavior.
@@ -90,12 +104,10 @@ type ListListingsSortByEnum string
 
 // Set of constants representing the allowable values for ListListingsSortByEnum
 const (
-	ListListingsSortByName         ListListingsSortByEnum = "NAME"
 	ListListingsSortByTimereleased ListListingsSortByEnum = "TIMERELEASED"
 )
 
 var mappingListListingsSortBy = map[string]ListListingsSortByEnum{
-	"NAME":         ListListingsSortByName,
 	"TIMERELEASED": ListListingsSortByTimereleased,
 }
 
@@ -126,6 +138,31 @@ var mappingListListingsSortOrder = map[string]ListListingsSortOrderEnum{
 func GetListListingsSortOrderEnumValues() []ListListingsSortOrderEnum {
 	values := make([]ListListingsSortOrderEnum, 0)
 	for _, v := range mappingListListingsSortOrder {
+		values = append(values, v)
+	}
+	return values
+}
+
+// ListListingsPricingEnum Enum with underlying type: string
+type ListListingsPricingEnum string
+
+// Set of constants representing the allowable values for ListListingsPricingEnum
+const (
+	ListListingsPricingFree  ListListingsPricingEnum = "FREE"
+	ListListingsPricingByol  ListListingsPricingEnum = "BYOL"
+	ListListingsPricingPaygo ListListingsPricingEnum = "PAYGO"
+)
+
+var mappingListListingsPricing = map[string]ListListingsPricingEnum{
+	"FREE":  ListListingsPricingFree,
+	"BYOL":  ListListingsPricingByol,
+	"PAYGO": ListListingsPricingPaygo,
+}
+
+// GetListListingsPricingEnumValues Enumerates the set of values for ListListingsPricingEnum
+func GetListListingsPricingEnumValues() []ListListingsPricingEnum {
+	values := make([]ListListingsPricingEnum, 0)
+	for _, v := range mappingListListingsPricing {
 		values = append(values, v)
 	}
 	return values

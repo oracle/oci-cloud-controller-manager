@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // OraCache Public API
@@ -8,14 +8,33 @@
 
 package cache
 
-import (
-	"github.com/oracle/oci-go-sdk/common"
+// WorkRequestStatusEnum Enum with underlying type: string
+type WorkRequestStatusEnum string
+
+// Set of constants representing the allowable values for WorkRequestStatusEnum
+const (
+	WorkRequestStatusAccepted   WorkRequestStatusEnum = "ACCEPTED"
+	WorkRequestStatusInProgress WorkRequestStatusEnum = "IN_PROGRESS"
+	WorkRequestStatusFailed     WorkRequestStatusEnum = "FAILED"
+	WorkRequestStatusSucceeded  WorkRequestStatusEnum = "SUCCEEDED"
+	WorkRequestStatusCanceling  WorkRequestStatusEnum = "CANCELING"
+	WorkRequestStatusCanceled   WorkRequestStatusEnum = "CANCELED"
 )
 
-// WorkRequestStatus The various status values for a work request.
-type WorkRequestStatus struct {
+var mappingWorkRequestStatus = map[string]WorkRequestStatusEnum{
+	"ACCEPTED":    WorkRequestStatusAccepted,
+	"IN_PROGRESS": WorkRequestStatusInProgress,
+	"FAILED":      WorkRequestStatusFailed,
+	"SUCCEEDED":   WorkRequestStatusSucceeded,
+	"CANCELING":   WorkRequestStatusCanceling,
+	"CANCELED":    WorkRequestStatusCanceled,
 }
 
-func (m WorkRequestStatus) String() string {
-	return common.PointerString(m)
+// GetWorkRequestStatusEnumValues Enumerates the set of values for WorkRequestStatusEnum
+func GetWorkRequestStatusEnumValues() []WorkRequestStatusEnum {
+	values := make([]WorkRequestStatusEnum, 0)
+	for _, v := range mappingWorkRequestStatus {
+		values = append(values, v)
+	}
+	return values
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package objectstorage
@@ -38,9 +38,9 @@ type ListObjectsRequest struct {
 	Delimiter *string `mandatory:"false" contributesTo:"query" name:"delimiter"`
 
 	// Object summary in list of objects includes the 'name' field. This parameter can also include 'size'
-	// (object size in bytes), 'md5', and 'timeCreated' (object creation date and time) fields.
+	// (object size in bytes), 'etag', 'md5', and 'timeCreated' (object creation date and time) fields.
 	// Value of this parameter should be a comma-separated, case-insensitive list of those field names.
-	// For example 'name,timeCreated,md5'.
+	// For example 'name,etag,timeCreated,md5'.
 	Fields *string `mandatory:"false" contributesTo:"query" name:"fields" omitEmpty:"true"`
 
 	// The client request ID for tracing.

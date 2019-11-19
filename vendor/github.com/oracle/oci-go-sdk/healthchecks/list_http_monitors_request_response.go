@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package healthchecks
@@ -33,6 +33,9 @@ type ListHttpMonitorsRequest struct {
 
 	// Filters results that exactly match the `displayName` field.
 	DisplayName *string `mandatory:"false" contributesTo:"query" name:"displayName"`
+
+	// Filters results that match the `homeRegion`.
+	HomeRegion *string `mandatory:"false" contributesTo:"query" name:"homeRegion"`
 
 	// Metadata about the request. This information will not be transmitted to the service, but
 	// represents information that the SDK will consume to drive retry behavior.
@@ -90,11 +93,13 @@ type ListHttpMonitorsSortByEnum string
 const (
 	ListHttpMonitorsSortById          ListHttpMonitorsSortByEnum = "id"
 	ListHttpMonitorsSortByDisplayname ListHttpMonitorsSortByEnum = "displayName"
+	ListHttpMonitorsSortByTimecreated ListHttpMonitorsSortByEnum = "timeCreated"
 )
 
 var mappingListHttpMonitorsSortBy = map[string]ListHttpMonitorsSortByEnum{
 	"id":          ListHttpMonitorsSortById,
 	"displayName": ListHttpMonitorsSortByDisplayname,
+	"timeCreated": ListHttpMonitorsSortByTimecreated,
 }
 
 // GetListHttpMonitorsSortByEnumValues Enumerates the set of values for ListHttpMonitorsSortByEnum

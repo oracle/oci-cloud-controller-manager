@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Container Engine for Kubernetes API
@@ -10,14 +10,33 @@
 
 package containerengine
 
-import (
-	"github.com/oracle/oci-go-sdk/common"
+// ClusterLifecycleStateEnum Enum with underlying type: string
+type ClusterLifecycleStateEnum string
+
+// Set of constants representing the allowable values for ClusterLifecycleStateEnum
+const (
+	ClusterLifecycleStateCreating ClusterLifecycleStateEnum = "CREATING"
+	ClusterLifecycleStateActive   ClusterLifecycleStateEnum = "ACTIVE"
+	ClusterLifecycleStateFailed   ClusterLifecycleStateEnum = "FAILED"
+	ClusterLifecycleStateDeleting ClusterLifecycleStateEnum = "DELETING"
+	ClusterLifecycleStateDeleted  ClusterLifecycleStateEnum = "DELETED"
+	ClusterLifecycleStateUpdating ClusterLifecycleStateEnum = "UPDATING"
 )
 
-// ClusterLifecycleState The lifecycle state of a cluster.
-type ClusterLifecycleState struct {
+var mappingClusterLifecycleState = map[string]ClusterLifecycleStateEnum{
+	"CREATING": ClusterLifecycleStateCreating,
+	"ACTIVE":   ClusterLifecycleStateActive,
+	"FAILED":   ClusterLifecycleStateFailed,
+	"DELETING": ClusterLifecycleStateDeleting,
+	"DELETED":  ClusterLifecycleStateDeleted,
+	"UPDATING": ClusterLifecycleStateUpdating,
 }
 
-func (m ClusterLifecycleState) String() string {
-	return common.PointerString(m)
+// GetClusterLifecycleStateEnumValues Enumerates the set of values for ClusterLifecycleStateEnum
+func GetClusterLifecycleStateEnumValues() []ClusterLifecycleStateEnum {
+	values := make([]ClusterLifecycleStateEnum, 0)
+	for _, v := range mappingClusterLifecycleState {
+		values = append(values, v)
+	}
+	return values
 }

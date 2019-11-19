@@ -52,6 +52,34 @@ func TestEndpointForTemplate(t *testing.T) {
 			expected:         "https://foo.region.oraclecloud.com",
 		},
 		{
+			// template with second level domain
+			region:           StringToRegion("ap-sydney-1"),
+			service:          "test",
+			endpointTemplate: "https://foo.region.{secondLevelDomain}",
+			expected:         "https://foo.region.oraclecloud.com",
+		},
+		{
+			// template with second level domain
+			region:           StringToRegion("ap-hyderabad-1"),
+			service:          "test",
+			endpointTemplate: "https://foo.region.{secondLevelDomain}",
+			expected:         "https://foo.region.oraclecloud.com",
+		},
+		{
+			// template with second level domain
+			region:           StringToRegion("ap-chuncheon-1"),
+			service:          "test",
+			endpointTemplate: "https://foo.region.{secondLevelDomain}",
+			expected:         "https://foo.region.oraclecloud.com",
+		},
+		{
+			// template with second level domain
+			region:           StringToRegion("uk-cardiff-1"),
+			service:          "test",
+			endpointTemplate: "https://foo.region.{secondLevelDomain}",
+			expected:         "https://foo.region.oraclecloud.com",
+		},
+		{
 			// template with everything for OC2
 			region:           StringToRegion("us-langley-1"),
 			service:          "test",
@@ -71,4 +99,27 @@ func TestEndpointForTemplate(t *testing.T) {
 		endpoint := testData.region.EndpointForTemplate(testData.service, testData.endpointTemplate)
 		assert.Equal(t, testData.expected, endpoint)
 	}
+}
+
+func TestStringToRegion(t *testing.T) {
+	region := StringToRegion("yyz")
+	assert.Equal(t, RegionCAToronto1, region)
+
+	region = StringToRegion("nrt")
+	assert.Equal(t, RegionAPTokyo1, region)
+
+	region = StringToRegion("gru")
+	assert.Equal(t, RegionSASaopaulo1, region)
+
+	region = StringToRegion("yny")
+	assert.Equal(t, RegionAPChuncheon1, region)
+
+	region = StringToRegion("cwl")
+	assert.Equal(t, RegionUKCardiff1, region)
+
+	region = StringToRegion("hyd")
+	assert.Equal(t, RegionAPHyderabad1, region)
+
+	region = StringToRegion("syd")
+	assert.Equal(t, RegionAPSydney1, region)
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Database Service API
@@ -56,6 +56,394 @@ func (client *DatabaseClient) setConfigurationProvider(configProvider common.Con
 // ConfigurationProvider the ConfigurationProvider used in this client, or null if none set
 func (client *DatabaseClient) ConfigurationProvider() *common.ConfigurationProvider {
 	return client.config
+}
+
+// ActivateExadataInfrastructure Activates the specified Exadata infrastructure.
+func (client DatabaseClient) ActivateExadataInfrastructure(ctx context.Context, request ActivateExadataInfrastructureRequest) (response ActivateExadataInfrastructureResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.activateExadataInfrastructure, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ActivateExadataInfrastructureResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ActivateExadataInfrastructureResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ActivateExadataInfrastructureResponse")
+	}
+	return
+}
+
+// activateExadataInfrastructure implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) activateExadataInfrastructure(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/exadataInfrastructures/{exadataInfrastructureId}/actions/activate")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ActivateExadataInfrastructureResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ChangeAutonomousContainerDatabaseCompartment Move the Autonomous Container Database and its dependent resources to the specified compartment.
+// For more information about moving Autonomous Container Databases, see
+// Moving Database Resources to a Different Compartment (https://docs.cloud.oracle.com/Content/Database/Concepts/databaseoverview.htm#moveRes).
+func (client DatabaseClient) ChangeAutonomousContainerDatabaseCompartment(ctx context.Context, request ChangeAutonomousContainerDatabaseCompartmentRequest) (response ChangeAutonomousContainerDatabaseCompartmentResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.changeAutonomousContainerDatabaseCompartment, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ChangeAutonomousContainerDatabaseCompartmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ChangeAutonomousContainerDatabaseCompartmentResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ChangeAutonomousContainerDatabaseCompartmentResponse")
+	}
+	return
+}
+
+// changeAutonomousContainerDatabaseCompartment implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) changeAutonomousContainerDatabaseCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/autonomousContainerDatabases/{autonomousContainerDatabaseId}/actions/changeCompartment")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ChangeAutonomousContainerDatabaseCompartmentResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ChangeAutonomousDatabaseCompartment Move the Autonomous Database and its dependent resources to the specified compartment.
+// For more information about moving Autonomous Databases, see
+// Moving Database Resources to a Different Compartment (https://docs.cloud.oracle.com/Content/Database/Concepts/databaseoverview.htm#moveRes).
+func (client DatabaseClient) ChangeAutonomousDatabaseCompartment(ctx context.Context, request ChangeAutonomousDatabaseCompartmentRequest) (response ChangeAutonomousDatabaseCompartmentResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.changeAutonomousDatabaseCompartment, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ChangeAutonomousDatabaseCompartmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ChangeAutonomousDatabaseCompartmentResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ChangeAutonomousDatabaseCompartmentResponse")
+	}
+	return
+}
+
+// changeAutonomousDatabaseCompartment implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) changeAutonomousDatabaseCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/autonomousDatabases/{autonomousDatabaseId}/actions/changeCompartment")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ChangeAutonomousDatabaseCompartmentResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ChangeAutonomousExadataInfrastructureCompartment Move the Autonomous Exadata Infrastructure and its dependent resources to the specified compartment.
+// For more information about moving Autonomous Exadata Infrastructures, see
+// Moving Database Resources to a Different Compartment (https://docs.cloud.oracle.com/Content/Database/Concepts/databaseoverview.htm#moveRes).
+func (client DatabaseClient) ChangeAutonomousExadataInfrastructureCompartment(ctx context.Context, request ChangeAutonomousExadataInfrastructureCompartmentRequest) (response ChangeAutonomousExadataInfrastructureCompartmentResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.changeAutonomousExadataInfrastructureCompartment, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ChangeAutonomousExadataInfrastructureCompartmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ChangeAutonomousExadataInfrastructureCompartmentResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ChangeAutonomousExadataInfrastructureCompartmentResponse")
+	}
+	return
+}
+
+// changeAutonomousExadataInfrastructureCompartment implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) changeAutonomousExadataInfrastructureCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/autonomousExadataInfrastructures/{autonomousExadataInfrastructureId}/actions/changeCompartment")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ChangeAutonomousExadataInfrastructureCompartmentResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ChangeBackupDestinationCompartment Move the backup destination and its dependent resources to the specified compartment.
+// For more information about moving backup destinations, see
+// Moving Database Resources to a Different Compartment (https://docs.cloud.oracle.com/Content/Database/Concepts/databaseoverview.htm#moveRes).
+func (client DatabaseClient) ChangeBackupDestinationCompartment(ctx context.Context, request ChangeBackupDestinationCompartmentRequest) (response ChangeBackupDestinationCompartmentResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.changeBackupDestinationCompartment, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ChangeBackupDestinationCompartmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ChangeBackupDestinationCompartmentResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ChangeBackupDestinationCompartmentResponse")
+	}
+	return
+}
+
+// changeBackupDestinationCompartment implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) changeBackupDestinationCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/backupDestinations/{backupDestinationId}/actions/changeCompartment")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ChangeBackupDestinationCompartmentResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ChangeDbSystemCompartment Move the DB system and its dependent resources to the specified compartment.
+// For more information about moving DB systems, see
+// Moving Database Resources to a Different Compartment (https://docs.cloud.oracle.com/Content/Database/Concepts/databaseoverview.htm#moveRes).
+func (client DatabaseClient) ChangeDbSystemCompartment(ctx context.Context, request ChangeDbSystemCompartmentRequest) (response ChangeDbSystemCompartmentResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.changeDbSystemCompartment, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ChangeDbSystemCompartmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ChangeDbSystemCompartmentResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ChangeDbSystemCompartmentResponse")
+	}
+	return
+}
+
+// changeDbSystemCompartment implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) changeDbSystemCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/dbSystems/{dbSystemId}/actions/changeCompartment")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ChangeDbSystemCompartmentResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ChangeExadataInfrastructureCompartment To move an Exadata infrastructure and its dependent resources to another compartment, use the
+// ChangeExadataInfrastructureCompartment operation.
+func (client DatabaseClient) ChangeExadataInfrastructureCompartment(ctx context.Context, request ChangeExadataInfrastructureCompartmentRequest) (response ChangeExadataInfrastructureCompartmentResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.changeExadataInfrastructureCompartment, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ChangeExadataInfrastructureCompartmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ChangeExadataInfrastructureCompartmentResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ChangeExadataInfrastructureCompartmentResponse")
+	}
+	return
+}
+
+// changeExadataInfrastructureCompartment implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) changeExadataInfrastructureCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/exadataInfrastructures/{exadataInfrastructureId}/actions/changeCompartment")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ChangeExadataInfrastructureCompartmentResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ChangeVmClusterCompartment To move a VM cluster and its dependent resources to another compartment, use the
+// ChangeVmClusterCompartment operation.
+func (client DatabaseClient) ChangeVmClusterCompartment(ctx context.Context, request ChangeVmClusterCompartmentRequest) (response ChangeVmClusterCompartmentResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.changeVmClusterCompartment, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ChangeVmClusterCompartmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ChangeVmClusterCompartmentResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ChangeVmClusterCompartmentResponse")
+	}
+	return
+}
+
+// changeVmClusterCompartment implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) changeVmClusterCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/vmClusters/{vmClusterId}/actions/changeCompartment")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ChangeVmClusterCompartmentResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
 }
 
 // CompleteExternalBackupJob Changes the status of the standalone backup resource to `ACTIVE` after the backup is created from the on-premises database and placed in Oracle Cloud Infrastructure Object Storage.
@@ -388,6 +776,53 @@ func (client DatabaseClient) createBackup(ctx context.Context, request common.OC
 	return response, err
 }
 
+// CreateBackupDestination Creates a backup destination.
+func (client DatabaseClient) CreateBackupDestination(ctx context.Context, request CreateBackupDestinationRequest) (response CreateBackupDestinationResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.createBackupDestination, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = CreateBackupDestinationResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(CreateBackupDestinationResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into CreateBackupDestinationResponse")
+	}
+	return
+}
+
+// createBackupDestination implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) createBackupDestination(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/backupDestinations")
+	if err != nil {
+		return nil, err
+	}
+
+	var response CreateBackupDestinationResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // CreateDataGuardAssociation Creates a new Data Guard association.  A Data Guard association represents the replication relationship between the
 // specified database and a peer database. For more information, see Using Oracle Data Guard (https://docs.cloud.oracle.com/Content/Database/Tasks/usingdataguard.htm).
 // All Oracle Cloud Infrastructure resources, including Data Guard associations, get an Oracle-assigned, unique ID
@@ -441,7 +876,54 @@ func (client DatabaseClient) createDataGuardAssociation(ctx context.Context, req
 	return response, err
 }
 
-// CreateDbHome Creates a new database home in the specified DB system based on the request parameters you provide.
+// CreateDatabase Creates a new database in the specified Database Home. If the database version is provided, it must match the version of the Database Home. Applies only to Exadata DB systems.
+func (client DatabaseClient) CreateDatabase(ctx context.Context, request CreateDatabaseRequest) (response CreateDatabaseResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.createDatabase, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = CreateDatabaseResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(CreateDatabaseResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into CreateDatabaseResponse")
+	}
+	return
+}
+
+// createDatabase implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) createDatabase(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/databases")
+	if err != nil {
+		return nil, err
+	}
+
+	var response CreateDatabaseResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// CreateDbHome Creates a new Database Home in the specified DB system based on the request parameters you provide. Applies only to bare metal and Exadata DB systems.
 func (client DatabaseClient) CreateDbHome(ctx context.Context, request CreateDbHomeRequest) (response CreateDbHomeResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -476,6 +958,53 @@ func (client DatabaseClient) createDbHome(ctx context.Context, request common.OC
 	}
 
 	var response CreateDbHomeResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// CreateExadataInfrastructure Create Exadata infrastructure.
+func (client DatabaseClient) CreateExadataInfrastructure(ctx context.Context, request CreateExadataInfrastructureRequest) (response CreateExadataInfrastructureResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.createExadataInfrastructure, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = CreateExadataInfrastructureResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(CreateExadataInfrastructureResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into CreateExadataInfrastructureResponse")
+	}
+	return
+}
+
+// createExadataInfrastructure implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) createExadataInfrastructure(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/exadataInfrastructures")
+	if err != nil {
+		return nil, err
+	}
+
+	var response CreateExadataInfrastructureResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)
@@ -524,6 +1053,100 @@ func (client DatabaseClient) createExternalBackupJob(ctx context.Context, reques
 	}
 
 	var response CreateExternalBackupJobResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// CreateVmCluster Creates a VM cluster.
+func (client DatabaseClient) CreateVmCluster(ctx context.Context, request CreateVmClusterRequest) (response CreateVmClusterResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.createVmCluster, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = CreateVmClusterResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(CreateVmClusterResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into CreateVmClusterResponse")
+	}
+	return
+}
+
+// createVmCluster implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) createVmCluster(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/vmClusters")
+	if err != nil {
+		return nil, err
+	}
+
+	var response CreateVmClusterResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// CreateVmClusterNetwork Creates the VM cluster network.
+func (client DatabaseClient) CreateVmClusterNetwork(ctx context.Context, request CreateVmClusterNetworkRequest) (response CreateVmClusterNetworkResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.createVmClusterNetwork, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = CreateVmClusterNetworkResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(CreateVmClusterNetworkResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into CreateVmClusterNetworkResponse")
+	}
+	return
+}
+
+// createVmClusterNetwork implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) createVmClusterNetwork(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/exadataInfrastructures/{exadataInfrastructureId}/vmClusterNetworks")
+	if err != nil {
+		return nil, err
+	}
+
+	var response CreateVmClusterNetworkResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)
@@ -678,48 +1301,6 @@ func (client DatabaseClient) deleteAutonomousDatabase(ctx context.Context, reque
 	return response, err
 }
 
-// DeleteAutonomousDatabaseBackup Deletes manual backup. You cannot delete automatic backups using this API.
-func (client DatabaseClient) DeleteAutonomousDatabaseBackup(ctx context.Context, request DeleteAutonomousDatabaseBackupRequest) (response DeleteAutonomousDatabaseBackupResponse, err error) {
-	var ociResponse common.OCIResponse
-	policy := common.NoRetryPolicy()
-	if request.RetryPolicy() != nil {
-		policy = *request.RetryPolicy()
-	}
-	ociResponse, err = common.Retry(ctx, request, client.deleteAutonomousDatabaseBackup, policy)
-	if err != nil {
-		if ociResponse != nil {
-			response = DeleteAutonomousDatabaseBackupResponse{RawResponse: ociResponse.HTTPResponse()}
-		}
-		return
-	}
-	if convertedResponse, ok := ociResponse.(DeleteAutonomousDatabaseBackupResponse); ok {
-		response = convertedResponse
-	} else {
-		err = fmt.Errorf("failed to convert OCIResponse into DeleteAutonomousDatabaseBackupResponse")
-	}
-	return
-}
-
-// deleteAutonomousDatabaseBackup implements the OCIOperation interface (enables retrying operations)
-func (client DatabaseClient) deleteAutonomousDatabaseBackup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/autonomousDatabaseBackups/{autonomousDatabaseBackupId}")
-	if err != nil {
-		return nil, err
-	}
-
-	var response DeleteAutonomousDatabaseBackupResponse
-	var httpResponse *http.Response
-	httpResponse, err = client.Call(ctx, &httpRequest)
-	defer common.CloseBodyIfValid(httpResponse)
-	response.RawResponse = httpResponse
-	if err != nil {
-		return response, err
-	}
-
-	err = common.UnmarshalResponse(httpResponse, &response)
-	return response, err
-}
-
 // DeleteBackup Deletes a full backup. You cannot delete automatic backups using this API.
 func (client DatabaseClient) DeleteBackup(ctx context.Context, request DeleteBackupRequest) (response DeleteBackupResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -762,7 +1343,94 @@ func (client DatabaseClient) deleteBackup(ctx context.Context, request common.OC
 	return response, err
 }
 
-// DeleteDbHome Deletes a DB Home. The DB Home and its database data are local to the DB system and will be lost when it is deleted. Oracle recommends that you back up any data in the DB system prior to deleting it.
+// DeleteBackupDestination Deletes a backup destination.
+func (client DatabaseClient) DeleteBackupDestination(ctx context.Context, request DeleteBackupDestinationRequest) (response DeleteBackupDestinationResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.deleteBackupDestination, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = DeleteBackupDestinationResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(DeleteBackupDestinationResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into DeleteBackupDestinationResponse")
+	}
+	return
+}
+
+// deleteBackupDestination implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) deleteBackupDestination(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/backupDestinations/{backupDestinationId}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response DeleteBackupDestinationResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// DeleteDatabase Deletes the database. Applies only to Exadata DB systems.
+// The data in this database is local to the DB system and will be lost when the database is deleted. Oracle recommends that you back up any data in the DB system prior to deleting it. You can use the `performFinalBackup` parameter to have the Exadata DB system database backed up before it is deleted.
+func (client DatabaseClient) DeleteDatabase(ctx context.Context, request DeleteDatabaseRequest) (response DeleteDatabaseResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.deleteDatabase, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = DeleteDatabaseResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(DeleteDatabaseResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into DeleteDatabaseResponse")
+	}
+	return
+}
+
+// deleteDatabase implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) deleteDatabase(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/databases/{databaseId}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response DeleteDatabaseResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// DeleteDbHome Deletes a Database Home. Applies only to bare metal and Exadata DB systems.
+// The Database Home and its database data are local to the DB system, and on a bare metal DB system, both are lost when you delete the Database Home. Oracle recommends that you back up any data on the DB system before you delete it. You can use the `performFinalBackup` parameter with this operation on bare metal DB systems.
+// On an Exadata DB system, the delete request is rejected if the Database Home is not empty. You must terminate all databases in the Database Home before you delete the home. The `performFinalBackup` parameter is not used with this operation on Exadata DB systems.
 func (client DatabaseClient) DeleteDbHome(ctx context.Context, request DeleteDbHomeRequest) (response DeleteDbHomeResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -795,6 +1463,266 @@ func (client DatabaseClient) deleteDbHome(ctx context.Context, request common.OC
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// DeleteExadataInfrastructure Deletes the Exadata infrastructure.
+func (client DatabaseClient) DeleteExadataInfrastructure(ctx context.Context, request DeleteExadataInfrastructureRequest) (response DeleteExadataInfrastructureResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.deleteExadataInfrastructure, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = DeleteExadataInfrastructureResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(DeleteExadataInfrastructureResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into DeleteExadataInfrastructureResponse")
+	}
+	return
+}
+
+// deleteExadataInfrastructure implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) deleteExadataInfrastructure(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/exadataInfrastructures/{exadataInfrastructureId}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response DeleteExadataInfrastructureResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// DeleteVmCluster Deletes the specified VM cluster.
+func (client DatabaseClient) DeleteVmCluster(ctx context.Context, request DeleteVmClusterRequest) (response DeleteVmClusterResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.deleteVmCluster, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = DeleteVmClusterResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(DeleteVmClusterResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into DeleteVmClusterResponse")
+	}
+	return
+}
+
+// deleteVmCluster implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) deleteVmCluster(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/vmClusters/{vmClusterId}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response DeleteVmClusterResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// DeleteVmClusterNetwork Deletes the specified VM cluster network.
+func (client DatabaseClient) DeleteVmClusterNetwork(ctx context.Context, request DeleteVmClusterNetworkRequest) (response DeleteVmClusterNetworkResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.deleteVmClusterNetwork, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = DeleteVmClusterNetworkResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(DeleteVmClusterNetworkResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into DeleteVmClusterNetworkResponse")
+	}
+	return
+}
+
+// deleteVmClusterNetwork implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) deleteVmClusterNetwork(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/exadataInfrastructures/{exadataInfrastructureId}/vmClusterNetworks/{vmClusterNetworkId}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response DeleteVmClusterNetworkResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// DeregisterAutonomousDatabaseDataSafe Asynchronously deregisters this Autonomous Database with Data Safe.
+func (client DatabaseClient) DeregisterAutonomousDatabaseDataSafe(ctx context.Context, request DeregisterAutonomousDatabaseDataSafeRequest) (response DeregisterAutonomousDatabaseDataSafeResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.deregisterAutonomousDatabaseDataSafe, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = DeregisterAutonomousDatabaseDataSafeResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(DeregisterAutonomousDatabaseDataSafeResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into DeregisterAutonomousDatabaseDataSafeResponse")
+	}
+	return
+}
+
+// deregisterAutonomousDatabaseDataSafe implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) deregisterAutonomousDatabaseDataSafe(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/autonomousDatabases/{autonomousDatabaseId}/actions/deregisterDataSafe")
+	if err != nil {
+		return nil, err
+	}
+
+	var response DeregisterAutonomousDatabaseDataSafeResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// DownloadExadataInfrastructureConfigFile Downloads the configuration file for the specified Exadata infrastructure.
+func (client DatabaseClient) DownloadExadataInfrastructureConfigFile(ctx context.Context, request DownloadExadataInfrastructureConfigFileRequest) (response DownloadExadataInfrastructureConfigFileResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.downloadExadataInfrastructureConfigFile, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = DownloadExadataInfrastructureConfigFileResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(DownloadExadataInfrastructureConfigFileResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into DownloadExadataInfrastructureConfigFileResponse")
+	}
+	return
+}
+
+// downloadExadataInfrastructureConfigFile implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) downloadExadataInfrastructureConfigFile(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/exadataInfrastructures/{exadataInfrastructureId}/actions/downloadConfigFile")
+	if err != nil {
+		return nil, err
+	}
+
+	var response DownloadExadataInfrastructureConfigFileResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// DownloadVmClusterNetworkConfigFile Downloads the configuration file for the specified VM Cluster Network.
+func (client DatabaseClient) DownloadVmClusterNetworkConfigFile(ctx context.Context, request DownloadVmClusterNetworkConfigFileRequest) (response DownloadVmClusterNetworkConfigFileResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.downloadVmClusterNetworkConfigFile, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = DownloadVmClusterNetworkConfigFileResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(DownloadVmClusterNetworkConfigFileResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into DownloadVmClusterNetworkConfigFileResponse")
+	}
+	return
+}
+
+// downloadVmClusterNetworkConfigFile implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) downloadVmClusterNetworkConfigFile(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/exadataInfrastructures/{exadataInfrastructureId}/vmClusterNetworks/{vmClusterNetworkId}/actions/downloadConfigFile")
+	if err != nil {
+		return nil, err
+	}
+
+	var response DownloadVmClusterNetworkConfigFileResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
 	response.RawResponse = httpResponse
 	if err != nil {
 		return response, err
@@ -932,6 +1860,53 @@ func (client DatabaseClient) generateAutonomousDatabaseWallet(ctx context.Contex
 	var response GenerateAutonomousDatabaseWalletResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// GenerateRecommendedVmClusterNetwork Generates a recommended VM cluster network configuration.
+func (client DatabaseClient) GenerateRecommendedVmClusterNetwork(ctx context.Context, request GenerateRecommendedVmClusterNetworkRequest) (response GenerateRecommendedVmClusterNetworkResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.generateRecommendedVmClusterNetwork, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = GenerateRecommendedVmClusterNetworkResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(GenerateRecommendedVmClusterNetworkResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into GenerateRecommendedVmClusterNetworkResponse")
+	}
+	return
+}
+
+// generateRecommendedVmClusterNetwork implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) generateRecommendedVmClusterNetwork(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/exadataInfrastructures/{exadataInfrastructureId}/vmClusterNetworks/actions/generateRecommendedNetwork")
+	if err != nil {
+		return nil, err
+	}
+
+	var response GenerateRecommendedVmClusterNetworkResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
 	response.RawResponse = httpResponse
 	if err != nil {
 		return response, err
@@ -1151,6 +2126,90 @@ func (client DatabaseClient) getAutonomousDatabaseBackup(ctx context.Context, re
 	return response, err
 }
 
+// GetAutonomousDatabaseRegionalWallet Gets the Autonomous Database regional wallet details.
+func (client DatabaseClient) GetAutonomousDatabaseRegionalWallet(ctx context.Context, request GetAutonomousDatabaseRegionalWalletRequest) (response GetAutonomousDatabaseRegionalWalletResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.getAutonomousDatabaseRegionalWallet, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = GetAutonomousDatabaseRegionalWalletResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(GetAutonomousDatabaseRegionalWalletResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into GetAutonomousDatabaseRegionalWalletResponse")
+	}
+	return
+}
+
+// getAutonomousDatabaseRegionalWallet implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) getAutonomousDatabaseRegionalWallet(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/autonomousDatabases/wallet")
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetAutonomousDatabaseRegionalWalletResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// GetAutonomousDatabaseWallet Gets the wallet details for the specified Autonomous Database.
+func (client DatabaseClient) GetAutonomousDatabaseWallet(ctx context.Context, request GetAutonomousDatabaseWalletRequest) (response GetAutonomousDatabaseWalletResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.getAutonomousDatabaseWallet, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = GetAutonomousDatabaseWalletResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(GetAutonomousDatabaseWalletResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into GetAutonomousDatabaseWalletResponse")
+	}
+	return
+}
+
+// getAutonomousDatabaseWallet implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) getAutonomousDatabaseWallet(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/autonomousDatabases/{autonomousDatabaseId}/wallet")
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetAutonomousDatabaseWalletResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // GetAutonomousExadataInfrastructure Gets information about the specified Autonomous Exadata Infrastructure.
 func (client DatabaseClient) GetAutonomousExadataInfrastructure(ctx context.Context, request GetAutonomousExadataInfrastructureRequest) (response GetAutonomousExadataInfrastructureResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -1223,6 +2282,48 @@ func (client DatabaseClient) getBackup(ctx context.Context, request common.OCIRe
 	}
 
 	var response GetBackupResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// GetBackupDestination Gets information about the specified backup destination.
+func (client DatabaseClient) GetBackupDestination(ctx context.Context, request GetBackupDestinationRequest) (response GetBackupDestinationResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.getBackupDestination, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = GetBackupDestinationResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(GetBackupDestinationResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into GetBackupDestinationResponse")
+	}
+	return
+}
+
+// getBackupDestination implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) getBackupDestination(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/backupDestinations/{backupDestinationId}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetBackupDestinationResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)
@@ -1319,7 +2420,7 @@ func (client DatabaseClient) getDatabase(ctx context.Context, request common.OCI
 	return response, err
 }
 
-// GetDbHome Gets information about the specified database home.
+// GetDbHome Gets information about the specified Database Home.
 func (client DatabaseClient) GetDbHome(ctx context.Context, request GetDbHomeRequest) (response GetDbHomeResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -1613,6 +2714,90 @@ func (client DatabaseClient) getDbSystemPatchHistoryEntry(ctx context.Context, r
 	return response, err
 }
 
+// GetExadataInfrastructure Gets information about the specified Exadata infrastructure.
+func (client DatabaseClient) GetExadataInfrastructure(ctx context.Context, request GetExadataInfrastructureRequest) (response GetExadataInfrastructureResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.getExadataInfrastructure, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = GetExadataInfrastructureResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(GetExadataInfrastructureResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into GetExadataInfrastructureResponse")
+	}
+	return
+}
+
+// getExadataInfrastructure implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) getExadataInfrastructure(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/exadataInfrastructures/{exadataInfrastructureId}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetExadataInfrastructureResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// GetExadataInfrastructureOcpus Gets details of the available and consumed OCPUs for the specified Autonomous Exadata Infrastructure instance.
+func (client DatabaseClient) GetExadataInfrastructureOcpus(ctx context.Context, request GetExadataInfrastructureOcpusRequest) (response GetExadataInfrastructureOcpusResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.getExadataInfrastructureOcpus, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = GetExadataInfrastructureOcpusResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(GetExadataInfrastructureOcpusResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into GetExadataInfrastructureOcpusResponse")
+	}
+	return
+}
+
+// getExadataInfrastructureOcpus implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) getExadataInfrastructureOcpus(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/autonomousExadataInfrastructures/{autonomousExadataInfrastructureId}/ocpus")
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetExadataInfrastructureOcpusResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // GetExadataIormConfig Gets `IORM` Setting for the requested Exadata DB System.
 // The default IORM Settings is pre-created in all the Exadata DB System.
 func (client DatabaseClient) GetExadataIormConfig(ctx context.Context, request GetExadataIormConfigRequest) (response GetExadataIormConfigResponse, err error) {
@@ -1729,6 +2914,90 @@ func (client DatabaseClient) getMaintenanceRun(ctx context.Context, request comm
 	}
 
 	var response GetMaintenanceRunResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// GetVmCluster Gets information about the specified VM cluster.
+func (client DatabaseClient) GetVmCluster(ctx context.Context, request GetVmClusterRequest) (response GetVmClusterResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.getVmCluster, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = GetVmClusterResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(GetVmClusterResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into GetVmClusterResponse")
+	}
+	return
+}
+
+// getVmCluster implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) getVmCluster(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/vmClusters/{vmClusterId}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetVmClusterResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// GetVmClusterNetwork Gets information about the specified VM cluster network.
+func (client DatabaseClient) GetVmClusterNetwork(ctx context.Context, request GetVmClusterNetworkRequest) (response GetVmClusterNetworkResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.getVmClusterNetwork, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = GetVmClusterNetworkResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(GetVmClusterNetworkResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into GetVmClusterNetworkResponse")
+	}
+	return
+}
+
+// getVmClusterNetwork implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) getVmClusterNetwork(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/exadataInfrastructures/{exadataInfrastructureId}/vmClusterNetworks/{vmClusterNetworkId}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetVmClusterNetworkResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)
@@ -2049,6 +3318,48 @@ func (client DatabaseClient) listAutonomousDatabases(ctx context.Context, reques
 	return response, err
 }
 
+// ListAutonomousDbPreviewVersions Gets a list of supported Autonomous Database versions. Note that preview version software is only available for serverless deployments (https://docs.cloud.oracle.com/Content/Database/Concepts/adboverview.htm#AEI).
+func (client DatabaseClient) ListAutonomousDbPreviewVersions(ctx context.Context, request ListAutonomousDbPreviewVersionsRequest) (response ListAutonomousDbPreviewVersionsResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listAutonomousDbPreviewVersions, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ListAutonomousDbPreviewVersionsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListAutonomousDbPreviewVersionsResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListAutonomousDbPreviewVersionsResponse")
+	}
+	return
+}
+
+// listAutonomousDbPreviewVersions implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) listAutonomousDbPreviewVersions(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/autonomousDbPreviewVersions")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListAutonomousDbPreviewVersionsResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // ListAutonomousExadataInfrastructureShapes Gets a list of the shapes that can be used to launch a new Autonomous Exadata Infrastructure DB system. The shape determines resources to allocate to the DB system (CPU cores, memory and storage).
 func (client DatabaseClient) ListAutonomousExadataInfrastructureShapes(ctx context.Context, request ListAutonomousExadataInfrastructureShapesRequest) (response ListAutonomousExadataInfrastructureShapesResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -2121,6 +3432,48 @@ func (client DatabaseClient) listAutonomousExadataInfrastructures(ctx context.Co
 	}
 
 	var response ListAutonomousExadataInfrastructuresResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ListBackupDestination Gets a list of backup destinations in the specified compartment.
+func (client DatabaseClient) ListBackupDestination(ctx context.Context, request ListBackupDestinationRequest) (response ListBackupDestinationResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listBackupDestination, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ListBackupDestinationResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListBackupDestinationResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListBackupDestinationResponse")
+	}
+	return
+}
+
+// listBackupDestination implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) listBackupDestination(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/backupDestinations")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListBackupDestinationResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)
@@ -2217,7 +3570,7 @@ func (client DatabaseClient) listDataGuardAssociations(ctx context.Context, requ
 	return response, err
 }
 
-// ListDatabases Gets a list of the databases in the specified database home.
+// ListDatabases Gets a list of the databases in the specified Database Home.
 func (client DatabaseClient) ListDatabases(ctx context.Context, request ListDatabasesRequest) (response ListDatabasesResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -2259,7 +3612,7 @@ func (client DatabaseClient) listDatabases(ctx context.Context, request common.O
 	return response, err
 }
 
-// ListDbHomePatchHistoryEntries Gets history of the actions taken for patches for the specified database home.
+// ListDbHomePatchHistoryEntries Gets history of the actions taken for patches for the specified Database Home.
 func (client DatabaseClient) ListDbHomePatchHistoryEntries(ctx context.Context, request ListDbHomePatchHistoryEntriesRequest) (response ListDbHomePatchHistoryEntriesResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -2301,7 +3654,7 @@ func (client DatabaseClient) listDbHomePatchHistoryEntries(ctx context.Context, 
 	return response, err
 }
 
-// ListDbHomePatches Lists patches applicable to the requested database home.
+// ListDbHomePatches Lists patches applicable to the requested Database Home.
 func (client DatabaseClient) ListDbHomePatches(ctx context.Context, request ListDbHomePatchesRequest) (response ListDbHomePatchesResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -2343,7 +3696,7 @@ func (client DatabaseClient) listDbHomePatches(ctx context.Context, request comm
 	return response, err
 }
 
-// ListDbHomes Gets a list of database homes in the specified DB system and compartment. A database home is a directory where Oracle Database software is installed.
+// ListDbHomes Gets a list of Database Homes in the specified DB system and compartment. A Database Home is a directory where Oracle Database software is installed.
 func (client DatabaseClient) ListDbHomes(ctx context.Context, request ListDbHomesRequest) (response ListDbHomesResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -2638,6 +3991,90 @@ func (client DatabaseClient) listDbVersions(ctx context.Context, request common.
 	return response, err
 }
 
+// ListExadataInfrastructures Gets a list of the Exadata infrastructure in the specified compartment.
+func (client DatabaseClient) ListExadataInfrastructures(ctx context.Context, request ListExadataInfrastructuresRequest) (response ListExadataInfrastructuresResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listExadataInfrastructures, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ListExadataInfrastructuresResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListExadataInfrastructuresResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListExadataInfrastructuresResponse")
+	}
+	return
+}
+
+// listExadataInfrastructures implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) listExadataInfrastructures(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/exadataInfrastructures")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListExadataInfrastructuresResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ListGiVersions Gets a list of supported GI versions for VM Cluster.
+func (client DatabaseClient) ListGiVersions(ctx context.Context, request ListGiVersionsRequest) (response ListGiVersionsResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listGiVersions, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ListGiVersionsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListGiVersionsResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListGiVersionsResponse")
+	}
+	return
+}
+
+// listGiVersions implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) listGiVersions(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/giVersions")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListGiVersionsResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // ListMaintenanceRuns Gets a list of the Maintenance Runs in the specified compartment.
 func (client DatabaseClient) ListMaintenanceRuns(ctx context.Context, request ListMaintenanceRunsRequest) (response ListMaintenanceRunsResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -2668,6 +4105,179 @@ func (client DatabaseClient) listMaintenanceRuns(ctx context.Context, request co
 	}
 
 	var response ListMaintenanceRunsResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ListVmClusterNetworks Gets a list of the VM cluster networks in the specified compartment.
+func (client DatabaseClient) ListVmClusterNetworks(ctx context.Context, request ListVmClusterNetworksRequest) (response ListVmClusterNetworksResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listVmClusterNetworks, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ListVmClusterNetworksResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListVmClusterNetworksResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListVmClusterNetworksResponse")
+	}
+	return
+}
+
+// listVmClusterNetworks implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) listVmClusterNetworks(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/exadataInfrastructures/{exadataInfrastructureId}/vmClusterNetworks")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListVmClusterNetworksResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ListVmClusters Gets a list of the VM clusters in the specified compartment.
+func (client DatabaseClient) ListVmClusters(ctx context.Context, request ListVmClustersRequest) (response ListVmClustersResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listVmClusters, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ListVmClustersResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListVmClustersResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListVmClustersResponse")
+	}
+	return
+}
+
+// listVmClusters implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) listVmClusters(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/vmClusters")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListVmClustersResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// MoveDatabase Moves the specified database from current DB Home to target (new) DB Home.
+func (client DatabaseClient) MoveDatabase(ctx context.Context, request MoveDatabaseRequest) (response MoveDatabaseResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.moveDatabase, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = MoveDatabaseResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(MoveDatabaseResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into MoveDatabaseResponse")
+	}
+	return
+}
+
+// moveDatabase implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) moveDatabase(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/databases/{databaseId}/actions/move")
+	if err != nil {
+		return nil, err
+	}
+
+	var response MoveDatabaseResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// RegisterAutonomousDatabaseDataSafe Asynchronously registers this Autonomous Database with Data Safe.
+func (client DatabaseClient) RegisterAutonomousDatabaseDataSafe(ctx context.Context, request RegisterAutonomousDatabaseDataSafeRequest) (response RegisterAutonomousDatabaseDataSafeResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.registerAutonomousDatabaseDataSafe, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = RegisterAutonomousDatabaseDataSafeResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(RegisterAutonomousDatabaseDataSafeResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into RegisterAutonomousDatabaseDataSafeResponse")
+	}
+	return
+}
+
+// registerAutonomousDatabaseDataSafe implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) registerAutonomousDatabaseDataSafe(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/autonomousDatabases/{autonomousDatabaseId}/actions/registerDataSafe")
+	if err != nil {
+		return nil, err
+	}
+
+	var response RegisterAutonomousDatabaseDataSafeResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)
@@ -3228,7 +4838,7 @@ func (client DatabaseClient) terminateDbSystem(ctx context.Context, request comm
 	return response, err
 }
 
-// UpdateAutonomousContainerDatabase Updates the properties of an Autonomous Container Database, such as the CPU core count and storage size.
+// UpdateAutonomousContainerDatabase Updates the properties of an Autonomous Container Database, such as the OCPU core count and storage size.
 func (client DatabaseClient) UpdateAutonomousContainerDatabase(ctx context.Context, request UpdateAutonomousContainerDatabaseRequest) (response UpdateAutonomousContainerDatabaseResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -3312,7 +4922,7 @@ func (client DatabaseClient) updateAutonomousDataWarehouse(ctx context.Context, 
 	return response, err
 }
 
-// UpdateAutonomousDatabase Updates the specified Autonomous Database with a new CPU core count and size.
+// UpdateAutonomousDatabase Updates one or more attributes of the specified Autonomous Database. See the UpdateAutonomousDatabaseDetails resource for a full list of attributes that can be updated.
 func (client DatabaseClient) UpdateAutonomousDatabase(ctx context.Context, request UpdateAutonomousDatabaseRequest) (response UpdateAutonomousDatabaseResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -3342,6 +4952,90 @@ func (client DatabaseClient) updateAutonomousDatabase(ctx context.Context, reque
 	}
 
 	var response UpdateAutonomousDatabaseResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// UpdateAutonomousDatabaseRegionalWallet Updates the Autonomous Database regional wallet.
+func (client DatabaseClient) UpdateAutonomousDatabaseRegionalWallet(ctx context.Context, request UpdateAutonomousDatabaseRegionalWalletRequest) (response UpdateAutonomousDatabaseRegionalWalletResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.updateAutonomousDatabaseRegionalWallet, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = UpdateAutonomousDatabaseRegionalWalletResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(UpdateAutonomousDatabaseRegionalWalletResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into UpdateAutonomousDatabaseRegionalWalletResponse")
+	}
+	return
+}
+
+// updateAutonomousDatabaseRegionalWallet implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) updateAutonomousDatabaseRegionalWallet(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/autonomousDatabases/wallet")
+	if err != nil {
+		return nil, err
+	}
+
+	var response UpdateAutonomousDatabaseRegionalWalletResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// UpdateAutonomousDatabaseWallet Updates the wallet for the specified Autonomous Database.
+func (client DatabaseClient) UpdateAutonomousDatabaseWallet(ctx context.Context, request UpdateAutonomousDatabaseWalletRequest) (response UpdateAutonomousDatabaseWalletResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.updateAutonomousDatabaseWallet, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = UpdateAutonomousDatabaseWalletResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(UpdateAutonomousDatabaseWalletResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into UpdateAutonomousDatabaseWalletResponse")
+	}
+	return
+}
+
+// updateAutonomousDatabaseWallet implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) updateAutonomousDatabaseWallet(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/autonomousDatabases/{autonomousDatabaseId}/wallet")
+	if err != nil {
+		return nil, err
+	}
+
+	var response UpdateAutonomousDatabaseWalletResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)
@@ -3384,6 +5078,50 @@ func (client DatabaseClient) updateAutonomousExadataInfrastructure(ctx context.C
 	}
 
 	var response UpdateAutonomousExadataInfrastructureResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// UpdateBackupDestination If no database is associated with the backup destination:
+// - For a RECOVERY_APPLIANCE backup destination, updates the connection string and/or the list of VPC users.
+// - For an NFS backup destination, updates the NFS location.
+func (client DatabaseClient) UpdateBackupDestination(ctx context.Context, request UpdateBackupDestinationRequest) (response UpdateBackupDestinationResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.updateBackupDestination, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = UpdateBackupDestinationResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(UpdateBackupDestinationResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into UpdateBackupDestinationResponse")
+	}
+	return
+}
+
+// updateBackupDestination implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) updateBackupDestination(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/backupDestinations/{backupDestinationId}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response UpdateBackupDestinationResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)
@@ -3522,6 +5260,48 @@ func (client DatabaseClient) updateDbSystem(ctx context.Context, request common.
 	return response, err
 }
 
+// UpdateExadataInfrastructure Updates the Exadata infrastructure.
+func (client DatabaseClient) UpdateExadataInfrastructure(ctx context.Context, request UpdateExadataInfrastructureRequest) (response UpdateExadataInfrastructureResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.updateExadataInfrastructure, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = UpdateExadataInfrastructureResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(UpdateExadataInfrastructureResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into UpdateExadataInfrastructureResponse")
+	}
+	return
+}
+
+// updateExadataInfrastructure implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) updateExadataInfrastructure(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/exadataInfrastructures/{exadataInfrastructureId}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response UpdateExadataInfrastructureResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // UpdateExadataIormConfig Update `IORM` Settings for the requested Exadata DB System.
 func (client DatabaseClient) UpdateExadataIormConfig(ctx context.Context, request UpdateExadataIormConfigRequest) (response UpdateExadataIormConfigResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -3594,6 +5374,137 @@ func (client DatabaseClient) updateMaintenanceRun(ctx context.Context, request c
 	}
 
 	var response UpdateMaintenanceRunResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// UpdateVmCluster Updates the specified VM cluster.
+func (client DatabaseClient) UpdateVmCluster(ctx context.Context, request UpdateVmClusterRequest) (response UpdateVmClusterResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.updateVmCluster, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = UpdateVmClusterResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(UpdateVmClusterResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into UpdateVmClusterResponse")
+	}
+	return
+}
+
+// updateVmCluster implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) updateVmCluster(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/vmClusters/{vmClusterId}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response UpdateVmClusterResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// UpdateVmClusterNetwork Updates the specified VM cluster network.
+func (client DatabaseClient) UpdateVmClusterNetwork(ctx context.Context, request UpdateVmClusterNetworkRequest) (response UpdateVmClusterNetworkResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.updateVmClusterNetwork, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = UpdateVmClusterNetworkResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(UpdateVmClusterNetworkResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into UpdateVmClusterNetworkResponse")
+	}
+	return
+}
+
+// updateVmClusterNetwork implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) updateVmClusterNetwork(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/exadataInfrastructures/{exadataInfrastructureId}/vmClusterNetworks/{vmClusterNetworkId}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response UpdateVmClusterNetworkResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ValidateVmClusterNetwork Validates the specified VM cluster network.
+func (client DatabaseClient) ValidateVmClusterNetwork(ctx context.Context, request ValidateVmClusterNetworkRequest) (response ValidateVmClusterNetworkResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.validateVmClusterNetwork, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ValidateVmClusterNetworkResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ValidateVmClusterNetworkResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ValidateVmClusterNetworkResponse")
+	}
+	return
+}
+
+// validateVmClusterNetwork implements the OCIOperation interface (enables retrying operations)
+func (client DatabaseClient) validateVmClusterNetwork(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/exadataInfrastructures/{exadataInfrastructureId}/vmClusterNetworks/{vmClusterNetworkId}/actions/validate")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ValidateVmClusterNetworkResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)

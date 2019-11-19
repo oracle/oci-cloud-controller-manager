@@ -1,9 +1,13 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// APIs for Networking Service, Compute Service, and Block Volume Service.
+// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
+// to manage resources such as virtual cloud networks (VCNs), compute instances, and
+// block storage volumes.
 //
 
 package core
@@ -72,6 +76,7 @@ type CrossConnectMapping struct {
 	// session goes from Oracle to a provider, this is the BGP IPv6 address of the
 	// provider's edge router. Only subnet masks from /64 up to /127 are allowed.
 	// There's one exception: for a public virtual circuit, Oracle specifies the BGP IPv6 addresses.
+	// Note that IPv6 addressing is currently supported only in the Government Cloud.
 	// Example: `2001:db8::1/64`
 	CustomerBgpPeeringIpv6 *string `mandatory:"false" json:"customerBgpPeeringIpv6"`
 
@@ -80,6 +85,7 @@ type CrossConnectMapping struct {
 	// the customer specifies this information. If the session goes from Oracle to
 	// a provider's edge router, the provider specifies this.
 	// There's one exception: for a public virtual circuit, Oracle specifies the BGP IPv6 addresses.
+	// Note that IPv6 addressing is currently supported only in the Government Cloud.
 	// Example: `2001:db8::2/64`
 	OracleBgpPeeringIpv6 *string `mandatory:"false" json:"oracleBgpPeeringIpv6"`
 

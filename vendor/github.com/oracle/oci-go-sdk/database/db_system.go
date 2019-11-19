@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Database Service API
@@ -66,8 +66,19 @@ type DbSystem struct {
 	// **Subnet Restriction:** See the subnet restrictions information for **subnetId**.
 	BackupSubnetId *string `mandatory:"false" json:"backupSubnetId"`
 
+	// A list of the OCIDs (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the network security groups (NSGs) that this DB system belongs to. Setting this to an empty array after the list is created removes the resource from all NSGs. For more information about NSGs, see Security Rules (https://docs.cloud.oracle.com/Content/Network/Concepts/securityrules.htm).
+	NsgIds []string `mandatory:"false" json:"nsgIds"`
+
+	// A list of the OCIDs (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the network security groups (NSGs) that the backup network of this DB system belongs to. Setting this to an empty array after the list is created removes the resource from all NSGs. For more information about NSGs, see Security Rules (https://docs.cloud.oracle.com/Content/Network/Concepts/securityrules.htm). Applicable only to Exadata DB systems.
+	BackupNetworkNsgIds []string `mandatory:"false" json:"backupNetworkNsgIds"`
+
+	DbSystemOptions *DbSystemOptions `mandatory:"false" json:"dbSystemOptions"`
+
 	// The time zone of the DB system. For details, see DB System Time Zones (https://docs.cloud.oracle.com/Content/Database/References/timezones.htm).
 	TimeZone *string `mandatory:"false" json:"timeZone"`
+
+	// The OCID of the key container that is used as the master encryption key in database transparent data encryption (TDE) operations.
+	KmsKeyId *string `mandatory:"false" json:"kmsKeyId"`
 
 	// The Oracle Database version of the DB system.
 	Version *string `mandatory:"false" json:"version"`
@@ -133,7 +144,6 @@ type DbSystem struct {
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
 	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
-	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
 	IormConfigCache *ExadataIormConfig `mandatory:"false" json:"iormConfigCache"`

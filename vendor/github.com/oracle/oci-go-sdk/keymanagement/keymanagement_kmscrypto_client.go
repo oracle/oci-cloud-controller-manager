@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Key Management Service API
@@ -30,7 +30,7 @@ func NewKmsCryptoClientWithConfigurationProvider(configProvider common.Configura
 	}
 
 	client = KmsCryptoClient{BaseClient: baseClient}
-	client.BasePath = "20180608"
+	client.BasePath = ""
 	client.Host = endpoint
 	err = client.setConfigurationProvider(configProvider)
 	return
@@ -51,7 +51,7 @@ func (client *KmsCryptoClient) ConfigurationProvider() *common.ConfigurationProv
 	return client.config
 }
 
-// Decrypt Decrypts data using the given DecryptDataDetails resource.
+// Decrypt Decrypts data using the given DecryptDataDetails (https://docs.cloud.oracle.com/api/#/en/key/release/datatypes/DecryptDataDetails) resource.
 func (client KmsCryptoClient) Decrypt(ctx context.Context, request DecryptRequest) (response DecryptResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -75,7 +75,7 @@ func (client KmsCryptoClient) Decrypt(ctx context.Context, request DecryptReques
 
 // decrypt implements the OCIOperation interface (enables retrying operations)
 func (client KmsCryptoClient) decrypt(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/decrypt")
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/20180608/decrypt")
 	if err != nil {
 		return nil, err
 	}
@@ -93,9 +93,8 @@ func (client KmsCryptoClient) decrypt(ctx context.Context, request common.OCIReq
 	return response, err
 }
 
-// Encrypt Encrypts data using the given EncryptDataDetails resource.
-// Plaintext included in the example request is a base64-encoded value
-// of a UTF-8 string.
+// Encrypt Encrypts data using the given EncryptDataDetails (https://docs.cloud.oracle.com/api/#/en/key/release/datatypes/EncryptDataDetails) resource.
+// Plaintext included in the example request is a base64-encoded value of a UTF-8 string.
 func (client KmsCryptoClient) Encrypt(ctx context.Context, request EncryptRequest) (response EncryptResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -119,7 +118,7 @@ func (client KmsCryptoClient) Encrypt(ctx context.Context, request EncryptReques
 
 // encrypt implements the OCIOperation interface (enables retrying operations)
 func (client KmsCryptoClient) encrypt(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/encrypt")
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/20180608/encrypt")
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +160,7 @@ func (client KmsCryptoClient) GenerateDataEncryptionKey(ctx context.Context, req
 
 // generateDataEncryptionKey implements the OCIOperation interface (enables retrying operations)
 func (client KmsCryptoClient) generateDataEncryptionKey(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/generateDataEncryptionKey")
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/20180608/generateDataEncryptionKey")
 	if err != nil {
 		return nil, err
 	}

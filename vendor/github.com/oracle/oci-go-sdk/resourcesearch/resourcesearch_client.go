@@ -1,9 +1,9 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
-// Resource Search Service
+// Search Service API
 //
-// Search for resources across your cloud infrastructure
+// Search for resources in your cloud network.
 //
 
 package resourcesearch
@@ -37,7 +37,7 @@ func NewResourceSearchClientWithConfigurationProvider(configProvider common.Conf
 
 // SetRegion overrides the region of this client.
 func (client *ResourceSearchClient) SetRegion(region string) {
-	client.Host = common.StringToRegion(region).Endpoint("query")
+	client.Host = common.StringToRegion(region).EndpointForTemplate("query", "https://query.{region}.{secondLevelDomain}")
 }
 
 // SetConfigurationProvider sets the configuration provider including the region, returns an error if is not valid
@@ -58,7 +58,7 @@ func (client *ResourceSearchClient) ConfigurationProvider() *common.Configuratio
 	return client.config
 }
 
-// GetResourceType The GetResourceType API provides a way to get the resource type information using the type name.
+// GetResourceType Gets detailed information about a resource type by using the resource type name.
 func (client ResourceSearchClient) GetResourceType(ctx context.Context, request GetResourceTypeRequest) (response GetResourceTypeResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -100,7 +100,7 @@ func (client ResourceSearchClient) getResourceType(ctx context.Context, request 
 	return response, err
 }
 
-// ListResourceTypes The ListResourceTypes API provides a way to discover all resource types that are available for searching.
+// ListResourceTypes Lists all resource types that you can search or query for.
 func (client ResourceSearchClient) ListResourceTypes(ctx context.Context, request ListResourceTypesRequest) (response ListResourceTypesResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -142,8 +142,9 @@ func (client ResourceSearchClient) listResourceTypes(ctx context.Context, reques
 	return response, err
 }
 
-// SearchResources The SearchResources API allows you to search across all of your cloud infrastructure to find resources matching different criteria that you have permissions to access.
-// Results may be across different types, and across compartments.
+// SearchResources Queries any and all compartments in the tenancy to find resources that match the specified criteria.
+// Results include resources that you have permission to view and can span different resource types.
+// You can also sort results based on a specified resource attribute.
 func (client ResourceSearchClient) SearchResources(ctx context.Context, request SearchResourcesRequest) (response SearchResourcesResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()

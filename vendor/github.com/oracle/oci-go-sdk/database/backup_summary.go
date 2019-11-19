@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Database Service API
@@ -74,11 +74,13 @@ type BackupSummaryTypeEnum string
 const (
 	BackupSummaryTypeIncremental BackupSummaryTypeEnum = "INCREMENTAL"
 	BackupSummaryTypeFull        BackupSummaryTypeEnum = "FULL"
+	BackupSummaryTypeVirtualFull BackupSummaryTypeEnum = "VIRTUAL_FULL"
 )
 
 var mappingBackupSummaryType = map[string]BackupSummaryTypeEnum{
-	"INCREMENTAL": BackupSummaryTypeIncremental,
-	"FULL":        BackupSummaryTypeFull,
+	"INCREMENTAL":  BackupSummaryTypeIncremental,
+	"FULL":         BackupSummaryTypeFull,
+	"VIRTUAL_FULL": BackupSummaryTypeVirtualFull,
 }
 
 // GetBackupSummaryTypeEnumValues Enumerates the set of values for BackupSummaryTypeEnum

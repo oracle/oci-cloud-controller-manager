@@ -22,7 +22,7 @@ func createWorkRequestClientWithProvider(p common.ConfigurationProvider, testCon
 	return client, err
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="kewilke_org_ww@oracle.com" jiraProject="BMI" opsJiraProject="COM"
 func TestWorkRequestClientGetWorkRequest(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -54,7 +54,9 @@ func TestWorkRequestClientGetWorkRequest(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetWorkRequest(context.Background(), req.Request)
@@ -65,7 +67,7 @@ func TestWorkRequestClientGetWorkRequest(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="kewilke_org_ww@oracle.com" jiraProject="BMI" opsJiraProject="COM"
 func TestWorkRequestClientListWorkRequestErrors(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -97,7 +99,9 @@ func TestWorkRequestClientListWorkRequestErrors(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*workrequests.ListWorkRequestErrorsRequest)
@@ -117,7 +121,7 @@ func TestWorkRequestClientListWorkRequestErrors(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="kewilke_org_ww@oracle.com" jiraProject="BMI" opsJiraProject="COM"
 func TestWorkRequestClientListWorkRequestLogs(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -149,7 +153,9 @@ func TestWorkRequestClientListWorkRequestLogs(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*workrequests.ListWorkRequestLogsRequest)
@@ -169,7 +175,7 @@ func TestWorkRequestClientListWorkRequestLogs(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="kewilke_org_ww@oracle.com" jiraProject="BMI" opsJiraProject="COM"
 func TestWorkRequestClientListWorkRequests(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -201,7 +207,9 @@ func TestWorkRequestClientListWorkRequests(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*workrequests.ListWorkRequestsRequest)

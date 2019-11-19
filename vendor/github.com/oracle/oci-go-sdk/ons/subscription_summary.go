@@ -1,10 +1,10 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
-// Notification API
+// Notifications API
 //
-// Use the Notification API to broadcast messages to distributed components by topic, using a publish-subscribe pattern.
-// For information about managing topics, subscriptions, and messages, see Notification Overview (https://docs.cloud.oracle.com/iaas/Content/Notification/Concepts/notificationoverview.htm).
+// Use the Notifications API to broadcast messages to distributed components by topic, using a publish-subscribe pattern.
+// For information about managing topics, subscriptions, and messages, see Notifications Overview (https://docs.cloud.oracle.com/iaas/Content/Notification/Concepts/notificationoverview.htm).
 //
 
 package ons
@@ -22,16 +22,20 @@ type SubscriptionSummary struct {
 	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the associated topic.
 	TopicId *string `mandatory:"true" json:"topicId"`
 
-	// The protocol used for the subscription. Valid values: EMAIL, HTTPS.
+	// The protocol used for the subscription.
+	// For information about subscription protocols, see
+	// To create a subscription (https://docs.cloud.oracle.com/iaas/Content/Notification/Tasks/managingtopicsandsubscriptions.htm#createSub).
 	Protocol *string `mandatory:"true" json:"protocol"`
 
-	// The endpoint of the subscription. Valid values depend on the protocol.
-	// For EMAIL, only an email address is valid. For HTTPS, only a PagerDuty URL is valid. A URL cannot exceed 512 characters.
-	// Avoid entering confidential information.
+	// A locator that corresponds to the subscription protocol.
+	// For example, an email address for a subscription that uses the `EMAIL` protocol, or a URL for a subscription that uses an HTTP-based protocol.
 	Endpoint *string `mandatory:"true" json:"endpoint"`
 
-	// The lifecycle state of the subscription. Default value for a newly created subscription: PENDING.
+	// The lifecycle state of the subscription. The status of a new subscription is PENDING; when confirmed, the subscription status changes to ACTIVE.
 	LifecycleState SubscriptionSummaryLifecycleStateEnum `mandatory:"true" json:"lifecycleState"`
+
+	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the compartment for the subscription.
+	CompartmentId *string `mandatory:"true" json:"compartmentId"`
 
 	// The time when this suscription was created.
 	CreatedTime *int64 `mandatory:"false" json:"createdTime"`

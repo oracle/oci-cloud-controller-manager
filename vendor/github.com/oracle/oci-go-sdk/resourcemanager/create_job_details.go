@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Resource Manager API
@@ -9,20 +9,23 @@
 package resourcemanager
 
 import (
+	"encoding/json"
 	"github.com/oracle/oci-go-sdk/common"
 )
 
 // CreateJobDetails Defines the requirements and properties of a job to create and run against the specified stack.
 type CreateJobDetails struct {
 
-	// OCID of the stack that is associated with the current job.
+	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the stack that is associated with the current job.
 	StackId *string `mandatory:"true" json:"stackId"`
-
-	// Terraform-specific operation to execute.
-	Operation JobOperationEnum `mandatory:"true" json:"operation"`
 
 	// Description of the job.
 	DisplayName *string `mandatory:"false" json:"displayName"`
+
+	// Terraform-specific operation to execute.
+	Operation JobOperationEnum `mandatory:"false" json:"operation,omitempty"`
+
+	JobOperationDetails CreateJobOperationDetails `mandatory:"false" json:"jobOperationDetails"`
 
 	ApplyJobPlanResolution *ApplyJobPlanResolution `mandatory:"false" json:"applyJobPlanResolution"`
 
@@ -39,4 +42,38 @@ type CreateJobDetails struct {
 
 func (m CreateJobDetails) String() string {
 	return common.PointerString(m)
+}
+
+// UnmarshalJSON unmarshals from json
+func (m *CreateJobDetails) UnmarshalJSON(data []byte) (e error) {
+	model := struct {
+		DisplayName            *string                           `json:"displayName"`
+		Operation              JobOperationEnum                  `json:"operation"`
+		JobOperationDetails    createjoboperationdetails         `json:"jobOperationDetails"`
+		ApplyJobPlanResolution *ApplyJobPlanResolution           `json:"applyJobPlanResolution"`
+		FreeformTags           map[string]string                 `json:"freeformTags"`
+		DefinedTags            map[string]map[string]interface{} `json:"definedTags"`
+		StackId                *string                           `json:"stackId"`
+	}{}
+
+	e = json.Unmarshal(data, &model)
+	if e != nil {
+		return
+	}
+	m.DisplayName = model.DisplayName
+	m.Operation = model.Operation
+	nn, e := model.JobOperationDetails.UnmarshalPolymorphicJSON(model.JobOperationDetails.JsonData)
+	if e != nil {
+		return
+	}
+	if nn != nil {
+		m.JobOperationDetails = nn.(CreateJobOperationDetails)
+	} else {
+		m.JobOperationDetails = nil
+	}
+	m.ApplyJobPlanResolution = model.ApplyJobPlanResolution
+	m.FreeformTags = model.FreeformTags
+	m.DefinedTags = model.DefinedTags
+	m.StackId = model.StackId
+	return
 }

@@ -16,7 +16,7 @@ func createStreamClientWithProvider(p common.ConfigurationProvider, testConfig T
 	return client, err
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="opc_streaming_us_grp@oracle.com" jiraProject="STREAMSTR" opsJiraProject="STREAMOSS"
 func TestStreamClientConsumerCommit(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -48,7 +48,9 @@ func TestStreamClientConsumerCommit(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.ConsumerCommit(context.Background(), req.Request)
@@ -59,7 +61,7 @@ func TestStreamClientConsumerCommit(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="opc_streaming_us_grp@oracle.com" jiraProject="STREAMSTR" opsJiraProject="STREAMOSS"
 func TestStreamClientConsumerHeartbeat(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -91,7 +93,9 @@ func TestStreamClientConsumerHeartbeat(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.ConsumerHeartbeat(context.Background(), req.Request)
@@ -102,7 +106,7 @@ func TestStreamClientConsumerHeartbeat(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="opc_streaming_us_grp@oracle.com" jiraProject="STREAMSTR" opsJiraProject="STREAMOSS"
 func TestStreamClientCreateCursor(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -134,7 +138,9 @@ func TestStreamClientCreateCursor(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.CreateCursor(context.Background(), req.Request)
@@ -145,7 +151,7 @@ func TestStreamClientCreateCursor(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="opc_streaming_us_grp@oracle.com" jiraProject="STREAMSTR" opsJiraProject="STREAMOSS"
 func TestStreamClientCreateGroupCursor(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -177,7 +183,9 @@ func TestStreamClientCreateGroupCursor(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.CreateGroupCursor(context.Background(), req.Request)
@@ -188,7 +196,7 @@ func TestStreamClientCreateGroupCursor(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="opc_streaming_us_grp@oracle.com" jiraProject="STREAMSTR" opsJiraProject="STREAMOSS"
 func TestStreamClientGetGroup(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -220,7 +228,9 @@ func TestStreamClientGetGroup(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetGroup(context.Background(), req.Request)
@@ -231,7 +241,7 @@ func TestStreamClientGetGroup(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="opc_streaming_us_grp@oracle.com" jiraProject="STREAMSTR" opsJiraProject="STREAMOSS"
 func TestStreamClientGetMessages(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -263,7 +273,9 @@ func TestStreamClientGetMessages(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetMessages(context.Background(), req.Request)
@@ -274,7 +286,7 @@ func TestStreamClientGetMessages(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="opc_streaming_us_grp@oracle.com" jiraProject="STREAMSTR" opsJiraProject="STREAMOSS"
 func TestStreamClientPutMessages(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -306,7 +318,9 @@ func TestStreamClientPutMessages(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.PutMessages(context.Background(), req.Request)
@@ -317,7 +331,7 @@ func TestStreamClientPutMessages(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="opc_streaming_us_grp@oracle.com" jiraProject="STREAMSTR" opsJiraProject="STREAMOSS"
 func TestStreamClientUpdateGroup(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -349,7 +363,9 @@ func TestStreamClientUpdateGroup(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateGroup(context.Background(), req.Request)

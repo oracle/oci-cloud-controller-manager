@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Functions Service API
@@ -20,11 +20,6 @@ type UpdateApplicationDetails struct {
 	// Example: `{"MY_FUNCTION_CONFIG": "ConfVal"}`
 	// The maximum size for all configuration keys and values is limited to 4KB. This is measured as the sum of octets necessary to represent each key and value in UTF-8.
 	Config map[string]string `mandatory:"false" json:"config"`
-
-	// A syslog URL to send all function logs to. Supports tls, udp, and tcp.
-	// The syslog address must be reachable from all of the subnets configured on the application.
-	// Example: `tls://logserver.myserver:1234`
-	SysLogUrl *string `mandatory:"false" json:"sysLogUrl"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no predefined name, type, or namespace.
 	// For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).

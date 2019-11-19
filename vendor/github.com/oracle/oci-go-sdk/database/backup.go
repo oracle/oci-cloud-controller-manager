@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Database Service API
@@ -72,11 +72,13 @@ type BackupTypeEnum string
 const (
 	BackupTypeIncremental BackupTypeEnum = "INCREMENTAL"
 	BackupTypeFull        BackupTypeEnum = "FULL"
+	BackupTypeVirtualFull BackupTypeEnum = "VIRTUAL_FULL"
 )
 
 var mappingBackupType = map[string]BackupTypeEnum{
-	"INCREMENTAL": BackupTypeIncremental,
-	"FULL":        BackupTypeFull,
+	"INCREMENTAL":  BackupTypeIncremental,
+	"FULL":         BackupTypeFull,
+	"VIRTUAL_FULL": BackupTypeVirtualFull,
 }
 
 // GetBackupTypeEnumValues Enumerates the set of values for BackupTypeEnum

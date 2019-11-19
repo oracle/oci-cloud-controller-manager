@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Health Checks API
@@ -23,6 +23,12 @@ type PingMonitorSummary struct {
 	// A URL for fetching the probe results.
 	ResultsUrl *string `mandatory:"false" json:"resultsUrl"`
 
+	// The region where updates must be made and where results must be fetched from.
+	HomeRegion *string `mandatory:"false" json:"homeRegion"`
+
+	// The RFC 3339-formatted creation date and time of the probe.
+	TimeCreated *common.SDKTime `mandatory:"false" json:"timeCreated"`
+
 	// The OCID of the compartment.
 	CompartmentId *string `mandatory:"false" json:"compartmentId"`
 
@@ -46,32 +52,26 @@ type PingMonitorSummary struct {
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
-	Protocol PingMonitorSummaryProtocolEnum `mandatory:"false" json:"protocol,omitempty"`
+	Protocol PingProbeProtocolEnum `mandatory:"false" json:"protocol,omitempty"`
 }
 
 func (m PingMonitorSummary) String() string {
 	return common.PointerString(m)
 }
 
-// PingMonitorSummaryProtocolEnum Enum with underlying type: string
-type PingMonitorSummaryProtocolEnum string
+// PingMonitorSummaryProtocolEnum is an alias to type: PingProbeProtocolEnum
+// Consider using PingProbeProtocolEnum instead
+// Deprecated
+type PingMonitorSummaryProtocolEnum = PingProbeProtocolEnum
 
-// Set of constants representing the allowable values for PingMonitorSummaryProtocolEnum
+// Set of constants representing the allowable values for PingProbeProtocolEnum
+// Deprecated
 const (
-	PingMonitorSummaryProtocolIcmp PingMonitorSummaryProtocolEnum = "ICMP"
-	PingMonitorSummaryProtocolTcp  PingMonitorSummaryProtocolEnum = "TCP"
+	PingMonitorSummaryProtocolIcmp PingProbeProtocolEnum = "ICMP"
+	PingMonitorSummaryProtocolTcp  PingProbeProtocolEnum = "TCP"
 )
 
-var mappingPingMonitorSummaryProtocol = map[string]PingMonitorSummaryProtocolEnum{
-	"ICMP": PingMonitorSummaryProtocolIcmp,
-	"TCP":  PingMonitorSummaryProtocolTcp,
-}
-
-// GetPingMonitorSummaryProtocolEnumValues Enumerates the set of values for PingMonitorSummaryProtocolEnum
-func GetPingMonitorSummaryProtocolEnumValues() []PingMonitorSummaryProtocolEnum {
-	values := make([]PingMonitorSummaryProtocolEnum, 0)
-	for _, v := range mappingPingMonitorSummaryProtocol {
-		values = append(values, v)
-	}
-	return values
-}
+// GetPingMonitorSummaryProtocolEnumValues Enumerates the set of values for PingProbeProtocolEnum
+// Consider using GetPingProbeProtocolEnumValue
+// Deprecated
+var GetPingMonitorSummaryProtocolEnumValues = GetPingProbeProtocolEnumValues

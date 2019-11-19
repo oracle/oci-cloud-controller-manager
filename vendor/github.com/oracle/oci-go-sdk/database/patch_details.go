@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Database Service API
@@ -14,7 +14,7 @@ import (
 
 // PatchDetails The details about what actions to perform and using what patch to the specified target.
 // This is part of an update request that is applied to a version field on the target such
-// as DB system, database home, etc.
+// as DB system, Database Home, etc.
 type PatchDetails struct {
 
 	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the patch.

@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Budgets API
@@ -26,7 +26,7 @@ type CreateBudgetDetails struct {
 	Amount *float32 `mandatory:"true" json:"amount"`
 
 	// The reset period for the budget.
-	ResetPeriod CreateBudgetDetailsResetPeriodEnum `mandatory:"true" json:"resetPeriod"`
+	ResetPeriod ResetPeriodEnum `mandatory:"true" json:"resetPeriod"`
 
 	// This is DEPRECTAED. Set the target compartment id in targets instead.
 	TargetCompartmentId *string `mandatory:"false" json:"targetCompartmentId"`
@@ -38,7 +38,7 @@ type CreateBudgetDetails struct {
 	Description *string `mandatory:"false" json:"description"`
 
 	// The type of target on which the budget is applied.
-	TargetType CreateBudgetDetailsTargetTypeEnum `mandatory:"false" json:"targetType,omitempty"`
+	TargetType TargetTypeEnum `mandatory:"false" json:"targetType,omitempty"`
 
 	// The list of targets on which the budget is applied.
 	//   If targetType is "COMPARTMENT", targets contains list of compartment OCIDs.
@@ -61,46 +61,35 @@ func (m CreateBudgetDetails) String() string {
 	return common.PointerString(m)
 }
 
-// CreateBudgetDetailsResetPeriodEnum Enum with underlying type: string
-type CreateBudgetDetailsResetPeriodEnum string
+// CreateBudgetDetailsResetPeriodEnum is an alias to type: ResetPeriodEnum
+// Consider using ResetPeriodEnum instead
+// Deprecated
+type CreateBudgetDetailsResetPeriodEnum = ResetPeriodEnum
 
-// Set of constants representing the allowable values for CreateBudgetDetailsResetPeriodEnum
+// Set of constants representing the allowable values for ResetPeriodEnum
+// Deprecated
 const (
-	CreateBudgetDetailsResetPeriodMonthly CreateBudgetDetailsResetPeriodEnum = "MONTHLY"
+	CreateBudgetDetailsResetPeriodMonthly ResetPeriodEnum = "MONTHLY"
 )
 
-var mappingCreateBudgetDetailsResetPeriod = map[string]CreateBudgetDetailsResetPeriodEnum{
-	"MONTHLY": CreateBudgetDetailsResetPeriodMonthly,
-}
+// GetCreateBudgetDetailsResetPeriodEnumValues Enumerates the set of values for ResetPeriodEnum
+// Consider using GetResetPeriodEnumValue
+// Deprecated
+var GetCreateBudgetDetailsResetPeriodEnumValues = GetResetPeriodEnumValues
 
-// GetCreateBudgetDetailsResetPeriodEnumValues Enumerates the set of values for CreateBudgetDetailsResetPeriodEnum
-func GetCreateBudgetDetailsResetPeriodEnumValues() []CreateBudgetDetailsResetPeriodEnum {
-	values := make([]CreateBudgetDetailsResetPeriodEnum, 0)
-	for _, v := range mappingCreateBudgetDetailsResetPeriod {
-		values = append(values, v)
-	}
-	return values
-}
+// CreateBudgetDetailsTargetTypeEnum is an alias to type: TargetTypeEnum
+// Consider using TargetTypeEnum instead
+// Deprecated
+type CreateBudgetDetailsTargetTypeEnum = TargetTypeEnum
 
-// CreateBudgetDetailsTargetTypeEnum Enum with underlying type: string
-type CreateBudgetDetailsTargetTypeEnum string
-
-// Set of constants representing the allowable values for CreateBudgetDetailsTargetTypeEnum
+// Set of constants representing the allowable values for TargetTypeEnum
+// Deprecated
 const (
-	CreateBudgetDetailsTargetTypeCompartment CreateBudgetDetailsTargetTypeEnum = "COMPARTMENT"
-	CreateBudgetDetailsTargetTypeTag         CreateBudgetDetailsTargetTypeEnum = "TAG"
+	CreateBudgetDetailsTargetTypeCompartment TargetTypeEnum = "COMPARTMENT"
+	CreateBudgetDetailsTargetTypeTag         TargetTypeEnum = "TAG"
 )
 
-var mappingCreateBudgetDetailsTargetType = map[string]CreateBudgetDetailsTargetTypeEnum{
-	"COMPARTMENT": CreateBudgetDetailsTargetTypeCompartment,
-	"TAG":         CreateBudgetDetailsTargetTypeTag,
-}
-
-// GetCreateBudgetDetailsTargetTypeEnumValues Enumerates the set of values for CreateBudgetDetailsTargetTypeEnum
-func GetCreateBudgetDetailsTargetTypeEnumValues() []CreateBudgetDetailsTargetTypeEnum {
-	values := make([]CreateBudgetDetailsTargetTypeEnum, 0)
-	for _, v := range mappingCreateBudgetDetailsTargetType {
-		values = append(values, v)
-	}
-	return values
-}
+// GetCreateBudgetDetailsTargetTypeEnumValues Enumerates the set of values for TargetTypeEnum
+// Consider using GetTargetTypeEnumValue
+// Deprecated
+var GetCreateBudgetDetailsTargetTypeEnumValues = GetTargetTypeEnumValues

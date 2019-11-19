@@ -1,9 +1,10 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Monitoring API
 //
 // Use the Monitoring API to manage metric queries and alarms for assessing the health, capacity, and performance of your cloud resources.
+// Endpoints vary by operation. For PostMetric, use the `telemetry-ingestion` endpoints; for all other operations, use the `telemetry` endpoints.
 // For information about monitoring, see Monitoring Overview (https://docs.cloud.oracle.com/iaas/Content/Monitoring/Concepts/monitoringoverview.htm).
 //
 
@@ -66,9 +67,10 @@ type Alarm struct {
 	// Example: `CRITICAL`
 	Severity AlarmSeverityEnum `mandatory:"true" json:"severity"`
 
-	// An array of OCIDs (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) to which the notifications for
-	// this alarm will be delivered. An example destination is an OCID for a topic managed by the
-	// Oracle Cloud Infrastructure Notification service.
+	// A list of destinations to which the notifications for this alarm will be delivered.
+	// Each destination is represented by an OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) related to the supported destination service.
+	// For example, a destination using the Notifications service is represented by a topic OCID.
+	// Supported destination services: Notifications Service. Limit: One destination per supported destination service.
 	Destinations []string `mandatory:"true" json:"destinations"`
 
 	// Whether the alarm is enabled.
@@ -95,19 +97,25 @@ type Alarm struct {
 	// Example: `true`
 	MetricCompartmentIdInSubtree *bool `mandatory:"false" json:"metricCompartmentIdInSubtree"`
 
+	// Resource group specified as a filter for metric data retrieved by the alarm. A resource group is a custom string that can be used as a filter. Only one resource group can be applied per metric.
+	// A valid resourceGroup value starts with an alphabetical character and includes only alphanumeric characters, periods (.), underscores (_), hyphens (-), and dollar signs ($).
+	// Avoid entering confidential information.
+	// Example: `frontend-fleet`
+	ResourceGroup *string `mandatory:"false" json:"resourceGroup"`
+
 	// The time between calculated aggregation windows for the alarm. Supported value: `1m`
 	Resolution *string `mandatory:"false" json:"resolution"`
 
 	// The period of time that the condition defined in the alarm must persist before the alarm state
-	// changes from "OK" to "FIRING" or vice versa. For example, a value of 5 minutes means that the
+	// changes from "OK" to "FIRING". For example, a value of 5 minutes means that the
 	// alarm must persist in breaching the condition for five minutes before the alarm updates its
-	// state to "FIRING"; likewise, the alarm must persist in not breaching the condition for five
-	// minutes before the alarm updates its state to "OK."
+	// state to "FIRING".
 	// The duration is specified as a string in ISO 8601 format (`PT10M` for ten minutes or `PT1H`
 	// for one hour). Minimum: PT1M. Maximum: PT1H. Default: PT1M.
 	// Under the default value of PT1M, the first evaluation that breaches the alarm updates the
-	// state to "FIRING" and the first evaluation that does not breach the alarm updates the state
-	// to "OK".
+	// state to "FIRING".
+	// The alarm updates its status to "OK" when the breaching condition has been clear for
+	// the most recent minute.
 	// Example: `PT5M`
 	PendingDuration *string `mandatory:"false" json:"pendingDuration"`
 

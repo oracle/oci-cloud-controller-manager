@@ -1,9 +1,13 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// APIs for Networking Service, Compute Service, and Block Volume Service.
+// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
+// to manage resources such as virtual cloud networks (VCNs), compute instances, and
+// block storage volumes.
 //
 
 package core
@@ -36,6 +40,9 @@ type IpSecConnectionTunnel struct {
 
 	// The status of the tunnel based on IPSec protocol characteristics.
 	Status IpSecConnectionTunnelStatusEnum `mandatory:"false" json:"status,omitempty"`
+
+	// Internet Key Exchange protocol version.
+	IkeVersion IpSecConnectionTunnelIkeVersionEnum `mandatory:"false" json:"ikeVersion,omitempty"`
 
 	// A user-friendly name. Does not have to be unique, and it's changeable. Avoid
 	// entering confidential information.
@@ -80,6 +87,29 @@ var mappingIpSecConnectionTunnelStatus = map[string]IpSecConnectionTunnelStatusE
 func GetIpSecConnectionTunnelStatusEnumValues() []IpSecConnectionTunnelStatusEnum {
 	values := make([]IpSecConnectionTunnelStatusEnum, 0)
 	for _, v := range mappingIpSecConnectionTunnelStatus {
+		values = append(values, v)
+	}
+	return values
+}
+
+// IpSecConnectionTunnelIkeVersionEnum Enum with underlying type: string
+type IpSecConnectionTunnelIkeVersionEnum string
+
+// Set of constants representing the allowable values for IpSecConnectionTunnelIkeVersionEnum
+const (
+	IpSecConnectionTunnelIkeVersionV1 IpSecConnectionTunnelIkeVersionEnum = "V1"
+	IpSecConnectionTunnelIkeVersionV2 IpSecConnectionTunnelIkeVersionEnum = "V2"
+)
+
+var mappingIpSecConnectionTunnelIkeVersion = map[string]IpSecConnectionTunnelIkeVersionEnum{
+	"V1": IpSecConnectionTunnelIkeVersionV1,
+	"V2": IpSecConnectionTunnelIkeVersionV2,
+}
+
+// GetIpSecConnectionTunnelIkeVersionEnumValues Enumerates the set of values for IpSecConnectionTunnelIkeVersionEnum
+func GetIpSecConnectionTunnelIkeVersionEnumValues() []IpSecConnectionTunnelIkeVersionEnum {
+	values := make([]IpSecConnectionTunnelIkeVersionEnum, 0)
+	for _, v := range mappingIpSecConnectionTunnelIkeVersion {
 		values = append(values, v)
 	}
 	return values

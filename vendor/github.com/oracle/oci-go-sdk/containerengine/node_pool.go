@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Container Engine for Kubernetes API
@@ -11,6 +11,7 @@
 package containerengine
 
 import (
+	"encoding/json"
 	"github.com/oracle/oci-go-sdk/common"
 )
 
@@ -35,11 +36,14 @@ type NodePool struct {
 	// A list of key/value pairs to add to each underlying OCI instance in the node pool.
 	NodeMetadata map[string]string `mandatory:"false" json:"nodeMetadata"`
 
-	// The OCID of the image running on the nodes in the node pool.
+	// Deprecated. see `nodeSource`. The OCID of the image running on the nodes in the node pool.
 	NodeImageId *string `mandatory:"false" json:"nodeImageId"`
 
-	// The name of the image running on the nodes in the node pool.
+	// Deprecated. see `nodeSource`. The name of the image running on the nodes in the node pool.
 	NodeImageName *string `mandatory:"false" json:"nodeImageName"`
+
+	// Source running on the nodes in the node pool.
+	NodeSource NodeSourceOption `mandatory:"false" json:"nodeSource"`
 
 	// The name of the node shape of the nodes in the node pool.
 	NodeShape *string `mandatory:"false" json:"nodeShape"`
@@ -58,8 +62,72 @@ type NodePool struct {
 
 	// The nodes in the node pool.
 	Nodes []Node `mandatory:"false" json:"nodes"`
+
+	// The configuration of nodes in the node pool.
+	NodeConfigDetails *NodePoolNodeConfigDetails `mandatory:"false" json:"nodeConfigDetails"`
 }
 
 func (m NodePool) String() string {
 	return common.PointerString(m)
+}
+
+// UnmarshalJSON unmarshals from json
+func (m *NodePool) UnmarshalJSON(data []byte) (e error) {
+	model := struct {
+		Id                *string                    `json:"id"`
+		CompartmentId     *string                    `json:"compartmentId"`
+		ClusterId         *string                    `json:"clusterId"`
+		Name              *string                    `json:"name"`
+		KubernetesVersion *string                    `json:"kubernetesVersion"`
+		NodeMetadata      map[string]string          `json:"nodeMetadata"`
+		NodeImageId       *string                    `json:"nodeImageId"`
+		NodeImageName     *string                    `json:"nodeImageName"`
+		NodeSource        nodesourceoption           `json:"nodeSource"`
+		NodeShape         *string                    `json:"nodeShape"`
+		InitialNodeLabels []KeyValue                 `json:"initialNodeLabels"`
+		SshPublicKey      *string                    `json:"sshPublicKey"`
+		QuantityPerSubnet *int                       `json:"quantityPerSubnet"`
+		SubnetIds         []string                   `json:"subnetIds"`
+		Nodes             []Node                     `json:"nodes"`
+		NodeConfigDetails *NodePoolNodeConfigDetails `json:"nodeConfigDetails"`
+	}{}
+
+	e = json.Unmarshal(data, &model)
+	if e != nil {
+		return
+	}
+	m.Id = model.Id
+	m.CompartmentId = model.CompartmentId
+	m.ClusterId = model.ClusterId
+	m.Name = model.Name
+	m.KubernetesVersion = model.KubernetesVersion
+	m.NodeMetadata = model.NodeMetadata
+	m.NodeImageId = model.NodeImageId
+	m.NodeImageName = model.NodeImageName
+	nn, e := model.NodeSource.UnmarshalPolymorphicJSON(model.NodeSource.JsonData)
+	if e != nil {
+		return
+	}
+	if nn != nil {
+		m.NodeSource = nn.(NodeSourceOption)
+	} else {
+		m.NodeSource = nil
+	}
+	m.NodeShape = model.NodeShape
+	m.InitialNodeLabels = make([]KeyValue, len(model.InitialNodeLabels))
+	for i, n := range model.InitialNodeLabels {
+		m.InitialNodeLabels[i] = n
+	}
+	m.SshPublicKey = model.SshPublicKey
+	m.QuantityPerSubnet = model.QuantityPerSubnet
+	m.SubnetIds = make([]string, len(model.SubnetIds))
+	for i, n := range model.SubnetIds {
+		m.SubnetIds[i] = n
+	}
+	m.Nodes = make([]Node, len(model.Nodes))
+	for i, n := range model.Nodes {
+		m.Nodes[i] = n
+	}
+	m.NodeConfigDetails = model.NodeConfigDetails
+	return
 }

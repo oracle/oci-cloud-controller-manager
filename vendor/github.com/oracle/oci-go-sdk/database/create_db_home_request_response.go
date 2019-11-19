@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package database
@@ -11,8 +11,8 @@ import (
 // CreateDbHomeRequest wrapper for the CreateDbHome operation
 type CreateDbHomeRequest struct {
 
-	// Request to create a new database home.
-	CreateDbHomeWithDbSystemIdBase `contributesTo:"body"`
+	// Request to create a new Database Home.
+	CreateDbHomeWithDbSystemIdDetails CreateDbHomeBase `contributesTo:"body"`
 
 	// A token that uniquely identifies a request so it can be retried in case of a timeout or
 	// server error without risk of executing that same action again. Retry tokens expire after 24
@@ -52,6 +52,9 @@ type CreateDbHomeResponse struct {
 
 	// The DbHome instance
 	DbHome `presentIn:"body"`
+
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the work request. Multiple OCID values are returned in a comma-separated list. Use GetWorkRequest with a work request OCID to track the status of the request.
+	OpcWorkRequestId *string `presentIn:"header" name:"opc-work-request-id"`
 
 	// For optimistic concurrency control. See `if-match`.
 	Etag *string `presentIn:"header" name:"etag"`

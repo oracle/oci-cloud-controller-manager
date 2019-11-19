@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Database Service API
@@ -37,6 +37,9 @@ type DbBackupConfig struct {
 	// For information about valid region names, see
 	// Regions and Availability Domains (https://docs.cloud.oracle.com/Content/General/Concepts/regions.htm).
 	RemoteRegion *string `mandatory:"false" json:"remoteRegion"`
+
+	// Backup destination details.
+	BackupDestinationDetails []BackupDestinationDetails `mandatory:"false" json:"backupDestinationDetails"`
 }
 
 func (m DbBackupConfig) String() string {

@@ -54,10 +54,57 @@ func TestResourceManagerClientCancelJob(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.CancelJob(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="team_oci_orm_us_grp@oracle.com" jiraProject="ORCH" opsJiraProject="OS"
+func TestResourceManagerClientChangeStackCompartment(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("resourcemanager", "ChangeStackCompartment")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ChangeStackCompartment is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("resourcemanager", "ResourceManager", "ChangeStackCompartment", createResourceManagerClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(resourcemanager.ResourceManagerClient)
+
+	body, err := testClient.getRequests("resourcemanager", "ChangeStackCompartment")
+	assert.NoError(t, err)
+
+	type ChangeStackCompartmentRequestInfo struct {
+		ContainerId string
+		Request     resourcemanager.ChangeStackCompartmentRequest
+	}
+
+	var requests []ChangeStackCompartmentRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.ChangeStackCompartment(context.Background(), req.Request)
 			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
 			assert.NoError(t, err)
 			assert.Empty(t, message, message)
@@ -97,7 +144,9 @@ func TestResourceManagerClientCreateJob(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.CreateJob(context.Background(), req.Request)
@@ -140,7 +189,9 @@ func TestResourceManagerClientCreateStack(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.CreateStack(context.Background(), req.Request)
@@ -183,7 +234,9 @@ func TestResourceManagerClientDeleteStack(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.DeleteStack(context.Background(), req.Request)
@@ -226,7 +279,9 @@ func TestResourceManagerClientGetJob(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetJob(context.Background(), req.Request)
@@ -269,7 +324,9 @@ func TestResourceManagerClientGetJobLogs(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*resourcemanager.GetJobLogsRequest)
@@ -321,7 +378,9 @@ func TestResourceManagerClientGetJobLogsContent(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetJobLogsContent(context.Background(), req.Request)
@@ -364,7 +423,9 @@ func TestResourceManagerClientGetJobTfConfig(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetJobTfConfig(context.Background(), req.Request)
@@ -407,7 +468,9 @@ func TestResourceManagerClientGetJobTfState(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetJobTfState(context.Background(), req.Request)
@@ -450,7 +513,9 @@ func TestResourceManagerClientGetStack(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetStack(context.Background(), req.Request)
@@ -493,10 +558,102 @@ func TestResourceManagerClientGetStackTfConfig(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetStackTfConfig(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="team_oci_orm_us_grp@oracle.com" jiraProject="ORCH" opsJiraProject="OS"
+func TestResourceManagerClientGetStackTfState(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("resourcemanager", "GetStackTfState")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("GetStackTfState is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("resourcemanager", "ResourceManager", "GetStackTfState", createResourceManagerClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(resourcemanager.ResourceManagerClient)
+
+	body, err := testClient.getRequests("resourcemanager", "GetStackTfState")
+	assert.NoError(t, err)
+
+	type GetStackTfStateRequestInfo struct {
+		ContainerId string
+		Request     resourcemanager.GetStackTfStateRequest
+	}
+
+	var requests []GetStackTfStateRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.GetStackTfState(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="team_oci_orm_us_grp@oracle.com" jiraProject="ORCH" opsJiraProject="OS"
+func TestResourceManagerClientGetWorkRequest(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("resourcemanager", "GetWorkRequest")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("GetWorkRequest is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("resourcemanager", "ResourceManager", "GetWorkRequest", createResourceManagerClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(resourcemanager.ResourceManagerClient)
+
+	body, err := testClient.getRequests("resourcemanager", "GetWorkRequest")
+	assert.NoError(t, err)
+
+	type GetWorkRequestRequestInfo struct {
+		ContainerId string
+		Request     resourcemanager.GetWorkRequestRequest
+	}
+
+	var requests []GetWorkRequestRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.GetWorkRequest(context.Background(), req.Request)
 			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
 			assert.NoError(t, err)
 			assert.Empty(t, message, message)
@@ -536,7 +693,9 @@ func TestResourceManagerClientListJobs(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*resourcemanager.ListJobsRequest)
@@ -588,7 +747,9 @@ func TestResourceManagerClientListStacks(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*resourcemanager.ListStacksRequest)
@@ -599,6 +760,213 @@ func TestResourceManagerClientListStacks(t *testing.T) {
 			typedListResponses := make([]resourcemanager.ListStacksResponse, len(listResponses))
 			for i, lr := range listResponses {
 				typedListResponses[i] = lr.(resourcemanager.ListStacksResponse)
+			}
+
+			message, err := testClient.validateResult(request.ContainerId, request.Request, typedListResponses, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="team_oci_orm_us_grp@oracle.com" jiraProject="ORCH" opsJiraProject="OS"
+func TestResourceManagerClientListTerraformVersions(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("resourcemanager", "ListTerraformVersions")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ListTerraformVersions is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("resourcemanager", "ResourceManager", "ListTerraformVersions", createResourceManagerClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(resourcemanager.ResourceManagerClient)
+
+	body, err := testClient.getRequests("resourcemanager", "ListTerraformVersions")
+	assert.NoError(t, err)
+
+	type ListTerraformVersionsRequestInfo struct {
+		ContainerId string
+		Request     resourcemanager.ListTerraformVersionsRequest
+	}
+
+	var requests []ListTerraformVersionsRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.ListTerraformVersions(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="team_oci_orm_us_grp@oracle.com" jiraProject="ORCH" opsJiraProject="OS"
+func TestResourceManagerClientListWorkRequestErrors(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("resourcemanager", "ListWorkRequestErrors")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ListWorkRequestErrors is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("resourcemanager", "ResourceManager", "ListWorkRequestErrors", createResourceManagerClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(resourcemanager.ResourceManagerClient)
+
+	body, err := testClient.getRequests("resourcemanager", "ListWorkRequestErrors")
+	assert.NoError(t, err)
+
+	type ListWorkRequestErrorsRequestInfo struct {
+		ContainerId string
+		Request     resourcemanager.ListWorkRequestErrorsRequest
+	}
+
+	var requests []ListWorkRequestErrorsRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, request := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			request.Request.RequestMetadata.RetryPolicy = retryPolicy
+			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
+				r := req.(*resourcemanager.ListWorkRequestErrorsRequest)
+				return c.ListWorkRequestErrors(context.Background(), *r)
+			}
+
+			listResponses, err := testClient.generateListResponses(&request.Request, listFn)
+			typedListResponses := make([]resourcemanager.ListWorkRequestErrorsResponse, len(listResponses))
+			for i, lr := range listResponses {
+				typedListResponses[i] = lr.(resourcemanager.ListWorkRequestErrorsResponse)
+			}
+
+			message, err := testClient.validateResult(request.ContainerId, request.Request, typedListResponses, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="team_oci_orm_us_grp@oracle.com" jiraProject="ORCH" opsJiraProject="OS"
+func TestResourceManagerClientListWorkRequestLogs(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("resourcemanager", "ListWorkRequestLogs")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ListWorkRequestLogs is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("resourcemanager", "ResourceManager", "ListWorkRequestLogs", createResourceManagerClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(resourcemanager.ResourceManagerClient)
+
+	body, err := testClient.getRequests("resourcemanager", "ListWorkRequestLogs")
+	assert.NoError(t, err)
+
+	type ListWorkRequestLogsRequestInfo struct {
+		ContainerId string
+		Request     resourcemanager.ListWorkRequestLogsRequest
+	}
+
+	var requests []ListWorkRequestLogsRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, request := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			request.Request.RequestMetadata.RetryPolicy = retryPolicy
+			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
+				r := req.(*resourcemanager.ListWorkRequestLogsRequest)
+				return c.ListWorkRequestLogs(context.Background(), *r)
+			}
+
+			listResponses, err := testClient.generateListResponses(&request.Request, listFn)
+			typedListResponses := make([]resourcemanager.ListWorkRequestLogsResponse, len(listResponses))
+			for i, lr := range listResponses {
+				typedListResponses[i] = lr.(resourcemanager.ListWorkRequestLogsResponse)
+			}
+
+			message, err := testClient.validateResult(request.ContainerId, request.Request, typedListResponses, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="team_oci_orm_us_grp@oracle.com" jiraProject="ORCH" opsJiraProject="OS"
+func TestResourceManagerClientListWorkRequests(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("resourcemanager", "ListWorkRequests")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ListWorkRequests is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("resourcemanager", "ResourceManager", "ListWorkRequests", createResourceManagerClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(resourcemanager.ResourceManagerClient)
+
+	body, err := testClient.getRequests("resourcemanager", "ListWorkRequests")
+	assert.NoError(t, err)
+
+	type ListWorkRequestsRequestInfo struct {
+		ContainerId string
+		Request     resourcemanager.ListWorkRequestsRequest
+	}
+
+	var requests []ListWorkRequestsRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, request := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			request.Request.RequestMetadata.RetryPolicy = retryPolicy
+			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
+				r := req.(*resourcemanager.ListWorkRequestsRequest)
+				return c.ListWorkRequests(context.Background(), *r)
+			}
+
+			listResponses, err := testClient.generateListResponses(&request.Request, listFn)
+			typedListResponses := make([]resourcemanager.ListWorkRequestsResponse, len(listResponses))
+			for i, lr := range listResponses {
+				typedListResponses[i] = lr.(resourcemanager.ListWorkRequestsResponse)
 			}
 
 			message, err := testClient.validateResult(request.ContainerId, request.Request, typedListResponses, err)
@@ -640,7 +1008,9 @@ func TestResourceManagerClientUpdateJob(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateJob(context.Background(), req.Request)
@@ -683,7 +1053,9 @@ func TestResourceManagerClientUpdateStack(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateStack(context.Background(), req.Request)

@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Object Storage Service API
@@ -29,6 +29,12 @@ type CreateMultipartUploadDetails struct {
 
 	// The content encoding of the object to upload.
 	ContentEncoding *string `mandatory:"false" json:"contentEncoding"`
+
+	// The Content-Disposition header value to be returned in GetObjectReponse.
+	ContentDisposition *string `mandatory:"false" json:"contentDisposition"`
+
+	// The cache-control header value to be returned in GetObjectReponse.
+	CacheControl *string `mandatory:"false" json:"cacheControl"`
 
 	// Arbitrary string keys and values for the user-defined metadata for the object.
 	// Keys must be in "opc-meta-*" format. Avoid entering confidential information.

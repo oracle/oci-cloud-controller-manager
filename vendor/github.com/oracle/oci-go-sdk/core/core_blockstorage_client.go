@@ -1,9 +1,13 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// APIs for Networking Service, Compute Service, and Block Volume Service.
+// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
+// to manage resources such as virtual cloud networks (VCNs), compute instances, and
+// block storage volumes.
 //
 
 package core
@@ -58,7 +62,9 @@ func (client *BlockstorageClient) ConfigurationProvider() *common.ConfigurationP
 	return client.config
 }
 
-// ChangeBootVolumeBackupCompartment Change the compartment of a boot volume backup
+// ChangeBootVolumeBackupCompartment Moves a boot volume backup into a different compartment within the same tenancy.
+// For information about moving resources between compartments,
+// see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/Content/Identity/Tasks/managingcompartments.htm#moveRes).
 func (client BlockstorageClient) ChangeBootVolumeBackupCompartment(ctx context.Context, request ChangeBootVolumeBackupCompartmentRequest) (response ChangeBootVolumeBackupCompartmentResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -100,7 +106,9 @@ func (client BlockstorageClient) changeBootVolumeBackupCompartment(ctx context.C
 	return response, err
 }
 
-// ChangeBootVolumeCompartment Change the compartment of a boot volume
+// ChangeBootVolumeCompartment Moves a boot volume into a different compartment within the same tenancy.
+// For information about moving resources between compartments,
+// see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/Content/Identity/Tasks/managingcompartments.htm#moveRes).
 func (client BlockstorageClient) ChangeBootVolumeCompartment(ctx context.Context, request ChangeBootVolumeCompartmentRequest) (response ChangeBootVolumeCompartmentResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -142,7 +150,9 @@ func (client BlockstorageClient) changeBootVolumeCompartment(ctx context.Context
 	return response, err
 }
 
-// ChangeVolumeBackupCompartment Change the compartment of a volume backup
+// ChangeVolumeBackupCompartment Moves a volume backup into a different compartment within the same tenancy.
+// For information about moving resources between compartments,
+// see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/Content/Identity/Tasks/managingcompartments.htm#moveRes).
 func (client BlockstorageClient) ChangeVolumeBackupCompartment(ctx context.Context, request ChangeVolumeBackupCompartmentRequest) (response ChangeVolumeBackupCompartmentResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -184,7 +194,9 @@ func (client BlockstorageClient) changeVolumeBackupCompartment(ctx context.Conte
 	return response, err
 }
 
-// ChangeVolumeCompartment Change the compartment of a volume
+// ChangeVolumeCompartment Moves a volume into a different compartment within the same tenancy.
+// For information about moving resources between compartments,
+// see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/Content/Identity/Tasks/managingcompartments.htm#moveRes).
 func (client BlockstorageClient) ChangeVolumeCompartment(ctx context.Context, request ChangeVolumeCompartmentRequest) (response ChangeVolumeCompartmentResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -226,7 +238,9 @@ func (client BlockstorageClient) changeVolumeCompartment(ctx context.Context, re
 	return response, err
 }
 
-// ChangeVolumeGroupBackupCompartment Change the compartment of a volume group backup
+// ChangeVolumeGroupBackupCompartment Moves a volume group backup into a different compartment within the same tenancy.
+// For information about moving resources between compartments,
+// see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/Content/Identity/Tasks/managingcompartments.htm#moveRes).
 func (client BlockstorageClient) ChangeVolumeGroupBackupCompartment(ctx context.Context, request ChangeVolumeGroupBackupCompartmentRequest) (response ChangeVolumeGroupBackupCompartmentResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -268,7 +282,9 @@ func (client BlockstorageClient) changeVolumeGroupBackupCompartment(ctx context.
 	return response, err
 }
 
-// ChangeVolumeGroupCompartment Change the compartment of a volume group
+// ChangeVolumeGroupCompartment Moves a volume group into a different compartment within the same tenancy.
+// For information about moving resources between compartments,
+// see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/Content/Identity/Tasks/managingcompartments.htm#moveRes).
 func (client BlockstorageClient) ChangeVolumeGroupCompartment(ctx context.Context, request ChangeVolumeGroupCompartmentRequest) (response ChangeVolumeGroupCompartmentResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -894,7 +910,7 @@ func (client BlockstorageClient) deleteBootVolumeBackup(ctx context.Context, req
 	return response, err
 }
 
-// DeleteBootVolumeKmsKey Removes the KMS key for the specified boot volume.
+// DeleteBootVolumeKmsKey Removes the specified boot volume's assigned Key Management encryption key.
 func (client BlockstorageClient) DeleteBootVolumeKmsKey(ctx context.Context, request DeleteBootVolumeKmsKeyRequest) (response DeleteBootVolumeKmsKeyResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -1192,7 +1208,7 @@ func (client BlockstorageClient) deleteVolumeGroupBackup(ctx context.Context, re
 	return response, err
 }
 
-// DeleteVolumeKmsKey Removes the KMS key for the specified volume.
+// DeleteVolumeKmsKey Removes the specified volume's assigned Key Management encryption key.
 func (client BlockstorageClient) DeleteVolumeKmsKey(ctx context.Context, request DeleteVolumeKmsKeyRequest) (response DeleteVolumeKmsKeyResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -1318,7 +1334,7 @@ func (client BlockstorageClient) getBootVolumeBackup(ctx context.Context, reques
 	return response, err
 }
 
-// GetBootVolumeKmsKey Gets the KMS key ID for the specified boot volume.
+// GetBootVolumeKmsKey Gets the Key Management encryption key assigned to the specified boot volume.
 func (client BlockstorageClient) GetBootVolumeKmsKey(ctx context.Context, request GetBootVolumeKmsKeyRequest) (response GetBootVolumeKmsKeyResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -1656,7 +1672,7 @@ func (client BlockstorageClient) getVolumeGroupBackup(ctx context.Context, reque
 	return response, err
 }
 
-// GetVolumeKmsKey Gets the KMS key ID for the specified volume.
+// GetVolumeKmsKey Gets the Key Management encryption key assigned to the specified volume.
 func (client BlockstorageClient) GetVolumeKmsKey(ctx context.Context, request GetVolumeKmsKeyRequest) (response GetVolumeKmsKeyResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -2079,7 +2095,7 @@ func (client BlockstorageClient) updateBootVolumeBackup(ctx context.Context, req
 	return response, err
 }
 
-// UpdateBootVolumeKmsKey Updates the KMS key ID for the specified volume.
+// UpdateBootVolumeKmsKey Updates the specified volume with a new Key Management master encryption key.
 func (client BlockstorageClient) UpdateBootVolumeKmsKey(ctx context.Context, request UpdateBootVolumeKmsKeyRequest) (response UpdateBootVolumeKmsKeyResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -2343,7 +2359,7 @@ func (client BlockstorageClient) updateVolumeGroupBackup(ctx context.Context, re
 	return response, err
 }
 
-// UpdateVolumeKmsKey Updates the KMS key ID for the specified volume.
+// UpdateVolumeKmsKey Updates the specified volume with a new Key Management master encryption key.
 func (client BlockstorageClient) UpdateVolumeKmsKey(ctx context.Context, request UpdateVolumeKmsKeyRequest) (response UpdateVolumeKmsKeyResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()

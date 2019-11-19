@@ -1,9 +1,13 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// APIs for Networking Service, Compute Service, and Block Volume Service.
+// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
+// to manage resources such as virtual cloud networks (VCNs), compute instances, and
+// block storage volumes.
 //
 
 package core
@@ -20,7 +24,7 @@ type CreateVirtualCircuitDetails struct {
 
 	// The type of IP addresses used in this virtual circuit. PRIVATE
 	// means RFC 1918 (https://tools.ietf.org/html/rfc1918) addresses
-	// (10.0.0.0/8, 172.16/12, and 192.168/16). Only PRIVATE is supported.
+	// (10.0.0.0/8, 172.16/12, and 192.168/16).
 	Type CreateVirtualCircuitDetailsTypeEnum `mandatory:"true" json:"type"`
 
 	// The provisioned data rate of the connection.  To get a list of the
@@ -33,13 +37,29 @@ type CreateVirtualCircuitDetails struct {
 	// group this virtual circuit will run on.
 	CrossConnectMappings []CrossConnectMapping `mandatory:"false" json:"crossConnectMappings"`
 
+	// Deprecated. Instead use `customerAsn`.
+	// If you specify values for both, the request will be rejected.
+	CustomerBgpAsn *int `mandatory:"false" json:"customerBgpAsn"`
+
 	// Your BGP ASN (either public or private). Provide this value only if
 	// there's a BGP session that goes from your edge router to Oracle.
 	// Otherwise, leave this empty or null.
-	CustomerBgpAsn *int `mandatory:"false" json:"customerBgpAsn"`
+	// Can be a 2-byte or 4-byte ASN. Uses "asplain" format.
+	// Example: `12345` (2-byte) or `1587232876` (4-byte)
+	CustomerAsn *int64 `mandatory:"false" json:"customerAsn"`
+
+	// Defined tags for this resource. Each key is predefined and scoped to a
+	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Example: `{"Operations": {"CostCenter": "42"}}`
+	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
 	// A user-friendly name. Does not have to be unique, and it's changeable. Avoid entering confidential information.
 	DisplayName *string `mandatory:"false" json:"displayName"`
+
+	// Free-form tags for this resource. Each tag is a simple key-value pair with no
+	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Example: `{"Department": "Finance"}`
+	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
 	// For private virtual circuits only. The OCID of the Drg
 	// that this virtual circuit uses.

@@ -54,7 +54,9 @@ func TestWaasClientAcceptRecommendations(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.AcceptRecommendations(context.Background(), req.Request)
@@ -97,10 +99,237 @@ func TestWaasClientCancelWorkRequest(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.CancelWorkRequest(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_waas_dev_us_grp@oracle.com" jiraProject="WAAS" opsJiraProject="WAF"
+func TestWaasClientChangeAddressListCompartment(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("waas", "ChangeAddressListCompartment")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ChangeAddressListCompartment is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("waas", "Waas", "ChangeAddressListCompartment", createWaasClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(waas.WaasClient)
+
+	body, err := testClient.getRequests("waas", "ChangeAddressListCompartment")
+	assert.NoError(t, err)
+
+	type ChangeAddressListCompartmentRequestInfo struct {
+		ContainerId string
+		Request     waas.ChangeAddressListCompartmentRequest
+	}
+
+	var requests []ChangeAddressListCompartmentRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.ChangeAddressListCompartment(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_waas_dev_us_grp@oracle.com" jiraProject="WAAS" opsJiraProject="WAF"
+func TestWaasClientChangeCertificateCompartment(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("waas", "ChangeCertificateCompartment")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ChangeCertificateCompartment is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("waas", "Waas", "ChangeCertificateCompartment", createWaasClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(waas.WaasClient)
+
+	body, err := testClient.getRequests("waas", "ChangeCertificateCompartment")
+	assert.NoError(t, err)
+
+	type ChangeCertificateCompartmentRequestInfo struct {
+		ContainerId string
+		Request     waas.ChangeCertificateCompartmentRequest
+	}
+
+	var requests []ChangeCertificateCompartmentRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.ChangeCertificateCompartment(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_waas_dev_us_grp@oracle.com" jiraProject="WAAS" opsJiraProject="WAF"
+func TestWaasClientChangeCustomProtectionRuleCompartment(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("waas", "ChangeCustomProtectionRuleCompartment")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ChangeCustomProtectionRuleCompartment is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("waas", "Waas", "ChangeCustomProtectionRuleCompartment", createWaasClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(waas.WaasClient)
+
+	body, err := testClient.getRequests("waas", "ChangeCustomProtectionRuleCompartment")
+	assert.NoError(t, err)
+
+	type ChangeCustomProtectionRuleCompartmentRequestInfo struct {
+		ContainerId string
+		Request     waas.ChangeCustomProtectionRuleCompartmentRequest
+	}
+
+	var requests []ChangeCustomProtectionRuleCompartmentRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.ChangeCustomProtectionRuleCompartment(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_waas_dev_us_grp@oracle.com" jiraProject="WAAS" opsJiraProject="WAF"
+func TestWaasClientChangeWaasPolicyCompartment(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("waas", "ChangeWaasPolicyCompartment")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ChangeWaasPolicyCompartment is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("waas", "Waas", "ChangeWaasPolicyCompartment", createWaasClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(waas.WaasClient)
+
+	body, err := testClient.getRequests("waas", "ChangeWaasPolicyCompartment")
+	assert.NoError(t, err)
+
+	type ChangeWaasPolicyCompartmentRequestInfo struct {
+		ContainerId string
+		Request     waas.ChangeWaasPolicyCompartmentRequest
+	}
+
+	var requests []ChangeWaasPolicyCompartmentRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.ChangeWaasPolicyCompartment(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_waas_dev_us_grp@oracle.com" jiraProject="WAAS" opsJiraProject="WAF"
+func TestWaasClientCreateAddressList(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("waas", "CreateAddressList")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("CreateAddressList is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("waas", "Waas", "CreateAddressList", createWaasClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(waas.WaasClient)
+
+	body, err := testClient.getRequests("waas", "CreateAddressList")
+	assert.NoError(t, err)
+
+	type CreateAddressListRequestInfo struct {
+		ContainerId string
+		Request     waas.CreateAddressListRequest
+	}
+
+	var requests []CreateAddressListRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.CreateAddressList(context.Background(), req.Request)
 			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
 			assert.NoError(t, err)
 			assert.Empty(t, message, message)
@@ -140,10 +369,57 @@ func TestWaasClientCreateCertificate(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.CreateCertificate(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_waas_dev_us_grp@oracle.com" jiraProject="WAAS" opsJiraProject="WAF"
+func TestWaasClientCreateCustomProtectionRule(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("waas", "CreateCustomProtectionRule")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("CreateCustomProtectionRule is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("waas", "Waas", "CreateCustomProtectionRule", createWaasClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(waas.WaasClient)
+
+	body, err := testClient.getRequests("waas", "CreateCustomProtectionRule")
+	assert.NoError(t, err)
+
+	type CreateCustomProtectionRuleRequestInfo struct {
+		ContainerId string
+		Request     waas.CreateCustomProtectionRuleRequest
+	}
+
+	var requests []CreateCustomProtectionRuleRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.CreateCustomProtectionRule(context.Background(), req.Request)
 			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
 			assert.NoError(t, err)
 			assert.Empty(t, message, message)
@@ -183,10 +459,57 @@ func TestWaasClientCreateWaasPolicy(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.CreateWaasPolicy(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_waas_dev_us_grp@oracle.com" jiraProject="WAAS" opsJiraProject="WAF"
+func TestWaasClientDeleteAddressList(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("waas", "DeleteAddressList")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("DeleteAddressList is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("waas", "Waas", "DeleteAddressList", createWaasClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(waas.WaasClient)
+
+	body, err := testClient.getRequests("waas", "DeleteAddressList")
+	assert.NoError(t, err)
+
+	type DeleteAddressListRequestInfo struct {
+		ContainerId string
+		Request     waas.DeleteAddressListRequest
+	}
+
+	var requests []DeleteAddressListRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.DeleteAddressList(context.Background(), req.Request)
 			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
 			assert.NoError(t, err)
 			assert.Empty(t, message, message)
@@ -226,10 +549,57 @@ func TestWaasClientDeleteCertificate(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.DeleteCertificate(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_waas_dev_us_grp@oracle.com" jiraProject="WAAS" opsJiraProject="WAF"
+func TestWaasClientDeleteCustomProtectionRule(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("waas", "DeleteCustomProtectionRule")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("DeleteCustomProtectionRule is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("waas", "Waas", "DeleteCustomProtectionRule", createWaasClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(waas.WaasClient)
+
+	body, err := testClient.getRequests("waas", "DeleteCustomProtectionRule")
+	assert.NoError(t, err)
+
+	type DeleteCustomProtectionRuleRequestInfo struct {
+		ContainerId string
+		Request     waas.DeleteCustomProtectionRuleRequest
+	}
+
+	var requests []DeleteCustomProtectionRuleRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.DeleteCustomProtectionRule(context.Background(), req.Request)
 			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
 			assert.NoError(t, err)
 			assert.Empty(t, message, message)
@@ -269,10 +639,57 @@ func TestWaasClientDeleteWaasPolicy(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.DeleteWaasPolicy(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_waas_dev_us_grp@oracle.com" jiraProject="WAAS" opsJiraProject="WAF"
+func TestWaasClientGetAddressList(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("waas", "GetAddressList")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("GetAddressList is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("waas", "Waas", "GetAddressList", createWaasClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(waas.WaasClient)
+
+	body, err := testClient.getRequests("waas", "GetAddressList")
+	assert.NoError(t, err)
+
+	type GetAddressListRequestInfo struct {
+		ContainerId string
+		Request     waas.GetAddressListRequest
+	}
+
+	var requests []GetAddressListRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.GetAddressList(context.Background(), req.Request)
 			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
 			assert.NoError(t, err)
 			assert.Empty(t, message, message)
@@ -312,10 +729,57 @@ func TestWaasClientGetCertificate(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetCertificate(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_waas_dev_us_grp@oracle.com" jiraProject="WAAS" opsJiraProject="WAF"
+func TestWaasClientGetCustomProtectionRule(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("waas", "GetCustomProtectionRule")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("GetCustomProtectionRule is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("waas", "Waas", "GetCustomProtectionRule", createWaasClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(waas.WaasClient)
+
+	body, err := testClient.getRequests("waas", "GetCustomProtectionRule")
+	assert.NoError(t, err)
+
+	type GetCustomProtectionRuleRequestInfo struct {
+		ContainerId string
+		Request     waas.GetCustomProtectionRuleRequest
+	}
+
+	var requests []GetCustomProtectionRuleRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.GetCustomProtectionRule(context.Background(), req.Request)
 			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
 			assert.NoError(t, err)
 			assert.Empty(t, message, message)
@@ -355,7 +819,9 @@ func TestWaasClientGetDeviceFingerprintChallenge(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetDeviceFingerprintChallenge(context.Background(), req.Request)
@@ -398,7 +864,9 @@ func TestWaasClientGetHumanInteractionChallenge(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetHumanInteractionChallenge(context.Background(), req.Request)
@@ -441,7 +909,9 @@ func TestWaasClientGetJsChallenge(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetJsChallenge(context.Background(), req.Request)
@@ -484,7 +954,9 @@ func TestWaasClientGetPolicyConfig(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetPolicyConfig(context.Background(), req.Request)
@@ -527,7 +999,9 @@ func TestWaasClientGetProtectionRule(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetProtectionRule(context.Background(), req.Request)
@@ -570,7 +1044,9 @@ func TestWaasClientGetProtectionSettings(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetProtectionSettings(context.Background(), req.Request)
@@ -613,7 +1089,9 @@ func TestWaasClientGetWaasPolicy(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetWaasPolicy(context.Background(), req.Request)
@@ -656,7 +1134,9 @@ func TestWaasClientGetWafAddressRateLimiting(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetWafAddressRateLimiting(context.Background(), req.Request)
@@ -699,7 +1179,9 @@ func TestWaasClientGetWafConfig(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetWafConfig(context.Background(), req.Request)
@@ -742,7 +1224,9 @@ func TestWaasClientGetWorkRequest(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetWorkRequest(context.Background(), req.Request)
@@ -785,7 +1269,9 @@ func TestWaasClientListAccessRules(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*waas.ListAccessRulesRequest)
@@ -796,6 +1282,114 @@ func TestWaasClientListAccessRules(t *testing.T) {
 			typedListResponses := make([]waas.ListAccessRulesResponse, len(listResponses))
 			for i, lr := range listResponses {
 				typedListResponses[i] = lr.(waas.ListAccessRulesResponse)
+			}
+
+			message, err := testClient.validateResult(request.ContainerId, request.Request, typedListResponses, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_waas_dev_us_grp@oracle.com" jiraProject="WAAS" opsJiraProject="WAF"
+func TestWaasClientListAddressLists(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("waas", "ListAddressLists")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ListAddressLists is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("waas", "Waas", "ListAddressLists", createWaasClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(waas.WaasClient)
+
+	body, err := testClient.getRequests("waas", "ListAddressLists")
+	assert.NoError(t, err)
+
+	type ListAddressListsRequestInfo struct {
+		ContainerId string
+		Request     waas.ListAddressListsRequest
+	}
+
+	var requests []ListAddressListsRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, request := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			request.Request.RequestMetadata.RetryPolicy = retryPolicy
+			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
+				r := req.(*waas.ListAddressListsRequest)
+				return c.ListAddressLists(context.Background(), *r)
+			}
+
+			listResponses, err := testClient.generateListResponses(&request.Request, listFn)
+			typedListResponses := make([]waas.ListAddressListsResponse, len(listResponses))
+			for i, lr := range listResponses {
+				typedListResponses[i] = lr.(waas.ListAddressListsResponse)
+			}
+
+			message, err := testClient.validateResult(request.ContainerId, request.Request, typedListResponses, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_waas_dev_us_grp@oracle.com" jiraProject="WAAS" opsJiraProject="WAF"
+func TestWaasClientListCachingRules(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("waas", "ListCachingRules")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ListCachingRules is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("waas", "Waas", "ListCachingRules", createWaasClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(waas.WaasClient)
+
+	body, err := testClient.getRequests("waas", "ListCachingRules")
+	assert.NoError(t, err)
+
+	type ListCachingRulesRequestInfo struct {
+		ContainerId string
+		Request     waas.ListCachingRulesRequest
+	}
+
+	var requests []ListCachingRulesRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, request := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			request.Request.RequestMetadata.RetryPolicy = retryPolicy
+			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
+				r := req.(*waas.ListCachingRulesRequest)
+				return c.ListCachingRules(context.Background(), *r)
+			}
+
+			listResponses, err := testClient.generateListResponses(&request.Request, listFn)
+			typedListResponses := make([]waas.ListCachingRulesResponse, len(listResponses))
+			for i, lr := range listResponses {
+				typedListResponses[i] = lr.(waas.ListCachingRulesResponse)
 			}
 
 			message, err := testClient.validateResult(request.ContainerId, request.Request, typedListResponses, err)
@@ -837,7 +1431,9 @@ func TestWaasClientListCaptchas(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*waas.ListCaptchasRequest)
@@ -889,7 +1485,9 @@ func TestWaasClientListCertificates(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*waas.ListCertificatesRequest)
@@ -900,6 +1498,60 @@ func TestWaasClientListCertificates(t *testing.T) {
 			typedListResponses := make([]waas.ListCertificatesResponse, len(listResponses))
 			for i, lr := range listResponses {
 				typedListResponses[i] = lr.(waas.ListCertificatesResponse)
+			}
+
+			message, err := testClient.validateResult(request.ContainerId, request.Request, typedListResponses, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_waas_dev_us_grp@oracle.com" jiraProject="WAAS" opsJiraProject="WAF"
+func TestWaasClientListCustomProtectionRules(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("waas", "ListCustomProtectionRules")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ListCustomProtectionRules is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("waas", "Waas", "ListCustomProtectionRules", createWaasClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(waas.WaasClient)
+
+	body, err := testClient.getRequests("waas", "ListCustomProtectionRules")
+	assert.NoError(t, err)
+
+	type ListCustomProtectionRulesRequestInfo struct {
+		ContainerId string
+		Request     waas.ListCustomProtectionRulesRequest
+	}
+
+	var requests []ListCustomProtectionRulesRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, request := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			request.Request.RequestMetadata.RetryPolicy = retryPolicy
+			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
+				r := req.(*waas.ListCustomProtectionRulesRequest)
+				return c.ListCustomProtectionRules(context.Background(), *r)
+			}
+
+			listResponses, err := testClient.generateListResponses(&request.Request, listFn)
+			typedListResponses := make([]waas.ListCustomProtectionRulesResponse, len(listResponses))
+			for i, lr := range listResponses {
+				typedListResponses[i] = lr.(waas.ListCustomProtectionRulesResponse)
 			}
 
 			message, err := testClient.validateResult(request.ContainerId, request.Request, typedListResponses, err)
@@ -941,7 +1593,9 @@ func TestWaasClientListEdgeSubnets(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*waas.ListEdgeSubnetsRequest)
@@ -993,7 +1647,9 @@ func TestWaasClientListGoodBots(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*waas.ListGoodBotsRequest)
@@ -1045,7 +1701,9 @@ func TestWaasClientListProtectionRules(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*waas.ListProtectionRulesRequest)
@@ -1097,7 +1755,9 @@ func TestWaasClientListRecommendations(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*waas.ListRecommendationsRequest)
@@ -1149,7 +1809,9 @@ func TestWaasClientListThreatFeeds(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*waas.ListThreatFeedsRequest)
@@ -1201,7 +1863,9 @@ func TestWaasClientListWaasPolicies(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*waas.ListWaasPoliciesRequest)
@@ -1212,6 +1876,60 @@ func TestWaasClientListWaasPolicies(t *testing.T) {
 			typedListResponses := make([]waas.ListWaasPoliciesResponse, len(listResponses))
 			for i, lr := range listResponses {
 				typedListResponses[i] = lr.(waas.ListWaasPoliciesResponse)
+			}
+
+			message, err := testClient.validateResult(request.ContainerId, request.Request, typedListResponses, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_waas_dev_us_grp@oracle.com" jiraProject="WAAS" opsJiraProject="WAF"
+func TestWaasClientListWaasPolicyCustomProtectionRules(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("waas", "ListWaasPolicyCustomProtectionRules")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ListWaasPolicyCustomProtectionRules is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("waas", "Waas", "ListWaasPolicyCustomProtectionRules", createWaasClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(waas.WaasClient)
+
+	body, err := testClient.getRequests("waas", "ListWaasPolicyCustomProtectionRules")
+	assert.NoError(t, err)
+
+	type ListWaasPolicyCustomProtectionRulesRequestInfo struct {
+		ContainerId string
+		Request     waas.ListWaasPolicyCustomProtectionRulesRequest
+	}
+
+	var requests []ListWaasPolicyCustomProtectionRulesRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, request := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			request.Request.RequestMetadata.RetryPolicy = retryPolicy
+			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
+				r := req.(*waas.ListWaasPolicyCustomProtectionRulesRequest)
+				return c.ListWaasPolicyCustomProtectionRules(context.Background(), *r)
+			}
+
+			listResponses, err := testClient.generateListResponses(&request.Request, listFn)
+			typedListResponses := make([]waas.ListWaasPolicyCustomProtectionRulesResponse, len(listResponses))
+			for i, lr := range listResponses {
+				typedListResponses[i] = lr.(waas.ListWaasPolicyCustomProtectionRulesResponse)
 			}
 
 			message, err := testClient.validateResult(request.ContainerId, request.Request, typedListResponses, err)
@@ -1253,7 +1971,9 @@ func TestWaasClientListWafBlockedRequests(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*waas.ListWafBlockedRequestsRequest)
@@ -1305,7 +2025,9 @@ func TestWaasClientListWafLogs(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*waas.ListWafLogsRequest)
@@ -1357,7 +2079,9 @@ func TestWaasClientListWafRequests(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*waas.ListWafRequestsRequest)
@@ -1409,7 +2133,9 @@ func TestWaasClientListWafTraffic(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*waas.ListWafTrafficRequest)
@@ -1461,7 +2187,9 @@ func TestWaasClientListWhitelists(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*waas.ListWhitelistsRequest)
@@ -1513,7 +2241,9 @@ func TestWaasClientListWorkRequests(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*waas.ListWorkRequestsRequest)
@@ -1527,6 +2257,51 @@ func TestWaasClientListWorkRequests(t *testing.T) {
 			}
 
 			message, err := testClient.validateResult(request.ContainerId, request.Request, typedListResponses, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_waas_dev_us_grp@oracle.com" jiraProject="WAAS" opsJiraProject="WAF"
+func TestWaasClientPurgeCache(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("waas", "PurgeCache")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("PurgeCache is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("waas", "Waas", "PurgeCache", createWaasClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(waas.WaasClient)
+
+	body, err := testClient.getRequests("waas", "PurgeCache")
+	assert.NoError(t, err)
+
+	type PurgeCacheRequestInfo struct {
+		ContainerId string
+		Request     waas.PurgeCacheRequest
+	}
+
+	var requests []PurgeCacheRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.PurgeCache(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
 			assert.NoError(t, err)
 			assert.Empty(t, message, message)
 		})
@@ -1565,10 +2340,102 @@ func TestWaasClientUpdateAccessRules(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateAccessRules(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_waas_dev_us_grp@oracle.com" jiraProject="WAAS" opsJiraProject="WAF"
+func TestWaasClientUpdateAddressList(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("waas", "UpdateAddressList")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("UpdateAddressList is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("waas", "Waas", "UpdateAddressList", createWaasClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(waas.WaasClient)
+
+	body, err := testClient.getRequests("waas", "UpdateAddressList")
+	assert.NoError(t, err)
+
+	type UpdateAddressListRequestInfo struct {
+		ContainerId string
+		Request     waas.UpdateAddressListRequest
+	}
+
+	var requests []UpdateAddressListRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.UpdateAddressList(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_waas_dev_us_grp@oracle.com" jiraProject="WAAS" opsJiraProject="WAF"
+func TestWaasClientUpdateCachingRules(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("waas", "UpdateCachingRules")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("UpdateCachingRules is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("waas", "Waas", "UpdateCachingRules", createWaasClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(waas.WaasClient)
+
+	body, err := testClient.getRequests("waas", "UpdateCachingRules")
+	assert.NoError(t, err)
+
+	type UpdateCachingRulesRequestInfo struct {
+		ContainerId string
+		Request     waas.UpdateCachingRulesRequest
+	}
+
+	var requests []UpdateCachingRulesRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.UpdateCachingRules(context.Background(), req.Request)
 			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
 			assert.NoError(t, err)
 			assert.Empty(t, message, message)
@@ -1608,7 +2475,9 @@ func TestWaasClientUpdateCaptchas(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateCaptchas(context.Background(), req.Request)
@@ -1651,10 +2520,57 @@ func TestWaasClientUpdateCertificate(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateCertificate(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_waas_dev_us_grp@oracle.com" jiraProject="WAAS" opsJiraProject="WAF"
+func TestWaasClientUpdateCustomProtectionRule(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("waas", "UpdateCustomProtectionRule")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("UpdateCustomProtectionRule is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("waas", "Waas", "UpdateCustomProtectionRule", createWaasClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(waas.WaasClient)
+
+	body, err := testClient.getRequests("waas", "UpdateCustomProtectionRule")
+	assert.NoError(t, err)
+
+	type UpdateCustomProtectionRuleRequestInfo struct {
+		ContainerId string
+		Request     waas.UpdateCustomProtectionRuleRequest
+	}
+
+	var requests []UpdateCustomProtectionRuleRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.UpdateCustomProtectionRule(context.Background(), req.Request)
 			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
 			assert.NoError(t, err)
 			assert.Empty(t, message, message)
@@ -1694,7 +2610,9 @@ func TestWaasClientUpdateDeviceFingerprintChallenge(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateDeviceFingerprintChallenge(context.Background(), req.Request)
@@ -1737,7 +2655,9 @@ func TestWaasClientUpdateGoodBots(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateGoodBots(context.Background(), req.Request)
@@ -1780,7 +2700,9 @@ func TestWaasClientUpdateHumanInteractionChallenge(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateHumanInteractionChallenge(context.Background(), req.Request)
@@ -1823,7 +2745,9 @@ func TestWaasClientUpdateJsChallenge(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateJsChallenge(context.Background(), req.Request)
@@ -1866,7 +2790,9 @@ func TestWaasClientUpdatePolicyConfig(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdatePolicyConfig(context.Background(), req.Request)
@@ -1909,7 +2835,9 @@ func TestWaasClientUpdateProtectionRules(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateProtectionRules(context.Background(), req.Request)
@@ -1952,7 +2880,9 @@ func TestWaasClientUpdateProtectionSettings(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateProtectionSettings(context.Background(), req.Request)
@@ -1995,7 +2925,9 @@ func TestWaasClientUpdateThreatFeeds(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateThreatFeeds(context.Background(), req.Request)
@@ -2038,10 +2970,57 @@ func TestWaasClientUpdateWaasPolicy(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateWaasPolicy(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="oci_waas_dev_us_grp@oracle.com" jiraProject="WAAS" opsJiraProject="WAF"
+func TestWaasClientUpdateWaasPolicyCustomProtectionRules(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("waas", "UpdateWaasPolicyCustomProtectionRules")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("UpdateWaasPolicyCustomProtectionRules is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("waas", "Waas", "UpdateWaasPolicyCustomProtectionRules", createWaasClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(waas.WaasClient)
+
+	body, err := testClient.getRequests("waas", "UpdateWaasPolicyCustomProtectionRules")
+	assert.NoError(t, err)
+
+	type UpdateWaasPolicyCustomProtectionRulesRequestInfo struct {
+		ContainerId string
+		Request     waas.UpdateWaasPolicyCustomProtectionRulesRequest
+	}
+
+	var requests []UpdateWaasPolicyCustomProtectionRulesRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.UpdateWaasPolicyCustomProtectionRules(context.Background(), req.Request)
 			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
 			assert.NoError(t, err)
 			assert.Empty(t, message, message)
@@ -2081,7 +3060,9 @@ func TestWaasClientUpdateWafAddressRateLimiting(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateWafAddressRateLimiting(context.Background(), req.Request)
@@ -2124,7 +3105,9 @@ func TestWaasClientUpdateWafConfig(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateWafConfig(context.Background(), req.Request)
@@ -2167,7 +3150,9 @@ func TestWaasClientUpdateWhitelists(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateWhitelists(context.Background(), req.Request)

@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Health Checks API
@@ -23,11 +23,19 @@ type PingMonitor struct {
 	// A URL for fetching the probe results.
 	ResultsUrl *string `mandatory:"false" json:"resultsUrl"`
 
+	// The region where updates must be made and where results must be fetched from.
+	HomeRegion *string `mandatory:"false" json:"homeRegion"`
+
+	// The RFC 3339-formatted creation date and time of the probe.
+	TimeCreated *common.SDKTime `mandatory:"false" json:"timeCreated"`
+
 	// The OCID of the compartment.
 	CompartmentId *string `mandatory:"false" json:"compartmentId"`
 
+	// A list of targets (hostnames or IP addresses) of the probe.
 	Targets []string `mandatory:"false" json:"targets"`
 
+	// A list of names of vantage points from which to execute the probe.
 	VantagePointNames []string `mandatory:"false" json:"vantagePointNames"`
 
 	// The port on which to probe endpoints. If unspecified, probes will use the
@@ -38,7 +46,7 @@ type PingMonitor struct {
 	// The probe timeout must be less than or equal to `intervalInSeconds` for monitors.
 	TimeoutInSeconds *int `mandatory:"false" json:"timeoutInSeconds"`
 
-	Protocol PingMonitorProtocolEnum `mandatory:"false" json:"protocol,omitempty"`
+	Protocol PingProbeProtocolEnum `mandatory:"false" json:"protocol,omitempty"`
 
 	// A user-friendly and mutable name suitable for display in a user interface.
 	DisplayName *string `mandatory:"false" json:"displayName"`
@@ -65,25 +73,19 @@ func (m PingMonitor) String() string {
 	return common.PointerString(m)
 }
 
-// PingMonitorProtocolEnum Enum with underlying type: string
-type PingMonitorProtocolEnum string
+// PingMonitorProtocolEnum is an alias to type: PingProbeProtocolEnum
+// Consider using PingProbeProtocolEnum instead
+// Deprecated
+type PingMonitorProtocolEnum = PingProbeProtocolEnum
 
-// Set of constants representing the allowable values for PingMonitorProtocolEnum
+// Set of constants representing the allowable values for PingProbeProtocolEnum
+// Deprecated
 const (
-	PingMonitorProtocolIcmp PingMonitorProtocolEnum = "ICMP"
-	PingMonitorProtocolTcp  PingMonitorProtocolEnum = "TCP"
+	PingMonitorProtocolIcmp PingProbeProtocolEnum = "ICMP"
+	PingMonitorProtocolTcp  PingProbeProtocolEnum = "TCP"
 )
 
-var mappingPingMonitorProtocol = map[string]PingMonitorProtocolEnum{
-	"ICMP": PingMonitorProtocolIcmp,
-	"TCP":  PingMonitorProtocolTcp,
-}
-
-// GetPingMonitorProtocolEnumValues Enumerates the set of values for PingMonitorProtocolEnum
-func GetPingMonitorProtocolEnumValues() []PingMonitorProtocolEnum {
-	values := make([]PingMonitorProtocolEnum, 0)
-	for _, v := range mappingPingMonitorProtocol {
-		values = append(values, v)
-	}
-	return values
-}
+// GetPingMonitorProtocolEnumValues Enumerates the set of values for PingProbeProtocolEnum
+// Consider using GetPingProbeProtocolEnumValue
+// Deprecated
+var GetPingMonitorProtocolEnumValues = GetPingProbeProtocolEnumValues

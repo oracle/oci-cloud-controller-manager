@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Database Service API
@@ -47,6 +47,9 @@ type AutonomousDatabaseBackup struct {
 
 	// The size of the database in terabytes at the time the backup was taken.
 	DatabaseSizeInTBs *float32 `mandatory:"false" json:"databaseSizeInTBs"`
+
+	// Indicates whether the backup can be used to restore the associated Autonomous Database.
+	IsRestorable *bool `mandatory:"false" json:"isRestorable"`
 }
 
 func (m AutonomousDatabaseBackup) String() string {

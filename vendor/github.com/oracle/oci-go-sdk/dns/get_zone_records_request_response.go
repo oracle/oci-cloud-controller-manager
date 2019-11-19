@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package dns
@@ -25,6 +25,11 @@ type GetZoneRecordsRequest struct {
 	// recent than the date provided in the field-value.  Transfer of the
 	// selected representation's data is avoided if that data has not changed.
 	IfModifiedSince *string `mandatory:"false" contributesTo:"header" name:"If-Modified-Since"`
+
+	// Unique Oracle-assigned identifier for the request. If you need
+	// to contact Oracle about a particular request, please provide
+	// the request ID.
+	OpcRequestId *string `mandatory:"false" contributesTo:"header" name:"opc-request-id"`
 
 	// The maximum number of items to return in a page of the collection.
 	Limit *int64 `mandatory:"false" contributesTo:"query" name:"limit"`
@@ -55,10 +60,6 @@ type GetZoneRecordsRequest struct {
 
 	// The OCID of the compartment the resource belongs to.
 	CompartmentId *string `mandatory:"false" contributesTo:"query" name:"compartmentId"`
-
-	// Unique Oracle-assigned identifier for the request.
-	// If you need to contact Oracle about a particular request, please provide the request ID.
-	OpcRequestId *string `mandatory:"false" contributesTo:"header" name:"opc-request-id"`
 
 	// Metadata about the request. This information will not be transmitted to the service, but
 	// represents information that the SDK will consume to drive retry behavior.

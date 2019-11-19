@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path"
 
@@ -77,7 +78,9 @@ func ExampleObjectStorage_UploadManager_UploadFile() {
 			NamespaceName: common.String(namespace),
 			BucketName:    common.String(bname),
 			ObjectName:    common.String(objectName),
-			//PartSize:      common.Int(10000000),
+			//PartSize:		common.Int(10000000),
+			CallBack: callBack,
+			EnableMultipartChecksumVerification: common.Bool(true),
 		},
 		FilePath: filepath,
 	}
@@ -100,9 +103,22 @@ func ExampleObjectStorage_UploadManager_UploadFile() {
 	// Output:
 	// get namespace
 	// create bucket
+	// One example of progress bar could be the above comment content.
+	// One example of progress bar could be the above comment content.
+	// One example of progress bar could be the above comment content.
 	// file uploaded
 	// delete object
 	// delete bucket
+}
+
+func callBack(multiPartUploadPart transfer.MultiPartUploadPart) {
+	if nil == multiPartUploadPart.Err {
+		// Please refer this as the progress bar print content.
+		// fmt.Printf("Part: %d / %d is uploaded.\n", multiPartUploadPart.PartNum, multiPartUploadPart.TotalParts)
+		fmt.Printf("One example of progress bar could be the above comment content.\n")
+		// Please refer following fmt to get each part opc-md5 res.
+		// fmt.Printf("and this part opcMD5(64BasedEncoding) is: %s.\n", *multiPartUploadPart.OpcMD5 )
+	}
 }
 
 func ExampleObjectStorage_UploadManager_Stream() {
@@ -131,9 +147,10 @@ func ExampleObjectStorage_UploadManager_Stream() {
 
 	req := transfer.UploadStreamRequest{
 		UploadRequest: transfer.UploadRequest{
-			NamespaceName: common.String(namespace),
-			BucketName:    common.String(bname),
-			ObjectName:    common.String(objectName),
+			NamespaceName:                       common.String(namespace),
+			BucketName:                          common.String(bname),
+			ObjectName:                          common.String(objectName),
+			EnableMultipartChecksumVerification: common.Bool(true),
 		},
 		StreamReader: file, // any struct implements the io.Reader interface
 	}
@@ -156,6 +173,46 @@ func ExampleObjectStorage_UploadManager_Stream() {
 	// stream uploaded
 	// delete object
 	// delete bucket
+}
+
+// Example for getting Object Storage namespace of a tenancy that is not their own. This
+// is useful in cross-tenant Object Storage operations. Object Storage namespace can be retrieved using the
+// compartment id of the target tenancy if the user has necessary permissions to access that tenancy.
+//
+// For example if Tenant A wants to access Tenant B's object storage namespace then Tenant A has to define
+// a policy similar to following:
+//
+// DEFINE TENANCY TenantB AS <TenantB OCID>
+// ENDORSE GROUP <TenantA user group name> TO {OBJECTSTORAGE_NAMESPACE_READ} IN TENANCY TenantB
+//
+// and Tenant B should add a policy similar to following:
+//
+// DEFINE TENANCY TenantA AS <TenantA OCID>
+// DEFINE GROUP TenantAGroup AS <TenantA user group OCID>
+// ADMIT GROUP TenantAGroup OF TENANCY TenantA TO {OBJECTSTORAGE_NAMESPACE_READ} IN TENANCY
+//
+// This example covers only GetNamespace operation across tenants. Additional permissions
+// will be required to perform more Object Storage operations.
+//
+// ExampleObjectStorage_GetNamespace shows how to get namespace providing compartmentId.
+func ExampleObjectStorage_GetNamespace() {
+	c, clerr := objectstorage.NewObjectStorageClientWithConfigurationProvider(common.DefaultConfigProvider())
+	helpers.FatalIfError(clerr)
+
+	ctx := context.Background()
+
+	request := objectstorage.GetNamespaceRequest{}
+	request.CompartmentId = helpers.CompartmentID()
+
+	r, err := c.GetNamespace(ctx, request)
+	helpers.FatalIfError(err)
+
+	log.Printf("Namespace for compartment %s is: %s", *request.CompartmentId, *r.Value)
+
+	fmt.Println("Namespace retrieved")
+
+	// Output:
+	// Namespace retrieved
 }
 
 func getNamespace(ctx context.Context, c objectstorage.ObjectStorageClient) string {

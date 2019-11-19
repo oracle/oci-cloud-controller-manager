@@ -1,9 +1,13 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// APIs for Networking Service, Compute Service, and Block Volume Service.
+// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
+// to manage resources such as virtual cloud networks (VCNs), compute instances, and
+// block storage volumes.
 //
 
 package core
@@ -52,8 +56,11 @@ type Instance struct {
 	// Example: `2016-08-25T21:10:29.600Z`
 	TimeCreated *common.SDKTime `mandatory:"true" json:"timeCreated"`
 
-	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// The OCID of dedicated VM host.
+	DedicatedVmHostId *string `mandatory:"false" json:"dedicatedVmHostId"`
+
+	// Defined tags for this resource. Each key is predefined and scoped to a
+	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -78,8 +85,7 @@ type Instance struct {
 	FaultDomain *string `mandatory:"false" json:"faultDomain"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
-	// predefined name, type, or namespace. For more information, see
-	// Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
@@ -118,8 +124,14 @@ type Instance struct {
 	// Custom metadata that you provide.
 	Metadata map[string]string `mandatory:"false" json:"metadata"`
 
+	ShapeConfig *InstanceShapeConfig `mandatory:"false" json:"shapeConfig"`
+
 	// Details for creating an instance
 	SourceDetails InstanceSourceDetails `mandatory:"false" json:"sourceDetails"`
+
+	// System tags for this resource. Each key is predefined and scoped to a namespace.
+	// Example: `{"foo-namespace": {"bar-key": "value"}}`
+	SystemTags map[string]map[string]interface{} `mandatory:"false" json:"systemTags"`
 
 	AgentConfig *InstanceAgentConfig `mandatory:"false" json:"agentConfig"`
 
@@ -128,6 +140,11 @@ type Instance struct {
 	// Regardless of how the instance was stopped, the flag will be reset to empty as soon as instance reaches Stopped state.
 	// Example: `2018-05-25T21:10:29.600Z`
 	TimeMaintenanceRebootDue *common.SDKTime `mandatory:"false" json:"timeMaintenanceRebootDue"`
+
+	// The preferred maintenance action for an instance.
+	// * `LIVE_MIGRATE` - Run maintenance using a live migration.
+	// * `REBOOT` - Run maintenance using a reboot.
+	PreferredMaintenanceAction InstancePreferredMaintenanceActionEnum `mandatory:"false" json:"preferredMaintenanceAction,omitempty"`
 }
 
 func (m Instance) String() string {
@@ -137,32 +154,37 @@ func (m Instance) String() string {
 // UnmarshalJSON unmarshals from json
 func (m *Instance) UnmarshalJSON(data []byte) (e error) {
 	model := struct {
-		DefinedTags              map[string]map[string]interface{} `json:"definedTags"`
-		DisplayName              *string                           `json:"displayName"`
-		ExtendedMetadata         map[string]interface{}            `json:"extendedMetadata"`
-		FaultDomain              *string                           `json:"faultDomain"`
-		FreeformTags             map[string]string                 `json:"freeformTags"`
-		ImageId                  *string                           `json:"imageId"`
-		IpxeScript               *string                           `json:"ipxeScript"`
-		LaunchMode               InstanceLaunchModeEnum            `json:"launchMode"`
-		LaunchOptions            *LaunchOptions                    `json:"launchOptions"`
-		Metadata                 map[string]string                 `json:"metadata"`
-		SourceDetails            instancesourcedetails             `json:"sourceDetails"`
-		AgentConfig              *InstanceAgentConfig              `json:"agentConfig"`
-		TimeMaintenanceRebootDue *common.SDKTime                   `json:"timeMaintenanceRebootDue"`
-		AvailabilityDomain       *string                           `json:"availabilityDomain"`
-		CompartmentId            *string                           `json:"compartmentId"`
-		Id                       *string                           `json:"id"`
-		LifecycleState           InstanceLifecycleStateEnum        `json:"lifecycleState"`
-		Region                   *string                           `json:"region"`
-		Shape                    *string                           `json:"shape"`
-		TimeCreated              *common.SDKTime                   `json:"timeCreated"`
+		DedicatedVmHostId          *string                                `json:"dedicatedVmHostId"`
+		DefinedTags                map[string]map[string]interface{}      `json:"definedTags"`
+		DisplayName                *string                                `json:"displayName"`
+		ExtendedMetadata           map[string]interface{}                 `json:"extendedMetadata"`
+		FaultDomain                *string                                `json:"faultDomain"`
+		FreeformTags               map[string]string                      `json:"freeformTags"`
+		ImageId                    *string                                `json:"imageId"`
+		IpxeScript                 *string                                `json:"ipxeScript"`
+		LaunchMode                 InstanceLaunchModeEnum                 `json:"launchMode"`
+		LaunchOptions              *LaunchOptions                         `json:"launchOptions"`
+		Metadata                   map[string]string                      `json:"metadata"`
+		ShapeConfig                *InstanceShapeConfig                   `json:"shapeConfig"`
+		SourceDetails              instancesourcedetails                  `json:"sourceDetails"`
+		SystemTags                 map[string]map[string]interface{}      `json:"systemTags"`
+		AgentConfig                *InstanceAgentConfig                   `json:"agentConfig"`
+		TimeMaintenanceRebootDue   *common.SDKTime                        `json:"timeMaintenanceRebootDue"`
+		PreferredMaintenanceAction InstancePreferredMaintenanceActionEnum `json:"preferredMaintenanceAction"`
+		AvailabilityDomain         *string                                `json:"availabilityDomain"`
+		CompartmentId              *string                                `json:"compartmentId"`
+		Id                         *string                                `json:"id"`
+		LifecycleState             InstanceLifecycleStateEnum             `json:"lifecycleState"`
+		Region                     *string                                `json:"region"`
+		Shape                      *string                                `json:"shape"`
+		TimeCreated                *common.SDKTime                        `json:"timeCreated"`
 	}{}
 
 	e = json.Unmarshal(data, &model)
 	if e != nil {
 		return
 	}
+	m.DedicatedVmHostId = model.DedicatedVmHostId
 	m.DefinedTags = model.DefinedTags
 	m.DisplayName = model.DisplayName
 	m.ExtendedMetadata = model.ExtendedMetadata
@@ -173,6 +195,7 @@ func (m *Instance) UnmarshalJSON(data []byte) (e error) {
 	m.LaunchMode = model.LaunchMode
 	m.LaunchOptions = model.LaunchOptions
 	m.Metadata = model.Metadata
+	m.ShapeConfig = model.ShapeConfig
 	nn, e := model.SourceDetails.UnmarshalPolymorphicJSON(model.SourceDetails.JsonData)
 	if e != nil {
 		return
@@ -182,8 +205,10 @@ func (m *Instance) UnmarshalJSON(data []byte) (e error) {
 	} else {
 		m.SourceDetails = nil
 	}
+	m.SystemTags = model.SystemTags
 	m.AgentConfig = model.AgentConfig
 	m.TimeMaintenanceRebootDue = model.TimeMaintenanceRebootDue
+	m.PreferredMaintenanceAction = model.PreferredMaintenanceAction
 	m.AvailabilityDomain = model.AvailabilityDomain
 	m.CompartmentId = model.CompartmentId
 	m.Id = model.Id
@@ -253,6 +278,29 @@ var mappingInstanceLifecycleState = map[string]InstanceLifecycleStateEnum{
 func GetInstanceLifecycleStateEnumValues() []InstanceLifecycleStateEnum {
 	values := make([]InstanceLifecycleStateEnum, 0)
 	for _, v := range mappingInstanceLifecycleState {
+		values = append(values, v)
+	}
+	return values
+}
+
+// InstancePreferredMaintenanceActionEnum Enum with underlying type: string
+type InstancePreferredMaintenanceActionEnum string
+
+// Set of constants representing the allowable values for InstancePreferredMaintenanceActionEnum
+const (
+	InstancePreferredMaintenanceActionLiveMigrate InstancePreferredMaintenanceActionEnum = "LIVE_MIGRATE"
+	InstancePreferredMaintenanceActionReboot      InstancePreferredMaintenanceActionEnum = "REBOOT"
+)
+
+var mappingInstancePreferredMaintenanceAction = map[string]InstancePreferredMaintenanceActionEnum{
+	"LIVE_MIGRATE": InstancePreferredMaintenanceActionLiveMigrate,
+	"REBOOT":       InstancePreferredMaintenanceActionReboot,
+}
+
+// GetInstancePreferredMaintenanceActionEnumValues Enumerates the set of values for InstancePreferredMaintenanceActionEnum
+func GetInstancePreferredMaintenanceActionEnumValues() []InstancePreferredMaintenanceActionEnum {
+	values := make([]InstancePreferredMaintenanceActionEnum, 0)
+	for _, v := range mappingInstancePreferredMaintenanceAction {
 		values = append(values, v)
 	}
 	return values

@@ -35,6 +35,16 @@ func (fake *fake) uploadParts(ctx context.Context, done <-chan struct{}, parts <
 
 		select {
 		case result <- part:
+			if nil != request.CallBack {
+				uploadedPart := MultiPartUploadPart{
+					PartNum:    part.partNum,
+					TotalParts: part.totalParts,
+					Offset:     part.offset,
+					Hash:       part.hash,
+					Err:        part.err}
+
+				request.CallBack(uploadedPart)
+			}
 		case <-done:
 			return
 		}
@@ -106,7 +116,7 @@ func TestUploadFileMultiparts(t *testing.T) {
 	for _, testData := range testDataSet {
 		fake := fake{upLoadID: testData.uploadID, failedPartNumbers: testData.failedPartNumbers, numberOfCommitedParts: common.Int(0), numberOfUploadedParts: common.Int(0)}
 		fileUpload.multipartUploader = &fake
-		filePath, _ := helpers.WriteTempFileOfSize(int64(fileSize))
+		filePath, _ := helpers.WriteTempFileOfSize(fileSize)
 		request := UploadFileRequest{
 			UploadRequest: UploadRequest{PartSize: common.Int64(partSize)},
 			FilePath:      filePath,

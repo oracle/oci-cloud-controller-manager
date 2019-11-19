@@ -54,7 +54,9 @@ func TestComputeClientAddImageShapeCompatibilityEntry(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.AddImageShapeCompatibilityEntry(context.Background(), req.Request)
@@ -97,7 +99,9 @@ func TestComputeClientAttachBootVolume(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.AttachBootVolume(context.Background(), req.Request)
@@ -140,7 +144,9 @@ func TestComputeClientAttachVnic(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.AttachVnic(context.Background(), req.Request)
@@ -197,7 +203,9 @@ func TestComputeClientAttachVolume(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.AttachVolume(context.Background(), req.Request)
@@ -240,10 +248,102 @@ func TestComputeClientCaptureConsoleHistory(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.CaptureConsoleHistory(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="computeSharedOwnershipVmAndBm" email="compute_dev_us_grp@oracle.com" jiraProject="BMI" opsJiraProject="NONE"
+func TestComputeClientChangeDedicatedVmHostCompartment(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("core", "ChangeDedicatedVmHostCompartment")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ChangeDedicatedVmHostCompartment is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("core", "Compute", "ChangeDedicatedVmHostCompartment", createComputeClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(core.ComputeClient)
+
+	body, err := testClient.getRequests("core", "ChangeDedicatedVmHostCompartment")
+	assert.NoError(t, err)
+
+	type ChangeDedicatedVmHostCompartmentRequestInfo struct {
+		ContainerId string
+		Request     core.ChangeDedicatedVmHostCompartmentRequest
+	}
+
+	var requests []ChangeDedicatedVmHostCompartmentRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.ChangeDedicatedVmHostCompartment(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="computeImaging" email="imaging_dev_us_grp@oracle.com" jiraProject="COM" opsJiraProject="COM"
+func TestComputeClientChangeImageCompartment(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("core", "ChangeImageCompartment")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ChangeImageCompartment is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("core", "Compute", "ChangeImageCompartment", createComputeClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(core.ComputeClient)
+
+	body, err := testClient.getRequests("core", "ChangeImageCompartment")
+	assert.NoError(t, err)
+
+	type ChangeImageCompartmentRequestInfo struct {
+		ContainerId string
+		Request     core.ChangeImageCompartmentRequest
+	}
+
+	var requests []ChangeImageCompartmentRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.ChangeImageCompartment(context.Background(), req.Request)
 			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
 			assert.NoError(t, err)
 			assert.Empty(t, message, message)
@@ -283,7 +383,9 @@ func TestComputeClientChangeInstanceCompartment(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.ChangeInstanceCompartment(context.Background(), req.Request)
@@ -326,10 +428,57 @@ func TestComputeClientCreateAppCatalogSubscription(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.CreateAppCatalogSubscription(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="sic_block_storage_us_grp@oracle.com" jiraProject="BLOCK" opsJiraProject="BS"
+func TestComputeClientCreateDedicatedVmHost(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("core", "CreateDedicatedVmHost")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("CreateDedicatedVmHost is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("core", "Compute", "CreateDedicatedVmHost", createComputeClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(core.ComputeClient)
+
+	body, err := testClient.getRequests("core", "CreateDedicatedVmHost")
+	assert.NoError(t, err)
+
+	type CreateDedicatedVmHostRequestInfo struct {
+		ContainerId string
+		Request     core.CreateDedicatedVmHostRequest
+	}
+
+	var requests []CreateDedicatedVmHostRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.CreateDedicatedVmHost(context.Background(), req.Request)
 			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
 			assert.NoError(t, err)
 			assert.Empty(t, message, message)
@@ -369,7 +518,9 @@ func TestComputeClientCreateImage(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.CreateImage(context.Background(), req.Request)
@@ -412,7 +563,9 @@ func TestComputeClientCreateInstanceConsoleConnection(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.CreateInstanceConsoleConnection(context.Background(), req.Request)
@@ -455,7 +608,9 @@ func TestComputeClientDeleteAppCatalogSubscription(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.DeleteAppCatalogSubscription(context.Background(), req.Request)
@@ -498,10 +653,57 @@ func TestComputeClientDeleteConsoleHistory(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.DeleteConsoleHistory(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="sic_block_storage_us_grp@oracle.com" jiraProject="BLOCK" opsJiraProject="BS"
+func TestComputeClientDeleteDedicatedVmHost(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("core", "DeleteDedicatedVmHost")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("DeleteDedicatedVmHost is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("core", "Compute", "DeleteDedicatedVmHost", createComputeClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(core.ComputeClient)
+
+	body, err := testClient.getRequests("core", "DeleteDedicatedVmHost")
+	assert.NoError(t, err)
+
+	type DeleteDedicatedVmHostRequestInfo struct {
+		ContainerId string
+		Request     core.DeleteDedicatedVmHostRequest
+	}
+
+	var requests []DeleteDedicatedVmHostRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.DeleteDedicatedVmHost(context.Background(), req.Request)
 			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
 			assert.NoError(t, err)
 			assert.Empty(t, message, message)
@@ -541,7 +743,9 @@ func TestComputeClientDeleteImage(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.DeleteImage(context.Background(), req.Request)
@@ -584,7 +788,9 @@ func TestComputeClientDeleteInstanceConsoleConnection(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.DeleteInstanceConsoleConnection(context.Background(), req.Request)
@@ -627,7 +833,9 @@ func TestComputeClientDetachBootVolume(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.DetachBootVolume(context.Background(), req.Request)
@@ -670,7 +878,9 @@ func TestComputeClientDetachVnic(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.DetachVnic(context.Background(), req.Request)
@@ -713,7 +923,9 @@ func TestComputeClientDetachVolume(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.DetachVolume(context.Background(), req.Request)
@@ -768,7 +980,9 @@ func TestComputeClientExportImage(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.ExportImage(context.Background(), req.Request)
@@ -811,7 +1025,9 @@ func TestComputeClientGetAppCatalogListing(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetAppCatalogListing(context.Background(), req.Request)
@@ -854,7 +1070,9 @@ func TestComputeClientGetAppCatalogListingAgreements(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetAppCatalogListingAgreements(context.Background(), req.Request)
@@ -897,7 +1115,9 @@ func TestComputeClientGetAppCatalogListingResourceVersion(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetAppCatalogListingResourceVersion(context.Background(), req.Request)
@@ -940,7 +1160,9 @@ func TestComputeClientGetBootVolumeAttachment(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetBootVolumeAttachment(context.Background(), req.Request)
@@ -983,7 +1205,9 @@ func TestComputeClientGetConsoleHistory(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetConsoleHistory(context.Background(), req.Request)
@@ -1026,10 +1250,57 @@ func TestComputeClientGetConsoleHistoryContent(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetConsoleHistoryContent(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="sic_block_storage_us_grp@oracle.com" jiraProject="BLOCK" opsJiraProject="BS"
+func TestComputeClientGetDedicatedVmHost(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("core", "GetDedicatedVmHost")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("GetDedicatedVmHost is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("core", "Compute", "GetDedicatedVmHost", createComputeClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(core.ComputeClient)
+
+	body, err := testClient.getRequests("core", "GetDedicatedVmHost")
+	assert.NoError(t, err)
+
+	type GetDedicatedVmHostRequestInfo struct {
+		ContainerId string
+		Request     core.GetDedicatedVmHostRequest
+	}
+
+	var requests []GetDedicatedVmHostRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.GetDedicatedVmHost(context.Background(), req.Request)
 			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
 			assert.NoError(t, err)
 			assert.Empty(t, message, message)
@@ -1069,7 +1340,9 @@ func TestComputeClientGetImage(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetImage(context.Background(), req.Request)
@@ -1112,7 +1385,9 @@ func TestComputeClientGetInstance(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetInstance(context.Background(), req.Request)
@@ -1155,7 +1430,9 @@ func TestComputeClientGetInstanceConsoleConnection(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetInstanceConsoleConnection(context.Background(), req.Request)
@@ -1198,7 +1475,9 @@ func TestComputeClientGetVnicAttachment(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetVnicAttachment(context.Background(), req.Request)
@@ -1241,7 +1520,9 @@ func TestComputeClientGetVolumeAttachment(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetVolumeAttachment(context.Background(), req.Request)
@@ -1284,7 +1565,9 @@ func TestComputeClientGetWindowsInstanceInitialCredentials(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetWindowsInstanceInitialCredentials(context.Background(), req.Request)
@@ -1327,7 +1610,9 @@ func TestComputeClientInstanceAction(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.InstanceAction(context.Background(), req.Request)
@@ -1370,7 +1655,9 @@ func TestComputeClientLaunchInstance(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.LaunchInstance(context.Background(), req.Request)
@@ -1413,7 +1700,9 @@ func TestComputeClientListAppCatalogListingResourceVersions(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*core.ListAppCatalogListingResourceVersionsRequest)
@@ -1465,7 +1754,9 @@ func TestComputeClientListAppCatalogListings(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*core.ListAppCatalogListingsRequest)
@@ -1517,7 +1808,9 @@ func TestComputeClientListAppCatalogSubscriptions(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*core.ListAppCatalogSubscriptionsRequest)
@@ -1569,7 +1862,9 @@ func TestComputeClientListBootVolumeAttachments(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*core.ListBootVolumeAttachmentsRequest)
@@ -1621,7 +1916,9 @@ func TestComputeClientListConsoleHistories(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*core.ListConsoleHistoriesRequest)
@@ -1632,6 +1929,222 @@ func TestComputeClientListConsoleHistories(t *testing.T) {
 			typedListResponses := make([]core.ListConsoleHistoriesResponse, len(listResponses))
 			for i, lr := range listResponses {
 				typedListResponses[i] = lr.(core.ListConsoleHistoriesResponse)
+			}
+
+			message, err := testClient.validateResult(request.ContainerId, request.Request, typedListResponses, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="sic_block_storage_us_grp@oracle.com" jiraProject="BLOCK" opsJiraProject="BS"
+func TestComputeClientListDedicatedVmHostInstanceShapes(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("core", "ListDedicatedVmHostInstanceShapes")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ListDedicatedVmHostInstanceShapes is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("core", "Compute", "ListDedicatedVmHostInstanceShapes", createComputeClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(core.ComputeClient)
+
+	body, err := testClient.getRequests("core", "ListDedicatedVmHostInstanceShapes")
+	assert.NoError(t, err)
+
+	type ListDedicatedVmHostInstanceShapesRequestInfo struct {
+		ContainerId string
+		Request     core.ListDedicatedVmHostInstanceShapesRequest
+	}
+
+	var requests []ListDedicatedVmHostInstanceShapesRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, request := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			request.Request.RequestMetadata.RetryPolicy = retryPolicy
+			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
+				r := req.(*core.ListDedicatedVmHostInstanceShapesRequest)
+				return c.ListDedicatedVmHostInstanceShapes(context.Background(), *r)
+			}
+
+			listResponses, err := testClient.generateListResponses(&request.Request, listFn)
+			typedListResponses := make([]core.ListDedicatedVmHostInstanceShapesResponse, len(listResponses))
+			for i, lr := range listResponses {
+				typedListResponses[i] = lr.(core.ListDedicatedVmHostInstanceShapesResponse)
+			}
+
+			message, err := testClient.validateResult(request.ContainerId, request.Request, typedListResponses, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="sic_block_storage_us_grp@oracle.com" jiraProject="BLOCK" opsJiraProject="BS"
+func TestComputeClientListDedicatedVmHostInstances(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("core", "ListDedicatedVmHostInstances")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ListDedicatedVmHostInstances is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("core", "Compute", "ListDedicatedVmHostInstances", createComputeClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(core.ComputeClient)
+
+	body, err := testClient.getRequests("core", "ListDedicatedVmHostInstances")
+	assert.NoError(t, err)
+
+	type ListDedicatedVmHostInstancesRequestInfo struct {
+		ContainerId string
+		Request     core.ListDedicatedVmHostInstancesRequest
+	}
+
+	var requests []ListDedicatedVmHostInstancesRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, request := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			request.Request.RequestMetadata.RetryPolicy = retryPolicy
+			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
+				r := req.(*core.ListDedicatedVmHostInstancesRequest)
+				return c.ListDedicatedVmHostInstances(context.Background(), *r)
+			}
+
+			listResponses, err := testClient.generateListResponses(&request.Request, listFn)
+			typedListResponses := make([]core.ListDedicatedVmHostInstancesResponse, len(listResponses))
+			for i, lr := range listResponses {
+				typedListResponses[i] = lr.(core.ListDedicatedVmHostInstancesResponse)
+			}
+
+			message, err := testClient.validateResult(request.ContainerId, request.Request, typedListResponses, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="sic_block_storage_us_grp@oracle.com" jiraProject="BLOCK" opsJiraProject="BS"
+func TestComputeClientListDedicatedVmHostShapes(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("core", "ListDedicatedVmHostShapes")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ListDedicatedVmHostShapes is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("core", "Compute", "ListDedicatedVmHostShapes", createComputeClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(core.ComputeClient)
+
+	body, err := testClient.getRequests("core", "ListDedicatedVmHostShapes")
+	assert.NoError(t, err)
+
+	type ListDedicatedVmHostShapesRequestInfo struct {
+		ContainerId string
+		Request     core.ListDedicatedVmHostShapesRequest
+	}
+
+	var requests []ListDedicatedVmHostShapesRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, request := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			request.Request.RequestMetadata.RetryPolicy = retryPolicy
+			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
+				r := req.(*core.ListDedicatedVmHostShapesRequest)
+				return c.ListDedicatedVmHostShapes(context.Background(), *r)
+			}
+
+			listResponses, err := testClient.generateListResponses(&request.Request, listFn)
+			typedListResponses := make([]core.ListDedicatedVmHostShapesResponse, len(listResponses))
+			for i, lr := range listResponses {
+				typedListResponses[i] = lr.(core.ListDedicatedVmHostShapesResponse)
+			}
+
+			message, err := testClient.validateResult(request.ContainerId, request.Request, typedListResponses, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="sic_block_storage_us_grp@oracle.com" jiraProject="BLOCK" opsJiraProject="BS"
+func TestComputeClientListDedicatedVmHosts(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("core", "ListDedicatedVmHosts")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ListDedicatedVmHosts is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("core", "Compute", "ListDedicatedVmHosts", createComputeClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(core.ComputeClient)
+
+	body, err := testClient.getRequests("core", "ListDedicatedVmHosts")
+	assert.NoError(t, err)
+
+	type ListDedicatedVmHostsRequestInfo struct {
+		ContainerId string
+		Request     core.ListDedicatedVmHostsRequest
+	}
+
+	var requests []ListDedicatedVmHostsRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, request := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			request.Request.RequestMetadata.RetryPolicy = retryPolicy
+			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
+				r := req.(*core.ListDedicatedVmHostsRequest)
+				return c.ListDedicatedVmHosts(context.Background(), *r)
+			}
+
+			listResponses, err := testClient.generateListResponses(&request.Request, listFn)
+			typedListResponses := make([]core.ListDedicatedVmHostsResponse, len(listResponses))
+			for i, lr := range listResponses {
+				typedListResponses[i] = lr.(core.ListDedicatedVmHostsResponse)
 			}
 
 			message, err := testClient.validateResult(request.ContainerId, request.Request, typedListResponses, err)
@@ -1673,7 +2186,9 @@ func TestComputeClientListImages(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*core.ListImagesRequest)
@@ -1725,7 +2240,9 @@ func TestComputeClientListInstanceConsoleConnections(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*core.ListInstanceConsoleConnectionsRequest)
@@ -1777,7 +2294,9 @@ func TestComputeClientListInstanceDevices(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*core.ListInstanceDevicesRequest)
@@ -1829,7 +2348,9 @@ func TestComputeClientListInstances(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*core.ListInstancesRequest)
@@ -1881,7 +2402,9 @@ func TestComputeClientListShapes(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*core.ListShapesRequest)
@@ -1933,7 +2456,9 @@ func TestComputeClientListVnicAttachments(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*core.ListVnicAttachmentsRequest)
@@ -1985,7 +2510,9 @@ func TestComputeClientListVolumeAttachments(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*core.ListVolumeAttachmentsRequest)
@@ -2037,7 +2564,9 @@ func TestComputeClientRemoveImageShapeCompatibilityEntry(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.RemoveImageShapeCompatibilityEntry(context.Background(), req.Request)
@@ -2080,7 +2609,9 @@ func TestComputeClientTerminateInstance(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.TerminateInstance(context.Background(), req.Request)
@@ -2123,10 +2654,57 @@ func TestComputeClientUpdateConsoleHistory(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateConsoleHistory(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="sic_block_storage_us_grp@oracle.com" jiraProject="BLOCK" opsJiraProject="BS"
+func TestComputeClientUpdateDedicatedVmHost(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("core", "UpdateDedicatedVmHost")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("UpdateDedicatedVmHost is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("core", "Compute", "UpdateDedicatedVmHost", createComputeClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(core.ComputeClient)
+
+	body, err := testClient.getRequests("core", "UpdateDedicatedVmHost")
+	assert.NoError(t, err)
+
+	type UpdateDedicatedVmHostRequestInfo struct {
+		ContainerId string
+		Request     core.UpdateDedicatedVmHostRequest
+	}
+
+	var requests []UpdateDedicatedVmHostRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.UpdateDedicatedVmHost(context.Background(), req.Request)
 			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
 			assert.NoError(t, err)
 			assert.Empty(t, message, message)
@@ -2166,7 +2744,9 @@ func TestComputeClientUpdateImage(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateImage(context.Background(), req.Request)
@@ -2209,7 +2789,9 @@ func TestComputeClientUpdateInstance(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateInstance(context.Background(), req.Request)
@@ -2252,7 +2834,9 @@ func TestComputeClientUpdateInstanceConsoleConnection(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateInstanceConsoleConnection(context.Background(), req.Request)

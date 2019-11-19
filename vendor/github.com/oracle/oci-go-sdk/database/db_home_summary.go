@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Database Service API
@@ -12,29 +12,32 @@ import (
 	"github.com/oracle/oci-go-sdk/common"
 )
 
-// DbHomeSummary A directory where Oracle Database software is installed. A bare metal DB system can have multiple database homes
-// and each database home can run a different supported version of Oracle Database. A virtual machine DB system can have only one database home.
-// For more information, see Bare Metal and Virtual Machine DB Systems (https://docs.cloud.oracle.com/Content/Database/Concepts/overview.htm).
+// DbHomeSummary A directory where Oracle Database software is installed. A bare metal or Exadata DB system can have multiple Database Homes
+// and each Database Home can run a different supported version of Oracle Database. A virtual machine DB system can have only one Database Home.
+// For more information, see Bare Metal and Virtual Machine DB Systems (https://docs.cloud.oracle.com/Content/Database/Concepts/overview.htm) and Exadata DB Systems (https://docs.cloud.oracle.com/Content/Database/Concepts/exaoverview.htm).
 // To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized, talk to an
 // administrator. If you're an administrator who needs to write policies to give users access,
 // see Getting Started with Policies (https://docs.cloud.oracle.com/Content/Identity/Concepts/policygetstarted.htm).
 // **Warning:** Oracle recommends that you avoid using any confidential information when you supply string values using the API.
 type DbHomeSummary struct {
 
-	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the database home.
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the Database Home.
 	Id *string `mandatory:"true" json:"id"`
 
 	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the compartment.
 	CompartmentId *string `mandatory:"true" json:"compartmentId"`
 
-	// The user-provided name for the database home. The name does not need to be unique.
+	// The user-provided name for the Database Home. The name does not need to be unique.
 	DisplayName *string `mandatory:"true" json:"displayName"`
 
-	// The current state of the database home.
+	// The current state of the Database Home.
 	LifecycleState DbHomeSummaryLifecycleStateEnum `mandatory:"true" json:"lifecycleState"`
 
 	// The Oracle Database version.
 	DbVersion *string `mandatory:"true" json:"dbVersion"`
+
+	// The location of the Oracle Database Home.
+	DbHomeLocation *string `mandatory:"true" json:"dbHomeLocation"`
 
 	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the last patch history. This value is updated as soon as a patch operation is started.
 	LastPatchHistoryEntryId *string `mandatory:"false" json:"lastPatchHistoryEntryId"`
@@ -42,8 +45,17 @@ type DbHomeSummary struct {
 	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the DB system.
 	DbSystemId *string `mandatory:"false" json:"dbSystemId"`
 
-	// The date and time the database home was created.
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the VM cluster.
+	VmClusterId *string `mandatory:"false" json:"vmClusterId"`
+
+	// Additional information about the current lifecycleState.
+	LifecycleDetails *string `mandatory:"false" json:"lifecycleDetails"`
+
+	// The date and time the Database Home was created.
 	TimeCreated *common.SDKTime `mandatory:"false" json:"timeCreated"`
+
+	// The OCID of the key container that is used as the master encryption key in database transparent data encryption (TDE) operations.
+	KmsKeyId *string `mandatory:"false" json:"kmsKeyId"`
 }
 
 func (m DbHomeSummary) String() string {

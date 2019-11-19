@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // OraCache Public API
@@ -16,7 +16,7 @@ import (
 type WorkRequestResource struct {
 
 	// The way in which the resource is affected.
-	ActionType WorkRequestResourceActionTypeEnum `mandatory:"true" json:"actionType"`
+	ActionType ResourceActionTypeEnum `mandatory:"true" json:"actionType"`
 
 	// The type of the resource.
 	EntityType *string `mandatory:"true" json:"entityType"`
@@ -32,37 +32,25 @@ func (m WorkRequestResource) String() string {
 	return common.PointerString(m)
 }
 
-// WorkRequestResourceActionTypeEnum Enum with underlying type: string
-type WorkRequestResourceActionTypeEnum string
+// WorkRequestResourceActionTypeEnum is an alias to type: ResourceActionTypeEnum
+// Consider using ResourceActionTypeEnum instead
+// Deprecated
+type WorkRequestResourceActionTypeEnum = ResourceActionTypeEnum
 
-// Set of constants representing the allowable values for WorkRequestResourceActionTypeEnum
+// Set of constants representing the allowable values for ResourceActionTypeEnum
+// Deprecated
 const (
-	WorkRequestResourceActionTypeCreated        WorkRequestResourceActionTypeEnum = "CREATED"
-	WorkRequestResourceActionTypeUpdated        WorkRequestResourceActionTypeEnum = "UPDATED"
-	WorkRequestResourceActionTypeDeleted        WorkRequestResourceActionTypeEnum = "DELETED"
-	WorkRequestResourceActionTypeInProgress     WorkRequestResourceActionTypeEnum = "IN_PROGRESS"
-	WorkRequestResourceActionTypeCanceledCreate WorkRequestResourceActionTypeEnum = "CANCELED_CREATE"
-	WorkRequestResourceActionTypeCanceledDelete WorkRequestResourceActionTypeEnum = "CANCELED_DELETE"
-	WorkRequestResourceActionTypeCanceledUpdate WorkRequestResourceActionTypeEnum = "CANCELED_UPDATE"
-	WorkRequestResourceActionTypeFailed         WorkRequestResourceActionTypeEnum = "FAILED"
+	WorkRequestResourceActionTypeCreated        ResourceActionTypeEnum = "CREATED"
+	WorkRequestResourceActionTypeUpdated        ResourceActionTypeEnum = "UPDATED"
+	WorkRequestResourceActionTypeDeleted        ResourceActionTypeEnum = "DELETED"
+	WorkRequestResourceActionTypeInProgress     ResourceActionTypeEnum = "IN_PROGRESS"
+	WorkRequestResourceActionTypeCanceledCreate ResourceActionTypeEnum = "CANCELED_CREATE"
+	WorkRequestResourceActionTypeCanceledDelete ResourceActionTypeEnum = "CANCELED_DELETE"
+	WorkRequestResourceActionTypeCanceledUpdate ResourceActionTypeEnum = "CANCELED_UPDATE"
+	WorkRequestResourceActionTypeFailed         ResourceActionTypeEnum = "FAILED"
 )
 
-var mappingWorkRequestResourceActionType = map[string]WorkRequestResourceActionTypeEnum{
-	"CREATED":         WorkRequestResourceActionTypeCreated,
-	"UPDATED":         WorkRequestResourceActionTypeUpdated,
-	"DELETED":         WorkRequestResourceActionTypeDeleted,
-	"IN_PROGRESS":     WorkRequestResourceActionTypeInProgress,
-	"CANCELED_CREATE": WorkRequestResourceActionTypeCanceledCreate,
-	"CANCELED_DELETE": WorkRequestResourceActionTypeCanceledDelete,
-	"CANCELED_UPDATE": WorkRequestResourceActionTypeCanceledUpdate,
-	"FAILED":          WorkRequestResourceActionTypeFailed,
-}
-
-// GetWorkRequestResourceActionTypeEnumValues Enumerates the set of values for WorkRequestResourceActionTypeEnum
-func GetWorkRequestResourceActionTypeEnumValues() []WorkRequestResourceActionTypeEnum {
-	values := make([]WorkRequestResourceActionTypeEnum, 0)
-	for _, v := range mappingWorkRequestResourceActionType {
-		values = append(values, v)
-	}
-	return values
-}
+// GetWorkRequestResourceActionTypeEnumValues Enumerates the set of values for ResourceActionTypeEnum
+// Consider using GetResourceActionTypeEnumValue
+// Deprecated
+var GetWorkRequestResourceActionTypeEnumValues = GetResourceActionTypeEnumValues

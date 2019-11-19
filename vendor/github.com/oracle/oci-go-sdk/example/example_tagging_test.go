@@ -26,7 +26,7 @@ func ExampleTagging() {
 	fmt.Println("tag namespace created")
 
 	tagName := common.String("GOSDKSampleTagName")
-	createTag(ctx, c, tagNamespaceID, tagName)
+	tagDefinitionID := createTag(ctx, c, tagNamespaceID, tagName)
 	fmt.Println("tag created")
 
 	// get tag
@@ -64,7 +64,39 @@ func ExampleTagging() {
 	helpers.FatalIfError(err)
 	fmt.Println("list tag namespace")
 
-	// retire a tag namespace by using the update tag namespace operation
+	//Create a tag Default in the specified compartment
+	tagDefaultID := createTagDefault(ctx, c, tagDefinitionID)
+	fmt.Println("tag default created")
+
+	//List all Tag Defaults within the given compartment
+	listTagDefaultsReq := identity.ListTagDefaultsRequest{
+		CompartmentId: helpers.CompartmentID(),
+	}
+	_, err = c.ListTagDefaults(ctx, listTagDefaultsReq)
+	helpers.FatalIfError(err)
+	fmt.Println("list tag defaults")
+
+	//Updating the tag default created, setting value to updated_value and updating as a required tag
+	updateTagDefaultReq := identity.UpdateTagDefaultRequest{
+		TagDefaultId: tagDefaultID,
+		UpdateTagDefaultDetails: identity.UpdateTagDefaultDetails{
+			Value:      common.String("GOSDKSampleTagDefaultUpdatedValue"),
+			IsRequired: common.Bool(true),
+		},
+	}
+	_, err = c.UpdateTagDefault(ctx, updateTagDefaultReq)
+	helpers.FatalIfError(err)
+	fmt.Println("updated tag default")
+
+	//Delete the created tag default
+	deleteTagDefaultReq := identity.DeleteTagDefaultRequest{
+		TagDefaultId: tagDefaultID,
+	}
+	_, err = c.DeleteTagDefault(ctx, deleteTagDefaultReq)
+	helpers.FatalIfError(err)
+	fmt.Println("delete tag default")
+
+	//retire a tag namespace by using the update tag namespace operation
 	updateTagNamespaceReq := identity.UpdateTagNamespaceRequest{
 		TagNamespaceId: tagNamespaceID,
 		UpdateTagNamespaceDetails: identity.UpdateTagNamespaceDetails{
@@ -108,6 +140,10 @@ func ExampleTagging() {
 	// list tag
 	// get tag namespace
 	// list tag namespace
+	// tag default created
+	// list tag defaults
+	// updated tag default
+	// delete tag default
 	// tag namespace retired
 	// tag retired
 	// tag namespace reactivated
@@ -241,6 +277,20 @@ func createTag(ctx context.Context, client identity.IdentityClient, tagNamespace
 	req.FreeformTags = map[string]string{"GOSDKSampleTagKey": "GOSDKSampleTagValue"}
 
 	resp, err := client.CreateTag(context.Background(), req)
+	helpers.FatalIfError(err)
+
+	return resp.Id
+}
+
+func createTagDefault(ctx context.Context, client identity.IdentityClient, tagDefinitionID *string) *string {
+	req := identity.CreateTagDefaultRequest{}
+	req.CompartmentId = helpers.CompartmentID()
+	req.TagDefinitionId = tagDefinitionID
+	req.Value = common.String("GOSDKSampleTagDefaultValue")
+	//By default IsRequired is false
+	req.IsRequired = common.Bool(false)
+
+	resp, err := client.CreateTagDefault(context.Background(), req)
 	helpers.FatalIfError(err)
 
 	return resp.Id

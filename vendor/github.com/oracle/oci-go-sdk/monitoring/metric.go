@@ -1,9 +1,10 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Monitoring API
 //
 // Use the Monitoring API to manage metric queries and alarms for assessing the health, capacity, and performance of your cloud resources.
+// Endpoints vary by operation. For PostMetric, use the `telemetry-ingestion` endpoints; for all other operations, use the `telemetry` endpoints.
 // For information about monitoring, see Monitoring Overview (https://docs.cloud.oracle.com/iaas/Content/Monitoring/Concepts/monitoringoverview.htm).
 //
 
@@ -24,6 +25,12 @@ type Metric struct {
 	// The source service or application emitting the metric.
 	// Example: `oci_computeagent`
 	Namespace *string `mandatory:"false" json:"namespace"`
+
+	// Resource group provided with the posted metric. A resource group is a custom string that can be used as a filter. Only one resource group can be applied per metric.
+	// A valid resourceGroup value starts with an alphabetical character and includes only alphanumeric characters, periods (.), underscores (_), hyphens (-), and dollar signs ($).
+	// Avoid entering confidential information.
+	// Example: `frontend-fleet`
+	ResourceGroup *string `mandatory:"false" json:"resourceGroup"`
 
 	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the compartment containing
 	// the resources monitored by the metric.

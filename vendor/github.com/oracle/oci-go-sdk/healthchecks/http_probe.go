@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Health Checks API
@@ -23,11 +23,19 @@ type HttpProbe struct {
 	// A URL for fetching the probe results.
 	ResultsUrl *string `mandatory:"false" json:"resultsUrl"`
 
+	// The region where updates must be made and where results must be fetched from.
+	HomeRegion *string `mandatory:"false" json:"homeRegion"`
+
+	// The RFC 3339-formatted creation date and time of the probe.
+	TimeCreated *common.SDKTime `mandatory:"false" json:"timeCreated"`
+
 	// The OCID of the compartment.
 	CompartmentId *string `mandatory:"false" json:"compartmentId"`
 
+	// A list of targets (hostnames or IP addresses) of the probe.
 	Targets []string `mandatory:"false" json:"targets"`
 
+	// A list of names of vantage points from which to execute the probe.
 	VantagePointNames []string `mandatory:"false" json:"vantagePointNames"`
 
 	// The port on which to probe endpoints. If unspecified, probes will use the
@@ -52,50 +60,4 @@ type HttpProbe struct {
 
 func (m HttpProbe) String() string {
 	return common.PointerString(m)
-}
-
-// HttpProbeProtocolEnum Enum with underlying type: string
-type HttpProbeProtocolEnum string
-
-// Set of constants representing the allowable values for HttpProbeProtocolEnum
-const (
-	HttpProbeProtocolHttp  HttpProbeProtocolEnum = "HTTP"
-	HttpProbeProtocolHttps HttpProbeProtocolEnum = "HTTPS"
-)
-
-var mappingHttpProbeProtocol = map[string]HttpProbeProtocolEnum{
-	"HTTP":  HttpProbeProtocolHttp,
-	"HTTPS": HttpProbeProtocolHttps,
-}
-
-// GetHttpProbeProtocolEnumValues Enumerates the set of values for HttpProbeProtocolEnum
-func GetHttpProbeProtocolEnumValues() []HttpProbeProtocolEnum {
-	values := make([]HttpProbeProtocolEnum, 0)
-	for _, v := range mappingHttpProbeProtocol {
-		values = append(values, v)
-	}
-	return values
-}
-
-// HttpProbeMethodEnum Enum with underlying type: string
-type HttpProbeMethodEnum string
-
-// Set of constants representing the allowable values for HttpProbeMethodEnum
-const (
-	HttpProbeMethodGet  HttpProbeMethodEnum = "GET"
-	HttpProbeMethodHead HttpProbeMethodEnum = "HEAD"
-)
-
-var mappingHttpProbeMethod = map[string]HttpProbeMethodEnum{
-	"GET":  HttpProbeMethodGet,
-	"HEAD": HttpProbeMethodHead,
-}
-
-// GetHttpProbeMethodEnumValues Enumerates the set of values for HttpProbeMethodEnum
-func GetHttpProbeMethodEnumValues() []HttpProbeMethodEnum {
-	values := make([]HttpProbeMethodEnum, 0)
-	for _, v := range mappingHttpProbeMethod {
-		values = append(values, v)
-	}
-	return values
 }

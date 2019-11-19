@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package objectstorage
@@ -94,6 +94,12 @@ type HeadObjectResponse struct {
 
 	// Content-Encoding header, as described in RFC 2616 (https://tools.ietf.org/rfc/rfc2616), section 14.11.
 	ContentEncoding *string `presentIn:"header" name:"content-encoding"`
+
+	// Cache-Control header, as described in RFC 2616 (https://tools.ietf.org/rfc/rfc2616), section 14.9.
+	CacheControl *string `presentIn:"header" name:"cache-control"`
+
+	// Content-Disposition header, as described in RFC 2616 (https://tools.ietf.org/rfc/rfc2616), section 19.5.1
+	ContentDisposition *string `presentIn:"header" name:"content-disposition"`
 
 	// The object modification time, as described in RFC 2616 (https://tools.ietf.org/rfc/rfc2616), section 14.29.
 	LastModified *common.SDKTime `presentIn:"header" name:"last-modified"`

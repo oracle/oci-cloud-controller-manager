@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Marketplace Service API
@@ -15,7 +15,7 @@ import (
 // AgreementSummary The model for a summary of an end user license agreement.
 type AgreementSummary struct {
 
-	// The unique identifier of the agreement.
+	// The unique identifier for the agreement.
 	Id *string `mandatory:"false" json:"id"`
 
 	// The content URL of the agreement.
@@ -24,7 +24,7 @@ type AgreementSummary struct {
 	// Who authored the agreement.
 	Author AgreementSummaryAuthorEnum `mandatory:"false" json:"author,omitempty"`
 
-	// Call to action to read and accept the agreement.
+	// Textual prompt to read and accept the agreement.
 	Prompt *string `mandatory:"false" json:"prompt"`
 }
 

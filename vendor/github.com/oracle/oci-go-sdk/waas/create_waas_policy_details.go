@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Web Application Acceleration and Security Services API
@@ -22,7 +22,7 @@ type CreateWaasPolicyDetails struct {
 	// The web application domain that the WAAS policy protects.
 	Domain *string `mandatory:"true" json:"domain"`
 
-	// A user-friendly name for the WAAS policy. The name is can be changed and does not need to be unique.
+	// A user-friendly name for the WAAS policy. The name can be changed and does not need to be unique.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// An array of additional domains for the specified web application.
@@ -31,14 +31,22 @@ type CreateWaasPolicyDetails struct {
 	// A map of host to origin for the web application. The key should be a customer friendly name for the host, ex. primary, secondary, etc.
 	Origins map[string]Origin `mandatory:"false" json:"origins"`
 
+	// The map of origin groups and their keys used to associate origins to the `wafConfig`. Origin groups allow you to apply weights to groups of origins for load balancing purposes. Origins with higher weights will receive larger proportions of client requests.
+	// To add additional origins to your WAAS policy, update the `origins` field of a `UpdateWaasPolicy` request.
+	OriginGroups map[string]OriginGroup `mandatory:"false" json:"originGroups"`
+
 	PolicyConfig *PolicyConfig `mandatory:"false" json:"policyConfig"`
 
 	WafConfig *WafConfigDetails `mandatory:"false" json:"wafConfig"`
 
-	// A simple key-value pair without any defined schema.
+	// Free-form tags for this resource. Each tag is a simple key-value pair with no predefined name, type, or namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
-	// A key-value pair with a defined schema that restricts the values of tags. These predefined keys are scoped to namespaces.
+	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 }
 

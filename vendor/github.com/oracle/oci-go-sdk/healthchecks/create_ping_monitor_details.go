@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Health Checks API
@@ -20,9 +20,10 @@ type CreatePingMonitorDetails struct {
 	// The OCID of the compartment.
 	CompartmentId *string `mandatory:"true" json:"compartmentId"`
 
+	// A list of targets (hostnames or IP addresses) of the probe.
 	Targets []string `mandatory:"true" json:"targets"`
 
-	Protocol CreatePingMonitorDetailsProtocolEnum `mandatory:"true" json:"protocol"`
+	Protocol PingProbeProtocolEnum `mandatory:"true" json:"protocol"`
 
 	// A user-friendly and mutable name suitable for display in a user interface.
 	DisplayName *string `mandatory:"true" json:"displayName"`
@@ -30,6 +31,7 @@ type CreatePingMonitorDetails struct {
 	// The monitor interval in seconds. Valid values: 10, 30, and 60.
 	IntervalInSeconds *int `mandatory:"true" json:"intervalInSeconds"`
 
+	// A list of names of vantage points from which to execute the probe.
 	VantagePointNames []string `mandatory:"false" json:"vantagePointNames"`
 
 	// The port on which to probe endpoints. If unspecified, probes will use the
@@ -59,25 +61,19 @@ func (m CreatePingMonitorDetails) String() string {
 	return common.PointerString(m)
 }
 
-// CreatePingMonitorDetailsProtocolEnum Enum with underlying type: string
-type CreatePingMonitorDetailsProtocolEnum string
+// CreatePingMonitorDetailsProtocolEnum is an alias to type: PingProbeProtocolEnum
+// Consider using PingProbeProtocolEnum instead
+// Deprecated
+type CreatePingMonitorDetailsProtocolEnum = PingProbeProtocolEnum
 
-// Set of constants representing the allowable values for CreatePingMonitorDetailsProtocolEnum
+// Set of constants representing the allowable values for PingProbeProtocolEnum
+// Deprecated
 const (
-	CreatePingMonitorDetailsProtocolIcmp CreatePingMonitorDetailsProtocolEnum = "ICMP"
-	CreatePingMonitorDetailsProtocolTcp  CreatePingMonitorDetailsProtocolEnum = "TCP"
+	CreatePingMonitorDetailsProtocolIcmp PingProbeProtocolEnum = "ICMP"
+	CreatePingMonitorDetailsProtocolTcp  PingProbeProtocolEnum = "TCP"
 )
 
-var mappingCreatePingMonitorDetailsProtocol = map[string]CreatePingMonitorDetailsProtocolEnum{
-	"ICMP": CreatePingMonitorDetailsProtocolIcmp,
-	"TCP":  CreatePingMonitorDetailsProtocolTcp,
-}
-
-// GetCreatePingMonitorDetailsProtocolEnumValues Enumerates the set of values for CreatePingMonitorDetailsProtocolEnum
-func GetCreatePingMonitorDetailsProtocolEnumValues() []CreatePingMonitorDetailsProtocolEnum {
-	values := make([]CreatePingMonitorDetailsProtocolEnum, 0)
-	for _, v := range mappingCreatePingMonitorDetailsProtocol {
-		values = append(values, v)
-	}
-	return values
-}
+// GetCreatePingMonitorDetailsProtocolEnumValues Enumerates the set of values for PingProbeProtocolEnum
+// Consider using GetPingProbeProtocolEnumValue
+// Deprecated
+var GetCreatePingMonitorDetailsProtocolEnumValues = GetPingProbeProtocolEnumValues

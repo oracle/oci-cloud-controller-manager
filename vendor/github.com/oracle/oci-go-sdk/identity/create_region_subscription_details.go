@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Identity and Access Management Service API
@@ -21,6 +21,9 @@ type CreateRegionSubscriptionDetails struct {
 	// - `IAD`
 	// - `FRA`
 	// - `LHR`
+	// - `YYZ`
+	// - `NRT`
+	// - `ICN`
 	// Example: `PHX`
 	RegionKey *string `mandatory:"true" json:"regionKey"`
 }
