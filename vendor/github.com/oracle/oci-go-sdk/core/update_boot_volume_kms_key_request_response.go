@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package core
@@ -14,7 +14,7 @@ type UpdateBootVolumeKmsKeyRequest struct {
 	// The OCID of the boot volume.
 	BootVolumeId *string `mandatory:"true" contributesTo:"path" name:"bootVolumeId"`
 
-	// Updates the KMS key ID for the specified boot volume.
+	// Updates the Key Management master encryption key assigned to the specified boot volume.
 	UpdateBootVolumeKmsKeyDetails `contributesTo:"body"`
 
 	// For optimistic concurrency control. In the PUT or DELETE call for a resource, set the `if-match`
@@ -57,8 +57,8 @@ type UpdateBootVolumeKmsKeyResponse struct {
 	// For optimistic concurrency control. See `if-match`.
 	Etag *string `presentIn:"header" name:"etag"`
 
-	// Unique Oracle-assigned identifier for the request. If you need to contact Oracle about
-	// a particular request, please provide the request ID.
+	// Unique Oracle-assigned identifier for the request. If you need to contact
+	// Oracle about a particular request, please provide the request ID.
 	OpcRequestId *string `presentIn:"header" name:"opc-request-id"`
 }
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Health Checks API
@@ -23,6 +23,12 @@ type HttpMonitorSummary struct {
 	// A URL for fetching the probe results.
 	ResultsUrl *string `mandatory:"false" json:"resultsUrl"`
 
+	// The region where updates must be made and where results must be fetched from.
+	HomeRegion *string `mandatory:"false" json:"homeRegion"`
+
+	// The RFC 3339-formatted creation date and time of the probe.
+	TimeCreated *common.SDKTime `mandatory:"false" json:"timeCreated"`
+
 	// The OCID of the compartment.
 	CompartmentId *string `mandatory:"false" json:"compartmentId"`
 
@@ -46,32 +52,26 @@ type HttpMonitorSummary struct {
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
-	Protocol HttpMonitorSummaryProtocolEnum `mandatory:"false" json:"protocol,omitempty"`
+	Protocol HttpProbeProtocolEnum `mandatory:"false" json:"protocol,omitempty"`
 }
 
 func (m HttpMonitorSummary) String() string {
 	return common.PointerString(m)
 }
 
-// HttpMonitorSummaryProtocolEnum Enum with underlying type: string
-type HttpMonitorSummaryProtocolEnum string
+// HttpMonitorSummaryProtocolEnum is an alias to type: HttpProbeProtocolEnum
+// Consider using HttpProbeProtocolEnum instead
+// Deprecated
+type HttpMonitorSummaryProtocolEnum = HttpProbeProtocolEnum
 
-// Set of constants representing the allowable values for HttpMonitorSummaryProtocolEnum
+// Set of constants representing the allowable values for HttpProbeProtocolEnum
+// Deprecated
 const (
-	HttpMonitorSummaryProtocolHttp  HttpMonitorSummaryProtocolEnum = "HTTP"
-	HttpMonitorSummaryProtocolHttps HttpMonitorSummaryProtocolEnum = "HTTPS"
+	HttpMonitorSummaryProtocolHttp  HttpProbeProtocolEnum = "HTTP"
+	HttpMonitorSummaryProtocolHttps HttpProbeProtocolEnum = "HTTPS"
 )
 
-var mappingHttpMonitorSummaryProtocol = map[string]HttpMonitorSummaryProtocolEnum{
-	"HTTP":  HttpMonitorSummaryProtocolHttp,
-	"HTTPS": HttpMonitorSummaryProtocolHttps,
-}
-
-// GetHttpMonitorSummaryProtocolEnumValues Enumerates the set of values for HttpMonitorSummaryProtocolEnum
-func GetHttpMonitorSummaryProtocolEnumValues() []HttpMonitorSummaryProtocolEnum {
-	values := make([]HttpMonitorSummaryProtocolEnum, 0)
-	for _, v := range mappingHttpMonitorSummaryProtocol {
-		values = append(values, v)
-	}
-	return values
-}
+// GetHttpMonitorSummaryProtocolEnumValues Enumerates the set of values for HttpProbeProtocolEnum
+// Consider using GetHttpProbeProtocolEnumValue
+// Deprecated
+var GetHttpMonitorSummaryProtocolEnumValues = GetHttpProbeProtocolEnumValues

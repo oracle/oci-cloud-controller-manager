@@ -98,7 +98,7 @@
 [[constraint]]
   name = "github.com/oracle/oci-go-sdk"
   source = "bitbucket.oci.oraclecorp.com/sdk/oci-go-sdk"
-  revision = "dec5beed03d47c2919ba15fd898c23f23202f273"
+  revision = "0aea8c99e92744e16e64cf77154d0b18f86dfcde"
 
 [[constraint]]
   name = "bitbucket.oci.oraclecorp.com/oke/oke-common"
@@ -107,7 +107,7 @@
 [[override]]
   name = "github.com/oracle/oci-go-sdk"
   source = "ssh://git@bitbucket.oci.oraclecorp.com:7999/sdk/oci-go-sdk.git"
-  revision = "dec5beed03d47c2919ba15fd898c23f23202f273"
+  revision = "0aea8c99e92744e16e64cf77154d0b18f86dfcde"
 
 [prune]
   non-go = true

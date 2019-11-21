@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Health Checks API
@@ -16,8 +16,11 @@ import (
 
 // UpdateHttpMonitorDetails The request body used to update an HTTP monitor.
 type UpdateHttpMonitorDetails struct {
+
+	// A list of targets (hostnames or IP addresses) of the probe.
 	Targets []string `mandatory:"false" json:"targets"`
 
+	// A list of names of vantage points from which to execute the probe.
 	VantagePointNames []string `mandatory:"false" json:"vantagePointNames"`
 
 	// The port on which to probe endpoints. If unspecified, probes will use the
@@ -28,9 +31,9 @@ type UpdateHttpMonitorDetails struct {
 	// The probe timeout must be less than or equal to `intervalInSeconds` for monitors.
 	TimeoutInSeconds *int `mandatory:"false" json:"timeoutInSeconds"`
 
-	Protocol UpdateHttpMonitorDetailsProtocolEnum `mandatory:"false" json:"protocol,omitempty"`
+	Protocol HttpProbeProtocolEnum `mandatory:"false" json:"protocol,omitempty"`
 
-	Method UpdateHttpMonitorDetailsMethodEnum `mandatory:"false" json:"method,omitempty"`
+	Method HttpProbeMethodEnum `mandatory:"false" json:"method,omitempty"`
 
 	// The optional URL path to probe, including query parameters.
 	Path *string `mandatory:"false" json:"path"`
@@ -64,48 +67,36 @@ func (m UpdateHttpMonitorDetails) String() string {
 	return common.PointerString(m)
 }
 
-// UpdateHttpMonitorDetailsProtocolEnum Enum with underlying type: string
-type UpdateHttpMonitorDetailsProtocolEnum string
+// UpdateHttpMonitorDetailsProtocolEnum is an alias to type: HttpProbeProtocolEnum
+// Consider using HttpProbeProtocolEnum instead
+// Deprecated
+type UpdateHttpMonitorDetailsProtocolEnum = HttpProbeProtocolEnum
 
-// Set of constants representing the allowable values for UpdateHttpMonitorDetailsProtocolEnum
+// Set of constants representing the allowable values for HttpProbeProtocolEnum
+// Deprecated
 const (
-	UpdateHttpMonitorDetailsProtocolHttp  UpdateHttpMonitorDetailsProtocolEnum = "HTTP"
-	UpdateHttpMonitorDetailsProtocolHttps UpdateHttpMonitorDetailsProtocolEnum = "HTTPS"
+	UpdateHttpMonitorDetailsProtocolHttp  HttpProbeProtocolEnum = "HTTP"
+	UpdateHttpMonitorDetailsProtocolHttps HttpProbeProtocolEnum = "HTTPS"
 )
 
-var mappingUpdateHttpMonitorDetailsProtocol = map[string]UpdateHttpMonitorDetailsProtocolEnum{
-	"HTTP":  UpdateHttpMonitorDetailsProtocolHttp,
-	"HTTPS": UpdateHttpMonitorDetailsProtocolHttps,
-}
+// GetUpdateHttpMonitorDetailsProtocolEnumValues Enumerates the set of values for HttpProbeProtocolEnum
+// Consider using GetHttpProbeProtocolEnumValue
+// Deprecated
+var GetUpdateHttpMonitorDetailsProtocolEnumValues = GetHttpProbeProtocolEnumValues
 
-// GetUpdateHttpMonitorDetailsProtocolEnumValues Enumerates the set of values for UpdateHttpMonitorDetailsProtocolEnum
-func GetUpdateHttpMonitorDetailsProtocolEnumValues() []UpdateHttpMonitorDetailsProtocolEnum {
-	values := make([]UpdateHttpMonitorDetailsProtocolEnum, 0)
-	for _, v := range mappingUpdateHttpMonitorDetailsProtocol {
-		values = append(values, v)
-	}
-	return values
-}
+// UpdateHttpMonitorDetailsMethodEnum is an alias to type: HttpProbeMethodEnum
+// Consider using HttpProbeMethodEnum instead
+// Deprecated
+type UpdateHttpMonitorDetailsMethodEnum = HttpProbeMethodEnum
 
-// UpdateHttpMonitorDetailsMethodEnum Enum with underlying type: string
-type UpdateHttpMonitorDetailsMethodEnum string
-
-// Set of constants representing the allowable values for UpdateHttpMonitorDetailsMethodEnum
+// Set of constants representing the allowable values for HttpProbeMethodEnum
+// Deprecated
 const (
-	UpdateHttpMonitorDetailsMethodGet  UpdateHttpMonitorDetailsMethodEnum = "GET"
-	UpdateHttpMonitorDetailsMethodHead UpdateHttpMonitorDetailsMethodEnum = "HEAD"
+	UpdateHttpMonitorDetailsMethodGet  HttpProbeMethodEnum = "GET"
+	UpdateHttpMonitorDetailsMethodHead HttpProbeMethodEnum = "HEAD"
 )
 
-var mappingUpdateHttpMonitorDetailsMethod = map[string]UpdateHttpMonitorDetailsMethodEnum{
-	"GET":  UpdateHttpMonitorDetailsMethodGet,
-	"HEAD": UpdateHttpMonitorDetailsMethodHead,
-}
-
-// GetUpdateHttpMonitorDetailsMethodEnumValues Enumerates the set of values for UpdateHttpMonitorDetailsMethodEnum
-func GetUpdateHttpMonitorDetailsMethodEnumValues() []UpdateHttpMonitorDetailsMethodEnum {
-	values := make([]UpdateHttpMonitorDetailsMethodEnum, 0)
-	for _, v := range mappingUpdateHttpMonitorDetailsMethod {
-		values = append(values, v)
-	}
-	return values
-}
+// GetUpdateHttpMonitorDetailsMethodEnumValues Enumerates the set of values for HttpProbeMethodEnum
+// Consider using GetHttpProbeMethodEnumValue
+// Deprecated
+var GetUpdateHttpMonitorDetailsMethodEnumValues = GetHttpProbeMethodEnumValues

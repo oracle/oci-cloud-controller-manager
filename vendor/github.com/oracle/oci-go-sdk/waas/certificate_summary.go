@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Web Application Acceleration and Security Services API
@@ -28,14 +28,18 @@ type CertificateSummary struct {
 	// The date and time the certificate will expire, expressed in RFC 3339 timestamp format.
 	TimeNotValidAfter *common.SDKTime `mandatory:"false" json:"timeNotValidAfter"`
 
-	// A simple key-value pair without any defined schema.
+	// Free-form tags for this resource. Each tag is a simple key-value pair with no predefined name, type, or namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
-	// A key-value pair with a defined schema that restricts the values of tags. These predefined keys are scoped to namespaces.
+	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
 	// The current lifecycle state of the certificate.
-	LifecycleState CertificateSummaryLifecycleStateEnum `mandatory:"false" json:"lifecycleState,omitempty"`
+	LifecycleState LifecycleStatesEnum `mandatory:"false" json:"lifecycleState,omitempty"`
 
 	// The date and time the certificate was created, in the format defined by RFC3339.
 	TimeCreated *common.SDKTime `mandatory:"false" json:"timeCreated"`
@@ -45,33 +49,23 @@ func (m CertificateSummary) String() string {
 	return common.PointerString(m)
 }
 
-// CertificateSummaryLifecycleStateEnum Enum with underlying type: string
-type CertificateSummaryLifecycleStateEnum string
+// CertificateSummaryLifecycleStateEnum is an alias to type: LifecycleStatesEnum
+// Consider using LifecycleStatesEnum instead
+// Deprecated
+type CertificateSummaryLifecycleStateEnum = LifecycleStatesEnum
 
-// Set of constants representing the allowable values for CertificateSummaryLifecycleStateEnum
+// Set of constants representing the allowable values for LifecycleStatesEnum
+// Deprecated
 const (
-	CertificateSummaryLifecycleStateCreating CertificateSummaryLifecycleStateEnum = "CREATING"
-	CertificateSummaryLifecycleStateActive   CertificateSummaryLifecycleStateEnum = "ACTIVE"
-	CertificateSummaryLifecycleStateFailed   CertificateSummaryLifecycleStateEnum = "FAILED"
-	CertificateSummaryLifecycleStateUpdating CertificateSummaryLifecycleStateEnum = "UPDATING"
-	CertificateSummaryLifecycleStateDeleting CertificateSummaryLifecycleStateEnum = "DELETING"
-	CertificateSummaryLifecycleStateDeleted  CertificateSummaryLifecycleStateEnum = "DELETED"
+	CertificateSummaryLifecycleStateCreating LifecycleStatesEnum = "CREATING"
+	CertificateSummaryLifecycleStateActive   LifecycleStatesEnum = "ACTIVE"
+	CertificateSummaryLifecycleStateFailed   LifecycleStatesEnum = "FAILED"
+	CertificateSummaryLifecycleStateUpdating LifecycleStatesEnum = "UPDATING"
+	CertificateSummaryLifecycleStateDeleting LifecycleStatesEnum = "DELETING"
+	CertificateSummaryLifecycleStateDeleted  LifecycleStatesEnum = "DELETED"
 )
 
-var mappingCertificateSummaryLifecycleState = map[string]CertificateSummaryLifecycleStateEnum{
-	"CREATING": CertificateSummaryLifecycleStateCreating,
-	"ACTIVE":   CertificateSummaryLifecycleStateActive,
-	"FAILED":   CertificateSummaryLifecycleStateFailed,
-	"UPDATING": CertificateSummaryLifecycleStateUpdating,
-	"DELETING": CertificateSummaryLifecycleStateDeleting,
-	"DELETED":  CertificateSummaryLifecycleStateDeleted,
-}
-
-// GetCertificateSummaryLifecycleStateEnumValues Enumerates the set of values for CertificateSummaryLifecycleStateEnum
-func GetCertificateSummaryLifecycleStateEnumValues() []CertificateSummaryLifecycleStateEnum {
-	values := make([]CertificateSummaryLifecycleStateEnum, 0)
-	for _, v := range mappingCertificateSummaryLifecycleState {
-		values = append(values, v)
-	}
-	return values
-}
+// GetCertificateSummaryLifecycleStateEnumValues Enumerates the set of values for LifecycleStatesEnum
+// Consider using GetLifecycleStatesEnumValue
+// Deprecated
+var GetCertificateSummaryLifecycleStateEnumValues = GetLifecycleStatesEnumValues

@@ -23,6 +23,51 @@ func createMonitoringClientWithProvider(p common.ConfigurationProvider, testConf
 }
 
 // IssueRoutingInfo tag="default" email="pic_ion_dev_grp@oracle.com" jiraProject="TEL" opsJiraProject="TEL"
+func TestMonitoringClientChangeAlarmCompartment(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("monitoring", "ChangeAlarmCompartment")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ChangeAlarmCompartment is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("monitoring", "Monitoring", "ChangeAlarmCompartment", createMonitoringClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(monitoring.MonitoringClient)
+
+	body, err := testClient.getRequests("monitoring", "ChangeAlarmCompartment")
+	assert.NoError(t, err)
+
+	type ChangeAlarmCompartmentRequestInfo struct {
+		ContainerId string
+		Request     monitoring.ChangeAlarmCompartmentRequest
+	}
+
+	var requests []ChangeAlarmCompartmentRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.ChangeAlarmCompartment(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="pic_ion_dev_grp@oracle.com" jiraProject="TEL" opsJiraProject="TEL"
 func TestMonitoringClientCreateAlarm(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -54,7 +99,9 @@ func TestMonitoringClientCreateAlarm(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.CreateAlarm(context.Background(), req.Request)
@@ -97,7 +144,9 @@ func TestMonitoringClientDeleteAlarm(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.DeleteAlarm(context.Background(), req.Request)
@@ -140,7 +189,9 @@ func TestMonitoringClientGetAlarm(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetAlarm(context.Background(), req.Request)
@@ -183,7 +234,9 @@ func TestMonitoringClientGetAlarmHistory(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*monitoring.GetAlarmHistoryRequest)
@@ -235,7 +288,9 @@ func TestMonitoringClientListAlarms(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*monitoring.ListAlarmsRequest)
@@ -287,7 +342,9 @@ func TestMonitoringClientListAlarmsStatus(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*monitoring.ListAlarmsStatusRequest)
@@ -339,7 +396,9 @@ func TestMonitoringClientListMetrics(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*monitoring.ListMetricsRequest)
@@ -391,7 +450,9 @@ func TestMonitoringClientPostMetricData(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.PostMetricData(context.Background(), req.Request)
@@ -434,7 +495,9 @@ func TestMonitoringClientRemoveAlarmSuppression(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.RemoveAlarmSuppression(context.Background(), req.Request)
@@ -477,7 +540,9 @@ func TestMonitoringClientSummarizeMetricsData(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.SummarizeMetricsData(context.Background(), req.Request)
@@ -520,7 +585,9 @@ func TestMonitoringClientUpdateAlarm(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateAlarm(context.Background(), req.Request)

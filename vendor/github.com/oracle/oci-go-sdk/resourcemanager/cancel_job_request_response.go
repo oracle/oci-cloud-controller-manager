@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package resourcemanager
@@ -11,7 +11,7 @@ import (
 // CancelJobRequest wrapper for the CancelJob operation
 type CancelJobRequest struct {
 
-	// The job OCID.
+	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the job.
 	JobId *string `mandatory:"true" contributesTo:"path" name:"jobId"`
 
 	// Unique Oracle-assigned identifier for the request. If you need to contact Oracle about a

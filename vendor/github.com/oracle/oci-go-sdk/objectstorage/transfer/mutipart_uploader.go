@@ -5,10 +5,9 @@ package transfer
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
-
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/objectstorage"
+	"io/ioutil"
 )
 
 // multipartUploader is an interface wrap the methods talk to object storage service
@@ -59,6 +58,18 @@ func (uploader *multipartUpload) uploadParts(ctx context.Context, done <-chan st
 		part.etag = resp.ETag
 		select {
 		case result <- part:
+			// Invoke the callBack after upload of each Part
+			if nil != request.CallBack {
+				uploadedPart := MultiPartUploadPart{
+					PartNum:    part.partNum,
+					TotalParts: part.totalParts,
+					Offset:     part.offset,
+					Hash:       part.hash,
+					Err:        part.err,
+					OpcMD5:     part.opcMD5}
+
+				request.CallBack(uploadedPart)
+			}
 			common.Debugf("uploadParts resp %v, %v\n", part.partNum, resp.ETag)
 		case <-done:
 			common.Debugln("uploadParts received Done")
@@ -81,6 +92,7 @@ func (uploader *multipartUpload) uploadPart(ctx context.Context, request UploadR
 		IfNoneMatch:        request.IfNoneMatch,
 		OpcClientRequestId: request.OpcClientRequestID,
 		RequestMetadata:    request.RequestMetadata,
+		ContentMD5:         part.opcMD5,
 	}
 
 	resp, err := request.ObjectStorageClient.UploadPart(ctx, req)

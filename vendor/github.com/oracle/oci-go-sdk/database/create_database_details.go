@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Database Service API
@@ -12,7 +12,7 @@ import (
 	"github.com/oracle/oci-go-sdk/common"
 )
 
-// CreateDatabaseDetails Details for creating a database backup.
+// CreateDatabaseDetails Details for creating a database.
 // **Warning:** Oracle recommends that you avoid using any confidential information when you supply string values using the API.
 type CreateDatabaseDetails struct {
 
@@ -21,6 +21,9 @@ type CreateDatabaseDetails struct {
 
 	// A strong password for SYS, SYSTEM, and PDB Admin. The password must be at least nine characters and contain at least two uppercase, two lowercase, two numbers, and two special characters. The special characters must be _, \#, or -.
 	AdminPassword *string `mandatory:"true" json:"adminPassword"`
+
+	// The `DB_UNIQUE_NAME` of the Oracle Database being backed up.
+	DbUniqueName *string `mandatory:"false" json:"dbUniqueName"`
 
 	// The name of the pluggable database. The name must begin with an alphabetic character and can contain a maximum of eight alphanumeric characters. Special characters are not permitted. Pluggable database should not be same as database name.
 	PdbName *string `mandatory:"false" json:"pdbName"`
@@ -45,7 +48,6 @@ type CreateDatabaseDetails struct {
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
 	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
-	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 }
 

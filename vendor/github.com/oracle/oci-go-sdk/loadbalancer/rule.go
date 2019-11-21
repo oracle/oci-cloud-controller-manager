@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Load Balancing API
@@ -52,6 +52,10 @@ func (m *rule) UnmarshalPolymorphicJSON(data []byte) (interface{}, error) {
 		mm := AddHttpRequestHeaderRule{}
 		err = json.Unmarshal(data, &mm)
 		return mm, err
+	case "REDIRECT":
+		mm := RedirectRule{}
+		err = json.Unmarshal(data, &mm)
+		return mm, err
 	case "REMOVE_HTTP_REQUEST_HEADER":
 		mm := RemoveHttpRequestHeaderRule{}
 		err = json.Unmarshal(data, &mm)
@@ -62,6 +66,14 @@ func (m *rule) UnmarshalPolymorphicJSON(data []byte) (interface{}, error) {
 		return mm, err
 	case "REMOVE_HTTP_RESPONSE_HEADER":
 		mm := RemoveHttpResponseHeaderRule{}
+		err = json.Unmarshal(data, &mm)
+		return mm, err
+	case "CONTROL_ACCESS_USING_HTTP_METHODS":
+		mm := ControlAccessUsingHttpMethodsRule{}
+		err = json.Unmarshal(data, &mm)
+		return mm, err
+	case "ALLOW":
+		mm := AllowRule{}
 		err = json.Unmarshal(data, &mm)
 		return mm, err
 	case "ADD_HTTP_RESPONSE_HEADER":
@@ -79,4 +91,41 @@ func (m *rule) UnmarshalPolymorphicJSON(data []byte) (interface{}, error) {
 
 func (m rule) String() string {
 	return common.PointerString(m)
+}
+
+// RuleActionEnum Enum with underlying type: string
+type RuleActionEnum string
+
+// Set of constants representing the allowable values for RuleActionEnum
+const (
+	RuleActionAddHttpRequestHeader          RuleActionEnum = "ADD_HTTP_REQUEST_HEADER"
+	RuleActionExtendHttpRequestHeaderValue  RuleActionEnum = "EXTEND_HTTP_REQUEST_HEADER_VALUE"
+	RuleActionRemoveHttpRequestHeader       RuleActionEnum = "REMOVE_HTTP_REQUEST_HEADER"
+	RuleActionAddHttpResponseHeader         RuleActionEnum = "ADD_HTTP_RESPONSE_HEADER"
+	RuleActionExtendHttpResponseHeaderValue RuleActionEnum = "EXTEND_HTTP_RESPONSE_HEADER_VALUE"
+	RuleActionRemoveHttpResponseHeader      RuleActionEnum = "REMOVE_HTTP_RESPONSE_HEADER"
+	RuleActionAllow                         RuleActionEnum = "ALLOW"
+	RuleActionControlAccessUsingHttpMethods RuleActionEnum = "CONTROL_ACCESS_USING_HTTP_METHODS"
+	RuleActionRedirect                      RuleActionEnum = "REDIRECT"
+)
+
+var mappingRuleAction = map[string]RuleActionEnum{
+	"ADD_HTTP_REQUEST_HEADER":           RuleActionAddHttpRequestHeader,
+	"EXTEND_HTTP_REQUEST_HEADER_VALUE":  RuleActionExtendHttpRequestHeaderValue,
+	"REMOVE_HTTP_REQUEST_HEADER":        RuleActionRemoveHttpRequestHeader,
+	"ADD_HTTP_RESPONSE_HEADER":          RuleActionAddHttpResponseHeader,
+	"EXTEND_HTTP_RESPONSE_HEADER_VALUE": RuleActionExtendHttpResponseHeaderValue,
+	"REMOVE_HTTP_RESPONSE_HEADER":       RuleActionRemoveHttpResponseHeader,
+	"ALLOW": RuleActionAllow,
+	"CONTROL_ACCESS_USING_HTTP_METHODS": RuleActionControlAccessUsingHttpMethods,
+	"REDIRECT":                          RuleActionRedirect,
+}
+
+// GetRuleActionEnumValues Enumerates the set of values for RuleActionEnum
+func GetRuleActionEnumValues() []RuleActionEnum {
+	values := make([]RuleActionEnum, 0)
+	for _, v := range mappingRuleAction {
+		values = append(values, v)
+	}
+	return values
 }

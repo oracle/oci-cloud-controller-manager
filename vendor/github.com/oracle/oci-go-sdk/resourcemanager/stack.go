@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Resource Manager API
@@ -17,10 +17,10 @@ import (
 // resources that you can act upon as a group. You take action on stacks by using jobs.
 type Stack struct {
 
-	// Unique identifier (OCID) for the stack.
+	// Unique identifier (OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm)) for the stack.
 	Id *string `mandatory:"false" json:"id"`
 
-	// Unique identifier (OCID) for the compartment where the stack is located.
+	// Unique identifier (OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm)) for the compartment where the stack is located.
 	CompartmentId *string `mandatory:"false" json:"compartmentId"`
 
 	// Human-readable name of the stack.
@@ -35,8 +35,6 @@ type Stack struct {
 	// The current lifecycle state of the stack.
 	LifecycleState StackLifecycleStateEnum `mandatory:"false" json:"lifecycleState,omitempty"`
 
-	// Specifies the `configSourceType` for uploading the Terraform configuration.
-	// Presently, the .zip file type (`ZIP_UPLOAD`) is the only supported `configSourceType`.
 	ConfigSource ConfigSource `mandatory:"false" json:"configSource"`
 
 	// Terraform variables associated with this resource.
@@ -44,6 +42,9 @@ type Stack struct {
 	// The maximum size of each variable, including both name and value, is 4096 bytes.
 	// Example: `{"CompartmentId": "compartment-id-value"}`
 	Variables map[string]string `mandatory:"false" json:"variables"`
+
+	// The version of Terraform specified for the stack. Example: `0.12.x`
+	TerraformVersion *string `mandatory:"false" json:"terraformVersion"`
 
 	// Free-form tags associated with the resource. Each tag is a key-value pair with no predefined name, type, or namespace.
 	// For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
@@ -63,16 +64,17 @@ func (m Stack) String() string {
 // UnmarshalJSON unmarshals from json
 func (m *Stack) UnmarshalJSON(data []byte) (e error) {
 	model := struct {
-		Id             *string                           `json:"id"`
-		CompartmentId  *string                           `json:"compartmentId"`
-		DisplayName    *string                           `json:"displayName"`
-		Description    *string                           `json:"description"`
-		TimeCreated    *common.SDKTime                   `json:"timeCreated"`
-		LifecycleState StackLifecycleStateEnum           `json:"lifecycleState"`
-		ConfigSource   configsource                      `json:"configSource"`
-		Variables      map[string]string                 `json:"variables"`
-		FreeformTags   map[string]string                 `json:"freeformTags"`
-		DefinedTags    map[string]map[string]interface{} `json:"definedTags"`
+		Id               *string                           `json:"id"`
+		CompartmentId    *string                           `json:"compartmentId"`
+		DisplayName      *string                           `json:"displayName"`
+		Description      *string                           `json:"description"`
+		TimeCreated      *common.SDKTime                   `json:"timeCreated"`
+		LifecycleState   StackLifecycleStateEnum           `json:"lifecycleState"`
+		ConfigSource     configsource                      `json:"configSource"`
+		Variables        map[string]string                 `json:"variables"`
+		TerraformVersion *string                           `json:"terraformVersion"`
+		FreeformTags     map[string]string                 `json:"freeformTags"`
+		DefinedTags      map[string]map[string]interface{} `json:"definedTags"`
 	}{}
 
 	e = json.Unmarshal(data, &model)
@@ -95,6 +97,7 @@ func (m *Stack) UnmarshalJSON(data []byte) (e error) {
 		m.ConfigSource = nil
 	}
 	m.Variables = model.Variables
+	m.TerraformVersion = model.TerraformVersion
 	m.FreeformTags = model.FreeformTags
 	m.DefinedTags = model.DefinedTags
 	return

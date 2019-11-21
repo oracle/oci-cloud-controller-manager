@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Database Service API
@@ -17,13 +17,13 @@ import (
 // **Warning:** Oracle recommends that you avoid using any confidential information when you supply string values using the API.
 type CreateAutonomousDatabaseBase interface {
 
-	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the compartment of the autonomous database.
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the compartment of the Autonomous Database.
 	GetCompartmentId() *string
 
 	// The database name. The name must begin with an alphabetic character and can contain a maximum of 14 alphanumeric characters. Special characters are not permitted. The database name must be unique in the tenancy.
 	GetDbName() *string
 
-	// The number of CPU Cores to be made available to the database.
+	// The number of OCPU cores to be made available to the database.
 	GetCpuCoreCount() *int
 
 	// The size, in terabytes, of the data volume that will be created and attached to the database. This storage can later be scaled up if needed.
@@ -32,23 +32,52 @@ type CreateAutonomousDatabaseBase interface {
 	// The password must be between 12 and 30 characters long, and must contain at least 1 uppercase, 1 lowercase, and 1 numeric character. It cannot contain the double quote symbol (") or the username "admin", regardless of casing.
 	GetAdminPassword() *string
 
-	// The autonomous database workload type. OLTP indicates an Autonomous Transaction Processing database and DW indicates an Autonomous Data Warehouse. The default is OLTP.
+	// The Autonomous Database workload type. OLTP indicates an Autonomous Transaction Processing database and DW indicates an Autonomous Data Warehouse. The default is OLTP.
 	GetDbWorkload() CreateAutonomousDatabaseBaseDbWorkloadEnum
+
+	// Indicates if this is an Always Free resource. The default value is false. Note that Always Free Autonomous Databases have 1 CPU and 20GB of memory. For Always Free databases, memory and CPU cannot be scaled.
+	GetIsFreeTier() *bool
 
 	// The user-friendly name for the Autonomous Database. The name does not have to be unique.
 	GetDisplayName() *string
 
-	// The Oracle license model that applies to the Oracle Autonomous Database. The default is BRING_YOUR_OWN_LICENSE.
+	// The Oracle license model that applies to the Oracle Autonomous Database. Note that when provisioning an Autonomous Database using the dedicated deployment (https://docs.cloud.oracle.com/Content/Database/Concepts/adbddoverview.htm) option, this attribute must be null because the attribute is already set at the
+	// Autonomous Exadata Infrastructure level. When using the serverless deployment (https://docs.cloud.oracle.com/Content/Database/Concepts/adboverview.htm#DeploymentTypes) option, if a value is not specified, the system will supply the value of `BRING_YOUR_OWN_LICENSE`.
 	GetLicenseModel() CreateAutonomousDatabaseBaseLicenseModelEnum
 
-	// Indicates if auto scaling is enabled for the Autonomous Database CPU core count. The default value is false.
+	// If set to `TRUE`, indicates that an Autonomous Database preview version is being provisioned, and that the preview version's terms of service have been accepted. Note that preview version software is only available for serverless deployments (https://docs.cloud.oracle.com/Content/Database/Concepts/adboverview.htm#AEI).
+	GetIsPreviewVersionWithServiceTermsAccepted() *bool
+
+	// Indicates if auto scaling is enabled for the Autonomous Database OCPU core count. The default value is `FALSE`. Note that auto scaling is available for serverless deployments (https://docs.cloud.oracle.com/Content/Database/Concepts/adboverview.htm#AEI) only.
 	GetIsAutoScalingEnabled() *bool
 
-	// True if it is dedicated database.
+	// True if the database uses the dedicated deployment (https://docs.cloud.oracle.com/Content/Database/Concepts/adbddoverview.htm) option.
 	GetIsDedicated() *bool
 
 	// The Autonomous Container Database OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm).
 	GetAutonomousContainerDatabaseId() *string
+
+	// The client IP access control list (ACL). This feature is available for serverless deployments (https://docs.cloud.oracle.com/Content/Database/Concepts/adboverview.htm#AEI) only.
+	// Only clients connecting from an IP address included in the ACL may access the Autonomous Database instance. This is an array of CIDR (Classless Inter-Domain Routing) notations for a subnet or VCN OCID.
+	// To add the whitelist VCN specific subnet or IP, use a semicoln ';' as a deliminator to add the VCN specific subnets or IPs.
+	// Example: `["1.1.1.1","1.1.1.0/24","ocid1.vcn.oc1.sea.aaaaaaaard2hfx2nn3e5xeo6j6o62jga44xjizkw","ocid1.vcn.oc1.sea.aaaaaaaard2hfx2nn3e5xeo6j6o62jga44xjizkw;1.1.1.1","ocid1.vcn.oc1.sea.aaaaaaaard2hfx2nn3e5xeo6j6o62jga44xjizkw;1.1.0.0/16"]`
+	GetWhitelistedIps() []string
+
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the subnet the resource is associated with.
+	// **Subnet Restrictions:**
+	// - For bare metal DB systems and for single node virtual machine DB systems, do not use a subnet that overlaps with 192.168.16.16/28.
+	// - For Exadata and virtual machine 2-node RAC DB systems, do not use a subnet that overlaps with 192.168.128.0/20.
+	// - For Autonomous Database, setting this will disable public secure access to the database.
+	// These subnets are used by the Oracle Clusterware private interconnect on the database instance.
+	// Specifying an overlapping subnet will cause the private interconnect to malfunction.
+	// This restriction applies to both the client subnet and the backup subnet.
+	GetSubnetId() *string
+
+	// A list of the OCIDs (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the network security groups (NSGs) that this DB system belongs to. Setting this to an empty array after the list is created removes the resource from all NSGs. For more information about NSGs, see Security Rules (https://docs.cloud.oracle.com/Content/Network/Concepts/securityrules.htm).
+	GetNsgIds() []string
+
+	// The private endpoint label for the resource.
+	GetPrivateEndpointLabel() *string
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no predefined name, type, or namespace.
 	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
@@ -57,26 +86,31 @@ type CreateAutonomousDatabaseBase interface {
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
 	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
-	// Example: `{"Operations": {"CostCenter": "42"}}`
 	GetDefinedTags() map[string]map[string]interface{}
 }
 
 type createautonomousdatabasebase struct {
-	JsonData                      []byte
-	CompartmentId                 *string                                      `mandatory:"true" json:"compartmentId"`
-	DbName                        *string                                      `mandatory:"true" json:"dbName"`
-	CpuCoreCount                  *int                                         `mandatory:"true" json:"cpuCoreCount"`
-	DataStorageSizeInTBs          *int                                         `mandatory:"true" json:"dataStorageSizeInTBs"`
-	AdminPassword                 *string                                      `mandatory:"true" json:"adminPassword"`
-	DbWorkload                    CreateAutonomousDatabaseBaseDbWorkloadEnum   `mandatory:"false" json:"dbWorkload,omitempty"`
-	DisplayName                   *string                                      `mandatory:"false" json:"displayName"`
-	LicenseModel                  CreateAutonomousDatabaseBaseLicenseModelEnum `mandatory:"false" json:"licenseModel,omitempty"`
-	IsAutoScalingEnabled          *bool                                        `mandatory:"false" json:"isAutoScalingEnabled"`
-	IsDedicated                   *bool                                        `mandatory:"false" json:"isDedicated"`
-	AutonomousContainerDatabaseId *string                                      `mandatory:"false" json:"autonomousContainerDatabaseId"`
-	FreeformTags                  map[string]string                            `mandatory:"false" json:"freeformTags"`
-	DefinedTags                   map[string]map[string]interface{}            `mandatory:"false" json:"definedTags"`
-	Source                        string                                       `json:"source"`
+	JsonData                                 []byte
+	CompartmentId                            *string                                      `mandatory:"true" json:"compartmentId"`
+	DbName                                   *string                                      `mandatory:"true" json:"dbName"`
+	CpuCoreCount                             *int                                         `mandatory:"true" json:"cpuCoreCount"`
+	DataStorageSizeInTBs                     *int                                         `mandatory:"true" json:"dataStorageSizeInTBs"`
+	AdminPassword                            *string                                      `mandatory:"true" json:"adminPassword"`
+	DbWorkload                               CreateAutonomousDatabaseBaseDbWorkloadEnum   `mandatory:"false" json:"dbWorkload,omitempty"`
+	IsFreeTier                               *bool                                        `mandatory:"false" json:"isFreeTier"`
+	DisplayName                              *string                                      `mandatory:"false" json:"displayName"`
+	LicenseModel                             CreateAutonomousDatabaseBaseLicenseModelEnum `mandatory:"false" json:"licenseModel,omitempty"`
+	IsPreviewVersionWithServiceTermsAccepted *bool                                        `mandatory:"false" json:"isPreviewVersionWithServiceTermsAccepted"`
+	IsAutoScalingEnabled                     *bool                                        `mandatory:"false" json:"isAutoScalingEnabled"`
+	IsDedicated                              *bool                                        `mandatory:"false" json:"isDedicated"`
+	AutonomousContainerDatabaseId            *string                                      `mandatory:"false" json:"autonomousContainerDatabaseId"`
+	WhitelistedIps                           []string                                     `mandatory:"false" json:"whitelistedIps"`
+	SubnetId                                 *string                                      `mandatory:"false" json:"subnetId"`
+	NsgIds                                   []string                                     `mandatory:"false" json:"nsgIds"`
+	PrivateEndpointLabel                     *string                                      `mandatory:"false" json:"privateEndpointLabel"`
+	FreeformTags                             map[string]string                            `mandatory:"false" json:"freeformTags"`
+	DefinedTags                              map[string]map[string]interface{}            `mandatory:"false" json:"definedTags"`
+	Source                                   string                                       `json:"source"`
 }
 
 // UnmarshalJSON unmarshals json
@@ -96,11 +130,17 @@ func (m *createautonomousdatabasebase) UnmarshalJSON(data []byte) error {
 	m.DataStorageSizeInTBs = s.Model.DataStorageSizeInTBs
 	m.AdminPassword = s.Model.AdminPassword
 	m.DbWorkload = s.Model.DbWorkload
+	m.IsFreeTier = s.Model.IsFreeTier
 	m.DisplayName = s.Model.DisplayName
 	m.LicenseModel = s.Model.LicenseModel
+	m.IsPreviewVersionWithServiceTermsAccepted = s.Model.IsPreviewVersionWithServiceTermsAccepted
 	m.IsAutoScalingEnabled = s.Model.IsAutoScalingEnabled
 	m.IsDedicated = s.Model.IsDedicated
 	m.AutonomousContainerDatabaseId = s.Model.AutonomousContainerDatabaseId
+	m.WhitelistedIps = s.Model.WhitelistedIps
+	m.SubnetId = s.Model.SubnetId
+	m.NsgIds = s.Model.NsgIds
+	m.PrivateEndpointLabel = s.Model.PrivateEndpointLabel
 	m.FreeformTags = s.Model.FreeformTags
 	m.DefinedTags = s.Model.DefinedTags
 	m.Source = s.Model.Source
@@ -119,6 +159,14 @@ func (m *createautonomousdatabasebase) UnmarshalPolymorphicJSON(data []byte) (in
 	switch m.Source {
 	case "DATABASE":
 		mm := CreateAutonomousDatabaseCloneDetails{}
+		err = json.Unmarshal(data, &mm)
+		return mm, err
+	case "BACKUP_FROM_ID":
+		mm := CreateAutonomousDatabaseFromBackupDetails{}
+		err = json.Unmarshal(data, &mm)
+		return mm, err
+	case "BACKUP_FROM_TIMESTAMP":
+		mm := CreateAutonomousDatabaseFromBackupTimestampDetails{}
 		err = json.Unmarshal(data, &mm)
 		return mm, err
 	case "NONE":
@@ -160,6 +208,11 @@ func (m createautonomousdatabasebase) GetDbWorkload() CreateAutonomousDatabaseBa
 	return m.DbWorkload
 }
 
+//GetIsFreeTier returns IsFreeTier
+func (m createautonomousdatabasebase) GetIsFreeTier() *bool {
+	return m.IsFreeTier
+}
+
 //GetDisplayName returns DisplayName
 func (m createautonomousdatabasebase) GetDisplayName() *string {
 	return m.DisplayName
@@ -168,6 +221,11 @@ func (m createautonomousdatabasebase) GetDisplayName() *string {
 //GetLicenseModel returns LicenseModel
 func (m createautonomousdatabasebase) GetLicenseModel() CreateAutonomousDatabaseBaseLicenseModelEnum {
 	return m.LicenseModel
+}
+
+//GetIsPreviewVersionWithServiceTermsAccepted returns IsPreviewVersionWithServiceTermsAccepted
+func (m createautonomousdatabasebase) GetIsPreviewVersionWithServiceTermsAccepted() *bool {
+	return m.IsPreviewVersionWithServiceTermsAccepted
 }
 
 //GetIsAutoScalingEnabled returns IsAutoScalingEnabled
@@ -183,6 +241,26 @@ func (m createautonomousdatabasebase) GetIsDedicated() *bool {
 //GetAutonomousContainerDatabaseId returns AutonomousContainerDatabaseId
 func (m createautonomousdatabasebase) GetAutonomousContainerDatabaseId() *string {
 	return m.AutonomousContainerDatabaseId
+}
+
+//GetWhitelistedIps returns WhitelistedIps
+func (m createautonomousdatabasebase) GetWhitelistedIps() []string {
+	return m.WhitelistedIps
+}
+
+//GetSubnetId returns SubnetId
+func (m createautonomousdatabasebase) GetSubnetId() *string {
+	return m.SubnetId
+}
+
+//GetNsgIds returns NsgIds
+func (m createautonomousdatabasebase) GetNsgIds() []string {
+	return m.NsgIds
+}
+
+//GetPrivateEndpointLabel returns PrivateEndpointLabel
+func (m createautonomousdatabasebase) GetPrivateEndpointLabel() *string {
+	return m.PrivateEndpointLabel
 }
 
 //GetFreeformTags returns FreeformTags
@@ -240,6 +318,33 @@ var mappingCreateAutonomousDatabaseBaseLicenseModel = map[string]CreateAutonomou
 func GetCreateAutonomousDatabaseBaseLicenseModelEnumValues() []CreateAutonomousDatabaseBaseLicenseModelEnum {
 	values := make([]CreateAutonomousDatabaseBaseLicenseModelEnum, 0)
 	for _, v := range mappingCreateAutonomousDatabaseBaseLicenseModel {
+		values = append(values, v)
+	}
+	return values
+}
+
+// CreateAutonomousDatabaseBaseSourceEnum Enum with underlying type: string
+type CreateAutonomousDatabaseBaseSourceEnum string
+
+// Set of constants representing the allowable values for CreateAutonomousDatabaseBaseSourceEnum
+const (
+	CreateAutonomousDatabaseBaseSourceNone                CreateAutonomousDatabaseBaseSourceEnum = "NONE"
+	CreateAutonomousDatabaseBaseSourceDatabase            CreateAutonomousDatabaseBaseSourceEnum = "DATABASE"
+	CreateAutonomousDatabaseBaseSourceBackupFromId        CreateAutonomousDatabaseBaseSourceEnum = "BACKUP_FROM_ID"
+	CreateAutonomousDatabaseBaseSourceBackupFromTimestamp CreateAutonomousDatabaseBaseSourceEnum = "BACKUP_FROM_TIMESTAMP"
+)
+
+var mappingCreateAutonomousDatabaseBaseSource = map[string]CreateAutonomousDatabaseBaseSourceEnum{
+	"NONE":                  CreateAutonomousDatabaseBaseSourceNone,
+	"DATABASE":              CreateAutonomousDatabaseBaseSourceDatabase,
+	"BACKUP_FROM_ID":        CreateAutonomousDatabaseBaseSourceBackupFromId,
+	"BACKUP_FROM_TIMESTAMP": CreateAutonomousDatabaseBaseSourceBackupFromTimestamp,
+}
+
+// GetCreateAutonomousDatabaseBaseSourceEnumValues Enumerates the set of values for CreateAutonomousDatabaseBaseSourceEnum
+func GetCreateAutonomousDatabaseBaseSourceEnumValues() []CreateAutonomousDatabaseBaseSourceEnum {
+	values := make([]CreateAutonomousDatabaseBaseSourceEnum, 0)
+	for _, v := range mappingCreateAutonomousDatabaseBaseSource {
 		values = append(values, v)
 	}
 	return values

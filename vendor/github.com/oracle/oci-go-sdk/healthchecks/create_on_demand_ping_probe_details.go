@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Health Checks API
@@ -20,10 +20,12 @@ type CreateOnDemandPingProbeDetails struct {
 	// The OCID of the compartment.
 	CompartmentId *string `mandatory:"true" json:"compartmentId"`
 
+	// A list of targets (hostnames or IP addresses) of the probe.
 	Targets []string `mandatory:"true" json:"targets"`
 
-	Protocol CreateOnDemandPingProbeDetailsProtocolEnum `mandatory:"true" json:"protocol"`
+	Protocol PingProbeProtocolEnum `mandatory:"true" json:"protocol"`
 
+	// A list of names of vantage points from which to execute the probe.
 	VantagePointNames []string `mandatory:"false" json:"vantagePointNames"`
 
 	// The port on which to probe endpoints. If unspecified, probes will use the
@@ -39,25 +41,19 @@ func (m CreateOnDemandPingProbeDetails) String() string {
 	return common.PointerString(m)
 }
 
-// CreateOnDemandPingProbeDetailsProtocolEnum Enum with underlying type: string
-type CreateOnDemandPingProbeDetailsProtocolEnum string
+// CreateOnDemandPingProbeDetailsProtocolEnum is an alias to type: PingProbeProtocolEnum
+// Consider using PingProbeProtocolEnum instead
+// Deprecated
+type CreateOnDemandPingProbeDetailsProtocolEnum = PingProbeProtocolEnum
 
-// Set of constants representing the allowable values for CreateOnDemandPingProbeDetailsProtocolEnum
+// Set of constants representing the allowable values for PingProbeProtocolEnum
+// Deprecated
 const (
-	CreateOnDemandPingProbeDetailsProtocolIcmp CreateOnDemandPingProbeDetailsProtocolEnum = "ICMP"
-	CreateOnDemandPingProbeDetailsProtocolTcp  CreateOnDemandPingProbeDetailsProtocolEnum = "TCP"
+	CreateOnDemandPingProbeDetailsProtocolIcmp PingProbeProtocolEnum = "ICMP"
+	CreateOnDemandPingProbeDetailsProtocolTcp  PingProbeProtocolEnum = "TCP"
 )
 
-var mappingCreateOnDemandPingProbeDetailsProtocol = map[string]CreateOnDemandPingProbeDetailsProtocolEnum{
-	"ICMP": CreateOnDemandPingProbeDetailsProtocolIcmp,
-	"TCP":  CreateOnDemandPingProbeDetailsProtocolTcp,
-}
-
-// GetCreateOnDemandPingProbeDetailsProtocolEnumValues Enumerates the set of values for CreateOnDemandPingProbeDetailsProtocolEnum
-func GetCreateOnDemandPingProbeDetailsProtocolEnumValues() []CreateOnDemandPingProbeDetailsProtocolEnum {
-	values := make([]CreateOnDemandPingProbeDetailsProtocolEnum, 0)
-	for _, v := range mappingCreateOnDemandPingProbeDetailsProtocol {
-		values = append(values, v)
-	}
-	return values
-}
+// GetCreateOnDemandPingProbeDetailsProtocolEnumValues Enumerates the set of values for PingProbeProtocolEnum
+// Consider using GetPingProbeProtocolEnumValue
+// Deprecated
+var GetCreateOnDemandPingProbeDetailsProtocolEnumValues = GetPingProbeProtocolEnumValues

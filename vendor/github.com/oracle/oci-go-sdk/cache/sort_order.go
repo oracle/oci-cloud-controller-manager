@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // OraCache Public API
@@ -8,14 +8,25 @@
 
 package cache
 
-import (
-	"github.com/oracle/oci-go-sdk/common"
+// SortOrderEnum Enum with underlying type: string
+type SortOrderEnum string
+
+// Set of constants representing the allowable values for SortOrderEnum
+const (
+	SortOrderAsc  SortOrderEnum = "ASC"
+	SortOrderDesc SortOrderEnum = "DESC"
 )
 
-// SortOrder The supported sort ordering.
-type SortOrder struct {
+var mappingSortOrder = map[string]SortOrderEnum{
+	"ASC":  SortOrderAsc,
+	"DESC": SortOrderDesc,
 }
 
-func (m SortOrder) String() string {
-	return common.PointerString(m)
+// GetSortOrderEnumValues Enumerates the set of values for SortOrderEnum
+func GetSortOrderEnumValues() []SortOrderEnum {
+	values := make([]SortOrderEnum, 0)
+	for _, v := range mappingSortOrder {
+		values = append(values, v)
+	}
+	return values
 }

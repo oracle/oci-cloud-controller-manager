@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Marketplace Service API
@@ -18,7 +18,7 @@ type Item struct {
 	// The name of the item.
 	Name *string `mandatory:"false" json:"name"`
 
-	// The code of the item.
+	// A code assigned to the item.
 	Code *string `mandatory:"false" json:"code"`
 }
 

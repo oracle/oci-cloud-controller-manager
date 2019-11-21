@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package filestorage
@@ -16,10 +16,10 @@ type ListSnapshotsRequest struct {
 
 	// For list pagination. The maximum number of results per page,
 	// or items to return in a paginated "List" call.
-	// 1 is the minimum, 1000 is the maximum.
+	// 1 is the minimum, 100 is the maximum.
 	// For important details about how pagination works,
 	// see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
-	// Example: `500`
+	// Example: `100`
 	Limit *int `mandatory:"false" contributesTo:"query" name:"limit"`
 
 	// For list pagination. The value of the `opc-next-page` response
@@ -43,7 +43,8 @@ type ListSnapshotsRequest struct {
 	SortBy ListSnapshotsSortByEnum `mandatory:"false" contributesTo:"query" name:"sortBy" omitEmpty:"true"`
 
 	// The sort order to use, either 'asc' or 'desc', where 'asc' is
-	// ascending and 'desc' is descending.
+	// ascending and 'desc' is descending. The default order is 'desc'
+	// except for numeric values.
 	SortOrder ListSnapshotsSortOrderEnum `mandatory:"false" contributesTo:"query" name:"sortOrder" omitEmpty:"true"`
 
 	// Unique identifier for the request.

@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package ons
@@ -17,7 +17,15 @@ type GetUnsubscriptionRequest struct {
 	// The subscription confirmation token.
 	Token *string `mandatory:"true" contributesTo:"query" name:"token"`
 
-	// The subscription protocol. Valid values: EMAIL, HTTPS.
+	// The protocol used for the subscription.
+	// Allowed values:
+	//   * `CUSTOM_HTTPS`
+	//   * `EMAIL`
+	//   * `HTTPS` (deprecated; for PagerDuty endpoints, use `PAGERDUTY`)
+	//   * `PAGERDUTY`
+	//   * `SLACK`
+	// For information about subscription protocols, see
+	// To create a subscription (https://docs.cloud.oracle.com/iaas/Content/Notification/Tasks/managingtopicsandsubscriptions.htm#createSub).
 	Protocol *string `mandatory:"true" contributesTo:"query" name:"protocol"`
 
 	// The unique Oracle-assigned identifier for the request. If you need to contact Oracle about a

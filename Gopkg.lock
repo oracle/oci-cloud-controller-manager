@@ -562,18 +562,17 @@
   version = "v1.0.0-rc1"
 
 [[projects]]
-  digest = "1:af9c07275dfd15c3ea3123615bd3dd56a598ae66f7590808e2ae7e8d42cc732c"
+  digest = "1:71dd0f6b24120e46d07877b2d7bf14be015b69d85d2bc06d5866afe6336e887e"
   name = "github.com/oracle/oci-go-sdk"
   packages = [
     "common",
-    "common/auth",
     "core",
     "filestorage",
     "identity",
     "loadbalancer",
   ]
   pruneopts = "N"
-  revision = "dec5beed03d47c2919ba15fd898c23f23202f273"
+  revision = "0aea8c99e92744e16e64cf77154d0b18f86dfcde"
   source = "ssh://git@bitbucket.oci.oraclecorp.com:7999/sdk/oci-go-sdk.git"
 
 [[projects]]
@@ -1559,7 +1558,6 @@
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",
     "github.com/oracle/oci-go-sdk/common",
-    "github.com/oracle/oci-go-sdk/common/auth",
     "github.com/oracle/oci-go-sdk/core",
     "github.com/oracle/oci-go-sdk/filestorage",
     "github.com/oracle/oci-go-sdk/identity",

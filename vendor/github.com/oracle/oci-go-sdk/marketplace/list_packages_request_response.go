@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package marketplace
@@ -11,11 +11,14 @@ import (
 // ListPackagesRequest wrapper for the ListPackages operation
 type ListPackagesRequest struct {
 
-	// The unique identifier of the listing.
+	// The unique identifier for the listing.
 	ListingId *string `mandatory:"true" contributesTo:"path" name:"listingId"`
 
 	// The version of the package. Package versions are unique within a listing.
 	PackageVersion *string `mandatory:"false" contributesTo:"query" name:"packageVersion"`
+
+	// A filter to return only packages that match the given package type exactly.
+	PackageType *string `mandatory:"false" contributesTo:"query" name:"packageType"`
 
 	// Unique Oracle-assigned identifier for the request. If you need to contact Oracle about a particular request,
 	// please provide the request ID.
@@ -27,12 +30,12 @@ type ListPackagesRequest struct {
 	// The value of the `opc-next-page` response header from the previous "List" call.
 	Page *string `mandatory:"false" contributesTo:"query" name:"page"`
 
-	// The field that is used to sort listed results. You can only specify one field to sort by.
-	// `TIMERELEASED` displays results in descending order by default. `NAME` displays results in
-	// ascending order by default. You can change your preference by specifying a different sort order.
+	// The field to use to sort listed results. You can only specify one field to sort by.
+	// `TIMERELEASED` displays results in descending order by default.
+	// You can change your preference by specifying a different sort order.
 	SortBy ListPackagesSortByEnum `mandatory:"false" contributesTo:"query" name:"sortBy" omitEmpty:"true"`
 
-	// The sort order to use, either 'asc' or 'desc'.
+	// The sort order to use, either `ASC` or `DESC`.
 	SortOrder ListPackagesSortOrderEnum `mandatory:"false" contributesTo:"query" name:"sortOrder" omitEmpty:"true"`
 
 	// Metadata about the request. This information will not be transmitted to the service, but
@@ -87,12 +90,10 @@ type ListPackagesSortByEnum string
 
 // Set of constants representing the allowable values for ListPackagesSortByEnum
 const (
-	ListPackagesSortByName         ListPackagesSortByEnum = "NAME"
 	ListPackagesSortByTimereleased ListPackagesSortByEnum = "TIMERELEASED"
 )
 
 var mappingListPackagesSortBy = map[string]ListPackagesSortByEnum{
-	"NAME":         ListPackagesSortByName,
 	"TIMERELEASED": ListPackagesSortByTimereleased,
 }
 

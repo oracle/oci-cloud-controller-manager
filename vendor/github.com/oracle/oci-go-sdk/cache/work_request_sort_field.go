@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // OraCache Public API
@@ -8,14 +8,29 @@
 
 package cache
 
-import (
-	"github.com/oracle/oci-go-sdk/common"
+// WorkRequestSortFieldEnum Enum with underlying type: string
+type WorkRequestSortFieldEnum string
+
+// Set of constants representing the allowable values for WorkRequestSortFieldEnum
+const (
+	WorkRequestSortFieldTimeAccepted WorkRequestSortFieldEnum = "TIME_ACCEPTED"
+	WorkRequestSortFieldTimeStarted  WorkRequestSortFieldEnum = "TIME_STARTED"
+	WorkRequestSortFieldTimeFinished WorkRequestSortFieldEnum = "TIME_FINISHED"
+	WorkRequestSortFieldStatus       WorkRequestSortFieldEnum = "STATUS"
 )
 
-// WorkRequestSortField Fields for sorting work requests.
-type WorkRequestSortField struct {
+var mappingWorkRequestSortField = map[string]WorkRequestSortFieldEnum{
+	"TIME_ACCEPTED": WorkRequestSortFieldTimeAccepted,
+	"TIME_STARTED":  WorkRequestSortFieldTimeStarted,
+	"TIME_FINISHED": WorkRequestSortFieldTimeFinished,
+	"STATUS":        WorkRequestSortFieldStatus,
 }
 
-func (m WorkRequestSortField) String() string {
-	return common.PointerString(m)
+// GetWorkRequestSortFieldEnumValues Enumerates the set of values for WorkRequestSortFieldEnum
+func GetWorkRequestSortFieldEnumValues() []WorkRequestSortFieldEnum {
+	values := make([]WorkRequestSortFieldEnum, 0)
+	for _, v := range mappingWorkRequestSortField {
+		values = append(values, v)
+	}
+	return values
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Object Storage Service API
@@ -41,6 +41,17 @@ type CreateBucketDetails struct {
 	// property is immutable after bucket is created.
 	StorageTier CreateBucketDetailsStorageTierEnum `mandatory:"false" json:"storageTier,omitempty"`
 
+	// The type of requests for which object-level audit logging is enabled on this bucket.
+	// This property is set to `Disabled` by default, where no audit logs will be produced at the object level for this
+	// bucket. If the property is set to `Write`, audit logs will be produced for operations such as `Put Object`. If the
+	// property is set to `ReadWrite`, audit logs will be produced for operations such as `Put Object` and `Get Object`.
+	ObjectLevelAuditMode CreateBucketDetailsObjectLevelAuditModeEnum `mandatory:"false" json:"objectLevelAuditMode,omitempty"`
+
+	// Whether or not events are emitted for object state changes in this bucket. By default, `objectEventsEnabled` is
+	// set to `false`. Set `objectEventsEnabled` to `true` to emit events for object state changes. For more information
+	// about events, see Overview of Events (https://docs.cloud.oracle.com/Content/Events/Concepts/eventsoverview.htm).
+	ObjectEventsEnabled *bool `mandatory:"false" json:"objectEventsEnabled"`
+
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no predefined name, type, or namespace.
 	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
@@ -51,7 +62,8 @@ type CreateBucketDetails struct {
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
-	// The OCID of a KMS key id used to call KMS to generate the data key or decrypt the encrypted data key.
+	// The OCID of a master encryption key used to call the Key Management service to generate a data
+	// encryption key or to encrypt or decrypt a data encryption key.
 	KmsKeyId *string `mandatory:"false" json:"kmsKeyId"`
 }
 
@@ -102,6 +114,31 @@ var mappingCreateBucketDetailsStorageTier = map[string]CreateBucketDetailsStorag
 func GetCreateBucketDetailsStorageTierEnumValues() []CreateBucketDetailsStorageTierEnum {
 	values := make([]CreateBucketDetailsStorageTierEnum, 0)
 	for _, v := range mappingCreateBucketDetailsStorageTier {
+		values = append(values, v)
+	}
+	return values
+}
+
+// CreateBucketDetailsObjectLevelAuditModeEnum Enum with underlying type: string
+type CreateBucketDetailsObjectLevelAuditModeEnum string
+
+// Set of constants representing the allowable values for CreateBucketDetailsObjectLevelAuditModeEnum
+const (
+	CreateBucketDetailsObjectLevelAuditModeDisabled  CreateBucketDetailsObjectLevelAuditModeEnum = "Disabled"
+	CreateBucketDetailsObjectLevelAuditModeWrite     CreateBucketDetailsObjectLevelAuditModeEnum = "Write"
+	CreateBucketDetailsObjectLevelAuditModeReadwrite CreateBucketDetailsObjectLevelAuditModeEnum = "ReadWrite"
+)
+
+var mappingCreateBucketDetailsObjectLevelAuditMode = map[string]CreateBucketDetailsObjectLevelAuditModeEnum{
+	"Disabled":  CreateBucketDetailsObjectLevelAuditModeDisabled,
+	"Write":     CreateBucketDetailsObjectLevelAuditModeWrite,
+	"ReadWrite": CreateBucketDetailsObjectLevelAuditModeReadwrite,
+}
+
+// GetCreateBucketDetailsObjectLevelAuditModeEnumValues Enumerates the set of values for CreateBucketDetailsObjectLevelAuditModeEnum
+func GetCreateBucketDetailsObjectLevelAuditModeEnumValues() []CreateBucketDetailsObjectLevelAuditModeEnum {
+	values := make([]CreateBucketDetailsObjectLevelAuditModeEnum, 0)
+	for _, v := range mappingCreateBucketDetailsObjectLevelAuditMode {
 		values = append(values, v)
 	}
 	return values

@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Load Balancing API
@@ -28,7 +28,8 @@ type UpdateHealthCheckerDetails struct {
 	// Example: `200`
 	ReturnCode *int `mandatory:"true" json:"returnCode"`
 
-	// The number of retries to attempt before a backend server is considered "unhealthy".
+	// The number of retries to attempt before a backend server is considered "unhealthy". This number also applies
+	// when recovering a server to the "healthy" state.
 	// Example: `3`
 	Retries *int `mandatory:"true" json:"retries"`
 

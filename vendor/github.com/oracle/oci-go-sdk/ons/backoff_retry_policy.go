@@ -1,10 +1,10 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
-// Notification API
+// Notifications API
 //
-// Use the Notification API to broadcast messages to distributed components by topic, using a publish-subscribe pattern.
-// For information about managing topics, subscriptions, and messages, see Notification Overview (https://docs.cloud.oracle.com/iaas/Content/Notification/Concepts/notificationoverview.htm).
+// Use the Notifications API to broadcast messages to distributed components by topic, using a publish-subscribe pattern.
+// For information about managing topics, subscriptions, and messages, see Notifications Overview (https://docs.cloud.oracle.com/iaas/Content/Notification/Concepts/notificationoverview.htm).
 //
 
 package ons
@@ -13,13 +13,14 @@ import (
 	"github.com/oracle/oci-go-sdk/common"
 )
 
-// BackoffRetryPolicy The backoff retry portion of the subscription delivery policy.
+// BackoffRetryPolicy The backoff retry portion of the subscription delivery policy. For information about retry durations for subscriptions, see
+// How Notifications Works (https://docs.cloud.oracle.com/iaas/Content/Notification/Concepts/notificationoverview.htm#how).
 type BackoffRetryPolicy struct {
 
-	// The maximum retry duration in milliseconds.
+	// The maximum retry duration in milliseconds. Default value is `7200000` (2 hours).
 	MaxRetryDuration *int `mandatory:"true" json:"maxRetryDuration"`
 
-	// The type of delivery policy. Default value: EXPONENTIAL.
+	// The type of delivery policy.
 	PolicyType BackoffRetryPolicyPolicyTypeEnum `mandatory:"true" json:"policyType"`
 }
 

@@ -442,10 +442,12 @@ func TestObjectStorage_UploadManager_UploadFile(t *testing.T) {
 
 	req := transfer.UploadFileRequest{
 		UploadRequest: transfer.UploadRequest{
-			NamespaceName: common.String(namespace),
-			BucketName:    common.String(bname),
-			ObjectName:    common.String(objectName),
-			PartSize:      common.Int64(1024 * 1000 * 1), // 1MB
+			NamespaceName:  common.String(namespace),
+			BucketName:     common.String(bname),
+			ObjectName:     common.String(objectName),
+			PartSize:       common.Int64(1024 * 1000 * 1), // 1MB
+			CallBack:       callBack,
+			EnableMultipartChecksumVerification: common.Bool(true),
 		},
 		FilePath: filepath,
 	}
@@ -458,6 +460,14 @@ func TestObjectStorage_UploadManager_UploadFile(t *testing.T) {
 	}
 
 	defer deleteObject(t, namespace, bname, objectName)
+}
+
+func callBack(multiPartUploadPart transfer.MultiPartUploadPart) {
+	if nil == multiPartUploadPart.Err {
+		fmt.Printf("Part: %d / %d is uploaded, ", multiPartUploadPart.PartNum,
+			multiPartUploadPart.TotalParts)
+		fmt.Printf("and this part opcMD5(64BasedEncoding) is: %s.\n", *multiPartUploadPart.OpcMD5 )
+	}
 }
 
 func TestObjectStorage_UploadManager_ResumeUploadFile(t *testing.T) {
@@ -538,6 +548,7 @@ func TestObjectStorage_UploadManager_Stream(t *testing.T) {
 			NamespaceName: common.String(namespace),
 			BucketName:    common.String(bname),
 			ObjectName:    common.String(objectName),
+			EnableMultipartChecksumVerification: common.Bool(true),
 		},
 		StreamReader: file, // any struct implements the io.Reader interface
 	}

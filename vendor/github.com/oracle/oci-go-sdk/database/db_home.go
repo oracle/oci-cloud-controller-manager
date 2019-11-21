@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Database Service API
@@ -15,20 +15,23 @@ import (
 // DbHome The representation of DbHome
 type DbHome struct {
 
-	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the database home.
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the Database Home.
 	Id *string `mandatory:"true" json:"id"`
 
 	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the compartment.
 	CompartmentId *string `mandatory:"true" json:"compartmentId"`
 
-	// The user-provided name for the database home. The name does not need to be unique.
+	// The user-provided name for the Database Home. The name does not need to be unique.
 	DisplayName *string `mandatory:"true" json:"displayName"`
 
-	// The current state of the database home.
+	// The current state of the Database Home.
 	LifecycleState DbHomeLifecycleStateEnum `mandatory:"true" json:"lifecycleState"`
 
 	// The Oracle Database version.
 	DbVersion *string `mandatory:"true" json:"dbVersion"`
+
+	// The location of the Oracle Database Home.
+	DbHomeLocation *string `mandatory:"true" json:"dbHomeLocation"`
 
 	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the last patch history. This value is updated as soon as a patch operation is started.
 	LastPatchHistoryEntryId *string `mandatory:"false" json:"lastPatchHistoryEntryId"`
@@ -36,8 +39,17 @@ type DbHome struct {
 	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the DB system.
 	DbSystemId *string `mandatory:"false" json:"dbSystemId"`
 
-	// The date and time the database home was created.
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the VM cluster.
+	VmClusterId *string `mandatory:"false" json:"vmClusterId"`
+
+	// Additional information about the current lifecycleState.
+	LifecycleDetails *string `mandatory:"false" json:"lifecycleDetails"`
+
+	// The date and time the Database Home was created.
 	TimeCreated *common.SDKTime `mandatory:"false" json:"timeCreated"`
+
+	// The OCID of the key container that is used as the master encryption key in database transparent data encryption (TDE) operations.
+	KmsKeyId *string `mandatory:"false" json:"kmsKeyId"`
 }
 
 func (m DbHome) String() string {

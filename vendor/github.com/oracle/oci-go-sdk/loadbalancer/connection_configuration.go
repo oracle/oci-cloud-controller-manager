@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Load Balancing API
@@ -22,6 +22,10 @@ type ConnectionConfiguration struct {
 	// For more information, see Connection Configuration (https://docs.cloud.oracle.com/Content/Balance/Reference/connectionreuse.htm#ConnectionConfiguration).
 	// Example: `1200`
 	IdleTimeout *int64 `mandatory:"true" json:"idleTimeout"`
+
+	// The backend TCP Proxy Protocol version.
+	// Example: `1`
+	BackendTcpProxyProtocolVersion *int `mandatory:"false" json:"backendTcpProxyProtocolVersion"`
 }
 
 func (m ConnectionConfiguration) String() string {

@@ -54,10 +54,192 @@ func TestComputeManagementClientAttachLoadBalancer(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.AttachLoadBalancer(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="computeManagement" email="instance_dev_us_grp@oracle.com" jiraProject="CIM" opsJiraProject="IPA"
+func TestComputeManagementClientChangeClusterNetworkCompartment(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("core", "ChangeClusterNetworkCompartment")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ChangeClusterNetworkCompartment is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("core", "ComputeManagement", "ChangeClusterNetworkCompartment", createComputeManagementClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(core.ComputeManagementClient)
+
+	body, err := testClient.getRequests("core", "ChangeClusterNetworkCompartment")
+	assert.NoError(t, err)
+
+	type ChangeClusterNetworkCompartmentRequestInfo struct {
+		ContainerId string
+		Request     core.ChangeClusterNetworkCompartmentRequest
+	}
+
+	var requests []ChangeClusterNetworkCompartmentRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.ChangeClusterNetworkCompartment(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="computeManagement" email="instance_dev_us_grp@oracle.com" jiraProject="CIM" opsJiraProject="IPA"
+func TestComputeManagementClientChangeInstanceConfigurationCompartment(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("core", "ChangeInstanceConfigurationCompartment")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ChangeInstanceConfigurationCompartment is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("core", "ComputeManagement", "ChangeInstanceConfigurationCompartment", createComputeManagementClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(core.ComputeManagementClient)
+
+	body, err := testClient.getRequests("core", "ChangeInstanceConfigurationCompartment")
+	assert.NoError(t, err)
+
+	type ChangeInstanceConfigurationCompartmentRequestInfo struct {
+		ContainerId string
+		Request     core.ChangeInstanceConfigurationCompartmentRequest
+	}
+
+	var requests []ChangeInstanceConfigurationCompartmentRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.ChangeInstanceConfigurationCompartment(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="computeManagement" email="instance_dev_us_grp@oracle.com" jiraProject="CIM" opsJiraProject="IPA"
+func TestComputeManagementClientChangeInstancePoolCompartment(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("core", "ChangeInstancePoolCompartment")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ChangeInstancePoolCompartment is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("core", "ComputeManagement", "ChangeInstancePoolCompartment", createComputeManagementClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(core.ComputeManagementClient)
+
+	body, err := testClient.getRequests("core", "ChangeInstancePoolCompartment")
+	assert.NoError(t, err)
+
+	type ChangeInstancePoolCompartmentRequestInfo struct {
+		ContainerId string
+		Request     core.ChangeInstancePoolCompartmentRequest
+	}
+
+	var requests []ChangeInstancePoolCompartmentRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.ChangeInstancePoolCompartment(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="computeManagement" email="instance_dev_us_grp@oracle.com" jiraProject="CIM" opsJiraProject="IPA"
+func TestComputeManagementClientCreateClusterNetwork(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("core", "CreateClusterNetwork")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("CreateClusterNetwork is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("core", "ComputeManagement", "CreateClusterNetwork", createComputeManagementClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(core.ComputeManagementClient)
+
+	body, err := testClient.getRequests("core", "CreateClusterNetwork")
+	assert.NoError(t, err)
+
+	type CreateClusterNetworkRequestInfo struct {
+		ContainerId string
+		Request     core.CreateClusterNetworkRequest
+	}
+
+	var requests []CreateClusterNetworkRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.CreateClusterNetwork(context.Background(), req.Request)
 			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
 			assert.NoError(t, err)
 			assert.Empty(t, message, message)
@@ -88,16 +270,30 @@ func TestComputeManagementClientCreateInstanceConfiguration(t *testing.T) {
 	}
 
 	var requests []CreateInstanceConfigurationRequestInfo
-	var dataHolder []map[string]interface{}
-	err = json.Unmarshal([]byte(body), &dataHolder)
+	var pr []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &pr)
 	assert.NoError(t, err)
-	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
-	assert.NoError(t, err)
+	requests = make([]CreateInstanceConfigurationRequestInfo, len(pr))
+	polymorphicRequestInfo := map[string]PolymorphicRequestUnmarshallingInfo{}
+	polymorphicRequestInfo["CreateInstanceConfigurationBase"] =
+		PolymorphicRequestUnmarshallingInfo{
+			DiscriminatorName: "source",
+			DiscriminatorValuesAndTypes: map[string]interface{}{
+				"NONE":     &core.CreateInstanceConfigurationDetails{},
+				"INSTANCE": &core.CreateInstanceConfigurationFromInstanceDetails{},
+			},
+		}
+
+	for i, ppr := range pr {
+		conditionalStructCopy(ppr, &requests[i], polymorphicRequestInfo, testClient.Log)
+	}
 
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.CreateInstanceConfiguration(context.Background(), req.Request)
@@ -140,7 +336,9 @@ func TestComputeManagementClientCreateInstancePool(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.CreateInstancePool(context.Background(), req.Request)
@@ -183,7 +381,9 @@ func TestComputeManagementClientDeleteInstanceConfiguration(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.DeleteInstanceConfiguration(context.Background(), req.Request)
@@ -226,10 +426,57 @@ func TestComputeManagementClientDetachLoadBalancer(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.DetachLoadBalancer(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="computeManagement" email="instance_dev_us_grp@oracle.com" jiraProject="CIM" opsJiraProject="IPA"
+func TestComputeManagementClientGetClusterNetwork(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("core", "GetClusterNetwork")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("GetClusterNetwork is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("core", "ComputeManagement", "GetClusterNetwork", createComputeManagementClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(core.ComputeManagementClient)
+
+	body, err := testClient.getRequests("core", "GetClusterNetwork")
+	assert.NoError(t, err)
+
+	type GetClusterNetworkRequestInfo struct {
+		ContainerId string
+		Request     core.GetClusterNetworkRequest
+	}
+
+	var requests []GetClusterNetworkRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.GetClusterNetwork(context.Background(), req.Request)
 			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
 			assert.NoError(t, err)
 			assert.Empty(t, message, message)
@@ -269,7 +516,9 @@ func TestComputeManagementClientGetInstanceConfiguration(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetInstanceConfiguration(context.Background(), req.Request)
@@ -312,7 +561,9 @@ func TestComputeManagementClientGetInstancePool(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetInstancePool(context.Background(), req.Request)
@@ -355,7 +606,9 @@ func TestComputeManagementClientGetInstancePoolLoadBalancerAttachment(t *testing
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetInstancePoolLoadBalancerAttachment(context.Background(), req.Request)
@@ -409,11 +662,121 @@ func TestComputeManagementClientLaunchInstanceConfiguration(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.LaunchInstanceConfiguration(context.Background(), req.Request)
 			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="computeManagement" email="instance_dev_us_grp@oracle.com" jiraProject="CIM" opsJiraProject="IPA"
+func TestComputeManagementClientListClusterNetworkInstances(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("core", "ListClusterNetworkInstances")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ListClusterNetworkInstances is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("core", "ComputeManagement", "ListClusterNetworkInstances", createComputeManagementClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(core.ComputeManagementClient)
+
+	body, err := testClient.getRequests("core", "ListClusterNetworkInstances")
+	assert.NoError(t, err)
+
+	type ListClusterNetworkInstancesRequestInfo struct {
+		ContainerId string
+		Request     core.ListClusterNetworkInstancesRequest
+	}
+
+	var requests []ListClusterNetworkInstancesRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, request := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			request.Request.RequestMetadata.RetryPolicy = retryPolicy
+			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
+				r := req.(*core.ListClusterNetworkInstancesRequest)
+				return c.ListClusterNetworkInstances(context.Background(), *r)
+			}
+
+			listResponses, err := testClient.generateListResponses(&request.Request, listFn)
+			typedListResponses := make([]core.ListClusterNetworkInstancesResponse, len(listResponses))
+			for i, lr := range listResponses {
+				typedListResponses[i] = lr.(core.ListClusterNetworkInstancesResponse)
+			}
+
+			message, err := testClient.validateResult(request.ContainerId, request.Request, typedListResponses, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="computeManagement" email="instance_dev_us_grp@oracle.com" jiraProject="CIM" opsJiraProject="IPA"
+func TestComputeManagementClientListClusterNetworks(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("core", "ListClusterNetworks")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ListClusterNetworks is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("core", "ComputeManagement", "ListClusterNetworks", createComputeManagementClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(core.ComputeManagementClient)
+
+	body, err := testClient.getRequests("core", "ListClusterNetworks")
+	assert.NoError(t, err)
+
+	type ListClusterNetworksRequestInfo struct {
+		ContainerId string
+		Request     core.ListClusterNetworksRequest
+	}
+
+	var requests []ListClusterNetworksRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, request := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			request.Request.RequestMetadata.RetryPolicy = retryPolicy
+			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
+				r := req.(*core.ListClusterNetworksRequest)
+				return c.ListClusterNetworks(context.Background(), *r)
+			}
+
+			listResponses, err := testClient.generateListResponses(&request.Request, listFn)
+			typedListResponses := make([]core.ListClusterNetworksResponse, len(listResponses))
+			for i, lr := range listResponses {
+				typedListResponses[i] = lr.(core.ListClusterNetworksResponse)
+			}
+
+			message, err := testClient.validateResult(request.ContainerId, request.Request, typedListResponses, err)
 			assert.NoError(t, err)
 			assert.Empty(t, message, message)
 		})
@@ -452,7 +815,9 @@ func TestComputeManagementClientListInstanceConfigurations(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*core.ListInstanceConfigurationsRequest)
@@ -504,7 +869,9 @@ func TestComputeManagementClientListInstancePoolInstances(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*core.ListInstancePoolInstancesRequest)
@@ -556,7 +923,9 @@ func TestComputeManagementClientListInstancePools(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*core.ListInstancePoolsRequest)
@@ -608,7 +977,9 @@ func TestComputeManagementClientResetInstancePool(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.ResetInstancePool(context.Background(), req.Request)
@@ -651,7 +1022,9 @@ func TestComputeManagementClientSoftresetInstancePool(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.SoftresetInstancePool(context.Background(), req.Request)
@@ -694,7 +1067,9 @@ func TestComputeManagementClientStartInstancePool(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.StartInstancePool(context.Background(), req.Request)
@@ -737,10 +1112,57 @@ func TestComputeManagementClientStopInstancePool(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.StopInstancePool(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="computeManagement" email="instance_dev_us_grp@oracle.com" jiraProject="CIM" opsJiraProject="IPA"
+func TestComputeManagementClientTerminateClusterNetwork(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("core", "TerminateClusterNetwork")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("TerminateClusterNetwork is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("core", "ComputeManagement", "TerminateClusterNetwork", createComputeManagementClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(core.ComputeManagementClient)
+
+	body, err := testClient.getRequests("core", "TerminateClusterNetwork")
+	assert.NoError(t, err)
+
+	type TerminateClusterNetworkRequestInfo struct {
+		ContainerId string
+		Request     core.TerminateClusterNetworkRequest
+	}
+
+	var requests []TerminateClusterNetworkRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.TerminateClusterNetwork(context.Background(), req.Request)
 			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
 			assert.NoError(t, err)
 			assert.Empty(t, message, message)
@@ -780,10 +1202,57 @@ func TestComputeManagementClientTerminateInstancePool(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.TerminateInstancePool(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="computeManagement" email="instance_dev_us_grp@oracle.com" jiraProject="CIM" opsJiraProject="IPA"
+func TestComputeManagementClientUpdateClusterNetwork(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("core", "UpdateClusterNetwork")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("UpdateClusterNetwork is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("core", "ComputeManagement", "UpdateClusterNetwork", createComputeManagementClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(core.ComputeManagementClient)
+
+	body, err := testClient.getRequests("core", "UpdateClusterNetwork")
+	assert.NoError(t, err)
+
+	type UpdateClusterNetworkRequestInfo struct {
+		ContainerId string
+		Request     core.UpdateClusterNetworkRequest
+	}
+
+	var requests []UpdateClusterNetworkRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.UpdateClusterNetwork(context.Background(), req.Request)
 			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
 			assert.NoError(t, err)
 			assert.Empty(t, message, message)
@@ -823,7 +1292,9 @@ func TestComputeManagementClientUpdateInstanceConfiguration(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateInstanceConfiguration(context.Background(), req.Request)
@@ -866,7 +1337,9 @@ func TestComputeManagementClientUpdateInstancePool(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateInstancePool(context.Background(), req.Request)

@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package functions
@@ -41,7 +41,7 @@ type ListFunctionsRequest struct {
 	SortOrder ListFunctionsSortOrderEnum `mandatory:"false" contributesTo:"query" name:"sortOrder" omitEmpty:"true"`
 
 	// Specifies the attribute with which to sort the rules.
-	// Default: `timeCreated`
+	// Default: `displayName`
 	// * **timeCreated:** Sorts by timeCreated.
 	// * **displayName:** Sorts by displayName.
 	// * **id:** Sorts by id.

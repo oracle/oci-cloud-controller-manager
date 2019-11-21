@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Functions Service API
@@ -34,6 +34,11 @@ type Function struct {
 	// The image should be in the OCI Registry that is in the same region as the function itself.
 	// Example: `phx.ocir.io/ten/functions/function:0.0.1`
 	Image *string `mandatory:"false" json:"image"`
+
+	// The image digest for the version of the image that will be pulled when invoking this function.
+	// If no value is specified, the digest currently associated with the image in the OCI Registry will be used.
+	// Example: `sha256:ca0eeb6fb05351dfc8759c20733c91def84cb8007aa89a5bf606bc8b315b9fc7`
+	ImageDigest *string `mandatory:"false" json:"imageDigest"`
 
 	// Maximum usable memory for the function (MiB).
 	MemoryInMBs *int64 `mandatory:"false" json:"memoryInMBs"`

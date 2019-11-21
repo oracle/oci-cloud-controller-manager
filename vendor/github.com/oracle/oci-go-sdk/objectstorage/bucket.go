@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Object Storage Service API
@@ -55,6 +55,17 @@ type Bucket struct {
 	// The 'storageTier' property is immutable after bucket is created.
 	StorageTier BucketStorageTierEnum `mandatory:"false" json:"storageTier,omitempty"`
 
+	// The type of requests for which object-level audit logging is enabled on this bucket.
+	// This property is set to `Disabled` by default, where no audit logs will be produced at the object level for this
+	// bucket. If the property is set to `Write`, audit logs will be produced for operations such as `Put Object`. If the
+	// property is set to `ReadWrite`, audit logs will be produced for operations such as `Put Object` and `Get Object`.
+	ObjectLevelAuditMode BucketObjectLevelAuditModeEnum `mandatory:"false" json:"objectLevelAuditMode,omitempty"`
+
+	// Whether or not events are emitted for object state changes in this bucket. By default, `objectEventsEnabled` is
+	// set to `false`. Set `objectEventsEnabled` to `true` to emit events for object state changes. For more information
+	// about events, see Overview of Events (https://docs.cloud.oracle.com/Content/Events/Concepts/eventsoverview.htm).
+	ObjectEventsEnabled *bool `mandatory:"false" json:"objectEventsEnabled"`
+
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no predefined name, type, or namespace.
 	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
@@ -65,7 +76,8 @@ type Bucket struct {
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
-	// The OCID of a KMS key id used to call KMS to generate data key or decrypt the encrypted data key.
+	// The OCID of a master encryption key used to call the Key Management service to generate a data encryption key
+	// or to encrypt or decrypt a data encryption key.
 	KmsKeyId *string `mandatory:"false" json:"kmsKeyId"`
 
 	// The entity tag (ETag) for the live object lifecycle policy on the bucket.
@@ -78,6 +90,9 @@ type Bucket struct {
 	// The approximate total size in bytes of all objects in the bucket. Size statistics are reported periodically. You will
 	// see a lag between what is displayed and the actual size of the bucket.
 	ApproximateSize *int64 `mandatory:"false" json:"approximateSize"`
+
+	// The OCID of the bucket which is a Oracle assigned unique identifier for this resource type (bucket).
+	Id *string `mandatory:"false" json:"id"`
 }
 
 func (m Bucket) String() string {
@@ -127,6 +142,31 @@ var mappingBucketStorageTier = map[string]BucketStorageTierEnum{
 func GetBucketStorageTierEnumValues() []BucketStorageTierEnum {
 	values := make([]BucketStorageTierEnum, 0)
 	for _, v := range mappingBucketStorageTier {
+		values = append(values, v)
+	}
+	return values
+}
+
+// BucketObjectLevelAuditModeEnum Enum with underlying type: string
+type BucketObjectLevelAuditModeEnum string
+
+// Set of constants representing the allowable values for BucketObjectLevelAuditModeEnum
+const (
+	BucketObjectLevelAuditModeDisabled  BucketObjectLevelAuditModeEnum = "Disabled"
+	BucketObjectLevelAuditModeWrite     BucketObjectLevelAuditModeEnum = "Write"
+	BucketObjectLevelAuditModeReadwrite BucketObjectLevelAuditModeEnum = "ReadWrite"
+)
+
+var mappingBucketObjectLevelAuditMode = map[string]BucketObjectLevelAuditModeEnum{
+	"Disabled":  BucketObjectLevelAuditModeDisabled,
+	"Write":     BucketObjectLevelAuditModeWrite,
+	"ReadWrite": BucketObjectLevelAuditModeReadwrite,
+}
+
+// GetBucketObjectLevelAuditModeEnumValues Enumerates the set of values for BucketObjectLevelAuditModeEnum
+func GetBucketObjectLevelAuditModeEnumValues() []BucketObjectLevelAuditModeEnum {
+	values := make([]BucketObjectLevelAuditModeEnum, 0)
+	for _, v := range mappingBucketObjectLevelAuditMode {
 		values = append(values, v)
 	}
 	return values

@@ -22,7 +22,52 @@ func createStreamAdminClientWithProvider(p common.ConfigurationProvider, testCon
 	return client, err
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="opc_streaming_us_grp@oracle.com" jiraProject="STREAMSTR" opsJiraProject="STREAMOSS"
+func TestStreamAdminClientChangeStreamCompartment(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("streaming", "ChangeStreamCompartment")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ChangeStreamCompartment is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("streaming", "StreamAdmin", "ChangeStreamCompartment", createStreamAdminClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(streaming.StreamAdminClient)
+
+	body, err := testClient.getRequests("streaming", "ChangeStreamCompartment")
+	assert.NoError(t, err)
+
+	type ChangeStreamCompartmentRequestInfo struct {
+		ContainerId string
+		Request     streaming.ChangeStreamCompartmentRequest
+	}
+
+	var requests []ChangeStreamCompartmentRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.ChangeStreamCompartment(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="opc_streaming_us_grp@oracle.com" jiraProject="STREAMSTR" opsJiraProject="STREAMOSS"
 func TestStreamAdminClientCreateArchiver(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -54,7 +99,9 @@ func TestStreamAdminClientCreateArchiver(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.CreateArchiver(context.Background(), req.Request)
@@ -65,7 +112,7 @@ func TestStreamAdminClientCreateArchiver(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="opc_streaming_us_grp@oracle.com" jiraProject="STREAMSTR" opsJiraProject="STREAMOSS"
 func TestStreamAdminClientCreateStream(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -97,7 +144,9 @@ func TestStreamAdminClientCreateStream(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.CreateStream(context.Background(), req.Request)
@@ -108,7 +157,7 @@ func TestStreamAdminClientCreateStream(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="opc_streaming_us_grp@oracle.com" jiraProject="STREAMSTR" opsJiraProject="STREAMOSS"
 func TestStreamAdminClientDeleteStream(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -140,7 +189,9 @@ func TestStreamAdminClientDeleteStream(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.DeleteStream(context.Background(), req.Request)
@@ -151,7 +202,7 @@ func TestStreamAdminClientDeleteStream(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="opc_streaming_us_grp@oracle.com" jiraProject="STREAMSTR" opsJiraProject="STREAMOSS"
 func TestStreamAdminClientGetArchiver(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -183,7 +234,9 @@ func TestStreamAdminClientGetArchiver(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetArchiver(context.Background(), req.Request)
@@ -194,7 +247,52 @@ func TestStreamAdminClientGetArchiver(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="opc_streaming_us_grp@oracle.com" jiraProject="STREAMSTR" opsJiraProject="STREAMOSS"
+func TestStreamAdminClientGetDefaultStreamPool(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("streaming", "GetDefaultStreamPool")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("GetDefaultStreamPool is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("streaming", "StreamAdmin", "GetDefaultStreamPool", createStreamAdminClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(streaming.StreamAdminClient)
+
+	body, err := testClient.getRequests("streaming", "GetDefaultStreamPool")
+	assert.NoError(t, err)
+
+	type GetDefaultStreamPoolRequestInfo struct {
+		ContainerId string
+		Request     streaming.GetDefaultStreamPoolRequest
+	}
+
+	var requests []GetDefaultStreamPoolRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.GetDefaultStreamPool(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="opc_streaming_us_grp@oracle.com" jiraProject="STREAMSTR" opsJiraProject="STREAMOSS"
 func TestStreamAdminClientGetStream(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -226,7 +324,9 @@ func TestStreamAdminClientGetStream(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetStream(context.Background(), req.Request)
@@ -237,7 +337,52 @@ func TestStreamAdminClientGetStream(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="opc_streaming_us_grp@oracle.com" jiraProject="STREAMSTR" opsJiraProject="STREAMOSS"
+func TestStreamAdminClientListDefaultStreamPool(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("streaming", "ListDefaultStreamPool")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ListDefaultStreamPool is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("streaming", "StreamAdmin", "ListDefaultStreamPool", createStreamAdminClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(streaming.StreamAdminClient)
+
+	body, err := testClient.getRequests("streaming", "ListDefaultStreamPool")
+	assert.NoError(t, err)
+
+	type ListDefaultStreamPoolRequestInfo struct {
+		ContainerId string
+		Request     streaming.ListDefaultStreamPoolRequest
+	}
+
+	var requests []ListDefaultStreamPoolRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.ListDefaultStreamPool(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="opc_streaming_us_grp@oracle.com" jiraProject="STREAMSTR" opsJiraProject="STREAMOSS"
 func TestStreamAdminClientListStreams(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -269,7 +414,9 @@ func TestStreamAdminClientListStreams(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*streaming.ListStreamsRequest)
@@ -289,7 +436,7 @@ func TestStreamAdminClientListStreams(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="opc_streaming_us_grp@oracle.com" jiraProject="STREAMSTR" opsJiraProject="STREAMOSS"
 func TestStreamAdminClientStartArchiver(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -321,7 +468,9 @@ func TestStreamAdminClientStartArchiver(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.StartArchiver(context.Background(), req.Request)
@@ -332,7 +481,7 @@ func TestStreamAdminClientStartArchiver(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="opc_streaming_us_grp@oracle.com" jiraProject="STREAMSTR" opsJiraProject="STREAMOSS"
 func TestStreamAdminClientStopArchiver(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -364,7 +513,9 @@ func TestStreamAdminClientStopArchiver(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.StopArchiver(context.Background(), req.Request)
@@ -375,7 +526,7 @@ func TestStreamAdminClientStopArchiver(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="opc_streaming_us_grp@oracle.com" jiraProject="STREAMSTR" opsJiraProject="STREAMOSS"
 func TestStreamAdminClientUpdateArchiver(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -407,7 +558,9 @@ func TestStreamAdminClientUpdateArchiver(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateArchiver(context.Background(), req.Request)
@@ -418,7 +571,52 @@ func TestStreamAdminClientUpdateArchiver(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="opc_streaming_us_grp@oracle.com" jiraProject="STREAMSTR" opsJiraProject="STREAMOSS"
+func TestStreamAdminClientUpdateDefaultStreamPool(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("streaming", "UpdateDefaultStreamPool")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("UpdateDefaultStreamPool is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("streaming", "StreamAdmin", "UpdateDefaultStreamPool", createStreamAdminClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(streaming.StreamAdminClient)
+
+	body, err := testClient.getRequests("streaming", "UpdateDefaultStreamPool")
+	assert.NoError(t, err)
+
+	type UpdateDefaultStreamPoolRequestInfo struct {
+		ContainerId string
+		Request     streaming.UpdateDefaultStreamPoolRequest
+	}
+
+	var requests []UpdateDefaultStreamPoolRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.UpdateDefaultStreamPool(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="opc_streaming_us_grp@oracle.com" jiraProject="STREAMSTR" opsJiraProject="STREAMOSS"
 func TestStreamAdminClientUpdateStream(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -450,7 +648,9 @@ func TestStreamAdminClientUpdateStream(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateStream(context.Background(), req.Request)

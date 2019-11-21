@@ -22,7 +22,52 @@ func createNotificationDataPlaneClientWithProvider(p common.ConfigurationProvide
 	return client, err
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="team_oci_ons_us_grp@oracle.com" jiraProject="ONS" opsJiraProject="ONS"
+func TestNotificationDataPlaneClientChangeSubscriptionCompartment(t *testing.T) {
+	defer failTestOnPanic(t)
+
+	enabled, err := testClient.isApiEnabled("ons", "ChangeSubscriptionCompartment")
+	assert.NoError(t, err)
+	if !enabled {
+		t.Skip("ChangeSubscriptionCompartment is not enabled by the testing service")
+	}
+
+	cc, err := testClient.createClientForOperation("ons", "NotificationDataPlane", "ChangeSubscriptionCompartment", createNotificationDataPlaneClientWithProvider)
+	assert.NoError(t, err)
+	c := cc.(ons.NotificationDataPlaneClient)
+
+	body, err := testClient.getRequests("ons", "ChangeSubscriptionCompartment")
+	assert.NoError(t, err)
+
+	type ChangeSubscriptionCompartmentRequestInfo struct {
+		ContainerId string
+		Request     ons.ChangeSubscriptionCompartmentRequest
+	}
+
+	var requests []ChangeSubscriptionCompartmentRequestInfo
+	var dataHolder []map[string]interface{}
+	err = json.Unmarshal([]byte(body), &dataHolder)
+	assert.NoError(t, err)
+	err = unmarshalRequestInfo(dataHolder, &requests, testClient.Log)
+	assert.NoError(t, err)
+
+	var retryPolicy *common.RetryPolicy
+	for i, req := range requests {
+		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
+			req.Request.RequestMetadata.RetryPolicy = retryPolicy
+
+			response, err := c.ChangeSubscriptionCompartment(context.Background(), req.Request)
+			message, err := testClient.validateResult(req.ContainerId, req.Request, response, err)
+			assert.NoError(t, err)
+			assert.Empty(t, message, message)
+		})
+	}
+}
+
+// IssueRoutingInfo tag="default" email="team_oci_ons_us_grp@oracle.com" jiraProject="ONS" opsJiraProject="ONS"
 func TestNotificationDataPlaneClientCreateSubscription(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -54,7 +99,9 @@ func TestNotificationDataPlaneClientCreateSubscription(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.CreateSubscription(context.Background(), req.Request)
@@ -65,7 +112,7 @@ func TestNotificationDataPlaneClientCreateSubscription(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="team_oci_ons_us_grp@oracle.com" jiraProject="ONS" opsJiraProject="ONS"
 func TestNotificationDataPlaneClientDeleteSubscription(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -97,7 +144,9 @@ func TestNotificationDataPlaneClientDeleteSubscription(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.DeleteSubscription(context.Background(), req.Request)
@@ -108,7 +157,7 @@ func TestNotificationDataPlaneClientDeleteSubscription(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="team_oci_ons_us_grp@oracle.com" jiraProject="ONS" opsJiraProject="ONS"
 func TestNotificationDataPlaneClientGetConfirmSubscription(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -140,7 +189,9 @@ func TestNotificationDataPlaneClientGetConfirmSubscription(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetConfirmSubscription(context.Background(), req.Request)
@@ -151,7 +202,7 @@ func TestNotificationDataPlaneClientGetConfirmSubscription(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="team_oci_ons_us_grp@oracle.com" jiraProject="ONS" opsJiraProject="ONS"
 func TestNotificationDataPlaneClientGetSubscription(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -183,7 +234,9 @@ func TestNotificationDataPlaneClientGetSubscription(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetSubscription(context.Background(), req.Request)
@@ -194,7 +247,7 @@ func TestNotificationDataPlaneClientGetSubscription(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="team_oci_ons_us_grp@oracle.com" jiraProject="ONS" opsJiraProject="ONS"
 func TestNotificationDataPlaneClientGetUnsubscription(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -226,7 +279,9 @@ func TestNotificationDataPlaneClientGetUnsubscription(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetUnsubscription(context.Background(), req.Request)
@@ -237,7 +292,7 @@ func TestNotificationDataPlaneClientGetUnsubscription(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="team_oci_ons_us_grp@oracle.com" jiraProject="ONS" opsJiraProject="ONS"
 func TestNotificationDataPlaneClientListSubscriptions(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -269,7 +324,9 @@ func TestNotificationDataPlaneClientListSubscriptions(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*ons.ListSubscriptionsRequest)
@@ -289,7 +346,7 @@ func TestNotificationDataPlaneClientListSubscriptions(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="team_oci_ons_us_grp@oracle.com" jiraProject="ONS" opsJiraProject="ONS"
 func TestNotificationDataPlaneClientPublishMessage(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -321,7 +378,9 @@ func TestNotificationDataPlaneClientPublishMessage(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.PublishMessage(context.Background(), req.Request)
@@ -332,7 +391,7 @@ func TestNotificationDataPlaneClientPublishMessage(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="team_oci_ons_us_grp@oracle.com" jiraProject="ONS" opsJiraProject="ONS"
 func TestNotificationDataPlaneClientResendSubscriptionConfirmation(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -364,7 +423,9 @@ func TestNotificationDataPlaneClientResendSubscriptionConfirmation(t *testing.T)
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.ResendSubscriptionConfirmation(context.Background(), req.Request)
@@ -375,7 +436,7 @@ func TestNotificationDataPlaneClientResendSubscriptionConfirmation(t *testing.T)
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="team_oci_ons_us_grp@oracle.com" jiraProject="ONS" opsJiraProject="ONS"
 func TestNotificationDataPlaneClientUpdateSubscription(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -407,7 +468,9 @@ func TestNotificationDataPlaneClientUpdateSubscription(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateSubscription(context.Background(), req.Request)

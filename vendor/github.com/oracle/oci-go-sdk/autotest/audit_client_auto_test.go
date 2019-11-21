@@ -22,7 +22,7 @@ func createAuditClientWithProvider(p common.ConfigurationProvider, testConfig Te
 	return client, err
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_events_dev_grp@oracle.com" jiraProject="https://jira.oci.oraclecorp.com/projects/SA" opsJiraProject="https://jira-sd.mc1.oracleiaas.com/projects/SA"
 func TestAuditClientGetConfiguration(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -54,7 +54,9 @@ func TestAuditClientGetConfiguration(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetConfiguration(context.Background(), req.Request)
@@ -65,7 +67,7 @@ func TestAuditClientGetConfiguration(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_events_dev_grp@oracle.com" jiraProject="https://jira.oci.oraclecorp.com/projects/SA" opsJiraProject="https://jira-sd.mc1.oracleiaas.com/projects/SA"
 func TestAuditClientListEvents(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -97,7 +99,9 @@ func TestAuditClientListEvents(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*audit.ListEventsRequest)
@@ -117,7 +121,7 @@ func TestAuditClientListEvents(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oci_events_dev_grp@oracle.com" jiraProject="https://jira.oci.oraclecorp.com/projects/SA" opsJiraProject="https://jira-sd.mc1.oracleiaas.com/projects/SA"
 func TestAuditClientUpdateConfiguration(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -149,7 +153,9 @@ func TestAuditClientUpdateConfiguration(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateConfiguration(context.Background(), req.Request)

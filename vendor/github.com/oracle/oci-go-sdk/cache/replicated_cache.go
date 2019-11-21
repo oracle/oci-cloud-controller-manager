@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // OraCache Public API
@@ -40,7 +40,7 @@ type ReplicatedCache struct {
 	TimeCreated *common.SDKTime `mandatory:"true" json:"timeCreated"`
 
 	// The `lifecycleState` of the Redis replicated cache.
-	LifecycleState ReplicatedCacheLifecycleStateEnum `mandatory:"true" json:"lifecycleState"`
+	LifecycleState LifecycleStateEnum `mandatory:"true" json:"lifecycleState"`
 
 	// A brief description of the Redis replicated cache
 	Description *string `mandatory:"false" json:"description"`
@@ -58,33 +58,23 @@ func (m ReplicatedCache) String() string {
 	return common.PointerString(m)
 }
 
-// ReplicatedCacheLifecycleStateEnum Enum with underlying type: string
-type ReplicatedCacheLifecycleStateEnum string
+// ReplicatedCacheLifecycleStateEnum is an alias to type: LifecycleStateEnum
+// Consider using LifecycleStateEnum instead
+// Deprecated
+type ReplicatedCacheLifecycleStateEnum = LifecycleStateEnum
 
-// Set of constants representing the allowable values for ReplicatedCacheLifecycleStateEnum
+// Set of constants representing the allowable values for LifecycleStateEnum
+// Deprecated
 const (
-	ReplicatedCacheLifecycleStateCreating ReplicatedCacheLifecycleStateEnum = "CREATING"
-	ReplicatedCacheLifecycleStateActive   ReplicatedCacheLifecycleStateEnum = "ACTIVE"
-	ReplicatedCacheLifecycleStateUpdating ReplicatedCacheLifecycleStateEnum = "UPDATING"
-	ReplicatedCacheLifecycleStateDeleting ReplicatedCacheLifecycleStateEnum = "DELETING"
-	ReplicatedCacheLifecycleStateDeleted  ReplicatedCacheLifecycleStateEnum = "DELETED"
-	ReplicatedCacheLifecycleStateFailed   ReplicatedCacheLifecycleStateEnum = "FAILED"
+	ReplicatedCacheLifecycleStateCreating LifecycleStateEnum = "CREATING"
+	ReplicatedCacheLifecycleStateActive   LifecycleStateEnum = "ACTIVE"
+	ReplicatedCacheLifecycleStateUpdating LifecycleStateEnum = "UPDATING"
+	ReplicatedCacheLifecycleStateDeleting LifecycleStateEnum = "DELETING"
+	ReplicatedCacheLifecycleStateDeleted  LifecycleStateEnum = "DELETED"
+	ReplicatedCacheLifecycleStateFailed   LifecycleStateEnum = "FAILED"
 )
 
-var mappingReplicatedCacheLifecycleState = map[string]ReplicatedCacheLifecycleStateEnum{
-	"CREATING": ReplicatedCacheLifecycleStateCreating,
-	"ACTIVE":   ReplicatedCacheLifecycleStateActive,
-	"UPDATING": ReplicatedCacheLifecycleStateUpdating,
-	"DELETING": ReplicatedCacheLifecycleStateDeleting,
-	"DELETED":  ReplicatedCacheLifecycleStateDeleted,
-	"FAILED":   ReplicatedCacheLifecycleStateFailed,
-}
-
-// GetReplicatedCacheLifecycleStateEnumValues Enumerates the set of values for ReplicatedCacheLifecycleStateEnum
-func GetReplicatedCacheLifecycleStateEnumValues() []ReplicatedCacheLifecycleStateEnum {
-	values := make([]ReplicatedCacheLifecycleStateEnum, 0)
-	for _, v := range mappingReplicatedCacheLifecycleState {
-		values = append(values, v)
-	}
-	return values
-}
+// GetReplicatedCacheLifecycleStateEnumValues Enumerates the set of values for LifecycleStateEnum
+// Consider using GetLifecycleStateEnumValue
+// Deprecated
+var GetReplicatedCacheLifecycleStateEnumValues = GetLifecycleStateEnumValues

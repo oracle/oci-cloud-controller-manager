@@ -1,9 +1,9 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
-// File Storage Service API
+// File Storage API
 //
-// The API for the File Storage Service.
+// API for the File Storage service. Use this API to manage file systems, mount targets, and snapshots. For more information, see Overview of File Storage (https://docs.cloud.oracle.com/iaas/Content/File/Concepts/filestorageoverview.htm).
 //
 
 package filestorage
@@ -30,6 +30,12 @@ type UpdateFileSystemDetails struct {
 	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
+
+	// The OCID of the Key Management master encryption key to associate with the specified file system. If this value is empty, the Update operation will remove the associated key, if there is one, from the file system. (The file system will continue to be encrypted, but with an encryption key managed by Oracle.)
+	// If updating to a new Key Management key, the old key must remain enabled so that files previously encrypted continue
+	// to be accessible. For more information, see Overview of Key
+	// Management (https://docs.cloud.oracle.com/Content/KeyManagement/Concepts/keyoverview.htm).
+	KmsKeyId *string `mandatory:"false" json:"kmsKeyId"`
 }
 
 func (m UpdateFileSystemDetails) String() string {

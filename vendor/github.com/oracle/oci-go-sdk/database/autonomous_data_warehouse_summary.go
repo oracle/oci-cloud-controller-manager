@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Database Service API
@@ -62,7 +62,6 @@ type AutonomousDataWarehouseSummary struct {
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
 	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
-	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
 	// A valid Oracle Database version for Autonomous Data Warehouse.
@@ -90,6 +89,7 @@ const (
 	AutonomousDataWarehouseSummaryLifecycleStateBackupInProgress        AutonomousDataWarehouseSummaryLifecycleStateEnum = "BACKUP_IN_PROGRESS"
 	AutonomousDataWarehouseSummaryLifecycleStateScaleInProgress         AutonomousDataWarehouseSummaryLifecycleStateEnum = "SCALE_IN_PROGRESS"
 	AutonomousDataWarehouseSummaryLifecycleStateAvailableNeedsAttention AutonomousDataWarehouseSummaryLifecycleStateEnum = "AVAILABLE_NEEDS_ATTENTION"
+	AutonomousDataWarehouseSummaryLifecycleStateUpdating                AutonomousDataWarehouseSummaryLifecycleStateEnum = "UPDATING"
 )
 
 var mappingAutonomousDataWarehouseSummaryLifecycleState = map[string]AutonomousDataWarehouseSummaryLifecycleStateEnum{
@@ -105,6 +105,7 @@ var mappingAutonomousDataWarehouseSummaryLifecycleState = map[string]AutonomousD
 	"BACKUP_IN_PROGRESS":        AutonomousDataWarehouseSummaryLifecycleStateBackupInProgress,
 	"SCALE_IN_PROGRESS":         AutonomousDataWarehouseSummaryLifecycleStateScaleInProgress,
 	"AVAILABLE_NEEDS_ATTENTION": AutonomousDataWarehouseSummaryLifecycleStateAvailableNeedsAttention,
+	"UPDATING":                  AutonomousDataWarehouseSummaryLifecycleStateUpdating,
 }
 
 // GetAutonomousDataWarehouseSummaryLifecycleStateEnumValues Enumerates the set of values for AutonomousDataWarehouseSummaryLifecycleStateEnum

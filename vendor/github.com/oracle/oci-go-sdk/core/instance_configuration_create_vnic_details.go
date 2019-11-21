@@ -1,9 +1,13 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// APIs for Networking Service, Compute Service, and Block Volume Service.
+// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
+// to manage resources such as virtual cloud networks (VCNs), compute instances, and
+// block storage volumes.
 //
 
 package core
@@ -27,6 +31,11 @@ type InstanceConfigurationCreateVnicDetails struct {
 	// The hostname for the VNIC's primary private IP.
 	// See the `hostnameLabel` attribute of CreateVnicDetails for more information.
 	HostnameLabel *string `mandatory:"false" json:"hostnameLabel"`
+
+	// A list of the OCIDs of the network security groups (NSGs) to add the VNIC to. For more
+	// information about NSGs, see
+	// NetworkSecurityGroup.
+	NsgIds []string `mandatory:"false" json:"nsgIds"`
 
 	// A private IP address of your choice to assign to the VNIC.
 	// See the `privateIp` attribute of CreateVnicDetails for more information.

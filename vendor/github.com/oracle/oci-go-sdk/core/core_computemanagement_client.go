@@ -1,9 +1,13 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// APIs for Networking Service, Compute Service, and Block Volume Service.
+// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
+// to manage resources such as virtual cloud networks (VCNs), compute instances, and
+// block storage volumes.
 //
 
 package core
@@ -105,7 +109,215 @@ func (client ComputeManagementClient) attachLoadBalancer(ctx context.Context, re
 	return response, err
 }
 
-// CreateInstanceConfiguration Creates an instance configuration
+// ChangeClusterNetworkCompartment Moves a cluster network into a different compartment within the same tenancy. For
+// information about moving resources between compartments, see
+// Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/iaas/Content/Identity/Tasks/managingcompartments.htm#moveRes).
+// When you move a cluster network to a different compartment, associated resources such as the instances
+// in the cluster network, boot volumes, and VNICs are not moved.
+func (client ComputeManagementClient) ChangeClusterNetworkCompartment(ctx context.Context, request ChangeClusterNetworkCompartmentRequest) (response ChangeClusterNetworkCompartmentResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.changeClusterNetworkCompartment, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ChangeClusterNetworkCompartmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ChangeClusterNetworkCompartmentResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ChangeClusterNetworkCompartmentResponse")
+	}
+	return
+}
+
+// changeClusterNetworkCompartment implements the OCIOperation interface (enables retrying operations)
+func (client ComputeManagementClient) changeClusterNetworkCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/clusterNetworks/{clusterNetworkId}/actions/changeCompartment")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ChangeClusterNetworkCompartmentResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ChangeInstanceConfigurationCompartment Moves an instance configuration into a different compartment within the same tenancy.
+// For information about moving resources between compartments, see
+// Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/iaas/Content/Identity/Tasks/managingcompartments.htm#moveRes).
+// When you move an instance configuration to a different compartment, associated resources such as
+// instance pools are not moved.
+// **Important:** Most of the properties for an existing instance configuration, including the compartment,
+// cannot be modified after you create the instance configuration. Although you can move an instance configuration
+// to a different compartment, you will not be able to use the instance configuration to manage instance pools
+// in the new compartment. If you want to update an instance configuration to point to a different compartment,
+// you should instead create a new instance configuration in the target compartment using
+// CreateInstanceConfiguration (https://docs.cloud.oracle.com/iaas/api/#/en/iaas/20160918/InstanceConfiguration/CreateInstanceConfiguration).
+func (client ComputeManagementClient) ChangeInstanceConfigurationCompartment(ctx context.Context, request ChangeInstanceConfigurationCompartmentRequest) (response ChangeInstanceConfigurationCompartmentResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.changeInstanceConfigurationCompartment, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ChangeInstanceConfigurationCompartmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ChangeInstanceConfigurationCompartmentResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ChangeInstanceConfigurationCompartmentResponse")
+	}
+	return
+}
+
+// changeInstanceConfigurationCompartment implements the OCIOperation interface (enables retrying operations)
+func (client ComputeManagementClient) changeInstanceConfigurationCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/instanceConfigurations/{instanceConfigurationId}/actions/changeCompartment")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ChangeInstanceConfigurationCompartmentResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ChangeInstancePoolCompartment Moves an instance pool into a different compartment within the same tenancy. For
+// information about moving resources between compartments, see
+// Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/iaas/Content/Identity/Tasks/managingcompartments.htm#moveRes).
+// When you move an instance pool to a different compartment, associated resources such as the instances in
+// the pool, boot volumes, VNICs, and autoscaling configurations are not moved.
+func (client ComputeManagementClient) ChangeInstancePoolCompartment(ctx context.Context, request ChangeInstancePoolCompartmentRequest) (response ChangeInstancePoolCompartmentResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.changeInstancePoolCompartment, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ChangeInstancePoolCompartmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ChangeInstancePoolCompartmentResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ChangeInstancePoolCompartmentResponse")
+	}
+	return
+}
+
+// changeInstancePoolCompartment implements the OCIOperation interface (enables retrying operations)
+func (client ComputeManagementClient) changeInstancePoolCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/instancePools/{instancePoolId}/actions/changeCompartment")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ChangeInstancePoolCompartmentResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// CreateClusterNetwork Creates a cluster network. For more information about cluster networks, see
+// Managing Cluster Networks (https://docs.cloud.oracle.com/iaas/Content/Compute/Tasks/managingclusternetworks.htm).
+func (client ComputeManagementClient) CreateClusterNetwork(ctx context.Context, request CreateClusterNetworkRequest) (response CreateClusterNetworkResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.createClusterNetwork, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = CreateClusterNetworkResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(CreateClusterNetworkResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into CreateClusterNetworkResponse")
+	}
+	return
+}
+
+// createClusterNetwork implements the OCIOperation interface (enables retrying operations)
+func (client ComputeManagementClient) createClusterNetwork(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/clusterNetworks")
+	if err != nil {
+		return nil, err
+	}
+
+	var response CreateClusterNetworkResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// CreateInstanceConfiguration Creates an instance configuration. An instance configuration is a template that defines the
+// settings to use when creating Compute instances.
 func (client ComputeManagementClient) CreateInstanceConfiguration(ctx context.Context, request CreateInstanceConfigurationRequest) (response CreateInstanceConfigurationResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -288,6 +500,48 @@ func (client ComputeManagementClient) detachLoadBalancer(ctx context.Context, re
 	return response, err
 }
 
+// GetClusterNetwork Gets information about the specified cluster network.
+func (client ComputeManagementClient) GetClusterNetwork(ctx context.Context, request GetClusterNetworkRequest) (response GetClusterNetworkResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.getClusterNetwork, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = GetClusterNetworkResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(GetClusterNetworkResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into GetClusterNetworkResponse")
+	}
+	return
+}
+
+// getClusterNetwork implements the OCIOperation interface (enables retrying operations)
+func (client ComputeManagementClient) getClusterNetwork(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/clusterNetworks/{clusterNetworkId}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetClusterNetworkResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // GetInstanceConfiguration Gets the specified instance configuration
 func (client ComputeManagementClient) GetInstanceConfiguration(ctx context.Context, request GetInstanceConfigurationRequest) (response GetInstanceConfigurationResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -372,7 +626,7 @@ func (client ComputeManagementClient) getInstancePool(ctx context.Context, reque
 	return response, err
 }
 
-// GetInstancePoolLoadBalancerAttachment Gets the specified instance pool's attached load balancer by id.
+// GetInstancePoolLoadBalancerAttachment Gets information about a load balancer that is attached to the specified instance pool.
 func (client ComputeManagementClient) GetInstancePoolLoadBalancerAttachment(ctx context.Context, request GetInstancePoolLoadBalancerAttachmentRequest) (response GetInstancePoolLoadBalancerAttachmentResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -414,7 +668,12 @@ func (client ComputeManagementClient) getInstancePoolLoadBalancerAttachment(ctx 
 	return response, err
 }
 
-// LaunchInstanceConfiguration Launch an instance from an instance configuration
+// LaunchInstanceConfiguration Launches an instance from an instance configuration.
+// If the instance configuration does not include all of the parameters that are
+// required to launch an instance, such as the availability domain and subnet ID, you must
+// provide these parameters when you launch an instance from the instance configuration.
+// For more information, see the InstanceConfiguration
+// resource.
 func (client ComputeManagementClient) LaunchInstanceConfiguration(ctx context.Context, request LaunchInstanceConfigurationRequest) (response LaunchInstanceConfigurationResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -461,7 +720,91 @@ func (client ComputeManagementClient) launchInstanceConfiguration(ctx context.Co
 	return response, err
 }
 
-// ListInstanceConfigurations Lists the available instanceConfigurations in the specific compartment.
+// ListClusterNetworkInstances Lists the instances in the specified cluster network.
+func (client ComputeManagementClient) ListClusterNetworkInstances(ctx context.Context, request ListClusterNetworkInstancesRequest) (response ListClusterNetworkInstancesResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listClusterNetworkInstances, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ListClusterNetworkInstancesResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListClusterNetworkInstancesResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListClusterNetworkInstancesResponse")
+	}
+	return
+}
+
+// listClusterNetworkInstances implements the OCIOperation interface (enables retrying operations)
+func (client ComputeManagementClient) listClusterNetworkInstances(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/clusterNetworks/{clusterNetworkId}/instances")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListClusterNetworkInstancesResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ListClusterNetworks Lists the cluster networks in the specified compartment.
+func (client ComputeManagementClient) ListClusterNetworks(ctx context.Context, request ListClusterNetworksRequest) (response ListClusterNetworksResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listClusterNetworks, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ListClusterNetworksResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListClusterNetworksResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListClusterNetworksResponse")
+	}
+	return
+}
+
+// listClusterNetworks implements the OCIOperation interface (enables retrying operations)
+func (client ComputeManagementClient) listClusterNetworks(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/clusterNetworks")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListClusterNetworksResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ListInstanceConfigurations Lists the instance configurations in the specified compartment.
 func (client ComputeManagementClient) ListInstanceConfigurations(ctx context.Context, request ListInstanceConfigurationsRequest) (response ListInstanceConfigurationsResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()
@@ -779,6 +1122,50 @@ func (client ComputeManagementClient) stopInstancePool(ctx context.Context, requ
 	return response, err
 }
 
+// TerminateClusterNetwork Terminates the specified cluster network.
+// When you delete a cluster network, all of its resources are permanently deleted,
+// including associated instances and instance pools.
+func (client ComputeManagementClient) TerminateClusterNetwork(ctx context.Context, request TerminateClusterNetworkRequest) (response TerminateClusterNetworkResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.terminateClusterNetwork, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = TerminateClusterNetworkResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(TerminateClusterNetworkResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into TerminateClusterNetworkResponse")
+	}
+	return
+}
+
+// terminateClusterNetwork implements the OCIOperation interface (enables retrying operations)
+func (client ComputeManagementClient) terminateClusterNetwork(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/clusterNetworks/{clusterNetworkId}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response TerminateClusterNetworkResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // TerminateInstancePool Terminate the specified instance pool.
 func (client ComputeManagementClient) TerminateInstancePool(ctx context.Context, request TerminateInstancePoolRequest) (response TerminateInstancePoolResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -821,7 +1208,54 @@ func (client ComputeManagementClient) terminateInstancePool(ctx context.Context,
 	return response, err
 }
 
-// UpdateInstanceConfiguration Updates the freeFormTags, definedTags, and display name of an instance configuration.
+// UpdateClusterNetwork Updates the specified cluster network. The OCID of the cluster network remains the same.
+func (client ComputeManagementClient) UpdateClusterNetwork(ctx context.Context, request UpdateClusterNetworkRequest) (response UpdateClusterNetworkResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.updateClusterNetwork, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = UpdateClusterNetworkResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(UpdateClusterNetworkResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into UpdateClusterNetworkResponse")
+	}
+	return
+}
+
+// updateClusterNetwork implements the OCIOperation interface (enables retrying operations)
+func (client ComputeManagementClient) updateClusterNetwork(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/clusterNetworks/{clusterNetworkId}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response UpdateClusterNetworkResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// UpdateInstanceConfiguration Updates the free-form tags, defined tags, and display name of an instance configuration.
 func (client ComputeManagementClient) UpdateInstanceConfiguration(ctx context.Context, request UpdateInstanceConfigurationRequest) (response UpdateInstanceConfigurationResponse, err error) {
 	var ociResponse common.OCIResponse
 	policy := common.NoRetryPolicy()

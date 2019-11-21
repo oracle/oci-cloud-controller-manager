@@ -1,9 +1,9 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
-// Resource Search Service
+// Search Service API
 //
-// Search for resources across your cloud infrastructure
+// Search for resources in your cloud network.
 //
 
 package resourcesearch
@@ -12,7 +12,7 @@ import (
 	"github.com/oracle/oci-go-sdk/common"
 )
 
-// ResourceSummaryCollection A collection of resources that matched the search criteria.
+// ResourceSummaryCollection Summary representation of resources that matched the search criteria.
 type ResourceSummaryCollection struct {
 
 	// A list of resources.

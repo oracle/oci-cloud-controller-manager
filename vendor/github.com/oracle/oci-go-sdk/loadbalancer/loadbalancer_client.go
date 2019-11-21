@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Load Balancing API
@@ -38,7 +38,7 @@ func NewLoadBalancerClientWithConfigurationProvider(configProvider common.Config
 
 // SetRegion overrides the region of this client.
 func (client *LoadBalancerClient) SetRegion(region string) {
-	client.Host = common.StringToRegion(region).EndpointForTemplate("iaas", "https://iaas.{region}.oraclecloud.com")
+	client.Host = common.StringToRegion(region).EndpointForTemplate("iaas", "https://iaas.{region}.{secondLevelDomain}")
 }
 
 // SetConfigurationProvider sets the configuration provider including the region, returns an error if is not valid
@@ -57,6 +57,54 @@ func (client *LoadBalancerClient) setConfigurationProvider(configProvider common
 // ConfigurationProvider the ConfigurationProvider used in this client, or null if none set
 func (client *LoadBalancerClient) ConfigurationProvider() *common.ConfigurationProvider {
 	return client.config
+}
+
+// ChangeLoadBalancerCompartment Moves a load balancer into a different compartment within the same tenancy. For information about moving resources
+// between compartments, see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/iaas/Content/Identity/Tasks/managingcompartments.htm#moveRes).
+func (client LoadBalancerClient) ChangeLoadBalancerCompartment(ctx context.Context, request ChangeLoadBalancerCompartmentRequest) (response ChangeLoadBalancerCompartmentResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.changeLoadBalancerCompartment, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ChangeLoadBalancerCompartmentResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ChangeLoadBalancerCompartmentResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ChangeLoadBalancerCompartmentResponse")
+	}
+	return
+}
+
+// changeLoadBalancerCompartment implements the OCIOperation interface (enables retrying operations)
+func (client LoadBalancerClient) changeLoadBalancerCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/loadBalancers/{loadBalancerId}/changeCompartment")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ChangeLoadBalancerCompartmentResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
 }
 
 // CreateBackend Adds a backend server to a backend set.
@@ -453,6 +501,53 @@ func (client LoadBalancerClient) createRuleSet(ctx context.Context, request comm
 	return response, err
 }
 
+// CreateSSLCipherSuite Creates a custom SSL cipher suite.
+func (client LoadBalancerClient) CreateSSLCipherSuite(ctx context.Context, request CreateSSLCipherSuiteRequest) (response CreateSSLCipherSuiteResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.createSSLCipherSuite, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = CreateSSLCipherSuiteResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(CreateSSLCipherSuiteResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into CreateSSLCipherSuiteResponse")
+	}
+	return
+}
+
+// createSSLCipherSuite implements the OCIOperation interface (enables retrying operations)
+func (client LoadBalancerClient) createSSLCipherSuite(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/loadBalancers/{loadBalancerId}/sslCipherSuites")
+	if err != nil {
+		return nil, err
+	}
+
+	var response CreateSSLCipherSuiteResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // DeleteBackend Removes a backend server from a given load balancer and backend set.
 func (client LoadBalancerClient) DeleteBackend(ctx context.Context, request DeleteBackendRequest) (response DeleteBackendResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -782,6 +877,48 @@ func (client LoadBalancerClient) deleteRuleSet(ctx context.Context, request comm
 	}
 
 	var response DeleteRuleSetResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// DeleteSSLCipherSuite Deletes an SSL cipher suite from a load balancer.
+func (client LoadBalancerClient) DeleteSSLCipherSuite(ctx context.Context, request DeleteSSLCipherSuiteRequest) (response DeleteSSLCipherSuiteResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.deleteSSLCipherSuite, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = DeleteSSLCipherSuiteResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(DeleteSSLCipherSuiteResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into DeleteSSLCipherSuiteResponse")
+	}
+	return
+}
+
+// deleteSSLCipherSuite implements the OCIOperation interface (enables retrying operations)
+func (client LoadBalancerClient) deleteSSLCipherSuite(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/loadBalancers/{loadBalancerId}/sslCipherSuites/{name}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response DeleteSSLCipherSuiteResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)
@@ -1214,6 +1351,48 @@ func (client LoadBalancerClient) getRuleSet(ctx context.Context, request common.
 	return response, err
 }
 
+// GetSSLCipherSuite Gets the specified SSL cipher suite's configuration information.
+func (client LoadBalancerClient) GetSSLCipherSuite(ctx context.Context, request GetSSLCipherSuiteRequest) (response GetSSLCipherSuiteResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.getSSLCipherSuite, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = GetSSLCipherSuiteResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(GetSSLCipherSuiteResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into GetSSLCipherSuiteResponse")
+	}
+	return
+}
+
+// getSSLCipherSuite implements the OCIOperation interface (enables retrying operations)
+func (client LoadBalancerClient) getSSLCipherSuite(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/loadBalancers/{loadBalancerId}/sslCipherSuites/{name}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetSSLCipherSuiteResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // GetWorkRequest Gets the details of a work request.
 func (client LoadBalancerClient) GetWorkRequest(ctx context.Context, request GetWorkRequestRequest) (response GetWorkRequestResponse, err error) {
 	var ociResponse common.OCIResponse
@@ -1412,6 +1591,53 @@ func (client LoadBalancerClient) listHostnames(ctx context.Context, request comm
 	}
 
 	var response ListHostnamesResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ListListenerRules Lists all of the rules from all of the rule sets associated with the specified listener. The response organizes
+// the rules in the following order:
+// *  Access control rules
+// *  Allow method rules
+// *  Request header rules
+// *  Response header rules
+func (client LoadBalancerClient) ListListenerRules(ctx context.Context, request ListListenerRulesRequest) (response ListListenerRulesResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listListenerRules, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ListListenerRulesResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListListenerRulesResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListListenerRulesResponse")
+	}
+	return
+}
+
+// listListenerRules implements the OCIOperation interface (enables retrying operations)
+func (client LoadBalancerClient) listListenerRules(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/loadBalancers/{loadBalancerId}/listeners/{listenerName}/rules")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListListenerRulesResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)
@@ -1664,6 +1890,48 @@ func (client LoadBalancerClient) listRuleSets(ctx context.Context, request commo
 	}
 
 	var response ListRuleSetsResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ListSSLCipherSuites Lists all SSL cipher suites associated with the specified load balancer.
+func (client LoadBalancerClient) ListSSLCipherSuites(ctx context.Context, request ListSSLCipherSuitesRequest) (response ListSSLCipherSuitesResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listSSLCipherSuites, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = ListSSLCipherSuitesResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListSSLCipherSuitesResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListSSLCipherSuitesResponse")
+	}
+	return
+}
+
+// listSSLCipherSuites implements the OCIOperation interface (enables retrying operations)
+func (client LoadBalancerClient) listSSLCipherSuites(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/loadBalancers/{loadBalancerId}/sslCipherSuites")
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListSSLCipherSuitesResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)
@@ -2038,6 +2306,53 @@ func (client LoadBalancerClient) updateLoadBalancer(ctx context.Context, request
 	return response, err
 }
 
+// UpdateNetworkSecurityGroups Updates the network security groups associated with the specified load balancer.
+func (client LoadBalancerClient) UpdateNetworkSecurityGroups(ctx context.Context, request UpdateNetworkSecurityGroupsRequest) (response UpdateNetworkSecurityGroupsResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.updateNetworkSecurityGroups, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = UpdateNetworkSecurityGroupsResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(UpdateNetworkSecurityGroupsResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into UpdateNetworkSecurityGroupsResponse")
+	}
+	return
+}
+
+// updateNetworkSecurityGroups implements the OCIOperation interface (enables retrying operations)
+func (client LoadBalancerClient) updateNetworkSecurityGroups(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/loadBalancers/{loadBalancerId}/networkSecurityGroups")
+	if err != nil {
+		return nil, err
+	}
+
+	var response UpdateNetworkSecurityGroupsResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // UpdatePathRouteSet Overwrites an existing path route set on the specified load balancer. Use this operation to add, delete, or alter
 // path route rules in a path route set.
 // To add a new path route rule to a path route set, the `pathRoutes` in the
@@ -2121,6 +2436,53 @@ func (client LoadBalancerClient) updateRuleSet(ctx context.Context, request comm
 	}
 
 	var response UpdateRuleSetResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// UpdateSSLCipherSuite Updates an existing SSL cipher suite for the specified load balancer.
+func (client LoadBalancerClient) UpdateSSLCipherSuite(ctx context.Context, request UpdateSSLCipherSuiteRequest) (response UpdateSSLCipherSuiteResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.updateSSLCipherSuite, policy)
+	if err != nil {
+		if ociResponse != nil {
+			response = UpdateSSLCipherSuiteResponse{RawResponse: ociResponse.HTTPResponse()}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(UpdateSSLCipherSuiteResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into UpdateSSLCipherSuiteResponse")
+	}
+	return
+}
+
+// updateSSLCipherSuite implements the OCIOperation interface (enables retrying operations)
+func (client LoadBalancerClient) updateSSLCipherSuite(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/loadBalancers/{loadBalancerId}/sslCipherSuites/{name}")
+	if err != nil {
+		return nil, err
+	}
+
+	var response UpdateSSLCipherSuiteResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)

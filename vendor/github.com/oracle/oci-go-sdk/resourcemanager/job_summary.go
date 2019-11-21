@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Resource Manager API
@@ -9,19 +9,20 @@
 package resourcemanager
 
 import (
+	"encoding/json"
 	"github.com/oracle/oci-go-sdk/common"
 )
 
 // JobSummary Returns a listing of all of the specified job's properties and their values.
 type JobSummary struct {
 
-	// The job's OCID.
+	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the job.
 	Id *string `mandatory:"false" json:"id"`
 
-	// OCID of the stack that is associated with the specified job.
+	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the stack that is associated with the specified job.
 	StackId *string `mandatory:"false" json:"stackId"`
 
-	// OCID of the compartment where the stack of the associated job resides.
+	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the compartment where the stack of the associated job resides.
 	CompartmentId *string `mandatory:"false" json:"compartmentId"`
 
 	// The job's display name.
@@ -30,9 +31,12 @@ type JobSummary struct {
 	// The type of job executing
 	Operation JobOperationEnum `mandatory:"false" json:"operation,omitempty"`
 
+	JobOperationDetails JobOperationDetailsSummary `mandatory:"false" json:"jobOperationDetails"`
+
 	ApplyJobPlanResolution *ApplyJobPlanResolution `mandatory:"false" json:"applyJobPlanResolution"`
 
-	// The plan job OCID that was used (if this was an APPLY job and not auto approved).
+	// Deprecated. Use the property `executionPlanJobId` in `jobOperationDetails` instead.
+	// The plan job OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) that was used (if this was an apply job and was not auto-approved).
 	ResolvedPlanJobId *string `mandatory:"false" json:"resolvedPlanJobId"`
 
 	// The date and time the job was created.
@@ -63,4 +67,50 @@ type JobSummary struct {
 
 func (m JobSummary) String() string {
 	return common.PointerString(m)
+}
+
+// UnmarshalJSON unmarshals from json
+func (m *JobSummary) UnmarshalJSON(data []byte) (e error) {
+	model := struct {
+		Id                     *string                           `json:"id"`
+		StackId                *string                           `json:"stackId"`
+		CompartmentId          *string                           `json:"compartmentId"`
+		DisplayName            *string                           `json:"displayName"`
+		Operation              JobOperationEnum                  `json:"operation"`
+		JobOperationDetails    joboperationdetailssummary        `json:"jobOperationDetails"`
+		ApplyJobPlanResolution *ApplyJobPlanResolution           `json:"applyJobPlanResolution"`
+		ResolvedPlanJobId      *string                           `json:"resolvedPlanJobId"`
+		TimeCreated            *common.SDKTime                   `json:"timeCreated"`
+		TimeFinished           *common.SDKTime                   `json:"timeFinished"`
+		LifecycleState         JobLifecycleStateEnum             `json:"lifecycleState"`
+		FreeformTags           map[string]string                 `json:"freeformTags"`
+		DefinedTags            map[string]map[string]interface{} `json:"definedTags"`
+	}{}
+
+	e = json.Unmarshal(data, &model)
+	if e != nil {
+		return
+	}
+	m.Id = model.Id
+	m.StackId = model.StackId
+	m.CompartmentId = model.CompartmentId
+	m.DisplayName = model.DisplayName
+	m.Operation = model.Operation
+	nn, e := model.JobOperationDetails.UnmarshalPolymorphicJSON(model.JobOperationDetails.JsonData)
+	if e != nil {
+		return
+	}
+	if nn != nil {
+		m.JobOperationDetails = nn.(JobOperationDetailsSummary)
+	} else {
+		m.JobOperationDetails = nil
+	}
+	m.ApplyJobPlanResolution = model.ApplyJobPlanResolution
+	m.ResolvedPlanJobId = model.ResolvedPlanJobId
+	m.TimeCreated = model.TimeCreated
+	m.TimeFinished = model.TimeFinished
+	m.LifecycleState = model.LifecycleState
+	m.FreeformTags = model.FreeformTags
+	m.DefinedTags = model.DefinedTags
+	return
 }

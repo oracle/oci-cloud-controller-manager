@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Web Application Acceleration and Security Services API
@@ -14,10 +14,14 @@ import (
 
 // CertificateExtensions The representation of CertificateExtensions
 type CertificateExtensions struct {
+
+	// The certificate extension name.
 	Name *string `mandatory:"false" json:"name"`
 
+	// The critical flag of the extension. Critical extensions must be processed, non-critical extensions can be ignored.
 	IsCritical *bool `mandatory:"false" json:"isCritical"`
 
+	// The certificate extension value.
 	Value *string `mandatory:"false" json:"value"`
 }
 

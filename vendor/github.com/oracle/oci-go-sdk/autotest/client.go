@@ -91,6 +91,10 @@ type ClientInfo struct {
 const defaultOCITestingServiceEndpoint = "http://localhost:8090/SDKTestingService/"
 const requestClassTemplate = "com.oracle.bmc.%s.requests.%s"
 const responseClassTemplate = "com.oracle.bmc.%s.responses.%s"
+const mockMode = "mock"
+
+var firstPageOnly = false
+var withRetry = true
 
 func failIfError(t *testing.T, e error) {
 	if e != nil {
@@ -169,6 +173,7 @@ type TestingConfig struct {
 	PassPhrase     string `json:"passPhrase"`
 	KeyFile        string `json:"keyFile"`
 	KeyFileContent string `json:"keyFileContent"`
+	TestMode       string `json:"testMode"`
 }
 
 func (client OCITestClient) getConfiguration(serviceName, clientName, operationName string) (config TestingConfig, err error) {
@@ -197,6 +202,12 @@ func (client OCITestClient) getConfiguration(serviceName, clientName, operationN
 		return
 	}
 	config.Endpoint = testEndpoint
+
+	// Mock mode
+	if config.TestMode == mockMode {
+		firstPageOnly = true
+		withRetry = false
+	}
 
 	client.Log.Printf("Server configuration acquired: %#v\n", config)
 	return
@@ -465,6 +476,10 @@ func (client OCITestClient) generateListResponses(request common.OCIRequest,
 
 	err = setFieldValue(request, "Page", nextPageToken)
 	if err != nil {
+		return
+	}
+
+	if firstPageOnly {
 		return
 	}
 
@@ -751,11 +766,7 @@ func omitNilFieldsInJSON(data interface{}, value reflect.Value, logger *log.Logg
 		valPtr := value.Elem()
 		return omitNilFieldsInJSON(data, valPtr, logger)
 	case reflect.Interface:
-		if rc, ok := value.Interface().(io.ReadCloser); ok {
-			data, err := ioutil.ReadAll(rc)
-			if err != nil {
-				return nil, fmt.Errorf("can not omit field of type: %s of type ReadCloser", value.Type().String())
-			}
+		if _, ok := value.Interface().(io.ReadCloser); ok {
 			return data, nil
 		}
 		valPtr := value.Elem()

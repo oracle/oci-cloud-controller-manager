@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // DNS API
@@ -93,4 +93,33 @@ func (m steeringpolicyrule) GetDescription() *string {
 
 func (m steeringpolicyrule) String() string {
 	return common.PointerString(m)
+}
+
+// SteeringPolicyRuleRuleTypeEnum Enum with underlying type: string
+type SteeringPolicyRuleRuleTypeEnum string
+
+// Set of constants representing the allowable values for SteeringPolicyRuleRuleTypeEnum
+const (
+	SteeringPolicyRuleRuleTypeFilter   SteeringPolicyRuleRuleTypeEnum = "FILTER"
+	SteeringPolicyRuleRuleTypeHealth   SteeringPolicyRuleRuleTypeEnum = "HEALTH"
+	SteeringPolicyRuleRuleTypeWeighted SteeringPolicyRuleRuleTypeEnum = "WEIGHTED"
+	SteeringPolicyRuleRuleTypePriority SteeringPolicyRuleRuleTypeEnum = "PRIORITY"
+	SteeringPolicyRuleRuleTypeLimit    SteeringPolicyRuleRuleTypeEnum = "LIMIT"
+)
+
+var mappingSteeringPolicyRuleRuleType = map[string]SteeringPolicyRuleRuleTypeEnum{
+	"FILTER":   SteeringPolicyRuleRuleTypeFilter,
+	"HEALTH":   SteeringPolicyRuleRuleTypeHealth,
+	"WEIGHTED": SteeringPolicyRuleRuleTypeWeighted,
+	"PRIORITY": SteeringPolicyRuleRuleTypePriority,
+	"LIMIT":    SteeringPolicyRuleRuleTypeLimit,
+}
+
+// GetSteeringPolicyRuleRuleTypeEnumValues Enumerates the set of values for SteeringPolicyRuleRuleTypeEnum
+func GetSteeringPolicyRuleRuleTypeEnumValues() []SteeringPolicyRuleRuleTypeEnum {
+	values := make([]SteeringPolicyRuleRuleTypeEnum, 0)
+	for _, v := range mappingSteeringPolicyRuleRuleType {
+		values = append(values, v)
+	}
+	return values
 }

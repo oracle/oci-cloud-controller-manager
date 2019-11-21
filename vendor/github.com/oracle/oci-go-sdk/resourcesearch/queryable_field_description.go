@@ -1,9 +1,9 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
-// Resource Search Service
+// Search Service API
 //
-// Search for resources across your cloud infrastructure
+// Search for resources in your cloud network.
 //
 
 package resourcesearch
@@ -15,16 +15,16 @@ import (
 // QueryableFieldDescription An individual field that can be used as part of a query filter.
 type QueryableFieldDescription struct {
 
-	// The type of the field, which dictates what semantics and query constraints can be used.
+	// The type of the field, which dictates what semantics and query constraints you can use when searching or querying.
 	FieldType QueryableFieldDescriptionFieldTypeEnum `mandatory:"true" json:"fieldType"`
 
-	// The name of the field to use when constructing the query.  Will be present for all types except ARRAY and OBJECT.
+	// The name of the field to use when constructing the query. Field names are present for all types except `OBJECT`.
 	FieldName *string `mandatory:"true" json:"fieldName"`
 
 	// Indicates this field is actually an array of the specified field type.
 	IsArray *bool `mandatory:"false" json:"isArray"`
 
-	// If the fieldType is "OBJECT", then this property will provide all of the individual properties on the object that can
+	// If the field type is `OBJECT`, then this property will provide all the individual properties on the object that can
 	// be queried.
 	ObjectProperties []QueryableFieldDescription `mandatory:"false" json:"objectProperties"`
 }

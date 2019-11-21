@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Web Application Acceleration and Security Services API
@@ -38,6 +38,16 @@ type WafConfig struct {
 
 	// The key in the map of origins referencing the origin used for the Web Application Firewall. The origin must already be included in `Origins`. Required when creating the `WafConfig` resource, but not on update.
 	Origin *string `mandatory:"false" json:"origin"`
+
+	// A list of caching rules applied to the web application.
+	CachingRules []CachingRule `mandatory:"false" json:"cachingRules"`
+
+	// A list of the custom protection rule OCIDs and their actions.
+	CustomProtectionRules []CustomProtectionRuleSetting `mandatory:"false" json:"customProtectionRules"`
+
+	// The map of origin groups and their keys used to associate origins to the `wafConfig`. Origin groups allow you to apply weights to groups of origins for load balancing purposes. Origins with higher weights will receive larger proportions of client requests.
+	// To add additional origins to your WAAS policy, update the `origins` field of a `UpdateWaasPolicy` request.
+	OriginGroups []string `mandatory:"false" json:"originGroups"`
 
 	// A list of the protection rules and their details.
 	ProtectionRules []ProtectionRule `mandatory:"false" json:"protectionRules"`

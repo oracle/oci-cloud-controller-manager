@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Database Service API
@@ -36,8 +36,14 @@ type Database struct {
 	// The national character set for the database.
 	NcharacterSet *string `mandatory:"false" json:"ncharacterSet"`
 
-	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the database home.
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the Database Home.
 	DbHomeId *string `mandatory:"false" json:"dbHomeId"`
+
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the DB system.
+	DbSystemId *string `mandatory:"false" json:"dbSystemId"`
+
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the VM cluster.
+	VmClusterId *string `mandatory:"false" json:"vmClusterId"`
 
 	// The name of the pluggable database. The name must begin with an alphabetic character and can contain a maximum of eight alphanumeric characters. Special characters are not permitted. Pluggable database should not be same as database name.
 	PdbName *string `mandatory:"false" json:"pdbName"`
@@ -63,7 +69,6 @@ type Database struct {
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
 	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
-	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
 	// The Connection strings used to connect to the Oracle Database.
@@ -71,6 +76,9 @@ type Database struct {
 
 	// The date and time when the latest remote automatic incremental database backup was created.
 	LastRemoteBackupTimestamp *common.SDKTime `mandatory:"false" json:"lastRemoteBackupTimestamp"`
+
+	// The OCID of the key container that is used as the master encryption key in database transparent data encryption (TDE) operations.
+	KmsKeyId *string `mandatory:"false" json:"kmsKeyId"`
 }
 
 func (m Database) String() string {

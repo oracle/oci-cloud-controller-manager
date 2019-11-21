@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Resource Manager API
@@ -16,7 +16,7 @@ import (
 // CreateStackDetails Properties provided for creating a stack.
 type CreateStackDetails struct {
 
-	// Unique identifier (OCID) of the compartment in which the stack resides.
+	// Unique identifier (OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm)) of the compartment in which the stack resides.
 	CompartmentId *string `mandatory:"true" json:"compartmentId"`
 
 	ConfigSource CreateConfigSourceDetails `mandatory:"true" json:"configSource"`
@@ -32,6 +32,9 @@ type CreateStackDetails struct {
 	// The maximum size of each variable, including both name and value, is 4096 bytes.
 	// Example: `{"CompartmentId": "compartment-id-value"}`
 	Variables map[string]string `mandatory:"false" json:"variables"`
+
+	// The version of Terraform to use with the stack. Example: `0.12.x`
+	TerraformVersion *string `mandatory:"false" json:"terraformVersion"`
 
 	// Free-form tags associated with this resource. Each tag is a simple key-value pair with no predefined name, type, or namespace.
 	// For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
@@ -51,13 +54,14 @@ func (m CreateStackDetails) String() string {
 // UnmarshalJSON unmarshals from json
 func (m *CreateStackDetails) UnmarshalJSON(data []byte) (e error) {
 	model := struct {
-		DisplayName   *string                           `json:"displayName"`
-		Description   *string                           `json:"description"`
-		Variables     map[string]string                 `json:"variables"`
-		FreeformTags  map[string]string                 `json:"freeformTags"`
-		DefinedTags   map[string]map[string]interface{} `json:"definedTags"`
-		CompartmentId *string                           `json:"compartmentId"`
-		ConfigSource  createconfigsourcedetails         `json:"configSource"`
+		DisplayName      *string                           `json:"displayName"`
+		Description      *string                           `json:"description"`
+		Variables        map[string]string                 `json:"variables"`
+		TerraformVersion *string                           `json:"terraformVersion"`
+		FreeformTags     map[string]string                 `json:"freeformTags"`
+		DefinedTags      map[string]map[string]interface{} `json:"definedTags"`
+		CompartmentId    *string                           `json:"compartmentId"`
+		ConfigSource     createconfigsourcedetails         `json:"configSource"`
 	}{}
 
 	e = json.Unmarshal(data, &model)
@@ -67,6 +71,7 @@ func (m *CreateStackDetails) UnmarshalJSON(data []byte) (e error) {
 	m.DisplayName = model.DisplayName
 	m.Description = model.Description
 	m.Variables = model.Variables
+	m.TerraformVersion = model.TerraformVersion
 	m.FreeformTags = model.FreeformTags
 	m.DefinedTags = model.DefinedTags
 	m.CompartmentId = model.CompartmentId

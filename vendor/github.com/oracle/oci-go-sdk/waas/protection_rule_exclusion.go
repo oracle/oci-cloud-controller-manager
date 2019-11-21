@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Web Application Acceleration and Security Services API
@@ -12,7 +12,20 @@ import (
 	"github.com/oracle/oci-go-sdk/common"
 )
 
-// ProtectionRuleExclusion Allows specified types of requests to bypass the protection rule. If the requests matches any of the criteria in the `exclusions` field, the protection rule will not be executed. Rules can have more than one exclusion and exclusions are applied to requests disjunctively.
+// ProtectionRuleExclusion Allows specified types of requests to bypass the protection rule. If a request matches any of the criteria in the `exclusions` field, the protection rule will not be executed. Rules can have more than one exclusion and exclusions are applied to requests disjunctively, meaning the specified exclusion strings are independently matched against the specified targets of a request. The first target to match a specified string will trigger an exclusion. **Example:** If the following exclusions are defined for a protection rule:
+//     "action": "BLOCK",
+//     "exclusions": [
+//         {
+//             "target":"REQUEST_COOKIES",
+//             "exclusions":["example.com", "Wed, 21 Oct 2015 07:28:00 GMT", "12345", "219ffwef9w0f"]
+//         },
+//                             {
+//             "target":"REQUEST_COOKIES_NAMES",
+//             "exclusions":["OAMAuthnCookie", "JSESSIONID", "HCM-PSJSESSIONID"]
+//         }
+//     ],
+//     "key": "1000000",
+// A request with the cookie name `sessionid` would trigger an exclusion. A request with the cookie name `yourcompany.com` would *not* trigger and exclusion.
 type ProtectionRuleExclusion struct {
 
 	// The target of the exclusion.

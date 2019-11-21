@@ -35,19 +35,18 @@ import (
 	"log"
 	"math"
 	"os"
-	"strings"
 	"time"
 )
 
 var (
 	instanceId, compartmentId, targetCompartmentId, ifMatch, opcRetryToken string
-	retryPolicy common.RetryPolicy
+	retryPolicy                                                            common.RetryPolicy
 )
 
 func ExampleChangeCompartment() {
 
 	// Parse environment variables to get instanceId, compartmentId, ifMatch and opcRetryToken
-	parseEnvironmentVariables();
+	parseEnvironmentVariables()
 
 	// Create ComputeClient with default configuration
 	computeClient, err := core.NewComputeClientWithConfigurationProvider(common.DefaultConfigProvider())
@@ -61,9 +60,9 @@ func ExampleChangeCompartment() {
 	r, err := computeClient.GetInstance(ctx, request)
 	helpers.FatalIfError(err)
 	availabilityDomain := *r.AvailabilityDomain
-	sourceCompartmentId := *r.Instance.CompartmentId
+	sourceCompartmentID := *r.Instance.CompartmentId
 	// Do not attempt compartment move, if the source and target compartment ids are same
-	if sourceCompartmentId == targetCompartmentId {
+	if sourceCompartmentID == targetCompartmentId {
 		log.Printf("Source and target compartment ids are same !")
 		os.Exit(1)
 	}
@@ -73,7 +72,7 @@ func ExampleChangeCompartment() {
 	if r.Etag != nil {
 		log.Printf("   ETag : %s", *r.Etag)
 	}
-	printInstanceInfo(sourceCompartmentId, computeClient, availabilityDomain);
+	printInstanceInfo(sourceCompartmentID, computeClient, availabilityDomain)
 
 	// Create ChangeInstanceCompartmentDetails
 	changeInstanceCompartmentDetails := core.ChangeInstanceCompartmentDetails{
@@ -86,7 +85,7 @@ func ExampleChangeCompartment() {
 		ChangeInstanceCompartmentDetails: changeInstanceCompartmentDetails,
 	}
 
-	if len(ifMatch) > 0  {
+	if len(ifMatch) > 0 {
 		changeInstanceCompartmentRequest.IfMatch = common.String(ifMatch)
 	}
 
@@ -231,27 +230,27 @@ func printConsoleHistories(c core.ComputeClient) {
 
 }
 
-func waitUnitlMoveCompletion(opcWorkRequestId *string) {
-	if opcWorkRequestId != nil {
-		log.Printf("   opc-work-request-id : %s", *opcWorkRequestId)
+func waitUnitlMoveCompletion(opcWorkRequestID *string) {
+	if opcWorkRequestID != nil {
+		log.Printf("   opc-work-request-id : %s", *opcWorkRequestID)
 		log.Printf("   Querying the status of move operation using opc-work-request-id ")
 		wc, err := workrequests.NewWorkRequestClientWithConfigurationProvider(common.DefaultConfigProvider())
 
 		retryPolicy = getRetryPolicy()
 		// Apply wait until work complete retryPolicy
-		w_request := workrequests.GetWorkRequestRequest{
-			WorkRequestId: opcWorkRequestId,
+		workRequest := workrequests.GetWorkRequestRequest{
+			WorkRequestId: opcWorkRequestID,
 			RequestMetadata: common.RequestMetadata{
 				RetryPolicy: &retryPolicy,
 			},
 		}
 
 		// GetWorkRequest get retried until the work request is in Succeeded status
-		wr, err := wc.GetWorkRequest(context.Background(), w_request)
+		wr, err := wc.GetWorkRequest(context.Background(), workRequest)
 		helpers.FatalIfError(err)
 
-		if wr.Status != nil {
-			log.Printf("   Final Work Status : %s, move operation complete", *wr.Status)
+		if wr.Status != "" {
+			log.Printf("   Final Work Status : %s, move operation complete", wr.Status)
 		}
 	}
 
@@ -269,7 +268,7 @@ func getRetryPolicy() common.RetryPolicy {
 		return time.Duration(math.Pow(float64(2), float64(r.AttemptNumber-1))) * time.Second
 	}
 
-	var expectedWorkStatus = "Succeeded"
+	var expectedWorkStatus = workrequests.WorkRequestStatusSucceeded
 
 	// Get shouldRetry function based on GetWorkRequestResponse Status
 	shouldRetry := func(r common.OCIOperationResponse) bool {
@@ -280,9 +279,9 @@ func getRetryPolicy() common.RetryPolicy {
 		}
 
 		if converted, ok := r.Response.(workrequests.GetWorkRequestResponse); ok {
-			log.Printf("     WorkRequest Status : %s", *converted.Status)
+			log.Printf("     WorkRequest Status : %s", converted.Status)
 			// do the retry until WorkReqeut Status is Succeeded  - ignore case (BMI-2652)
-			return !strings.EqualFold(*converted.Status, expectedWorkStatus)
+			return converted.Status != expectedWorkStatus
 		}
 
 		return true

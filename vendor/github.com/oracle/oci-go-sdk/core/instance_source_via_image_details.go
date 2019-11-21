@@ -1,9 +1,13 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// APIs for Networking Service, Compute Service, and Block Volume Service.
+// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
+// to manage resources such as virtual cloud networks (VCNs), compute instances, and
+// block storage volumes.
 //
 
 package core
@@ -22,7 +26,7 @@ type InstanceSourceViaImageDetails struct {
 	// The size of the boot volume in GBs. Minimum value is 50 GB and maximum value is 16384 GB (16TB).
 	BootVolumeSizeInGBs *int64 `mandatory:"false" json:"bootVolumeSizeInGBs"`
 
-	// The OCID of the KMS key to be used as the master encryption key for the boot volume.
+	// The OCID of the Key Management key to assign as the master encryption key for the boot volume.
 	KmsKeyId *string `mandatory:"false" json:"kmsKeyId"`
 }
 

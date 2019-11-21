@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Marketplace Service API
@@ -24,7 +24,7 @@ type SupportContact struct {
 	// The email of the contact.
 	Email *string `mandatory:"false" json:"email"`
 
-	// The email subject for the contact.
+	// The email subject line to use when contacting support.
 	Subject *string `mandatory:"false" json:"subject"`
 }
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Resource Manager API
@@ -13,7 +13,7 @@ import (
 	"github.com/oracle/oci-go-sdk/common"
 )
 
-// ConfigSource Location of the zip file that contains the Terraform configuration.
+// ConfigSource Location of the Terraform configuration.
 type ConfigSource interface {
 
 	// File path to the directory from which Terraform runs.
@@ -69,4 +69,25 @@ func (m configsource) GetWorkingDirectory() *string {
 
 func (m configsource) String() string {
 	return common.PointerString(m)
+}
+
+// ConfigSourceConfigSourceTypeEnum Enum with underlying type: string
+type ConfigSourceConfigSourceTypeEnum string
+
+// Set of constants representing the allowable values for ConfigSourceConfigSourceTypeEnum
+const (
+	ConfigSourceConfigSourceTypeZipUpload ConfigSourceConfigSourceTypeEnum = "ZIP_UPLOAD"
+)
+
+var mappingConfigSourceConfigSourceType = map[string]ConfigSourceConfigSourceTypeEnum{
+	"ZIP_UPLOAD": ConfigSourceConfigSourceTypeZipUpload,
+}
+
+// GetConfigSourceConfigSourceTypeEnumValues Enumerates the set of values for ConfigSourceConfigSourceTypeEnum
+func GetConfigSourceConfigSourceTypeEnumValues() []ConfigSourceConfigSourceTypeEnum {
+	values := make([]ConfigSourceConfigSourceTypeEnum, 0)
+	for _, v := range mappingConfigSourceConfigSourceType {
+		values = append(values, v)
+	}
+	return values
 }

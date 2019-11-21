@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // OraCache Public API
@@ -19,7 +19,7 @@ type WorkRequestSummary struct {
 	OperationType *string `mandatory:"true" json:"operationType"`
 
 	// The current status of the work request.
-	Status WorkRequestSummaryStatusEnum `mandatory:"true" json:"status"`
+	Status ResourceActionTypeEnum `mandatory:"true" json:"status"`
 
 	// The OCID of the work request.
 	Id *string `mandatory:"true" json:"id"`
@@ -47,37 +47,25 @@ func (m WorkRequestSummary) String() string {
 	return common.PointerString(m)
 }
 
-// WorkRequestSummaryStatusEnum Enum with underlying type: string
-type WorkRequestSummaryStatusEnum string
+// WorkRequestSummaryStatusEnum is an alias to type: ResourceActionTypeEnum
+// Consider using ResourceActionTypeEnum instead
+// Deprecated
+type WorkRequestSummaryStatusEnum = ResourceActionTypeEnum
 
-// Set of constants representing the allowable values for WorkRequestSummaryStatusEnum
+// Set of constants representing the allowable values for ResourceActionTypeEnum
+// Deprecated
 const (
-	WorkRequestSummaryStatusCreated        WorkRequestSummaryStatusEnum = "CREATED"
-	WorkRequestSummaryStatusUpdated        WorkRequestSummaryStatusEnum = "UPDATED"
-	WorkRequestSummaryStatusDeleted        WorkRequestSummaryStatusEnum = "DELETED"
-	WorkRequestSummaryStatusInProgress     WorkRequestSummaryStatusEnum = "IN_PROGRESS"
-	WorkRequestSummaryStatusCanceledCreate WorkRequestSummaryStatusEnum = "CANCELED_CREATE"
-	WorkRequestSummaryStatusCanceledDelete WorkRequestSummaryStatusEnum = "CANCELED_DELETE"
-	WorkRequestSummaryStatusCanceledUpdate WorkRequestSummaryStatusEnum = "CANCELED_UPDATE"
-	WorkRequestSummaryStatusFailed         WorkRequestSummaryStatusEnum = "FAILED"
+	WorkRequestSummaryStatusCreated        ResourceActionTypeEnum = "CREATED"
+	WorkRequestSummaryStatusUpdated        ResourceActionTypeEnum = "UPDATED"
+	WorkRequestSummaryStatusDeleted        ResourceActionTypeEnum = "DELETED"
+	WorkRequestSummaryStatusInProgress     ResourceActionTypeEnum = "IN_PROGRESS"
+	WorkRequestSummaryStatusCanceledCreate ResourceActionTypeEnum = "CANCELED_CREATE"
+	WorkRequestSummaryStatusCanceledDelete ResourceActionTypeEnum = "CANCELED_DELETE"
+	WorkRequestSummaryStatusCanceledUpdate ResourceActionTypeEnum = "CANCELED_UPDATE"
+	WorkRequestSummaryStatusFailed         ResourceActionTypeEnum = "FAILED"
 )
 
-var mappingWorkRequestSummaryStatus = map[string]WorkRequestSummaryStatusEnum{
-	"CREATED":         WorkRequestSummaryStatusCreated,
-	"UPDATED":         WorkRequestSummaryStatusUpdated,
-	"DELETED":         WorkRequestSummaryStatusDeleted,
-	"IN_PROGRESS":     WorkRequestSummaryStatusInProgress,
-	"CANCELED_CREATE": WorkRequestSummaryStatusCanceledCreate,
-	"CANCELED_DELETE": WorkRequestSummaryStatusCanceledDelete,
-	"CANCELED_UPDATE": WorkRequestSummaryStatusCanceledUpdate,
-	"FAILED":          WorkRequestSummaryStatusFailed,
-}
-
-// GetWorkRequestSummaryStatusEnumValues Enumerates the set of values for WorkRequestSummaryStatusEnum
-func GetWorkRequestSummaryStatusEnumValues() []WorkRequestSummaryStatusEnum {
-	values := make([]WorkRequestSummaryStatusEnum, 0)
-	for _, v := range mappingWorkRequestSummaryStatus {
-		values = append(values, v)
-	}
-	return values
-}
+// GetWorkRequestSummaryStatusEnumValues Enumerates the set of values for ResourceActionTypeEnum
+// Consider using GetResourceActionTypeEnumValue
+// Deprecated
+var GetWorkRequestSummaryStatusEnumValues = GetResourceActionTypeEnumValues

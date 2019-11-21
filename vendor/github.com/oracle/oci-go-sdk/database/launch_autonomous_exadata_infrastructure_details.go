@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Database Service API
@@ -35,12 +35,8 @@ type LaunchAutonomousExadataInfrastructureDetails struct {
 	// The user-friendly name for the Autonomous Exadata Infrastructure. It does not have to be unique.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
-	// The host name for the Autonomous Exadata Infrastructure. The host name must begin with an alphabetic character and
-	// can contain a maximum of 30 alphanumeric characters, including hyphens (-).
-	// The maximum length of the combined hostname and domain is 63 characters.
-	// **Note:** The hostname must be unique within the subnet. If it is not unique,
-	// the Autonomous Exadata Infrastructure will fail to provision.
-	Hostname *string `mandatory:"false" json:"hostname"`
+	// A list of the OCIDs (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the network security groups (NSGs) that this DB system belongs to. Setting this to an empty array after the list is created removes the resource from all NSGs. For more information about NSGs, see Security Rules (https://docs.cloud.oracle.com/Content/Network/Concepts/securityrules.htm).
+	NsgIds []string `mandatory:"false" json:"nsgIds"`
 
 	// A domain name used for the Autonomous Exadata Infrastructure. If the Oracle-provided Internet and VCN
 	// Resolver is enabled for the specified subnet, the domain name for the subnet is used
@@ -59,7 +55,6 @@ type LaunchAutonomousExadataInfrastructureDetails struct {
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
 	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
-	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 }
 

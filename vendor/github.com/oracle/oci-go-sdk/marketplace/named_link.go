@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Marketplace Service API
@@ -12,13 +12,13 @@ import (
 	"github.com/oracle/oci-go-sdk/common"
 )
 
-// NamedLink A link to a web resource.
+// NamedLink A link to a resource on the internet.
 type NamedLink struct {
 
-	// The text describing the resource.
+	// Text that describes the resource.
 	Name *string `mandatory:"false" json:"name"`
 
-	// The url of the resource.
+	// The URL of the resource.
 	Url *string `mandatory:"false" json:"url"`
 }
 

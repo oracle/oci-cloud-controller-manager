@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Container Engine for Kubernetes API
@@ -17,10 +17,10 @@ import (
 // CreateClusterKubeconfigContentDetails The properties that define a request to create a cluster kubeconfig.
 type CreateClusterKubeconfigContentDetails struct {
 
-	// The version of the kubeconfig token.
+	// The version of the kubeconfig token. Supported value 2.0.0
 	TokenVersion *string `mandatory:"false" json:"tokenVersion"`
 
-	// The desired expiration, in seconds, to use for the kubeconfig token.
+	// Deprecated. This field is no longer used.
 	Expiration *int `mandatory:"false" json:"expiration"`
 }
 

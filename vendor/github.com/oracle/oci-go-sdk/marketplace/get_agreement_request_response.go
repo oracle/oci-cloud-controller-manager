@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package marketplace
@@ -11,13 +11,13 @@ import (
 // GetAgreementRequest wrapper for the GetAgreement operation
 type GetAgreementRequest struct {
 
-	// The unique identifier of the listing.
+	// The unique identifier for the listing.
 	ListingId *string `mandatory:"true" contributesTo:"path" name:"listingId"`
 
 	// The version of the package. Package versions are unique within a listing.
 	PackageVersion *string `mandatory:"true" contributesTo:"path" name:"packageVersion"`
 
-	// The identifier of the agreement.
+	// The unique identifier for the agreement.
 	AgreementId *string `mandatory:"true" contributesTo:"path" name:"agreementId"`
 
 	// Unique Oracle-assigned identifier for the request. If you need to contact Oracle about a particular request,

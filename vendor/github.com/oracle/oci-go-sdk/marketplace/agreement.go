@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Marketplace Service API
@@ -15,23 +15,23 @@ import (
 // Agreement The model for an end user license agreement.
 type Agreement struct {
 
-	// The unique identifier of the agreement.
+	// The unique identifier for the agreement.
 	Id *string `mandatory:"true" json:"id"`
 
 	// The content URL of the agreement.
 	ContentUrl *string `mandatory:"true" json:"contentUrl"`
 
-	// A time-based signature that can be used to accept an agreement or cancel a
-	// previous acceptance.
+	// A time-based signature that can be used to accept an agreement or remove a
+	// previously accepted agreement from the list that Marketplace checks before a deployment.
 	Signature *string `mandatory:"true" json:"signature"`
 
-	// The unique identifier of the compartment.
+	// The unique identifier for the compartment.
 	CompartmentId *string `mandatory:"false" json:"compartmentId"`
 
 	// Who authored the agreement.
 	Author AgreementAuthorEnum `mandatory:"false" json:"author,omitempty"`
 
-	// Call to action to read and accept the agreement.
+	// Textual prompt to read and accept the agreement.
 	Prompt *string `mandatory:"false" json:"prompt"`
 }
 

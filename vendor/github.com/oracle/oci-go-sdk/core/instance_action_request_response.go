@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package core
@@ -64,8 +64,8 @@ type InstanceActionResponse struct {
 	// For optimistic concurrency control. See `if-match`.
 	Etag *string `presentIn:"header" name:"etag"`
 
-	// Unique Oracle-assigned identifier for the request. If you need to contact Oracle about
-	// a particular request, please provide the request ID.
+	// Unique Oracle-assigned identifier for the request. If you need to contact
+	// Oracle about a particular request, please provide the request ID.
 	OpcRequestId *string `presentIn:"header" name:"opc-request-id"`
 }
 
@@ -83,19 +83,21 @@ type InstanceActionActionEnum string
 
 // Set of constants representing the allowable values for InstanceActionActionEnum
 const (
-	InstanceActionActionStop      InstanceActionActionEnum = "STOP"
-	InstanceActionActionStart     InstanceActionActionEnum = "START"
-	InstanceActionActionSoftreset InstanceActionActionEnum = "SOFTRESET"
-	InstanceActionActionReset     InstanceActionActionEnum = "RESET"
-	InstanceActionActionSoftstop  InstanceActionActionEnum = "SOFTSTOP"
+	InstanceActionActionStop                InstanceActionActionEnum = "STOP"
+	InstanceActionActionStart               InstanceActionActionEnum = "START"
+	InstanceActionActionSoftreset           InstanceActionActionEnum = "SOFTRESET"
+	InstanceActionActionReset               InstanceActionActionEnum = "RESET"
+	InstanceActionActionSoftstop            InstanceActionActionEnum = "SOFTSTOP"
+	InstanceActionActionValidatelivemigrate InstanceActionActionEnum = "VALIDATELIVEMIGRATE"
 )
 
 var mappingInstanceActionAction = map[string]InstanceActionActionEnum{
-	"STOP":      InstanceActionActionStop,
-	"START":     InstanceActionActionStart,
-	"SOFTRESET": InstanceActionActionSoftreset,
-	"RESET":     InstanceActionActionReset,
-	"SOFTSTOP":  InstanceActionActionSoftstop,
+	"STOP":                InstanceActionActionStop,
+	"START":               InstanceActionActionStart,
+	"SOFTRESET":           InstanceActionActionSoftreset,
+	"RESET":               InstanceActionActionReset,
+	"SOFTSTOP":            InstanceActionActionSoftstop,
+	"VALIDATELIVEMIGRATE": InstanceActionActionValidatelivemigrate,
 }
 
 // GetInstanceActionActionEnumValues Enumerates the set of values for InstanceActionActionEnum

@@ -22,7 +22,7 @@ func createResourceSearchClientWithProvider(p common.ConfigurationProvider, test
 	return client, err
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="rqs_engg_team_us_grp@oracle.com" jiraProject="RQS" opsJiraProject="RQS"
 func TestResourceSearchClientGetResourceType(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -54,7 +54,9 @@ func TestResourceSearchClientGetResourceType(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetResourceType(context.Background(), req.Request)
@@ -65,7 +67,7 @@ func TestResourceSearchClientGetResourceType(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="rqs_engg_team_us_grp@oracle.com" jiraProject="RQS" opsJiraProject="RQS"
 func TestResourceSearchClientListResourceTypes(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -97,7 +99,9 @@ func TestResourceSearchClientListResourceTypes(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*resourcesearch.ListResourceTypesRequest)
@@ -117,7 +121,7 @@ func TestResourceSearchClientListResourceTypes(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="rqs_engg_team_us_grp@oracle.com" jiraProject="RQS" opsJiraProject="RQS"
 func TestResourceSearchClientSearchResources(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -161,7 +165,9 @@ func TestResourceSearchClientSearchResources(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*resourcesearch.SearchResourcesRequest)

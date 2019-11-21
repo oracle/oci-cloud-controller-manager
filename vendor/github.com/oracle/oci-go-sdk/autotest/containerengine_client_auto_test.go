@@ -22,7 +22,7 @@ func createContainerEngineClientWithProvider(p common.ConfigurationProvider, tes
 	return client, err
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oke_control_plane_ww_grp@oracle.com" jiraProject="OKE" opsJiraProject="OKE"
 func TestContainerEngineClientCreateCluster(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -54,7 +54,9 @@ func TestContainerEngineClientCreateCluster(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.CreateCluster(context.Background(), req.Request)
@@ -65,7 +67,7 @@ func TestContainerEngineClientCreateCluster(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oke_control_plane_ww_grp@oracle.com" jiraProject="OKE" opsJiraProject="OKE"
 func TestContainerEngineClientCreateKubeconfig(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -97,7 +99,9 @@ func TestContainerEngineClientCreateKubeconfig(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.CreateKubeconfig(context.Background(), req.Request)
@@ -108,7 +112,7 @@ func TestContainerEngineClientCreateKubeconfig(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oke_control_plane_ww_grp@oracle.com" jiraProject="OKE" opsJiraProject="OKE"
 func TestContainerEngineClientCreateNodePool(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -140,7 +144,9 @@ func TestContainerEngineClientCreateNodePool(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.CreateNodePool(context.Background(), req.Request)
@@ -151,7 +157,7 @@ func TestContainerEngineClientCreateNodePool(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oke_control_plane_ww_grp@oracle.com" jiraProject="OKE" opsJiraProject="OKE"
 func TestContainerEngineClientDeleteCluster(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -183,7 +189,9 @@ func TestContainerEngineClientDeleteCluster(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.DeleteCluster(context.Background(), req.Request)
@@ -194,7 +202,7 @@ func TestContainerEngineClientDeleteCluster(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oke_control_plane_ww_grp@oracle.com" jiraProject="OKE" opsJiraProject="OKE"
 func TestContainerEngineClientDeleteNodePool(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -226,7 +234,9 @@ func TestContainerEngineClientDeleteNodePool(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.DeleteNodePool(context.Background(), req.Request)
@@ -237,7 +247,7 @@ func TestContainerEngineClientDeleteNodePool(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oke_control_plane_ww_grp@oracle.com" jiraProject="OKE" opsJiraProject="OKE"
 func TestContainerEngineClientDeleteWorkRequest(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -269,7 +279,9 @@ func TestContainerEngineClientDeleteWorkRequest(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.DeleteWorkRequest(context.Background(), req.Request)
@@ -280,7 +292,7 @@ func TestContainerEngineClientDeleteWorkRequest(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oke_control_plane_ww_grp@oracle.com" jiraProject="OKE" opsJiraProject="OKE"
 func TestContainerEngineClientGetCluster(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -312,7 +324,9 @@ func TestContainerEngineClientGetCluster(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetCluster(context.Background(), req.Request)
@@ -323,7 +337,7 @@ func TestContainerEngineClientGetCluster(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oke_control_plane_ww_grp@oracle.com" jiraProject="OKE" opsJiraProject="OKE"
 func TestContainerEngineClientGetClusterOptions(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -355,7 +369,9 @@ func TestContainerEngineClientGetClusterOptions(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetClusterOptions(context.Background(), req.Request)
@@ -366,7 +382,7 @@ func TestContainerEngineClientGetClusterOptions(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oke_control_plane_ww_grp@oracle.com" jiraProject="OKE" opsJiraProject="OKE"
 func TestContainerEngineClientGetNodePool(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -398,7 +414,9 @@ func TestContainerEngineClientGetNodePool(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetNodePool(context.Background(), req.Request)
@@ -409,7 +427,7 @@ func TestContainerEngineClientGetNodePool(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oke_control_plane_ww_grp@oracle.com" jiraProject="OKE" opsJiraProject="OKE"
 func TestContainerEngineClientGetNodePoolOptions(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -441,7 +459,9 @@ func TestContainerEngineClientGetNodePoolOptions(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetNodePoolOptions(context.Background(), req.Request)
@@ -452,7 +472,7 @@ func TestContainerEngineClientGetNodePoolOptions(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oke_control_plane_ww_grp@oracle.com" jiraProject="OKE" opsJiraProject="OKE"
 func TestContainerEngineClientGetWorkRequest(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -484,7 +504,9 @@ func TestContainerEngineClientGetWorkRequest(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.GetWorkRequest(context.Background(), req.Request)
@@ -495,7 +517,7 @@ func TestContainerEngineClientGetWorkRequest(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oke_control_plane_ww_grp@oracle.com" jiraProject="OKE" opsJiraProject="OKE"
 func TestContainerEngineClientListClusters(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -527,7 +549,9 @@ func TestContainerEngineClientListClusters(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*containerengine.ListClustersRequest)
@@ -547,7 +571,7 @@ func TestContainerEngineClientListClusters(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oke_control_plane_ww_grp@oracle.com" jiraProject="OKE" opsJiraProject="OKE"
 func TestContainerEngineClientListNodePools(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -579,7 +603,9 @@ func TestContainerEngineClientListNodePools(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*containerengine.ListNodePoolsRequest)
@@ -599,7 +625,7 @@ func TestContainerEngineClientListNodePools(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oke_control_plane_ww_grp@oracle.com" jiraProject="OKE" opsJiraProject="OKE"
 func TestContainerEngineClientListWorkRequestErrors(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -631,7 +657,9 @@ func TestContainerEngineClientListWorkRequestErrors(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.ListWorkRequestErrors(context.Background(), req.Request)
@@ -642,7 +670,7 @@ func TestContainerEngineClientListWorkRequestErrors(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oke_control_plane_ww_grp@oracle.com" jiraProject="OKE" opsJiraProject="OKE"
 func TestContainerEngineClientListWorkRequestLogs(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -674,7 +702,9 @@ func TestContainerEngineClientListWorkRequestLogs(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.ListWorkRequestLogs(context.Background(), req.Request)
@@ -685,7 +715,7 @@ func TestContainerEngineClientListWorkRequestLogs(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oke_control_plane_ww_grp@oracle.com" jiraProject="OKE" opsJiraProject="OKE"
 func TestContainerEngineClientListWorkRequests(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -717,7 +747,9 @@ func TestContainerEngineClientListWorkRequests(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, request := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			request.Request.RequestMetadata.RetryPolicy = retryPolicy
 			listFn := func(req common.OCIRequest) (common.OCIResponse, error) {
 				r := req.(*containerengine.ListWorkRequestsRequest)
@@ -737,7 +769,7 @@ func TestContainerEngineClientListWorkRequests(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oke_control_plane_ww_grp@oracle.com" jiraProject="OKE" opsJiraProject="OKE"
 func TestContainerEngineClientUpdateCluster(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -769,7 +801,9 @@ func TestContainerEngineClientUpdateCluster(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateCluster(context.Background(), req.Request)
@@ -780,7 +814,7 @@ func TestContainerEngineClientUpdateCluster(t *testing.T) {
 	}
 }
 
-// IssueRoutingInfo tag="" email="" jiraProject="" opsJiraProject=""
+// IssueRoutingInfo tag="default" email="oke_control_plane_ww_grp@oracle.com" jiraProject="OKE" opsJiraProject="OKE"
 func TestContainerEngineClientUpdateNodePool(t *testing.T) {
 	defer failTestOnPanic(t)
 
@@ -812,7 +846,9 @@ func TestContainerEngineClientUpdateNodePool(t *testing.T) {
 	var retryPolicy *common.RetryPolicy
 	for i, req := range requests {
 		t.Run(fmt.Sprintf("request:%v", i), func(t *testing.T) {
-			retryPolicy = retryPolicyForTests()
+			if withRetry == true {
+				retryPolicy = retryPolicyForTests()
+			}
 			req.Request.RequestMetadata.RetryPolicy = retryPolicy
 
 			response, err := c.UpdateNodePool(context.Background(), req.Request)
