@@ -141,11 +141,10 @@ func TestGetNodeIngressRules(t *testing.T) {
 				makeIngressSecurityRule("existing", 9001),
 			},
 		}, {
-			name: "do not delete health check rules that are used by other services",
+			name: "do not delete a rule which is used by another services (default) health check",
 			securityList: &core.SecurityList{
 				IngressSecurityRules: []core.IngressSecurityRule{
 					makeIngressSecurityRule("0.0.0.0/0", lbNodesHealthCheckPort),
-					makeIngressSecurityRule("0.0.0.0/0", 80),
 				},
 			},
 			lbSubnets: []*core.Subnet{},
@@ -158,7 +157,7 @@ func TestGetNodeIngressRules(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-default-health-check-port"},
 					Spec: v1.ServiceSpec{
 						Type:  v1.ServiceTypeLoadBalancer,
-						Ports: []v1.ServicePort{{Port: 443}},
+						Ports: []v1.ServicePort{{Port: 80}},
 					},
 				},
 			},
