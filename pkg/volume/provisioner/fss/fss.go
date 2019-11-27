@@ -80,7 +80,7 @@ func NewFilesystemProvisioner(logger *zap.SugaredLogger, client client.Interface
 }
 
 func (fsp *filesystemProvisioner) getOrCreateFileSystem(ctx context.Context, logger *zap.SugaredLogger, ad, displayName string) (*fss.FileSystem, error) {
-	summary, err := fsp.client.FSS().GetFileSystemSummaryByDisplayName(ctx, fsp.compartmentID, ad, displayName)
+	summary, err := fsp.client.FSS().GetFileSystemSummaryByDisplayName(ctx, ad, fsp.compartmentID, displayName)
 	if err != nil && !client.IsNotFound(err) {
 		return nil, err
 	}
