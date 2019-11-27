@@ -49,7 +49,7 @@ func (j *PVCTestJig) CreateBackupVolume(storageClient ocicore.BlockstorageClient
 		},
 	})
 	if err != nil {
-		return *backupVolume.Id, fmt.Errorf("failed to backup volume with ocid %q: %v", volumeID, err)
+		return "", fmt.Errorf("failed to backup volume: %v", err)
 	}
 
 	err = j.waitForVolumeAvailable(ctx, storageClient, *backupVolume.Id, DefaultTimeout)
