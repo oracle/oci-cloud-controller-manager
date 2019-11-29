@@ -19,6 +19,7 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
@@ -257,7 +258,19 @@ func (MockBlockStorageClient) AwaitVolumeAvailable(ctx context.Context, id strin
 	return nil, nil
 }
 
+func (MockBlockStorageClient) AwaitVolumeAvailableORTimeout(ctx context.Context, id string, timeout time.Duration) (*core.Volume, error) {
+	return nil, nil
+}
+
 func (MockBlockStorageClient) CreateVolume(ctx context.Context, details core.CreateVolumeDetails) (*core.Volume, error) {
+	return nil, nil
+}
+
+func (MockBlockStorageClient) GetVolume(ctx context.Context, id string) (*core.Volume, error) {
+	return nil, nil
+}
+
+func (MockBlockStorageClient) GetVolumesByName(ctx context.Context, volumeName, compartmentID string) ([]core.Volume, error) {
 	return nil, nil
 }
 
@@ -312,6 +325,10 @@ func (MockFileStorageClient) DeleteExport(ctx context.Context, id string) error 
 type MockIdentityClient struct{}
 
 func (MockIdentityClient) GetAvailabilityDomainByName(ctx context.Context, compartmentID, name string) (*identity.AvailabilityDomain, error) {
+	return nil, nil
+}
+
+func (MockIdentityClient) ListAvailabilityDomains(ctx context.Context, compartmentID string) ([]identity.AvailabilityDomain, error) {
 	return nil, nil
 }
 

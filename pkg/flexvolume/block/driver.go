@@ -32,7 +32,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/flowcontrol"
 )
 
 const (
@@ -115,24 +114,6 @@ const (
 	rateLimitBucketDefault = 5
 )
 
-func newClient(cfg *config.Config) (client.Interface, error) {
-	cp, err := config.NewConfigurationProvider(cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	return client.New(zap.New(nil).Sugar(), cp, &client.RateLimiter{
-		Reader: flowcontrol.NewTokenBucketRateLimiter(
-			rateLimitQPSDefault,
-			rateLimitBucketDefault,
-		),
-		Writer: flowcontrol.NewTokenBucketRateLimiter(
-			rateLimitQPSDefault,
-			rateLimitBucketDefault,
-		),
-	}, cfg.Auth.TenancyID)
-}
-
 // Init checks that we have the appropriate credentials and metadata API access
 // on driver initialisation.
 func (d OCIFlexvolumeDriver) Init(logger *zap.SugaredLogger) flexvolume.DriverStatus {
@@ -142,7 +123,7 @@ func (d OCIFlexvolumeDriver) Init(logger *zap.SugaredLogger) flexvolume.DriverSt
 		if err != nil {
 			return flexvolume.Fail(logger, err)
 		}
-		_, err = newClient(cfg)
+		_, err = client.GetClient(logger, cfg)
 		if err != nil {
 			return flexvolume.Fail(logger, err)
 		}
@@ -199,7 +180,7 @@ func (d OCIFlexvolumeDriver) Attach(logger *zap.SugaredLogger, opts flexvolume.O
 		return flexvolume.Fail(logger, err)
 	}
 
-	c, err := newClient(cfg)
+	c, err := client.GetClient(logger, cfg)
 	if err != nil {
 		return flexvolume.Fail(logger, err)
 	}
@@ -268,7 +249,7 @@ func (d OCIFlexvolumeDriver) Detach(logger *zap.SugaredLogger, pvOrVolumeName, n
 	if err != nil {
 		return flexvolume.Fail(logger, err)
 	}
-	c, err := newClient(cfg)
+	c, err := client.GetClient(logger, cfg)
 	if err != nil {
 		return flexvolume.Fail(logger, err)
 	}
@@ -310,7 +291,7 @@ func (d OCIFlexvolumeDriver) IsAttached(logger *zap.SugaredLogger, opts flexvolu
 	if err != nil {
 		return flexvolume.Fail(logger, err)
 	}
-	c, err := newClient(cfg)
+	c, err := client.GetClient(logger, cfg)
 	if err != nil {
 		return flexvolume.Fail(logger, err)
 	}

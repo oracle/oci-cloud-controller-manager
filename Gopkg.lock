@@ -64,6 +64,14 @@
   revision = "3a771d992973f24aa725d07868b467d1ddfceafb"
 
 [[projects]]
+  digest = "1:714e5da15a073d928cfab2526d61c76bdd39cf9b15de7d385f1e7367b3f625dd"
+  name = "github.com/container-storage-interface/spec"
+  packages = ["lib/go/csi"]
+  pruneopts = "N"
+  revision = "f750e6765f5f6b4ac0e13e95214d58901290fb4b"
+  version = "v1.1.0"
+
+[[projects]]
   digest = "1:27cb1222838228fe1d37a6040810b2f18c982dc76d64436ea02202cef3b7791d"
   name = "github.com/coreos/etcd"
   packages = [
@@ -286,12 +294,15 @@
   digest = "1:95e168b09dce8da11d138eda5499dd68efe6debf6d571ffb41723ad8364045cc"
   name = "github.com/golang/protobuf"
   packages = [
+    "descriptor",
     "proto",
+    "protoc-gen-go/descriptor",
     "ptypes",
     "ptypes/any",
     "ptypes/duration",
     "ptypes/empty",
     "ptypes/timestamp",
+    "ptypes/wrappers",
   ]
   pruneopts = "N"
   revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
@@ -438,6 +449,14 @@
   pruneopts = "N"
   revision = "f55edac94c9bbba5d6182a4be46d86a2c9b5b50e"
   version = "v1.0.2"
+
+[[projects]]
+  digest = "1:82cdb8adc6f6a3fe5fcf9bfc58a722abaf918a6e610f64593f2f3fe67321e7ef"
+  name = "github.com/kubernetes-csi/csi-lib-utils"
+  packages = ["protosanitizer"]
+  pruneopts = "N"
+  revision = "b8b7a89535d80e12f2c0f4c53cfb981add8aaca2"
+  version = "v0.6.1"
 
 [[projects]]
   digest = "1:a5167620f170506681907c48fe41b857ddc1564292015f0d6cef8e1486b4dd37"
@@ -658,6 +677,14 @@
   ]
   pruneopts = "N"
   revision = "ae68e2d4c00fed4943b5f6698d504a5fe083da8a"
+
+[[projects]]
+  digest = "1:058a59f2f81568c274e05d03b0540f0a42329d959a87d7628cca5118b52abe0a"
+  name = "github.com/sirupsen/logrus"
+  packages = ["."]
+  pruneopts = "N"
+  revision = "839c75faf7f98a33d445d181f3018b5c3409a45e"
+  version = "v1.4.2"
 
 [[projects]]
   digest = "1:058a59f2f81568c274e05d03b0540f0a42329d959a87d7628cca5118b52abe0a"
@@ -1158,6 +1185,7 @@
   name = "k8s.io/client-go"
   packages = [
     "discovery",
+    "discovery/fake",
     "dynamic",
     "informers",
     "informers/admissionregistration",
@@ -1272,6 +1300,7 @@
     "scale/scheme/autoscalingv1",
     "scale/scheme/extensionsint",
     "scale/scheme/extensionsv1beta1",
+    "testing",
     "third_party/forked/golang/template",
     "tools/auth",
     "tools/cache",
@@ -1553,6 +1582,9 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/container-storage-interface/spec/lib/go/csi",
+    "github.com/golang/protobuf/ptypes/wrappers",
+    "github.com/kubernetes-csi/csi-lib-utils/protosanitizer",
     "bitbucket.oci.oraclecorp.com/oke/oke-common/resourceprincipals",
     "github.com/kubernetes-incubator/external-storage/lib/controller",
     "github.com/onsi/ginkgo",
@@ -1566,11 +1598,15 @@
     "github.com/pkg/errors",
     "github.com/prometheus/client_golang/prometheus",
     "github.com/spf13/cobra",
+    "github.com/sirupsen/logrus",
     "github.com/spf13/pflag",
     "github.com/spf13/viper",
     "go.uber.org/zap",
     "go.uber.org/zap/zapcore",
     "go.uber.org/zap/zaptest",
+    "google.golang.org/grpc",
+    "google.golang.org/grpc/codes",
+    "google.golang.org/grpc/status",
     "gopkg.in/natefinch/lumberjack.v2",
     "gopkg.in/yaml.v2",
     "k8s.io/api/apps/v1",
@@ -1586,6 +1622,7 @@
     "k8s.io/apimachinery/pkg/labels",
     "k8s.io/apimachinery/pkg/runtime",
     "k8s.io/apimachinery/pkg/runtime/schema",
+    "k8s.io/apimachinery/pkg/runtime/serializer",
     "k8s.io/apimachinery/pkg/types",
     "k8s.io/apimachinery/pkg/util/intstr",
     "k8s.io/apimachinery/pkg/util/net",
@@ -1595,13 +1632,18 @@
     "k8s.io/apimachinery/pkg/util/validation/field",
     "k8s.io/apimachinery/pkg/util/wait",
     "k8s.io/apimachinery/pkg/version",
+    "k8s.io/apimachinery/pkg/watch",
     "k8s.io/apiserver/pkg/util/flag",
     "k8s.io/apiserver/pkg/util/logs",
+    "k8s.io/client-go/discovery",
+    "k8s.io/client-go/discovery/fake",
     "k8s.io/client-go/informers",
     "k8s.io/client-go/informers/core/v1",
     "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/kubernetes/scheme",
     "k8s.io/client-go/listers/core/v1",
+    "k8s.io/client-go/rest",
+    "k8s.io/client-go/testing",
     "k8s.io/client-go/tools/cache",
     "k8s.io/client-go/tools/clientcmd",
     "k8s.io/client-go/tools/leaderelection",

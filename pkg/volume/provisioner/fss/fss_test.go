@@ -53,6 +53,18 @@ type MockBlockStorageClient struct {
 	VolumeState core.VolumeLifecycleStateEnum
 }
 
+func (c *MockBlockStorageClient) AwaitVolumeAvailableORTimeout(ctx context.Context, id string, timeout time.Duration) (*core.Volume, error) {
+	return nil, nil
+}
+
+func (c *MockBlockStorageClient) GetVolume(ctx context.Context, id string) (*core.Volume, error) {
+	return nil, nil
+}
+
+func (c *MockBlockStorageClient) GetVolumesByName(ctx context.Context, volumeName, compartmentID string) ([]core.Volume, error) {
+	return nil, nil
+}
+
 // CreateVolume mocks the BlockStorage CreateVolume implementation
 func (c *MockBlockStorageClient) CreateVolume(ctx context.Context, details core.CreateVolumeDetails) (*core.Volume, error) {
 	return &core.Volume{Id: &VolumeBackupID}, nil
@@ -224,6 +236,10 @@ func (c *MockVirtualNetworkClient) UpdateSecurityList(ctx context.Context, reque
 // MockIdentityClient mocks identity client structure
 type MockIdentityClient struct {
 	common.BaseClient
+}
+
+func (client MockIdentityClient) ListAvailabilityDomains(ctx context.Context, compartmentID string) ([]identity.AvailabilityDomain, error) {
+	return nil, nil
 }
 
 // ListAvailabilityDomains mocks the client ListAvailabilityDomains implementation

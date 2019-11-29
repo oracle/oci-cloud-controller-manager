@@ -23,7 +23,6 @@ import (
 
 	"github.com/kubernetes-incubator/external-storage/lib/controller"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/core"
@@ -139,7 +138,7 @@ func (block *blockProvisioner) Provision(options controller.VolumeOptions, ad *i
 	volumeDetails := core.CreateVolumeDetails{
 		AvailabilityDomain: ad.Name,
 		CompartmentId:      common.String(block.compartmentID),
-		DisplayName:        common.String(fmt.Sprintf("%s%s", provisioner.GetPrefix(), options.PVC.Name)),
+		DisplayName:        common.String(string(options.PVC.UID)),
 		SizeInMBs:          common.Int64(int64(volSizeMB)),
 	}
 
@@ -154,10 +153,34 @@ func (block *blockProvisioner) Provision(options controller.VolumeOptions, ad *i
 		}
 	}
 
-	// Create the volume.
-	volume, err := block.client.BlockStorage().CreateVolume(ctx, volumeDetails)
+	//make sure this method is idempotent by checking existence of volume with same name.
+	volumes, err := block.client.BlockStorage().GetVolumesByName(context.Background(), string(options.PVC.UID), block.compartmentID)
 	if err != nil {
-		return nil, err
+		logger.Error("Failed to find existence of volume %s", err)
+		return nil, fmt.Errorf("failed to check existence of volume %v", err)
+	}
+
+	if len(volumes) > 1 {
+		logger.Error("Duplicate volume exists")
+		return nil, fmt.Errorf("duplicate volume %q exists", string(options.PVC.UID))
+	}
+
+	volume := &core.Volume{}
+
+	if len(volumes) > 0 {
+		//Volume already exists so checking state of the volume and returning the same.
+		logger.Info("Volume already created!")
+		//Assigning existing volume
+		volume = &volumes[0]
+
+	} else {
+		// Create the volume.
+		logger.Info("Creating new volume!")
+		volume, err = block.client.BlockStorage().CreateVolume(ctx, volumeDetails)
+		if err != nil {
+			logger.With("Compartment Id", block.compartmentID).Error("Failed to create volume %s", err)
+			return nil, err
+		}
 	}
 
 	logger.With("volumeID", *volume.Id).Info("Waiting for volume to become available.")
