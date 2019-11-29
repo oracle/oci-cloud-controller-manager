@@ -1,0 +1,84 @@
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: csi-oci-node
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: csi-oci-node
+  template:
+    metadata:
+      labels:
+        app: csi-oci-node
+        role: csi-do
+    spec:
+      imagePullSecrets: 
+      - name: "image-pull-secret"      
+      hostNetwork: true
+      containers:
+        - name: csi-node-driver-registrar
+          image: quay.io/k8scsi/csi-node-driver-registrar:v1.0.2
+          imagePullPolicy: "Always"
+          args:
+            - "--v=5"
+            - "--csi-address=/csi/csi.sock"
+            - "--kubelet-registration-path=/var/lib/kubelet/plugins/blockvolume.oci.csi.oracle.com/csi.sock"
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "rm -rf /registration/blockvolume.oci.csi.oracle.com /registration/blockvolume.oci.csi.oracle.com-reg.sock"]
+          env:
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: /csi
+            - name: registration-dir
+              mountPath: /registration
+        - name: csi-node-driver
+          image:  iad.ocir.io/odx-oke/oke/cloud-provider-oci:oke-2aacbb408-dirty
+          command:
+          - /usr/local/bin/oci-csi
+          imagePullPolicy: "IfNotPresent"
+          args:
+            - "--endpoint=$(CSI_ENDPOINT)"
+            - "--nodeid=$(KUBE_NODE_NAME)"
+            - "--loglevel=debug"
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName              
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: /csi
+            - name: pods-mount-dir
+              mountPath: /var/lib/kubelet
+              mountPropagation: "Bidirectional"
+            - name: device-dir
+              mountPath: /dev
+      volumes:
+        - name: registration-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins_registry/
+            type: DirectoryOrCreate
+        - name: plugin-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/blockvolume.oci.csi.oracle.com
+            type: DirectoryOrCreate
+        - name: pods-mount-dir
+          hostPath:
+            path: /var/lib/kubelet
+            type: Directory
+        - name: device-dir
+          hostPath:
+            path: /dev

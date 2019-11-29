@@ -1,0 +1,37 @@
+
+# apiVersion: v1
+# kind: ServiceAccount
+# metadata:
+#   name: csi-oci-node-sa
+#   namespace: kube-system
+# ---
+
+# kind: ClusterRole
+# apiVersion: rbac.authorization.k8s.io/v1
+# metadata:
+#   name: csi-oci-driver-registrar-role
+#   namespace: kube-system
+# rules:
+#   - apiGroups: [""]
+#     resources: ["events"]
+#     verbs: ["get", "list", "watch", "create", "update", "patch"]
+#   - apiGroups: [""]
+#     resources: ["nodes"]
+#     verbs: ["get", "list", "watch"]   
+#   - apiGroups: ["volume.oci.oracle.com"]
+#     resources: ["blockscsiinfos"]
+#     verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]     
+# ---
+
+# kind: ClusterRoleBinding
+# apiVersion: rbac.authorization.k8s.io/v1
+# metadata:
+#   name: csi-oci-driver-registrar-binding
+# subjects:
+#   - kind: ServiceAccount
+#     name: csi-oci-node-sa
+#     namespace: kube-system
+# roleRef:
+#   kind: ClusterRole
+#   name: csi-oci-driver-registrar-role
+#   apiGroup: rbac.authorization.k8s.io          
