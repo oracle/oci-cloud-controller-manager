@@ -140,16 +140,66 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				securityListManager: newSecurityListManagerNOOP(),
 			},
 		},
-		"subnet annotations": {
+		"use default subnet in case of no subnets overrides via annotation": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace:   "kube-system",
+					Name:        "testservice",
+					UID:         "test-uid",
+					Annotations: map[string]string{},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						v1.ServicePort{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"one", "two"},
+				Listeners: map[string]loadbalancer.ListenerDetails{
+					"TCP-80": loadbalancer.ListenerDetails{
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]loadbalancer.BackendSetDetails{
+					"TCP-80": loadbalancer.BackendSetDetails{
+						Backends: []loadbalancer.BackendDetails{},
+						HealthChecker: &loadbalancer.HealthCheckerDetails{
+							Protocol: common.String("HTTP"),
+							Port:     common.Int(10256),
+							UrlPath:  common.String("/healthz"),
+						},
+						Policy: common.String("ROUND_ROBIN"),
+					},
+				},
+				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": portSpec{
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager: newSecurityListManagerNOOP(),
+			},
+		},
+		"no default subnets provide subnet2 via annotation": {
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
 					Name:      "testservice",
 					UID:       "test-uid",
 					Annotations: map[string]string{
-						ServiceAnnotationLoadBalancerSubnet1: "annotation-one",
 						ServiceAnnotationLoadBalancerSubnet2: "annotation-two",
 					},
 				},
@@ -167,7 +217,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Name:     "test-uid",
 				Shape:    "100Mbps",
 				Internal: false,
-				Subnets:  []string{"annotation-one", "annotation-two"},
+				Subnets:  []string{"", "annotation-two"},
 				Listeners: map[string]loadbalancer.ListenerDetails{
 					"TCP-80": loadbalancer.ListenerDetails{
 						DefaultBackendSetName: common.String("TCP-80"),
@@ -487,7 +537,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			// we expect the service to be unchanged
 			tc.expected.service = tc.service
-			subnets := []string{tc.defaultSubnetOne, tc.defaultSubnetTwo}
+			subnets := getDefaultLBSubnets(tc.defaultSubnetOne, tc.defaultSubnetTwo)
 			slManagerFactory := func(mode string) securityListManager {
 				return newSecurityListManagerNOOP()
 			}
@@ -571,7 +621,7 @@ func TestNewLBSpecSingleAD(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			// we expect the service to be unchanged
 			tc.expected.service = tc.service
-			subnets := []string{tc.defaultSubnetOne}
+			subnets := getDefaultLBSubnets(tc.defaultSubnetOne, tc.defaultSubnetTwo)
 			slManagerFactory := func(mode string) securityListManager {
 				return newSecurityListManagerNOOP()
 			}
@@ -669,11 +719,33 @@ func TestNewLBSpecFailure(t *testing.T) {
 			},
 			expectedErrMsg: "a configuration for subnet1 must be specified for an internal load balancer",
 		},
+		"annotation overriding internal lb with empty subnet1": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInternal: "",
+						ServiceAnnotationLoadBalancerSubnet1:  "",
+						ServiceAnnotationLoadBalancerSubnet2:  "annotation-2",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports:           []v1.ServicePort{},
+					//add security list mananger in spec
+				},
+			},
+			expectedErrMsg: "a configuration for subnet1 must be specified for an internal load balancer",
+		},
 	}
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			subnets := []string{tc.defaultSubnetOne, tc.defaultSubnetTwo}
+			subnets := getDefaultLBSubnets(tc.defaultSubnetOne, tc.defaultSubnetTwo)
 			slManagerFactory := func(mode string) securityListManager {
 				return newSecurityListManagerNOOP()
 			}

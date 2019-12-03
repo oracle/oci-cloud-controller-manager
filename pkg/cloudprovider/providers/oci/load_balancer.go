@@ -328,12 +328,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		secretBackendSetString := service.Annotations[ServiceAnnotationLoadBalancerTLSBackendSetSecret]
 		sslConfig = NewSSLConfig(secretListenerString, secretBackendSetString, ports, cp)
 	}
-	var subnets []string
-	if cp.config.LoadBalancer.Subnet2 != "" {
-		subnets = []string{cp.config.LoadBalancer.Subnet1, cp.config.LoadBalancer.Subnet2}
-	} else {
-		subnets = []string{cp.config.LoadBalancer.Subnet1}
-	}
+	subnets := getDefaultLBSubnets(cp.config.LoadBalancer.Subnet1, cp.config.LoadBalancer.Subnet2)
 	spec, err := NewLBSpec(service, nodes, subnets, sslConfig, cp.securityListManagerFactory)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to derive LBSpec")
@@ -363,6 +358,16 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 	}
 
 	return loadBalancerToStatus(lb)
+}
+
+func getDefaultLBSubnets(subnet1, subnet2 string) []string {
+	var subnets []string
+	if subnet2 != "" {
+		subnets = []string{subnet1, subnet2}
+	} else {
+		subnets = []string{subnet1}
+	}
+	return subnets
 }
 
 func (cp *CloudProvider) updateLoadBalancer(ctx context.Context, lb *loadbalancer.LoadBalancer, spec *LBSpec) error {

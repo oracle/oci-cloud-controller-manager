@@ -126,7 +126,11 @@ func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCo
 		subnets[0] = s
 	}
 	if s, ok := svc.Annotations[ServiceAnnotationLoadBalancerSubnet2]; ok {
-		subnets[1] = s
+		if len(subnets) > 1 {
+			subnets[1] = s
+		} else {
+			subnets = append(subnets, s)
+		}
 	}
 
 	if internal {
