@@ -21,7 +21,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kubernetes-incubator/external-storage/lib/controller"
+	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
 	"github.com/oracle/oci-go-sdk/common"
@@ -82,9 +82,9 @@ func mapVolumeIDToName(volumeID string) string {
 	return strings.Split(volumeID, ".")[4]
 }
 
-func resolveFSType(options controller.VolumeOptions) string {
+func resolveFSType(options controller.ProvisionOptions) string {
 	fs := "ext4" // default to ext4
-	if fsType, ok := options.Parameters[FSType]; ok {
+	if fsType, ok := options.StorageClass.Parameters[FSType]; ok {
 		fs = fsType
 	}
 	return fs
@@ -105,7 +105,7 @@ func volumeRoundingEnabled(param map[string]string) bool {
 }
 
 // Provision creates an OCI block volume
-func (block *blockProvisioner) Provision(options controller.VolumeOptions, ad *identity.AvailabilityDomain) (*v1.PersistentVolume, error) {
+func (block *blockProvisioner) Provision(options controller.ProvisionOptions, ad *identity.AvailabilityDomain) (*v1.PersistentVolume, error) {
 	ctx := context.Background()
 	for _, accessMode := range options.PVC.Spec.AccessModes {
 		if accessMode != v1.ReadWriteOnce {
@@ -127,7 +127,7 @@ func (block *blockProvisioner) Provision(options controller.VolumeOptions, ad *i
 	)
 	logger.Info("Provisioning volume")
 
-	if volumeRoundingEnabled(options.Parameters) {
+	if volumeRoundingEnabled(options.StorageClass.Parameters) {
 		if block.volumeRoundingEnabled && block.minVolumeSize.Cmp(capacity) == 1 {
 			volSizeMB = int(roundUpSize(block.minVolumeSize.Value(), 1024*1024))
 			logger.With("roundedVolumeSize", volSizeMB).Warn("Attempted to provision volume with a capacity less than the minimum. Rounding up to ensure volume creation.")
@@ -204,7 +204,7 @@ func (block *blockProvisioner) Provision(options controller.VolumeOptions, ad *i
 			},
 		},
 		Spec: v1.PersistentVolumeSpec{
-			PersistentVolumeReclaimPolicy: options.PersistentVolumeReclaimPolicy,
+			PersistentVolumeReclaimPolicy: *options.StorageClass.ReclaimPolicy,
 			AccessModes:                   options.PVC.Spec.AccessModes,
 			Capacity: v1.ResourceList{
 				v1.ResourceName(v1.ResourceStorage): capacity,
@@ -215,7 +215,7 @@ func (block *blockProvisioner) Provision(options controller.VolumeOptions, ad *i
 					FSType: filesystemType,
 				},
 			},
-			MountOptions: options.MountOptions,
+			MountOptions: options.StorageClass.MountOptions,
 		},
 	}
 

@@ -34,8 +34,7 @@ import (
 	listersv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/flowcontrol"
-	"k8s.io/kubernetes/pkg/cloudprovider"
-	"k8s.io/kubernetes/pkg/controller"
+	"k8s.io/cloud-provider"
 )
 
 const (
@@ -79,7 +78,7 @@ var _ cloudprovider.Interface = &CloudProvider{}
 // NewCloudProvider creates a new oci.CloudProvider.
 func NewCloudProvider(config *providercfg.Config) (cloudprovider.Interface, error) {
 	// The global logger has been replaced with the logger we constructed in
-	// main.go so capture it here and then pass it into all components.
+	// oci-csi-controller-driver.go so capture it here and then pass it into all components.
 	logger := zap.L()
 	logger = logger.With(zap.String("component", "cloud-controller-manager"))
 
@@ -136,7 +135,7 @@ func init() {
 }
 
 // Initialize passes a Kubernetes clientBuilder interface to the cloud provider.
-func (cp *CloudProvider) Initialize(clientBuilder controller.ControllerClientBuilder) {
+func (cp *CloudProvider) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, stop <-chan struct{}) {
 	var err error
 	cp.kubeclient, err = clientBuilder.Client("cloud-controller-manager")
 	if err != nil {

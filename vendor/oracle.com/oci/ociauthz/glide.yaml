@@ -1,0 +1,15 @@
+package: oracle.com/oci/ociauthz
+import:
+- package: oracle.com/oci/httpsigner
+  repo: ssh://git@bitbucket.oci.oraclecorp.com:7999/goiam/httpsigner.git
+  vcs: git
+  version: '>= 0.17.1'
+- package: oracle.com/oci/tagging
+  repo: ssh://git@bitbucket.oci.oraclecorp.com:7999/GOPLEX/tagging.git
+  vcs: git
+  version: '^0.8.0'
+testImport:
+- package: github.com/stretchr/testify
+  version: ~1.2.1
+  subpackages:
+  - assert

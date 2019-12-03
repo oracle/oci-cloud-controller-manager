@@ -13,7 +13,7 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	kubeAPI "k8s.io/kubernetes/pkg/kubelet/apis"
+	kubeAPI "k8s.io/api/core/v1"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util/iscsi"

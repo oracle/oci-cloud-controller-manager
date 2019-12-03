@@ -1,0 +1,9 @@
+package: oracle.com/oci/tagging
+import:
+- package: github.com/golang/protobuf
+  version: ~1.2.0
+testImport:
+- package: github.com/stretchr/testify
+  version: ^1.2.2
+  subpackages:
+  - assert

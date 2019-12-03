@@ -114,15 +114,6 @@ type UpdateLoadBalancerListenerOptions struct {
 	SSLConfig             *SSLConfiguration `header:"-" json:"sslConfiguration,omitempty" url:"-"`
 }
 
-type UpdateLoadBalancerBackendSetBackendsOptions struct {
-	LoadBalancerOptions
-	RetryTokenOptions
-	Backends      []CreateBackendOpts `header:"-" json:"backends,omitempty" url:"-"`
-	HealthChecker HealthChecker       `header:"-" json:"healthChecker,omitempty" url:"-"`
-	Policy        string              `header:"-" json:"policy,omitempty" url:"-"`
-	SSLConfig     *SSLConfiguration   `header:"-" json:"sslConfiguration,omitempty" url:"-"`
-}
-
 type ListLoadBalancerPolicyOptions struct {
 	ClientRequestOptions
 	ListOptions

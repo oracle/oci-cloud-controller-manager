@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kubernetes-incubator/external-storage/lib/controller"
+	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
@@ -41,7 +41,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/flowcontrol"
-	metav1 "k8s.io/kubernetes/pkg/kubelet/apis"
 )
 
 const (
@@ -194,7 +193,7 @@ func mapAvailabilityDomainToFailureDomain(AD string) string {
 }
 
 // Provision creates a storage asset and returns a PV object representing it.
-func (p *OCIProvisioner) Provision(options controller.VolumeOptions) (*v1.PersistentVolume, error) {
+func (p *OCIProvisioner) Provision(options controller.ProvisionOptions) (*v1.PersistentVolume, error) {
 	availabilityDomainName, availabilityDomain, err := p.chooseAvailabilityDomain(context.Background(), options.PVC)
 	if err != nil {
 		return nil, err
@@ -204,7 +203,7 @@ func (p *OCIProvisioner) Provision(options controller.VolumeOptions) (*v1.Persis
 		persistentVolume.ObjectMeta.Annotations[ociProvisionerIdentity] = ociProvisionerIdentity
 		persistentVolume.ObjectMeta.Annotations[ociAvailabilityDomain] = availabilityDomainName
 		persistentVolume.ObjectMeta.Annotations[ociCompartment] = p.compartmentID
-		persistentVolume.ObjectMeta.Labels[metav1.LabelZoneFailureDomain] = mapAvailabilityDomainToFailureDomain(*availabilityDomain.Name)
+		persistentVolume.ObjectMeta.Labels[v1.LabelZoneFailureDomain] = mapAvailabilityDomainToFailureDomain(*availabilityDomain.Name)
 	}
 	return persistentVolume, err
 }

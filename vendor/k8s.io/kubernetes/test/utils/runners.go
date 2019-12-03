@@ -17,15 +17,17 @@ limitations under the License.
 package utils
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
+	apps "k8s.io/api/apps/v1"
 	batch "k8s.io/api/batch/v1"
-	"k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
+	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -43,9 +45,8 @@ import (
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	extensionsinternal "k8s.io/kubernetes/pkg/apis/extensions"
-	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 
-	"github.com/golang/glog"
+	"k8s.io/klog"
 )
 
 const (
@@ -97,10 +98,8 @@ type RunObjectConfig interface {
 	GetNamespace() string
 	GetKind() schema.GroupKind
 	GetClient() clientset.Interface
-	GetInternalClient() internalclientset.Interface
 	GetScalesGetter() scaleclient.ScalesGetter
 	SetClient(clientset.Interface)
-	SetInternalClient(internalclientset.Interface)
 	SetScalesClient(scaleclient.ScalesGetter)
 	GetReplicas() int
 	GetLabelValue(string) (string, bool)
@@ -110,7 +109,6 @@ type RunObjectConfig interface {
 type RCConfig struct {
 	Affinity          *v1.Affinity
 	Client            clientset.Interface
-	InternalClient    internalclientset.Interface
 	ScalesGetter      scaleclient.ScalesGetter
 	Image             string
 	Command           []string
@@ -139,6 +137,9 @@ type RCConfig struct {
 	// Node selector for pods in the RC.
 	NodeSelector map[string]string
 
+	// Tolerations for pods in the RC.
+	Tolerations []v1.Toleration
+
 	// Ports to declare in the container (map of name to containerPort).
 	Ports map[string]int
 	// Ports to declare in the container as host and container ports.
@@ -158,7 +159,7 @@ type RCConfig struct {
 	// If set to false starting RC will print progress, otherwise only errors will be printed.
 	Silent bool
 
-	// If set this function will be used to print log lines instead of glog.
+	// If set this function will be used to print log lines instead of klog.
 	LogFunc func(fmt string, args ...interface{})
 	// If set those functions will be used to gather data from Nodes - in integration tests where no
 	// kubelets are running those variables should be nil.
@@ -168,13 +169,15 @@ type RCConfig struct {
 	// Names of the secrets and configmaps to mount.
 	SecretNames    []string
 	ConfigMapNames []string
+
+	ServiceAccountTokenProjections int
 }
 
 func (rc *RCConfig) RCConfigLog(fmt string, args ...interface{}) {
 	if rc.LogFunc != nil {
 		rc.LogFunc(fmt, args...)
 	}
-	glog.Infof(fmt, args...)
+	klog.Infof(fmt, args...)
 }
 
 type DeploymentConfig struct {
@@ -236,6 +239,18 @@ func (p PodDiff) String(ignorePhases sets.String) string {
 	return ret
 }
 
+// DeletedPods returns a slice of pods that were present at the beginning
+// and then disappeared.
+func (p PodDiff) DeletedPods() []string {
+	var deletedPods []string
+	for podName, podInfo := range p {
+		if podInfo.hostname == nonExist {
+			deletedPods = append(deletedPods, podName)
+		}
+	}
+	return deletedPods
+}
+
 // Diff computes a PodDiff given 2 lists of pods.
 func Diff(oldPods []*v1.Pod, curPods []*v1.Pod) PodDiff {
 	podInfoMap := PodDiff{}
@@ -281,11 +296,11 @@ func (config *DeploymentConfig) GetGroupResource() schema.GroupResource {
 }
 
 func (config *DeploymentConfig) create() error {
-	deployment := &extensions.Deployment{
+	deployment := &apps.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: config.Name,
 		},
-		Spec: extensions.DeploymentSpec{
+		Spec: apps.DeploymentSpec{
 			Replicas: func(i int) *int32 { x := int32(i); return &x }(config.Replicas),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
@@ -298,6 +313,7 @@ func (config *DeploymentConfig) create() error {
 					Annotations: config.Annotations,
 				},
 				Spec: v1.PodSpec{
+					Affinity: config.Affinity,
 					Containers: []v1.Container{
 						{
 							Name:    config.Name,
@@ -316,6 +332,10 @@ func (config *DeploymentConfig) create() error {
 	}
 	if len(config.ConfigMapNames) > 0 {
 		attachConfigMaps(&deployment.Spec.Template, config.ConfigMapNames)
+	}
+
+	for i := 0; i < config.ServiceAccountTokenProjections; i++ {
+		attachServiceAccountTokenProjection(&deployment.Spec.Template, fmt.Sprintf("tok-%d", i))
 	}
 
 	config.applyTo(&deployment.Spec.Template)
@@ -352,11 +372,11 @@ func (config *ReplicaSetConfig) GetGroupResource() schema.GroupResource {
 }
 
 func (config *ReplicaSetConfig) create() error {
-	rs := &extensions.ReplicaSet{
+	rs := &apps.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: config.Name,
 		},
-		Spec: extensions.ReplicaSetSpec{
+		Spec: apps.ReplicaSetSpec{
 			Replicas: func(i int) *int32 { x := int32(i); return &x }(config.Replicas),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
@@ -369,6 +389,7 @@ func (config *ReplicaSetConfig) create() error {
 					Annotations: config.Annotations,
 				},
 				Spec: v1.PodSpec{
+					Affinity: config.Affinity,
 					Containers: []v1.Container{
 						{
 							Name:    config.Name,
@@ -436,6 +457,7 @@ func (config *JobConfig) create() error {
 					Annotations: config.Annotations,
 				},
 				Spec: v1.PodSpec{
+					Affinity: config.Affinity,
 					Containers: []v1.Container{
 						{
 							Name:    config.Name,
@@ -501,20 +523,12 @@ func (config *RCConfig) GetClient() clientset.Interface {
 	return config.Client
 }
 
-func (config *RCConfig) GetInternalClient() internalclientset.Interface {
-	return config.InternalClient
-}
-
 func (config *RCConfig) GetScalesGetter() scaleclient.ScalesGetter {
 	return config.ScalesGetter
 }
 
 func (config *RCConfig) SetClient(c clientset.Interface) {
 	config.Client = c
-}
-
-func (config *RCConfig) SetInternalClient(c internalclientset.Interface) {
-	config.InternalClient = c
 }
 
 func (config *RCConfig) SetScalesClient(getter scaleclient.ScalesGetter) {
@@ -563,6 +577,7 @@ func (config *RCConfig) create() error {
 					},
 					DNSPolicy:                     *config.DNSPolicy,
 					NodeSelector:                  config.NodeSelector,
+					Tolerations:                   config.Tolerations,
 					TerminationGracePeriodSeconds: &one,
 					PriorityClassName:             config.PriorityClassName,
 				},
@@ -603,6 +618,9 @@ func (config *RCConfig) applyTo(template *v1.PodTemplateSpec) {
 		for k, v := range config.NodeSelector {
 			template.Spec.NodeSelector[k] = v
 		}
+	}
+	if config.Tolerations != nil {
+		template.Spec.Tolerations = append([]v1.Toleration{}, config.Tolerations...)
 	}
 	if config.Ports != nil {
 		for k, v := range config.Ports {
@@ -751,9 +769,8 @@ func (config *RCConfig) start() error {
 		pods := ps.List()
 		startupStatus := ComputeRCStartupStatus(pods, config.Replicas)
 
-		pods = startupStatus.Created
 		if config.CreatedPods != nil {
-			*config.CreatedPods = pods
+			*config.CreatedPods = startupStatus.Created
 		}
 		if !config.Silent {
 			config.RCConfigLog(startupStatus.String(config.Name))
@@ -773,16 +790,15 @@ func (config *RCConfig) start() error {
 			}
 			return fmt.Errorf("%d containers failed which is more than allowed %d", startupStatus.FailedContainers, maxContainerFailures)
 		}
-		if len(pods) < len(oldPods) || len(pods) > config.Replicas {
-			// This failure mode includes:
-			// kubelet is dead, so node controller deleted pods and rc creates more
-			//	- diagnose by noting the pod diff below.
-			// pod is unhealthy, so replication controller creates another to take its place
-			//	- diagnose by comparing the previous "2 Pod states" lines for inactive pods
-			errorStr := fmt.Sprintf("Number of reported pods for %s changed: %d vs %d", config.Name, len(pods), len(oldPods))
-			config.RCConfigLog("%v, pods that changed since the last iteration:", errorStr)
-			config.RCConfigLog(Diff(oldPods, pods).String(sets.NewString()))
-			return fmt.Errorf(errorStr)
+
+		diff := Diff(oldPods, pods)
+		deletedPods := diff.DeletedPods()
+		if len(deletedPods) != 0 {
+			// There are some pods that have disappeared.
+			err := fmt.Errorf("%d pods disappeared for %s: %v", len(deletedPods), config.Name, strings.Join(deletedPods, ", "))
+			config.RCConfigLog(err.Error())
+			config.RCConfigLog(diff.String(sets.NewString()))
+			return err
 		}
 
 		if len(pods) > len(oldPods) || startupStatus.Running > oldRunning {
@@ -799,7 +815,7 @@ func (config *RCConfig) start() error {
 	if oldRunning != config.Replicas {
 		// List only pods from a given replication controller.
 		options := metav1.ListOptions{LabelSelector: label.String()}
-		if pods, err := config.Client.CoreV1().Pods(metav1.NamespaceAll).List(options); err == nil {
+		if pods, err := config.Client.CoreV1().Pods(config.Namespace).List(options); err == nil {
 			for _, pod := range pods.Items {
 				config.RCConfigLog("Pod %s\t%s\t%s\t%s", pod.Name, pod.Spec.NodeName, pod.Status.Phase, pod.DeletionTimestamp)
 			}
@@ -1019,7 +1035,7 @@ func MakePodSpec() v1.PodSpec {
 	return v1.PodSpec{
 		Containers: []v1.Container{{
 			Name:  "pause",
-			Image: "kubernetes/pause",
+			Image: "k8s.gcr.io/pause:3.1",
 			Ports: []v1.ContainerPort{{ContainerPort: 80}},
 			Resources: v1.ResourceRequirements{
 				Limits: v1.ResourceList{
@@ -1054,9 +1070,9 @@ func CreatePod(client clientset.Interface, namespace string, podCount int, podTe
 	}
 
 	if podCount < 30 {
-		workqueue.Parallelize(podCount, podCount, createPodFunc)
+		workqueue.ParallelizeUntil(context.TODO(), podCount, podCount, createPodFunc)
 	} else {
-		workqueue.Parallelize(30, podCount, createPodFunc)
+		workqueue.ParallelizeUntil(context.TODO(), 30, podCount, createPodFunc)
 	}
 	return createError
 }
@@ -1120,7 +1136,7 @@ type SecretConfig struct {
 	Client    clientset.Interface
 	Name      string
 	Namespace string
-	// If set this function will be used to print log lines instead of glog.
+	// If set this function will be used to print log lines instead of klog.
 	LogFunc func(fmt string, args ...interface{})
 }
 
@@ -1178,7 +1194,7 @@ type ConfigMapConfig struct {
 	Client    clientset.Interface
 	Name      string
 	Namespace string
-	// If set this function will be used to print log lines instead of glog.
+	// If set this function will be used to print log lines instead of klog.
 	LogFunc func(fmt string, args ...interface{})
 }
 
@@ -1233,12 +1249,63 @@ func attachConfigMaps(template *v1.PodTemplateSpec, configMapNames []string) {
 	template.Spec.Containers[0].VolumeMounts = mounts
 }
 
+func attachServiceAccountTokenProjection(template *v1.PodTemplateSpec, name string) {
+	template.Spec.Containers[0].VolumeMounts = append(template.Spec.Containers[0].VolumeMounts,
+		v1.VolumeMount{
+			Name:      name,
+			MountPath: "/var/service-account-tokens/" + name,
+		})
+
+	template.Spec.Volumes = append(template.Spec.Volumes,
+		v1.Volume{
+			Name: name,
+			VolumeSource: v1.VolumeSource{
+				Projected: &v1.ProjectedVolumeSource{
+					Sources: []v1.VolumeProjection{
+						{
+							ServiceAccountToken: &v1.ServiceAccountTokenProjection{
+								Path:     "token",
+								Audience: name,
+							},
+						},
+						{
+							ConfigMap: &v1.ConfigMapProjection{
+								LocalObjectReference: v1.LocalObjectReference{
+									Name: "kube-root-ca-crt",
+								},
+								Items: []v1.KeyToPath{
+									{
+										Key:  "ca.crt",
+										Path: "ca.crt",
+									},
+								},
+							},
+						},
+						{
+							DownwardAPI: &v1.DownwardAPIProjection{
+								Items: []v1.DownwardAPIVolumeFile{
+									{
+										Path: "namespace",
+										FieldRef: &v1.ObjectFieldSelector{
+											APIVersion: "v1",
+											FieldPath:  "metadata.namespace",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		})
+}
+
 type DaemonConfig struct {
 	Client    clientset.Interface
 	Name      string
 	Namespace string
 	Image     string
-	// If set this function will be used to print log lines instead of glog.
+	// If set this function will be used to print log lines instead of klog.
 	LogFunc func(fmt string, args ...interface{})
 	// How long we wait for DaemonSet to become running.
 	Timeout time.Duration
@@ -1246,16 +1313,16 @@ type DaemonConfig struct {
 
 func (config *DaemonConfig) Run() error {
 	if config.Image == "" {
-		config.Image = "kubernetes/pause"
+		config.Image = "k8s.gcr.io/pause:3.1"
 	}
 	nameLabel := map[string]string{
 		"name": config.Name + "-daemon",
 	}
-	daemon := &extensions.DaemonSet{
+	daemon := &apps.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: config.Name,
 		},
-		Spec: extensions.DaemonSetSpec{
+		Spec: apps.DaemonSetSpec{
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: nameLabel,

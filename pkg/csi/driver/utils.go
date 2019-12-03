@@ -15,7 +15,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	kubeAPI "k8s.io/kubernetes/pkg/kubelet/apis"
+	kubeAPI "k8s.io/api/core/v1"
 )
 
 const (

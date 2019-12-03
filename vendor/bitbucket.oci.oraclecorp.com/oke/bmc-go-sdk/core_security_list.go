@@ -16,16 +16,14 @@ type PortRange struct {
 //
 // See https://docs.us-phoenix-1.oraclecloud.com/api/#/en/iaas/20160918/UdpOptions/
 type UDPOptions struct {
-	DestinationPortRange *PortRange `header:"-" json:"destinationPortRange,omitempty" url:"-"`
-	SourcePortRange      *PortRange `header:"-" json:"sourcePortRange,omitempty" url:"-"`
+	DestinationPortRange PortRange `header:"-" json:"destinationPortRange" url:"-"`
 }
 
 // TCPOptions specifies ports for a TCP rule
 //
 // See https://docs.us-phoenix-1.oraclecloud.com/api/#/en/iaas/20160918/TcpOptions/
 type TCPOptions struct {
-	DestinationPortRange *PortRange `header:"-" json:"destinationPortRange,omitempty" url:"-"`
-	SourcePortRange      *PortRange `header:"-" json:"sourcePortRange,omitempty" url:"-"`
+	DestinationPortRange PortRange `header:"-" json:"destinationPortRange" url:"-"`
 }
 
 // ICMPOptions specifies a particular ICMP type and code

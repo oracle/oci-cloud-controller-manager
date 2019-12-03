@@ -6,12 +6,9 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
-	"encoding/base32"
 	"encoding/pem"
 	"strings"
 )
-
-const tokenIDLength = 20
 
 // base64EncodeBlock base64 encodes a block by first converting it to PEM format, and then stripping
 // the headers and newlines from the string
@@ -65,17 +62,4 @@ func PEMToPublicKey(key string) (publicKey *rsa.PublicKey, err error) {
 	}
 
 	return publicKey, nil
-}
-
-// generates a unique ID of given length for tokens
-func tokenID(n int) (id string, err error) {
-	buf := make([]byte, n)
-	t, err := rand.Reader.Read(buf)
-	if t != n {
-		return "", ErrUnableToGenerateUniqueID
-	}
-	if err == nil {
-		id = strings.ToLower(base32.StdEncoding.EncodeToString(buf))
-	}
-	return
 }

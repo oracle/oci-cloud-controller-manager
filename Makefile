@@ -66,7 +66,6 @@ check: gofmt govet golint
 build-dirs:
 	@mkdir -p dist/
 
-
 .PHONY: build
 build: build-dirs
 	@for component in $(COMPONENT); do \

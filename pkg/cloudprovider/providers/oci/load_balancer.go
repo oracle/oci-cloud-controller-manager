@@ -24,8 +24,8 @@ import (
 	"go.uber.org/zap"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	sets "k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/sets"
 	k8sports "k8s.io/kubernetes/pkg/master/ports"
 )
 
@@ -98,10 +98,15 @@ const (
 	lbNodesHealthCheckProtoTCP  = "TCP"
 )
 
+// GetLoadBalancerName returns the name of the loadbalancer
+func (cp *CloudProvider) GetLoadBalancerName(ctx context.Context, clusterName string, service *v1.Service) string {
+	return GetLoadBalancerName(service)
+}
+
 // GetLoadBalancer returns whether the specified load balancer exists, and if
 // so, what its status is.
 func (cp *CloudProvider) GetLoadBalancer(ctx context.Context, clusterName string, service *v1.Service) (*v1.LoadBalancerStatus, bool, error) {
-	name := GetLoadBalancerName(service)
+	name := cp.GetLoadBalancerName(ctx, clusterName, service)
 	logger := cp.logger.With("loadBalancerName", name)
 	logger.Debug("Getting load balancer")
 
@@ -511,7 +516,7 @@ func (cp *CloudProvider) updateListener(ctx context.Context, lbID string, action
 
 // UpdateLoadBalancer : TODO find out where this is called
 func (cp *CloudProvider) UpdateLoadBalancer(ctx context.Context, clusterName string, service *v1.Service, nodes []*v1.Node) error {
-	name := GetLoadBalancerName(service)
+	name := cp.GetLoadBalancerName(ctx, clusterName, service)
 	cp.logger.With("loadbalancerName", name).Info("Updating load balancer")
 
 	_, err := cp.EnsureLoadBalancer(ctx, clusterName, service, nodes)
@@ -547,7 +552,7 @@ func (cp *CloudProvider) getNodesByIPs(backendIPs []string) ([]*v1.Node, error) 
 // returning nil if the load balancer specified either didn't exist or was
 // successfully deleted.
 func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterName string, service *v1.Service) error {
-	name := GetLoadBalancerName(service)
+	name := cp.GetLoadBalancerName(ctx, clusterName, service)
 	logger := cp.logger.With("loadbalancerName", name)
 	logger.Debug("Attempting to delete load balancer")
 

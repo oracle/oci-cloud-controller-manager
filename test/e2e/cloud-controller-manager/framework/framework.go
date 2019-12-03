@@ -41,7 +41,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	clientcmd "k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
-	"k8s.io/kubernetes/pkg/cloudprovider"
+	"k8s.io/cloud-provider"
 )
 
 const (
@@ -297,7 +297,7 @@ func createOCIClient(cloudProviderConfig *providercfg.Config) (client.Interface,
 	ociClientConfig := common.NewRawConfigurationProvider(cpc.TenancyID, cpc.UserID, cpc.Region, cpc.Fingerprint, cpc.PrivateKey, &cpc.PrivateKeyPassphrase)
 	logger := zap.L()
 	rateLimiter := oci.NewRateLimiter(logger.Sugar(), cloudProviderConfig.RateLimiter)
-	ociClient, err := client.New(logger.Sugar(), ociClientConfig, &rateLimiter)
+	ociClient, err := client.New(logger.Sugar(), ociClientConfig, &rateLimiter, cpc.TenancyID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Couldn't create oci client from configuration: %s.", cloudConfigFile)
 	}
