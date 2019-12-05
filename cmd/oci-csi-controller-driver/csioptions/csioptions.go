@@ -38,8 +38,6 @@ type CSIOptions struct {
 	StrictTopology          bool
 	Resync                  time.Duration
 	Timeout                 time.Duration
-	NodeID                  string
-	LogLevel                string
 	FeatureGates            map[string]bool
 }
 
@@ -63,8 +61,6 @@ func NewCSIOptions() *CSIOptions {
 		StrictTopology:          *flag.Bool("csi-strict-topology", false, "Passes only selected node topology to CreateVolume Request, unlike default behavior of passing aggregated cluster topologies that match with topology keys of the selected node."),
 		Resync:                  *flag.Duration("csi-resync", 10*time.Minute, "Resync interval of the controller."),
 		Timeout:                 *flag.Duration("csi-timeout", 15*time.Second, "Timeout for waiting for attaching or detaching the volume."),
-		NodeID:                  *flag.String("csi-nodeid", "", "node id"),
-		LogLevel:                *flag.String("csi-loglevel", "info", "log level"),
 	}
 	return &csioptions
 }

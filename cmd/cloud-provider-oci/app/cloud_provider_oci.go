@@ -113,8 +113,6 @@ manager and oci volume provisioner. It embeds the cloud specific control loops s
 	csiFlagSet.BoolVar(&csioption.StrictTopology, "csi-strict-topology", false, "Passes only selected node topology to CreateVolume Request, unlike default behavior of passing aggregated cluster topologies that match with topology keys of the selected node.")
 	csiFlagSet.DurationVar(&csioption.Resync, "csi-resync", 10*time.Minute, "Resync interval of the controller.")
 	csiFlagSet.DurationVar(&csioption.Timeout, "csi-timeout", 15*time.Second, "Timeout for waiting for attaching or detaching the volume.")
-	csiFlagSet.StringVar(&csioption.NodeID, "csi-nodeid", "", "node id")
-	csiFlagSet.StringVar(&csioption.LogLevel, "csi-loglevel", "info", "log level")
 	csiFlagSet.Var(utilflag.NewMapStringBool(&csioption.FeatureGates), "csi-feature-gates", "A set of key=value pairs that describe feature gates for alpha/experimental features. ")
 
 	verflag.AddFlags(namedFlagSets.FlagSet("global"))
