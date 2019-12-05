@@ -17,10 +17,10 @@ package block
 import (
 	"context"
 	"fmt"
+	v12 "k8s.io/api/storage/v1"
 	"testing"
 	"time"
 
-	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/core"
@@ -31,6 +31,7 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
 )
 
 var (
@@ -363,9 +364,14 @@ var (
 )
 
 func TestResolveFSTypeWhenNotConfigured(t *testing.T) {
-	options := controller.VolumeOptions{Parameters: make(map[string]string)}
+	storageClass := v12.StorageClass{
+		Parameters: map[string]string{FSType: ""},
+	}
+	provisionerOptions := controller.ProvisionOptions{
+		StorageClass: &storageClass,
+	}
 	// test default fsType of 'ext4' is always returned.
-	fst := resolveFSType(options)
+	fst := resolveFSType(provisionerOptions)
 	if fst != "ext4" {
 		t.Fatalf("Unexpected filesystem type: '%s'.", fst)
 	}
@@ -373,8 +379,13 @@ func TestResolveFSTypeWhenNotConfigured(t *testing.T) {
 
 func TestResolveFSTypeWhenConfigured(t *testing.T) {
 	// test default fsType of 'ext3' is always returned when configured.
-	options := controller.VolumeOptions{Parameters: map[string]string{FSType: "ext3"}}
-	fst := resolveFSType(options)
+	storageClass := v12.StorageClass{
+		Parameters: map[string]string{FSType: "ext3"},
+	}
+	provisionerOptions := controller.ProvisionOptions{
+		StorageClass: &storageClass,
+	}
+	fst := resolveFSType(provisionerOptions)
 	if fst != "ext3" {
 		t.Fatalf("Unexpected filesystem type: '%s'.", fst)
 	}
@@ -382,8 +393,16 @@ func TestResolveFSTypeWhenConfigured(t *testing.T) {
 
 func TestCreateVolumeFromBackup(t *testing.T) {
 	// test creating a volume from an existing backup
-	options := controller.VolumeOptions{
-		PVName: "dummyVolumeOptions",
+
+	persistentVolumeReclaimPolicy := v1.PersistentVolumeReclaimPolicy("Test")
+
+	storageClass := v12.StorageClass{
+		Parameters:    map[string]string{"volumeRoundingUpEnabled": "true"},
+		ReclaimPolicy: &persistentVolumeReclaimPolicy,
+	}
+	options := controller.ProvisionOptions{
+		StorageClass: &storageClass,
+		PVName:       "dummyVolumeOptions",
 		PVC: &v1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
 				Annotations: map[string]string{
@@ -431,8 +450,16 @@ func TestVolumeRoundingLogic(t *testing.T) {
 	}
 	for i, tt := range volumeRoundingTests {
 		t.Run(fmt.Sprintf("test-%d", i), func(t *testing.T) {
-			volumeOptions := controller.VolumeOptions{
-				PVC: createPVC(tt.requestedStorage),
+			persistentVolumeReclaimPolicy := v1.PersistentVolumeReclaimPolicy("Test")
+
+			storageClass := v12.StorageClass{
+				Parameters:    map[string]string{"volumeRoundingUpEnabled": "true"},
+				ReclaimPolicy: &persistentVolumeReclaimPolicy,
+			}
+
+			volumeOptions := controller.ProvisionOptions{
+				StorageClass: &storageClass,
+				PVC:          createPVC(tt.requestedStorage),
 			}
 			block := NewBlockProvisioner(zap.S(), NewClientProvisioner(nil, &MockBlockStorageClient{VolumeState: core.VolumeLifecycleStateAvailable}),
 				"ocid1.",

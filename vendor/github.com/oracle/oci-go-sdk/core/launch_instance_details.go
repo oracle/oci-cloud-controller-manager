@@ -1,13 +1,9 @@
-// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
-// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
-// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
-// to manage resources such as virtual cloud networks (VCNs), compute instances, and
-// block storage volumes.
+// APIs for Networking Service, Compute Service, and Block Volume Service.
 //
 
 package core
@@ -37,11 +33,8 @@ type LaunchInstanceDetails struct {
 	// the instance is launched.
 	CreateVnicDetails *CreateVnicDetails `mandatory:"false" json:"createVnicDetails"`
 
-	// The OCID of dedicated VM host.
-	DedicatedVmHostId *string `mandatory:"false" json:"dedicatedVmHostId"`
-
-	// Defined tags for this resource. Each key is predefined and scoped to a
-	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -68,7 +61,8 @@ type LaunchInstanceDetails struct {
 	FaultDomain *string `mandatory:"false" json:"faultDomain"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
-	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// predefined name, type, or namespace. For more information, see
+	// Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
@@ -101,8 +95,6 @@ type LaunchInstanceDetails struct {
 	// Bring Your Own Image (https://docs.cloud.oracle.com/Content/Compute/References/bringyourownimage.htm).
 	// For more information about iPXE, see http://ipxe.org.
 	IpxeScript *string `mandatory:"false" json:"ipxeScript"`
-
-	LaunchOptions *LaunchOptions `mandatory:"false" json:"launchOptions"`
 
 	// Custom metadata key/value pairs that you provide, such as the SSH public key
 	// required to connect to the instance.
@@ -151,8 +143,6 @@ type LaunchInstanceDetails struct {
 
 	AgentConfig *LaunchInstanceAgentConfigDetails `mandatory:"false" json:"agentConfig"`
 
-	ShapeConfig *LaunchInstanceShapeConfigDetails `mandatory:"false" json:"shapeConfig"`
-
 	// Details for creating an instance.
 	// Use this parameter to specify whether a boot volume or an image should be used to launch a new instance.
 	SourceDetails InstanceSourceDetails `mandatory:"false" json:"sourceDetails"`
@@ -170,11 +160,6 @@ type LaunchInstanceDetails struct {
 
 	// Whether to enable in-transit encryption for the data volume's paravirtualized attachment. The default value is false.
 	IsPvEncryptionInTransitEnabled *bool `mandatory:"false" json:"isPvEncryptionInTransitEnabled"`
-
-	// The preferred maintenance action for an instance. The default is LIVE_MIGRATE, if live migration is supported.
-	// * `LIVE_MIGRATE` - Run maintenance using a live migration.
-	// * `REBOOT` - Run maintenance using a reboot.
-	PreferredMaintenanceAction LaunchInstanceDetailsPreferredMaintenanceActionEnum `mandatory:"false" json:"preferredMaintenanceAction,omitempty"`
 }
 
 func (m LaunchInstanceDetails) String() string {
@@ -184,29 +169,25 @@ func (m LaunchInstanceDetails) String() string {
 // UnmarshalJSON unmarshals from json
 func (m *LaunchInstanceDetails) UnmarshalJSON(data []byte) (e error) {
 	model := struct {
-		CreateVnicDetails              *CreateVnicDetails                                  `json:"createVnicDetails"`
-		DedicatedVmHostId              *string                                             `json:"dedicatedVmHostId"`
-		DefinedTags                    map[string]map[string]interface{}                   `json:"definedTags"`
-		DisplayName                    *string                                             `json:"displayName"`
-		ExtendedMetadata               map[string]interface{}                              `json:"extendedMetadata"`
-		FaultDomain                    *string                                             `json:"faultDomain"`
-		FreeformTags                   map[string]string                                   `json:"freeformTags"`
-		HostnameLabel                  *string                                             `json:"hostnameLabel"`
-		ImageId                        *string                                             `json:"imageId"`
-		IpxeScript                     *string                                             `json:"ipxeScript"`
-		LaunchOptions                  *LaunchOptions                                      `json:"launchOptions"`
-		Metadata                       map[string]string                                   `json:"metadata"`
-		AgentConfig                    *LaunchInstanceAgentConfigDetails                   `json:"agentConfig"`
-		ShapeConfig                    *LaunchInstanceShapeConfigDetails                   `json:"shapeConfig"`
-		SourceDetails                  instancesourcedetails                               `json:"sourceDetails"`
-		SubnetId                       *string                                             `json:"subnetId"`
-		VolumeAttachments              []attachvolumedetails                               `json:"volumeAttachments"`
-		SecondaryVnicAttachments       []AttachVnicDetails                                 `json:"secondaryVnicAttachments"`
-		IsPvEncryptionInTransitEnabled *bool                                               `json:"isPvEncryptionInTransitEnabled"`
-		PreferredMaintenanceAction     LaunchInstanceDetailsPreferredMaintenanceActionEnum `json:"preferredMaintenanceAction"`
-		AvailabilityDomain             *string                                             `json:"availabilityDomain"`
-		CompartmentId                  *string                                             `json:"compartmentId"`
-		Shape                          *string                                             `json:"shape"`
+		CreateVnicDetails              *CreateVnicDetails                `json:"createVnicDetails"`
+		DefinedTags                    map[string]map[string]interface{} `json:"definedTags"`
+		DisplayName                    *string                           `json:"displayName"`
+		ExtendedMetadata               map[string]interface{}            `json:"extendedMetadata"`
+		FaultDomain                    *string                           `json:"faultDomain"`
+		FreeformTags                   map[string]string                 `json:"freeformTags"`
+		HostnameLabel                  *string                           `json:"hostnameLabel"`
+		ImageId                        *string                           `json:"imageId"`
+		IpxeScript                     *string                           `json:"ipxeScript"`
+		Metadata                       map[string]string                 `json:"metadata"`
+		AgentConfig                    *LaunchInstanceAgentConfigDetails `json:"agentConfig"`
+		SourceDetails                  instancesourcedetails             `json:"sourceDetails"`
+		SubnetId                       *string                           `json:"subnetId"`
+		VolumeAttachments              []attachvolumedetails             `json:"volumeAttachments"`
+		SecondaryVnicAttachments       []AttachVnicDetails               `json:"secondaryVnicAttachments"`
+		IsPvEncryptionInTransitEnabled *bool                             `json:"isPvEncryptionInTransitEnabled"`
+		AvailabilityDomain             *string                           `json:"availabilityDomain"`
+		CompartmentId                  *string                           `json:"compartmentId"`
+		Shape                          *string                           `json:"shape"`
 	}{}
 
 	e = json.Unmarshal(data, &model)
@@ -214,7 +195,6 @@ func (m *LaunchInstanceDetails) UnmarshalJSON(data []byte) (e error) {
 		return
 	}
 	m.CreateVnicDetails = model.CreateVnicDetails
-	m.DedicatedVmHostId = model.DedicatedVmHostId
 	m.DefinedTags = model.DefinedTags
 	m.DisplayName = model.DisplayName
 	m.ExtendedMetadata = model.ExtendedMetadata
@@ -223,10 +203,8 @@ func (m *LaunchInstanceDetails) UnmarshalJSON(data []byte) (e error) {
 	m.HostnameLabel = model.HostnameLabel
 	m.ImageId = model.ImageId
 	m.IpxeScript = model.IpxeScript
-	m.LaunchOptions = model.LaunchOptions
 	m.Metadata = model.Metadata
 	m.AgentConfig = model.AgentConfig
-	m.ShapeConfig = model.ShapeConfig
 	nn, e := model.SourceDetails.UnmarshalPolymorphicJSON(model.SourceDetails.JsonData)
 	if e != nil {
 		return
@@ -254,32 +232,8 @@ func (m *LaunchInstanceDetails) UnmarshalJSON(data []byte) (e error) {
 		m.SecondaryVnicAttachments[i] = n
 	}
 	m.IsPvEncryptionInTransitEnabled = model.IsPvEncryptionInTransitEnabled
-	m.PreferredMaintenanceAction = model.PreferredMaintenanceAction
 	m.AvailabilityDomain = model.AvailabilityDomain
 	m.CompartmentId = model.CompartmentId
 	m.Shape = model.Shape
 	return
-}
-
-// LaunchInstanceDetailsPreferredMaintenanceActionEnum Enum with underlying type: string
-type LaunchInstanceDetailsPreferredMaintenanceActionEnum string
-
-// Set of constants representing the allowable values for LaunchInstanceDetailsPreferredMaintenanceActionEnum
-const (
-	LaunchInstanceDetailsPreferredMaintenanceActionLiveMigrate LaunchInstanceDetailsPreferredMaintenanceActionEnum = "LIVE_MIGRATE"
-	LaunchInstanceDetailsPreferredMaintenanceActionReboot      LaunchInstanceDetailsPreferredMaintenanceActionEnum = "REBOOT"
-)
-
-var mappingLaunchInstanceDetailsPreferredMaintenanceAction = map[string]LaunchInstanceDetailsPreferredMaintenanceActionEnum{
-	"LIVE_MIGRATE": LaunchInstanceDetailsPreferredMaintenanceActionLiveMigrate,
-	"REBOOT":       LaunchInstanceDetailsPreferredMaintenanceActionReboot,
-}
-
-// GetLaunchInstanceDetailsPreferredMaintenanceActionEnumValues Enumerates the set of values for LaunchInstanceDetailsPreferredMaintenanceActionEnum
-func GetLaunchInstanceDetailsPreferredMaintenanceActionEnumValues() []LaunchInstanceDetailsPreferredMaintenanceActionEnum {
-	values := make([]LaunchInstanceDetailsPreferredMaintenanceActionEnum, 0)
-	for _, v := range mappingLaunchInstanceDetailsPreferredMaintenanceAction {
-		values = append(values, v)
-	}
-	return values
 }

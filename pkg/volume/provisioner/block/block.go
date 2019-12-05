@@ -17,11 +17,6 @@ package block
 import (
 	"context"
 	"fmt"
-	"regexp"
-	"strconv"
-	"strings"
-
-	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
 	"github.com/oracle/oci-go-sdk/common"
@@ -32,6 +27,9 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"regexp"
+	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
+	"strconv"
 )
 
 const (
@@ -78,16 +76,19 @@ func NewBlockProvisioner(
 	}
 }
 
-func mapVolumeIDToName(volumeID string) string {
-	return strings.Split(volumeID, ".")[4]
-}
-
 func resolveFSType(options controller.ProvisionOptions) string {
-	fs := "ext4" // default to ext4
-	if fsType, ok := options.StorageClass.Parameters[FSType]; ok {
-		fs = fsType
+	fsType, _ := options.StorageClass.Parameters[FSType]
+
+	defaultFsType := "ext4"
+	if fsType == "ext4" || fsType == "ext3" {
+		return fsType
+	} else if fsType != "" {
+		//TODO: Remove this code when we support other than ext4 || ext3.
+		return defaultFsType
+	} else {
+		//No fsType provided returning ext4
+		return defaultFsType
 	}
-	return fs
 }
 
 func roundUpSize(volumeSizeBytes int64, allocationUnitBytes int64) int64 {

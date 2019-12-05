@@ -1,13 +1,9 @@
-// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
-// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
-// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
-// to manage resources such as virtual cloud networks (VCNs), compute instances, and
-// block storage volumes.
+// APIs for Networking Service, Compute Service, and Block Volume Service.
 //
 
 package core
@@ -50,31 +46,22 @@ type Volume struct {
 	// The date and time the volume was created. Format defined by RFC3339.
 	TimeCreated *common.SDKTime `mandatory:"true" json:"timeCreated"`
 
-	// Defined tags for this resource. Each key is predefined and scoped to a
-	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
-	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// predefined name, type, or namespace. For more information, see
+	// Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
-
-	// System tags for this resource. Each key is predefined and scoped to a namespace.
-	// Example: `{"foo-namespace": {"bar-key": "value"}}`
-	SystemTags map[string]map[string]interface{} `mandatory:"false" json:"systemTags"`
 
 	// Specifies whether the cloned volume's data has finished copying from the source volume or backup.
 	IsHydrated *bool `mandatory:"false" json:"isHydrated"`
 
-	// The OCID of the Key Management key which is the master encryption key for the volume.
+	// The OCID of the KMS key which is the master encryption key for the volume.
 	KmsKeyId *string `mandatory:"false" json:"kmsKeyId"`
-
-	// The performance tier of the volume.
-	PerformanceTier VolumePerformanceTierEnum `mandatory:"false" json:"performanceTier,omitempty"`
-
-	// The number of Volume Performance Units that will be applied to this volume per GB.
-	VpusPerGB *int64 `mandatory:"false" json:"vpusPerGB"`
 
 	// The size of the volume in GBs.
 	SizeInGBs *int64 `mandatory:"false" json:"sizeInGBs"`
@@ -96,11 +83,8 @@ func (m *Volume) UnmarshalJSON(data []byte) (e error) {
 	model := struct {
 		DefinedTags        map[string]map[string]interface{} `json:"definedTags"`
 		FreeformTags       map[string]string                 `json:"freeformTags"`
-		SystemTags         map[string]map[string]interface{} `json:"systemTags"`
 		IsHydrated         *bool                             `json:"isHydrated"`
 		KmsKeyId           *string                           `json:"kmsKeyId"`
-		PerformanceTier    VolumePerformanceTierEnum         `json:"performanceTier"`
-		VpusPerGB          *int64                            `json:"vpusPerGB"`
 		SizeInGBs          *int64                            `json:"sizeInGBs"`
 		SourceDetails      volumesourcedetails               `json:"sourceDetails"`
 		VolumeGroupId      *string                           `json:"volumeGroupId"`
@@ -119,11 +103,8 @@ func (m *Volume) UnmarshalJSON(data []byte) (e error) {
 	}
 	m.DefinedTags = model.DefinedTags
 	m.FreeformTags = model.FreeformTags
-	m.SystemTags = model.SystemTags
 	m.IsHydrated = model.IsHydrated
 	m.KmsKeyId = model.KmsKeyId
-	m.PerformanceTier = model.PerformanceTier
-	m.VpusPerGB = model.VpusPerGB
 	m.SizeInGBs = model.SizeInGBs
 	nn, e := model.SourceDetails.UnmarshalPolymorphicJSON(model.SourceDetails.JsonData)
 	if e != nil {
@@ -171,31 +152,6 @@ var mappingVolumeLifecycleState = map[string]VolumeLifecycleStateEnum{
 func GetVolumeLifecycleStateEnumValues() []VolumeLifecycleStateEnum {
 	values := make([]VolumeLifecycleStateEnum, 0)
 	for _, v := range mappingVolumeLifecycleState {
-		values = append(values, v)
-	}
-	return values
-}
-
-// VolumePerformanceTierEnum Enum with underlying type: string
-type VolumePerformanceTierEnum string
-
-// Set of constants representing the allowable values for VolumePerformanceTierEnum
-const (
-	VolumePerformanceTierOne   VolumePerformanceTierEnum = "TIER_ONE"
-	VolumePerformanceTierTwo   VolumePerformanceTierEnum = "TIER_TWO"
-	VolumePerformanceTierThree VolumePerformanceTierEnum = "TIER_THREE"
-)
-
-var mappingVolumePerformanceTier = map[string]VolumePerformanceTierEnum{
-	"TIER_ONE":   VolumePerformanceTierOne,
-	"TIER_TWO":   VolumePerformanceTierTwo,
-	"TIER_THREE": VolumePerformanceTierThree,
-}
-
-// GetVolumePerformanceTierEnumValues Enumerates the set of values for VolumePerformanceTierEnum
-func GetVolumePerformanceTierEnumValues() []VolumePerformanceTierEnum {
-	values := make([]VolumePerformanceTierEnum, 0)
-	for _, v := range mappingVolumePerformanceTier {
 		values = append(values, v)
 	}
 	return values

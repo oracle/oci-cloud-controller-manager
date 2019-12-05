@@ -172,7 +172,7 @@ func (d *ControllerDriver) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 
 	err := d.client.BlockStorage().DeleteVolume(ctx, req.VolumeId)
 	if err != nil && !errors.IsNotFound(err) {
-		log.Error("Failed to delete volume %s", err)
+		log.With(zap.Error(err)).Error("Failed to delete volume.")
 		return nil, fmt.Errorf("failed to delete volume, volumeId: %s, error: %v", req.VolumeId, err)
 	}
 
@@ -199,7 +199,7 @@ func (d *ControllerDriver) ControllerPublishVolume(ctx context.Context, req *csi
 
 	id, err := d.util.lookupNodeID(d.KubeClient, req.NodeId)
 	if err != nil {
-		log.With("nodeId", req.NodeId).Error("failed to lookup node %s", err)
+		log.With(zap.Error(err)).With("nodeId", req.NodeId).Error("Failed to lookup node")
 		return nil, status.Errorf(codes.InvalidArgument, "failed to get ProviderID by nodeName. error : %s", err)
 	}
 	id = client.MapProviderIDToInstanceID(id)
@@ -209,11 +209,11 @@ func (d *ControllerDriver) ControllerPublishVolume(ctx context.Context, req *csi
 		if client.IsNotFound(err) {
 			volumeAttached, err = d.client.Compute().AttachVolume(context.Background(), id, req.VolumeId)
 			if err != nil {
-				d.logger.With("nodeId", req.NodeId).Info("Failed to attach instance to node %s", err)
+				d.logger.With(zap.Error(err)).With("nodeId", req.NodeId).Info("Failed to attach instance to node.")
 				return nil, status.Errorf(codes.Unknown, "Failed to attach instance to node. error : %s", err)
 			}
 		} else {
-			d.logger.With("nodeId", req.NodeId).Error("Volume is not already attached to node %s", err)
+			d.logger.With(zap.Error(err)).With("nodeId", req.NodeId).Error("Volume is not already attached to node.")
 			return nil, err
 		}
 	}
@@ -227,7 +227,7 @@ func (d *ControllerDriver) ControllerPublishVolume(ctx context.Context, req *csi
 
 	volumeAttached, err = d.client.Compute().WaitForVolumeAttached(ctx, *volumeAttached.GetId())
 	if err != nil {
-		d.logger.With("nodeId", req.NodeId).Error("Failed to attache volume to the node %s", err)
+		d.logger.With(zap.Error(err)).With("nodeId", req.NodeId).Error("Failed to attache volume to the node.")
 		return nil, status.Errorf(codes.Unknown, "Failed to attach volume to the node %s", err)
 	}
 
@@ -257,14 +257,14 @@ func (d *ControllerDriver) ControllerUnpublishVolume(ctx context.Context, req *c
 		if client.IsNotFound(err) {
 			return &csi.ControllerUnpublishVolumeResponse{}, nil
 		}
-		log.With("nodeId", req.NodeId).Error("Volume is not detached from the node %s", err)
+		log.With(zap.Error(err)).With("nodeId", req.NodeId).Error("Volume is not detached from the node.")
 		return nil, err
 	}
 
 	log.With("volumeAttachedId", attachedVolume.GetId()).Info("Detaching Volume.")
 	err = d.client.Compute().DetachVolume(context.Background(), *attachedVolume.GetId())
 	if err != nil {
-		log.With("nodeId", req.NodeId).Error("Volume can not be detached %s", err)
+		log.With(zap.Error(err)).With("nodeId", req.NodeId).Error("Volume can not be detached.")
 		return nil, status.Errorf(codes.Unknown, "volume can not be detached %s", err)
 	}
 
@@ -292,7 +292,7 @@ func (d *ControllerDriver) ValidateVolumeCapabilities(ctx context.Context, req *
 
 	volume, err := d.client.BlockStorage().GetVolume(ctx, req.VolumeId)
 	if err != nil {
-		log.Error("Volume ID not found %s", err)
+		log.With(zap.Error(err)).Error("Volume ID not found.")
 		return nil, status.Errorf(codes.NotFound, "Volume ID not found.")
 	}
 
@@ -479,7 +479,7 @@ func provision(log *zap.SugaredLogger, c client.Interface, volName string, volSi
 	newVolume, err := c.BlockStorage().CreateVolume(ctx, volumeDetails)
 
 	if err != nil {
-		log.With("volumeName", volName).Error("Create volume failed %s", err)
+		log.With(zap.Error(err)).With("volumeName", volName).Error("Create volume failed.")
 		status.Errorf(codes.Unknown, "Create volume failed")
 		return core.Volume{}, err
 	}

@@ -20,12 +20,10 @@ import (
 	"fmt"
 	"github.com/oracle/oci-cloud-controller-manager/cmd/oci-csi-controller-driver/csi-controller"
 	"github.com/oracle/oci-cloud-controller-manager/cmd/oci-csi-controller-driver/csioptions"
-	_ "io"
 	"k8s.io/apiserver/pkg/util/term"
 	"k8s.io/component-base/cli/globalflag"
 	"os"
 	"os/signal"
-	_ "strings"
 	"sync"
 	"syscall"
 	"time"
@@ -36,6 +34,7 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	cliflag "k8s.io/component-base/cli/flag"
+	utilflag "k8s.io/component-base/cli/flag"
 	cloudControllerManager "k8s.io/kubernetes/cmd/cloud-controller-manager/app"
 	cloudControllerManagerConfig "k8s.io/kubernetes/cmd/cloud-controller-manager/app/config"
 	"k8s.io/kubernetes/cmd/cloud-controller-manager/app/options"
@@ -43,9 +42,9 @@ import (
 )
 
 var (
-	minVolumeSize, resourcePrincipalFile    string
+	minVolumeSize, resourcePrincipalFile                                             string
 	enableCSI, enableVolumeProvisioning, volumeRoundingEnabled, useResourcePrincipal bool
-	resourcePrincipalInitialTimeout   time.Duration
+	resourcePrincipalInitialTimeout                                                  time.Duration
 )
 
 var csioption = csioptions.CSIOptions{}
@@ -99,23 +98,24 @@ manager and oci volume provisioner. It embeds the cloud specific control loops s
 	// csi flag set.
 	csiFlagSet := namedFlagSets.FlagSet("CSI Controller")
 	csiFlagSet.BoolVar(&enableCSI, "csi-enabled", false, "Whether to enable CSI feature in OKE")
-	csiFlagSet.StringVar(&csioption.CsiAddress,"csi-address", "/run/csi/socket", "Address of the CSI driver socket.")
-	csiFlagSet.StringVar(&csioption.Endpoint,"endpoint", "unix://tmp/csi.sock", "CSI endpoint")
-	csiFlagSet.StringVar(&csioption.VolumeNamePrefix, "volume-name-prefix", "pvc", "Prefix to apply to the name of a created volume.")
-	csiFlagSet.IntVar(&csioption.VolumeNameUUIDLength, "volume-name-uuid-length", -1, "Truncates generated UUID of a created volume to this length. Defaults behavior is to NOT truncate.")
-	csiFlagSet.BoolVar(&csioption.ShowVersion, "version", false, "Show version.")
-	csiFlagSet.DurationVar(&csioption.RetryIntervalStart, "retry-interval-start", time.Second, "Initial retry interval of failed provisioning or deletion. It doubles with each failure, up to retry-interval-max.")
-	csiFlagSet.DurationVar(&csioption.RetryIntervalMax,"retry-interval-max", 5*time.Minute, "Maximum retry interval of failed provisioning or deletion.")
-	csiFlagSet.UintVar(&csioption.WorkerThreads, "worker-threads", 100, "Number of provisioner worker threads, in other words nr. of simultaneous CSI calls.")
-	csiFlagSet.DurationVar(&csioption.OperationTimeout, "op-timeout", 10*time.Second, "Timeout for waiting for creation or deletion of a volume")
-	csiFlagSet.BoolVar(&csioption.EnableLeaderElection, "enable-leader-election", false, "Enables leader election. If leader election is enabled, additional RBAC rules are required. Please refer to the Kubernetes CSI documentation for instructions on setting up these RBAC rules.")
-	csiFlagSet.StringVar(&csioption.LeaderElectionType, "leader-election-type", "endpoints", "the type of leader election, options are 'endpoints' (default) or 'leases' (strongly recommended). The 'endpoints' option is deprecated in favor of 'leases'.")
-	csiFlagSet.StringVar(&csioption.LeaderElectionNamespace, "leader-election-namespace", "", "Namespace where the leader election resource lives. Defaults to the pod namespace if not set.")
-	csiFlagSet.BoolVar(&csioption.StrictTopology, "strict-topology", false, "Passes only selected node topology to CreateVolume Request, unlike default behavior of passing aggregated cluster topologies that match with topology keys of the selected node.")
-	csiFlagSet.DurationVar(&csioption.Resync,"resync", 10*time.Minute, "Resync interval of the controller.")
-	csiFlagSet.DurationVar(&csioption.Timeout, "timeout", 15*time.Second, "Timeout for waiting for attaching or detaching the volume.")
-	csiFlagSet.StringVar(&csioption.NodeID, "nodeid", "", "node id")
-	csiFlagSet.StringVar(&csioption.LogLevel,"loglevel", "info", "log level")
+	csiFlagSet.StringVar(&csioption.CsiAddress, "csi-address", "/run/csi/socket", "Address of the CSI driver socket.")
+	csiFlagSet.StringVar(&csioption.Endpoint, "csi-endpoint", "unix://tmp/csi.sock", "CSI endpoint")
+	csiFlagSet.StringVar(&csioption.VolumeNamePrefix, "csi-volume-name-prefix", "pvc", "Prefix to apply to the name of a created volume.")
+	csiFlagSet.IntVar(&csioption.VolumeNameUUIDLength, "csi-volume-name-uuid-length", -1, "Truncates generated UUID of a created volume to this length. Defaults behavior is to NOT truncate.")
+	csiFlagSet.BoolVar(&csioption.ShowVersion, "csi-version", false, "Show version.")
+	csiFlagSet.DurationVar(&csioption.RetryIntervalStart, "csi-retry-interval-start", time.Second, "Initial retry interval of failed provisioning or deletion. It doubles with each failure, up to retry-interval-max.")
+	csiFlagSet.DurationVar(&csioption.RetryIntervalMax, "csi-retry-interval-max", 5*time.Minute, "Maximum retry interval of failed provisioning or deletion.")
+	csiFlagSet.UintVar(&csioption.WorkerThreads, "csi-worker-threads", 100, "Number of provisioner worker threads, in other words nr. of simultaneous CSI calls.")
+	csiFlagSet.DurationVar(&csioption.OperationTimeout, "csi-op-timeout", 10*time.Second, "Timeout for waiting for creation or deletion of a volume")
+	csiFlagSet.BoolVar(&csioption.EnableLeaderElection, "csi-enable-leader-election", false, "Enables leader election. If leader election is enabled, additional RBAC rules are required. Please refer to the Kubernetes CSI documentation for instructions on setting up these RBAC rules.")
+	csiFlagSet.StringVar(&csioption.LeaderElectionType, "csi-leader-election-type", "endpoints", "the type of leader election, options are 'endpoints' (default) or 'leases' (strongly recommended). The 'endpoints' option is deprecated in favor of 'leases'.")
+	csiFlagSet.StringVar(&csioption.LeaderElectionNamespace, "csi-leader-election-namespace", "", "Namespace where the leader election resource lives. Defaults to the pod namespace if not set.")
+	csiFlagSet.BoolVar(&csioption.StrictTopology, "csi-strict-topology", false, "Passes only selected node topology to CreateVolume Request, unlike default behavior of passing aggregated cluster topologies that match with topology keys of the selected node.")
+	csiFlagSet.DurationVar(&csioption.Resync, "csi-resync", 10*time.Minute, "Resync interval of the controller.")
+	csiFlagSet.DurationVar(&csioption.Timeout, "csi-timeout", 15*time.Second, "Timeout for waiting for attaching or detaching the volume.")
+	csiFlagSet.StringVar(&csioption.NodeID, "csi-nodeid", "", "node id")
+	csiFlagSet.StringVar(&csioption.LogLevel, "csi-loglevel", "info", "log level")
+	csiFlagSet.Var(utilflag.NewMapStringBool(&csioption.FeatureGates), "csi-feature-gates", "A set of key=value pairs that describe feature gates for alpha/experimental features. ")
 
 	verflag.AddFlags(namedFlagSets.FlagSet("global"))
 	globalflag.AddGlobalFlags(namedFlagSets.FlagSet("global"), command.Name())
@@ -186,7 +186,7 @@ func run(logger *zap.SugaredLogger, config *cloudControllerManagerConfig.Complet
 		cancelFunc()
 	}()
 
-	if enableCSI == true{
+	if enableCSI == true {
 		wg.Add(1)
 		logger := logger.With(zap.String("component", "CSI controller driver"))
 		logger.Info("CSI is enabled.")

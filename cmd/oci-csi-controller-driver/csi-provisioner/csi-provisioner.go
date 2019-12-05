@@ -24,8 +24,6 @@ import (
 	"strings"
 	"time"
 
-	flag "github.com/spf13/pflag"
-
 	"github.com/kubernetes-csi/csi-lib-utils/leaderelection"
 	ctrl "github.com/kubernetes-csi/external-provisioner/pkg/controller"
 	snapclientset "github.com/kubernetes-csi/external-snapshotter/pkg/client/clientset/versioned"
@@ -39,12 +37,10 @@ import (
 	"k8s.io/klog"
 
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	utilflag "k8s.io/component-base/cli/flag"
 	csitranslationlib "k8s.io/csi-translation-lib"
 )
 
 var (
-	featureGates        map[string]bool
 	provisionController *controller.ProvisionController
 )
 
@@ -53,14 +49,13 @@ type leaderElection interface {
 	WithNamespace(namespace string)
 }
 
+//StartCSIProvisioner main function to start CSI Controller Provisioner
 func StartCSIProvisioner(csioptions csioptions.CSIOptions) {
 	var config *rest.Config
 	var err error
-	version             := "unknown"
-	flag.Var(utilflag.NewMapStringBool(&featureGates), "feature-gates", "A set of key=value pairs that describe feature gates for alpha/experimental features. "+
-		"Options are:\n"+strings.Join(utilfeature.DefaultFeatureGate.KnownFeatures(), "\n"))
+	version := "unknown"
 
-	if err := utilfeature.DefaultMutableFeatureGate.SetFromMap(featureGates); err != nil {
+	if err := utilfeature.DefaultMutableFeatureGate.SetFromMap(csioptions.FeatureGates); err != nil {
 		klog.Fatal(err)
 	}
 

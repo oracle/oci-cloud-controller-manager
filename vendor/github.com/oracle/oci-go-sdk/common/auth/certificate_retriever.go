@@ -8,8 +8,9 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"github.com/oracle/oci-go-sdk/common"
 	"sync"
+
+	"github.com/oracle/oci-go-sdk/common"
 )
 
 // x509CertificateRetriever provides an X509 certificate with the RSA private key

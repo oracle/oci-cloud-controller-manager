@@ -57,24 +57,19 @@ func toStringValue(v reflect.Value, field reflect.StructField) (string, error) {
 	case reflect.String:
 		return v.String(), nil
 	case reflect.Float32:
-		return strconv.FormatFloat(v.Float(), 'f', -1, 32), nil
+		return strconv.FormatFloat(v.Float(), 'f', 6, 32), nil
 	case reflect.Float64:
-		return strconv.FormatFloat(v.Float(), 'f', -1, 64), nil
+		return strconv.FormatFloat(v.Float(), 'f', 6, 64), nil
 	default:
 		return "", fmt.Errorf("marshaling structure to a http.Request does not support field named: %s of type: %v",
 			field.Name, v.Type().String())
 	}
 }
 
-func addBinaryBody(request *http.Request, value reflect.Value, field reflect.StructField) (e error) {
+func addBinaryBody(request *http.Request, value reflect.Value) (e error) {
 	readCloser, ok := value.Interface().(io.ReadCloser)
-	isMandatory, err := strconv.ParseBool(field.Tag.Get("mandatory"))
-	if err != nil {
-		return fmt.Errorf("mandatory tag is not valid for field %s", field.Name)
-	}
-
-	if isMandatory && !ok {
-		e = fmt.Errorf("body of the request is mandatory and needs  to be an io.ReadCloser interface. Can not marshal body of binary request")
+	if !ok {
+		e = fmt.Errorf("body of the request needs to be an io.ReadCloser interface. Can not marshal body of binary request")
 		return
 	}
 
@@ -257,7 +252,7 @@ func addToBody(request *http.Request, value reflect.Value, field reflect.StructF
 	encoding := tag.Get("encoding")
 
 	if encoding == "binary" {
-		return addBinaryBody(request, value, field)
+		return addBinaryBody(request, value)
 	}
 
 	rawJSON, e := json.Marshal(value.Interface())

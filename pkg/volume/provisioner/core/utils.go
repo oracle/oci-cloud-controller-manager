@@ -23,16 +23,15 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/cloud-provider/volume/helpers"
-
 )
 
 // chooseAvailabilityDomain selects the availability zone using the ZoneFailureDomain labels
 // on the nodes. This only works if the nodes have been labeled by either the CCM or some other method.
 func (p *OCIProvisioner) chooseAvailabilityDomain(ctx context.Context, pvc *v1.PersistentVolumeClaim) (string, *identity.AvailabilityDomain, error) {
 	var (
-		availabilityDomainName string
+		availabilityDomainName  string
 		availabilityDomainNames sets.String
-		ok                     bool
+		ok                      bool
 	)
 
 	if pvc.Spec.Selector != nil {

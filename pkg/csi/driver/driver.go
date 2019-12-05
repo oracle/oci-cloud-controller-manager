@@ -24,7 +24,7 @@ import (
 
 const (
 	// DriverName defines the driver name to be used in Kubernetes
-	DriverName = "blockvolume.oci.csi.oracle.com"
+	DriverName = "blockvolume.csi.oraclecloud.com"
 
 	// DriverVersion is the version of the CSI driver
 	DriverVersion = "0.1.0"
@@ -173,18 +173,18 @@ func getConfig(logger *zap.SugaredLogger) *providercfg.Config {
 
 	cfg, err := providercfg.FromFile(configPath)
 	if err != nil {
-		logger.With("config", configPath, "error", err).Fatal("Failed to load configuration file from given path.")
+		logger.With(zap.Error(err)).With("config", configPath).Fatal("Failed to load configuration file from given path.")
 	}
 
 	err = cfg.Validate()
 	if err != nil {
-		logger.With("config", configPath, "error", err).Fatal("Failed to validate. Invalid configuration.")
+		logger.With(zap.Error(err)).With("config", configPath).Fatal("Failed to validate. Invalid configuration.")
 	}
 
 	if cfg.CompartmentID == "" {
 		metadata, err := metadata.New().Get()
 		if err != nil {
-			logger.With(zap.Error(err)).With("config", configPath, "error", err).Fatalf("Neither CompartmentID is given. Nor able to retrieve compartment OCID from metadata.")
+			logger.With(zap.Error(err)).With("config", configPath).Fatalf("Neither CompartmentID is given. Nor able to retrieve compartment OCID from metadata.")
 		}
 		cfg.CompartmentID = metadata.CompartmentID
 	}
@@ -198,7 +198,7 @@ func getClient(logger *zap.SugaredLogger) client.Interface {
 	c, err := client.GetClient(logger, cfg)
 
 	if err != nil {
-		logger.With("error", err).Fatal("client can not be generated.")
+		logger.With(zap.Error(err)).Fatal("client can not be generated.")
 	}
 	return c
 }
