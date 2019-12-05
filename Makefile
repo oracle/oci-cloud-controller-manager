@@ -14,7 +14,7 @@
 
 PKG := github.com/oracle/oci-cloud-controller-manager
 REGISTRY ?= odo-docker-local.artifactory.oci.oraclecorp.com
-IMAGE ?= $(REGISTRY)/oke-cloud-provider-oci
+IMAGE ?= $(REGISTRY)/oke-public-cloud-provider-oci
 COMPONENT ?= oci-cloud-controller-manager oci-volume-provisioner oci-flexvolume-driver cloud-provider-oci oci-csi-controller-driver oci-csi-node-driver
 
 GIT_COMMIT := $(shell GCOMMIT=`git rev-parse --short HEAD`; if [ -n "`git status . --porcelain`" ]; then echo "$$GCOMMIT-dirty"; else echo $$GCOMMIT; fi)

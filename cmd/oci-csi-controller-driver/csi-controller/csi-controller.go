@@ -23,20 +23,19 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"time"
 )
 
+//Run main function to start CSI Controller
 func Run(csioptions csioptions.CSIOptions, stopCh <-chan struct{}) error {
 	log := logging.Logger()
 	logger := log.Sugar()
 	config, err := clientcmd.BuildConfigFromFlags(csioptions.Master, csioptions.Kubeconfig)
 	clientset, err := kubernetes.NewForConfig(config)
-	var serverVersion *version.Info
 	err = wait.PollUntil(15*time.Second, func() (done bool, err error) {
-		serverVersion, err = clientset.Discovery().ServerVersion()
+		_, err = clientset.Discovery().ServerVersion()
 		if err != nil {
 			logger.With(zap.Error(err)).Info("failed to get kube-apiserver version, will retry again")
 			return false, nil
@@ -50,6 +49,6 @@ func Run(csioptions csioptions.CSIOptions, stopCh <-chan struct{}) error {
 	go csiprovisioner.StartCSIProvisioner(csioptions)
 	go csiattacher.StartCSIAttacher(csioptions)
 	go csicontrollerdriver.StartControllerDriver(csioptions)
-	<- stopCh
+	<-stopCh
 	return nil
 }

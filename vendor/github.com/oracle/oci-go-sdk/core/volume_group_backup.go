@@ -1,13 +1,9 @@
-// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
-// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
-// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
-// to manage resources such as virtual cloud networks (VCNs), compute instances, and
-// block storage volumes.
+// APIs for Networking Service, Compute Service, and Block Volume Service.
 //
 
 package core
@@ -47,20 +43,14 @@ type VolumeGroupBackup struct {
 	// OCIDs for the volume backups in this volume group backup.
 	VolumeBackupIds []string `mandatory:"true" json:"volumeBackupIds"`
 
-	// Defined tags for this resource. Each key is predefined and scoped to a
-	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
-	// The date and time the volume group backup will expire and be automatically deleted.
-	// Format defined by RFC3339. This parameter will always be present for volume group
-	// backups that were created automatically by a scheduled-backup policy. For manually
-	// created volume group backups, it will be absent, signifying that there is no expiration
-	// time and the backup will last forever until manually deleted.
-	ExpirationTime *common.SDKTime `mandatory:"false" json:"expirationTime"`
-
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
-	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// predefined name, type, or namespace. For more information, see
+	// Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
@@ -69,9 +59,6 @@ type VolumeGroupBackup struct {
 
 	// The aggregate size of the volume group backup, in GBs.
 	SizeInGBs *int64 `mandatory:"false" json:"sizeInGBs"`
-
-	// Specifies whether the volume group backup was created manually, or via scheduled backup policy.
-	SourceType VolumeGroupBackupSourceTypeEnum `mandatory:"false" json:"sourceType,omitempty"`
 
 	// The date and time the request to create the volume group backup was received. Format defined by RFC3339.
 	TimeRequestReceived *common.SDKTime `mandatory:"false" json:"timeRequestReceived"`
@@ -122,29 +109,6 @@ var mappingVolumeGroupBackupLifecycleState = map[string]VolumeGroupBackupLifecyc
 func GetVolumeGroupBackupLifecycleStateEnumValues() []VolumeGroupBackupLifecycleStateEnum {
 	values := make([]VolumeGroupBackupLifecycleStateEnum, 0)
 	for _, v := range mappingVolumeGroupBackupLifecycleState {
-		values = append(values, v)
-	}
-	return values
-}
-
-// VolumeGroupBackupSourceTypeEnum Enum with underlying type: string
-type VolumeGroupBackupSourceTypeEnum string
-
-// Set of constants representing the allowable values for VolumeGroupBackupSourceTypeEnum
-const (
-	VolumeGroupBackupSourceTypeManual    VolumeGroupBackupSourceTypeEnum = "MANUAL"
-	VolumeGroupBackupSourceTypeScheduled VolumeGroupBackupSourceTypeEnum = "SCHEDULED"
-)
-
-var mappingVolumeGroupBackupSourceType = map[string]VolumeGroupBackupSourceTypeEnum{
-	"MANUAL":    VolumeGroupBackupSourceTypeManual,
-	"SCHEDULED": VolumeGroupBackupSourceTypeScheduled,
-}
-
-// GetVolumeGroupBackupSourceTypeEnumValues Enumerates the set of values for VolumeGroupBackupSourceTypeEnum
-func GetVolumeGroupBackupSourceTypeEnumValues() []VolumeGroupBackupSourceTypeEnum {
-	values := make([]VolumeGroupBackupSourceTypeEnum, 0)
-	for _, v := range mappingVolumeGroupBackupSourceType {
 		values = append(values, v)
 	}
 	return values

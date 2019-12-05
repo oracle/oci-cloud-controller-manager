@@ -1,13 +1,9 @@
-// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
-// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
-// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
-// to manage resources such as virtual cloud networks (VCNs), compute instances, and
-// block storage volumes.
+// APIs for Networking Service, Compute Service, and Block Volume Service.
 //
 
 package core
@@ -38,8 +34,7 @@ type RouteRule struct {
 	// Allowed values:
 	//   * IP address range in CIDR notation. Can be an IPv4 or IPv6 CIDR. For example: `192.168.1.0/24`
 	//   or `2001:0db8:0123:45::/56`. If you set this to an IPv6 CIDR, the route rule's target
-	//   can only be a DRG or internet gateway. Note that IPv6 addressing is currently supported only
-	//   in the Government Cloud.
+	//   can only be a DRG or internet gateway.
 	//   * The `cidrBlock` value for a Service, if you're
 	//     setting up a route rule for traffic destined for a particular `Service` through
 	//     a service gateway. For example: `oci-phx-objectstorage`.

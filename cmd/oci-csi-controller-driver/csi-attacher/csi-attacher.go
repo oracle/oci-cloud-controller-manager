@@ -55,6 +55,7 @@ type leaderElection interface {
 	WithNamespace(namespace string)
 }
 
+//StartCSIAttacher main function to start CSI attacher
 func StartCSIAttacher(csioptions csioptions.CSIOptions) {
 
 	if csioptions.ShowVersion {

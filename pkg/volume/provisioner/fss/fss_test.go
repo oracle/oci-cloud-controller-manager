@@ -16,10 +16,10 @@ package fss
 
 import (
 	"context"
+	v12 "k8s.io/api/storage/v1"
 	"testing"
 	"time"
 
-	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/core"
@@ -30,6 +30,7 @@ import (
 	"go.uber.org/zap/zaptest"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
 )
 
 var (
@@ -361,15 +362,22 @@ func TestCreateVolumeWithFSS(t *testing.T) {
 		logger: zaptest.NewLogger(t).Sugar(),
 		region: "phx",
 	}
+
+	persistentVolumeReclaimPolicy := v1.PersistentVolumeReclaimPolicy("Test")
+
+	storageClass := v12.StorageClass{
+		Parameters:    map[string]string{MntTargetID: "dummyMountTargetID"},
+		ReclaimPolicy: &persistentVolumeReclaimPolicy,
+	}
 	_, err := fsp.Provision(
-		controller.VolumeOptions{
-			PVName: "dummyVolumeOptions",
+		controller.ProvisionOptions{
+			StorageClass: &storageClass,
+			PVName:       "dummyVolumeOptions",
 			PVC: &v1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
 					UID: "my-uid",
 				},
 			},
-			Parameters: map[string]string{MntTargetID: "dummyMountTargetID"},
 		},
 		&identity.AvailabilityDomain{
 			Name:          common.String("dummyAdName"),

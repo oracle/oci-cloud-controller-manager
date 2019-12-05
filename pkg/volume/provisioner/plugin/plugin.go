@@ -15,9 +15,9 @@
 package plugin
 
 import (
-	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
 	"github.com/oracle/oci-go-sdk/identity"
 	"k8s.io/api/core/v1"
+	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
 )
 
 const (

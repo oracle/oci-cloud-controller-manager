@@ -11,11 +11,11 @@ import (
 
 	"go.uber.org/zap"
 
+	kubeAPI "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	kubeAPI "k8s.io/api/core/v1"
 )
 
 const (
@@ -129,13 +129,13 @@ func extractISCSIInformationFromMountPath(logger *zap.SugaredLogger, mountPath s
 	logger.Info("Getting ISCSIInfo for the mount path: ", mountPath)
 	m, err := iscsi.FindFromMountPointPath(logger, mountPath)
 	if err != nil {
-		logger.With("mount path", mountPath).Error("Invalid mount path %v", err)
+		logger.With(zap.Error(err)).With("mount path", mountPath).Error("Invalid mount path")
 		return nil, err
 	}
 
 	port, err := strconv.Atoi(m[2])
 	if err != nil {
-		logger.With("mount path", mountPath, "port", port).Error("Invalid port %v", err)
+		logger.With(zap.Error(err)).With("mount path", mountPath, "port", port).Error("Invalid port")
 		return nil, err
 	}
 

@@ -20,7 +20,6 @@ import (
 	"math/rand"
 	"time"
 
-	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
@@ -30,6 +29,7 @@ import (
 	"go.uber.org/zap"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
 )
 
 const (

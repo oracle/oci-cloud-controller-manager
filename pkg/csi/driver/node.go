@@ -258,10 +258,10 @@ func (d *NodeDriver) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoReques
 	ad, err := d.util.lookupNodeAvailableDomain(d.KubeClient, d.nodeID)
 
 	if err != nil {
-		d.logger.With("nodeId", d.nodeID, "availableDomain", ad).Error(err)
+		d.logger.With(zap.Error(err)).With("nodeId", d.nodeID, "availableDomain", ad).Error("Available domain of node missing.")
 	}
 
-	d.logger.With("nodeId", d.nodeID, "availableDomain", ad).Info("available domain of node identified")
+	d.logger.With("nodeId", d.nodeID, "availableDomain", ad).Info("Available domain of node identified.")
 	return &csi.NodeGetInfoResponse{
 		NodeId:            d.nodeID,
 		MaxVolumesPerNode: maxVolumesPerNode,
