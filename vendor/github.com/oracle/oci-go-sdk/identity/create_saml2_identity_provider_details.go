@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Identity and Access Management Service API
@@ -48,21 +48,6 @@ type CreateSaml2IdentityProviderDetails struct {
 	// Extra name value pairs associated with this identity provider.
 	// Example: `{"clientId": "app_sf3kdjf3"}`
 	FreeformAttributes map[string]string `mandatory:"false" json:"freeformAttributes"`
-
-	// When set to true, the service provider expects the SAML assertion to be encrypted by the identity provider,
-	// using the service provider's encryption key. In this case, the service provider is Oracle Cloud
-	// Infrastructure Authentication service.
-	EncryptAssertion *bool `mandatory:"false" json:"encryptAssertion"`
-
-	// If set to true, when the user is redirected to the identity provider, the identity provider forces the
-	// user to provide credentials and re-authenticate, even if there is an active login session.
-	ForceAuthentication *bool `mandatory:"false" json:"forceAuthentication"`
-
-	// Authentication contexts requested when sending a SAML request to the identity provider. There could be one or
-	// more requested contexts. Usually identity provider uses the one that has the highest authentication strength.
-	// Example: `["urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport",
-	// "urn:oasis:names:tc:SAML:2.0:ac:classes:TLSClient"]`
-	AuthnContextClassRefs []string `mandatory:"false" json:"authnContextClassRefs"`
 
 	// The identity provider service or product.
 	// Supported identity providers are Oracle Identity Cloud Service (IDCS) and Microsoft

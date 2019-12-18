@@ -8,9 +8,8 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"sync"
-
 	"github.com/oracle/oci-go-sdk/common"
+	"sync"
 )
 
 // x509CertificateRetriever provides an X509 certificate with the RSA private key
@@ -159,15 +158,6 @@ func (r *urlBasedX509CertificateRetriever) PrivateKey() *rsa.PrivateKey {
 
 	c := *r.privateKey
 	return &c
-}
-
-// newStaticX509CertificateRetriever creates a static memory based retriever.
-func newStaticX509CertificateRetriever(certificatePemRaw, privateKeyPemRaw []byte, passphrase []byte) x509CertificateRetriever {
-	return &staticCertificateRetriever{
-		CertificatePem: certificatePemRaw,
-		PrivateKeyPem:  privateKeyPemRaw,
-		Passphrase:     passphrase,
-	}
 }
 
 //staticCertificateRetriever serves certificates from static data

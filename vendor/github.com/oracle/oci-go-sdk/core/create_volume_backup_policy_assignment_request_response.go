@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package core
@@ -11,7 +11,7 @@ import (
 // CreateVolumeBackupPolicyAssignmentRequest wrapper for the CreateVolumeBackupPolicyAssignment operation
 type CreateVolumeBackupPolicyAssignmentRequest struct {
 
-	// Request to assign a specified policy to a particular asset.
+	// Request to assign a specified policy to a particular volume.
 	CreateVolumeBackupPolicyAssignmentDetails `contributesTo:"body"`
 
 	// Unique Oracle-assigned identifier for the request.
@@ -49,8 +49,8 @@ type CreateVolumeBackupPolicyAssignmentResponse struct {
 	// For optimistic concurrency control. See `if-match`.
 	Etag *string `presentIn:"header" name:"etag"`
 
-	// Unique Oracle-assigned identifier for the request. If you need to contact Oracle about
-	// a particular request, please provide the request ID.
+	// Unique Oracle-assigned identifier for the request. If you need to contact
+	// Oracle about a particular request, please provide the request ID.
 	OpcRequestId *string `presentIn:"header" name:"opc-request-id"`
 }
 

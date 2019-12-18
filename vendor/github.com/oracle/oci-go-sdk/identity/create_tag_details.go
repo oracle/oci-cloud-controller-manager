@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Identity and Access Management Service API
@@ -9,13 +9,15 @@
 package identity
 
 import (
+	"encoding/json"
 	"github.com/oracle/oci-go-sdk/common"
 )
 
 // CreateTagDetails The representation of CreateTagDetails
 type CreateTagDetails struct {
 
-	// The name you assign to the tag during creation. The name must be unique within the tag namespace and cannot be changed.
+	// The name you assign to the tag during creation. This is the tag key definition.
+	// The name must be unique within the tag namespace and cannot be changed.
 	Name *string `mandatory:"true" json:"name"`
 
 	// The description you assign to the tag during creation.
@@ -33,8 +35,56 @@ type CreateTagDetails struct {
 
 	// Indicates whether the tag is enabled for cost tracking.
 	IsCostTracking *bool `mandatory:"false" json:"isCostTracking"`
+
+	// The tag must have a value type, which is specified with a validator. Tags can use either a
+	// static value or a list of possible values. Static values are entered by a user applying the tag
+	// to a resource. Lists are created by you and the user must apply a value from the list. Lists
+	// are validiated.
+	// If you use the default validiator (or don't define a validator), the user applying the tag
+	// enters a value. No additional validation is performed.
+	// To clear the validator, call UpdateTag with
+	// DefaultTagDefinitionValidator (https://docs.cloud.oracle.com/api/#/en/identity/latest/datatypes/DefaultTagDefinitionValidator).
+	Validator BaseTagDefinitionValidator `mandatory:"false" json:"validator"`
 }
 
 func (m CreateTagDetails) String() string {
 	return common.PointerString(m)
+}
+
+// UnmarshalJSON unmarshals from json
+func (m *CreateTagDetails) UnmarshalJSON(data []byte) (e error) {
+	model := struct {
+		FreeformTags   map[string]string                 `json:"freeformTags"`
+		DefinedTags    map[string]map[string]interface{} `json:"definedTags"`
+		IsCostTracking *bool                             `json:"isCostTracking"`
+		Validator      basetagdefinitionvalidator        `json:"validator"`
+		Name           *string                           `json:"name"`
+		Description    *string                           `json:"description"`
+	}{}
+
+	e = json.Unmarshal(data, &model)
+	if e != nil {
+		return
+	}
+	var nn interface{}
+	m.FreeformTags = model.FreeformTags
+
+	m.DefinedTags = model.DefinedTags
+
+	m.IsCostTracking = model.IsCostTracking
+
+	nn, e = model.Validator.UnmarshalPolymorphicJSON(model.Validator.JsonData)
+	if e != nil {
+		return
+	}
+	if nn != nil {
+		m.Validator = nn.(BaseTagDefinitionValidator)
+	} else {
+		m.Validator = nil
+	}
+
+	m.Name = model.Name
+
+	m.Description = model.Description
+	return
 }

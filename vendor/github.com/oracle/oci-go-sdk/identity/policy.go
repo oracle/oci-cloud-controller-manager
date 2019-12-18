@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Identity and Access Management Service API
@@ -22,6 +22,8 @@ import (
 //   * The overall body of policies your organization uses to control access to resources
 // To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized,
 // talk to an administrator.
+// **Warning:** Oracle recommends that you avoid using any confidential information when you supply string values
+// using the API.
 type Policy struct {
 
 	// The OCID of the policy.

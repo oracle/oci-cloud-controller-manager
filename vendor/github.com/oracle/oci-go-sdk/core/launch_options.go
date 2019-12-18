@@ -1,9 +1,13 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// APIs for Networking Service, Compute Service, and Block Volume Service.
+// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
+// to manage resources such as virtual cloud networks (VCNs), compute instances, and
+// block storage volumes.
 //
 
 package core
@@ -23,20 +27,21 @@ type LaunchOptions struct {
 	// * `VFIO` - Direct attached Virtual Function storage.  This is the default option for Local data
 	// volumes on Oracle provided images.
 	// * `PARAVIRTUALIZED` - Paravirtualized disk.
-	BootVolumeType LaunchOptionsBootVolumeTypeEnum `mandatory:"true" json:"bootVolumeType"`
+	BootVolumeType LaunchOptionsBootVolumeTypeEnum `mandatory:"false" json:"bootVolumeType,omitempty"`
 
 	// Firmware used to boot VM.  Select the option that matches your operating system.
 	// * `BIOS` - Boot VM using BIOS style firmware.  This is compatible with both 32 bit and 64 bit operating
 	// systems that boot using MBR style bootloaders.
 	// * `UEFI_64` - Boot VM using UEFI style firmware compatible with 64 bit operating systems.  This is the
 	// default for Oracle provided images.
-	Firmware LaunchOptionsFirmwareEnum `mandatory:"true" json:"firmware"`
+	Firmware LaunchOptionsFirmwareEnum `mandatory:"false" json:"firmware,omitempty"`
 
-	// Emulation type for NIC.
+	// Emulation type for the physical network interface card (NIC).
 	// * `E1000` - Emulated Gigabit ethernet controller.  Compatible with Linux e1000 network driver.
-	// * `VFIO` - Direct attached Virtual Function network controller.  Default for Oracle provided images.
+	// * `VFIO` - Direct attached Virtual Function network controller. This is the networking type
+	// when you launch an instance using hardware-assisted (SR-IOV) networking.
 	// * `PARAVIRTUALIZED` - VM instances launch with paravirtualized devices using virtio drivers.
-	NetworkType LaunchOptionsNetworkTypeEnum `mandatory:"true" json:"networkType"`
+	NetworkType LaunchOptionsNetworkTypeEnum `mandatory:"false" json:"networkType,omitempty"`
 
 	// Emulation type for volume.
 	// * `ISCSI` - ISCSI attached block storage device. This is the default for Boot Volumes and Remote Block
@@ -46,7 +51,7 @@ type LaunchOptions struct {
 	// * `VFIO` - Direct attached Virtual Function storage.  This is the default option for Local data
 	// volumes on Oracle provided images.
 	// * `PARAVIRTUALIZED` - Paravirtualized disk.
-	RemoteDataVolumeType LaunchOptionsRemoteDataVolumeTypeEnum `mandatory:"true" json:"remoteDataVolumeType"`
+	RemoteDataVolumeType LaunchOptionsRemoteDataVolumeTypeEnum `mandatory:"false" json:"remoteDataVolumeType,omitempty"`
 
 	// Whether to enable in-transit encryption for the boot volume's paravirtualized attachment. The default value is false.
 	IsPvEncryptionInTransitEnabled *bool `mandatory:"false" json:"isPvEncryptionInTransitEnabled"`

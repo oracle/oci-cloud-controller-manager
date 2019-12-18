@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Identity and Access Management Service API
@@ -20,6 +20,8 @@ import (
 // This works like regular user/group membership. But in that case, the membership is a static relationship, whereas
 // in a dynamic group, the membership of an instance certificate to a dynamic group is determined during runtime.
 // For more information, see Managing Dynamic Groups (https://docs.cloud.oracle.com/Content/Identity/Tasks/managingdynamicgroups.htm).
+// **Warning:** Oracle recommends that you avoid using any confidential information when you supply string values using
+// the API.
 type DynamicGroup struct {
 
 	// The OCID of the group.

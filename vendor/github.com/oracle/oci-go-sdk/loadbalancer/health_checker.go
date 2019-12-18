@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Load Balancing API
@@ -39,7 +39,8 @@ type HealthChecker struct {
 	// Example: `/healthcheck`
 	UrlPath *string `mandatory:"false" json:"urlPath"`
 
-	// The number of retries to attempt before a backend server is considered "unhealthy". Defaults to 3.
+	// The number of retries to attempt before a backend server is considered "unhealthy". This number also applies
+	// when recovering a server to the "healthy" state. Defaults to 3.
 	// Example: `3`
 	Retries *int `mandatory:"false" json:"retries"`
 

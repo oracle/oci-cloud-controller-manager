@@ -10,6 +10,8 @@ bitbucket.oci.oraclecorp.com/oke/oke-common v1.0.1-0.20190917222423-ba5e028f261d
 bitbucket.oci.oraclecorp.com/oke/oke-common v1.0.1-0.20190917222423-ba5e028f261d/go.mod h1:p5nMyoMH/1Akq1Kd5ksnz75v/mgcE4txXvVKbb4QKK8=
 bitbucket.oci.oraclecorp.com/sdk/oci-go-sdk v0.0.0-00000000000000-dec5beed03d47c2919ba15fd898c23f23202f273 h1:Grgg6/wkxjqbqaymKFUOrWbtCRcofmUcxXUs2FvUZMQ=
 bitbucket.oci.oraclecorp.com/sdk/oci-go-sdk v0.0.0-00000000000000-dec5beed03d47c2919ba15fd898c23f23202f273/go.mod h1:4l50g/1xdqVUP6A8Z5XTM7xli6ln/NjEgPbKJA4EbeI=
+bitbucket.oci.oraclecorp.com/sdk/oci-go-sdk v0.0.0-00000000000000-e5ddf2b284c h1:RUSkKKAtThqcxgauR3dbNBmAvSWQ+zHyTu7eijkw8i4=
+bitbucket.oci.oraclecorp.com/sdk/oci-go-sdk v0.0.0-00000000000000-e5ddf2b284c/go.mod h1:4l50g/1xdqVUP6A8Z5XTM7xli6ln/NjEgPbKJA4EbeI=
 bitbucket.org/bertimus9/systemstat v0.0.0-20180207000608-0eeff89b0690/go.mod h1:Ulb78X89vxKYgdL24HMTiXYHlyHEvruOj1ZPlqeNEZM=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
@@ -522,6 +524,7 @@ k8s.io/kube-scheduler v0.0.0-20190620085912-4acac5405ec6/go.mod h1:ktfBNqjRdtYUw
 k8s.io/kubelet v0.0.0-20190620085838-f1cb295a73c9/go.mod h1:2gRsvblRTyHIsBazBlnqeAWkWRtnUq6cBnrfdPFr9iY=
 k8s.io/kubernetes v1.15.0 h1:0P6jAdZ1cF5/wSc14HqHCjWlbnwYzmFJBYeXBezZEE0=
 k8s.io/kubernetes v1.15.0/go.mod h1:3RE5ikMc73WK+dSxk4pQuQ6ZaJcPXiZX2dj98RcdCuM=
+k8s.io/kubernetes v1.17.0 h1:KQbF8IxJ4KsWqRFF4ppkS5/EGfpA/SjyyiEa8hvI/Os=
 k8s.io/legacy-cloud-providers v0.0.0-20190620090156-2138f2c9de18/go.mod h1:cgNZX1LyZbr0mW8MxxlgvFU2D3k1KDTlH/EgMuiQbGc=
 k8s.io/metrics v0.0.0-20190620085625-3b22d835f165/go.mod h1:98M2pmJXrzr0W4o9N5ptSvZMygAMRVvyPr2vq7aRwT4=
 k8s.io/repo-infra v0.0.0-20181204233714-00fe14e3d1a3/go.mod h1:+G1xBfZDfVFsm1Tj/HNCvg4QqWx8rJ2Fxpqr1rqp/gQ=

@@ -1,9 +1,13 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// APIs for Networking Service, Compute Service, and Block Volume Service.
+// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
+// to manage resources such as virtual cloud networks (VCNs), compute instances, and
+// block storage volumes.
 //
 
 package core
@@ -15,8 +19,8 @@ import (
 // UpdateIpSecConnectionDetails The representation of UpdateIpSecConnectionDetails
 type UpdateIpSecConnectionDetails struct {
 
-	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Defined tags for this resource. Each key is predefined and scoped to a
+	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -25,14 +29,15 @@ type UpdateIpSecConnectionDetails struct {
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
-	// predefined name, type, or namespace. For more information, see
-	// Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
 	// Your identifier for your CPE device. Can be either an IP address or a hostname (specifically, the
 	// fully qualified domain name (FQDN)). The type of identifier you provide here must correspond
 	// to the value for `cpeLocalIdentifierType`.
+	// For information about why you'd provide this value, see
+	// If Your CPE Is Behind a NAT Device (https://docs.cloud.oracle.com/Content/Network/Tasks/overviewIPsec.htm#nat).
 	// Example IP address: `10.0.3.3`
 	// Example hostname: `cpe.example.com`
 	CpeLocalIdentifier *string `mandatory:"false" json:"cpeLocalIdentifier"`
@@ -43,7 +48,10 @@ type UpdateIpSecConnectionDetails struct {
 
 	// Static routes to the CPE. If you provide this attribute, it replaces the entire current set of
 	// static routes. A static route's CIDR must not be a multicast address or class E address.
+	// The CIDR can be either IPv4 or IPv6. Note that IPv6 addressing is currently supported only
+	// in the Government Cloud.
 	// Example: `10.0.1.0/24`
+	// Example: `2001:db8::/32`
 	StaticRoutes []string `mandatory:"false" json:"staticRoutes"`
 }
 

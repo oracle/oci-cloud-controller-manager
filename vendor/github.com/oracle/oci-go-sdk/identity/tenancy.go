@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Identity and Access Management Service API
@@ -37,10 +37,10 @@ type Tenancy struct {
 	// - `PHX`
 	// - `FRA`
 	// - `LHR`
+	// - `ICN`
+	// - `YYZ`
+	// - `NRT`
 	HomeRegionKey *string `mandatory:"false" json:"homeRegionKey"`
-
-	// OracleMyServicesIdentifier is Oracle MyServices Cloud Account Identifier.
-	OracleMyServicesIdentifier *string `mandatory:"false" json:"oracleMyServicesIdentifier"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no predefined name, type, or namespace.
 	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).

@@ -1,9 +1,13 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// APIs for Networking Service, Compute Service, and Block Volume Service.
+// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
+// to manage resources such as virtual cloud networks (VCNs), compute instances, and
+// block storage volumes.
 //
 
 package core
@@ -31,6 +35,9 @@ type VolumeGroup struct {
 	// The OCID for the volume group.
 	Id *string `mandatory:"true" json:"id"`
 
+	// The current state of a volume group.
+	LifecycleState VolumeGroupLifecycleStateEnum `mandatory:"true" json:"lifecycleState"`
+
 	// The aggregate size of the volume group in MBs.
 	SizeInMBs *int64 `mandatory:"true" json:"sizeInMBs"`
 
@@ -40,19 +47,15 @@ type VolumeGroup struct {
 	// OCIDs for the volumes in this volume group.
 	VolumeIds []string `mandatory:"true" json:"volumeIds"`
 
-	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Defined tags for this resource. Each key is predefined and scoped to a
+	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
-	// predefined name, type, or namespace. For more information, see
-	// Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
-
-	// The current state of a volume group.
-	LifecycleState VolumeGroupLifecycleStateEnum `mandatory:"false" json:"lifecycleState,omitempty"`
 
 	// The aggregate size of the volume group in GBs.
 	SizeInGBs *int64 `mandatory:"false" json:"sizeInGBs"`
@@ -74,7 +77,6 @@ func (m *VolumeGroup) UnmarshalJSON(data []byte) (e error) {
 	model := struct {
 		DefinedTags        map[string]map[string]interface{} `json:"definedTags"`
 		FreeformTags       map[string]string                 `json:"freeformTags"`
-		LifecycleState     VolumeGroupLifecycleStateEnum     `json:"lifecycleState"`
 		SizeInGBs          *int64                            `json:"sizeInGBs"`
 		SourceDetails      volumegroupsourcedetails          `json:"sourceDetails"`
 		IsHydrated         *bool                             `json:"isHydrated"`
@@ -82,6 +84,7 @@ func (m *VolumeGroup) UnmarshalJSON(data []byte) (e error) {
 		CompartmentId      *string                           `json:"compartmentId"`
 		DisplayName        *string                           `json:"displayName"`
 		Id                 *string                           `json:"id"`
+		LifecycleState     VolumeGroupLifecycleStateEnum     `json:"lifecycleState"`
 		SizeInMBs          *int64                            `json:"sizeInMBs"`
 		TimeCreated        *common.SDKTime                   `json:"timeCreated"`
 		VolumeIds          []string                          `json:"volumeIds"`
@@ -91,11 +94,14 @@ func (m *VolumeGroup) UnmarshalJSON(data []byte) (e error) {
 	if e != nil {
 		return
 	}
+	var nn interface{}
 	m.DefinedTags = model.DefinedTags
+
 	m.FreeformTags = model.FreeformTags
-	m.LifecycleState = model.LifecycleState
+
 	m.SizeInGBs = model.SizeInGBs
-	nn, e := model.SourceDetails.UnmarshalPolymorphicJSON(model.SourceDetails.JsonData)
+
+	nn, e = model.SourceDetails.UnmarshalPolymorphicJSON(model.SourceDetails.JsonData)
 	if e != nil {
 		return
 	}
@@ -104,13 +110,23 @@ func (m *VolumeGroup) UnmarshalJSON(data []byte) (e error) {
 	} else {
 		m.SourceDetails = nil
 	}
+
 	m.IsHydrated = model.IsHydrated
+
 	m.AvailabilityDomain = model.AvailabilityDomain
+
 	m.CompartmentId = model.CompartmentId
+
 	m.DisplayName = model.DisplayName
+
 	m.Id = model.Id
+
+	m.LifecycleState = model.LifecycleState
+
 	m.SizeInMBs = model.SizeInMBs
+
 	m.TimeCreated = model.TimeCreated
+
 	m.VolumeIds = make([]string, len(model.VolumeIds))
 	for i, n := range model.VolumeIds {
 		m.VolumeIds[i] = n

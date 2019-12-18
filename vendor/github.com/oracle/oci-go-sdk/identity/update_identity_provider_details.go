@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Identity and Access Management Service API
@@ -93,4 +93,25 @@ func (m updateidentityproviderdetails) GetDefinedTags() map[string]map[string]in
 
 func (m updateidentityproviderdetails) String() string {
 	return common.PointerString(m)
+}
+
+// UpdateIdentityProviderDetailsProtocolEnum Enum with underlying type: string
+type UpdateIdentityProviderDetailsProtocolEnum string
+
+// Set of constants representing the allowable values for UpdateIdentityProviderDetailsProtocolEnum
+const (
+	UpdateIdentityProviderDetailsProtocolSaml2 UpdateIdentityProviderDetailsProtocolEnum = "SAML2"
+)
+
+var mappingUpdateIdentityProviderDetailsProtocol = map[string]UpdateIdentityProviderDetailsProtocolEnum{
+	"SAML2": UpdateIdentityProviderDetailsProtocolSaml2,
+}
+
+// GetUpdateIdentityProviderDetailsProtocolEnumValues Enumerates the set of values for UpdateIdentityProviderDetailsProtocolEnum
+func GetUpdateIdentityProviderDetailsProtocolEnumValues() []UpdateIdentityProviderDetailsProtocolEnum {
+	values := make([]UpdateIdentityProviderDetailsProtocolEnum, 0)
+	for _, v := range mappingUpdateIdentityProviderDetailsProtocol {
+		values = append(values, v)
+	}
+	return values
 }

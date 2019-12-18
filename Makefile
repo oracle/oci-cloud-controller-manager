@@ -79,6 +79,10 @@ manifests: build-dirs
 	  's#${IMAGE}:latest#${IMAGE}:${VERSION}#g' \
 	  dist/*.yaml
 
+.PHONY: vendor
+vendor:
+	@GO111MODULE=on go mod vendor -v
+
 .PHONY: test
 test:
 	@./hack/test.sh $(SRC_DIRS)

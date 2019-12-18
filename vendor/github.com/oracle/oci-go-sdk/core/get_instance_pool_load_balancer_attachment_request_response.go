@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package core
@@ -11,7 +11,7 @@ import (
 // GetInstancePoolLoadBalancerAttachmentRequest wrapper for the GetInstancePoolLoadBalancerAttachment operation
 type GetInstancePoolLoadBalancerAttachmentRequest struct {
 
-	// The OCID of the instance pool.
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the instance pool.
 	InstancePoolId *string `mandatory:"true" contributesTo:"path" name:"instancePoolId"`
 
 	// The OCID of the load balancer attachment.
@@ -49,8 +49,8 @@ type GetInstancePoolLoadBalancerAttachmentResponse struct {
 	// The InstancePoolLoadBalancerAttachment instance
 	InstancePoolLoadBalancerAttachment `presentIn:"body"`
 
-	// Unique Oracle-assigned identifier for the request. If you need to contact Oracle about
-	// a particular request, please provide the request ID.
+	// Unique Oracle-assigned identifier for the request. If you need to contact
+	// Oracle about a particular request, please provide the request ID.
 	OpcRequestId *string `presentIn:"header" name:"opc-request-id"`
 }
 

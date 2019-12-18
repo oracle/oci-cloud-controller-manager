@@ -1,9 +1,13 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// APIs for Networking Service, Compute Service, and Block Volume Service.
+// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
+// to manage resources such as virtual cloud networks (VCNs), compute instances, and
+// block storage volumes.
 //
 
 package core
@@ -16,6 +20,9 @@ import (
 // AttachParavirtualizedVolumeDetails The representation of AttachParavirtualizedVolumeDetails
 type AttachParavirtualizedVolumeDetails struct {
 
+	// The OCID of the instance.
+	InstanceId *string `mandatory:"true" json:"instanceId"`
+
 	// The OCID of the volume.
 	VolumeId *string `mandatory:"true" json:"volumeId"`
 
@@ -24,10 +31,6 @@ type AttachParavirtualizedVolumeDetails struct {
 
 	// A user-friendly name. Does not have to be unique, and it cannot be changed. Avoid entering confidential information.
 	DisplayName *string `mandatory:"false" json:"displayName"`
-
-	// The OCID of the instance. For AttachVolume operation, this is a required field for the request,
-	// see AttachVolume.
-	InstanceId *string `mandatory:"false" json:"instanceId"`
 
 	// Whether the attachment was created in read-only mode.
 	IsReadOnly *bool `mandatory:"false" json:"isReadOnly"`

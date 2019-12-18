@@ -10,10 +10,10 @@ import (
 )
 
 const (
-	major = "1"
-	minor = "25"
+	major = "14"
+	minor = "0"
 	patch = "0"
-	tag   = "preview"
+	tag   = ""
 )
 
 var once sync.Once
@@ -26,7 +26,7 @@ func Version() string {
 		verBuilder := bytes.NewBufferString(ver)
 		if tag != "" && tag != "-" {
 			_, err := verBuilder.WriteString(tag)
-			if err == nil {
+			if err != nil {
 				verBuilder = bytes.NewBufferString(ver)
 			}
 		}

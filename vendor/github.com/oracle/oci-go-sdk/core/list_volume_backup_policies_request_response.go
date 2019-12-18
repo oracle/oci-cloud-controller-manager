@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package core
@@ -22,8 +22,8 @@ type ListVolumeBackupPoliciesRequest struct {
 	// List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	Page *string `mandatory:"false" contributesTo:"query" name:"page"`
 
-	// The OCID of the compartment to list.
-	// If no compartment is specified, list the predefined (Gold, Silver, Bronze) backup policies.
+	// The OCID of the compartment.
+	// If no compartment is specified, the Oracle defined backup policies are listed.
 	CompartmentId *string `mandatory:"false" contributesTo:"query" name:"compartmentId"`
 
 	// Unique Oracle-assigned identifier for the request.
@@ -58,13 +58,13 @@ type ListVolumeBackupPoliciesResponse struct {
 	// A list of []VolumeBackupPolicy instances
 	Items []VolumeBackupPolicy `presentIn:"body"`
 
-	// For list pagination. When this header appears in the response, additional pages of
-	// results remain. For important details about how pagination works, see
+	// For list pagination. When this header appears in the response, additional pages
+	// of results remain. For important details about how pagination works, see
 	// List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	OpcNextPage *string `presentIn:"header" name:"opc-next-page"`
 
-	// Unique Oracle-assigned identifier for the request. If you need to contact Oracle about
-	// a particular request, please provide the request ID.
+	// Unique Oracle-assigned identifier for the request. If you need to contact
+	// Oracle about a particular request, please provide the request ID.
 	OpcRequestId *string `presentIn:"header" name:"opc-request-id"`
 }
 

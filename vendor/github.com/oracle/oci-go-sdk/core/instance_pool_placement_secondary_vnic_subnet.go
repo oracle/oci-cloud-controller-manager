@@ -1,9 +1,13 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// APIs for Networking Service, Compute Service, and Block Volume Service.
+// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
+// to manage resources such as virtual cloud networks (VCNs), compute instances, and
+// block storage volumes.
 //
 
 package core
@@ -15,11 +19,11 @@ import (
 // InstancePoolPlacementSecondaryVnicSubnet The secondary VNIC object for the placement configuration for an instance pool.
 type InstancePoolPlacementSecondaryVnicSubnet struct {
 
-	// The subnet OCID for the secondary vnic
+	// The subnet OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) for the secondary VNIC.
 	SubnetId *string `mandatory:"true" json:"subnetId"`
 
-	// The displayName of the vnic. This is also use to match against the Instance Configuration defined
-	// secondary vnic.
+	// The display name of the VNIC. This is also use to match against the instance configuration defined
+	// secondary VNIC.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 }
 

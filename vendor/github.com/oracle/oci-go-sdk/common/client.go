@@ -20,6 +20,9 @@ import (
 )
 
 const (
+	// DefaultHostURLTemplate The default url template for service hosts
+	DefaultHostURLTemplate = "%s.%s.oraclecloud.com"
+
 	// requestHeaderAccept The key for passing a header to indicate Accept
 	requestHeaderAccept = "Accept"
 

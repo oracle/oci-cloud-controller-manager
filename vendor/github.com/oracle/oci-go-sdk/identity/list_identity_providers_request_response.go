@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package identity
@@ -22,25 +22,6 @@ type ListIdentityProvidersRequest struct {
 
 	// The maximum number of items to return in a paginated "List" call.
 	Limit *int `mandatory:"false" contributesTo:"query" name:"limit"`
-
-	// A filter to only return resources that match the given name exactly.
-	Name *string `mandatory:"false" contributesTo:"query" name:"name"`
-
-	// The field to sort by. You can provide one sort order (`sortOrder`). Default order for
-	// TIMECREATED is descending. Default order for NAME is ascending. The NAME
-	// sort order is case sensitive.
-	// **Note:** In general, some "List" operations (for example, `ListInstances`) let you
-	// optionally filter by Availability Domain if the scope of the resource type is within a
-	// single Availability Domain. If you call one of these "List" operations without specifying
-	// an Availability Domain, the resources are grouped by Availability Domain, then sorted.
-	SortBy ListIdentityProvidersSortByEnum `mandatory:"false" contributesTo:"query" name:"sortBy" omitEmpty:"true"`
-
-	// The sort order to use, either ascending (`ASC`) or descending (`DESC`). The NAME sort order
-	// is case sensitive.
-	SortOrder ListIdentityProvidersSortOrderEnum `mandatory:"false" contributesTo:"query" name:"sortOrder" omitEmpty:"true"`
-
-	// A filter to only return resources that match the given lifecycle state.  The state value is case-insensitive.
-	LifecycleState IdentityProviderLifecycleStateEnum `mandatory:"false" contributesTo:"query" name:"lifecycleState" omitEmpty:"true"`
 
 	// Unique Oracle-assigned identifier for the request.
 	// If you need to contact Oracle about a particular request, please provide the request ID.
@@ -109,52 +90,6 @@ var mappingListIdentityProvidersProtocol = map[string]ListIdentityProvidersProto
 func GetListIdentityProvidersProtocolEnumValues() []ListIdentityProvidersProtocolEnum {
 	values := make([]ListIdentityProvidersProtocolEnum, 0)
 	for _, v := range mappingListIdentityProvidersProtocol {
-		values = append(values, v)
-	}
-	return values
-}
-
-// ListIdentityProvidersSortByEnum Enum with underlying type: string
-type ListIdentityProvidersSortByEnum string
-
-// Set of constants representing the allowable values for ListIdentityProvidersSortByEnum
-const (
-	ListIdentityProvidersSortByTimecreated ListIdentityProvidersSortByEnum = "TIMECREATED"
-	ListIdentityProvidersSortByName        ListIdentityProvidersSortByEnum = "NAME"
-)
-
-var mappingListIdentityProvidersSortBy = map[string]ListIdentityProvidersSortByEnum{
-	"TIMECREATED": ListIdentityProvidersSortByTimecreated,
-	"NAME":        ListIdentityProvidersSortByName,
-}
-
-// GetListIdentityProvidersSortByEnumValues Enumerates the set of values for ListIdentityProvidersSortByEnum
-func GetListIdentityProvidersSortByEnumValues() []ListIdentityProvidersSortByEnum {
-	values := make([]ListIdentityProvidersSortByEnum, 0)
-	for _, v := range mappingListIdentityProvidersSortBy {
-		values = append(values, v)
-	}
-	return values
-}
-
-// ListIdentityProvidersSortOrderEnum Enum with underlying type: string
-type ListIdentityProvidersSortOrderEnum string
-
-// Set of constants representing the allowable values for ListIdentityProvidersSortOrderEnum
-const (
-	ListIdentityProvidersSortOrderAsc  ListIdentityProvidersSortOrderEnum = "ASC"
-	ListIdentityProvidersSortOrderDesc ListIdentityProvidersSortOrderEnum = "DESC"
-)
-
-var mappingListIdentityProvidersSortOrder = map[string]ListIdentityProvidersSortOrderEnum{
-	"ASC":  ListIdentityProvidersSortOrderAsc,
-	"DESC": ListIdentityProvidersSortOrderDesc,
-}
-
-// GetListIdentityProvidersSortOrderEnumValues Enumerates the set of values for ListIdentityProvidersSortOrderEnum
-func GetListIdentityProvidersSortOrderEnumValues() []ListIdentityProvidersSortOrderEnum {
-	values := make([]ListIdentityProvidersSortOrderEnum, 0)
-	for _, v := range mappingListIdentityProvidersSortOrder {
 		values = append(values, v)
 	}
 	return values

@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Identity and Access Management Service API
@@ -9,12 +9,15 @@
 package identity
 
 import (
+	"encoding/json"
 	"github.com/oracle/oci-go-sdk/common"
 )
 
 // Tag A tag definition that belongs to a specific tag namespace.  "Defined tags" must be set up in your tenancy before
 // you can apply them to resources.
 // For more information, see Managing Tags and Tag Namespaces (https://docs.cloud.oracle.com/Content/Identity/Concepts/taggingoverview.htm).
+// **Warning:** Oracle recommends that you avoid using any confidential information when you supply string values
+// using the API.
 type Tag struct {
 
 	// The OCID of the compartment that contains the tag definition.
@@ -29,7 +32,8 @@ type Tag struct {
 	// The OCID of the tag definition.
 	Id *string `mandatory:"true" json:"id"`
 
-	// The name of the tag. The name must be unique across all tags in the namespace and can't be changed.
+	// The name assigned to the tag during creation. This is the tag key definition.
+	// The name must be unique within the tag namespace and cannot be changed.
 	Name *string `mandatory:"true" json:"name"`
 
 	// The description you assign to the tag.
@@ -50,18 +54,87 @@ type Tag struct {
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
 	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
-	// Example: `{"Operations": {"CostCenter": "42"}}``
+	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
-	// The tag's current state. After creating a tag, make sure its `lifecycleState` is ACTIVE before using it. After retiring a tag, make sure its `lifecycleState` is INACTIVE before using it.
+	// The tag's current state. After creating a tag, make sure its `lifecycleState` is ACTIVE before using it. After retiring a tag, make sure its `lifecycleState` is INACTIVE before using it. If you delete a tag, you cannot delete another tag until the deleted tag's `lifecycleState` changes from DELETING to DELETED.
 	LifecycleState TagLifecycleStateEnum `mandatory:"false" json:"lifecycleState,omitempty"`
 
 	// Indicates whether the tag is enabled for cost tracking.
 	IsCostTracking *bool `mandatory:"false" json:"isCostTracking"`
+
+	// The tag must have a value type, which is specified with a validator. Tags can use either a
+	// static value or a list of possible values. Static values are entered by a user applying the tag
+	// to a resource. Lists are created by you and the user must apply a value from the list. Lists
+	// are validiated.
+	// If you use the default validiator (or don't define a validator), the user applying the tag
+	// enters a value. No additional validation is performed.
+	// To clear the validator, call UpdateTag with
+	// DefaultTagDefinitionValidator (https://docs.cloud.oracle.com/api/#/en/identity/latest/datatypes/DefaultTagDefinitionValidator).
+	Validator BaseTagDefinitionValidator `mandatory:"false" json:"validator"`
 }
 
 func (m Tag) String() string {
 	return common.PointerString(m)
+}
+
+// UnmarshalJSON unmarshals from json
+func (m *Tag) UnmarshalJSON(data []byte) (e error) {
+	model := struct {
+		FreeformTags     map[string]string                 `json:"freeformTags"`
+		DefinedTags      map[string]map[string]interface{} `json:"definedTags"`
+		LifecycleState   TagLifecycleStateEnum             `json:"lifecycleState"`
+		IsCostTracking   *bool                             `json:"isCostTracking"`
+		Validator        basetagdefinitionvalidator        `json:"validator"`
+		CompartmentId    *string                           `json:"compartmentId"`
+		TagNamespaceId   *string                           `json:"tagNamespaceId"`
+		TagNamespaceName *string                           `json:"tagNamespaceName"`
+		Id               *string                           `json:"id"`
+		Name             *string                           `json:"name"`
+		Description      *string                           `json:"description"`
+		IsRetired        *bool                             `json:"isRetired"`
+		TimeCreated      *common.SDKTime                   `json:"timeCreated"`
+	}{}
+
+	e = json.Unmarshal(data, &model)
+	if e != nil {
+		return
+	}
+	var nn interface{}
+	m.FreeformTags = model.FreeformTags
+
+	m.DefinedTags = model.DefinedTags
+
+	m.LifecycleState = model.LifecycleState
+
+	m.IsCostTracking = model.IsCostTracking
+
+	nn, e = model.Validator.UnmarshalPolymorphicJSON(model.Validator.JsonData)
+	if e != nil {
+		return
+	}
+	if nn != nil {
+		m.Validator = nn.(BaseTagDefinitionValidator)
+	} else {
+		m.Validator = nil
+	}
+
+	m.CompartmentId = model.CompartmentId
+
+	m.TagNamespaceId = model.TagNamespaceId
+
+	m.TagNamespaceName = model.TagNamespaceName
+
+	m.Id = model.Id
+
+	m.Name = model.Name
+
+	m.Description = model.Description
+
+	m.IsRetired = model.IsRetired
+
+	m.TimeCreated = model.TimeCreated
+	return
 }
 
 // TagLifecycleStateEnum Enum with underlying type: string

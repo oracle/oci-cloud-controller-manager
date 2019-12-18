@@ -1,9 +1,13 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// APIs for Networking Service, Compute Service, and Block Volume Service.
+// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
+// to manage resources such as virtual cloud networks (VCNs), compute instances, and
+// block storage volumes.
 //
 
 package core
@@ -16,6 +20,9 @@ import (
 // AttachVolumeDetails The representation of AttachVolumeDetails
 type AttachVolumeDetails interface {
 
+	// The OCID of the instance.
+	GetInstanceId() *string
+
 	// The OCID of the volume.
 	GetVolumeId() *string
 
@@ -24,10 +31,6 @@ type AttachVolumeDetails interface {
 
 	// A user-friendly name. Does not have to be unique, and it cannot be changed. Avoid entering confidential information.
 	GetDisplayName() *string
-
-	// The OCID of the instance. For AttachVolume operation, this is a required field for the request,
-	// see AttachVolume.
-	GetInstanceId() *string
 
 	// Whether the attachment was created in read-only mode.
 	GetIsReadOnly() *bool
@@ -41,10 +44,10 @@ type AttachVolumeDetails interface {
 
 type attachvolumedetails struct {
 	JsonData    []byte
+	InstanceId  *string `mandatory:"true" json:"instanceId"`
 	VolumeId    *string `mandatory:"true" json:"volumeId"`
 	Device      *string `mandatory:"false" json:"device"`
 	DisplayName *string `mandatory:"false" json:"displayName"`
-	InstanceId  *string `mandatory:"false" json:"instanceId"`
 	IsReadOnly  *bool   `mandatory:"false" json:"isReadOnly"`
 	IsShareable *bool   `mandatory:"false" json:"isShareable"`
 	Type        string  `json:"type"`
@@ -61,10 +64,10 @@ func (m *attachvolumedetails) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
+	m.InstanceId = s.Model.InstanceId
 	m.VolumeId = s.Model.VolumeId
 	m.Device = s.Model.Device
 	m.DisplayName = s.Model.DisplayName
-	m.InstanceId = s.Model.InstanceId
 	m.IsReadOnly = s.Model.IsReadOnly
 	m.IsShareable = s.Model.IsShareable
 	m.Type = s.Model.Type
@@ -102,6 +105,11 @@ func (m *attachvolumedetails) UnmarshalPolymorphicJSON(data []byte) (interface{}
 	}
 }
 
+//GetInstanceId returns InstanceId
+func (m attachvolumedetails) GetInstanceId() *string {
+	return m.InstanceId
+}
+
 //GetVolumeId returns VolumeId
 func (m attachvolumedetails) GetVolumeId() *string {
 	return m.VolumeId
@@ -115,11 +123,6 @@ func (m attachvolumedetails) GetDevice() *string {
 //GetDisplayName returns DisplayName
 func (m attachvolumedetails) GetDisplayName() *string {
 	return m.DisplayName
-}
-
-//GetInstanceId returns InstanceId
-func (m attachvolumedetails) GetInstanceId() *string {
-	return m.InstanceId
 }
 
 //GetIsReadOnly returns IsReadOnly
