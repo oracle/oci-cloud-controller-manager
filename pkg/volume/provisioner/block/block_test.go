@@ -440,6 +440,32 @@ func TestVolumeRoundingLogic(t *testing.T) {
 	}
 }
 
+func TestVolumeBackupOCID(t *testing.T) {
+	var volumeBackupOcidTests = []struct {
+		in  string
+		out bool
+	}{
+		{"ocid1.volumebackup.", true},
+		{"ocidv1:volumebackup.", true},
+		{"ocid2.volumebackup.", true},
+		{"ocidv2.volumebackup.", true},
+		{"ocid.volumebackup.", true},
+		{"ocid1.volumebackupsdfljf", false},
+		{"ocidv1:volume.", false},
+		{"ocid2.volume.", false},
+		{"ocidv2.volume.", false},
+	}
+	for i, tt := range volumeBackupOcidTests {
+		t.Run(fmt.Sprintf("test-%d", i), func(t *testing.T) {
+			expected := tt.out
+			actual := isVolumeBackupOcid(tt.in)
+			if expected != actual {
+				t.Fatalf("Expected value to be %v but got %v", expected, actual)
+			}
+		})
+	}
+}
+
 func createPVC(size string) *v1.PersistentVolumeClaim {
 	return &v1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{},

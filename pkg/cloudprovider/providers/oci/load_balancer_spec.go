@@ -358,7 +358,7 @@ func getListeners(svc *v1.Service, sslCfg *SSLConfig) (map[string]loadbalancer.L
 			secretName = sslCfg.ListenerSSLSecretName
 		}
 		sslConfiguration := getSSLConfiguration(sslCfg, secretName, port)
-		name := getListenerName(protocol, port, sslConfiguration)
+		name := getListenerName(protocol, port)
 
 		listener := loadbalancer.ListenerDetails{
 			DefaultBackendSetName: common.String(getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))),

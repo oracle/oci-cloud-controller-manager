@@ -473,7 +473,7 @@ func (cp *CloudProvider) updateListener(ctx context.Context, lbID string, action
 
 	cp.logger.With(
 		"actionType", action.Type(),
-		"backendSetName", action.Name(),
+		"listenerName", action.Name(),
 		"ports", ports,
 		"loadBalancerID", lbID).Info("Applying action on listener")
 
