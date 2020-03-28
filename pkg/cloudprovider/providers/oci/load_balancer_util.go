@@ -466,6 +466,23 @@ func hasListenerChanged(logger *zap.SugaredLogger, actual loadbalancer.Listener,
 		logger.Infof("Listener needs to be updated for the change(s) - %s", strings.Join(listenerChanges, ","))
 		return true
 	}
+	if hasConnectionConfigurationChanged(actual.ConnectionConfiguration, desired.ConnectionConfiguration) {
+		return true
+	}
+	return false
+}
+
+func hasConnectionConfigurationChanged(actual *loadbalancer.ConnectionConfiguration, desired *loadbalancer.ConnectionConfiguration) bool {
+	if actual == nil || desired == nil {
+		if actual == nil && desired == nil {
+			return false
+		}
+		return true
+	}
+
+	if actual.IdleTimeout != desired.IdleTimeout {
+		return true
+	}
 	return false
 }
 
