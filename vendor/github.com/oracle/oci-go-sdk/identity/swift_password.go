@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Identity and Access Management Service API
@@ -17,7 +17,7 @@ import (
 // Swift client with the Object Storage Service. This password is associated with
 // the user's Console login. Swift passwords never expire. A user can have up to two Swift passwords at a time.
 // **Note:** The password is always an Oracle-generated string; you can't change it to a string of your choice.
-// For more information, see Managing User Credentials (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Tasks/managingcredentials.htm).
+// For more information, see Managing User Credentials (https://docs.cloud.oracle.com/Content/Identity/Tasks/managingcredentials.htm).
 type SwiftPassword struct {
 
 	// The Swift password. The value is available only in the response for `CreateSwiftPassword`, and not
@@ -57,7 +57,7 @@ func (m SwiftPassword) String() string {
 // SwiftPasswordLifecycleStateEnum Enum with underlying type: string
 type SwiftPasswordLifecycleStateEnum string
 
-// Set of constants representing the allowable values for SwiftPasswordLifecycleState
+// Set of constants representing the allowable values for SwiftPasswordLifecycleStateEnum
 const (
 	SwiftPasswordLifecycleStateCreating SwiftPasswordLifecycleStateEnum = "CREATING"
 	SwiftPasswordLifecycleStateActive   SwiftPasswordLifecycleStateEnum = "ACTIVE"
@@ -74,7 +74,7 @@ var mappingSwiftPasswordLifecycleState = map[string]SwiftPasswordLifecycleStateE
 	"DELETED":  SwiftPasswordLifecycleStateDeleted,
 }
 
-// GetSwiftPasswordLifecycleStateEnumValues Enumerates the set of values for SwiftPasswordLifecycleState
+// GetSwiftPasswordLifecycleStateEnumValues Enumerates the set of values for SwiftPasswordLifecycleStateEnum
 func GetSwiftPasswordLifecycleStateEnumValues() []SwiftPasswordLifecycleStateEnum {
 	values := make([]SwiftPasswordLifecycleStateEnum, 0)
 	for _, v := range mappingSwiftPasswordLifecycleState {

@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Identity and Access Management Service API
@@ -17,7 +17,7 @@ import (
 // A user can have up to 2 SMTP credentials at a time.
 // **Note:** The credential set is always an Oracle-generated SMTP user name and password pair;
 // you cannot designate the SMTP user name or the SMTP password.
-// For more information, see Managing User Credentials (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Tasks/managingcredentials.htm#SMTP).
+// For more information, see Managing User Credentials (https://docs.cloud.oracle.com/Content/Identity/Tasks/managingcredentials.htm#SMTP).
 type SmtpCredential struct {
 
 	// The SMTP user name.
@@ -59,7 +59,7 @@ func (m SmtpCredential) String() string {
 // SmtpCredentialLifecycleStateEnum Enum with underlying type: string
 type SmtpCredentialLifecycleStateEnum string
 
-// Set of constants representing the allowable values for SmtpCredentialLifecycleState
+// Set of constants representing the allowable values for SmtpCredentialLifecycleStateEnum
 const (
 	SmtpCredentialLifecycleStateCreating SmtpCredentialLifecycleStateEnum = "CREATING"
 	SmtpCredentialLifecycleStateActive   SmtpCredentialLifecycleStateEnum = "ACTIVE"
@@ -76,7 +76,7 @@ var mappingSmtpCredentialLifecycleState = map[string]SmtpCredentialLifecycleStat
 	"DELETED":  SmtpCredentialLifecycleStateDeleted,
 }
 
-// GetSmtpCredentialLifecycleStateEnumValues Enumerates the set of values for SmtpCredentialLifecycleState
+// GetSmtpCredentialLifecycleStateEnumValues Enumerates the set of values for SmtpCredentialLifecycleStateEnum
 func GetSmtpCredentialLifecycleStateEnumValues() []SmtpCredentialLifecycleStateEnum {
 	values := make([]SmtpCredentialLifecycleStateEnum, 0)
 	for _, v := range mappingSmtpCredentialLifecycleState {

@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Identity and Access Management Service API
@@ -15,7 +15,7 @@ import (
 // IdpGroupMapping A mapping between a single group defined by the identity provider (IdP) you're federating with
 // and a single IAM Service Group in Oracle Cloud Infrastructure.
 // For more information about group mappings and what they're for, see
-// Identity Providers and Federation (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/federation.htm).
+// Identity Providers and Federation (https://docs.cloud.oracle.com/Content/Identity/Concepts/federation.htm).
 // A given IdP group can be mapped to zero, one, or multiple IAM Service groups, and vice versa.
 // But each `IdPGroupMapping` object is between only a single IdP group and IAM Service group.
 // Each `IdPGroupMapping` object has its own OCID.
@@ -57,7 +57,7 @@ func (m IdpGroupMapping) String() string {
 // IdpGroupMappingLifecycleStateEnum Enum with underlying type: string
 type IdpGroupMappingLifecycleStateEnum string
 
-// Set of constants representing the allowable values for IdpGroupMappingLifecycleState
+// Set of constants representing the allowable values for IdpGroupMappingLifecycleStateEnum
 const (
 	IdpGroupMappingLifecycleStateCreating IdpGroupMappingLifecycleStateEnum = "CREATING"
 	IdpGroupMappingLifecycleStateActive   IdpGroupMappingLifecycleStateEnum = "ACTIVE"
@@ -74,7 +74,7 @@ var mappingIdpGroupMappingLifecycleState = map[string]IdpGroupMappingLifecycleSt
 	"DELETED":  IdpGroupMappingLifecycleStateDeleted,
 }
 
-// GetIdpGroupMappingLifecycleStateEnumValues Enumerates the set of values for IdpGroupMappingLifecycleState
+// GetIdpGroupMappingLifecycleStateEnumValues Enumerates the set of values for IdpGroupMappingLifecycleStateEnum
 func GetIdpGroupMappingLifecycleStateEnumValues() []IdpGroupMappingLifecycleStateEnum {
 	values := make([]IdpGroupMappingLifecycleStateEnum, 0)
 	for _, v := range mappingIdpGroupMappingLifecycleState {

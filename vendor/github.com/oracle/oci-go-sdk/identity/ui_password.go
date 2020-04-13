@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Identity and Access Management Service API
@@ -14,7 +14,7 @@ import (
 
 // UiPassword A text password that enables a user to sign in to the Console, the user interface for interacting with Oracle
 // Cloud Infrastructure.
-// For more information about user credentials, see User Credentials (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/usercredentials.htm).
+// For more information about user credentials, see User Credentials (https://docs.cloud.oracle.com/Content/Identity/Concepts/usercredentials.htm).
 type UiPassword struct {
 
 	// The user's password for the Console.
@@ -42,7 +42,7 @@ func (m UiPassword) String() string {
 // UiPasswordLifecycleStateEnum Enum with underlying type: string
 type UiPasswordLifecycleStateEnum string
 
-// Set of constants representing the allowable values for UiPasswordLifecycleState
+// Set of constants representing the allowable values for UiPasswordLifecycleStateEnum
 const (
 	UiPasswordLifecycleStateCreating UiPasswordLifecycleStateEnum = "CREATING"
 	UiPasswordLifecycleStateActive   UiPasswordLifecycleStateEnum = "ACTIVE"
@@ -59,7 +59,7 @@ var mappingUiPasswordLifecycleState = map[string]UiPasswordLifecycleStateEnum{
 	"DELETED":  UiPasswordLifecycleStateDeleted,
 }
 
-// GetUiPasswordLifecycleStateEnumValues Enumerates the set of values for UiPasswordLifecycleState
+// GetUiPasswordLifecycleStateEnumValues Enumerates the set of values for UiPasswordLifecycleStateEnum
 func GetUiPasswordLifecycleStateEnumValues() []UiPasswordLifecycleStateEnum {
 	values := make([]UiPasswordLifecycleStateEnum, 0)
 	for _, v := range mappingUiPasswordLifecycleState {

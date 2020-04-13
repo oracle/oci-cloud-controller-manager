@@ -1,9 +1,13 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// APIs for Networking Service, Compute Service, and Block Volume Service.
+// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
+// to manage resources such as virtual cloud networks (VCNs), compute instances, and
+// block storage volumes.
 //
 
 package core
@@ -15,13 +19,16 @@ import (
 // CreateVnicDetails Contains properties for a VNIC. You use this object when creating the
 // primary VNIC during instance launch or when creating a secondary VNIC.
 // For more information about VNICs, see
-// Virtual Network Interface Cards (VNICs) (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Tasks/managingVNICs.htm).
+// Virtual Network Interface Cards (VNICs) (https://docs.cloud.oracle.com/Content/Network/Tasks/managingVNICs.htm).
 type CreateVnicDetails struct {
 
 	// The OCID of the subnet to create the VNIC in. When launching an instance,
 	// use this `subnetId` instead of the deprecated `subnetId` in
 	// LaunchInstanceDetails.
-	// At least one of them is required; if you provide both, the values must match.
+	// Alternatively, the `vlanId` can be used instead of a `subnetId`.
+	// At least one `subnetId` value is required if this field is populated; if
+	// you provide both, the values must match. If both the `vlanId` and `subnetId`
+	// fields are provided, the launch will fail.
 	SubnetId *string `mandatory:"true" json:"subnetId"`
 
 	// Whether the VNIC should be assigned a public IP address. Defaults to whether
@@ -33,18 +40,18 @@ type CreateVnicDetails struct {
 	// `prohibitPublicIpOnVnic` = true, an error is returned.
 	// **Note:** This public IP address is associated with the primary private IP
 	// on the VNIC. For more information, see
-	// IP Addresses (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Tasks/managingIPaddresses.htm).
+	// IP Addresses (https://docs.cloud.oracle.com/Content/Network/Tasks/managingIPaddresses.htm).
 	// **Note:** There's a limit to the number of PublicIp
 	// a VNIC or instance can have. If you try to create a secondary VNIC
 	// with an assigned public IP for an instance that has already
 	// reached its public IP limit, an error is returned. For information
 	// about the public IP limits, see
-	// Public IP Addresses (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Tasks/managingpublicIPs.htm).
+	// Public IP Addresses (https://docs.cloud.oracle.com/Content/Network/Tasks/managingpublicIPs.htm).
 	// Example: `false`
 	AssignPublicIp *bool `mandatory:"false" json:"assignPublicIp"`
 
-	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// Defined tags for this resource. Each key is predefined and scoped to a
+	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -53,8 +60,7 @@ type CreateVnicDetails struct {
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
-	// predefined name, type, or namespace. For more information, see
-	// Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
@@ -69,7 +75,7 @@ type CreateVnicDetails struct {
 	// ListPrivateIps and
 	// GetPrivateIp.
 	// For more information, see
-	// DNS in Your Virtual Cloud Network (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Concepts/dns.htm).
+	// DNS in Your Virtual Cloud Network (https://docs.cloud.oracle.com/Content/Network/Concepts/dns.htm).
 	// When launching an instance, use this `hostnameLabel` instead
 	// of the deprecated `hostnameLabel` in
 	// LaunchInstanceDetails.
@@ -77,12 +83,17 @@ type CreateVnicDetails struct {
 	// Example: `bminstance-1`
 	HostnameLabel *string `mandatory:"false" json:"hostnameLabel"`
 
-	// A private IP address of your choice to assign to the VNIC. Must be an
-	// available IP address within the subnet's CIDR. If you don't specify a
-	// value, Oracle automatically assigns a private IP address from the subnet.
-	// This is the VNIC's *primary* private IP address. The value appears in
-	// the Vnic object and also the
-	// PrivateIp object returned by
+	// A list of the OCIDs of the network security groups (NSGs) to add the VNIC to. For more
+	// information about NSGs, see
+	// NetworkSecurityGroup.
+	NsgIds []string `mandatory:"false" json:"nsgIds"`
+
+	// A private IP address of your choice to assign to the VNIC. Value is ignored
+	// if a `vlanId` value is specified. Must be an available IP address within
+	// the subnet's CIDR. If you don't specify a value, Oracle automatically assigns
+	// a private IP address from the subnet. This is the VNIC's *primary* private IP
+	// address. The value appears in the Vnic object and
+	// also the PrivateIp object returned by
 	// ListPrivateIps and
 	// GetPrivateIp.
 	// Example: `10.0.3.3`
@@ -91,7 +102,7 @@ type CreateVnicDetails struct {
 	// Whether the source/destination check is disabled on the VNIC.
 	// Defaults to `false`, which means the check is performed. For information
 	// about why you would skip the source/destination check, see
-	// Using a Private IP as a Route Target (https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Tasks/managingroutetables.htm#privateip).
+	// Using a Private IP as a Route Target (https://docs.cloud.oracle.com/Content/Network/Tasks/managingroutetables.htm#privateip).
 	// Example: `true`
 	SkipSourceDestCheck *bool `mandatory:"false" json:"skipSourceDestCheck"`
 }

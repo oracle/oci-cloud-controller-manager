@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Identity and Access Management Service API
@@ -13,10 +13,10 @@ import (
 )
 
 // CustomerSecretKey A `CustomerSecretKey` is an Oracle-provided key for using the Object Storage Service's
-// Amazon S3 compatible API (https://docs.us-phoenix-1.oraclecloud.com/Content/Object/Tasks/s3compatibleapi.htm).
+// Amazon S3 compatible API (https://docs.cloud.oracle.com/Content/Object/Tasks/s3compatibleapi.htm).
 // A user can have up to two secret keys at a time.
 // **Note:** The secret key is always an Oracle-generated string; you can't change it to a string of your choice.
-// For more information, see Managing User Credentials (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Tasks/managingcredentials.htm).
+// For more information, see Managing User Credentials (https://docs.cloud.oracle.com/Content/Identity/Tasks/managingcredentials.htm).
 type CustomerSecretKey struct {
 
 	// The secret key.
@@ -55,7 +55,7 @@ func (m CustomerSecretKey) String() string {
 // CustomerSecretKeyLifecycleStateEnum Enum with underlying type: string
 type CustomerSecretKeyLifecycleStateEnum string
 
-// Set of constants representing the allowable values for CustomerSecretKeyLifecycleState
+// Set of constants representing the allowable values for CustomerSecretKeyLifecycleStateEnum
 const (
 	CustomerSecretKeyLifecycleStateCreating CustomerSecretKeyLifecycleStateEnum = "CREATING"
 	CustomerSecretKeyLifecycleStateActive   CustomerSecretKeyLifecycleStateEnum = "ACTIVE"
@@ -72,7 +72,7 @@ var mappingCustomerSecretKeyLifecycleState = map[string]CustomerSecretKeyLifecyc
 	"DELETED":  CustomerSecretKeyLifecycleStateDeleted,
 }
 
-// GetCustomerSecretKeyLifecycleStateEnumValues Enumerates the set of values for CustomerSecretKeyLifecycleState
+// GetCustomerSecretKeyLifecycleStateEnumValues Enumerates the set of values for CustomerSecretKeyLifecycleStateEnum
 func GetCustomerSecretKeyLifecycleStateEnumValues() []CustomerSecretKeyLifecycleStateEnum {
 	values := make([]CustomerSecretKeyLifecycleStateEnum, 0)
 	for _, v := range mappingCustomerSecretKeyLifecycleState {

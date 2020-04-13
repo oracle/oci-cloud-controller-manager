@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package core
@@ -11,7 +11,7 @@ import (
 // GetInstanceConsoleConnectionRequest wrapper for the GetInstanceConsoleConnection operation
 type GetInstanceConsoleConnectionRequest struct {
 
-	// The OCID of the intance console connection
+	// The OCID of the instance console connection.
 	InstanceConsoleConnectionId *string `mandatory:"true" contributesTo:"path" name:"instanceConsoleConnectionId"`
 
 	// Unique Oracle-assigned identifier for the request.
@@ -46,8 +46,8 @@ type GetInstanceConsoleConnectionResponse struct {
 	// The InstanceConsoleConnection instance
 	InstanceConsoleConnection `presentIn:"body"`
 
-	// Unique Oracle-assigned identifier for the request. If you need to contact Oracle about
-	// a particular request, please provide the request ID.
+	// Unique Oracle-assigned identifier for the request. If you need to contact
+	// Oracle about a particular request, please provide the request ID.
 	OpcRequestId *string `presentIn:"header" name:"opc-request-id"`
 }
 

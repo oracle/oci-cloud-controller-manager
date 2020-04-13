@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package identity
@@ -19,6 +19,21 @@ type ListCompartmentsRequest struct {
 
 	// The maximum number of items to return in a paginated "List" call.
 	Limit *int `mandatory:"false" contributesTo:"query" name:"limit"`
+
+	// Valid values are `ANY` and `ACCESSIBLE`. Default is `ANY`.
+	// Setting this to `ACCESSIBLE` returns only those compartments for which the
+	// user has INSPECT permissions directly or indirectly (permissions can be on a
+	// resource in a subcompartment). For the compartments on which the user indirectly has
+	// INSPECT permissions, a restricted set of fields is returned.
+	// When set to `ANY` permissions are not checked.
+	AccessLevel ListCompartmentsAccessLevelEnum `mandatory:"false" contributesTo:"query" name:"accessLevel" omitEmpty:"true"`
+
+	// Default is false. Can only be set to true when performing
+	// ListCompartments on the tenancy (root compartment).
+	// When set to true, the hierarchy of compartments is traversed
+	// and all compartments and subcompartments in the tenancy are
+	// returned depending on the the setting of `accessLevel`.
+	CompartmentIdInSubtree *bool `mandatory:"false" contributesTo:"query" name:"compartmentIdInSubtree"`
 
 	// Unique Oracle-assigned identifier for the request.
 	// If you need to contact Oracle about a particular request, please provide the request ID.
@@ -69,4 +84,27 @@ func (response ListCompartmentsResponse) String() string {
 // HTTPResponse implements the OCIResponse interface
 func (response ListCompartmentsResponse) HTTPResponse() *http.Response {
 	return response.RawResponse
+}
+
+// ListCompartmentsAccessLevelEnum Enum with underlying type: string
+type ListCompartmentsAccessLevelEnum string
+
+// Set of constants representing the allowable values for ListCompartmentsAccessLevelEnum
+const (
+	ListCompartmentsAccessLevelAny        ListCompartmentsAccessLevelEnum = "ANY"
+	ListCompartmentsAccessLevelAccessible ListCompartmentsAccessLevelEnum = "ACCESSIBLE"
+)
+
+var mappingListCompartmentsAccessLevel = map[string]ListCompartmentsAccessLevelEnum{
+	"ANY":        ListCompartmentsAccessLevelAny,
+	"ACCESSIBLE": ListCompartmentsAccessLevelAccessible,
+}
+
+// GetListCompartmentsAccessLevelEnumValues Enumerates the set of values for ListCompartmentsAccessLevelEnum
+func GetListCompartmentsAccessLevelEnumValues() []ListCompartmentsAccessLevelEnum {
+	values := make([]ListCompartmentsAccessLevelEnum, 0)
+	for _, v := range mappingListCompartmentsAccessLevel {
+		values = append(values, v)
+	}
+	return values
 }

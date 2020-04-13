@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package core
@@ -11,10 +11,10 @@ import (
 // UpdateInternetGatewayRequest wrapper for the UpdateInternetGateway operation
 type UpdateInternetGatewayRequest struct {
 
-	// The OCID of the Internet Gateway.
+	// The OCID of the internet gateway.
 	IgId *string `mandatory:"true" contributesTo:"path" name:"igId"`
 
-	// Details for updating the Internet Gateway.
+	// Details for updating the internet gateway.
 	UpdateInternetGatewayDetails `contributesTo:"body"`
 
 	// For optimistic concurrency control. In the PUT or DELETE call for a resource, set the `if-match`
@@ -57,8 +57,8 @@ type UpdateInternetGatewayResponse struct {
 	// For optimistic concurrency control. See `if-match`.
 	Etag *string `presentIn:"header" name:"etag"`
 
-	// Unique Oracle-assigned identifier for the request. If you need to contact Oracle about
-	// a particular request, please provide the request ID.
+	// Unique Oracle-assigned identifier for the request. If you need to contact
+	// Oracle about a particular request, please provide the request ID.
 	OpcRequestId *string `presentIn:"header" name:"opc-request-id"`
 }
 

@@ -1,9 +1,13 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Core Services API
 //
-// APIs for Networking Service, Compute Service, and Block Volume Service.
+// API covering the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services. Use this API
+// to manage resources such as virtual cloud networks (VCNs), compute instances, and
+// block storage volumes.
 //
 
 package core
@@ -12,7 +16,7 @@ import (
 	"github.com/oracle/oci-go-sdk/common"
 )
 
-// TunnelStatus Specific connection details for an IPSec tunnel.
+// TunnelStatus Deprecated. For tunnel information, instead see IPSecConnectionTunnel.
 type TunnelStatus struct {
 
 	// The IP address of Oracle's VPN headend.
@@ -38,7 +42,7 @@ func (m TunnelStatus) String() string {
 // TunnelStatusLifecycleStateEnum Enum with underlying type: string
 type TunnelStatusLifecycleStateEnum string
 
-// Set of constants representing the allowable values for TunnelStatusLifecycleState
+// Set of constants representing the allowable values for TunnelStatusLifecycleStateEnum
 const (
 	TunnelStatusLifecycleStateUp                 TunnelStatusLifecycleStateEnum = "UP"
 	TunnelStatusLifecycleStateDown               TunnelStatusLifecycleStateEnum = "DOWN"
@@ -51,7 +55,7 @@ var mappingTunnelStatusLifecycleState = map[string]TunnelStatusLifecycleStateEnu
 	"DOWN_FOR_MAINTENANCE": TunnelStatusLifecycleStateDownForMaintenance,
 }
 
-// GetTunnelStatusLifecycleStateEnumValues Enumerates the set of values for TunnelStatusLifecycleState
+// GetTunnelStatusLifecycleStateEnumValues Enumerates the set of values for TunnelStatusLifecycleStateEnum
 func GetTunnelStatusLifecycleStateEnumValues() []TunnelStatusLifecycleStateEnum {
 	values := make([]TunnelStatusLifecycleStateEnum, 0)
 	for _, v := range mappingTunnelStatusLifecycleState {

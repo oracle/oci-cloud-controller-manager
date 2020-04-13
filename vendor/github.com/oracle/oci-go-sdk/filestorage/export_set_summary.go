@@ -1,9 +1,9 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
-// File Storage Service API
+// File Storage API
 //
-// The API for the File Storage Service.
+// API for the File Storage service. Use this API to manage file systems, mount targets, and snapshots. For more information, see Overview of File Storage (https://docs.cloud.oracle.com/iaas/Content/File/Concepts/filestorageoverview.htm).
 //
 
 package filestorage
@@ -50,7 +50,7 @@ func (m ExportSetSummary) String() string {
 // ExportSetSummaryLifecycleStateEnum Enum with underlying type: string
 type ExportSetSummaryLifecycleStateEnum string
 
-// Set of constants representing the allowable values for ExportSetSummaryLifecycleState
+// Set of constants representing the allowable values for ExportSetSummaryLifecycleStateEnum
 const (
 	ExportSetSummaryLifecycleStateCreating ExportSetSummaryLifecycleStateEnum = "CREATING"
 	ExportSetSummaryLifecycleStateActive   ExportSetSummaryLifecycleStateEnum = "ACTIVE"
@@ -65,7 +65,7 @@ var mappingExportSetSummaryLifecycleState = map[string]ExportSetSummaryLifecycle
 	"DELETED":  ExportSetSummaryLifecycleStateDeleted,
 }
 
-// GetExportSetSummaryLifecycleStateEnumValues Enumerates the set of values for ExportSetSummaryLifecycleState
+// GetExportSetSummaryLifecycleStateEnumValues Enumerates the set of values for ExportSetSummaryLifecycleStateEnum
 func GetExportSetSummaryLifecycleStateEnumValues() []ExportSetSummaryLifecycleStateEnum {
 	values := make([]ExportSetSummaryLifecycleStateEnum, 0)
 	for _, v := range mappingExportSetSummaryLifecycleState {

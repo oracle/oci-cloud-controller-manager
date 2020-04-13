@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 package identity
@@ -19,6 +19,12 @@ type ListUsersRequest struct {
 
 	// The maximum number of items to return in a paginated "List" call.
 	Limit *int `mandatory:"false" contributesTo:"query" name:"limit"`
+
+	// The id of the identity provider.
+	IdentityProviderId *string `mandatory:"false" contributesTo:"query" name:"identityProviderId"`
+
+	// The id of a user in the identity provider.
+	ExternalIdentifier *string `mandatory:"false" contributesTo:"query" name:"externalIdentifier"`
 
 	// Unique Oracle-assigned identifier for the request.
 	// If you need to contact Oracle about a particular request, please provide the request ID.

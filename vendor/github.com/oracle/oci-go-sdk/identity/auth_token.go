@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 // Code generated. DO NOT EDIT.
 
 // Identity and Access Management Service API
@@ -18,7 +18,7 @@ import (
 // The auth token is associated with the user's Console login. Auth tokens never expire. A user can have up to two
 // auth tokens at a time.
 // **Note:** The token is always an Oracle-generated string; you can't change it to a string of your choice.
-// For more information, see Managing User Credentials (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Tasks/managingcredentials.htm).
+// For more information, see Managing User Credentials (https://docs.cloud.oracle.com/Content/Identity/Tasks/managingcredentials.htm).
 type AuthToken struct {
 
 	// The auth token. The value is available only in the response for `CreateAuthToken`, and not
@@ -58,7 +58,7 @@ func (m AuthToken) String() string {
 // AuthTokenLifecycleStateEnum Enum with underlying type: string
 type AuthTokenLifecycleStateEnum string
 
-// Set of constants representing the allowable values for AuthTokenLifecycleState
+// Set of constants representing the allowable values for AuthTokenLifecycleStateEnum
 const (
 	AuthTokenLifecycleStateCreating AuthTokenLifecycleStateEnum = "CREATING"
 	AuthTokenLifecycleStateActive   AuthTokenLifecycleStateEnum = "ACTIVE"
@@ -75,7 +75,7 @@ var mappingAuthTokenLifecycleState = map[string]AuthTokenLifecycleStateEnum{
 	"DELETED":  AuthTokenLifecycleStateDeleted,
 }
 
-// GetAuthTokenLifecycleStateEnumValues Enumerates the set of values for AuthTokenLifecycleState
+// GetAuthTokenLifecycleStateEnumValues Enumerates the set of values for AuthTokenLifecycleStateEnum
 func GetAuthTokenLifecycleStateEnumValues() []AuthTokenLifecycleStateEnum {
 	values := make([]AuthTokenLifecycleStateEnum, 0)
 	for _, v := range mappingAuthTokenLifecycleState {

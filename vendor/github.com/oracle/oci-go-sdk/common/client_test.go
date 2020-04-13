@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rsa"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -102,26 +103,6 @@ func TestClient_prepareRequestUpdatesDateHeader(t *testing.T) {
 	c.prepareRequest(&request)
 	d2 := request.Header.Get(requestHeaderDate)
 	assert.NotEqual(t, d1, d2)
-}
-
-func TestClient_prepareRequestOnlySetsRetryTokenOnce(t *testing.T) {
-	host := "somehost:9000"
-	basePath := "basePath"
-	restPath := "somepath"
-
-	c := BaseClient{UserAgent: "asdf"}
-	c.Host = host
-	c.BasePath = basePath
-
-	request := http.Request{}
-	request.URL = &url.URL{Path: restPath}
-	c.prepareRequest(&request)
-	token1 := request.Header.Get(requestHeaderOpcRetryToken)
-	assert.NotEmpty(t, token1)
-	c.prepareRequest(&request)
-	token2 := request.Header.Get(requestHeaderOpcRetryToken)
-	assert.NotEmpty(t, token2)
-	assert.Equal(t, token1, token2)
 }
 
 func TestDefaultHTTPDispatcher_transportNotSet(t *testing.T) {
@@ -332,6 +313,7 @@ func TestRetry_NeverGetSuccessfulResponse(t *testing.T) {
 			StatusCode: 400,
 		},
 	}
+	errorMessage := "TestRetryError"
 	totalNumberAttempts := uint(5)
 	numberOfTimesWeEnterShouldRetry := uint(0)
 	numberOfTimesWeEnterGetNextDuration := uint(0)
@@ -349,14 +331,14 @@ func TestRetry_NeverGetSuccessfulResponse(t *testing.T) {
 	}
 	// type OCIOperation func(context.Context, OCIRequest) (OCIResponse, error)
 	fakeOperation := func(context.Context, OCIRequest) (OCIResponse, error) {
-		return errorResponse, nil
+		return errorResponse, errors.New(errorMessage)
 	}
 
 	response, err := Retry(context.Background(), retryableRequest, fakeOperation, retryPolicy)
 	assert.Equal(t, totalNumberAttempts, numberOfTimesWeEnterShouldRetry)
-	assert.Equal(t, totalNumberAttempts-1, numberOfTimesWeEnterGetNextDuration)
-	assert.Nil(t, response)
-	assert.Equal(t, err.Error(), "maximum number of attempts exceeded (5)")
+	assert.NotNil(t, response)
+	assert.Equal(t, 400, response.HTTPResponse().StatusCode)
+	assert.Equal(t, err.Error(), errorMessage)
 }
 
 func TestRetry_ImmediatelyGetsSuccessfulResponse(t *testing.T) {
@@ -426,7 +408,7 @@ func TestRetry_RaisesDeadlineExceededException(t *testing.T) {
 	assert.Equal(t, uint(1), numberOfTimesWeEnterShouldRetry)
 	assert.Equal(t, uint(1), numberOfTimesWeEnterGetNextDuration)
 	assert.Equal(t, response, errorResponse)
-	assert.Equal(t, err, DeadlineExceededByBackoff)
+	assert.Equal(t, DeadlineExceededByBackoff, err)
 }
 
 func TestRetry_GetsSuccessfulResponseAfterMultipleAttempts(t *testing.T) {
@@ -472,9 +454,37 @@ func TestRetry_GetsSuccessfulResponseAfterMultipleAttempts(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestRetry_CancelContextWhileSleeping(t *testing.T) {
+
+	shouldRetryOperation := func(res OCIOperationResponse) bool { return true }
+	getNextDuration := func(res OCIOperationResponse) time.Duration { return 4 * time.Second }
+
+	errorResponse := genericOCIResponse{
+		RawResponse: &http.Response{
+			Header:     http.Header{},
+			StatusCode: 400,
+		},
+	}
+	pol := NewRetryPolicy(uint(10), shouldRetryOperation, getNextDuration)
+	req := retryableOCIRequest{retryPolicy: &pol}
+	fakeOperation := func(context.Context, OCIRequest) (OCIResponse, error) { return errorResponse, nil }
+
+	ctx, cancelFn := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+
+	//cancel context while sleeping
+	go func() {
+		time.Sleep(1 * time.Second)
+		cancelFn()
+	}()
+
+	res, err := Retry(ctx, req, fakeOperation, pol)
+	assert.Equal(t, errorResponse, res)
+	assert.Equal(t, context.Canceled, err)
+}
+
 func TestRetryToken_GenerateMultipleTimes(t *testing.T) {
-	token1 := generateRetryToken()
-	token2 := generateRetryToken()
+	token1 := RetryToken()
+	token2 := RetryToken()
 	assert.NotEqual(t, token1, token2)
 }
 
@@ -523,6 +533,28 @@ region=us-ashburn-1
 	assert.NoError(t, err)
 }
 
+func TestCustomProfileClient_CreateWithConfig(t *testing.T) {
+	dataTpl := `[DEFAULT]
+tenancy=sometenancy
+[PROFILE1]
+user=someuser
+fingerprint=somefingerprint
+key_file=%s
+region=us-ashburn-1
+`
+
+	keyFile := writeTempFile(testPrivateKeyConf)
+	data := fmt.Sprintf(dataTpl, keyFile)
+	tmpConfFile := writeTempFile(data)
+
+	defer removeFileFn(tmpConfFile)
+	defer removeFileFn(keyFile)
+	configurationProvider := CustomProfileConfigProvider(tmpConfFile, "PROFILE1")
+	client, err := NewClientWithConfig(configurationProvider)
+	assert.NotNil(t, client)
+	assert.NoError(t, err)
+}
+
 func TestBaseClient_CreateWithBadRegion(t *testing.T) {
 	dataTpl := `[DEFAULT]
 tenancy=sometenancy
@@ -543,6 +575,32 @@ region=noregion
 	assert.NoError(t, errConf)
 
 	_, err := NewClientWithConfig(configurationProvider)
+	assert.NoError(t, err)
+}
+
+func TestCustomProfileClient_CreateWithBadRegion(t *testing.T) {
+	dataTpl := `[DEFAULT]
+region=someregion
+[PROFILE1]
+tenancy=sometenancy
+user=someuser
+fingerprint=somefingerprint
+key_file=%s
+region=noregion
+`
+
+	keyFile := writeTempFile(testPrivateKeyConf)
+	data := fmt.Sprintf(dataTpl, keyFile)
+	tmpConfFile := writeTempFile(data)
+
+	defer removeFileFn(tmpConfFile)
+	defer removeFileFn(keyFile)
+
+	configurationProvider := CustomProfileConfigProvider(tmpConfFile, "PROFILE1")
+
+	_, err := NewClientWithConfig(configurationProvider)
+	region, _ := configurationProvider.Region()
+	assert.Equal(t, "noregion", region)
 	assert.NoError(t, err)
 }
 
