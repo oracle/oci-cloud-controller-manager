@@ -144,10 +144,16 @@ func (cp *CloudProvider) Initialize(clientBuilder controller.ControllerClientBui
 
 	factory := informers.NewSharedInformerFactory(cp.kubeclient, 5*time.Minute)
 
+	faultDomainController := NewFaultDomainController(
+		factory.Core().V1().Nodes(),
+		cp.kubeclient,
+		cp)
+
 	nodeInformer := factory.Core().V1().Nodes()
 	go nodeInformer.Informer().Run(wait.NeverStop)
 	serviceInformer := factory.Core().V1().Services()
 	go serviceInformer.Informer().Run(wait.NeverStop)
+	go faultDomainController.Run(wait.NeverStop)
 
 	cp.logger.Info("Waiting for node informer cache to sync")
 	if !cache.WaitForCacheSync(wait.NeverStop, nodeInformer.Informer().HasSynced, serviceInformer.Informer().HasSynced) {
