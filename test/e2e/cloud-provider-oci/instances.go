@@ -16,8 +16,10 @@ package e2e
 
 import (
 	"context"
-	sharedfw "github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
 	"net"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci"
+	sharedfw "github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -56,7 +58,7 @@ var _ = Describe("Instances", func() {
 
 	Context("[cloudprovider][ccm]", func() {
 		It("should be possible to get node addresses", func() {
-			nodeName := apitypes.NodeName(node.Labels["hostname"])
+			nodeName := apitypes.NodeName(node.Name)
 			Expect(nodeName).NotTo(BeEmpty())
 
 			By("calling NodeAddresses()")
@@ -80,7 +82,7 @@ var _ = Describe("Instances", func() {
 		})
 
 		It("should be possible to get the provider ID of an instance", func() {
-			nodeName := apitypes.NodeName(node.Labels["hostname"])
+			nodeName := apitypes.NodeName(node.Name)
 			Expect(nodeName).NotTo(BeEmpty())
 
 			By("calling InstanceID()")
@@ -91,7 +93,7 @@ var _ = Describe("Instances", func() {
 		})
 
 		It("should be possible to get the type of an instance", func() {
-			nodeName := apitypes.NodeName(node.Labels["hostname"])
+			nodeName := apitypes.NodeName(node.Name)
 			Expect(nodeName).NotTo(BeEmpty())
 
 			By("calling InstanceType()")
@@ -119,6 +121,18 @@ var _ = Describe("Instances", func() {
 			exists, err := instances.InstanceExistsByProviderID(context.Background(), providerID)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(exists).To(BeTrue())
+		})
+		It("should be possible to check required annotations and labels are added to node", func() {
+			faultDomain := node.ObjectMeta.Labels[oci.FaultDomainLabel]
+			Expect(faultDomain).NotTo(BeEmpty())
+			compartmentID := node.ObjectMeta.Annotations[oci.CompartmentIDAnnotation]
+			Expect(compartmentID).NotTo(BeEmpty())
+			instanceType := node.ObjectMeta.Labels[v1.LabelInstanceType]
+			Expect(instanceType).NotTo(BeEmpty())
+			fdZone := node.ObjectMeta.Labels[v1.LabelZoneFailureDomain]
+			Expect(fdZone).NotTo(BeEmpty())
+			region := node.ObjectMeta.Labels[v1.LabelZoneRegion]
+			Expect(region).NotTo(BeEmpty())
 		})
 	})
 })

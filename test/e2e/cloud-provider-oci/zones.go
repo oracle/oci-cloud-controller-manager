@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"context"
+
 	sharedfw "github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
 
 	. "github.com/onsi/ginkgo"
@@ -59,7 +60,7 @@ var _ = Describe("Zones", func() {
 		})
 
 		It("should be possible to get a non-empty zone by node name", func() {
-			nodeName := apitypes.NodeName(node.Labels["hostname"])
+			nodeName := apitypes.NodeName(node.Name)
 			Expect(nodeName).NotTo(BeEmpty())
 
 			By("calling GetZoneByNodeName()")
