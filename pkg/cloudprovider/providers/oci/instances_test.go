@@ -94,6 +94,36 @@ var (
 			DnsLabel: common.String("subnetwithnovcndnslabel"),
 			VcnId:    common.String("vcnwithoutdnslabel"),
 		},
+		"one": &core.Subnet{
+			Id:                 common.String("one"),
+			DnsLabel:           common.String("subnetwithnovcndnslabel"),
+			VcnId:              common.String("vcnwithoutdnslabel"),
+			AvailabilityDomain: common.String("AD1"),
+		},
+		"two": &core.Subnet{
+			Id:                 common.String("two"),
+			DnsLabel:           common.String("subnetwithnovcndnslabel"),
+			VcnId:              common.String("vcnwithoutdnslabel"),
+			AvailabilityDomain: common.String("AD2"),
+		},
+		"annotation-one": &core.Subnet{
+			Id:                 common.String("annotation-one"),
+			DnsLabel:           common.String("subnetwithnovcndnslabel"),
+			VcnId:              common.String("vcnwithoutdnslabel"),
+			AvailabilityDomain: common.String("AD1"),
+		},
+		"annotation-two": &core.Subnet{
+			Id:                 common.String("annotation-two"),
+			DnsLabel:           common.String("subnetwithnovcndnslabel"),
+			VcnId:              common.String("vcnwithoutdnslabel"),
+			AvailabilityDomain: common.String("AD2"),
+		},
+		"regional-subnet": &core.Subnet{
+			Id:                 common.String("regional-subnet"),
+			DnsLabel:           common.String("subnetwithnovcndnslabel"),
+			VcnId:              common.String("vcnwithoutdnslabel"),
+			AvailabilityDomain: nil,
+		},
 	}
 
 	vcns = map[string]*core.Vcn{
@@ -170,6 +200,10 @@ func (MockComputeClient) WaitForVolumeDetached(ctx context.Context, attachmentID
 
 // MockVirtualNetworkClient mocks VirtualNetwork client implementation
 type MockVirtualNetworkClient struct {
+}
+
+func (c *MockVirtualNetworkClient) IsRegionalSubnet(ctx context.Context, id string) (bool, error) {
+	return subnets[id].AvailabilityDomain == nil, nil
 }
 
 func (c *MockVirtualNetworkClient) GetPrivateIP(ctx context.Context, id string) (*core.PrivateIp, error) {

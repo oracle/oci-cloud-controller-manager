@@ -209,6 +209,10 @@ func (c *MockComputeClient) WaitForVolumeDetached(ctx context.Context, attachmen
 type MockVirtualNetworkClient struct {
 }
 
+func (c *MockVirtualNetworkClient) IsRegionalSubnet(ctx context.Context, id string) (bool, error) {
+	return false, nil
+}
+
 // GetPrivateIP mocks the VirtualNetwork GetPrivateIP implementation
 func (c *MockVirtualNetworkClient) GetPrivateIP(ctx context.Context, id string) (*core.PrivateIp, error) {
 	return &core.PrivateIp{IpAddress: &privateIP}, nil

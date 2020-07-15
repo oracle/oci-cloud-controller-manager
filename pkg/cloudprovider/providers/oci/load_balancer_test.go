@@ -15,8 +15,14 @@
 package oci
 
 import (
+	"context"
 	"reflect"
 	"testing"
+
+	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
+	"go.uber.org/zap"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func Test_getDefaultLBSubnets(t *testing.T) {
@@ -54,6 +60,141 @@ func Test_getDefaultLBSubnets(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := getDefaultLBSubnets(tt.args.subnet1, tt.args.subnet2); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("getDefaultLBSubnets() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetLoadBalancerSubnets(t *testing.T) {
+	testCases := map[string]struct {
+		defaultSubnetOne string
+		defaultSubnetTwo string
+		nodes            []*v1.Node
+		service          *v1.Service
+		expected         []string
+		sslConfig        *SSLConfig
+	}{
+		"defaults only no annotations": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+				},
+			},
+			expected: []string{"one", "two"},
+		},
+		"internal default subnet overridden with subnet1 annotation": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInternal: "",
+						ServiceAnnotationLoadBalancerSubnet1:  "regional-subnet",
+					},
+				},
+			},
+			expected: []string{"regional-subnet"},
+		},
+		"internal no default subnet only subnet1 annotation": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInternal: "",
+						ServiceAnnotationLoadBalancerSubnet1:  "regional-subnet",
+					},
+				},
+			},
+			expected: []string{"regional-subnet"},
+		},
+		"override defaults with annotations": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSubnet1: "annotation-one",
+						ServiceAnnotationLoadBalancerSubnet2: "annotation-two",
+					},
+				},
+			},
+			expected: []string{"annotation-one", "annotation-two"},
+		},
+		"no default subnet defined override subnets via annotations": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSubnet1: "annotation-one",
+						ServiceAnnotationLoadBalancerSubnet2: "annotation-two",
+					},
+				},
+			},
+			expected: []string{"annotation-one", "annotation-two"},
+		},
+		"no default subnet defined override subnet1 via annotations as regional subnet": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSubnet1: "regional-subnet",
+					},
+				},
+			},
+			expected: []string{"regional-subnet"},
+		},
+		"no default subnet defined override subnet2 via annotations as regional subnet": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSubnet2: "regional-subnet",
+					},
+				},
+			},
+			expected: []string{"regional-subnet"},
+		},
+	}
+	cp := &CloudProvider{
+		client: MockOCIClient{},
+		config: &providercfg.Config{CompartmentID: "testCompartment"},
+	}
+
+	for name, tc := range testCases {
+		logger := zap.L()
+		t.Run(name, func(t *testing.T) {
+
+			cp.config = &providercfg.Config{
+				LoadBalancer: &providercfg.LoadBalancerConfig{
+					Subnet1: tc.defaultSubnetOne,
+					Subnet2: tc.defaultSubnetTwo,
+				},
+			}
+			subnets, err := cp.getLoadBalancerSubnets(context.Background(), logger.Sugar(), tc.service)
+			if err != nil {
+				t.Error(err)
+			}
+
+			if !reflect.DeepEqual(subnets, tc.expected) {
+				t.Errorf("Expected load balancer subnets\n%+v\nbut got\n%+v", tc.expected, subnets)
 			}
 		})
 	}
