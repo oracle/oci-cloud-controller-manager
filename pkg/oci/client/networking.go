@@ -27,6 +27,7 @@ import (
 type NetworkingInterface interface {
 	GetSubnet(ctx context.Context, id string) (*core.Subnet, error)
 	GetSubnetFromCacheByIP(ip string) (*core.Subnet, error)
+	IsRegionalSubnet(ctx context.Context, id string) (bool, error)
 
 	GetVcn(ctx context.Context, id string) (*core.Vcn, error)
 
@@ -97,6 +98,14 @@ func (c *client) GetSubnetFromCacheByIP(ip string) (*core.Subnet, error) {
 		}
 	}
 	return nil, nil
+}
+
+func (c *client) IsRegionalSubnet(ctx context.Context, id string) (bool, error) {
+	subnet, err := c.GetSubnet(ctx, id)
+	if err != nil {
+		return false, err
+	}
+	return subnet.AvailabilityDomain == nil, nil
 }
 
 func (c *client) GetVcn(ctx context.Context, id string) (*core.Vcn, error) {

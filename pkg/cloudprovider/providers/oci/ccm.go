@@ -22,6 +22,8 @@ import (
 	"io"
 	"time"
 
+	"github.com/oracle/oci-go-sdk/core"
+
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
@@ -62,7 +64,8 @@ type CloudProvider struct {
 	securityListManagerFactory securityListManagerFactory
 	config                     *providercfg.Config
 
-	logger *zap.SugaredLogger
+	logger        *zap.SugaredLogger
+	instanceCache cache.Store
 }
 
 // Compile time check that CloudProvider implements the cloudprovider.Interface
@@ -107,9 +110,10 @@ func NewCloudProvider(config *providercfg.Config) (cloudprovider.Interface, erro
 	}
 
 	return &CloudProvider{
-		client: c,
-		config: config,
-		logger: logger.Sugar(),
+		client:        c,
+		config:        config,
+		logger:        logger.Sugar(),
+		instanceCache: cache.NewTTLStore(instanceCacheKeyFn, time.Duration(24)*time.Hour),
 	}, nil
 }
 
@@ -138,10 +142,19 @@ func (cp *CloudProvider) Initialize(clientBuilder cloudprovider.ControllerClient
 
 	factory := informers.NewSharedInformerFactory(cp.kubeclient, 5*time.Minute)
 
+	nodeInfoController := NewNodeInfoController(
+		factory.Core().V1().Nodes(),
+		cp.kubeclient,
+		cp,
+		cp.logger,
+		cp.instanceCache,
+		cp.client)
+
 	nodeInformer := factory.Core().V1().Nodes()
 	go nodeInformer.Informer().Run(wait.NeverStop)
 	serviceInformer := factory.Core().V1().Services()
 	go serviceInformer.Informer().Run(wait.NeverStop)
+	go nodeInfoController.Run(wait.NeverStop)
 
 	cp.logger.Info("Waiting for node informer cache to sync")
 	if !cache.WaitForCacheSync(wait.NeverStop, nodeInformer.Informer().HasSynced, serviceInformer.Informer().HasSynced) {
@@ -207,4 +220,8 @@ func (cp *CloudProvider) ScrubDNS(nameservers, searches []string) (nsOut, srchOu
 // HasClusterID returns true if the cluster has a clusterID.
 func (cp *CloudProvider) HasClusterID() bool {
 	return true
+}
+
+func instanceCacheKeyFn(obj interface{}) (string, error) {
+	return *obj.(*core.Instance).Id, nil
 }

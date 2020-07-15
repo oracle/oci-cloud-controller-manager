@@ -341,7 +341,12 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		secretBackendSetString := service.Annotations[ServiceAnnotationLoadBalancerTLSBackendSetSecret]
 		sslConfig = NewSSLConfig(secretListenerString, secretBackendSetString, service, ports, cp)
 	}
-	subnets := getDefaultLBSubnets(cp.config.LoadBalancer.Subnet1, cp.config.LoadBalancer.Subnet2)
+	subnets, err := cp.getLoadBalancerSubnets(ctx, logger, service)
+	if err != nil {
+		logger.With(zap.Error(err)).Error("Failed to get Load balancer Subnets.")
+		return nil, err
+	}
+
 	spec, err := NewLBSpec(logger, service, nodes, subnets, sslConfig, cp.securityListManagerFactory)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to derive LBSpec")
@@ -381,6 +386,52 @@ func getDefaultLBSubnets(subnet1, subnet2 string) []string {
 		subnets = []string{subnet1}
 	}
 	return subnets
+}
+
+func (cp *CloudProvider) getLoadBalancerSubnets(ctx context.Context, logger *zap.SugaredLogger, svc *v1.Service) ([]string, error) {
+	_, internal := svc.Annotations[ServiceAnnotationLoadBalancerInternal]
+
+	// NOTE: These will be overridden for existing load balancers as load
+	// balancer subnets cannot be modified.
+	subnets := getDefaultLBSubnets(cp.config.LoadBalancer.Subnet1, cp.config.LoadBalancer.Subnet2)
+
+	if s, ok := svc.Annotations[ServiceAnnotationLoadBalancerSubnet1]; ok && len(s) != 0 {
+		subnets[0] = s
+		r, err := cp.client.Networking().IsRegionalSubnet(ctx, s)
+		if err != nil {
+			return nil, err
+		}
+		if r {
+			return subnets[:1], nil
+		}
+	}
+
+	if s, ok := svc.Annotations[ServiceAnnotationLoadBalancerSubnet2]; ok && len(s) != 0 {
+		r, err := cp.client.Networking().IsRegionalSubnet(ctx, s)
+		if err != nil {
+			return nil, err
+		}
+		if r {
+			subnets[0] = s
+			logger.Debugf("Considering annotation %s: %s for LB as it is the only regional subnet in annotations provided.", ServiceAnnotationLoadBalancerSubnet2, s)
+			return subnets[:1], nil
+		} else if len(subnets) > 1 {
+			subnets[1] = s
+		} else {
+			subnets = append(subnets, s)
+		}
+	}
+
+	if internal {
+		// Public load balancers need two subnets if they are AD specific and only first subnet is used if regional. Internal load
+		// balancers will always use the first subnet.
+		if subnets[0] == "" {
+			return nil, errors.Errorf("a configuration for subnet1 must be specified for an internal load balancer")
+		}
+		return subnets[:1], nil
+	}
+
+	return subnets, nil
 }
 
 func (cp *CloudProvider) updateLoadBalancer(ctx context.Context, lb *loadbalancer.LoadBalancer, spec *LBSpec) error {

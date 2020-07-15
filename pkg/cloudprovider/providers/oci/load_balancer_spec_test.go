@@ -15,17 +15,19 @@
 package oci
 
 import (
+	"context"
 	"fmt"
-	"github.com/pkg/errors"
-	"go.uber.org/zap"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"reflect"
 	"testing"
 
+	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/loadbalancer"
+	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 var (
@@ -119,7 +121,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				securityListManager: newSecurityListManagerNOOP(),
 			},
 		},
-		"internal": {
+		"internal with default subnet": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
 			service: &v1.Service{
@@ -177,7 +179,182 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				securityListManager: newSecurityListManagerNOOP(),
 			},
 		},
-		"use default subnet in case of no subnets overrides via annotation": {
+		"internal with overridden regional subnet1": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInternal: "",
+						ServiceAnnotationLoadBalancerSubnet1:  "regional-subnet",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Shape:    "100Mbps",
+				Internal: true,
+				Subnets:  []string{"regional-subnet"},
+				Listeners: map[string]loadbalancer.ListenerDetails{
+					"TCP-80": {
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]loadbalancer.BackendSetDetails{
+					"TCP-80": {
+						Backends: []loadbalancer.BackendDetails{},
+						HealthChecker: &loadbalancer.HealthCheckerDetails{
+							Protocol:         common.String("HTTP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+						},
+						Policy: common.String("ROUND_ROBIN"),
+					},
+				},
+				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager: newSecurityListManagerNOOP(),
+			},
+		},
+		"internal with overridden regional subnet2": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInternal: "",
+						ServiceAnnotationLoadBalancerSubnet2:  "regional-subnet",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Shape:    "100Mbps",
+				Internal: true,
+				Subnets:  []string{"regional-subnet"},
+				Listeners: map[string]loadbalancer.ListenerDetails{
+					"TCP-80": {
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]loadbalancer.BackendSetDetails{
+					"TCP-80": {
+						Backends: []loadbalancer.BackendDetails{},
+						HealthChecker: &loadbalancer.HealthCheckerDetails{
+							Protocol:         common.String("HTTP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+						},
+						Policy: common.String("ROUND_ROBIN"),
+					},
+				},
+				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager: newSecurityListManagerNOOP(),
+			},
+		},
+		"internal with no default subnets provide subnet1 via annotation": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInternal: "",
+						ServiceAnnotationLoadBalancerSubnet1:  "annotation-one",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Shape:    "100Mbps",
+				Internal: true,
+				Subnets:  []string{"annotation-one"},
+				Listeners: map[string]loadbalancer.ListenerDetails{
+					"TCP-80": {
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]loadbalancer.BackendSetDetails{
+					"TCP-80": {
+						Backends: []loadbalancer.BackendDetails{},
+						HealthChecker: &loadbalancer.HealthCheckerDetails{
+							Protocol:         common.String("HTTP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+						},
+						Policy: common.String("ROUND_ROBIN"),
+					},
+				},
+				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager: newSecurityListManagerNOOP(),
+			},
+		},
+		"use default subnet in case of no subnet overrides via annotation": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
 			service: &v1.Service{
@@ -202,6 +379,293 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Shape:    "100Mbps",
 				Internal: false,
 				Subnets:  []string{"one", "two"},
+				Listeners: map[string]loadbalancer.ListenerDetails{
+					"TCP-80": loadbalancer.ListenerDetails{
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]loadbalancer.BackendSetDetails{
+					"TCP-80": loadbalancer.BackendSetDetails{
+						Backends: []loadbalancer.BackendDetails{},
+						HealthChecker: &loadbalancer.HealthCheckerDetails{
+							Protocol:         common.String("HTTP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+						},
+						Policy: common.String("ROUND_ROBIN"),
+					},
+				},
+				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": portSpec{
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager: newSecurityListManagerNOOP(),
+			},
+		},
+		"no default subnets provide subnet1 via annotation as regional-subnet": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSubnet1: "regional-subnet",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						v1.ServicePort{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"regional-subnet"},
+				Listeners: map[string]loadbalancer.ListenerDetails{
+					"TCP-80": loadbalancer.ListenerDetails{
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]loadbalancer.BackendSetDetails{
+					"TCP-80": loadbalancer.BackendSetDetails{
+						Backends: []loadbalancer.BackendDetails{},
+						HealthChecker: &loadbalancer.HealthCheckerDetails{
+							Protocol:         common.String("HTTP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+						},
+						Policy: common.String("ROUND_ROBIN"),
+					},
+				},
+				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": portSpec{
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager: newSecurityListManagerNOOP(),
+			},
+		},
+		"no default subnets provide subnet2 via annotation": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSubnet2: "annotation-two",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						v1.ServicePort{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"", "annotation-two"},
+				Listeners: map[string]loadbalancer.ListenerDetails{
+					"TCP-80": loadbalancer.ListenerDetails{
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]loadbalancer.BackendSetDetails{
+					"TCP-80": loadbalancer.BackendSetDetails{
+						Backends: []loadbalancer.BackendDetails{},
+						HealthChecker: &loadbalancer.HealthCheckerDetails{
+							Protocol:         common.String("HTTP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+						},
+						Policy: common.String("ROUND_ROBIN"),
+					},
+				},
+				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": portSpec{
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager: newSecurityListManagerNOOP(),
+			},
+		},
+		"override default subnet via subnet1 annotation as regional subnet": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSubnet1: "regional-subnet",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						v1.ServicePort{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"regional-subnet"},
+				Listeners: map[string]loadbalancer.ListenerDetails{
+					"TCP-80": loadbalancer.ListenerDetails{
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]loadbalancer.BackendSetDetails{
+					"TCP-80": loadbalancer.BackendSetDetails{
+						Backends: []loadbalancer.BackendDetails{},
+						HealthChecker: &loadbalancer.HealthCheckerDetails{
+							Protocol:         common.String("HTTP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+						},
+						Policy: common.String("ROUND_ROBIN"),
+					},
+				},
+				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": portSpec{
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager: newSecurityListManagerNOOP(),
+			},
+		},
+		"override default subnet via subnet2 annotation as regional subnet": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSubnet2: "regional-subnet",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						v1.ServicePort{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"regional-subnet"},
+				Listeners: map[string]loadbalancer.ListenerDetails{
+					"TCP-80": loadbalancer.ListenerDetails{
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]loadbalancer.BackendSetDetails{
+					"TCP-80": loadbalancer.BackendSetDetails{
+						Backends: []loadbalancer.BackendDetails{},
+						HealthChecker: &loadbalancer.HealthCheckerDetails{
+							Protocol:         common.String("HTTP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+						},
+						Policy: common.String("ROUND_ROBIN"),
+					},
+				},
+				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": portSpec{
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager: newSecurityListManagerNOOP(),
+			},
+		},
+		"override default subnet via subnet1 and subnet2 annotation": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSubnet1: "annotation-one",
+						ServiceAnnotationLoadBalancerSubnet2: "annotation-two",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						v1.ServicePort{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"annotation-one", "annotation-two"},
 				Listeners: map[string]loadbalancer.ListenerDetails{
 					"TCP-80": loadbalancer.ListenerDetails{
 						DefaultBackendSetName: common.String("TCP-80"),
@@ -671,12 +1135,26 @@ func TestNewLBSpecSuccess(t *testing.T) {
 		},
 	}
 
+	cp := &CloudProvider{
+		client: MockOCIClient{},
+		config: &providercfg.Config{CompartmentID: "testCompartment"},
+	}
+
 	for name, tc := range testCases {
 		logger := zap.L()
 		t.Run(name, func(t *testing.T) {
 			// we expect the service to be unchanged
 			tc.expected.service = tc.service
-			subnets := getDefaultLBSubnets(tc.defaultSubnetOne, tc.defaultSubnetTwo)
+			cp.config = &providercfg.Config{
+				LoadBalancer: &providercfg.LoadBalancerConfig{
+					Subnet1: tc.defaultSubnetOne,
+					Subnet2: tc.defaultSubnetTwo,
+				},
+			}
+			subnets, err := cp.getLoadBalancerSubnets(context.Background(), logger.Sugar(), tc.service)
+			if err != nil {
+				t.Error(err)
+			}
 			slManagerFactory := func(mode string) securityListManager {
 				return newSecurityListManagerNOOP()
 			}
@@ -759,12 +1237,27 @@ func TestNewLBSpecSingleAD(t *testing.T) {
 			},
 		},
 	}
+
+	cp := &CloudProvider{
+		client: MockOCIClient{},
+		config: &providercfg.Config{CompartmentID: "testCompartment"},
+	}
+
 	for name, tc := range testCases {
 		logger := zap.L()
 		t.Run(name, func(t *testing.T) {
 			// we expect the service to be unchanged
 			tc.expected.service = tc.service
-			subnets := getDefaultLBSubnets(tc.defaultSubnetOne, tc.defaultSubnetTwo)
+			cp.config = &providercfg.Config{
+				LoadBalancer: &providercfg.LoadBalancerConfig{
+					Subnet1: tc.defaultSubnetOne,
+					Subnet2: tc.defaultSubnetTwo,
+				},
+			}
+			subnets, err := cp.getLoadBalancerSubnets(context.Background(), logger.Sugar(), tc.service)
+			if err != nil {
+				t.Error(err)
+			}
 			slManagerFactory := func(mode string) securityListManager {
 				return newSecurityListManagerNOOP()
 			}
@@ -862,9 +1355,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 			},
 			expectedErrMsg: "a configuration for subnet1 must be specified for an internal load balancer",
 		},
-		"annotation overriding internal lb with empty subnet1": {
-			defaultSubnetOne: "one",
-			defaultSubnetTwo: "two",
+		"internal lb with empty subnet1 annotation": {
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -873,7 +1364,6 @@ func TestNewLBSpecFailure(t *testing.T) {
 					Annotations: map[string]string{
 						ServiceAnnotationLoadBalancerInternal: "",
 						ServiceAnnotationLoadBalancerSubnet1:  "",
-						ServiceAnnotationLoadBalancerSubnet2:  "annotation-2",
 					},
 				},
 				Spec: v1.ServiceSpec{
@@ -886,14 +1376,27 @@ func TestNewLBSpecFailure(t *testing.T) {
 		},
 	}
 
+	cp := &CloudProvider{
+		client: MockOCIClient{},
+		config: &providercfg.Config{CompartmentID: "testCompartment"},
+	}
+
 	for name, tc := range testCases {
 		logger := zap.L()
 		t.Run(name, func(t *testing.T) {
-			subnets := getDefaultLBSubnets(tc.defaultSubnetOne, tc.defaultSubnetTwo)
-			slManagerFactory := func(mode string) securityListManager {
-				return newSecurityListManagerNOOP()
+			cp.config = &providercfg.Config{
+				LoadBalancer: &providercfg.LoadBalancerConfig{
+					Subnet1: tc.defaultSubnetOne,
+					Subnet2: tc.defaultSubnetTwo,
+				},
 			}
-			_, err := NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, nil, slManagerFactory)
+			subnets, err := cp.getLoadBalancerSubnets(context.Background(), logger.Sugar(), tc.service)
+			if err == nil {
+				slManagerFactory := func(mode string) securityListManager {
+					return newSecurityListManagerNOOP()
+				}
+				_, err = NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, nil, slManagerFactory)
+			}
 			if err == nil || err.Error() != tc.expectedErrMsg {
 				t.Errorf("Expected error with message %q but got %q", tc.expectedErrMsg, err)
 			}
