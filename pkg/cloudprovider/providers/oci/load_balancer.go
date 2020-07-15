@@ -74,6 +74,19 @@ const (
 	// specifying the security list managment mode ("All", "Frontend", "None") that configures how security lists are managed by the CCM
 	ServiceAnnotaionLoadBalancerSecurityListManagementMode = "service.beta.kubernetes.io/oci-load-balancer-security-list-management-mode"
 
+	// ServiceAnnotationLoadBalancerHealthCheckRetries is the annotation used
+	// on the service to specify the number of retries to attempt before a backend server is considered "unhealthy".
+	ServiceAnnotationLoadBalancerHealthCheckRetries = "service.beta.kubernetes.io/oci-load-balancer-health-check-retries"
+
+	// ServiceAnnotationLoadBalancerHealthCheckInterval is a Service annotation for
+	// specifying the interval between health checks, in milliseconds.
+	ServiceAnnotationLoadBalancerHealthCheckInterval = "service.beta.kubernetes.io/oci-load-balancer-health-check-interval"
+
+	// ServiceAnnotationLoadBalancerHealthCheckTimeout is a Service annotation for
+	// specifying the maximum time, in milliseconds, to wait for a reply to a health check. A health check is successful only if a reply
+	// returns within this timeout period.
+	ServiceAnnotationLoadBalancerHealthCheckTimeout = "service.beta.kubernetes.io/oci-load-balancer-health-check-timeout"
+
 	// ServiceAnnotationLoadBalancerBEProtocol is a Service annotation for specifying the
 	// load balancer listener backend protocol ("TCP", "HTTP").
 	// See: https://docs.cloud.oracle.com/iaas/Content/Balance/Concepts/balanceoverview.htm#concepts

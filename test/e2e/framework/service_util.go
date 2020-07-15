@@ -16,6 +16,7 @@ package framework
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net"
 	"sort"
@@ -26,6 +27,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	cloudprovider "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci"
+	"github.com/oracle/oci-go-sdk/loadbalancer"
+	gerrors "github.com/pkg/errors"
 	"k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -834,6 +837,74 @@ func (j *ServiceTestJig) TestHTTPHealthCheckNodePort(host string, port int, requ
 		return fmt.Errorf("error waiting for healthCheckNodePort: expected at least %d succeed=%v on %v%v, got %d", threshold, expectSucceed, host, port, count)
 	}
 	return nil
+}
+
+func (f *CloudProviderFramework) VerifyHealthCheckConfig(loadBalancerId string, retries, timeout, interval int) error {
+	for start := time.Now(); time.Since(start) < 5*time.Minute; time.Sleep(5 * time.Second) {
+		loadBalancer, err := f.Client.LoadBalancer().GetLoadBalancer(context.TODO(), loadBalancerId)
+		if err != nil {
+			return err
+		}
+		success, err := testHealthCheckConfig(loadBalancer, retries, timeout, interval)
+		if err != nil {
+			return err
+		}
+		if success {
+			Logf("Health Check config matches expected config.")
+			return nil
+		}
+		Logf("Health Check config did not match expected - will retry")
+	}
+	return gerrors.Errorf("Timeout waiting for Health check config to be as expected.")
+}
+
+func testHealthCheckConfig(loadBalancer *loadbalancer.LoadBalancer, retries int, timeout int, interval int) (bool, error) {
+	if loadBalancer != nil && len(loadBalancer.BackendSets) != 0 {
+		for _, backendSet := range loadBalancer.BackendSets {
+			if *backendSet.HealthChecker.Retries != retries {
+				return false, nil
+			}
+			if *backendSet.HealthChecker.TimeoutInMillis != timeout {
+				return false, nil
+			}
+			if *backendSet.HealthChecker.IntervalInMillis != interval {
+				return false, nil
+			}
+		}
+		return true, nil
+	}
+	return false, gerrors.Errorf("Could not find Health check config.")
+}
+
+func (f *CloudProviderFramework) VerifyLoadBalancerConnectionIdleTimeout(loadBalancerId string, connectionIdleTimeout int) error {
+	for start := time.Now(); time.Since(start) < 5*time.Minute; time.Sleep(2 * time.Second) {
+		loadBalancer, err := f.Client.LoadBalancer().GetLoadBalancer(context.TODO(), loadBalancerId)
+		if err != nil {
+			return err
+		}
+		success, err := testConnectionIdleTimeout(loadBalancer, connectionIdleTimeout)
+		if err != nil {
+			return err
+		}
+		if success {
+			Logf("Connection Idle Timeout matches expected value")
+			return nil
+		}
+		Logf("Connection Idle Timeout did not match expected - will retry")
+	}
+	return gerrors.Errorf("Timeout waiting for Connection Idle Timeout to be as expected.")
+}
+
+func testConnectionIdleTimeout(loadBalancer *loadbalancer.LoadBalancer, connectionIdleTimeout int) (bool, error) {
+	if loadBalancer != nil && len(loadBalancer.Listeners) != 0 {
+		for _, listener := range loadBalancer.Listeners {
+			if *listener.ConnectionConfiguration.IdleTimeout != int64(connectionIdleTimeout) {
+				return false, nil
+			}
+		}
+		return true, nil
+	}
+	return false, gerrors.Errorf("Could not find connection configuration.")
 }
 
 // Simple helper class to avoid too much boilerplate in tests

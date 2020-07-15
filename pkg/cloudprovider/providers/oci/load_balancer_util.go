@@ -189,13 +189,13 @@ func getHealthCheckerChanges(actual *loadbalancer.HealthChecker, desired *loadba
 	if toInt(actual.Port) != toInt(desired.Port) {
 		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:Port", toInt(actual.Port), toInt(desired.Port)))
 	}
-	//If there is no value for ResponseBodyRegex,Retries,ReturnCode and TimeoutInMillis in the LBSpec,
+	//If there is no value for ResponseBodyRegex and ReturnCode in the LBSpec,
 	//We would let the LBCS to set the default value. There is no point of reconciling.
 	if toString(desired.ResponseBodyRegex) != "" && toString(actual.ResponseBodyRegex) != toString(desired.ResponseBodyRegex) {
 		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:ResponseBodyRegex", toString(actual.ResponseBodyRegex), toString(desired.ResponseBodyRegex)))
 	}
 
-	if toInt(desired.Retries) != 0 && toInt(actual.Retries) != toInt(desired.Retries) {
+	if toInt(actual.Retries) != toInt(desired.Retries) {
 		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:Retries", toInt(actual.Retries), toInt(desired.Retries)))
 	}
 
@@ -203,8 +203,12 @@ func getHealthCheckerChanges(actual *loadbalancer.HealthChecker, desired *loadba
 		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:ReturnCode", toInt(actual.ReturnCode), toInt(desired.ReturnCode)))
 	}
 
-	if toInt(desired.TimeoutInMillis) != 0 && toInt(actual.TimeoutInMillis) != toInt(desired.TimeoutInMillis) {
+	if toInt(actual.TimeoutInMillis) != toInt(desired.TimeoutInMillis) {
 		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:TimeoutInMillis", toInt(actual.TimeoutInMillis), toInt(desired.TimeoutInMillis)))
+	}
+
+	if toInt(actual.IntervalInMillis) != toInt(desired.IntervalInMillis) {
+		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:IntervalInMillis", toInt(actual.IntervalInMillis), toInt(desired.IntervalInMillis)))
 	}
 
 	if toString(actual.UrlPath) != toString(desired.UrlPath) {

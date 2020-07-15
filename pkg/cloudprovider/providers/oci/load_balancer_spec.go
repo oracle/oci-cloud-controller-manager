@@ -148,15 +148,25 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, def
 		return nil, err
 	}
 
+	backendSets, err := getBackendSets(logger, svc, nodes, sslConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	ports, err := getPorts(svc)
+	if err != nil {
+		return nil, err
+	}
+
 	return &LBSpec{
 		Name:        GetLoadBalancerName(svc),
 		Shape:       shape,
 		Internal:    internal,
 		Subnets:     subnets,
 		Listeners:   listeners,
-		BackendSets: getBackendSets(logger, svc, nodes, sslConfig),
+		BackendSets: backendSets,
 
-		Ports:       getPorts(svc),
+		Ports:       ports,
 		SSLConfig:   sslConfig,
 		SourceCIDRs: sourceCIDRs,
 
@@ -244,18 +254,21 @@ func getBackendSetName(protocol string, port int) string {
 	return fmt.Sprintf("%s-%d", protocol, port)
 }
 
-func getPorts(svc *v1.Service) map[string]portSpec {
+func getPorts(svc *v1.Service) (map[string]portSpec, error) {
 	ports := make(map[string]portSpec)
 	for _, servicePort := range svc.Spec.Ports {
 		name := getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
+		healthChecker, err := getHealthChecker(nil, int(servicePort.Port), svc)
+		if err != nil {
+			return nil, err
+		}
 		ports[name] = portSpec{
 			BackendPort:       int(servicePort.NodePort),
 			ListenerPort:      int(servicePort.Port),
-			HealthCheckerPort: *getHealthChecker(nil, int(servicePort.Port), svc).Port,
+			HealthCheckerPort: *healthChecker.Port,
 		}
-
 	}
-	return ports
+	return ports, nil
 }
 
 func getBackends(logger *zap.SugaredLogger, nodes []*v1.Node, nodePort int32) []loadbalancer.BackendDetails {
@@ -275,7 +288,7 @@ func getBackends(logger *zap.SugaredLogger, nodes []*v1.Node, nodePort int32) []
 	return backends
 }
 
-func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sslCfg *SSLConfig) map[string]loadbalancer.BackendSetDetails {
+func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sslCfg *SSLConfig) (map[string]loadbalancer.BackendSetDetails, error) {
 	backendSets := make(map[string]loadbalancer.BackendSetDetails)
 	for _, servicePort := range svc.Spec.Ports {
 		name := getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
@@ -284,36 +297,73 @@ func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node
 		if sslCfg != nil && len(sslCfg.BackendSetSSLSecretName) != 0 {
 			secretName = sslCfg.BackendSetSSLSecretName
 		}
+		healthChecker, err := getHealthChecker(sslCfg, port, svc)
+		if err != nil {
+			return nil, err
+		}
 		backendSets[name] = loadbalancer.BackendSetDetails{
 			Policy:           common.String(DefaultLoadBalancerPolicy),
 			Backends:         getBackends(logger, nodes, servicePort.NodePort),
-			HealthChecker:    getHealthChecker(sslCfg, port, svc),
+			HealthChecker:    healthChecker,
 			SslConfiguration: getSSLConfiguration(sslCfg, secretName, port),
 		}
 	}
-	return backendSets
+	return backendSets, nil
 }
 
-func getHealthChecker(cfg *SSLConfig, port int, svc *v1.Service) *loadbalancer.HealthCheckerDetails {
+func getHealthChecker(cfg *SSLConfig, port int, svc *v1.Service) (*loadbalancer.HealthCheckerDetails, error) {
 	// If the health-check has SSL enabled use TCP rather than HTTP.
 	protocol := lbNodesHealthCheckProtoHTTP
 	if cfg != nil && cfg.Ports.Has(port) {
 		protocol = lbNodesHealthCheckProtoTCP
 	}
+	// Setting default values as per defined in the doc (https://docs.cloud.oracle.com/en-us/iaas/Content/Balance/Tasks/editinghealthcheck.htm#console)
+	var retries = 3
+	if r, ok := svc.Annotations[ServiceAnnotationLoadBalancerHealthCheckRetries]; ok {
+		rInt, err := strconv.Atoi(r)
+		if err != nil {
+			return nil, fmt.Errorf("invalid value: %s provided for annotation: %s", r, ServiceAnnotationLoadBalancerHealthCheckRetries)
+		}
+		retries = rInt
+	}
+	// Setting default values as per defined in the doc (https://docs.cloud.oracle.com/en-us/iaas/Content/Balance/Tasks/editinghealthcheck.htm#console)
+	var intervalInMillis = 10000
+	if i, ok := svc.Annotations[ServiceAnnotationLoadBalancerHealthCheckInterval]; ok {
+		iInt, err := strconv.Atoi(i)
+		if err != nil {
+			return nil, fmt.Errorf("invalid value: %s provided for annotation: %s", i, ServiceAnnotationLoadBalancerHealthCheckInterval)
+		}
+		intervalInMillis = iInt
+	}
+	// Setting default values as per defined in the doc (https://docs.cloud.oracle.com/en-us/iaas/Content/Balance/Tasks/editinghealthcheck.htm#console)
+	var timeoutInMillis = 3000
+	if t, ok := svc.Annotations[ServiceAnnotationLoadBalancerHealthCheckTimeout]; ok {
+		tInt, err := strconv.Atoi(t)
+		if err != nil {
+			return nil, fmt.Errorf("invalid value: %s provided for annotation: %s", t, ServiceAnnotationLoadBalancerHealthCheckTimeout)
+		}
+		timeoutInMillis = tInt
+	}
 	checkPath, checkPort := apiservice.GetServiceHealthCheckPathPort(svc)
 	if checkPath != "" {
 		return &loadbalancer.HealthCheckerDetails{
-			Protocol: &protocol,
-			UrlPath:  &checkPath,
-			Port:     common.Int(int(checkPort)),
-		}
+			Protocol:         &protocol,
+			UrlPath:          &checkPath,
+			Port:             common.Int(int(checkPort)),
+			Retries:          &retries,
+			IntervalInMillis: &intervalInMillis,
+			TimeoutInMillis:  &timeoutInMillis,
+		}, nil
 	}
 
 	return &loadbalancer.HealthCheckerDetails{
-		Protocol: &protocol,
-		UrlPath:  common.String(lbNodesHealthCheckPath),
-		Port:     common.Int(lbNodesHealthCheckPort),
-	}
+		Protocol:         &protocol,
+		UrlPath:          common.String(lbNodesHealthCheckPath),
+		Port:             common.Int(lbNodesHealthCheckPort),
+		Retries:          &retries,
+		IntervalInMillis: &intervalInMillis,
+		TimeoutInMillis:  &timeoutInMillis,
+	}, nil
 }
 
 func getSSLConfiguration(cfg *SSLConfig, name string, port int) *loadbalancer.SslConfigurationDetails {

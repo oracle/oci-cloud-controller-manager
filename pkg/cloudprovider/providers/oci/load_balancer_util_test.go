@@ -1355,6 +1355,128 @@ func TestHasBackendSetChanged(t *testing.T) {
 			expected: true,
 		},
 		{
+			name: "HealthChecker retries changes",
+			desired: loadbalancer.BackendSetDetails{
+				HealthChecker: &loadbalancer.HealthCheckerDetails{
+					Port:    common.Int(20),
+					Retries: common.Int(2),
+				},
+			},
+			actual: loadbalancer.BackendSet{
+				HealthChecker: &loadbalancer.HealthChecker{
+					Port:    common.Int(20),
+					Retries: common.Int(3),
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "HealthChecker IntervalInMillis changes",
+			desired: loadbalancer.BackendSetDetails{
+				HealthChecker: &loadbalancer.HealthCheckerDetails{
+					Port:             common.Int(20),
+					IntervalInMillis: common.Int(1000),
+				},
+			},
+			actual: loadbalancer.BackendSet{
+				HealthChecker: &loadbalancer.HealthChecker{
+					Port:             common.Int(20),
+					IntervalInMillis: common.Int(300),
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "HealthChecker TimeoutInMillis present in desired and not in actual",
+			desired: loadbalancer.BackendSetDetails{
+				HealthChecker: &loadbalancer.HealthCheckerDetails{
+					Port:            common.Int(20),
+					TimeoutInMillis: common.Int(1),
+				},
+			},
+			actual: loadbalancer.BackendSet{
+				HealthChecker: &loadbalancer.HealthChecker{
+					Port: common.Int(20),
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "HealthChecker retries present in desired and not in actual",
+			desired: loadbalancer.BackendSetDetails{
+				HealthChecker: &loadbalancer.HealthCheckerDetails{
+					Port:    common.Int(20),
+					Retries: common.Int(2),
+				},
+			},
+			actual: loadbalancer.BackendSet{
+				HealthChecker: &loadbalancer.HealthChecker{
+					Port: common.Int(20),
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "HealthChecker IntervalInMillis present in desired and not in actual",
+			desired: loadbalancer.BackendSetDetails{
+				HealthChecker: &loadbalancer.HealthCheckerDetails{
+					Port:             common.Int(20),
+					IntervalInMillis: common.Int(1000),
+				},
+			},
+			actual: loadbalancer.BackendSet{
+				HealthChecker: &loadbalancer.HealthChecker{
+					Port: common.Int(20),
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "HealthChecker TimeoutInMillis present in actual and not in desired",
+			desired: loadbalancer.BackendSetDetails{
+				HealthChecker: &loadbalancer.HealthCheckerDetails{
+					Port: common.Int(20),
+				},
+			},
+			actual: loadbalancer.BackendSet{
+				HealthChecker: &loadbalancer.HealthChecker{
+					Port:            common.Int(20),
+					TimeoutInMillis: common.Int(1),
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "HealthChecker retries present in actual and not in desired",
+			desired: loadbalancer.BackendSetDetails{
+				HealthChecker: &loadbalancer.HealthCheckerDetails{
+					Port: common.Int(20),
+				},
+			},
+			actual: loadbalancer.BackendSet{
+				HealthChecker: &loadbalancer.HealthChecker{
+					Port:    common.Int(20),
+					Retries: common.Int(2),
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "HealthChecker IntervalInMillis present in actual and not in desired",
+			desired: loadbalancer.BackendSetDetails{
+				HealthChecker: &loadbalancer.HealthCheckerDetails{
+					Port: common.Int(20),
+				},
+			},
+			actual: loadbalancer.BackendSet{
+				HealthChecker: &loadbalancer.HealthChecker{
+					Port:             common.Int(20),
+					IntervalInMillis: common.Int(1000),
+				},
+			},
+			expected: true,
+		},
+		{
 			name: "HealthChecker UrlPath changes",
 			desired: loadbalancer.BackendSetDetails{
 				HealthChecker: &loadbalancer.HealthCheckerDetails{

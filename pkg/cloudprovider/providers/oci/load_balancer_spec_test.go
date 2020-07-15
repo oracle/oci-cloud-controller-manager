@@ -99,9 +99,12 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					"TCP-80": {
 						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol: common.String("HTTP"),
-							Port:     common.Int(10256),
-							UrlPath:  common.String("/healthz"),
+							Protocol:         common.String("HTTP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
 						},
 						Policy: common.String("ROUND_ROBIN"),
 					},
@@ -154,9 +157,12 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					"TCP-80": {
 						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol: common.String("HTTP"),
-							Port:     common.Int(10256),
-							UrlPath:  common.String("/healthz"),
+							Protocol:         common.String("HTTP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
 						},
 						Policy: common.String("ROUND_ROBIN"),
 					},
@@ -207,9 +213,12 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					"TCP-80": loadbalancer.BackendSetDetails{
 						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol: common.String("HTTP"),
-							Port:     common.Int(10256),
-							UrlPath:  common.String("/healthz"),
+							Protocol:         common.String("HTTP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
 						},
 						Policy: common.String("ROUND_ROBIN"),
 					},
@@ -263,9 +272,12 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					"TCP-80": {
 						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol: common.String("HTTP"),
-							Port:     common.Int(10256),
-							UrlPath:  common.String("/healthz"),
+							Protocol:         common.String("HTTP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
 						},
 						Policy: common.String("ROUND_ROBIN"),
 					},
@@ -321,9 +333,12 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					"TCP-80": {
 						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol: common.String("HTTP"),
-							Port:     common.Int(10256),
-							UrlPath:  common.String("/healthz"),
+							Protocol:         common.String("HTTP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
 						},
 						Policy: common.String("ROUND_ROBIN"),
 					},
@@ -378,9 +393,12 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					"TCP-80": {
 						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol: common.String("HTTP"),
-							Port:     common.Int(10256),
-							UrlPath:  common.String("/healthz"),
+							Protocol:         common.String("HTTP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
 						},
 						Policy: common.String("ROUND_ROBIN"),
 					},
@@ -435,9 +453,12 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					"TCP-80": {
 						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol: common.String("HTTP"),
-							Port:     common.Int(10256),
-							UrlPath:  common.String("/healthz"),
+							Protocol:         common.String("HTTP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
 						},
 						Policy: common.String("ROUND_ROBIN"),
 					},
@@ -492,9 +513,12 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					"TCP-80": {
 						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol: common.String("HTTP"),
-							Port:     common.Int(10256),
-							UrlPath:  common.String("/healthz"),
+							Protocol:         common.String("HTTP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
 						},
 						Policy: common.String("ROUND_ROBIN"),
 					},
@@ -550,9 +574,12 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					"TCP-443": {
 						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol: common.String("TCP"),
-							Port:     common.Int(10256),
-							UrlPath:  common.String("/healthz"),
+							Protocol:         common.String("TCP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
 						},
 						Policy: common.String("ROUND_ROBIN"),
 						SslConfiguration: &loadbalancer.SslConfigurationDetails{
@@ -580,6 +607,66 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Ports:                   sets.NewInt(443),
 				ListenerSSLSecretName:   listenerSecret,
 				BackendSetSSLSecretName: backendSecret,
+			},
+		},
+		"custom health check config": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerHealthCheckRetries:  "1",
+						ServiceAnnotationLoadBalancerHealthCheckTimeout:  "1000",
+						ServiceAnnotationLoadBalancerHealthCheckInterval: "3000",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"one", "two"},
+				Listeners: map[string]loadbalancer.ListenerDetails{
+					"TCP-80": {
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]loadbalancer.BackendSetDetails{
+					"TCP-80": {
+						Backends: []loadbalancer.BackendDetails{},
+						HealthChecker: &loadbalancer.HealthCheckerDetails{
+							Protocol:         common.String("HTTP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(1),
+							TimeoutInMillis:  common.Int(1000),
+							IntervalInMillis: common.Int(3000),
+						},
+						Policy: common.String("ROUND_ROBIN"),
+					},
+				},
+				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager: newSecurityListManagerNOOP(),
 			},
 		},
 	}
@@ -651,9 +738,12 @@ func TestNewLBSpecSingleAD(t *testing.T) {
 					"TCP-80": {
 						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol: common.String("HTTP"),
-							Port:     common.Int(10256),
-							UrlPath:  common.String("/healthz"),
+							Protocol:         common.String("HTTP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
 						},
 						Policy: common.String("ROUND_ROBIN"),
 					},
