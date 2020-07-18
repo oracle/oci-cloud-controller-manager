@@ -59,9 +59,10 @@ func (c *client) FindVolumeAttachment(ctx context.Context, compartmentID, volume
 		}
 
 		resp, err := c.compute.ListVolumeAttachments(ctx, core.ListVolumeAttachmentsRequest{
-			CompartmentId: &compartmentID,
-			VolumeId:      &volumeID,
-			Page:          page,
+			CompartmentId:   &compartmentID,
+			VolumeId:        &volumeID,
+			Page:            page,
+			RequestMetadata: c.requestMetadata,
 		})
 		incRequestCounter(err, listVerb, volumeAttachmentResource)
 
@@ -90,7 +91,10 @@ func (c *client) GetVolumeAttachment(ctx context.Context, id string) (core.Volum
 		return nil, RateLimitError(false, "GetVolumeAttachment")
 	}
 
-	resp, err := c.compute.GetVolumeAttachment(ctx, core.GetVolumeAttachmentRequest{VolumeAttachmentId: &id})
+	resp, err := c.compute.GetVolumeAttachment(ctx, core.GetVolumeAttachmentRequest{
+		VolumeAttachmentId: &id,
+		RequestMetadata:    c.requestMetadata,
+	})
 	incRequestCounter(err, getVerb, volumeAttachmentResource)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -108,6 +112,7 @@ func (c *client) AttachVolume(ctx context.Context, instanceID, volumeID string) 
 			InstanceId: &instanceID,
 			VolumeId:   &volumeID,
 		},
+		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, createVerb, volumeAttachmentResource)
 	if err != nil {
@@ -144,7 +149,10 @@ func (c *client) DetachVolume(ctx context.Context, id string) error {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return RateLimitError(false, "DetachVolume")
 	}
-	_, err := c.compute.DetachVolume(ctx, core.DetachVolumeRequest{VolumeAttachmentId: &id})
+	_, err := c.compute.DetachVolume(ctx, core.DetachVolumeRequest{
+		VolumeAttachmentId: &id,
+		RequestMetadata:    c.requestMetadata,
+	})
 	incRequestCounter(err, deleteVerb, volumeAttachmentResource)
 	if err != nil {
 		return errors.WithStack(err)
