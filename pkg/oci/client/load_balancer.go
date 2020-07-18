@@ -57,7 +57,8 @@ func (c *client) GetLoadBalancer(ctx context.Context, id string) (*loadbalancer.
 	}
 
 	resp, err := c.loadbalancer.GetLoadBalancer(ctx, loadbalancer.GetLoadBalancerRequest{
-		LoadBalancerId: &id,
+		LoadBalancerId:  &id,
+		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, getVerb, loadBalancerResource)
 
@@ -75,9 +76,10 @@ func (c *client) GetLoadBalancerByName(ctx context.Context, compartmentID, name 
 			return nil, RateLimitError(false, "ListLoadBalancers")
 		}
 		resp, err := c.loadbalancer.ListLoadBalancers(ctx, loadbalancer.ListLoadBalancersRequest{
-			CompartmentId: &compartmentID,
-			DisplayName:   &name,
-			Page:          page,
+			CompartmentId:   &compartmentID,
+			DisplayName:     &name,
+			Page:            page,
+			RequestMetadata: c.requestMetadata,
 		})
 		incRequestCounter(err, listVerb, loadBalancerResource)
 
@@ -104,6 +106,7 @@ func (c *client) CreateLoadBalancer(ctx context.Context, details loadbalancer.Cr
 
 	resp, err := c.loadbalancer.CreateLoadBalancer(ctx, loadbalancer.CreateLoadBalancerRequest{
 		CreateLoadBalancerDetails: details,
+		RequestMetadata:           c.requestMetadata,
 	})
 	incRequestCounter(err, createVerb, loadBalancerResource)
 
@@ -120,7 +123,8 @@ func (c *client) DeleteLoadBalancer(ctx context.Context, id string) (string, err
 	}
 
 	resp, err := c.loadbalancer.DeleteLoadBalancer(ctx, loadbalancer.DeleteLoadBalancerRequest{
-		LoadBalancerId: &id,
+		LoadBalancerId:  &id,
+		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, deleteVerb, loadBalancerResource)
 
@@ -137,7 +141,8 @@ func (c *client) GetCertificateByName(ctx context.Context, lbID, name string) (*
 	}
 
 	resp, err := c.loadbalancer.ListCertificates(ctx, loadbalancer.ListCertificatesRequest{
-		LoadBalancerId: &lbID,
+		LoadBalancerId:  &lbID,
+		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, listVerb, certificateResource)
 
@@ -167,6 +172,7 @@ func (c *client) CreateCertificate(ctx context.Context, lbID string, cert loadba
 			PrivateKey:        cert.PrivateKey,
 			Passphrase:        cert.Passphrase,
 		},
+		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, createVerb, certificateResource)
 
@@ -183,7 +189,8 @@ func (c *client) GetWorkRequest(ctx context.Context, id string) (*loadbalancer.W
 	}
 
 	resp, err := c.loadbalancer.GetWorkRequest(ctx, loadbalancer.GetWorkRequestRequest{
-		WorkRequestId: &id,
+		WorkRequestId:   &id,
+		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, getVerb, workRequestResource)
 
@@ -209,6 +216,7 @@ func (c *client) CreateBackendSet(ctx context.Context, lbID, name string, detail
 			SessionPersistenceConfiguration: details.SessionPersistenceConfiguration,
 			SslConfiguration:                details.SslConfiguration,
 		},
+		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, createVerb, backendSetResource)
 
@@ -234,6 +242,7 @@ func (c *client) UpdateBackendSet(ctx context.Context, lbID, name string, detail
 			SessionPersistenceConfiguration: details.SessionPersistenceConfiguration,
 			SslConfiguration:                details.SslConfiguration,
 		},
+		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, updateVerb, backendSetResource)
 
@@ -250,8 +259,9 @@ func (c *client) DeleteBackendSet(ctx context.Context, lbID, name string) (strin
 	}
 
 	resp, err := c.loadbalancer.DeleteBackendSet(ctx, loadbalancer.DeleteBackendSetRequest{
-		LoadBalancerId: &lbID,
-		BackendSetName: &name,
+		LoadBalancerId:  &lbID,
+		BackendSetName:  &name,
+		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, deleteVerb, backendSetResource)
 
@@ -274,6 +284,7 @@ func (c *client) CreateBackend(ctx context.Context, lbID, bsName string, details
 			IpAddress: details.IpAddress,
 			Port:      details.Port,
 		},
+		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, createVerb, backendResource)
 
@@ -290,9 +301,10 @@ func (c *client) DeleteBackend(ctx context.Context, lbID, bsName, name string) (
 	}
 
 	resp, err := c.loadbalancer.DeleteBackend(ctx, loadbalancer.DeleteBackendRequest{
-		LoadBalancerId: &lbID,
-		BackendSetName: &bsName,
-		BackendName:    &name,
+		LoadBalancerId:  &lbID,
+		BackendSetName:  &bsName,
+		BackendName:     &name,
+		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, deleteVerb, backendResource)
 
@@ -318,6 +330,7 @@ func (c *client) CreateListener(ctx context.Context, lbID, name string, details 
 			SslConfiguration:        details.SslConfiguration,
 			ConnectionConfiguration: details.ConnectionConfiguration,
 		},
+		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, createVerb, listenerResource)
 
@@ -343,6 +356,7 @@ func (c *client) UpdateListener(ctx context.Context, lbID, name string, details 
 			SslConfiguration:        details.SslConfiguration,
 			ConnectionConfiguration: details.ConnectionConfiguration,
 		},
+		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, updateVerb, listenerResource)
 
@@ -381,8 +395,9 @@ func (c *client) DeleteListener(ctx context.Context, lbID, name string) (string,
 	}
 
 	resp, err := c.loadbalancer.DeleteListener(ctx, loadbalancer.DeleteListenerRequest{
-		LoadBalancerId: &lbID,
-		ListenerName:   &name,
+		LoadBalancerId:  &lbID,
+		ListenerName:    &name,
+		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, deleteVerb, listenerResource)
 

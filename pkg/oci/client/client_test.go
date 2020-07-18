@@ -124,13 +124,9 @@ func TestRateLimiting(t *testing.T) {
 	}
 
 	// Write requests up to qpsWrite should pass and the others fail
-	ids := [2]string{"12334"}
 	for i := 0; i < int(qpsWrite)*2; i++ {
-		req := core.UpdateSecurityListRequest{
-			SecurityListId: &ids[0],
-		}
 
-		_, err := client.Networking().UpdateSecurityList(context.Background(), req)
+		_, err := client.Networking().UpdateSecurityList(context.Background(), "1234", "", nil, nil)
 		p := (err == nil)
 
 		if (i < int(qpsRead) && !p) || (i >= int(qpsRead) && p) {

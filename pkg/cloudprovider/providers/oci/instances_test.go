@@ -19,7 +19,6 @@ import (
 	"errors"
 	"reflect"
 	"testing"
-	"time"
 
 	"k8s.io/apimachinery/pkg/labels"
 	listersv1 "k8s.io/client-go/listers/core/v1"
@@ -141,10 +140,6 @@ var (
 	comportmentID = "xxxx"
 )
 
-
-
-
-
 type MockOCIClient struct{}
 
 func (MockOCIClient) Compute() client.ComputeInterface {
@@ -236,7 +231,7 @@ func (c *MockVirtualNetworkClient) GetSecurityList(ctx context.Context, id strin
 	return core.GetSecurityListResponse{}, nil
 }
 
-func (c *MockVirtualNetworkClient) UpdateSecurityList(ctx context.Context, request core.UpdateSecurityListRequest) (core.UpdateSecurityListResponse, error) {
+func (c *MockVirtualNetworkClient) UpdateSecurityList(ctx context.Context, id string, etag string, ingressRules []core.IngressSecurityRule, egressRules []core.EgressSecurityRule) (core.UpdateSecurityListResponse, error) {
 	return core.UpdateSecurityListResponse{}, nil
 }
 
@@ -306,11 +301,7 @@ func (c *MockLoadBalancerClient) AwaitWorkRequest(ctx context.Context, id string
 // MockBlockStorageClient mocks BlockStoargae client implementation
 type MockBlockStorageClient struct{}
 
-func (MockBlockStorageClient) AwaitVolumeAvailable(ctx context.Context, id string) (*core.Volume, error) {
-	return nil, nil
-}
-
-func (MockBlockStorageClient) AwaitVolumeAvailableORTimeout(ctx context.Context, id string, timeout time.Duration) (*core.Volume, error) {
+func (MockBlockStorageClient) AwaitVolumeAvailableORTimeout(ctx context.Context, id string) (*core.Volume, error) {
 	return nil, nil
 }
 
