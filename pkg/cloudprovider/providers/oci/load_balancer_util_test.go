@@ -734,6 +734,64 @@ func TestGetListenerChanges(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "protocol change TCP to HTTP",
+			desired: map[string]loadbalancer.ListenerDetails{
+				"HTTP-80": loadbalancer.ListenerDetails{
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("HTTP"),
+					Port:                  common.Int(80),
+				},
+			},
+			actual: map[string]loadbalancer.Listener{
+				"TCP-80": loadbalancer.Listener{
+					Name:                  common.String("TCP-80"),
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
+				},
+			},
+			expected: []Action{
+				&ListenerAction{
+					name:       "TCP-80",
+					actionType: Update,
+					Listener: loadbalancer.ListenerDetails{
+						DefaultBackendSetName: common.String("TCP-80"),
+						Protocol:              common.String("HTTP"),
+						Port:                  common.Int(80),
+					},
+				},
+			},
+		},
+		{
+			name: "protocol change HTTP to TCP",
+			desired: map[string]loadbalancer.ListenerDetails{
+				"TCP-80": loadbalancer.ListenerDetails{
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
+				},
+			},
+			actual: map[string]loadbalancer.Listener{
+				"HTTP-80": loadbalancer.Listener{
+					Name:                  common.String("HTTP-80"),
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("HTTP"),
+					Port:                  common.Int(80),
+				},
+			},
+			expected: []Action{
+				&ListenerAction{
+					name:       "HTTP-80",
+					actionType: Update,
+					Listener: loadbalancer.ListenerDetails{
+						DefaultBackendSetName: common.String("TCP-80"),
+						Protocol:              common.String("TCP"),
+						Port:                  common.Int(80),
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range testCases {
@@ -890,6 +948,11 @@ func TestGetSanitizedName(t *testing.T) {
 		{
 			"new name (suffix secret name omitted)",
 			"TCP-80",
+			"TCP-80",
+		},
+		{
+			"Name has HTTP",
+			"HTTP-80",
 			"TCP-80",
 		},
 	}

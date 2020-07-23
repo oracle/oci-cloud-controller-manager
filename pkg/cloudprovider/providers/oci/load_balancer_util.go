@@ -481,10 +481,17 @@ func getListenerChanges(logger *zap.SugaredLogger, actual map[string]loadbalance
 
 	// set to keep track of desired listeners that already exist and should not be created
 	exists := sets.NewString()
-
+	//sanitizedDesiredListeners convert the listener name HTTP-xxxx to TCP-xxx such that in sortAndCombineAction can
+	//place BackendSet create before Listener Create and Listener delete before BackendSet delete. Also it would help
+	//not to delete and create Listener if customer edit the service and add oci-load-balancer-backend-protocol: "HTTP"
+	// and vice versa. It would help to only update the listener in case of protocol change. Refer OKE-10793 for details.
+	sanitizedDesiredListeners := make(map[string]loadbalancer.ListenerDetails)
+	for name, desiredListener := range desired {
+		sanitizedDesiredListeners[getSanitizedName(name)] = desiredListener
+	}
 	// First check to see if any listeners need to be deleted or updated.
 	for name, actualListener := range actual {
-		desiredListener, ok := desired[getSanitizedName(name)]
+		desiredListener, ok := sanitizedDesiredListeners[getSanitizedName(name)]
 		if !ok {
 			// no longer exists
 			listenerActions = append(listenerActions, &ListenerAction{
@@ -511,7 +518,7 @@ func getListenerChanges(logger *zap.SugaredLogger, actual map[string]loadbalance
 
 	// Now check if any need to be created.
 	for name, desiredListener := range desired {
-		if !exists.Has(name) {
+		if !exists.Has(getSanitizedName(name)) {
 			// doesn't exist so lets create it
 			listenerActions = append(listenerActions, &ListenerAction{
 				Listener:   desiredListener,
@@ -529,9 +536,14 @@ func sslEnabled(sslConfigMap map[int]*loadbalancer.SslConfiguration) bool {
 }
 
 // getSanitizedName omits the suffix after protocol-port in the name.
-// FIXME can remove this function if we have made sure that there are no LB listeners with legacy name like <PROTOCOL-PORT-SECRET> for
+// It also converts the listener name from HTTP-xxxx to TCP-xxx such that
+// we can use oci-load-balancer-backend-protocol: "HTTP" annotation.
 func getSanitizedName(name string) string {
 	fields := strings.Split(name, "-")
+	if strings.EqualFold(fields[0], "HTTP") {
+		fields[0] = "TCP"
+		name = fmt.Sprintf(strings.Join(fields, "-"))
+	}
 	if len(fields) > 2 {
 		return fmt.Sprintf(strings.Join(fields[:2], "-"))
 	}
