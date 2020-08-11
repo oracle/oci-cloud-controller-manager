@@ -25,7 +25,7 @@ import (
 	. "github.com/onsi/gomega"
 	cloudprovider "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci"
 	sharedfw "github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -38,7 +38,7 @@ var _ = Describe("Service [Slow]", func() {
 	f := sharedfw.NewDefaultFramework(baseName)
 
 	Context("[cloudprovider][ccm]", func() {
-		It("should be possible to create and mutate a Service type:LoadBalancer [Canary]", func() {
+		It("should be possible to create and mutate a Service type:LoadBalancer (change nodeport) [Canary]", func() {
 			serviceName := "basic-lb-test"
 			ns := f.Namespace.Name
 
