@@ -1188,6 +1188,11 @@ func TestHasListenerChanged(t *testing.T) {
 	}
 }
 
+var (
+	testBackendPort    = int(30500)
+	testNewBackendPort = int(30600)
+)
+
 func TestHasBackendSetChanged(t *testing.T) {
 	var testCases = []struct {
 		name     string
@@ -1527,6 +1532,46 @@ func TestHasBackendSetChanged(t *testing.T) {
 				},
 			},
 			expected: false,
+		},
+		{
+			name: "no change - nodeport",
+			desired: loadbalancer.BackendSetDetails{
+				Policy: common.String("policy"),
+				Backends: []loadbalancer.BackendDetails{
+					{
+						Port: &testBackendPort,
+					},
+				},
+			},
+			actual: loadbalancer.BackendSet{
+				Policy: common.String("policy"),
+				Backends: []loadbalancer.Backend{
+					{
+						Port: &testBackendPort,
+					},
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "nodeport change",
+			desired: loadbalancer.BackendSetDetails{
+				Policy: common.String("policy"),
+				Backends: []loadbalancer.BackendDetails{
+					{
+						Port: &testBackendPort,
+					},
+				},
+			},
+			actual: loadbalancer.BackendSet{
+				Policy: common.String("policy"),
+				Backends: []loadbalancer.Backend{
+					{
+						Port: &testNewBackendPort,
+					},
+				},
+			},
+			expected: true,
 		},
 	}
 

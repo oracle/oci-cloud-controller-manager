@@ -227,6 +227,14 @@ func getHealthCheckerChanges(actual *loadbalancer.HealthChecker, desired *loadba
 func hasBackendSetChanged(logger *zap.SugaredLogger, actual loadbalancer.BackendSet, desired loadbalancer.BackendSetDetails) bool {
 	logger = logger.With("BackEndSetName", toString(actual.Name))
 	backendSetChanges := getHealthCheckerChanges(actual.HealthChecker, desired.HealthChecker)
+	// Need to update the seclist if service nodeport has changed
+	if len(actual.Backends) > 0 && len(desired.Backends) > 0 {
+		if *actual.Backends[0].Port != *desired.Backends[0].Port {
+			backendSetChanges = append(backendSetChanges,
+				fmt.Sprintf(changeFmtStr, "BackEndSet:BackendPort",
+					*actual.Backends[0].Port, *desired.Backends[0].Port))
+		}
+	}
 
 	if toString(actual.Policy) != toString(desired.Policy) {
 		backendSetChanges = append(backendSetChanges, fmt.Sprintf(changeFmtStr, "BackEndSet:Policy", toString(actual.Policy), toString(desired.Policy)))
