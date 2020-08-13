@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/oracle/oci-go-sdk/common"
+
 	"go.uber.org/zap"
 
 	"golang.org/x/net/context"
@@ -20,12 +22,13 @@ import (
 
 // Provider implements the secrets-store-csi-driver provider interface
 type Provider struct {
-	logger *zap.Logger
+	logger        *zap.Logger
+	secretsClient *ocisecrets.SecretsClient
 }
 
 type SecretReference struct {
 	SecretID      string `json:"secretID" yaml:"secretID"`
-	VersionNumber int    `json:"versionNumber" yaml:"versionNumber"`
+	VersionNumber int64  `json:"versionNumber" yaml:"versionNumber"`
 	FileName      string `json:"fileName" yaml:"fileName"`
 }
 
@@ -37,8 +40,20 @@ type StringArray struct {
 // NewProvider creates a new OCI Key Vault Provider.
 func NewProvider(logger *zap.Logger) (*Provider, error) {
 	logger.Sugar().Debugf("NewOCIProvider")
+	// TODO: Support more options on the parameters?
+	cfg, err := auth.InstancePrincipalConfigurationProvider()
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to create instance principal configuration provider")
+	}
+
+	secretClient, err := ocisecrets.NewSecretsClientWithConfigurationProvider(cfg)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to create secret client")
+	}
+
 	return &Provider{
-		logger: logger,
+		logger:        logger,
+		secretsClient: &secretClient,
 	}, nil
 }
 
@@ -76,24 +91,19 @@ func (p *Provider) MountSecretsStoreObjectContent(ctx context.Context, attrib ma
 		return fmt.Errorf("objects array is empty")
 	}
 
-	// TODO: Support more options on the parameters?
-	cfg, err := auth.InstancePrincipalConfigurationProvider()
-	if err != nil {
-		return errors.Wrap(err, "unable to create instance principal configuration provider")
-	}
-
-	secretClient, err := ocisecrets.NewSecretsClientWithConfigurationProvider(cfg)
-	if err != nil {
-		return errors.Wrap(err, "unable to create secret client")
-	}
-
 	// Create Secret Fetcher thing
 
 	for _, secretRef := range secretReferences {
 
-		resp, err := secretClient.GetSecretBundle(ctx, ocisecrets.GetSecretBundleRequest{
+		req := ocisecrets.GetSecretBundleRequest{
 			SecretId: &secretRef.SecretID,
-		})
+		}
+		// Secret versions start at one, so we can safely assume 0 is default.
+		if secretRef.VersionNumber > 0 {
+			req.VersionNumber = common.Int64(secretRef.VersionNumber)
+		}
+
+		resp, err := p.secretsClient.GetSecretBundle(ctx, req)
 		if err != nil {
 			return errors.Wrapf(err, "unable to fetch secret: %q", secretRef.SecretID)
 		}
@@ -116,24 +126,3 @@ func (p *Provider) MountSecretsStoreObjectContent(ctx context.Context, attrib ma
 
 	return nil
 }
-
-// apiVersion: secrets-store.csi.x-k8s.io/v1alpha1
-// kind: SecretProviderClass
-// metadata:
-//   name: oci-test
-// spec:
-//   provider: oci
-//   parameters:
-//     objects:  |
-//       array:
-//         - |
-//           secretID: ocid1.vaultsecret.oc1.iad.amaaaaaa2ahbgkyawyssocqw7ohcpt6ejrj4z55zrg2lcw3ezj4hl2cuhktq
-// 		  fileName: test
-
-// volumes:
-// - name: secrets-store-inline
-// csi:
-// 	driver: secrets-store.csi.k8s.io
-// 	readOnly: true
-// 	volumeAttributes:
-// 	secretProviderClass: "oci-test"
