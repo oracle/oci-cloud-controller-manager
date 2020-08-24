@@ -40,7 +40,7 @@ const (
 )
 
 var (
-	// DO currently only support a single node to be attached to a single node
+	// OCI currently only support a single node to be attached to a single node
 	// in read/write mode. This corresponds to `accessModes.ReadWriteOnce` in a
 	// PVC resource on Kubernetes
 	supportedAccessMode = &csi.VolumeCapability_AccessMode{
@@ -184,9 +184,6 @@ func (d *ControllerDriver) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 
 // ControllerPublishVolume attaches the given volume to the node
 func (d *ControllerDriver) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
-
-	log := d.logger.With("volumeID", req.VolumeId)
-
 	if req.VolumeId == "" {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
 	}
@@ -199,38 +196,70 @@ func (d *ControllerDriver) ControllerPublishVolume(ctx context.Context, req *csi
 		return nil, status.Error(codes.InvalidArgument, "Volume capability must be provided")
 	}
 
+	log := d.logger.With("volumeID", req.VolumeId, "nodeId", req.NodeId)
+
 	id, err := d.util.lookupNodeID(d.KubeClient, req.NodeId)
 	if err != nil {
-		log.With(zap.Error(err)).With("nodeId", req.NodeId).Error("Failed to lookup node")
+		log.With(zap.Error(err)).Error("Failed to lookup node")
 		return nil, status.Errorf(codes.InvalidArgument, "failed to get ProviderID by nodeName. error : %s", err)
 	}
 	id = client.MapProviderIDToInstanceID(id)
 
-	volumeAttached, err := d.client.Compute().FindVolumeAttachment(context.Background(), d.config.CompartmentID, req.VolumeId)
-	if err != nil {
-		if client.IsNotFound(err) {
-			volumeAttached, err = d.client.Compute().AttachVolume(context.Background(), id, req.VolumeId)
+	volumeAttached, err := d.client.Compute().FindActiveVolumeAttachment(context.Background(), d.config.CompartmentID, req.VolumeId)
+
+	if err != nil && !client.IsNotFound(err) {
+		d.logger.With(zap.Error(err)).Error("Got error in finding volume attachment: %s", err)
+		return nil, err
+	}
+
+	// volume already attached to an instance
+	if err == nil {
+		if volumeAttached.GetLifecycleState() == core.VolumeAttachmentLifecycleStateDetaching {
+			log.Info("Waiting for volume to get detached before attaching.")
+			err = d.client.Compute().WaitForVolumeDetached(ctx, *volumeAttached.GetId())
 			if err != nil {
-				d.logger.With(zap.Error(err)).With("nodeId", req.NodeId).Info("Failed to attach instance to node.")
-				return nil, status.Errorf(codes.Unknown, "Failed to attach instance to node. error : %s", err)
+				log.With(zap.Error(err)).Error("Error while waiting for volume to get detached before attaching: %s", err)
+				return nil, status.Errorf(codes.Internal, "Error while waiting for volume to get detached before attaching: %s", err)
 			}
 		} else {
-			d.logger.With(zap.Error(err)).With("nodeId", req.NodeId).Error("Volume is not already attached to node.")
-			return nil, err
+			if id != *volumeAttached.GetInstanceId() {
+				log.Error("Volume is already attached to another node: %s", *volumeAttached.GetInstanceId())
+				return nil, status.Errorf(codes.Internal, "Failed to attach volume to node. "+
+					"The volume is already attached to another node.")
+			} else {
+				if volumeAttached.GetLifecycleState() == core.VolumeAttachmentLifecycleStateAttaching {
+					log.Info("Volume is ATTACHING to node.")
+					volumeAttached, err = d.client.Compute().WaitForVolumeAttached(ctx, *volumeAttached.GetId())
+					if err != nil {
+						log.With(zap.Error(err)).Error("Error while waiting: failed to attach volume to the node: %s.", err)
+						return nil, status.Errorf(codes.Internal, "Failed to attach volume to the node: %s", err)
+					}
+				}
+				log.Info("Volume is already ATTACHED to node.")
+				iSCSIVolumeAttached := volumeAttached.(core.IScsiVolumeAttachment)
+				log.With("volumeAttachedId", *volumeAttached.GetId()).Info("Publishing Volume Completed.")
+				return &csi.ControllerPublishVolumeResponse{
+					PublishContext: map[string]string{
+						iscsi.ISCSIIQN:  *iSCSIVolumeAttached.Iqn,
+						iscsi.ISCSIIP:   *iSCSIVolumeAttached.Ipv4,
+						iscsi.ISCSIPORT: strconv.Itoa(*iSCSIVolumeAttached.Port),
+					},
+				}, nil
+			}
 		}
 	}
 
-	// Check if volumeAttached to another instance or not.
-	if id != *volumeAttached.GetInstanceId() {
-		d.logger.With("nodeId", req.NodeId).Error("Volume is already attached to another instance")
-		return nil, status.Errorf(codes.Unknown, "Failed to attach instance to node. "+
-			"The volume is already attached to another instance.")
+	log.Info("Attaching volume to instance")
+	volumeAttached, err = d.client.Compute().AttachVolume(context.Background(), id, req.VolumeId)
+	if err != nil {
+		d.logger.With(zap.Error(err)).Info("Failed to attach volume to node.")
+		return nil, status.Errorf(codes.Internal, "Failed to attach volume to node. error : %s", err)
 	}
 
 	volumeAttached, err = d.client.Compute().WaitForVolumeAttached(ctx, *volumeAttached.GetId())
 	if err != nil {
-		d.logger.With(zap.Error(err)).With("nodeId", req.NodeId).Error("Failed to attache volume to the node.")
-		return nil, status.Errorf(codes.Unknown, "Failed to attach volume to the node %s", err)
+		d.logger.With(zap.Error(err)).Error("Failed to attach volume to the node.")
+		return nil, status.Errorf(codes.Internal, "Failed to attach volume to the node %s", err)
 	}
 
 	iSCSIVolumeAttached := volumeAttached.(core.IScsiVolumeAttachment)

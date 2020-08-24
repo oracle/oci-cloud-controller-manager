@@ -74,7 +74,7 @@ func (d *NodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolu
 
 	if !d.util.waitForPathToExist(devicePath, 20) {
 		logger.Error("failed to wait for device to exist.")
-		return nil, status.Error(codes.DeadlineExceeded, err.Error())
+		return nil, status.Error(codes.DeadlineExceeded, "Failed to wait for device to exist.")
 	}
 
 	mnt := req.VolumeCapability.GetMount()

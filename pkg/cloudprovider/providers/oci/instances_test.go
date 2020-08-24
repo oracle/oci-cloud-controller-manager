@@ -301,6 +301,10 @@ func (MockComputeClient) WaitForVolumeDetached(ctx context.Context, attachmentID
 	return nil
 }
 
+func (c *MockComputeClient) FindActiveVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
+	return nil, nil
+}
+
 // MockVirtualNetworkClient mocks VirtualNetwork client implementation
 type MockVirtualNetworkClient struct {
 }
