@@ -1,9 +1,11 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
-// Load Balancing Service API
+// Load Balancing API
 //
-// API for the Load Balancing Service
+// API for the Load Balancing service. Use this API to manage load balancers, backend sets, and related items. For more
+// information, see Overview of Load Balancing (https://docs.cloud.oracle.com/iaas/Content/Balance/Concepts/balanceoverview.htm).
 //
 
 package loadbalancer
@@ -15,15 +17,15 @@ import (
 // BackendHealth The health status of the specified backend server as reported by the primary and standby load balancers.
 type BackendHealth struct {
 
-	// A list of the most recent health check results returned for the specified backend server.
-	HealthCheckResults []HealthCheckResult `mandatory:"true" json:"healthCheckResults"`
-
 	// The general health status of the specified backend server as reported by the primary and standby load balancers.
 	// *   **OK:** Both health checks returned `OK`.
 	// *   **WARNING:** One health check returned `OK` and one did not.
 	// *   **CRITICAL:** Neither health check returned `OK`.
 	// *   **UNKNOWN:** One or both health checks returned `UNKNOWN`, or the system was unable to retrieve metrics at this time.
 	Status BackendHealthStatusEnum `mandatory:"true" json:"status"`
+
+	// A list of the most recent health check results returned for the specified backend server.
+	HealthCheckResults []HealthCheckResult `mandatory:"true" json:"healthCheckResults"`
 }
 
 func (m BackendHealth) String() string {
@@ -33,7 +35,7 @@ func (m BackendHealth) String() string {
 // BackendHealthStatusEnum Enum with underlying type: string
 type BackendHealthStatusEnum string
 
-// Set of constants representing the allowable values for BackendHealthStatus
+// Set of constants representing the allowable values for BackendHealthStatusEnum
 const (
 	BackendHealthStatusOk       BackendHealthStatusEnum = "OK"
 	BackendHealthStatusWarning  BackendHealthStatusEnum = "WARNING"
@@ -48,7 +50,7 @@ var mappingBackendHealthStatus = map[string]BackendHealthStatusEnum{
 	"UNKNOWN":  BackendHealthStatusUnknown,
 }
 
-// GetBackendHealthStatusEnumValues Enumerates the set of values for BackendHealthStatus
+// GetBackendHealthStatusEnumValues Enumerates the set of values for BackendHealthStatusEnum
 func GetBackendHealthStatusEnumValues() []BackendHealthStatusEnum {
 	values := make([]BackendHealthStatusEnum, 0)
 	for _, v := range mappingBackendHealthStatus {

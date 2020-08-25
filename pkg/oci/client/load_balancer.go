@@ -41,6 +41,9 @@ type LoadBalancerInterface interface {
 	UpdateBackendSet(ctx context.Context, lbID, name string, details loadbalancer.BackendSetDetails) (string, error)
 	DeleteBackendSet(ctx context.Context, lbID, name string) (string, error)
 
+	CreateBackend(ctx context.Context, lbID, bsName string, details loadbalancer.BackendDetails) (string, error)
+	DeleteBackend(ctx context.Context, lbID, bsName, name string) (string, error)
+
 	UpdateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error)
 	CreateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error)
 	DeleteListener(ctx context.Context, lbID, name string) (string, error)
@@ -259,6 +262,47 @@ func (c *client) DeleteBackendSet(ctx context.Context, lbID, name string) (strin
 	return *resp.OpcWorkRequestId, nil
 }
 
+func (c *client) CreateBackend(ctx context.Context, lbID, bsName string, details loadbalancer.BackendDetails) (string, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return "", RateLimitError(true, "CreateBackend")
+	}
+
+	resp, err := c.loadbalancer.CreateBackend(ctx, loadbalancer.CreateBackendRequest{
+		LoadBalancerId: &lbID,
+		BackendSetName: &bsName,
+		CreateBackendDetails: loadbalancer.CreateBackendDetails{
+			IpAddress: details.IpAddress,
+			Port:      details.Port,
+		},
+	})
+	incRequestCounter(err, createVerb, backendResource)
+
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	return *resp.OpcWorkRequestId, nil
+}
+
+func (c *client) DeleteBackend(ctx context.Context, lbID, bsName, name string) (string, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return "", RateLimitError(true, "DeleteBackend")
+	}
+
+	resp, err := c.loadbalancer.DeleteBackend(ctx, loadbalancer.DeleteBackendRequest{
+		LoadBalancerId: &lbID,
+		BackendSetName: &bsName,
+		BackendName:    &name,
+	})
+	incRequestCounter(err, deleteVerb, backendResource)
+
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	return *resp.OpcWorkRequestId, nil
+}
+
 func (c *client) CreateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error) {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return "", RateLimitError(true, "CreateListener")
@@ -267,11 +311,12 @@ func (c *client) CreateListener(ctx context.Context, lbID, name string, details 
 	resp, err := c.loadbalancer.CreateListener(ctx, loadbalancer.CreateListenerRequest{
 		LoadBalancerId: &lbID,
 		CreateListenerDetails: loadbalancer.CreateListenerDetails{
-			Name:                  &name,
-			DefaultBackendSetName: details.DefaultBackendSetName,
-			Port:                  details.Port,
-			Protocol:              details.Protocol,
-			SslConfiguration:      details.SslConfiguration,
+			Name:                    &name,
+			DefaultBackendSetName:   details.DefaultBackendSetName,
+			Port:                    details.Port,
+			Protocol:                details.Protocol,
+			SslConfiguration:        details.SslConfiguration,
+			ConnectionConfiguration: details.ConnectionConfiguration,
 		},
 	})
 	incRequestCounter(err, createVerb, listenerResource)
@@ -292,10 +337,11 @@ func (c *client) UpdateListener(ctx context.Context, lbID, name string, details 
 		LoadBalancerId: &lbID,
 		ListenerName:   &name,
 		UpdateListenerDetails: loadbalancer.UpdateListenerDetails{
-			DefaultBackendSetName: details.DefaultBackendSetName,
-			Port:                  details.Port,
-			Protocol:              details.Protocol,
-			SslConfiguration:      details.SslConfiguration,
+			DefaultBackendSetName:   details.DefaultBackendSetName,
+			Port:                    details.Port,
+			Protocol:                details.Protocol,
+			SslConfiguration:        details.SslConfiguration,
+			ConnectionConfiguration: details.ConnectionConfiguration,
 		},
 	})
 	incRequestCounter(err, updateVerb, listenerResource)

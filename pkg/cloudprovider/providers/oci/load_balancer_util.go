@@ -39,6 +39,10 @@ const (
 	SSLPassphrase = "passphrase"
 )
 
+const (
+	changeFmtStr = "%v -> Actual:%v - Desired:%v"
+)
+
 const lbNamePrefixEnvVar = "LOAD_BALANCER_PREFIX"
 
 // ActionType specifies what action should be taken on the resource.
@@ -74,17 +78,43 @@ type BackendSetAction struct {
 }
 
 // Type of the Action.
-func (b *BackendSetAction) Type() ActionType {
+func (bs *BackendSetAction) Type() ActionType {
+	return bs.actionType
+}
+
+// Name of the action's object.
+func (bs *BackendSetAction) Name() string {
+	return bs.name
+}
+
+func (bs *BackendSetAction) String() string {
+	return fmt.Sprintf("BackendSetAction:{Name: %s, Type: %v, Ports: %+v}", bs.Name(), bs.actionType, bs.Ports)
+}
+
+// BackendAction denotes the action that should be taken on the given
+// Backend.
+type BackendAction struct {
+	Action
+
+	actionType ActionType
+	name       string
+	bsName     string
+
+	Backend loadbalancer.BackendDetails
+}
+
+// Type of the Action.
+func (b *BackendAction) Type() ActionType {
 	return b.actionType
 }
 
 // Name of the action's object.
-func (b *BackendSetAction) Name() string {
+func (b *BackendAction) Name() string {
 	return b.name
 }
 
-func (b *BackendSetAction) String() string {
-	return fmt.Sprintf("BackendSetAction:{Name: %s, Type: %v, Ports: %+v}", b.Name(), b.actionType, b.Ports)
+func (b *BackendAction) String() string {
+	return fmt.Sprintf("BackendAction:{Name: %s, Type: %v}", b.Name(), b.actionType)
 }
 
 // ListenerAction denotes the action that should be taken on the given Listener.
@@ -135,70 +165,72 @@ func toInt(i *int) int {
 	return *i
 }
 
-func hasHealthCheckerChanged(actual *loadbalancer.HealthChecker, desired *loadbalancer.HealthCheckerDetails) bool {
+func toInt64(i *int64) int64 {
+	if i == nil {
+		return 0
+	}
+	return *i
+}
+
+func getHealthCheckerChanges(actual *loadbalancer.HealthChecker, desired *loadbalancer.HealthCheckerDetails) []string {
+
+	var healthCheckerChanges []string
+	// We would let LBCS to set the default HealthChecker if desired is nil
+	if desired == nil {
+		return healthCheckerChanges
+	}
+
+	//desired is not nil and actual is nil. So we need to reconcile
 	if actual == nil {
-		return desired != nil
+		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker", "NOT_PRESENT", "PRESENT"))
+		return healthCheckerChanges
 	}
 
 	if toInt(actual.Port) != toInt(desired.Port) {
-		return true
+		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:Port", toInt(actual.Port), toInt(desired.Port)))
+	}
+	//If there is no value for ResponseBodyRegex,Retries,ReturnCode and TimeoutInMillis in the LBSpec,
+	//We would let the LBCS to set the default value. There is no point of reconciling.
+	if toString(desired.ResponseBodyRegex) != "" && toString(actual.ResponseBodyRegex) != toString(desired.ResponseBodyRegex) {
+		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:ResponseBodyRegex", toString(actual.ResponseBodyRegex), toString(desired.ResponseBodyRegex)))
 	}
 
-	if toString(actual.ResponseBodyRegex) != toString(desired.ResponseBodyRegex) {
-		return true
+	if toInt(desired.Retries) != 0 && toInt(actual.Retries) != toInt(desired.Retries) {
+		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:Retries", toInt(actual.Retries), toInt(desired.Retries)))
 	}
 
-	if toInt(actual.Retries) != toInt(desired.Retries) {
-		return true
+	if toInt(desired.ReturnCode) != 0 && toInt(actual.ReturnCode) != toInt(desired.ReturnCode) {
+		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:ReturnCode", toInt(actual.ReturnCode), toInt(desired.ReturnCode)))
 	}
 
-	if toInt(actual.ReturnCode) != toInt(desired.ReturnCode) {
-		return true
-	}
-
-	if toInt(actual.TimeoutInMillis) != toInt(desired.TimeoutInMillis) {
-		return true
+	if toInt(desired.TimeoutInMillis) != 0 && toInt(actual.TimeoutInMillis) != toInt(desired.TimeoutInMillis) {
+		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:TimeoutInMillis", toInt(actual.TimeoutInMillis), toInt(desired.TimeoutInMillis)))
 	}
 
 	if toString(actual.UrlPath) != toString(desired.UrlPath) {
-		return true
+		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:UrlPath", toString(actual.UrlPath), toString(desired.UrlPath)))
 	}
 
-	return false
+	if toString(actual.Protocol) != toString(desired.Protocol) {
+		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:Protocol", toString(actual.Protocol), toString(desired.Protocol)))
+	}
+
+	return healthCheckerChanges
 }
 
 // TODO(horwitz): this doesn't check weight which we may want in the future to
 // evenly distribute Local traffic policy load.
-func hasBackendSetChanged(actual loadbalancer.BackendSet, desired loadbalancer.BackendSetDetails) bool {
-	if hasHealthCheckerChanged(actual.HealthChecker, desired.HealthChecker) {
-		return true
-	}
+func hasBackendSetChanged(logger *zap.SugaredLogger, actual loadbalancer.BackendSet, desired loadbalancer.BackendSetDetails) bool {
+	logger = logger.With("BackEndSetName", toString(actual.Name))
+	backendSetChanges := getHealthCheckerChanges(actual.HealthChecker, desired.HealthChecker)
 
 	if toString(actual.Policy) != toString(desired.Policy) {
+		backendSetChanges = append(backendSetChanges, fmt.Sprintf(changeFmtStr, "BackEndSet:Policy", toString(actual.Policy), toString(desired.Policy)))
+	}
+	if len(backendSetChanges) != 0 {
+		logger.Infof("BackendSet needs to be updated for the change(s) - %s", strings.Join(backendSetChanges, ","))
 		return true
 	}
-
-	if len(actual.Backends) != len(desired.Backends) {
-		return true
-	}
-
-	nameFormat := "%s:%d"
-
-	// Since the lengths are equal that means the membership must be the same
-	// else there has been change.
-	desiredSet := sets.NewString()
-	for _, backend := range desired.Backends {
-		name := fmt.Sprintf(nameFormat, *backend.IpAddress, *backend.Port)
-		desiredSet.Insert(name)
-	}
-
-	for _, backend := range actual.Backends {
-		name := fmt.Sprintf(nameFormat, *backend.IpAddress, *backend.Port)
-		if !desiredSet.Has(name) {
-			return true
-		}
-	}
-
 	return false
 }
 
@@ -296,7 +328,7 @@ func getBackendSetChanges(logger *zap.SugaredLogger, actual map[string]loadbalan
 			continue
 		}
 
-		if hasBackendSetChanged(actualBackendSet, desiredBackendSet) {
+		if hasBackendSetChanged(logger, actualBackendSet, desiredBackendSet) {
 			oldPorts := portsFromBackendSet(logger, name, &actualBackendSet)
 			backendSetActions = append(backendSetActions, &BackendSetAction{
 				name:       name,
@@ -306,6 +338,9 @@ func getBackendSetChanges(logger *zap.SugaredLogger, actual map[string]loadbalan
 				actionType: Update,
 			})
 		}
+
+		//get the Actions for the Backend changes and append it with the backendSetActions
+		backendSetActions = append(backendSetActions, getBackendChanges(logger, actualBackendSet, desiredBackendSet)...)
 	}
 
 	// Now check if any need to be created.
@@ -324,47 +359,132 @@ func getBackendSetChanges(logger *zap.SugaredLogger, actual map[string]loadbalan
 	return backendSetActions
 }
 
-func hasSSLConfigurationChanged(actual *loadbalancer.SslConfiguration, desired *loadbalancer.SslConfigurationDetails) bool {
-	if actual == nil || desired == nil {
-		if actual == nil && desired == nil {
-			return false
+func getBackendChanges(logger *zap.SugaredLogger, actual loadbalancer.BackendSet, desired loadbalancer.BackendSetDetails) []Action {
+
+	var backendActions []Action
+	nameFormat := "%s:%d"
+
+	desiredSet := sets.NewString()
+	actualSet := sets.NewString()
+	for _, backend := range desired.Backends {
+		name := fmt.Sprintf(nameFormat, *backend.IpAddress, *backend.Port)
+		desiredSet.Insert(name)
+	}
+
+	for _, backend := range actual.Backends {
+		actualSet.Insert(*backend.Name)
+	}
+
+	for name := range actualSet {
+		if !desiredSet.Has(name) {
+			backendActions = append(backendActions, &BackendAction{
+				name:       name,
+				bsName:     *actual.Name,
+				actionType: Delete,
+			})
 		}
-		return true
+	}
+
+	for name := range desiredSet {
+		if !actualSet.Has(name) {
+			fields := strings.Split(name, ":")
+			ipAddress := fields[0]
+			port, err := strconv.Atoi(fields[1])
+			if err != nil {
+				logger.Errorf("port is not numeric IPAddress=%s, Port=%s, %v", fields[0], fields[1], err)
+				continue
+			}
+			backendActions = append(backendActions, &BackendAction{
+				bsName: *actual.Name,
+				Backend: loadbalancer.BackendDetails{
+					IpAddress: &ipAddress,
+					Port:      &port,
+				},
+				actionType: Create,
+				name:       name,
+			})
+		}
+
+	}
+	return backendActions
+}
+
+func getSSLConfigurationChanges(actual *loadbalancer.SslConfiguration, desired *loadbalancer.SslConfigurationDetails) []string {
+	var sslConfigurationChanges []string
+	if actual == nil && desired == nil {
+		return sslConfigurationChanges
+	}
+	if actual == nil && desired != nil {
+		sslConfigurationChanges = append(sslConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration", "NOT_PRESENT", "PRESENT"))
+		return sslConfigurationChanges
+	}
+	if actual != nil && desired == nil {
+		sslConfigurationChanges = append(sslConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration", "PRESENT", "NOT_PRESENT"))
+		return sslConfigurationChanges
 	}
 
 	if toString(actual.CertificateName) != toString(desired.CertificateName) {
-		return true
+		sslConfigurationChanges = append(sslConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:CertificateName", toString(actual.CertificateName), toString(desired.CertificateName)))
 	}
 	if toInt(actual.VerifyDepth) != toInt(desired.VerifyDepth) {
-		return true
+		sslConfigurationChanges = append(sslConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:VerifyDepth", toInt(actual.VerifyDepth), toInt(desired.VerifyDepth)))
 	}
 	if toBool(actual.VerifyPeerCertificate) != toBool(desired.VerifyPeerCertificate) {
-		return true
+		sslConfigurationChanges = append(sslConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:VerifyPeerCertificate", toBool(actual.VerifyPeerCertificate), toBool(desired.VerifyPeerCertificate)))
 	}
-	return false
+	return sslConfigurationChanges
 }
 
-func hasListenerChanged(actual loadbalancer.Listener, desired loadbalancer.ListenerDetails) bool {
+func hasListenerChanged(logger *zap.SugaredLogger, actual loadbalancer.Listener, desired loadbalancer.ListenerDetails) bool {
+	logger = logger.With("ListenerName", toString(actual.Name))
+	var listenerChanges []string
 	if toString(actual.DefaultBackendSetName) != toString(desired.DefaultBackendSetName) {
-		return true
+		listenerChanges = append(listenerChanges, fmt.Sprintf(changeFmtStr, "Listener:DefaultBackendSetName", toString(actual.DefaultBackendSetName), toString(desired.DefaultBackendSetName)))
 	}
 	if toInt(actual.Port) != toInt(desired.Port) {
-		return true
+		listenerChanges = append(listenerChanges, fmt.Sprintf(changeFmtStr, "Listener:Port", toInt(actual.Port), toInt(desired.Port)))
 	}
 	if toString(actual.Protocol) != toString(desired.Protocol) {
-		return true
+		listenerChanges = append(listenerChanges, fmt.Sprintf(changeFmtStr, "Listener:Protocol", toString(actual.Protocol), toString(desired.Protocol)))
 	}
-	if hasSSLConfigurationChanged(actual.SslConfiguration, desired.SslConfiguration) {
+	listenerChanges = append(listenerChanges, getSSLConfigurationChanges(actual.SslConfiguration, desired.SslConfiguration)...)
+	listenerChanges = append(listenerChanges, getConnectionConfigurationChanges(actual.ConnectionConfiguration, desired.ConnectionConfiguration)...)
+
+	if len(listenerChanges) != 0 {
+		logger.Infof("Listener needs to be updated for the change(s) - %s", strings.Join(listenerChanges, ","))
 		return true
 	}
 	return false
 }
 
-func getListenerChanges(actual map[string]loadbalancer.Listener, desired map[string]loadbalancer.ListenerDetails) []Action {
+func getConnectionConfigurationChanges(actual *loadbalancer.ConnectionConfiguration, desired *loadbalancer.ConnectionConfiguration) []string {
+	var connectionConfigurationChanges []string
+	// We would let LBCS to set the default IdleTimeout if desired is nil
+	if desired == nil {
+		return connectionConfigurationChanges
+	}
+
+	//desired is not nil and actual is nil. So we need to reconcile
+	if actual == nil {
+		connectionConfigurationChanges = append(connectionConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listner:ConnectionConfiguration", "NOT_PRESENT", "PRESENT"))
+		return connectionConfigurationChanges
+	}
+
+	if toInt64(actual.IdleTimeout) != toInt64(desired.IdleTimeout) {
+		connectionConfigurationChanges = append(connectionConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listner:ConnectionConfiguration:IdleTimeout", toInt64(actual.IdleTimeout), toInt64(desired.IdleTimeout)))
+	}
+	return connectionConfigurationChanges
+}
+
+func getListenerChanges(logger *zap.SugaredLogger, actual map[string]loadbalancer.Listener, desired map[string]loadbalancer.ListenerDetails) []Action {
 	var listenerActions []Action
+
+	// set to keep track of desired listeners that already exist and should not be created
+	exists := sets.NewString()
+
 	// First check to see if any listeners need to be deleted or updated.
 	for name, actualListener := range actual {
-		desiredListener, ok := desired[name]
+		desiredListener, ok := desired[getSanitizedName(name)]
 		if !ok {
 			// no longer exists
 			listenerActions = append(listenerActions, &ListenerAction{
@@ -379,8 +499,8 @@ func getListenerChanges(actual map[string]loadbalancer.Listener, desired map[str
 			})
 			continue
 		}
-
-		if hasListenerChanged(actualListener, desiredListener) {
+		exists.Insert(getSanitizedName(name))
+		if hasListenerChanged(logger, actualListener, desiredListener) {
 			listenerActions = append(listenerActions, &ListenerAction{
 				Listener:   desiredListener,
 				name:       name,
@@ -391,7 +511,7 @@ func getListenerChanges(actual map[string]loadbalancer.Listener, desired map[str
 
 	// Now check if any need to be created.
 	for name, desiredListener := range desired {
-		if _, ok := actual[name]; !ok {
+		if !exists.Has(name) {
 			// doesn't exist so lets create it
 			listenerActions = append(listenerActions, &ListenerAction{
 				Listener:   desiredListener,
@@ -408,10 +528,17 @@ func sslEnabled(sslConfigMap map[int]*loadbalancer.SslConfiguration) bool {
 	return len(sslConfigMap) > 0
 }
 
-func getListenerName(protocol string, port int, sslConfig *loadbalancer.SslConfigurationDetails) string {
-	if sslConfig != nil {
-		return fmt.Sprintf("%s-%d-%s", protocol, port, *sslConfig.CertificateName)
+// getSanitizedName omits the suffix after protocol-port in the name.
+// FIXME can remove this function if we have made sure that there are no LB listeners with legacy name like <PROTOCOL-PORT-SECRET> for
+func getSanitizedName(name string) string {
+	fields := strings.Split(name, "-")
+	if len(fields) > 2 {
+		return fmt.Sprintf(strings.Join(fields[:2], "-"))
 	}
+	return name
+}
+
+func getListenerName(protocol string, port int) string {
 	return fmt.Sprintf("%s-%d", protocol, port)
 }
 
@@ -478,14 +605,14 @@ func parseSecretString(secretString string) (string, string) {
 // deleted after their associated Listeners.
 func sortAndCombineActions(logger *zap.SugaredLogger, backendSetActions []Action, listenerActions []Action) []Action {
 	actions := append(backendSetActions, listenerActions...)
-	sort.Slice(actions, func(i, j int) bool {
+	sort.SliceStable(actions, func(i, j int) bool {
 		a1 := actions[i]
 		a2 := actions[j]
 
 		// Sort by the name until we get to the point a1 and a2 are Actions upon
 		// an associated Listener and BackendSet (which share the same name).
-		if a1.Name() != a2.Name() {
-			return a1.Name() < a2.Name()
+		if getSanitizedName(a1.Name()) != getSanitizedName(a2.Name()) {
+			return getSanitizedName(a1.Name()) < getSanitizedName(a2.Name())
 		}
 
 		// For Create and Delete (which is what we really care about) the

@@ -16,7 +16,9 @@ package metadata
 
 import (
 	"encoding/json"
+	"go.uber.org/zap"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -24,7 +26,7 @@ import (
 
 const (
 	baseURL            = "http://169.254.169.254"
-	metadataEndpoint   = "/opc/v1/instance/"
+	metadataEndpoint   = "/opc/v2/instance/"
 	defaultHTTPTimeout = 5 * time.Second
 )
 
@@ -61,17 +63,35 @@ func (m *metadataGetter) Get() (*InstanceMetadata, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	return m.executeRequest(req)
+}
+
+func (m *metadataGetter) executeRequest(req *http.Request) (*InstanceMetadata, error) {
+	req.Header.Add("Authorization", "Bearer Oracle")
 	resp, err := m.client.Do(req)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting instance metadata")
-
+	if err != nil || resp.StatusCode != http.StatusOK {
+		zap.S().With(zap.Error(err)).Warn("Failed to get instance metadata with endpoint v2. Falling back to v1.")
+		if resp != nil {
+			v2resp := resp
+			defer v2resp.Body.Close()
+		}
+		v1Req := *req
+		v1Path := strings.Replace(req.URL.Path, "/opc/v2", "/opc/v1", 1)
+		v1Req.URL.Path = v1Path
+		resp, err = m.client.Do(&v1Req)
+		if err != nil {
+			return nil, errors.Wrap(err, "Failed to get instance metadata with v1 endpoint after falling back from v2 endpoint")
+		}
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("metadata endpoint returned status %d; expected 200 OK", resp.StatusCode)
+	zap.S().Infof("Metadata endpoint %s returned response successfully", req.URL.Path)
+
+	if resp != nil {
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return nil, errors.Errorf("metadata endpoint v1 returned status %d; expected 200 OK", resp.StatusCode)
+		}
 	}
-
 	md := &InstanceMetadata{}
 	err = json.NewDecoder(resp.Body).Decode(md)
 	if err != nil {

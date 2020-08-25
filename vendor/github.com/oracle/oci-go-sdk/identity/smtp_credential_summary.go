@@ -1,4 +1,5 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
 // Identity and Access Management Service API
@@ -14,7 +15,7 @@ import (
 
 // SmtpCredentialSummary As the name suggests, an `SmtpCredentialSummary` object contains information about an `SmtpCredential`.
 // The SMTP credential is used for SMTP authentication with
-// the Email Delivery Service (https://docs.us-phoenix-1.oraclecloud.com/Content/Email/Concepts/overview.htm).
+// the Email Delivery Service (https://docs.cloud.oracle.com/Content/Email/Concepts/overview.htm).
 type SmtpCredentialSummary struct {
 
 	// The SMTP user name.
@@ -53,7 +54,7 @@ func (m SmtpCredentialSummary) String() string {
 // SmtpCredentialSummaryLifecycleStateEnum Enum with underlying type: string
 type SmtpCredentialSummaryLifecycleStateEnum string
 
-// Set of constants representing the allowable values for SmtpCredentialSummaryLifecycleState
+// Set of constants representing the allowable values for SmtpCredentialSummaryLifecycleStateEnum
 const (
 	SmtpCredentialSummaryLifecycleStateCreating SmtpCredentialSummaryLifecycleStateEnum = "CREATING"
 	SmtpCredentialSummaryLifecycleStateActive   SmtpCredentialSummaryLifecycleStateEnum = "ACTIVE"
@@ -70,7 +71,7 @@ var mappingSmtpCredentialSummaryLifecycleState = map[string]SmtpCredentialSummar
 	"DELETED":  SmtpCredentialSummaryLifecycleStateDeleted,
 }
 
-// GetSmtpCredentialSummaryLifecycleStateEnumValues Enumerates the set of values for SmtpCredentialSummaryLifecycleState
+// GetSmtpCredentialSummaryLifecycleStateEnumValues Enumerates the set of values for SmtpCredentialSummaryLifecycleStateEnum
 func GetSmtpCredentialSummaryLifecycleStateEnumValues() []SmtpCredentialSummaryLifecycleStateEnum {
 	values := make([]SmtpCredentialSummaryLifecycleStateEnum, 0)
 	for _, v := range mappingSmtpCredentialSummaryLifecycleState {

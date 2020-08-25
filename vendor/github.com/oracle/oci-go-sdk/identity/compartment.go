@@ -1,4 +1,5 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
 // Identity and Access Management Service API
@@ -17,25 +18,27 @@ import (
 // of measuring usage and billing, access (through the use of IAM Service policies), and isolation (separating the
 // resources for one project or business unit from another). A common approach is to create a compartment for each
 // major part of your organization. For more information, see
-// Overview of the IAM Service (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/overview.htm) and also
-// Setting Up Your Tenancy (https://docs.us-phoenix-1.oraclecloud.com/Content/GSG/Concepts/settinguptenancy.htm).
+// Overview of the IAM Service (https://docs.cloud.oracle.com/Content/Identity/Concepts/overview.htm) and also
+// Setting Up Your Tenancy (https://docs.cloud.oracle.com/Content/GSG/Concepts/settinguptenancy.htm).
 // To place a resource in a compartment, simply specify the compartment ID in the "Create" request object when
 // initially creating the resource. For example, to launch an instance into a particular compartment, specify
 // that compartment's OCID in the `LaunchInstance` request. You can't move an existing resource from one
 // compartment to another.
 // To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized,
 // talk to an administrator. If you're an administrator who needs to write policies to give users access,
-// see Getting Started with Policies (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Concepts/policygetstarted.htm).
+// see Getting Started with Policies (https://docs.cloud.oracle.com/Content/Identity/Concepts/policygetstarted.htm).
+// **Warning:** Oracle recommends that you avoid using any confidential information when you supply string values
+// using the API.
 type Compartment struct {
 
 	// The OCID of the compartment.
 	Id *string `mandatory:"true" json:"id"`
 
-	// The OCID of the tenancy containing the compartment.
+	// The OCID of the parent compartment containing the compartment.
 	CompartmentId *string `mandatory:"true" json:"compartmentId"`
 
 	// The name you assign to the compartment during creation. The name must be unique across all
-	// compartments in the tenancy. Avoid entering confidential information.
+	// compartments in the parent. Avoid entering confidential information.
 	Name *string `mandatory:"true" json:"name"`
 
 	// The description you assign to the compartment. Does not have to be unique, and it's changeable.
@@ -52,13 +55,18 @@ type Compartment struct {
 	// The detailed status of INACTIVE lifecycleState.
 	InactiveStatus *int64 `mandatory:"false" json:"inactiveStatus"`
 
+	// Indicates whether or not the compartment is accessible for the user making the request.
+	// Returns true when the user has INSPECT permissions directly on a resource in the
+	// compartment or indirectly (permissions can be on a resource in a subcompartment).
+	IsAccessible *bool `mandatory:"false" json:"isAccessible"`
+
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no predefined name, type, or namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
-	// For more information, see Resource Tags (https://docs.us-phoenix-1.oraclecloud.com/Content/General/Concepts/resourcetags.htm).
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 }
@@ -70,7 +78,7 @@ func (m Compartment) String() string {
 // CompartmentLifecycleStateEnum Enum with underlying type: string
 type CompartmentLifecycleStateEnum string
 
-// Set of constants representing the allowable values for CompartmentLifecycleState
+// Set of constants representing the allowable values for CompartmentLifecycleStateEnum
 const (
 	CompartmentLifecycleStateCreating CompartmentLifecycleStateEnum = "CREATING"
 	CompartmentLifecycleStateActive   CompartmentLifecycleStateEnum = "ACTIVE"
@@ -87,7 +95,7 @@ var mappingCompartmentLifecycleState = map[string]CompartmentLifecycleStateEnum{
 	"DELETED":  CompartmentLifecycleStateDeleted,
 }
 
-// GetCompartmentLifecycleStateEnumValues Enumerates the set of values for CompartmentLifecycleState
+// GetCompartmentLifecycleStateEnumValues Enumerates the set of values for CompartmentLifecycleStateEnum
 func GetCompartmentLifecycleStateEnumValues() []CompartmentLifecycleStateEnum {
 	values := make([]CompartmentLifecycleStateEnum, 0)
 	for _, v := range mappingCompartmentLifecycleState {

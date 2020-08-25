@@ -24,21 +24,15 @@ cloud-provider specific code out of the Kubernetes codebase.
 
 ## Compatibility matrix
 
-|       | Kubernetes &lt; 1.7.2 | Kubernetes 1.7.{2..5} | Kubernetes 1.7.{6..} | Kubernetes 1.8 | Kubernetes 1.9 | Kubernetes 1.10
-|-------|-----------------------|-----------------------|----------------------|------------------|----------------------|------------------|
-| v 0.1 | ✗                     | †                     | ✓                    | ✓                | ✗                |  ✗               |
-| v 0.2 | ✗                     | †                     | ✓                    | ✓                | ✗                |  ✗               |
-| v 0.3 | ✗                     | †                     | ✓                    | ✓                | ✓                | ✓                |
-| v 0.4 | ✗                     | †                     | ✓                    | ✓                | ✓                | ✓                |
-| v 0.5 | ✗                     | †                     | ✓                    | ✓                | ✓                | ✓                |
+|          | Kubernetes 1.14       | Kubernetes 1.15        | Kubernetes 1.16        | Kubernetes 1.17        |
+|----------|-----------------------|------------------------|------------------------|------------------------|
+| <=v 0.7  | ✗                     | ✗                      | ✗                      | ✗                      |
+| v 0.8    | ✓                     | ✓                      | ✓                      | ✓                      |
 
 
 Key:
 
  * `✓` oci-cloud-controller-manager is fully compatible.
- * `†` oci-cloud-controller-manager is compatible but requires the
-       `--provider-id` flag to be set on the Kubelet of all nodes in the
-       cluster.
  * `✗` oci-cloud-controller-manager is not compatible.
 
 ## Implementation
@@ -50,6 +44,8 @@ Key:
  - ServiceController - responsible for creating load balancers when a service
    of `type: LoadBalancer` is created in Kubernetes.
 
+ Additionally, this project implements a flexvolume driver and a flexvolume provisioner for Kubernetes clusters running on Oracle Cloud Infrastructure (OCI).
+
 ## Setup and Installation
 
 To get the CCM running in your Kubernetes cluster you will need to do the
@@ -58,6 +54,8 @@ following:
  1. Prepare your Kubernetes cluster for running an external cloud provider.
  2. Create a Kubernetes secret containing the configuration for the CCM.
  3. Deploy the CCM as a [DaemonSet][4].
+
+Note: For the setup and installation of [flexvolume driver](flex-volume-driver.md) and [flexvolume provisioner](flex-volume-provisioner.md) please refer linked resources.
 
 ### Preparing Your Cluster
 
@@ -92,18 +90,18 @@ An example configuration file can be found [here][7]. Download this file and
 populate it with values specific to your chosen OCI identity and tenancy.
 Then create the Kubernetes secret with the following command:
 
+For CCM -
 ```bash
 $ kubectl  create secret generic oci-cloud-controller-manager \
      -n kube-system                                           \
      --from-file=cloud-provider.yaml=cloud-provider-example.yaml
 ```
-
 Note that you must ensure the secret contains the key `cloud-provider.yaml`
 rather than the name of the file on disk.
 
 ### Deployment
 
-Lastly deploy the controller manager and associated RBAC rules if your cluster
+Deploy the controller manager and associated RBAC rules if your cluster
 is configured to use RBAC:
 
 ```bash
@@ -127,12 +125,16 @@ I0905 13:44:51.786083       7 flags.go:52] FLAG: --cloud-provider="oci"
 
 ## Upgrade
 
-The following example shows how to upgrade the CCM from an older version (replace ? with the version you're upgrading to):
+The following example shows how to upgrade the CCM, FVP and FVD from an older version (replace ? with the version you're upgrading to):
 
 ```bash
 $ export RELEASE=?
 $ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-cloud-controller-manager-rbac.yaml
 $ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-cloud-controller-manager.yaml
+$ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-volume-provisioner.yaml
+$ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-volume-provisioner-rbac.yaml
+$ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-flexvolume-driver.yaml
+$ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-flexvolume-driver-rbac.yaml
 ```
 
 ## Examples

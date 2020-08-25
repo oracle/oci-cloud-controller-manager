@@ -1,4 +1,5 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
 // Identity and Access Management Service API
@@ -19,7 +20,9 @@ import (
 // based on the permissions granted in policies written for the dynamic groups.
 // This works like regular user/group membership. But in that case, the membership is a static relationship, whereas
 // in a dynamic group, the membership of an instance certificate to a dynamic group is determined during runtime.
-// For more information, see Managing Dynamic Groups (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Tasks/managingdynamicgroups.htm).
+// For more information, see Managing Dynamic Groups (https://docs.cloud.oracle.com/Content/Identity/Tasks/managingdynamicgroups.htm).
+// **Warning:** Oracle recommends that you avoid using any confidential information when you supply string values using
+// the API.
 type DynamicGroup struct {
 
 	// The OCID of the group.
@@ -36,7 +39,7 @@ type DynamicGroup struct {
 	Description *string `mandatory:"true" json:"description"`
 
 	// A rule string that defines which instance certificates will be matched.
-	// For syntax, see Managing Dynamic Groups (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Tasks/managingdynamicgroups.htm).
+	// For syntax, see Managing Dynamic Groups (https://docs.cloud.oracle.com/Content/Identity/Tasks/managingdynamicgroups.htm).
 	MatchingRule *string `mandatory:"true" json:"matchingRule"`
 
 	// Date and time the group was created, in the format defined by RFC3339.
@@ -49,6 +52,16 @@ type DynamicGroup struct {
 
 	// The detailed status of INACTIVE lifecycleState.
 	InactiveStatus *int64 `mandatory:"false" json:"inactiveStatus"`
+
+	// Free-form tags for this resource. Each tag is a simple key-value pair with no predefined name, type, or namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Example: `{"Department": "Finance"}`
+	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
+
+	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Example: `{"Operations": {"CostCenter": "42"}}`
+	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 }
 
 func (m DynamicGroup) String() string {
@@ -58,7 +71,7 @@ func (m DynamicGroup) String() string {
 // DynamicGroupLifecycleStateEnum Enum with underlying type: string
 type DynamicGroupLifecycleStateEnum string
 
-// Set of constants representing the allowable values for DynamicGroupLifecycleState
+// Set of constants representing the allowable values for DynamicGroupLifecycleStateEnum
 const (
 	DynamicGroupLifecycleStateCreating DynamicGroupLifecycleStateEnum = "CREATING"
 	DynamicGroupLifecycleStateActive   DynamicGroupLifecycleStateEnum = "ACTIVE"
@@ -75,7 +88,7 @@ var mappingDynamicGroupLifecycleState = map[string]DynamicGroupLifecycleStateEnu
 	"DELETED":  DynamicGroupLifecycleStateDeleted,
 }
 
-// GetDynamicGroupLifecycleStateEnumValues Enumerates the set of values for DynamicGroupLifecycleState
+// GetDynamicGroupLifecycleStateEnumValues Enumerates the set of values for DynamicGroupLifecycleStateEnum
 func GetDynamicGroupLifecycleStateEnumValues() []DynamicGroupLifecycleStateEnum {
 	values := make([]DynamicGroupLifecycleStateEnum, 0)
 	for _, v := range mappingDynamicGroupLifecycleState {

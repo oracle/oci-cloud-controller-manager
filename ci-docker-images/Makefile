@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-OCIRUSERNAME ?= spinnaker/everest-ocir-push
-OCIREGISTRY ?= iad.ocir.io
-
-IMAGE ?= iad.ocir.io/spinnaker/oci-kube-ci
+ifeq "$(CI_IMAGE_REGISTRY)" ""
+    CI_IMAGE_REGISTRY   ?= "iad.ocir.io/oracle"
+else
+    CI_IMAGE_REGISTRY   ?= ${CI_IMAGE_REGISTRY}
+endif
+IMAGE ?= $(CI_IMAGE_REGISTRY)/oci-kube-ci
 
 ifndef VERSION
   $(error VERSION is undefined)
@@ -32,5 +34,6 @@ build:
 
 .PHONY: push
 push: build
+	docker login --username="${ci_docker_username}" --password="${ci_docker_password}" $(CI_IMAGE_REGISTRY)
 	docker push $(IMAGE):$(VERSION)
 

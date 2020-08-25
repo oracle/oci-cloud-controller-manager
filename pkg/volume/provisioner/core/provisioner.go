@@ -16,10 +16,11 @@ package core
 
 import (
 	"context"
+	"math/rand"
 	"os"
 	"strings"
+	"time"
 
-	"github.com/kubernetes-incubator/external-storage/lib/controller"
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
@@ -28,14 +29,17 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/informers"
 	informersv1 "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	listersv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/flowcontrol"
-	metav1 "k8s.io/kubernetes/pkg/kubelet/apis"
+	"k8s.io/client-go/tools/clientcmd"
+	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
 )
 
 const (
@@ -52,8 +56,10 @@ const (
 )
 
 const (
-	rateLimitQPSDefault    = 20.0
-	rateLimitBucketDefault = 5
+	resyncPeriod              = 15 * time.Second
+	minResyncPeriod           = 12 * time.Hour
+	exponentialBackOffOnError = false
+	failedRetryThreshold      = 5
 )
 
 // OCIProvisioner is a dynamic volume provisioner that satisfies
@@ -73,15 +79,7 @@ type OCIProvisioner struct {
 }
 
 // NewOCIProvisioner creates a new OCI provisioner.
-func NewOCIProvisioner(
-	logger *zap.SugaredLogger,
-	kubeClient kubernetes.Interface,
-	nodeInformer informersv1.NodeInformer,
-	provisionerType string,
-	nodeName string,
-	volumeRoundingEnabled bool,
-	minVolumeSize resource.Quantity,
-) (*OCIProvisioner, error) {
+func NewOCIProvisioner(logger *zap.SugaredLogger, kubeClient kubernetes.Interface, nodeInformer informersv1.NodeInformer, provisionerType string, volumeRoundingEnabled bool, minVolumeSize resource.Quantity) (*OCIProvisioner, error) {
 	configPath, ok := os.LookupEnv("CONFIG_YAML_FILENAME")
 	if !ok {
 		configPath = configFilePath
@@ -89,17 +87,17 @@ func NewOCIProvisioner(
 
 	cfg, err := providercfg.FromFile(configPath)
 	if err != nil {
-		logger.With(zap.Error(err)).Fatal("Failed to load configuration file at path %s", configPath)
+		return nil, errors.Wrapf(err, "failed to load configuration file at path %s", configPath)
 	}
 
 	err = cfg.Validate()
 	if err != nil {
-		logger.With(zap.Error(err)).Fatal("Invalid configuration: %s", err)
+		return nil, errors.Wrapf(err, "invalid configuration")
 	}
 
 	metadata, mdErr := metadata.New().Get()
 	if mdErr != nil {
-		logger.With(zap.Error(mdErr)).Warnf("Unable to retrieve instance metadata.")
+		logger.With(zap.Error(mdErr)).Warnf("unable to retrieve instance metadata.")
 	}
 
 	if cfg.CompartmentID == "" {
@@ -113,12 +111,12 @@ func NewOCIProvisioner(
 
 	cp, err := providercfg.NewConfigurationProvider(cfg)
 	if err != nil {
-		logger.With(zap.Error(err)).Fatal("Unable to create volume provisioner client.")
+		return nil, errors.Wrapf(err, "unable to create volume provisioner client.")
 	}
 
 	tenancyID, err := cp.TenancyOCID()
 	if err != nil {
-		logger.With(zap.Error(err)).Fatal("Unable to detrimine tenancy")
+		return nil, errors.Wrapf(err, "unable to detrimine tenancy")
 	}
 
 	logger = logger.With(
@@ -126,18 +124,11 @@ func NewOCIProvisioner(
 		"tenancyID", tenancyID,
 	)
 
-	client, err := client.New(logger, cp, &client.RateLimiter{
-		Reader: flowcontrol.NewTokenBucketRateLimiter(
-			rateLimitQPSDefault,
-			rateLimitBucketDefault,
-		),
-		Writer: flowcontrol.NewTokenBucketRateLimiter(
-			rateLimitQPSDefault,
-			rateLimitBucketDefault,
-		),
-	})
+	rateLimiter := client.NewRateLimiter(logger, cfg.RateLimiter)
+
+	client, err := client.New(logger, cp, &rateLimiter)
 	if err != nil {
-		logger.With(zap.Error(err)).Fatal("Unable to construct OCI client")
+		return nil, errors.Wrapf(err, "unable to construct OCI client")
 	}
 
 	region, ok := os.LookupEnv("OCI_SHORT_REGION")
@@ -192,7 +183,7 @@ func mapAvailabilityDomainToFailureDomain(AD string) string {
 }
 
 // Provision creates a storage asset and returns a PV object representing it.
-func (p *OCIProvisioner) Provision(options controller.VolumeOptions) (*v1.PersistentVolume, error) {
+func (p *OCIProvisioner) Provision(options controller.ProvisionOptions) (*v1.PersistentVolume, error) {
 	availabilityDomainName, availabilityDomain, err := p.chooseAvailabilityDomain(context.Background(), options.PVC)
 	if err != nil {
 		return nil, err
@@ -202,7 +193,7 @@ func (p *OCIProvisioner) Provision(options controller.VolumeOptions) (*v1.Persis
 		persistentVolume.ObjectMeta.Annotations[ociProvisionerIdentity] = ociProvisionerIdentity
 		persistentVolume.ObjectMeta.Annotations[ociAvailabilityDomain] = availabilityDomainName
 		persistentVolume.ObjectMeta.Annotations[ociCompartment] = p.compartmentID
-		persistentVolume.ObjectMeta.Labels[metav1.LabelZoneFailureDomain] = mapAvailabilityDomainToFailureDomain(*availabilityDomain.Name)
+		persistentVolume.ObjectMeta.Labels[v1.LabelZoneFailureDomain] = mapAvailabilityDomainToFailureDomain(*availabilityDomain.Name)
 	}
 	return persistentVolume, err
 }
@@ -226,4 +217,86 @@ func (p *OCIProvisioner) Ready(stopCh <-chan struct{}) error {
 		return errors.New("unable to sync caches for OCI Volume Provisioner")
 	}
 	return nil
+}
+
+// informerResyncPeriod computes the time interval a shared informer waits
+// before resyncing with the API server.
+func informerResyncPeriod(minResyncPeriod time.Duration) func() time.Duration {
+	return func() time.Duration {
+		factor := rand.Float64() + 1
+		return time.Duration(float64(minResyncPeriod.Nanoseconds()) * factor)
+	}
+}
+
+// Run runs the volume provisoner control loop
+func Run(logger *zap.SugaredLogger, kubeconfig string, master string, minVolumeSize string, volumeRoundingEnabled bool, stopCh <-chan struct{}) error {
+
+	// Create an InClusterConfig and use it to create a client for the controller
+	// to use to communicate with Kubernetes
+	config, err := clientcmd.BuildConfigFromFlags(master, kubeconfig)
+	if err != nil {
+		return errors.Wrapf(err, "failed to load config")
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return errors.Wrapf(err, "failed to create Kubernetes client")
+	}
+
+	// The controller needs to know what the server version is because out-of-tree
+	// provisioners aren't officially supported until 1.5
+	var serverVersion *version.Info
+	err = wait.PollUntil(15*time.Second, func() (done bool, err error) {
+		serverVersion, err = clientset.Discovery().ServerVersion()
+		if err != nil {
+			logger.With(zap.Error(err)).Info("failed to get kube-apiserver version, will retry again")
+			return false, nil
+		}
+		return true, nil
+	}, stopCh)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get kube-apiserver version")
+	}
+
+	// Decides what type of provider to deploy, either block or fss
+	provisionerType := os.Getenv("PROVISIONER_TYPE")
+	if provisionerType == "" {
+		provisionerType = ProvisionerNameDefault
+	}
+	logger = logger.With("provisionerType", provisionerType)
+	logger.Infof("Starting volume provisioner in %q mode", provisionerType)
+
+	// TODO Should use an existing informer factory instead of constructing a new one
+	sharedInformerFactory := informers.NewSharedInformerFactory(clientset, informerResyncPeriod(minResyncPeriod)())
+
+	volumeSizeLowerBound, err := resource.ParseQuantity(minVolumeSize)
+	if err != nil {
+		return errors.Wrapf(err, "failed to parse minimum volume size")
+	}
+
+	// Create the provisioner: it implements the Provisioner interface expected by
+	// the controller
+	ociProvisioner, err := NewOCIProvisioner(logger, clientset, sharedInformerFactory.Core().V1().Nodes(), provisionerType, volumeRoundingEnabled, volumeSizeLowerBound)
+	if err != nil {
+		return errors.Wrapf(err, "cannot create volume provisioner.")
+	}
+	// Start the provision controller which will dynamically provision oci
+	// PVs
+	pc := controller.NewProvisionController(
+		clientset,
+		provisionerType,
+		ociProvisioner,
+		serverVersion.GitVersion,
+		controller.ResyncPeriod(resyncPeriod),
+		controller.ExponentialBackOffOnError(exponentialBackOffOnError),
+		controller.FailedProvisionThreshold(failedRetryThreshold),
+		controller.Threadiness(2),
+	)
+	go sharedInformerFactory.Start(stopCh)
+	// We block waiting for Ready() after the shared informer factory has
+	// started so we don't deadlock waiting for caches to sync.
+	if err := ociProvisioner.Ready(stopCh); err != nil {
+		return errors.Wrapf(err, "failed to start volume provisioner")
+	}
+	pc.Run(stopCh)
+	return errors.Errorf("unreachable")
 }

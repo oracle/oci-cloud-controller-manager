@@ -17,6 +17,7 @@ package oci
 import (
 	"fmt"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"reflect"
 	"testing"
@@ -170,23 +171,20 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				securityListManager: newSecurityListManagerNOOP(),
 			},
 		},
-		"subnet annotations": {
+		"use default subnet in case of no subnets overrides via annotation": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "kube-system",
-					Name:      "testservice",
-					UID:       "test-uid",
-					Annotations: map[string]string{
-						ServiceAnnotationLoadBalancerSubnet1: "annotation-one",
-						ServiceAnnotationLoadBalancerSubnet2: "annotation-two",
-					},
+					Namespace:   "kube-system",
+					Name:        "testservice",
+					UID:         "test-uid",
+					Annotations: map[string]string{},
 				},
 				Spec: v1.ServiceSpec{
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
-						{
+						v1.ServicePort{
 							Protocol: v1.ProtocolTCP,
 							Port:     int32(80),
 						},
@@ -197,16 +195,16 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Name:     "test-uid",
 				Shape:    "100Mbps",
 				Internal: false,
-				Subnets:  []string{"annotation-one", "annotation-two"},
+				Subnets:  []string{"one", "two"},
 				Listeners: map[string]loadbalancer.ListenerDetails{
-					"TCP-80": {
+					"TCP-80": loadbalancer.ListenerDetails{
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
 				BackendSets: map[string]loadbalancer.BackendSetDetails{
-					"TCP-80": {
+					"TCP-80": loadbalancer.BackendSetDetails{
 						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
 							Protocol: common.String("HTTP"),
@@ -218,7 +216,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				SourceCIDRs: []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
-					"TCP-80": {
+					"TCP-80": portSpec{
 						ListenerPort:      80,
 						HealthCheckerPort: 10256,
 					},
@@ -537,7 +535,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Internal: false,
 				Subnets:  []string{"one", "two"},
 				Listeners: map[string]loadbalancer.ListenerDetails{
-					fmt.Sprintf("TCP-443-%s", listenerSecret): {
+					fmt.Sprintf("TCP-443"): {
 						DefaultBackendSetName: common.String("TCP-443"),
 						Port:                  common.Int(443),
 						Protocol:              common.String("TCP"),
@@ -587,14 +585,15 @@ func TestNewLBSpecSuccess(t *testing.T) {
 	}
 
 	for name, tc := range testCases {
+		logger := zap.L()
 		t.Run(name, func(t *testing.T) {
 			// we expect the service to be unchanged
 			tc.expected.service = tc.service
-			subnets := []string{tc.defaultSubnetOne, tc.defaultSubnetTwo}
+			subnets := getDefaultLBSubnets(tc.defaultSubnetOne, tc.defaultSubnetTwo)
 			slManagerFactory := func(mode string) securityListManager {
 				return newSecurityListManagerNOOP()
 			}
-			result, err := NewLBSpec(tc.service, tc.nodes, subnets, tc.sslConfig, slManagerFactory)
+			result, err := NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, tc.sslConfig, slManagerFactory)
 			if err != nil {
 				t.Error(err)
 			}
@@ -671,14 +670,15 @@ func TestNewLBSpecSingleAD(t *testing.T) {
 		},
 	}
 	for name, tc := range testCases {
+		logger := zap.L()
 		t.Run(name, func(t *testing.T) {
 			// we expect the service to be unchanged
 			tc.expected.service = tc.service
-			subnets := []string{tc.defaultSubnetOne}
+			subnets := getDefaultLBSubnets(tc.defaultSubnetOne, tc.defaultSubnetTwo)
 			slManagerFactory := func(mode string) securityListManager {
 				return newSecurityListManagerNOOP()
 			}
-			result, err := NewLBSpec(tc.service, tc.nodes, subnets, nil, slManagerFactory)
+			result, err := NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, nil, slManagerFactory)
 			if err != nil {
 				t.Error(err)
 			}
@@ -772,15 +772,38 @@ func TestNewLBSpecFailure(t *testing.T) {
 			},
 			expectedErrMsg: "a configuration for subnet1 must be specified for an internal load balancer",
 		},
+		"annotation overriding internal lb with empty subnet1": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInternal: "",
+						ServiceAnnotationLoadBalancerSubnet1:  "",
+						ServiceAnnotationLoadBalancerSubnet2:  "annotation-2",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports:           []v1.ServicePort{},
+					//add security list mananger in spec
+				},
+			},
+			expectedErrMsg: "a configuration for subnet1 must be specified for an internal load balancer",
+		},
 	}
 
 	for name, tc := range testCases {
+		logger := zap.L()
 		t.Run(name, func(t *testing.T) {
-			subnets := []string{tc.defaultSubnetOne, tc.defaultSubnetTwo}
+			subnets := getDefaultLBSubnets(tc.defaultSubnetOne, tc.defaultSubnetTwo)
 			slManagerFactory := func(mode string) securityListManager {
 				return newSecurityListManagerNOOP()
 			}
-			_, err := NewLBSpec(tc.service, tc.nodes, subnets, nil, slManagerFactory)
+			_, err := NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, nil, slManagerFactory)
 			if err == nil || err.Error() != tc.expectedErrMsg {
 				t.Errorf("Expected error with message %q but got %q", tc.expectedErrMsg, err)
 			}
@@ -1055,6 +1078,272 @@ func TestRequiresCertificate(t *testing.T) {
 			})
 			if result != tc.expected {
 				t.Error("Did not get the correct result")
+			}
+		})
+	}
+}
+
+func Test_getBackends(t *testing.T) {
+	type args struct {
+		nodes    []*v1.Node
+		nodePort int32
+	}
+	var tests = []struct {
+		name string
+		args args
+		want []loadbalancer.BackendDetails
+	}{
+		{
+			name: "no nodes",
+			args: args{nodePort: 80},
+			want: []loadbalancer.BackendDetails{},
+		},
+		{
+			name: "single node with assigned IP",
+			args: args{
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec:       v1.NodeSpec{},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
+				nodePort: 80,
+			},
+			want: []loadbalancer.BackendDetails{
+				{IpAddress: common.String("0.0.0.0"), Port: common.Int(80), Weight: common.Int(1)},
+			},
+		},
+		{
+			name: "single node with unassigned IP",
+			args: args{
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec:       v1.NodeSpec{},
+						Status: v1.NodeStatus{
+							Capacity:        nil,
+							Allocatable:     nil,
+							Phase:           "",
+							Conditions:      nil,
+							Addresses:       []v1.NodeAddress{},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
+				nodePort: 80,
+			},
+			want: []loadbalancer.BackendDetails{},
+		},
+		{
+			name: "multiple nodes - all with assigned IP",
+			args: args{
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec:       v1.NodeSpec{},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec:       v1.NodeSpec{},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.1",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
+				nodePort: 80,
+			},
+			want: []loadbalancer.BackendDetails{
+				{IpAddress: common.String("0.0.0.0"), Port: common.Int(80), Weight: common.Int(1)},
+				{IpAddress: common.String("0.0.0.1"), Port: common.Int(80), Weight: common.Int(1)},
+			},
+		},
+		{
+			name: "multiple nodes - all with unassigned IP",
+			args: args{
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec:       v1.NodeSpec{},
+						Status: v1.NodeStatus{
+							Capacity:        nil,
+							Allocatable:     nil,
+							Phase:           "",
+							Conditions:      nil,
+							Addresses:       []v1.NodeAddress{},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec:       v1.NodeSpec{},
+						Status: v1.NodeStatus{
+							Capacity:        nil,
+							Allocatable:     nil,
+							Phase:           "",
+							Conditions:      nil,
+							Addresses:       []v1.NodeAddress{},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
+				nodePort: 80,
+			},
+			want: []loadbalancer.BackendDetails{},
+		},
+		{
+			name: "multiple nodes - one with unassigned IP",
+			args: args{
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec:       v1.NodeSpec{},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec:       v1.NodeSpec{},
+						Status: v1.NodeStatus{
+							Capacity:        nil,
+							Allocatable:     nil,
+							Phase:           "",
+							Conditions:      nil,
+							Addresses:       []v1.NodeAddress{},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec:       v1.NodeSpec{},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.1",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
+				nodePort: 80,
+			},
+			want: []loadbalancer.BackendDetails{
+				{IpAddress: common.String("0.0.0.0"), Port: common.Int(80), Weight: common.Int(1)},
+				{IpAddress: common.String("0.0.0.1"), Port: common.Int(80), Weight: common.Int(1)},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logger := zap.L()
+			if got := getBackends(logger.Sugar(), tt.args.nodes, tt.args.nodePort); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("getBackends() = %v, want %v", got, tt.want)
 			}
 		})
 	}

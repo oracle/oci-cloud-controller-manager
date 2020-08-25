@@ -1,9 +1,10 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
-// File Storage Service API
+// File Storage API
 //
-// The API for the File Storage Service.
+// API for the File Storage service. Use this API to manage file systems, mount targets, and snapshots. For more information, see Overview of File Storage (https://docs.cloud.oracle.com/iaas/Content/File/Concepts/filestorageoverview.htm).
 //
 
 package filestorage
@@ -13,6 +14,7 @@ import (
 )
 
 // Snapshot A point-in-time snapshot of a specified file system.
+// **Warning:** Oracle recommends that you avoid using any confidential information when you supply string values using the API.
 type Snapshot struct {
 
 	// The OCID of the file system from which the snapshot
@@ -34,6 +36,17 @@ type Snapshot struct {
 	// in RFC 3339 (https://tools.ietf.org/rfc/rfc3339) timestamp format.
 	// Example: `2016-08-25T21:10:29.600Z`
 	TimeCreated *common.SDKTime `mandatory:"true" json:"timeCreated"`
+
+	// Free-form tags for this resource. Each tag is a simple key-value pair
+	//  with no predefined name, type, or namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Example: `{"Department": "Finance"}`
+	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
+
+	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Example: `{"Operations": {"CostCenter": "42"}}`
+	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 }
 
 func (m Snapshot) String() string {
@@ -43,7 +56,7 @@ func (m Snapshot) String() string {
 // SnapshotLifecycleStateEnum Enum with underlying type: string
 type SnapshotLifecycleStateEnum string
 
-// Set of constants representing the allowable values for SnapshotLifecycleState
+// Set of constants representing the allowable values for SnapshotLifecycleStateEnum
 const (
 	SnapshotLifecycleStateCreating SnapshotLifecycleStateEnum = "CREATING"
 	SnapshotLifecycleStateActive   SnapshotLifecycleStateEnum = "ACTIVE"
@@ -58,7 +71,7 @@ var mappingSnapshotLifecycleState = map[string]SnapshotLifecycleStateEnum{
 	"DELETED":  SnapshotLifecycleStateDeleted,
 }
 
-// GetSnapshotLifecycleStateEnumValues Enumerates the set of values for SnapshotLifecycleState
+// GetSnapshotLifecycleStateEnumValues Enumerates the set of values for SnapshotLifecycleStateEnum
 func GetSnapshotLifecycleStateEnumValues() []SnapshotLifecycleStateEnum {
 	values := make([]SnapshotLifecycleStateEnum, 0)
 	for _, v := range mappingSnapshotLifecycleState {

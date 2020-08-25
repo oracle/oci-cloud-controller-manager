@@ -17,12 +17,7 @@ package block
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"strings"
-
-	"github.com/kubernetes-incubator/external-storage/lib/controller"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/core"
@@ -32,6 +27,9 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"regexp"
+	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
+	"strconv"
 )
 
 const (
@@ -40,8 +38,9 @@ const (
 	// OCIVolumeBackupID is the name of the oci volume backup id annotation.
 	OCIVolumeBackupID = "volume.beta.kubernetes.io/oci-volume-source"
 	// FSType is the name of the file storage type parameter for storage classes.
-	FSType                  = "fsType"
-	volumeRoundingUpEnabled = "volumeRoundingUpEnabled"
+	FSType                    = "fsType"
+	volumeRoundingUpEnabled   = "volumeRoundingUpEnabled"
+	volumeBackupOCIDPrefixExp = `^ocid[v]?[\d+]?[\.:]volumebackup[\.:]`
 )
 
 // blockProvisioner is the internal provisioner for OCI block volumes
@@ -77,16 +76,19 @@ func NewBlockProvisioner(
 	}
 }
 
-func mapVolumeIDToName(volumeID string) string {
-	return strings.Split(volumeID, ".")[4]
-}
+func resolveFSType(options controller.ProvisionOptions) string {
+	fsType, _ := options.StorageClass.Parameters[FSType]
 
-func resolveFSType(options controller.VolumeOptions) string {
-	fs := "ext4" // default to ext4
-	if fsType, ok := options.Parameters[FSType]; ok {
-		fs = fsType
+	defaultFsType := "ext4"
+	if fsType == "ext4" || fsType == "ext3" {
+		return fsType
+	} else if fsType != "" {
+		//TODO: Remove this code when we support other than ext4 || ext3.
+		return defaultFsType
+	} else {
+		//No fsType provided returning ext4
+		return defaultFsType
 	}
-	return fs
 }
 
 func roundUpSize(volumeSizeBytes int64, allocationUnitBytes int64) int64 {
@@ -104,7 +106,7 @@ func volumeRoundingEnabled(param map[string]string) bool {
 }
 
 // Provision creates an OCI block volume
-func (block *blockProvisioner) Provision(options controller.VolumeOptions, ad *identity.AvailabilityDomain) (*v1.PersistentVolume, error) {
+func (block *blockProvisioner) Provision(options controller.ProvisionOptions, ad *identity.AvailabilityDomain) (*v1.PersistentVolume, error) {
 	ctx := context.Background()
 	for _, accessMode := range options.PVC.Spec.AccessModes {
 		if accessMode != v1.ReadWriteOnce {
@@ -126,7 +128,7 @@ func (block *blockProvisioner) Provision(options controller.VolumeOptions, ad *i
 	)
 	logger.Info("Provisioning volume")
 
-	if volumeRoundingEnabled(options.Parameters) {
+	if volumeRoundingEnabled(options.StorageClass.Parameters) {
 		if block.volumeRoundingEnabled && block.minVolumeSize.Cmp(capacity) == 1 {
 			volSizeMB = int(roundUpSize(block.minVolumeSize.Value(), 1024*1024))
 			logger.With("roundedVolumeSize", volSizeMB).Warn("Attempted to provision volume with a capacity less than the minimum. Rounding up to ensure volume creation.")
@@ -137,20 +139,49 @@ func (block *blockProvisioner) Provision(options controller.VolumeOptions, ad *i
 	volumeDetails := core.CreateVolumeDetails{
 		AvailabilityDomain: ad.Name,
 		CompartmentId:      common.String(block.compartmentID),
-		DisplayName:        common.String(fmt.Sprintf("%s%s", provisioner.GetPrefix(), options.PVC.Name)),
+		DisplayName:        common.String(string(options.PVC.UID)),
 		SizeInMBs:          common.Int64(int64(volSizeMB)),
 	}
 
 	if value, ok := options.PVC.Annotations[OCIVolumeBackupID]; ok {
 		logger = logger.With("volumeBackupOCID", value)
-		logger.Info("Creating volume from backup.")
-		volumeDetails.SourceDetails = &core.VolumeSourceFromVolumeBackupDetails{Id: &value}
+		if isVolumeBackupOcid(value) {
+			logger.Info("Creating volume from block volume backup.")
+			volumeDetails.SourceDetails = &core.VolumeSourceFromVolumeBackupDetails{Id: &value}
+		} else {
+			logger.Info("Creating volume from block volume.")
+			volumeDetails.SourceDetails = &core.VolumeSourceFromVolumeDetails{Id: &value}
+		}
 	}
 
-	// Create the volume.
-	volume, err := block.client.BlockStorage().CreateVolume(ctx, volumeDetails)
+	//make sure this method is idempotent by checking existence of volume with same name.
+	volumes, err := block.client.BlockStorage().GetVolumesByName(context.Background(), string(options.PVC.UID), block.compartmentID)
 	if err != nil {
-		return nil, err
+		logger.Error("Failed to find existence of volume %s", err)
+		return nil, fmt.Errorf("failed to check existence of volume %v", err)
+	}
+
+	if len(volumes) > 1 {
+		logger.Error("Duplicate volume exists")
+		return nil, fmt.Errorf("duplicate volume %q exists", string(options.PVC.UID))
+	}
+
+	volume := &core.Volume{}
+
+	if len(volumes) > 0 {
+		//Volume already exists so checking state of the volume and returning the same.
+		logger.Info("Volume already created!")
+		//Assigning existing volume
+		volume = &volumes[0]
+
+	} else {
+		// Create the volume.
+		logger.Info("Creating new volume!")
+		volume, err = block.client.BlockStorage().CreateVolume(ctx, volumeDetails)
+		if err != nil {
+			logger.With("Compartment Id", block.compartmentID).Error("Failed to create volume %s", err)
+			return nil, err
+		}
 	}
 
 	logger.With("volumeID", *volume.Id).Info("Waiting for volume to become available.")
@@ -174,7 +205,7 @@ func (block *blockProvisioner) Provision(options controller.VolumeOptions, ad *i
 			},
 		},
 		Spec: v1.PersistentVolumeSpec{
-			PersistentVolumeReclaimPolicy: options.PersistentVolumeReclaimPolicy,
+			PersistentVolumeReclaimPolicy: *options.StorageClass.ReclaimPolicy,
 			AccessModes:                   options.PVC.Spec.AccessModes,
 			Capacity: v1.ResourceList{
 				v1.ResourceName(v1.ResourceStorage): capacity,
@@ -185,11 +216,16 @@ func (block *blockProvisioner) Provision(options controller.VolumeOptions, ad *i
 					FSType: filesystemType,
 				},
 			},
-			MountOptions: options.MountOptions,
+			MountOptions: options.StorageClass.MountOptions,
 		},
 	}
 
 	return pv, nil
+}
+
+func isVolumeBackupOcid(ocid string) bool {
+	res, _ := regexp.MatchString(volumeBackupOCIDPrefixExp, ocid)
+	return res
 }
 
 // Delete destroys a OCI volume created by Provision

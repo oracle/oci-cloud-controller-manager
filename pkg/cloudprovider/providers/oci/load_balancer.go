@@ -22,10 +22,10 @@ import (
 	"github.com/oracle/oci-go-sdk/loadbalancer"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	sets "k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/sets"
 	k8sports "k8s.io/kubernetes/pkg/master/ports"
 )
 
@@ -98,10 +98,15 @@ const (
 	lbNodesHealthCheckProtoTCP  = "TCP"
 )
 
+// GetLoadBalancerName returns the name of the loadbalancer
+func (cp *CloudProvider) GetLoadBalancerName(ctx context.Context, clusterName string, service *v1.Service) string {
+	return GetLoadBalancerName(service)
+}
+
 // GetLoadBalancer returns whether the specified load balancer exists, and if
 // so, what its status is.
 func (cp *CloudProvider) GetLoadBalancer(ctx context.Context, clusterName string, service *v1.Service) (*v1.LoadBalancerStatus, bool, error) {
-	name := GetLoadBalancerName(service)
+	name := cp.GetLoadBalancerName(ctx, clusterName, service)
 	logger := cp.logger.With("loadBalancerName", name)
 	logger.Debug("Getting load balancer")
 
@@ -323,13 +328,8 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		secretBackendSetString := service.Annotations[ServiceAnnotationLoadBalancerTLSBackendSetSecret]
 		sslConfig = NewSSLConfig(secretListenerString, secretBackendSetString, service, ports, cp)
 	}
-	var subnets []string
-	if cp.config.LoadBalancer.Subnet2 != "" {
-		subnets = []string{cp.config.LoadBalancer.Subnet1, cp.config.LoadBalancer.Subnet2}
-	} else {
-		subnets = []string{cp.config.LoadBalancer.Subnet1}
-	}
-	spec, err := NewLBSpec(service, nodes, subnets, sslConfig, cp.securityListManagerFactory)
+	subnets := getDefaultLBSubnets(cp.config.LoadBalancer.Subnet1, cp.config.LoadBalancer.Subnet2)
+	spec, err := NewLBSpec(logger, service, nodes, subnets, sslConfig, cp.securityListManagerFactory)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to derive LBSpec")
 		return nil, err
@@ -360,6 +360,16 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 	return loadBalancerToStatus(lb)
 }
 
+func getDefaultLBSubnets(subnet1, subnet2 string) []string {
+	var subnets []string
+	if subnet2 != "" {
+		subnets = []string{subnet1, subnet2}
+	} else {
+		subnets = []string{subnet1}
+	}
+	return subnets
+}
+
 func (cp *CloudProvider) updateLoadBalancer(ctx context.Context, lb *loadbalancer.LoadBalancer, spec *LBSpec) error {
 	lbID := *lb.Id
 
@@ -371,7 +381,7 @@ func (cp *CloudProvider) updateLoadBalancer(ctx context.Context, lb *loadbalance
 
 	actualListeners := lb.Listeners
 	desiredListeners := spec.Listeners
-	listenerActions := getListenerChanges(actualListeners, desiredListeners)
+	listenerActions := getListenerChanges(logger, actualListeners, desiredListeners)
 
 	if len(backendSetActions) == 0 && len(listenerActions) == 0 {
 		return nil // Nothing to do.
@@ -394,6 +404,13 @@ func (cp *CloudProvider) updateLoadBalancer(ctx context.Context, lb *loadbalance
 			if err != nil {
 				return errors.Wrap(err, "updating BackendSet")
 			}
+
+		case *BackendAction:
+			err := cp.updateBackend(ctx, lbID, a)
+			if err != nil {
+				return errors.Wrap(err, "updating Backend")
+			}
+
 		case *ListenerAction:
 			backendSetName := *a.Listener.DefaultBackendSetName
 			var ports portSpec
@@ -465,6 +482,37 @@ func (cp *CloudProvider) updateBackendSet(ctx context.Context, lbID string, acti
 	return nil
 }
 
+func (cp *CloudProvider) updateBackend(ctx context.Context, lbID string, action *BackendAction) error {
+	var (
+		workRequestID string
+		err           error
+	)
+
+	cp.logger.With(
+		"actionType", action.Type(),
+		"backendSetName", action.bsName,
+		"backendName", action.Name(),
+		"loadBalancerID", lbID).Info("Applying action on backend")
+
+	switch action.Type() {
+	case Create:
+		workRequestID, err = cp.client.LoadBalancer().CreateBackend(ctx, lbID, action.bsName, action.Backend)
+	case Delete:
+		workRequestID, err = cp.client.LoadBalancer().DeleteBackend(ctx, lbID, action.bsName, action.name)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	_, err = cp.client.LoadBalancer().AwaitWorkRequest(ctx, workRequestID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (cp *CloudProvider) updateListener(ctx context.Context, lbID string, action *ListenerAction, ports portSpec, lbSubnets, nodeSubnets []*core.Subnet, sourceCIDRs []string, secListManager securityListManager) error {
 	var workRequestID string
 	var err error
@@ -473,7 +521,7 @@ func (cp *CloudProvider) updateListener(ctx context.Context, lbID string, action
 
 	cp.logger.With(
 		"actionType", action.Type(),
-		"backendSetName", action.Name(),
+		"listenerName", action.Name(),
 		"ports", ports,
 		"loadBalancerID", lbID).Info("Applying action on listener")
 
@@ -511,7 +559,7 @@ func (cp *CloudProvider) updateListener(ctx context.Context, lbID string, action
 
 // UpdateLoadBalancer : TODO find out where this is called
 func (cp *CloudProvider) UpdateLoadBalancer(ctx context.Context, clusterName string, service *v1.Service, nodes []*v1.Node) error {
-	name := GetLoadBalancerName(service)
+	name := cp.GetLoadBalancerName(ctx, clusterName, service)
 	cp.logger.With("loadbalancerName", name).Info("Updating load balancer")
 
 	_, err := cp.EnsureLoadBalancer(ctx, clusterName, service, nodes)
@@ -547,7 +595,7 @@ func (cp *CloudProvider) getNodesByIPs(backendIPs []string) ([]*v1.Node, error) 
 // returning nil if the load balancer specified either didn't exist or was
 // successfully deleted.
 func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterName string, service *v1.Service) error {
-	name := GetLoadBalancerName(service)
+	name := cp.GetLoadBalancerName(ctx, clusterName, service)
 	logger := cp.logger.With("loadbalancerName", name)
 	logger.Debug("Attempting to delete load balancer")
 

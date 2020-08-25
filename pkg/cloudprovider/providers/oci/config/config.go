@@ -100,6 +100,7 @@ type RateLimiterConfig struct {
 	RateLimitBucketRead  int     `yaml:"rateLimitBucketRead"` //Read?
 	RateLimitQPSWrite    float32 `yaml:"rateLimitQPSWrite"`
 	RateLimitBucketWrite int     `yaml:"rateLimitBucketWrite"`
+	DisableRateLimiter   bool    `yaml:"disableRateLimiter"`
 }
 
 // Config holds the OCI cloud-provider config passed to Kubernetes components

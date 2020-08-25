@@ -1,9 +1,10 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
-// File Storage Service API
+// File Storage API
 //
-// The API for the File Storage Service.
+// API for the File Storage service. Use this API to manage file systems, mount targets, and snapshots. For more information, see Overview of File Storage (https://docs.cloud.oracle.com/iaas/Content/File/Concepts/filestorageoverview.htm).
 //
 
 package filestorage
@@ -44,6 +45,20 @@ type FileSystemSummary struct {
 	// as a blank or NULL value.
 	// Example: `Uocm:PHX-AD-1`
 	AvailabilityDomain *string `mandatory:"false" json:"availabilityDomain"`
+
+	// Free-form tags for this resource. Each tag is a simple key-value pair
+	//  with no predefined name, type, or namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Example: `{"Department": "Finance"}`
+	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
+
+	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Example: `{"Operations": {"CostCenter": "42"}}`
+	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
+
+	// The OCID of KMS key used to encrypt the encryption keys associated with this file system.
+	KmsKeyId *string `mandatory:"false" json:"kmsKeyId"`
 }
 
 func (m FileSystemSummary) String() string {
@@ -53,7 +68,7 @@ func (m FileSystemSummary) String() string {
 // FileSystemSummaryLifecycleStateEnum Enum with underlying type: string
 type FileSystemSummaryLifecycleStateEnum string
 
-// Set of constants representing the allowable values for FileSystemSummaryLifecycleState
+// Set of constants representing the allowable values for FileSystemSummaryLifecycleStateEnum
 const (
 	FileSystemSummaryLifecycleStateCreating FileSystemSummaryLifecycleStateEnum = "CREATING"
 	FileSystemSummaryLifecycleStateActive   FileSystemSummaryLifecycleStateEnum = "ACTIVE"
@@ -68,7 +83,7 @@ var mappingFileSystemSummaryLifecycleState = map[string]FileSystemSummaryLifecyc
 	"DELETED":  FileSystemSummaryLifecycleStateDeleted,
 }
 
-// GetFileSystemSummaryLifecycleStateEnumValues Enumerates the set of values for FileSystemSummaryLifecycleState
+// GetFileSystemSummaryLifecycleStateEnumValues Enumerates the set of values for FileSystemSummaryLifecycleStateEnum
 func GetFileSystemSummaryLifecycleStateEnumValues() []FileSystemSummaryLifecycleStateEnum {
 	values := make([]FileSystemSummaryLifecycleStateEnum, 0)
 	for _, v := range mappingFileSystemSummaryLifecycleState {

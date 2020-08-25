@@ -15,9 +15,9 @@
 package plugin
 
 import (
-	"github.com/kubernetes-incubator/external-storage/lib/controller"
 	"github.com/oracle/oci-go-sdk/identity"
 	"k8s.io/api/core/v1"
+	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
 )
 
 const (
@@ -33,7 +33,7 @@ const (
 type ProvisionerPlugin interface {
 	// Provision creates a volume i.e. the storage asset and returns a PV object
 	// for the volume
-	Provision(controller.VolumeOptions, *identity.AvailabilityDomain) (*v1.PersistentVolume, error)
+	Provision(controller.ProvisionOptions, *identity.AvailabilityDomain) (*v1.PersistentVolume, error)
 	// Delete removes the storage asset that was created by Provision backing the
 	// given PV. Does not delete the PV object itself.
 	//

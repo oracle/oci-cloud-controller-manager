@@ -1,9 +1,11 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
-// Load Balancing Service API
+// Load Balancing API
 //
-// API for the Load Balancing Service
+// API for the Load Balancing service. Use this API to manage load balancers, backend sets, and related items. For more
+// information, see Overview of Load Balancing (https://docs.cloud.oracle.com/iaas/Content/Balance/Concepts/balanceoverview.htm).
 //
 
 package loadbalancer
@@ -29,8 +31,6 @@ type ListenerDetails struct {
 	// Example: `HTTP`
 	Protocol *string `mandatory:"true" json:"protocol"`
 
-	ConnectionConfiguration *ConnectionConfiguration `mandatory:"false" json:"connectionConfiguration"`
-
 	// An array of hostname resource names.
 	HostnameNames []string `mandatory:"false" json:"hostnameNames"`
 
@@ -40,6 +40,12 @@ type ListenerDetails struct {
 	PathRouteSetName *string `mandatory:"false" json:"pathRouteSetName"`
 
 	SslConfiguration *SslConfigurationDetails `mandatory:"false" json:"sslConfiguration"`
+
+	ConnectionConfiguration *ConnectionConfiguration `mandatory:"false" json:"connectionConfiguration"`
+
+	// The names of the RuleSet to apply to the listener.
+	//  Example: ["example_rule_set"]
+	RuleSetNames []string `mandatory:"false" json:"ruleSetNames"`
 }
 
 func (m ListenerDetails) String() string {

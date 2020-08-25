@@ -20,7 +20,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kubernetes-incubator/external-storage/lib/controller"
+	v12 "k8s.io/api/storage/v1"
+
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/core"
@@ -28,9 +29,10 @@ import (
 	"github.com/oracle/oci-go-sdk/identity"
 	"github.com/oracle/oci-go-sdk/loadbalancer"
 	"go.uber.org/zap"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
 )
 
 var (
@@ -52,6 +54,18 @@ var (
 // MockBlockStorageClient mocks BlockStorage client implementation
 type MockBlockStorageClient struct {
 	VolumeState core.VolumeLifecycleStateEnum
+}
+
+func (c *MockBlockStorageClient) AwaitVolumeAvailableORTimeout(ctx context.Context, id string, timeout time.Duration) (*core.Volume, error) {
+	return nil, nil
+}
+
+func (c *MockBlockStorageClient) GetVolume(ctx context.Context, id string) (*core.Volume, error) {
+	return nil, nil
+}
+
+func (c *MockBlockStorageClient) GetVolumesByName(ctx context.Context, volumeName, compartmentID string) ([]core.Volume, error) {
+	return nil, nil
 }
 
 // CreateVolume mocks the BlockStorage CreateVolume implementation
@@ -227,6 +241,10 @@ type MockIdentityClient struct {
 	common.BaseClient
 }
 
+func (client MockIdentityClient) ListAvailabilityDomains(ctx context.Context, compartmentID string) ([]identity.AvailabilityDomain, error) {
+	return nil, nil
+}
+
 // ListAvailabilityDomains mocks the client ListAvailabilityDomains implementation
 func (client MockIdentityClient) GetAvailabilityDomainByName(ctx context.Context, compartmentID, name string) (*identity.AvailabilityDomain, error) {
 	return nil, nil
@@ -278,7 +296,7 @@ func (p *MockProvisionerClient) Timeout() time.Duration {
 
 // TenancyOCID mocks client TenancyOCID implementation
 func (p *MockProvisionerClient) TenancyOCID() string {
-	return "ocid1.tenancy.oc1..aaaaaaaatyn7scrtwtqedvgrxgr2xunzeo6uanvyhzxqblctwkrpisvke4kq"
+	return "ocid1.tenancy.oc1..aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 }
 
 type MockLoadBalancerClient struct{}
@@ -319,6 +337,14 @@ func (c *MockLoadBalancerClient) DeleteBackendSet(ctx context.Context, lbID, nam
 	return "", nil
 }
 
+func (c *MockLoadBalancerClient) CreateBackend(ctx context.Context, lbID, bsName string, details loadbalancer.BackendDetails) (string, error) {
+	return "", nil
+}
+
+func (c *MockLoadBalancerClient) DeleteBackend(ctx context.Context, lbID, bsName, name string) (string, error) {
+	return "", nil
+}
+
 func (c *MockLoadBalancerClient) UpdateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error) {
 	return "", nil
 }
@@ -347,9 +373,14 @@ var (
 )
 
 func TestResolveFSTypeWhenNotConfigured(t *testing.T) {
-	options := controller.VolumeOptions{Parameters: make(map[string]string)}
+	storageClass := v12.StorageClass{
+		Parameters: map[string]string{FSType: ""},
+	}
+	provisionerOptions := controller.ProvisionOptions{
+		StorageClass: &storageClass,
+	}
 	// test default fsType of 'ext4' is always returned.
-	fst := resolveFSType(options)
+	fst := resolveFSType(provisionerOptions)
 	if fst != "ext4" {
 		t.Fatalf("Unexpected filesystem type: '%s'.", fst)
 	}
@@ -357,8 +388,13 @@ func TestResolveFSTypeWhenNotConfigured(t *testing.T) {
 
 func TestResolveFSTypeWhenConfigured(t *testing.T) {
 	// test default fsType of 'ext3' is always returned when configured.
-	options := controller.VolumeOptions{Parameters: map[string]string{FSType: "ext3"}}
-	fst := resolveFSType(options)
+	storageClass := v12.StorageClass{
+		Parameters: map[string]string{FSType: "ext3"},
+	}
+	provisionerOptions := controller.ProvisionOptions{
+		StorageClass: &storageClass,
+	}
+	fst := resolveFSType(provisionerOptions)
 	if fst != "ext3" {
 		t.Fatalf("Unexpected filesystem type: '%s'.", fst)
 	}
@@ -366,8 +402,16 @@ func TestResolveFSTypeWhenConfigured(t *testing.T) {
 
 func TestCreateVolumeFromBackup(t *testing.T) {
 	// test creating a volume from an existing backup
-	options := controller.VolumeOptions{
-		PVName: "dummyVolumeOptions",
+
+	persistentVolumeReclaimPolicy := v1.PersistentVolumeReclaimPolicy("Test")
+
+	storageClass := v12.StorageClass{
+		Parameters:    map[string]string{"volumeRoundingUpEnabled": "true"},
+		ReclaimPolicy: &persistentVolumeReclaimPolicy,
+	}
+	options := controller.ProvisionOptions{
+		StorageClass: &storageClass,
+		PVName:       "dummyVolumeOptions",
 		PVC: &v1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
 				Annotations: map[string]string{
@@ -415,8 +459,16 @@ func TestVolumeRoundingLogic(t *testing.T) {
 	}
 	for i, tt := range volumeRoundingTests {
 		t.Run(fmt.Sprintf("test-%d", i), func(t *testing.T) {
-			volumeOptions := controller.VolumeOptions{
-				PVC: createPVC(tt.requestedStorage),
+			persistentVolumeReclaimPolicy := v1.PersistentVolumeReclaimPolicy("Test")
+
+			storageClass := v12.StorageClass{
+				Parameters:    map[string]string{"volumeRoundingUpEnabled": "true"},
+				ReclaimPolicy: &persistentVolumeReclaimPolicy,
+			}
+
+			volumeOptions := controller.ProvisionOptions{
+				StorageClass: &storageClass,
+				PVC:          createPVC(tt.requestedStorage),
 			}
 			block := NewBlockProvisioner(zap.S(), NewClientProvisioner(nil, &MockBlockStorageClient{VolumeState: core.VolumeLifecycleStateAvailable}),
 				"ocid1.",
@@ -435,6 +487,32 @@ func TestVolumeRoundingLogic(t *testing.T) {
 			expected := expectedCapacity.String()
 			if actual != expected {
 				t.Fatalf("Expected volume to be %s but got %s", expected, actual)
+			}
+		})
+	}
+}
+
+func TestVolumeBackupOCID(t *testing.T) {
+	var volumeBackupOcidTests = []struct {
+		in  string
+		out bool
+	}{
+		{"ocid1.volumebackup.", true},
+		{"ocidv1:volumebackup.", true},
+		{"ocid2.volumebackup.", true},
+		{"ocidv2.volumebackup.", true},
+		{"ocid.volumebackup.", true},
+		{"ocid1.volumebackupsdfljf", false},
+		{"ocidv1:volume.", false},
+		{"ocid2.volume.", false},
+		{"ocidv2.volume.", false},
+	}
+	for i, tt := range volumeBackupOcidTests {
+		t.Run(fmt.Sprintf("test-%d", i), func(t *testing.T) {
+			expected := tt.out
+			actual := isVolumeBackupOcid(tt.in)
+			if expected != actual {
+				t.Fatalf("Expected value to be %v but got %v", expected, actual)
 			}
 		})
 	}

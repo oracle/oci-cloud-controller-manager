@@ -15,11 +15,11 @@
 package logging
 
 import (
-	"flag"
 	"os"
 	"strings"
 	"sync"
 
+	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"
@@ -32,12 +32,6 @@ var (
 	config      *zap.Config
 	mu          sync.Mutex
 )
-
-func init() {
-	flag.Var(&lvl, "log-level", "Adjusts the level of the logs that will be omitted.")
-	flag.BoolVar(&logJSON, "log-json", logJSON, "Log in json format.")
-	flag.StringVar(&logfilePath, "logfile-path", "", "If specified, write log messages to a file at this path.")
-}
 
 // Options holds the zap logger configuration.
 type Options struct {
@@ -65,6 +59,8 @@ func logger(path string) *zap.Logger {
 	defer mu.Unlock()
 
 	var cfg zap.Config
+
+	setFlags()
 
 	if !logJSON {
 		cfg = zap.NewDevelopmentConfig()
@@ -117,6 +113,13 @@ func logger(path string) *zap.Logger {
 	}
 
 	return logger
+}
+
+func setFlags() {
+	logLvl := viper.GetInt("log-level")
+	logJSON = viper.GetBool("log-json")
+	lvl = zapcore.Level(logLvl)
+	logfilePath = viper.GetString("logfile-path")
 }
 
 // FieldsFromEnv extracts log fields from environment variables.

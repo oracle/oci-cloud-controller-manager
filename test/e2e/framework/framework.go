@@ -1,4 +1,4 @@
-// Copyright 2018 Oracle and/or its affiliates. All rights reserved.
+// Copyright 2020 Oracle and/or its affiliates. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,160 +15,154 @@
 package framework
 
 import (
+	"flag"
 	"fmt"
-	"os"
+	imageutils "k8s.io/kubernetes/test/utils/image"
+	"math/rand"
+	"strings"
 	"time"
-
-	"github.com/pborman/uuid"
-	"github.com/pkg/errors"
-	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
-	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/leaderelection"
-	"k8s.io/client-go/tools/leaderelection/resourcelock"
-	"k8s.io/client-go/tools/record"
 )
 
-// AquireRunLock blocks until the test run lock is required or a timeout
-// elapses. A lock is required as only one test run can safely be executed on
-// the same cluster at any given time.
-func AquireRunLock(client clientset.Interface, lockName string) error {
-	lec, err := makeLeaderElectionConfig(client, lockName)
-	if err != nil {
-		return err
-	}
+const (
+	// Poll is the default polling period when checking lifecycle status.
+	Poll = 15 * time.Second
+	// Poll defines how regularly to poll kubernetes resources.
+	K8sResourcePoll = 2 * time.Second
+	// DefaultTimeout is how long we wait for long-running operations in the
+	// test suite before giving up.
+	DefaultTimeout = 10 * time.Minute
+	// Some pods can take much longer to get ready due to volume attach/detach latency.
+	slowPodStartTimeout = 15 * time.Minute
 
-	readyCh := make(chan struct{})
-	lec.Callbacks = leaderelection.LeaderCallbacks{
-		OnStartedLeading: func(stop <-chan struct{}) {
-			Logf("Test run lock aquired")
-			readyCh <- struct{}{}
-		},
-		OnStoppedLeading: func() {
-			Failf("Lost test run lock unexpectedly")
-		},
-	}
+	DefaultClusterKubeconfig = "/tmp/clusterkubeconfig"
+	DefaultCloudConfig       = "/tmp/cloudconfig"
 
-	le, err := leaderelection.NewLeaderElector(*lec)
-	if err != nil {
-		return err
-	}
+	ClassOCI          = "oci"
+	ClassOCIExt3      = "oci-ext3"
+	ClassOCIMntFss    = "oci-fss-mnt"
+	ClassOCISubnetFss = "oci-fss-subnet"
+	MinVolumeBlock    = "50Gi"
+	MaxVolumeBlock    = "100Gi"
+	VolumeFss         = "1Gi"
+	Netexec           = "netexec:1.1"
+	BusyBoxImage      = "busybox:latest"
+	Nginx             = "nginx:stable-alpine"
+	Centos            = "centos:latest"
+)
 
-	go le.Run()
+var (
+	compartment1                 string
+	adlocation                   string
+	clusterkubeconfig            string // path to kubeconfig file
+	deleteNamespace              bool   // whether or not to delete test namespaces
+	cloudConfigFile              string // path to cloud provider config file
+	nodePortTest                 bool   // whether or not to test the connectivity of node ports.
+	ccmSeclistID                 string // The ocid of the loadbalancer subnet seclist. Optional.
+	k8sSeclistID                 string // The ocid of the k8s worker subnet seclist. Optional.
+	mntTargetOCID                string // Mount Target ID is specified to identify the mount target to be attached to the volumes. Optional.
+	nginx                        string // Image for nginx
+	netexec                      string // Image for netexec
+	busyBoxImage                 string // Image for busyBoxImage
+	centos                       string // Image for centos
+	imagePullRepo                string // Repo to pull images from. Will pull public images if not specified.
+)
 
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
+func init() {
+	flag.StringVar(&compartment1, "compartment1", "", "OCID of the compartment1 in which to manage clusters.")
 
-	for {
-		select {
-		case <-readyCh:
-			return nil
-		case <-ticker.C:
-			Logf("Waiting to aquire test run lock. %q currently has it.", le.GetLeader())
-		case <-time.After(30 * time.Minute):
-			return errors.New("timed out trying to aquire test run lock")
-		}
-	}
-	panic("unreachable")
+	flag.StringVar(&adlocation, "adlocation", "", "Default Ad Location.")
+
+	//Below two flags need to be provided if test cluster already exists.
+	flag.StringVar(&clusterkubeconfig, "cluster-kubeconfig", DefaultClusterKubeconfig, "Path to Cluster's Kubeconfig file with authorization and master location information. Only provide if test cluster exists.")
+	flag.StringVar(&cloudConfigFile, "cloud-config", DefaultCloudConfig, "The path to the cloud provider configuration file. Empty string for no configuration file. Only provide if test cluster exists.")
+
+	flag.BoolVar(&nodePortTest, "nodeport-test", false, "If true test will include 'nodePort' connectectivity tests.")
+	flag.StringVar(&ccmSeclistID, "ccm-seclist-id", "", "The ocid of the loadbalancer subnet seclist. Enables additional seclist rule tests. If specified the 'k8s-seclist-id parameter' is also required.")
+	flag.StringVar(&k8sSeclistID, "k8s-seclist-id", "", "The ocid of the k8s worker subnet seclist. Enables additional seclist rule tests. If specified the 'ccm-seclist-id parameter' is also required.")
+	flag.BoolVar(&deleteNamespace, "delete-namespace", true, "If true tests will delete namespace after completion. It is only designed to make debugging easier, DO NOT turn it off by default.")
+
+	flag.StringVar(&mntTargetOCID, "mnt-target-id", "", "Mount Target ID is specified to identify the mount target to be attached to the volumes")
+
+	flag.StringVar(&imagePullRepo, "image-pull-repo", "", "Repo to pull images from. Will pull public images if not specified.")
+	flag.Parse()
 }
 
-func makeLeaderElectionConfig(client clientset.Interface, lockName string) (*leaderelection.LeaderElectionConfig, error) {
-	eventBroadcaster := record.NewBroadcaster()
-	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: lockName})
+// Framework is the context of the text execution.
+type Framework struct {
+	// The compartment1 the cluster is running in.
+	Compartment1 string
+	// Default adLocation
+	AdLocation string
 
-	id := os.Getenv("WERCKER_STEP_ID")
-	if id == "" {
-		id = uuid.NewUUID().String()
-	}
+	// Default adLocation
+	AdLabel string
 
-	Logf("Test run lock id: %q", id)
+	//is cluster creation required
+	EnableCreateCluster bool
 
-	rl, err := resourcelock.New(
-		resourcelock.ConfigMapsResourceLock,
-		"kube-system",
-		lockName,
-		client.CoreV1(),
-		resourcelock.ResourceLockConfig{
-			Identity:      id,
-			EventRecorder: recorder,
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't create resource lock: %v", err)
-	}
+	ClusterKubeconfigPath string
 
-	return &leaderelection.LeaderElectionConfig{
-		Lock:          rl,
-		LeaseDuration: 10 * time.Second,
-		RenewDeadline: 5 * time.Second,
-		RetryPeriod:   1 * time.Second,
-	}, nil
+	CloudConfigPath string
+
+	MntTargetOcid string
 }
 
-// CreateAndAwaitDaemonSet creates/updates the given DaemonSet and waits for it
-// to be ready.
-func CreateAndAwaitDaemonSet(client clientset.Interface, desired *appsv1.DaemonSet) error {
-	actual, err := client.AppsV1().DaemonSets(desired.Namespace).Create(desired)
-	if err != nil {
-		if !apierrors.IsAlreadyExists(err) {
-			return errors.Wrapf(err, "failed to create %q DaemonSet", desired.Name)
+// New creates a new a framework that holds the context of the test
+// execution.
+func New() *Framework {
+	return NewWithConfig()
+}
+
+// NewWithConfig creates a new Framework instance and configures the instance as per the configuration options in the given config.
+func NewWithConfig() *Framework {
+	rand.Seed(time.Now().UTC().UnixNano())
+
+	f := &Framework{
+		AdLocation:               adlocation,
+		MntTargetOcid:            mntTargetOCID,
+	}
+
+	f.CloudConfigPath = cloudConfigFile
+	f.ClusterKubeconfigPath = clusterkubeconfig
+
+	f.Initialize()
+
+	return f
+}
+
+// BeforeEach will be executed before each Ginkgo test is executed.
+func (f *Framework) Initialize() {
+	Logf("initializing framework")
+	f.AdLocation = adlocation
+	Logf("OCI AdLocation: %s", f.AdLocation)
+	if adlocation != "" {
+		splitString := strings.Split(adlocation, ":")
+		if len(splitString) == 2 {
+			f.AdLabel = splitString[1]
+		} else {
+			Failf("Invalid Availability Domain %s. Expecting format: `Uocm:PHX-AD-1`", adlocation)
 		}
-		Logf("%q DaemonSet already exists. Updating.", desired.Name)
-		actual, err = client.AppsV1().DaemonSets(desired.Namespace).Update(desired)
-		if err != nil {
-			return errors.Wrapf(err, "updating DaemonSet %q", desired.Name)
-		}
+	}
+	Logf("OCI AdLabel: %s", f.AdLabel)
+	f.MntTargetOcid = mntTargetOCID
+	Logf("OCI Mount Target OCID: %s", f.MntTargetOcid)
+	f.Compartment1 = compartment1
+	Logf("OCI compartment1 OCID: %s", f.Compartment1)
+	f.setImages()
+	f.ClusterKubeconfigPath = clusterkubeconfig
+	f.CloudConfigPath = cloudConfigFile
+}
+
+func (f *Framework) setImages() {
+	if imagePullRepo != "" {
+		netexec = fmt.Sprintf("%s%s", imagePullRepo, Netexec)
+		busyBoxImage = fmt.Sprintf("%s%s", imagePullRepo, BusyBoxImage)
+		nginx = fmt.Sprintf("%s%s", imagePullRepo, Nginx)
+		centos = fmt.Sprintf("%s%s", imagePullRepo, Centos)
 	} else {
-		Logf("Created DaemonSet %q in namespace %q", actual.Name, actual.Namespace)
+		netexec = imageutils.GetE2EImage(imageutils.Netexec)
+		busyBoxImage = BusyBoxImage
+		nginx = Nginx
+		centos = Centos
 	}
-
-	return wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
-		actual, err := client.AppsV1().DaemonSets(actual.Namespace).Get(actual.Name, metav1.GetOptions{})
-		if err != nil {
-			return false, errors.Wrap(err, "waiting for DaemonSet to be ready")
-		}
-
-		if actual.Status.DesiredNumberScheduled != 0 && actual.Status.NumberReady == actual.Status.DesiredNumberScheduled {
-			return true, nil
-		}
-
-		Logf("%q DaemonSet not yet ready (desired=%d, ready=%d). Waiting...",
-			actual.Name, actual.Status.DesiredNumberScheduled, actual.Status.NumberReady)
-		return false, nil
-	})
-}
-
-// CreateAndAwaitDeployment creates/updates the given Deployment and waits for
-// it to be ready.
-func CreateAndAwaitDeployment(client clientset.Interface, desired *appsv1.Deployment) error {
-	actual, err := client.AppsV1().Deployments(desired.Namespace).Create(desired)
-	if err != nil {
-		if !apierrors.IsAlreadyExists(err) {
-			return errors.Wrapf(err, "failed to create Deployment %q", desired.Name)
-		}
-		Logf("Deployment %q already exists. Updating.", desired.Name)
-		actual, err = client.AppsV1().Deployments(desired.Namespace).Update(desired)
-		if err != nil {
-			return errors.Wrapf(err, "updating Deployment %q", desired.Name)
-		}
-	} else {
-		Logf("Created Deployment %q in namespace %q", actual.Name, actual.Namespace)
-	}
-
-	return wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
-		actual, err := client.AppsV1().Deployments(actual.Namespace).Get(actual.Name, metav1.GetOptions{})
-		if err != nil {
-			return false, errors.Wrap(err, "waiting for Deployment to be ready")
-		}
-		if actual.Status.Replicas != 0 && actual.Status.Replicas == actual.Status.ReadyReplicas {
-			return true, nil
-		}
-		Logf("%s Deployment not yet ready (replicas=%d, readyReplicas=%d). Waiting...",
-			actual.Name, actual.Status.Replicas, actual.Status.ReadyReplicas)
-		return false, nil
-	})
 }

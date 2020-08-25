@@ -16,6 +16,7 @@ package oci
 
 import (
 	"fmt"
+	"go.uber.org/zap"
 	"strconv"
 	"strings"
 
@@ -104,7 +105,7 @@ type LBSpec struct {
 }
 
 // NewLBSpec creates a LB Spec from a Kubernetes service and a slice of nodes.
-func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslConfig *SSLConfig, secListFactory securityListManagerFactory) (*LBSpec, error) {
+func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslConfig *SSLConfig, secListFactory securityListManagerFactory) (*LBSpec, error) {
 	if err := validateService(svc); err != nil {
 		return nil, errors.Wrap(err, "invalid service")
 	}
@@ -153,7 +154,7 @@ func NewLBSpec(svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslCo
 		Internal:    internal,
 		Subnets:     subnets,
 		Listeners:   listeners,
-		BackendSets: getBackendSets(svc, nodes, sslConfig),
+		BackendSets: getBackendSets(logger, svc, nodes, sslConfig),
 
 		Ports:       getPorts(svc),
 		SSLConfig:   sslConfig,
@@ -257,19 +258,24 @@ func getPorts(svc *v1.Service) map[string]portSpec {
 	return ports
 }
 
-func getBackends(nodes []*v1.Node, nodePort int32) []loadbalancer.BackendDetails {
-	backends := make([]loadbalancer.BackendDetails, len(nodes))
-	for i, node := range nodes {
-		backends[i] = loadbalancer.BackendDetails{
-			IpAddress: common.String(NodeInternalIP(node)),
+func getBackends(logger *zap.SugaredLogger, nodes []*v1.Node, nodePort int32) []loadbalancer.BackendDetails {
+	backends := make([]loadbalancer.BackendDetails, 0)
+	for _, node := range nodes {
+		nodeAddressString := common.String(NodeInternalIP(node))
+		if *nodeAddressString == "" {
+			logger.Warnf("Node %q has an empty Internal IP address.", node.Name)
+			continue
+		}
+		backends = append(backends, loadbalancer.BackendDetails{
+			IpAddress: nodeAddressString,
 			Port:      common.Int(int(nodePort)),
 			Weight:    common.Int(1),
-		}
+		})
 	}
 	return backends
 }
 
-func getBackendSets(svc *v1.Service, nodes []*v1.Node, sslCfg *SSLConfig) map[string]loadbalancer.BackendSetDetails {
+func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sslCfg *SSLConfig) map[string]loadbalancer.BackendSetDetails {
 	backendSets := make(map[string]loadbalancer.BackendSetDetails)
 	for _, servicePort := range svc.Spec.Ports {
 		name := getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
@@ -280,7 +286,7 @@ func getBackendSets(svc *v1.Service, nodes []*v1.Node, sslCfg *SSLConfig) map[st
 		}
 		backendSets[name] = loadbalancer.BackendSetDetails{
 			Policy:           common.String(DefaultLoadBalancerPolicy),
-			Backends:         getBackends(nodes, servicePort.NodePort),
+			Backends:         getBackends(logger, nodes, servicePort.NodePort),
 			HealthChecker:    getHealthChecker(sslCfg, port, svc),
 			SslConfiguration: getSSLConfiguration(sslCfg, secretName, port),
 		}
@@ -358,7 +364,7 @@ func getListeners(svc *v1.Service, sslCfg *SSLConfig) (map[string]loadbalancer.L
 			secretName = sslCfg.ListenerSSLSecretName
 		}
 		sslConfiguration := getSSLConfiguration(sslCfg, secretName, port)
-		name := getListenerName(protocol, port, sslConfiguration)
+		name := getListenerName(protocol, port)
 
 		listener := loadbalancer.ListenerDetails{
 			DefaultBackendSetName: common.String(getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))),

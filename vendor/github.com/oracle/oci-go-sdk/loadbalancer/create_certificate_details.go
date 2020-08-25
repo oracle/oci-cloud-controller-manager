@@ -1,9 +1,11 @@
-// Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
-// Load Balancing Service API
+// Load Balancing API
 //
-// API for the Load Balancing Service
+// API for the Load Balancing service. Use this API to manage load balancers, backend sets, and related items. For more
+// information, see Overview of Load Balancing (https://docs.cloud.oracle.com/iaas/Content/Balance/Concepts/balanceoverview.htm).
 //
 
 package loadbalancer
@@ -14,7 +16,8 @@ import (
 
 // CreateCertificateDetails The configuration details for adding a certificate bundle to a listener.
 // For more information on SSL certficate configuration, see
-// Managing SSL Certificates (https://docs.us-phoenix-1.oraclecloud.com/Content/Balance/Tasks/managingcertificates.htm).
+// Managing SSL Certificates (https://docs.cloud.oracle.com/Content/Balance/Tasks/managingcertificates.htm).
+// **Warning:** Oracle recommends that you avoid using any confidential information when you supply string values using the API.
 type CreateCertificateDetails struct {
 
 	// A friendly name for the certificate bundle. It must be unique and it cannot be changed.
@@ -22,17 +25,6 @@ type CreateCertificateDetails struct {
 	// Certificate bundle names cannot contain spaces. Avoid entering confidential information.
 	// Example: `example_certificate_bundle`
 	CertificateName *string `mandatory:"true" json:"certificateName"`
-
-	// The Certificate Authority certificate, or any interim certificate, that you received from your SSL certificate provider.
-	// Example:
-	//     -----BEGIN CERTIFICATE-----
-	//     MIIEczCCA1ugAwIBAgIBADANBgkqhkiG9w0BAQQFAD..AkGA1UEBhMCR0Ix
-	//     EzARBgNVBAgTClNvbWUtU3RhdGUxFDASBgNVBAoTC0..0EgTHRkMTcwNQYD
-	//     VQQLEy5DbGFzcyAxIFB1YmxpYyBQcmltYXJ5IENlcn..XRpb24gQXV0aG9y
-	//     aXR5MRQwEgYDVQQDEwtCZXN0IENBIEx0ZDAeFw0wMD..TUwMTZaFw0wMTAy
-	//     ...
-	//     -----END CERTIFICATE-----
-	CaCertificate *string `mandatory:"false" json:"caCertificate"`
 
 	// A passphrase for encrypted private keys. This is needed only if you created your certificate with a passphrase.
 	Passphrase *string `mandatory:"false" json:"passphrase"`
@@ -58,6 +50,17 @@ type CreateCertificateDetails struct {
 	//     ...
 	//     -----END CERTIFICATE-----
 	PublicCertificate *string `mandatory:"false" json:"publicCertificate"`
+
+	// The Certificate Authority certificate, or any interim certificate, that you received from your SSL certificate provider.
+	// Example:
+	//     -----BEGIN CERTIFICATE-----
+	//     MIIEczCCA1ugAwIBAgIBADANBgkqhkiG9w0BAQQFAD..AkGA1UEBhMCR0Ix
+	//     EzARBgNVBAgTClNvbWUtU3RhdGUxFDASBgNVBAoTC0..0EgTHRkMTcwNQYD
+	//     VQQLEy5DbGFzcyAxIFB1YmxpYyBQcmltYXJ5IENlcn..XRpb24gQXV0aG9y
+	//     aXR5MRQwEgYDVQQDEwtCZXN0IENBIEx0ZDAeFw0wMD..TUwMTZaFw0wMTAy
+	//     ...
+	//     -----END CERTIFICATE-----
+	CaCertificate *string `mandatory:"false" json:"caCertificate"`
 }
 
 func (m CreateCertificateDetails) String() string {

@@ -41,6 +41,7 @@ const (
 	vcnResource                resource = "vcn"
 	loadBalancerResource       resource = "load_balancer"
 	backendSetResource         resource = "load_balancer_backend_set"
+	backendResource            resource = "load_balancer_backend"
 	listenerResource           resource = "load_balancer_listener"
 	certificateResource        resource = "load_balancer_certificate"
 	workRequestResource        resource = "load_balancer_work_request"
