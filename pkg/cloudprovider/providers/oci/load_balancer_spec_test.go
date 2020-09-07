@@ -817,6 +817,160 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				securityListManager: newSecurityListManagerNOOP(),
 			},
 		},
+		"custom proxy protocol version w/o timeout for multiple listeners": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerConnectionProxyProtocolVersion: "2",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+						{
+							Protocol: "HTTP",
+							Port:     int32(443),
+						},
+					},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"one", "two"},
+				Listeners: map[string]loadbalancer.ListenerDetails{
+					"TCP-80": {
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+						ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
+							IdleTimeout: common.Int64(300), // fallback to default timeout for TCP
+							BackendTcpProxyProtocolVersion: common.Int(2),
+						},
+					},
+					"HTTP-443": {
+						DefaultBackendSetName: common.String("HTTP-443"),
+						Port:                  common.Int(443),
+						Protocol:              common.String("HTTP"),
+						ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
+							IdleTimeout: common.Int64(60), // fallback to default timeout for HTTP
+							BackendTcpProxyProtocolVersion: common.Int(2),
+						},
+					},
+				},
+				BackendSets: map[string]loadbalancer.BackendSetDetails{
+					"TCP-80": {
+						Backends: []loadbalancer.BackendDetails{},
+						HealthChecker: &loadbalancer.HealthCheckerDetails{
+							Protocol: common.String("HTTP"),
+							Port:     common.Int(10256),
+							UrlPath:  common.String("/healthz"),
+							Retries: common.Int(3),
+							TimeoutInMillis: common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+						},
+						Policy: common.String("ROUND_ROBIN"),
+					},
+					"HTTP-443": {
+						Backends: []loadbalancer.BackendDetails{},
+						HealthChecker: &loadbalancer.HealthCheckerDetails{
+							Protocol: common.String("HTTP"),
+							Port:     common.Int(10256),
+							UrlPath:  common.String("/healthz"),
+							Retries: common.Int(3),
+							TimeoutInMillis: common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+						},
+						Policy: common.String("ROUND_ROBIN"),
+					},
+				},
+				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+					"HTTP-443": {
+						ListenerPort:      443,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager: newSecurityListManagerNOOP(),
+			},
+		},
+		"custom proxy protocol version and timeout": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerConnectionIdleTimeout: "404",
+						ServiceAnnotationLoadBalancerConnectionProxyProtocolVersion: "2",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"one", "two"},
+				Listeners: map[string]loadbalancer.ListenerDetails{
+					"TCP-80": {
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+						ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
+							IdleTimeout: common.Int64(404),
+							BackendTcpProxyProtocolVersion: common.Int(2),
+						},
+					},
+				},
+				BackendSets: map[string]loadbalancer.BackendSetDetails{
+					"TCP-80": {
+						Backends: []loadbalancer.BackendDetails{},
+						HealthChecker: &loadbalancer.HealthCheckerDetails{
+							Protocol: common.String("HTTP"),
+							Port:     common.Int(10256),
+							UrlPath:  common.String("/healthz"),
+							Retries: common.Int(3),
+							TimeoutInMillis: common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+						},
+						Policy: common.String("ROUND_ROBIN"),
+					},
+				},
+				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager: newSecurityListManagerNOOP(),
+			},
+		},
 		"protocol annotation set to http": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
@@ -1335,6 +1489,27 @@ func TestNewLBSpecFailure(t *testing.T) {
 				},
 			},
 			expectedErrMsg: "error parsing service annotation: service.beta.kubernetes.io/oci-load-balancer-connection-idle-timeout=whoops",
+		},
+		"invalid connection proxy protocol version": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerConnectionProxyProtocolVersion: "bla",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{Protocol: v1.ProtocolTCP},
+					},
+				},
+			},
+			expectedErrMsg: "error parsing service annotation: service.beta.kubernetes.io/oci-load-balancer-connection-proxy-protocol-version=bla",
 		},
 		"internal lb missing subnet1": {
 			defaultSubnetTwo: "two",

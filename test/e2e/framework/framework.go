@@ -38,6 +38,7 @@ const (
 	DefaultCloudConfig       = "/tmp/cloudconfig"
 
 	ClassOCI          = "oci"
+	ClassOCICSI       = "oci-bv"
 	ClassOCIExt3      = "oci-ext3"
 	ClassOCIMntFss    = "oci-fss-mnt"
 	ClassOCISubnetFss = "oci-fss-subnet"

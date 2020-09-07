@@ -70,6 +70,10 @@ const (
 	// on the service to specify the idle connection timeout.
 	ServiceAnnotationLoadBalancerConnectionIdleTimeout = "service.beta.kubernetes.io/oci-load-balancer-connection-idle-timeout"
 
+	// ServiceAnnotationLoadBalancerConnectionProxyProtocolVersion is the annotation used
+	// on the service to specify the proxy protocol version.
+	ServiceAnnotationLoadBalancerConnectionProxyProtocolVersion = "service.beta.kubernetes.io/oci-load-balancer-connection-proxy-protocol-version"
+
 	// ServiceAnnotaionLoadBalancerSecurityListManagementMode is a Service annotation for
 	// specifying the security list managment mode ("All", "Frontend", "None") that configures how security lists are managed by the CCM
 	ServiceAnnotaionLoadBalancerSecurityListManagementMode = "service.beta.kubernetes.io/oci-load-balancer-security-list-management-mode"

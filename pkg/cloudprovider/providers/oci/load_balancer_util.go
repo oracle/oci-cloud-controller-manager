@@ -466,23 +466,6 @@ func hasListenerChanged(logger *zap.SugaredLogger, actual loadbalancer.Listener,
 		logger.Infof("Listener needs to be updated for the change(s) - %s", strings.Join(listenerChanges, ","))
 		return true
 	}
-	if hasConnectionConfigurationChanged(actual.ConnectionConfiguration, desired.ConnectionConfiguration) {
-		return true
-	}
-	return false
-}
-
-func hasConnectionConfigurationChanged(actual *loadbalancer.ConnectionConfiguration, desired *loadbalancer.ConnectionConfiguration) bool {
-	if actual == nil || desired == nil {
-		if actual == nil && desired == nil {
-			return false
-		}
-		return true
-	}
-
-	if actual.IdleTimeout != desired.IdleTimeout {
-		return true
-	}
 	return false
 }
 
@@ -495,13 +478,18 @@ func getConnectionConfigurationChanges(actual *loadbalancer.ConnectionConfigurat
 
 	//desired is not nil and actual is nil. So we need to reconcile
 	if actual == nil {
-		connectionConfigurationChanges = append(connectionConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listner:ConnectionConfiguration", "NOT_PRESENT", "PRESENT"))
+		connectionConfigurationChanges = append(connectionConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listener:ConnectionConfiguration", "NOT_PRESENT", "PRESENT"))
 		return connectionConfigurationChanges
 	}
 
 	if toInt64(actual.IdleTimeout) != toInt64(desired.IdleTimeout) {
-		connectionConfigurationChanges = append(connectionConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listner:ConnectionConfiguration:IdleTimeout", toInt64(actual.IdleTimeout), toInt64(desired.IdleTimeout)))
+		connectionConfigurationChanges = append(connectionConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listener:ConnectionConfiguration:IdleTimeout", toInt64(actual.IdleTimeout), toInt64(desired.IdleTimeout)))
 	}
+
+	if toInt(actual.BackendTcpProxyProtocolVersion) != toInt(desired.BackendTcpProxyProtocolVersion) {
+		connectionConfigurationChanges = append(connectionConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listener:ConnectionConfiguration:BackendTcpProxyProtocolVersion", toInt(actual.BackendTcpProxyProtocolVersion), toInt(desired.BackendTcpProxyProtocolVersion)))
+	}
+
 	return connectionConfigurationChanges
 }
 

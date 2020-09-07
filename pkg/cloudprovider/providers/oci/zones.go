@@ -18,9 +18,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/oracle/oci-go-sdk/core"
-	"github.com/pkg/errors"
-
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/cloud-provider"
 )
@@ -52,22 +49,9 @@ func (cp *CloudProvider) GetZoneByProviderID(ctx context.Context, providerID str
 	if err != nil {
 		return cloudprovider.Zone{}, err
 	}
-	item, exists, err := cp.instanceCache.GetByKey(instanceID)
-	if err != nil {
-		return cloudprovider.Zone{}, errors.Wrap(err, "Error fetching instance from instanceCache, will retry")
-	}
-	if exists {
-		return cloudprovider.Zone{
-			FailureDomain: mapAvailabilityDomainToFailureDomain(*item.(*core.Instance).AvailabilityDomain),
-			Region:        *item.(*core.Instance).Region,
-		}, nil
-	}
 	instance, err := cp.client.Compute().GetInstance(ctx, instanceID)
 	if err != nil {
 		return cloudprovider.Zone{}, err
-	}
-	if err := cp.instanceCache.Add(instance); err != nil {
-		return cloudprovider.Zone{}, errors.Wrap(err, "Failed to add instance in instanceCache")
 	}
 	return cloudprovider.Zone{
 		FailureDomain: mapAvailabilityDomainToFailureDomain(*instance.AvailabilityDomain),
@@ -80,11 +64,7 @@ func (cp *CloudProvider) GetZoneByProviderID(ctx context.Context, providerID str
 // in the context of external cloud providers where node initialization must be
 // down outside the kubelets.
 func (cp *CloudProvider) GetZoneByNodeName(ctx context.Context, nodeName types.NodeName) (cloudprovider.Zone, error) {
-	compartmentID, err := cp.getCompartmentIDByNodeName(mapNodeNameToInstanceName(nodeName))
-	if err != nil {
-		return cloudprovider.Zone{}, errors.Wrap(err, "Error getting CompartmentID from Node Name")
-	}
-	instance, err := cp.client.Compute().GetInstanceByNodeName(ctx, compartmentID, cp.config.VCNID, mapNodeNameToInstanceName(nodeName))
+	instance, err := cp.client.Compute().GetInstanceByNodeName(ctx, cp.config.CompartmentID, cp.config.VCNID, mapNodeNameToInstanceName(nodeName))
 	if err != nil {
 		return cloudprovider.Zone{}, err
 	}

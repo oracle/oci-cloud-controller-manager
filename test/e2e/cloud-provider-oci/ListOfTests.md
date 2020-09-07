@@ -37,5 +37,11 @@ Use FOCUS=\[storage\]
 * [Backup Restore](backup_restore.go)
     * Backup a volume and restore the created backup
 
+* [CSI Volume Creation](csi_volume_creation.go)
+    * Create PVC and POD for CSI
+    * Create PVC with VolumeSize 1Gi but should use default 50Gi
+    * Create PVC with VolumeSize 100Gi should use 100G
+    * Static Provisioning CSI
+    
 * [Flex Volume Driver](flexvolume_driver.go)
     * Mount a volume

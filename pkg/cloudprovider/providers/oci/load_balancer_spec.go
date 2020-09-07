@@ -328,22 +328,22 @@ func getHealthChecker(cfg *SSLConfig, port int, svc *v1.Service) (*loadbalancer.
 	checkPath, checkPort := apiservice.GetServiceHealthCheckPathPort(svc)
 	if checkPath != "" {
 		return &loadbalancer.HealthCheckerDetails{
-			Protocol:         &protocol,
-			UrlPath:          &checkPath,
-			Port:             common.Int(int(checkPort)),
-			Retries:          &retries,
+			Protocol: &protocol,
+			UrlPath:  &checkPath,
+			Port:     common.Int(int(checkPort)),
+			Retries:  &retries,
 			IntervalInMillis: &intervalInMillis,
-			TimeoutInMillis:  &timeoutInMillis,
+			TimeoutInMillis: &timeoutInMillis,
 		}, nil
 	}
 
 	return &loadbalancer.HealthCheckerDetails{
-		Protocol:         &protocol,
-		UrlPath:          common.String(lbNodesHealthCheckPath),
-		Port:             common.Int(lbNodesHealthCheckPort),
-		Retries:          &retries,
+		Protocol: &protocol,
+		UrlPath:  common.String(lbNodesHealthCheckPath),
+		Port:     common.Int(lbNodesHealthCheckPort),
+		Retries:  &retries,
 		IntervalInMillis: &intervalInMillis,
-		TimeoutInMillis:  &timeoutInMillis,
+		TimeoutInMillis: &timeoutInMillis,
 	}, nil
 }
 
@@ -360,7 +360,7 @@ func getSSLConfiguration(cfg *SSLConfig, name string, port int) *loadbalancer.Ss
 
 func getListeners(svc *v1.Service, sslCfg *SSLConfig) (map[string]loadbalancer.ListenerDetails, error) {
 	// Determine if connection idle timeout has been specified
-	var connectionIdleTimeout int
+	var connectionIdleTimeout *int64
 	connectionIdleTimeoutAnnotation := svc.Annotations[ServiceAnnotationLoadBalancerConnectionIdleTimeout]
 	if connectionIdleTimeoutAnnotation != "" {
 		timeout, err := strconv.ParseInt(connectionIdleTimeoutAnnotation, 10, 64)
@@ -371,7 +371,22 @@ func getListeners(svc *v1.Service, sslCfg *SSLConfig) (map[string]loadbalancer.L
 			)
 		}
 
-		connectionIdleTimeout = int(timeout)
+		connectionIdleTimeout = common.Int64(timeout)
+	}
+
+	// Determine if proxy protocol has been specified
+	var proxyProtocolVersion *int
+	proxyProtocolVersionAnnotation := svc.Annotations[ServiceAnnotationLoadBalancerConnectionProxyProtocolVersion]
+	if proxyProtocolVersionAnnotation != "" {
+		version, err := strconv.Atoi(proxyProtocolVersionAnnotation)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing service annotation: %s=%s",
+				ServiceAnnotationLoadBalancerConnectionProxyProtocolVersion,
+				proxyProtocolVersionAnnotation,
+			)
+		}
+
+		proxyProtocolVersion = common.Int(version)
 	}
 
 	listeners := make(map[string]loadbalancer.ListenerDetails)
@@ -404,9 +419,23 @@ func getListeners(svc *v1.Service, sslCfg *SSLConfig) (map[string]loadbalancer.L
 			SslConfiguration:      sslConfiguration,
 		}
 
-		if connectionIdleTimeout > 0 {
+		// If proxy protocol has been set, we also need to set connectionIdleTimeout
+		// because it's a required parameter as per the LB API contract.
+		// The default value is dependent on the protocol used for the listener.
+		actualConnectionIdleTimeout := connectionIdleTimeout
+		if proxyProtocolVersion != nil && connectionIdleTimeout == nil {
+			// At that point LB only supports HTTP and TCP
+			defaultIdleTimeoutPerProtocol := map[string]int64{
+				"HTTP": lbConnectionIdleTimeoutHTTP,
+				"TCP":  lbConnectionIdleTimeoutTCP,
+			}
+			actualConnectionIdleTimeout = common.Int64(defaultIdleTimeoutPerProtocol[strings.ToUpper(protocol)])
+		}
+
+		if actualConnectionIdleTimeout != nil {
 			listener.ConnectionConfiguration = &loadbalancer.ConnectionConfiguration{
-				IdleTimeout: common.Int64(int64(connectionIdleTimeout)),
+				IdleTimeout:                    actualConnectionIdleTimeout,
+				BackendTcpProxyProtocolVersion: proxyProtocolVersion,
 			}
 		}
 
