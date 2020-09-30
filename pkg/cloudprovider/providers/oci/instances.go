@@ -158,7 +158,11 @@ func (cp *CloudProvider) InstanceID(ctx context.Context, nodeName types.NodeName
 	name := mapNodeNameToInstanceName(nodeName)
 	compartmentID, err := cp.getCompartmentIDByNodeName(name)
 	if err != nil {
-		return "", errors.Wrap(err, "error getting CompartmentID from Node Name")
+		if  cp.config.CompartmentID != "" {
+			compartmentID = cp.config.CompartmentID
+		} else {
+			return "", errors.Wrap(err, "error getting CompartmentID from Node Name")
+		}
 	}
 	inst, err := cp.client.Compute().GetInstanceByNodeName(ctx, compartmentID, cp.config.VCNID, name)
 	if err != nil {

@@ -161,7 +161,7 @@ func getSubnets(ctx context.Context, subnetIDs []string, n client.NetworkingInte
 
 // getSubnetsForNodes returns the de-duplicated subnets in which the given
 // internal IP addresses reside.
-func getSubnetsForNodes(ctx context.Context, nodes []*v1.Node, client client.Interface, compartmentID string) ([]*core.Subnet, error) {
+func getSubnetsForNodes(ctx context.Context, nodes []*v1.Node, client client.Interface) ([]*core.Subnet, error) {
 	var (
 		subnetOCIDs = sets.NewString()
 		subnets     []*core.Subnet
@@ -196,6 +196,11 @@ func getSubnetsForNodes(ctx context.Context, nodes []*v1.Node, client client.Int
 		id, err := MapProviderIDToInstanceID(node.Spec.ProviderID)
 		if err != nil {
 			return nil, errors.Wrap(err, "MapProviderIDToInstanceID")
+		}
+
+		compartmentID, ok := node.Annotations[CompartmentIDAnnotation]
+		if !ok {
+			return nil, errors.Errorf("%q annotation not present on node %q", CompartmentIDAnnotation, node.Name)
 		}
 
 		vnic, err := client.Compute().GetPrimaryVNICForInstance(ctx, compartmentID, id)
@@ -277,7 +282,7 @@ func (cp *CloudProvider) createLoadBalancer(ctx context.Context, spec *LBSpec) (
 	if err != nil {
 		return nil, errors.Wrap(err, "getting subnets for load balancers")
 	}
-	nodeSubnets, err := getSubnetsForNodes(ctx, spec.nodes, cp.client, cp.config.CompartmentID)
+	nodeSubnets, err := getSubnetsForNodes(ctx, spec.nodes, cp.client)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting subnets for nodes")
 	}
@@ -460,7 +465,7 @@ func (cp *CloudProvider) updateLoadBalancer(ctx context.Context, lb *loadbalance
 	if err != nil {
 		return errors.Wrapf(err, "getting load balancer subnets")
 	}
-	nodeSubnets, err := getSubnetsForNodes(ctx, spec.nodes, cp.client, cp.config.CompartmentID)
+	nodeSubnets, err := getSubnetsForNodes(ctx, spec.nodes, cp.client)
 	if err != nil {
 		return errors.Wrap(err, "get subnets for nodes")
 	}
@@ -703,7 +708,7 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 	if err != nil {
 		return errors.Wrap(err, "fetching nodes by internal ips")
 	}
-	nodeSubnets, err := getSubnetsForNodes(ctx, nodes, cp.client, cp.config.CompartmentID)
+	nodeSubnets, err := getSubnetsForNodes(ctx, nodes, cp.client)
 	if err != nil {
 		return errors.Wrap(err, "getting subnets for nodes")
 	}

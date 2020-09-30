@@ -16,8 +16,11 @@ package oci
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
+
+	"github.com/oracle/oci-go-sdk/core"
 
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"go.uber.org/zap"
@@ -197,5 +200,92 @@ func TestGetLoadBalancerSubnets(t *testing.T) {
 				t.Errorf("Expected load balancer subnets\n%+v\nbut got\n%+v", tc.expected, subnets)
 			}
 		})
+	}
+}
+
+func TestGetSubnetsForNodes(t *testing.T) {
+	testCases := map[string]struct {
+		nodes   []*v1.Node
+		subnets []*core.Subnet
+		err     error
+	}{
+		"Should return subnet without any error ": {
+			nodes: []*v1.Node{
+				{
+					Spec: v1.NodeSpec{
+						ProviderID: "basic-complete",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							CompartmentIDAnnotation: "compID1",
+						},
+					},
+					Status: v1.NodeStatus{
+						Addresses: []v1.NodeAddress{
+							{
+								Type:    v1.NodeInternalIP,
+								Address: "10.0.0.1",
+							},
+						},
+					},
+				},
+			},
+			subnets: []*core.Subnet{subnets["subnetwithdnslabel"]},
+			err:     nil,
+		},
+		"Should return error for missing compartmentId annotation": {
+			nodes: []*v1.Node{
+				{
+					Spec: v1.NodeSpec{
+						ProviderID: "basic-complete",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "testnode",
+					},
+					Status: v1.NodeStatus{
+						Addresses: []v1.NodeAddress{
+							{
+								Type:    v1.NodeInternalIP,
+								Address: "10.0.0.1",
+							},
+						},
+					},
+				},
+			},
+			subnets: nil,
+			err:     errors.New(`"oci.oraclecloud.com/compartment-id" annotation not present on node "testnode"`),
+		},
+		"Should return error for missing providerID": {
+			nodes: []*v1.Node{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "testnode",
+					},
+					Status: v1.NodeStatus{
+						Addresses: []v1.NodeAddress{
+							{
+								Type:    v1.NodeInternalIP,
+								Address: "10.0.0.1",
+							},
+						},
+					},
+				},
+			},
+			subnets: nil,
+			err:     errors.New(`.spec.providerID was not present on node "testnode"`),
+		},
+	}
+	client := MockOCIClient{}
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			subnets, err := getSubnetsForNodes(context.Background(), tc.nodes, client)
+			if err != nil && err.Error() != tc.err.Error() {
+				t.Errorf("Expected node subnets error\n%+v\nbut got\n%+v", tc.err, err)
+			}
+			if !reflect.DeepEqual(subnets, tc.subnets) {
+				t.Errorf("Expected node subnets\n%+v\nbut got\n%+v", tc.subnets, subnets)
+			}
+		})
+
 	}
 }
