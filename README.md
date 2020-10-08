@@ -24,17 +24,16 @@ cloud-provider specific code out of the Kubernetes codebase.
 
 ## Compatibility matrix
 
-|          | Kubernetes 1.14       | Kubernetes 1.15        | Kubernetes 1.16        | Kubernetes 1.17        | Kubernetes 1.18        |
-|----------|-----------------------|------------------------|------------------------|------------------------|------------------------|
-| <=v 0.7  | ✗                     | ✗                      | ✗                      | ✗                      | ✗                      |
-| v 0.8    | ✓                     | ✓                      | ✓                      | ✓                      | ✓                      |
-| v 0.9    | †                     | †                      | ✓                      | ✓                      | ✓                      |
+|          | Kubernetes 1.16        | Kubernetes 1.17        | Kubernetes 1.18        |
+|----------|------------------------|------------------------|------------------------|
+| <=v 0.7  | ✗                      | ✗                      | ✗                       |
+| v 0.8    | ✓                      | ✓                      | ✓                      |
+| v 0.9    | ✓                      | ✓                      | ✓                      |
 
 Key:
 
  * `✓` oci-cloud-controller-manager is fully compatible.
  * `✗` oci-cloud-controller-manager is not compatible.
- * `†` oci-cloud-controller-manager is compatible but some features may not work as expected.
 
 ## Implementation
  Currently `oci-cloud-controller-manager` implements:
@@ -66,6 +65,9 @@ use an external cloud-provider.
 This involves:
  - Setting the `--cloud-provider=external` flag on the `kubelet` on **all
    nodes** in your cluster.
+ - Setting the `--provider-id=<instanceID>` flag on the `kubelet` on **all
+   nodes** in your cluster. 
+   Where `<instanceID>` is the [instance ocid][11] of a node (unique for each node).
  - Setting the `--cloud-provider=external` flag on the `kube-controller-manager`
    in your Kubernetes control plane.
 
@@ -180,3 +182,4 @@ See [LICENSE](LICENSE) for more details.
 [8]: https://github.com/oracle/oci-cloud-controller-manager/blob/master/docs/tutorial.md
 [9]: https://github.com/oracle/oci-cloud-controller-manager/blob/master/docs/tutorial-ssl.md
 [10]: https://github.com/oracle/oci-cloud-controller-manager/blob/master/docs/rate-limiter-configuration.md
+[11]: https://docs.cloud.oracle.com/en-us/iaas/Content/Compute/Concepts/computeoverview.htm#two

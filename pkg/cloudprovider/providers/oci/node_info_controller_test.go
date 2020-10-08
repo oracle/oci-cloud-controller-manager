@@ -109,6 +109,19 @@ func TestGetInstanceByNode(t *testing.T) {
 				Id: &instanceID,
 			},
 		},
+		"Get Instance when providerID is prefixed with providerName": {
+			node: &v1.Node{
+				Spec: v1.NodeSpec{
+					ProviderID: providerPrefix+instanceID,
+				},
+			},
+			nic: &NodeInfoController{
+				ociClient: MockOCIClient{},
+			},
+			expectedInstance: &core.Instance{
+				Id: &instanceID,
+			},
+		},
 	}
 
 	logger := zap.L()

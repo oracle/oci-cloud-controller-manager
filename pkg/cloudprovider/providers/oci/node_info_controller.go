@@ -203,16 +203,21 @@ func getInstanceByNode(cacheNode *v1.Node, nic *NodeInfoController, logger *zap.
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	instanceID := cacheNode.Spec.ProviderID
+	providerID := cacheNode.Spec.ProviderID
 	var err error
-	if instanceID == "" {
-		instanceID, err = nic.cloud.InstanceID(ctx, types.NodeName(cacheNode.Name))
+	if providerID == "" {
+		providerID, err = nic.cloud.InstanceID(ctx, types.NodeName(cacheNode.Name))
 		if err != nil {
 			logger.With(zap.Error(err)).Error("Failed to map provider ID to instance ID")
 			return nil, err
 		}
 	}
 
+	instanceID, err := MapProviderIDToInstanceID(providerID)
+	if err != nil {
+		logger.With(zap.Error(err)).Error("Failed to map providerID to instanceID")
+		return nil, err
+	}
 	instance, err := nic.ociClient.Compute().GetInstance(ctx, instanceID)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to get instance from instance ID")

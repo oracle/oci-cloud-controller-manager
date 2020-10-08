@@ -50,7 +50,11 @@ func (cp *CloudProvider) getCompartmentIDByInstanceID(instanceID string) (string
 		return "", errors.Wrap(err, "error listing all the nodes using node informer")
 	}
 	for _, node := range nodeList {
-		if node.Spec.ProviderID == instanceID {
+		providerID, err := MapProviderIDToInstanceID(node.Spec.ProviderID)
+		if err != nil {
+			return "", errors.New("Failed to map providerID to instanceID")
+		}
+		if providerID == instanceID {
 			if compartmentID, ok := node.Annotations[CompartmentIDAnnotation]; ok {
 				if compartmentID != "" {
 					return compartmentID, nil
