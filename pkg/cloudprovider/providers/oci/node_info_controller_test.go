@@ -1,6 +1,7 @@
 package oci
 
 import (
+	"github.com/oracle/oci-go-sdk/common"
 	"reflect"
 	"testing"
 
@@ -106,7 +107,11 @@ func TestGetInstanceByNode(t *testing.T) {
 				ociClient: MockOCIClient{},
 			},
 			expectedInstance: &core.Instance{
-				Id: &instanceID,
+				AvailabilityDomain: common.String("NWuj:PHX-AD-1"),
+				CompartmentId:      common.String("default"),
+				Id:                 &instanceID,
+				Region:             common.String("PHX"),
+				Shape:              common.String("VM.Standard1.2"),
 			},
 		},
 		"Get Instance when providerID is prefixed with providerName": {
@@ -119,7 +124,11 @@ func TestGetInstanceByNode(t *testing.T) {
 				ociClient: MockOCIClient{},
 			},
 			expectedInstance: &core.Instance{
-				Id: &instanceID,
+				AvailabilityDomain: common.String("NWuj:PHX-AD-1"),
+				CompartmentId:      common.String("default"),
+				Id:                 &instanceID,
+				Region:             common.String("PHX"),
+				Shape:              common.String("VM.Standard1.2"),
 			},
 		},
 	}

@@ -17,6 +17,8 @@ package oci
 import (
 	"context"
 	"errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"reflect"
 	"testing"
 
@@ -35,7 +37,7 @@ import (
 )
 
 var (
-	instances = map[string]*core.Vnic{
+	instanceVnics = map[string]*core.Vnic{
 		"basic-complete": &core.Vnic{
 			PrivateIp:     common.String("10.0.0.1"),
 			PublicIp:      common.String("0.0.0.1"),
@@ -81,6 +83,46 @@ var (
 		},
 	}
 
+	instances = map[string]*core.Instance{
+		"basic-complete": &core.Instance{
+			CompartmentId: common.String("default"),
+		},
+		"no-external-ip": &core.Instance{
+			CompartmentId: common.String("default"),
+		},
+		"no-internal-ip": &core.Instance{
+			CompartmentId: common.String("default"),
+		},
+		"invalid-internal-ip": &core.Instance{
+			CompartmentId: common.String("default"),
+		},
+		"invalid-external-ip": &core.Instance{
+			CompartmentId: common.String("default"),
+		},
+		"no-hostname-label": &core.Instance{
+			CompartmentId: common.String("default"),
+		},
+		"no-subnet-dns-label": &core.Instance{
+			CompartmentId: common.String("default"),
+		},
+		"no-vcn-dns-label": &core.Instance{
+			CompartmentId: common.String("default"),
+		},
+		"instance1": &core.Instance{
+			CompartmentId: common.String("compartment1"),
+			Id:            common.String("instance1"),
+			Shape:         common.String("VM.Standard1.2"),
+			DisplayName:   common.String("instance1"),
+		},
+		"instance_zone_test": &core.Instance{
+			AvailabilityDomain: common.String("NWuj:PHX-AD-1"),
+			CompartmentId:      common.String("compartment1"),
+			Id:                 common.String("instance_zone_test"),
+			Region:             common.String("PHX"),
+			Shape:              common.String("VM.Standard1.2"),
+			DisplayName:        common.String("instance_zone_test"),
+		},
+	}
 	subnets = map[string]*core.Subnet{
 		"subnetwithdnslabel": &core.Subnet{
 			Id:       common.String("subnetwithdnslabel"),
@@ -137,12 +179,48 @@ var (
 			Id: common.String("vcnwithoutdnslabel"),
 		},
 	}
-	comportmentID = "xxxx"
+
+	nodeList = map[string]*v1.Node{
+		"default": &v1.Node{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					CompartmentIDAnnotation: "default",
+				},
+			},
+			Spec:   v1.NodeSpec{
+				ProviderID:          "default",
+			},
+		},
+		"instance1": &v1.Node{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations:               map[string]string{
+					CompartmentIDAnnotation: "compartment1",
+				},
+			},
+			Spec:   v1.NodeSpec{
+				ProviderID:          "instance1",
+			},
+		},
+	}
+
+	loadBalancers = map[string]*loadbalancer.LoadBalancer{
+		"privateLB": {
+			Id:                      common.String("privateLB"),
+			DisplayName:             common.String("privateLB"),
+			IpAddresses:             []loadbalancer.IpAddress{
+				{
+					IpAddress: common.String("10.0.50.5"),
+					IsPublic:  common.Bool(false),
+				},
+			},
+		},
+		"privateLB-no-IP": {
+			Id:                      common.String("privateLB-no-IP"),
+			DisplayName:             common.String("privateLB-no-IP"),
+			IpAddresses:             []loadbalancer.IpAddress{},
+		},
+	}
 )
-
-
-
-
 
 type MockOCIClient struct{}
 
@@ -174,17 +252,33 @@ func (MockOCIClient) Identity() client.IdentityInterface {
 type MockComputeClient struct{}
 
 func (MockComputeClient) GetInstance(ctx context.Context, id string) (*core.Instance, error) {
+	if instance, ok := instances[id]; ok {
+		return instance, nil
+	}
 	return &core.Instance{
-		Id: &id,
+		AvailabilityDomain: common.String("NWuj:PHX-AD-1"),
+		CompartmentId:      common.String("default"),
+		Id:                 &id,
+		Region:             common.String("PHX"),
+		Shape:              common.String("VM.Standard1.2"),
 	}, nil
 }
 
 func (MockComputeClient) GetInstanceByNodeName(ctx context.Context, compartmentID, vcnID, nodeName string) (*core.Instance, error) {
-	return nil, nil
+	if instance, ok := instances[nodeName]; ok {
+		return instance, nil
+	}
+	return &core.Instance{
+		AvailabilityDomain: common.String("NWuj:PHX-AD-1"),
+		CompartmentId:      &compartmentID,
+		Id:                 &nodeName,
+		Region:             common.String("PHX"),
+		Shape:              common.String("VM.Standard1.2"),
+	}, nil
 }
 
 func (MockComputeClient) GetPrimaryVNICForInstance(ctx context.Context, compartmentID, instanceID string) (*core.Vnic, error) {
-	return instances[instanceID], nil
+	return instanceVnics[instanceID], nil
 }
 
 func (MockComputeClient) FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
@@ -207,6 +301,10 @@ func (MockComputeClient) WaitForVolumeDetached(ctx context.Context, attachmentID
 	return nil
 }
 
+func (c *MockComputeClient) FindActiveVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
+	return nil, nil
+}
+
 // MockVirtualNetworkClient mocks VirtualNetwork client implementation
 type MockVirtualNetworkClient struct {
 }
@@ -220,7 +318,10 @@ func (c *MockVirtualNetworkClient) GetPrivateIP(ctx context.Context, id string) 
 }
 
 func (c *MockVirtualNetworkClient) GetSubnet(ctx context.Context, id string) (*core.Subnet, error) {
-	return subnets[id], nil
+	if subnet, ok := subnets[id]; ok {
+		return subnet, nil
+	}
+	return nil, errors.New("Subnet not found")
 }
 
 func (c *MockVirtualNetworkClient) GetVcn(ctx context.Context, id string) (*core.Vcn, error) {
@@ -251,6 +352,9 @@ func (c *MockLoadBalancerClient) GetLoadBalancer(ctx context.Context, id string)
 }
 
 func (c *MockLoadBalancerClient) GetLoadBalancerByName(ctx context.Context, compartmentID, name string) (*loadbalancer.LoadBalancer, error) {
+	if lb, ok := loadBalancers[name]; ok {
+		return lb, nil
+	}
 	return nil, nil
 }
 
@@ -402,11 +506,14 @@ func (m mockInstanceCache) ListKeys() []string {
 }
 
 func (m mockInstanceCache) Get(obj interface{}) (item interface{}, exists bool, err error) {
-	return &core.Instance{CompartmentId: &comportmentID}, true, nil
+	return instances["default"], true, nil
 }
 
 func (m mockInstanceCache) GetByKey(key string) (item interface{}, exists bool, err error) {
-	return &core.Instance{CompartmentId: &comportmentID}, true, nil
+	if instance, ok := instances[key]; ok {
+		return instance, true, nil
+	}
+	return nil, false, nil
 }
 
 func (m mockInstanceCache) Replace(i []interface{}, s string) error {
@@ -516,14 +623,342 @@ func TestExtractNodeAddresses(t *testing.T) {
 	}
 }
 
+func TestInstanceID(t *testing.T) {
+	testCases := []struct {
+		name string
+		in   types.NodeName
+		out  string
+		err  error
+	}{
+		{
+			name: "get instance id from instance in the cache",
+			in:   "instance1",
+			out:  "instance1",
+			err: nil,
+		},
+		{
+			name: "get instance id from instance not in the cache",
+			in:   "default",
+			out:  "default",
+			err: nil,
+		},
+	}
+
+	cp := &CloudProvider{
+		NodeLister:    &mockNodeLister{},
+		client:        MockOCIClient{},
+		config:        &providercfg.Config{CompartmentID: "testCompartment"},
+		logger:        zap.S(),
+		instanceCache: &mockInstanceCache{},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := cp.InstanceID(context.Background(), tt.in)
+			if err != nil && err.Error() != tt.err.Error() {
+				t.Errorf("InstanceID(context, %+v) got error %v, expected %v", tt.in, err, tt.err)
+			}
+			if !reflect.DeepEqual(result, tt.out) {
+				t.Errorf("InstanceID(context, %+v) => %+v, want %+v", tt.in, result, tt.out)
+			}
+		})
+	}
+}
+
+func TestInstanceType(t *testing.T) {
+	testCases := []struct {
+		name string
+		in   types.NodeName
+		out  string
+		err  error
+	}{
+		{
+			name: "check node shape of instance in cache",
+			in:   "instance1",
+			out:  "VM.Standard1.2",
+			err: nil,
+		},
+		{
+			name: "check node shape of instance not in cache",
+			in:   "default",
+			out:  "VM.Standard1.2",
+			err: nil,
+		},
+	}
+
+	cp := &CloudProvider{
+		NodeLister:    &mockNodeLister{},
+		client:        MockOCIClient{},
+		config:        &providercfg.Config{CompartmentID: "testCompartment"},
+		logger:        zap.S(),
+		instanceCache: &mockInstanceCache{},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := cp.InstanceType(context.Background(), tt.in)
+			if err != nil && err.Error() != tt.err.Error() {
+				t.Errorf("InstanceType(context, %+v) got error %v, expected %v", tt.in, err, tt.err)
+			}
+			if !reflect.DeepEqual(result, tt.out) {
+				t.Errorf("InstanceType(context, %+v) => %+v, want %+v", tt.in, result, tt.out)
+			}
+		})
+	}
+}
+
+func TestInstanceTypeByProviderID(t *testing.T) {
+	testCases := []struct {
+		name string
+		in   string
+		out  string
+		err  error
+	}{
+		{
+			name: "provider id without provider prefix",
+			in:   "instance1",
+			out:  "VM.Standard1.2",
+			err: nil,
+		},
+		{
+			name: "provider id with provider prefix",
+			in:   providerPrefix+"instance1",
+			out:  "VM.Standard1.2",
+			err: nil,
+		},
+		{
+			name: "provider id with provider prefix and instance not in cache",
+			in:   providerPrefix+"noncacheinstance",
+			out:  "VM.Standard1.2",
+			err: nil,
+		},
+	}
+
+	cp := &CloudProvider{
+		NodeLister:    &mockNodeLister{},
+		client:        MockOCIClient{},
+		config:        &providercfg.Config{CompartmentID: "testCompartment"},
+		logger:        zap.S(),
+		instanceCache: &mockInstanceCache{},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := cp.InstanceTypeByProviderID(context.Background(), tt.in)
+			if err != nil && err.Error() != tt.err.Error() {
+				t.Errorf("InstanceTypeByProviderID(context, %+v) got error %v, expected %v", tt.in, err, tt.err)
+			}
+			if !reflect.DeepEqual(result, tt.out) {
+				t.Errorf("InstanceTypeByProviderID(context, %+v) => %+v, want %+v", tt.in, result, tt.out)
+			}
+		})
+	}
+}
+
+func TestNodeAddressesByProviderID(t *testing.T) {
+	testCases := []struct {
+		name string
+		in   string
+		out  []v1.NodeAddress
+		err  error
+	}{
+		{
+			name: "provider id without provider prefix",
+			in:   "basic-complete",
+			out: []v1.NodeAddress{
+				v1.NodeAddress{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
+				v1.NodeAddress{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
+			},
+			err: nil,
+		},
+		{
+			name: "provider id with provider prefix",
+			in:   providerPrefix+"basic-complete",
+			out: []v1.NodeAddress{
+				v1.NodeAddress{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
+				v1.NodeAddress{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
+			},
+			err: nil,
+		},
+	}
+
+	cp := &CloudProvider{
+		NodeLister:    &mockNodeLister{},
+		client:        MockOCIClient{},
+		config:        &providercfg.Config{CompartmentID: "testCompartment"},
+		logger:        zap.S(),
+		instanceCache: &mockInstanceCache{},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := cp.NodeAddressesByProviderID(context.Background(), tt.in)
+			if err != nil && err.Error() != tt.err.Error() {
+				t.Errorf("NodeAddressesByProviderID(context, %+v) got error %v, expected %v", tt.in, err, tt.err)
+			}
+			if !reflect.DeepEqual(result, tt.out) {
+				t.Errorf("NodeAddressesByProviderID(context, %+v) => %+v, want %+v", tt.in, result, tt.out)
+			}
+		})
+	}
+}
+
+func TestInstanceExistsByProviderID(t *testing.T) {
+	testCases := []struct {
+		name string
+		in   string
+		out  bool
+		err  error
+	}{
+		{
+			name: "provider id without provider prefix",
+			in:   "instance1",
+			out:  true,
+			err: nil,
+		},
+		{
+			name: "provider id with provider prefix",
+			in:   providerPrefix+"instance1",
+			out:  true,
+			err: nil,
+		},
+		{
+			name: "provider id with provider prefix and instance not in cache",
+			in:   providerPrefix+"noncacheinstance",
+			out:  true,
+			err: nil,
+		},
+	}
+
+	cp := &CloudProvider{
+		NodeLister:    &mockNodeLister{},
+		client:        MockOCIClient{},
+		config:        &providercfg.Config{CompartmentID: "testCompartment"},
+		logger:        zap.S(),
+		instanceCache: &mockInstanceCache{},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := cp.InstanceExistsByProviderID(context.Background(), tt.in)
+			if err != nil && err.Error() != tt.err.Error() {
+				t.Errorf("InstanceExistsByProviderID(context, %+v) got error %v, expected %v", tt.in, err, tt.err)
+			}
+			if !reflect.DeepEqual(result, tt.out) {
+				t.Errorf("InstanceExistsByProviderID(context, %+v) => %+v, want %+v", tt.in, result, tt.out)
+			}
+		})
+	}
+}
+
+func TestInstanceShutdownByProviderID(t *testing.T) {
+	testCases := []struct {
+		name string
+		in   string
+		out  bool
+		err  error
+	}{
+		{
+			name: "provider id without provider prefix",
+			in:   "instance1",
+			out:  false,
+			err: nil,
+		},
+		{
+			name: "provider id with provider prefix",
+			in:   providerPrefix+"instance1",
+			out:  false,
+			err: nil,
+		},
+		{
+			name: "provider id with provider prefix and instance not in cache",
+			in:   providerPrefix+"noncacheinstance",
+			out:  false,
+			err: nil,
+		},
+	}
+
+	cp := &CloudProvider{
+		NodeLister:    &mockNodeLister{},
+		client:        MockOCIClient{},
+		config:        &providercfg.Config{CompartmentID: "testCompartment"},
+		logger:        zap.S(),
+		instanceCache: &mockInstanceCache{},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := cp.InstanceShutdownByProviderID(context.Background(), tt.in)
+			if err != nil && err.Error() != tt.err.Error() {
+				t.Errorf("InstanceShutdownByProviderID(context, %+v) got error %v, expected %v", tt.in, err, tt.err)
+			}
+			if !reflect.DeepEqual(result, tt.out) {
+				t.Errorf("InstanceShutdownByProviderID(context, %+v) => %+v, want %+v", tt.in, result, tt.out)
+			}
+		})
+	}
+}
+
+func TestGetCompartmentIDByInstanceID(t *testing.T) {
+	testCases := []struct {
+		name string
+		in   string
+		out  string
+		err  error
+	}{
+		{
+			name: "instance found in cache",
+			in:   "instance1",
+			out: "compartment1",
+			err: nil,
+		},
+		{
+			name: "instance found in node lister",
+			in:   "default",
+			out: "default",
+			err: nil,
+		},
+		{
+			name: "instance neither found in cache nor node lister",
+			in:   "instancex",
+			out: "",
+			err: errors.New("compartmentID annotation missing in the node. Would retry"),
+		},
+	}
+
+	cp := &CloudProvider{
+		client:        MockOCIClient{},
+		config:        &providercfg.Config{CompartmentID: "testCompartment"},
+		NodeLister:    &mockNodeLister{},
+		instanceCache: &mockInstanceCache{},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := cp.getCompartmentIDByInstanceID(tt.in)
+			if err != nil && err.Error() != tt.err.Error() {
+				t.Errorf("getCompartmentIDByInstanceID(%s) got error %s, expected %s", tt.in, err, tt.err)
+			}
+			if !reflect.DeepEqual(result, tt.out) {
+				t.Errorf("getCompartmentIDByInstanceID(%s) => %s, want %s", tt.in, result, tt.out)
+			}
+		})
+	}
+}
+
 type mockNodeLister struct{}
 
 func (s *mockNodeLister) List(selector labels.Selector) (ret []*v1.Node, err error) {
-
-	return nil, nil
+	nodes := make([]*v1.Node, len(nodeList))
+	nodes[0] = nodeList["default"]
+	nodes[1] = nodeList["instance1"]
+	return nodes, nil
 }
 
 func (s *mockNodeLister) Get(name string) (*v1.Node, error) {
+	if node, ok := nodeList[name]; ok {
+		return node, nil
+	}
 	return nil, nil
 }
 

@@ -47,6 +47,8 @@ type VolumeAttachmentInterface interface {
 	// WaitForVolumeDetached polls waiting for a OCI block volume to be in the
 	// DETACHED state.
 	WaitForVolumeDetached(ctx context.Context, attachmentID string) error
+
+	FindActiveVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error)
 }
 
 var _ VolumeAttachmentInterface = &client{}
@@ -75,6 +77,9 @@ func (c *client) FindVolumeAttachment(ctx context.Context, compartmentID, volume
 			if state == core.VolumeAttachmentLifecycleStateAttaching ||
 				state == core.VolumeAttachmentLifecycleStateAttached {
 				return attachment, nil
+			}
+			if state == core.VolumeAttachmentLifecycleStateDetaching {
+				return attachment, errors.WithStack(errNotFound)
 			}
 		}
 
@@ -179,4 +184,41 @@ func (c *client) WaitForVolumeDetached(ctx context.Context, id string) error {
 	}
 
 	return nil
+}
+
+
+func (c *client) FindActiveVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
+	var page *string
+	for {
+		if !c.rateLimiter.Reader.TryAccept() {
+			return nil, RateLimitError(false, "ListVolumeAttachments")
+		}
+
+		resp, err := c.compute.ListVolumeAttachments(ctx, core.ListVolumeAttachmentsRequest{
+			CompartmentId:   &compartmentID,
+			VolumeId:        &volumeID,
+			Page:            page,
+			RequestMetadata: c.requestMetadata,
+		})
+		incRequestCounter(err, listVerb, volumeAttachmentResource)
+
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		for _, attachment := range resp.Items {
+			state := attachment.GetLifecycleState()
+			if state == core.VolumeAttachmentLifecycleStateAttaching ||
+				state == core.VolumeAttachmentLifecycleStateAttached ||
+				state == core.VolumeAttachmentLifecycleStateDetaching {
+				return attachment, nil
+			}
+		}
+
+		if page = resp.OpcNextPage; page == nil {
+			break
+		}
+	}
+
+	return nil, errors.WithStack(errNotFound)
 }

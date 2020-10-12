@@ -56,8 +56,8 @@ $ kubectl apply -f https://raw.githubusercontent.com/oracle/oci-cloud-controller
 Lastly, verify that the oci-csi-controller-driver and oci-csi-node-controller is running in your cluster. By default it runs in the 'kube-system' namespace.
 
 ```
-$ kubectl -n kube-system get po | grep oci-csi-controller-driver
-$ kubectl -n kube-system get po | grep oci-csi-node-controller
+$ kubectl -n kube-system get po | grep csi-oci-controller
+$ kubectl -n kube-system get po | grep csi-oci-node
 ```
 
 ## Tutorial
