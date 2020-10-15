@@ -403,7 +403,10 @@ func getDefaultLBSubnets(subnet1, subnet2 string) []string {
 }
 
 func (cp *CloudProvider) getLoadBalancerSubnets(ctx context.Context, logger *zap.SugaredLogger, svc *v1.Service) ([]string, error) {
-	_, internal := svc.Annotations[ServiceAnnotationLoadBalancerInternal]
+	internal, err := isInternalLB(svc)
+	if err != nil {
+		return nil, err
+	}
 
 	// NOTE: These will be overridden for existing load balancers as load
 	// balancer subnets cannot be modified.

@@ -99,7 +99,7 @@ func TestGetLoadBalancerSubnets(t *testing.T) {
 					Name:      "testservice",
 					UID:       "test-uid",
 					Annotations: map[string]string{
-						ServiceAnnotationLoadBalancerInternal: "",
+						ServiceAnnotationLoadBalancerInternal: "true",
 						ServiceAnnotationLoadBalancerSubnet1:  "regional-subnet",
 					},
 				},
@@ -113,7 +113,7 @@ func TestGetLoadBalancerSubnets(t *testing.T) {
 					Name:      "testservice",
 					UID:       "test-uid",
 					Annotations: map[string]string{
-						ServiceAnnotationLoadBalancerInternal: "",
+						ServiceAnnotationLoadBalancerInternal: "true",
 						ServiceAnnotationLoadBalancerSubnet1:  "regional-subnet",
 					},
 				},
