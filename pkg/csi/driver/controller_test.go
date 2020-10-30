@@ -191,6 +191,10 @@ func (c *MockComputeClient) FindVolumeAttachment(ctx context.Context, compartmen
 	return nil, nil
 }
 
+func (c *MockComputeClient) FindActiveVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
+	return nil, nil
+}
+
 func (c *MockComputeClient) AttachVolume(ctx context.Context, instanceID, volumeID string) (core.VolumeAttachment, error) {
 	return nil, nil
 }
