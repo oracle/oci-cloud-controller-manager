@@ -36,7 +36,8 @@ func (c *client) ListAvailabilityDomains(ctx context.Context, compartmentID stri
 	}
 
 	resp, err := c.identity.ListAvailabilityDomains(ctx, identity.ListAvailabilityDomainsRequest{
-		CompartmentId: &compartmentID,
+		CompartmentId:   &compartmentID,
+		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, listVerb, availabilityDomainResource)
 	if err != nil {

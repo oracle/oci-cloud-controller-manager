@@ -13,7 +13,8 @@ Use FOCUS=\[ccm\]
     * TLS for Backendset - Verify Service annotation for specifying the TLS secret to install only on the load balancer backendsets which have SSL enabled.
     * TLS for Listener - Verify Service annotation for specifying the TLS secret to install only on the load balancer listeners which have SSL enabled.
     * End to End TLS with different certificates - Verify Service annotation for specifying different TLS secret to install on the load balancer listeners and backendsets which have SSL enabled.
-
+    * LB properties - Verify Service annotations for modifying health check config, connection idle timeout and LB shape.
+    
 * [Instances](instances.go)
     * Verify if instance exists
     * Get node addresses
@@ -36,3 +37,11 @@ Use FOCUS=\[storage\]
 * [Backup Restore](backup_restore.go)
     * Backup a volume and restore the created backup
 
+* [CSI Volume Creation](csi_volume_creation.go)
+    * Create PVC and POD for CSI
+    * Create PVC with VolumeSize 1Gi but should use default 50Gi
+    * Create PVC with VolumeSize 100Gi should use 100G
+    * Static Provisioning CSI
+    
+* [Flex Volume Driver](flexvolume_driver.go)
+    * Mount a volume

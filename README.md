@@ -24,11 +24,11 @@ cloud-provider specific code out of the Kubernetes codebase.
 
 ## Compatibility matrix
 
-|          | Kubernetes 1.14       | Kubernetes 1.15        | Kubernetes 1.16        | Kubernetes 1.17        |
-|----------|-----------------------|------------------------|------------------------|------------------------|
-| <=v 0.7  | ✗                     | ✗                      | ✗                      | ✗                      |
-| v 0.8    | ✓                     | ✓                      | ✓                      | ✓                      |
-
+|          | Kubernetes 1.16        | Kubernetes 1.17        | Kubernetes 1.18        |
+|----------|------------------------|------------------------|------------------------|
+| <=v 0.7  | ✗                      | ✗                      | ✗                       |
+| v 0.8    | ✓                      | ✓                      | ✓                      |
+| v 0.9    | ✓                      | ✓                      | ✓                      |
 
 Key:
 
@@ -44,7 +44,7 @@ Key:
  - ServiceController - responsible for creating load balancers when a service
    of `type: LoadBalancer` is created in Kubernetes.
 
- Additionally, this project implements a flexvolume driver and a flexvolume provisioner for Kubernetes clusters running on Oracle Cloud Infrastructure (OCI).
+ Additionally, this project implements a container-storage-interface, a flexvolume driver and a flexvolume provisioner for Kubernetes clusters running on Oracle Cloud Infrastructure (OCI).
 
 ## Setup and Installation
 
@@ -55,7 +55,7 @@ following:
  2. Create a Kubernetes secret containing the configuration for the CCM.
  3. Deploy the CCM as a [DaemonSet][4].
 
-Note: For the setup and installation of [flexvolume driver](flex-volume-driver.md) and [flexvolume provisioner](flex-volume-provisioner.md) please refer linked resources.
+Note: For the setup and installation of [flexvolume driver](flex-volume-driver.md), [flexvolume provisioner](flex-volume-provisioner.md) and [container-storage-interface](container-storage-interface.md) please refer linked resources.
 
 ### Preparing Your Cluster
 
@@ -65,6 +65,9 @@ use an external cloud-provider.
 This involves:
  - Setting the `--cloud-provider=external` flag on the `kubelet` on **all
    nodes** in your cluster.
+ - Setting the `--provider-id=<instanceID>` flag on the `kubelet` on **all
+   nodes** in your cluster. 
+   Where `<instanceID>` is the [instance ocid][11] of a node (unique for each node).
  - Setting the `--cloud-provider=external` flag on the `kube-controller-manager`
    in your Kubernetes control plane.
 
@@ -125,7 +128,7 @@ I0905 13:44:51.786083       7 flags.go:52] FLAG: --cloud-provider="oci"
 
 ## Upgrade
 
-The following example shows how to upgrade the CCM, FVP and FVD from an older version (replace ? with the version you're upgrading to):
+The following example shows how to upgrade the CCM, FVP, FVD and CSI from an older version (replace ? with the version you're upgrading to):
 
 ```bash
 $ export RELEASE=?
@@ -135,6 +138,9 @@ $ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releas
 $ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-volume-provisioner-rbac.yaml
 $ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-flexvolume-driver.yaml
 $ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-flexvolume-driver-rbac.yaml
+$ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-csi-controller-driver.yaml
+$ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-csi-node-driver.yaml
+$ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-csi-node-rbac.yaml
 ```
 
 ## Examples
@@ -176,3 +182,4 @@ See [LICENSE](LICENSE) for more details.
 [8]: https://github.com/oracle/oci-cloud-controller-manager/blob/master/docs/tutorial.md
 [9]: https://github.com/oracle/oci-cloud-controller-manager/blob/master/docs/tutorial-ssl.md
 [10]: https://github.com/oracle/oci-cloud-controller-manager/blob/master/docs/rate-limiter-configuration.md
+[11]: https://docs.cloud.oracle.com/en-us/iaas/Content/Compute/Concepts/computeoverview.htm#two

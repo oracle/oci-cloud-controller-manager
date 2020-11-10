@@ -189,13 +189,13 @@ func getHealthCheckerChanges(actual *loadbalancer.HealthChecker, desired *loadba
 	if toInt(actual.Port) != toInt(desired.Port) {
 		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:Port", toInt(actual.Port), toInt(desired.Port)))
 	}
-	//If there is no value for ResponseBodyRegex,Retries,ReturnCode and TimeoutInMillis in the LBSpec,
+	//If there is no value for ResponseBodyRegex and ReturnCode in the LBSpec,
 	//We would let the LBCS to set the default value. There is no point of reconciling.
 	if toString(desired.ResponseBodyRegex) != "" && toString(actual.ResponseBodyRegex) != toString(desired.ResponseBodyRegex) {
 		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:ResponseBodyRegex", toString(actual.ResponseBodyRegex), toString(desired.ResponseBodyRegex)))
 	}
 
-	if toInt(desired.Retries) != 0 && toInt(actual.Retries) != toInt(desired.Retries) {
+	if toInt(actual.Retries) != toInt(desired.Retries) {
 		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:Retries", toInt(actual.Retries), toInt(desired.Retries)))
 	}
 
@@ -203,8 +203,12 @@ func getHealthCheckerChanges(actual *loadbalancer.HealthChecker, desired *loadba
 		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:ReturnCode", toInt(actual.ReturnCode), toInt(desired.ReturnCode)))
 	}
 
-	if toInt(desired.TimeoutInMillis) != 0 && toInt(actual.TimeoutInMillis) != toInt(desired.TimeoutInMillis) {
+	if toInt(actual.TimeoutInMillis) != toInt(desired.TimeoutInMillis) {
 		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:TimeoutInMillis", toInt(actual.TimeoutInMillis), toInt(desired.TimeoutInMillis)))
+	}
+
+	if toInt(actual.IntervalInMillis) != toInt(desired.IntervalInMillis) {
+		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:IntervalInMillis", toInt(actual.IntervalInMillis), toInt(desired.IntervalInMillis)))
 	}
 
 	if toString(actual.UrlPath) != toString(desired.UrlPath) {
@@ -223,6 +227,14 @@ func getHealthCheckerChanges(actual *loadbalancer.HealthChecker, desired *loadba
 func hasBackendSetChanged(logger *zap.SugaredLogger, actual loadbalancer.BackendSet, desired loadbalancer.BackendSetDetails) bool {
 	logger = logger.With("BackEndSetName", toString(actual.Name))
 	backendSetChanges := getHealthCheckerChanges(actual.HealthChecker, desired.HealthChecker)
+	// Need to update the seclist if service nodeport has changed
+	if len(actual.Backends) > 0 && len(desired.Backends) > 0 {
+		if *actual.Backends[0].Port != *desired.Backends[0].Port {
+			backendSetChanges = append(backendSetChanges,
+				fmt.Sprintf(changeFmtStr, "BackEndSet:BackendPort",
+					*actual.Backends[0].Port, *desired.Backends[0].Port))
+		}
+	}
 
 	if toString(actual.Policy) != toString(desired.Policy) {
 		backendSetChanges = append(backendSetChanges, fmt.Sprintf(changeFmtStr, "BackEndSet:Policy", toString(actual.Policy), toString(desired.Policy)))
@@ -466,13 +478,18 @@ func getConnectionConfigurationChanges(actual *loadbalancer.ConnectionConfigurat
 
 	//desired is not nil and actual is nil. So we need to reconcile
 	if actual == nil {
-		connectionConfigurationChanges = append(connectionConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listner:ConnectionConfiguration", "NOT_PRESENT", "PRESENT"))
+		connectionConfigurationChanges = append(connectionConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listener:ConnectionConfiguration", "NOT_PRESENT", "PRESENT"))
 		return connectionConfigurationChanges
 	}
 
 	if toInt64(actual.IdleTimeout) != toInt64(desired.IdleTimeout) {
-		connectionConfigurationChanges = append(connectionConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listner:ConnectionConfiguration:IdleTimeout", toInt64(actual.IdleTimeout), toInt64(desired.IdleTimeout)))
+		connectionConfigurationChanges = append(connectionConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listener:ConnectionConfiguration:IdleTimeout", toInt64(actual.IdleTimeout), toInt64(desired.IdleTimeout)))
 	}
+
+	if toInt(actual.BackendTcpProxyProtocolVersion) != toInt(desired.BackendTcpProxyProtocolVersion) {
+		connectionConfigurationChanges = append(connectionConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listener:ConnectionConfiguration:BackendTcpProxyProtocolVersion", toInt(actual.BackendTcpProxyProtocolVersion), toInt(desired.BackendTcpProxyProtocolVersion)))
+	}
+
 	return connectionConfigurationChanges
 }
 
@@ -481,10 +498,17 @@ func getListenerChanges(logger *zap.SugaredLogger, actual map[string]loadbalance
 
 	// set to keep track of desired listeners that already exist and should not be created
 	exists := sets.NewString()
-
+	//sanitizedDesiredListeners convert the listener name HTTP-xxxx to TCP-xxx such that in sortAndCombineAction can
+	//place BackendSet create before Listener Create and Listener delete before BackendSet delete. Also it would help
+	//not to delete and create Listener if customer edit the service and add oci-load-balancer-backend-protocol: "HTTP"
+	// and vice versa. It would help to only update the listener in case of protocol change. Refer OKE-10793 for details.
+	sanitizedDesiredListeners := make(map[string]loadbalancer.ListenerDetails)
+	for name, desiredListener := range desired {
+		sanitizedDesiredListeners[getSanitizedName(name)] = desiredListener
+	}
 	// First check to see if any listeners need to be deleted or updated.
 	for name, actualListener := range actual {
-		desiredListener, ok := desired[getSanitizedName(name)]
+		desiredListener, ok := sanitizedDesiredListeners[getSanitizedName(name)]
 		if !ok {
 			// no longer exists
 			listenerActions = append(listenerActions, &ListenerAction{
@@ -511,7 +535,7 @@ func getListenerChanges(logger *zap.SugaredLogger, actual map[string]loadbalance
 
 	// Now check if any need to be created.
 	for name, desiredListener := range desired {
-		if !exists.Has(name) {
+		if !exists.Has(getSanitizedName(name)) {
 			// doesn't exist so lets create it
 			listenerActions = append(listenerActions, &ListenerAction{
 				Listener:   desiredListener,
@@ -529,9 +553,14 @@ func sslEnabled(sslConfigMap map[int]*loadbalancer.SslConfiguration) bool {
 }
 
 // getSanitizedName omits the suffix after protocol-port in the name.
-// FIXME can remove this function if we have made sure that there are no LB listeners with legacy name like <PROTOCOL-PORT-SECRET> for
+// It also converts the listener name from HTTP-xxxx to TCP-xxx such that
+// we can use oci-load-balancer-backend-protocol: "HTTP" annotation.
 func getSanitizedName(name string) string {
 	fields := strings.Split(name, "-")
+	if strings.EqualFold(fields[0], "HTTP") {
+		fields[0] = "TCP"
+		name = fmt.Sprintf(strings.Join(fields, "-"))
+	}
 	if len(fields) > 2 {
 		return fmt.Sprintf(strings.Join(fields[:2], "-"))
 	}

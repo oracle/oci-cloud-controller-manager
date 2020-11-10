@@ -17,10 +17,14 @@ package framework
 import (
 	"context"
 	"fmt"
-	ocicore "github.com/oracle/oci-go-sdk/core"
 	"os"
 	"strings"
 	"time"
+
+	ocicore "github.com/oracle/oci-go-sdk/core"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/tools/cache"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -28,6 +32,7 @@ import (
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/common"
+	"github.com/oracle/oci-go-sdk/core"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
@@ -210,7 +215,24 @@ func (f *CloudProviderFramework) BeforeEach() {
 	if f.InitCloudProvider {
 		cloud, err := cloudprovider.InitCloudProvider(oci.ProviderName(), cloudConfigFile)
 		Expect(err).NotTo(HaveOccurred())
-		f.CloudProvider = cloud
+		ccmProvider := cloud.(*oci.CloudProvider)
+		factory := informers.NewSharedInformerFactory(f.ClientSet, 5*time.Minute)
+
+		nodeInfoController := oci.NewNodeInfoController(
+			factory.Core().V1().Nodes(),
+			f.ClientSet,
+			ccmProvider,
+			zap.L().Sugar(),
+			cache.NewTTLStore(instanceCacheKeyFn, time.Duration(24)*time.Hour),
+			f.Client)
+		nodeInformer := factory.Core().V1().Nodes()
+		go nodeInformer.Informer().Run(wait.NeverStop)
+		go nodeInfoController.Run(wait.NeverStop)
+		if !cache.WaitForCacheSync(wait.NeverStop, nodeInformer.Informer().HasSynced) {
+			utilruntime.HandleError(fmt.Errorf("Timed out waiting for informers to sync"))
+		}
+		ccmProvider.NodeLister = nodeInformer.Lister()
+		f.CloudProvider = ccmProvider
 	}
 
 	if !f.SkipNamespaceCreation {
@@ -310,4 +332,8 @@ func (f *CloudProviderFramework) createStorageClient() ocicore.BlockstorageClien
 	}
 
 	return blockStorageClient
+}
+
+func instanceCacheKeyFn(obj interface{}) (string, error) {
+	return *obj.(*core.Instance).Id, nil
 }

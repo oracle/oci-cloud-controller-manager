@@ -56,8 +56,11 @@ type MockBlockStorageClient struct {
 	VolumeState core.VolumeLifecycleStateEnum
 }
 
-func (c *MockBlockStorageClient) AwaitVolumeAvailableORTimeout(ctx context.Context, id string, timeout time.Duration) (*core.Volume, error) {
-	return nil, nil
+func (c *MockBlockStorageClient) AwaitVolumeAvailableORTimeout(ctx context.Context, id string) (*core.Volume, error) {
+	return &core.Volume{
+		Id:             &id,
+		LifecycleState: c.VolumeState,
+	}, nil
 }
 
 func (c *MockBlockStorageClient) GetVolume(ctx context.Context, id string) (*core.Volume, error) {
@@ -76,13 +79,6 @@ func (c *MockBlockStorageClient) CreateVolume(ctx context.Context, details core.
 // DeleteVolume mocks the BlockStorage DeleteVolume implementation
 func (c *MockBlockStorageClient) DeleteVolume(ctx context.Context, id string) error {
 	return nil
-}
-
-func (c *MockBlockStorageClient) AwaitVolumeAvailable(ctx context.Context, id string) (*core.Volume, error) {
-	return &core.Volume{
-		Id:             &id,
-		LifecycleState: c.VolumeState,
-	}, nil
 }
 
 // MockFileStorageClient mocks FileStorage client implementation.
@@ -211,6 +207,10 @@ func (c *MockComputeClient) WaitForVolumeDetached(ctx context.Context, attachmen
 type MockVirtualNetworkClient struct {
 }
 
+func (c *MockVirtualNetworkClient) IsRegionalSubnet(ctx context.Context, id string) (bool, error) {
+	return false, nil
+}
+
 // GetPrivateIP mocks the VirtualNetwork GetPrivateIp implementation
 func (c *MockVirtualNetworkClient) GetPrivateIP(ctx context.Context, id string) (*core.PrivateIp, error) {
 	return &core.PrivateIp{IpAddress: &privateIP}, nil
@@ -232,7 +232,7 @@ func (c *MockVirtualNetworkClient) GetSecurityList(ctx context.Context, id strin
 	return core.GetSecurityListResponse{}, nil
 }
 
-func (c *MockVirtualNetworkClient) UpdateSecurityList(ctx context.Context, request core.UpdateSecurityListRequest) (core.UpdateSecurityListResponse, error) {
+func (c *MockVirtualNetworkClient) UpdateSecurityList(ctx context.Context, id string, etag string, ingressRules []core.IngressSecurityRule, egressRules []core.EgressSecurityRule) (core.UpdateSecurityListResponse, error) {
 	return core.UpdateSecurityListResponse{}, nil
 }
 

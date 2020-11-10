@@ -16,18 +16,18 @@
 PKG := github.com/oracle/oci-cloud-controller-manager
 
 ifeq "$(CI_IMAGE_REGISTRY)" ""
-    CI_IMAGE_REGISTRY   ?= "iad.ocir.io/oracle"
+    CI_IMAGE_REGISTRY   ?= iad.ocir.io/oracle
 else
     CI_IMAGE_REGISTRY   ?= ${CI_IMAGE_REGISTRY}
 endif
 
 ifeq "$(OSS_REGISTRY)" ""
-    OSS_REGISTRY   ?= "iad.ocir.io/oracle"
+    OSS_REGISTRY   ?= iad.ocir.io/oracle
 else
     OSS_REGISTRY   ?= ${OSS_REGISTRY}
 endif
 IMAGE ?= $(OSS_REGISTRY)/cloud-provider-oci
-COMPONENT ?= oci-cloud-controller-manager oci-volume-provisioner oci-flexvolume-driver cloud-provider-oci
+COMPONENT ?= oci-cloud-controller-manager oci-volume-provisioner oci-flexvolume-driver cloud-provider-oci oci-csi-controller-driver oci-csi-node-driver
 
 ifeq "$(VERSION)" ""
     BUILD := $(shell git describe --exact-match 2> /dev/null || git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)

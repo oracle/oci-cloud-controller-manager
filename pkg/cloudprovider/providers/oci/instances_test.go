@@ -19,7 +19,9 @@ import (
 	"errors"
 	"reflect"
 	"testing"
-	"time"
+
+	"k8s.io/apimachinery/pkg/labels"
+	listersv1 "k8s.io/client-go/listers/core/v1"
 
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
@@ -94,6 +96,36 @@ var (
 			DnsLabel: common.String("subnetwithnovcndnslabel"),
 			VcnId:    common.String("vcnwithoutdnslabel"),
 		},
+		"one": &core.Subnet{
+			Id:                 common.String("one"),
+			DnsLabel:           common.String("subnetwithnovcndnslabel"),
+			VcnId:              common.String("vcnwithoutdnslabel"),
+			AvailabilityDomain: common.String("AD1"),
+		},
+		"two": &core.Subnet{
+			Id:                 common.String("two"),
+			DnsLabel:           common.String("subnetwithnovcndnslabel"),
+			VcnId:              common.String("vcnwithoutdnslabel"),
+			AvailabilityDomain: common.String("AD2"),
+		},
+		"annotation-one": &core.Subnet{
+			Id:                 common.String("annotation-one"),
+			DnsLabel:           common.String("subnetwithnovcndnslabel"),
+			VcnId:              common.String("vcnwithoutdnslabel"),
+			AvailabilityDomain: common.String("AD1"),
+		},
+		"annotation-two": &core.Subnet{
+			Id:                 common.String("annotation-two"),
+			DnsLabel:           common.String("subnetwithnovcndnslabel"),
+			VcnId:              common.String("vcnwithoutdnslabel"),
+			AvailabilityDomain: common.String("AD2"),
+		},
+		"regional-subnet": &core.Subnet{
+			Id:                 common.String("regional-subnet"),
+			DnsLabel:           common.String("subnetwithnovcndnslabel"),
+			VcnId:              common.String("vcnwithoutdnslabel"),
+			AvailabilityDomain: nil,
+		},
 	}
 
 	vcns = map[string]*core.Vcn{
@@ -105,7 +137,12 @@ var (
 			Id: common.String("vcnwithoutdnslabel"),
 		},
 	}
+	comportmentID = "xxxx"
 )
+
+
+
+
 
 type MockOCIClient struct{}
 
@@ -137,7 +174,9 @@ func (MockOCIClient) Identity() client.IdentityInterface {
 type MockComputeClient struct{}
 
 func (MockComputeClient) GetInstance(ctx context.Context, id string) (*core.Instance, error) {
-	return nil, nil
+	return &core.Instance{
+		Id: &id,
+	}, nil
 }
 
 func (MockComputeClient) GetInstanceByNodeName(ctx context.Context, compartmentID, vcnID, nodeName string) (*core.Instance, error) {
@@ -172,6 +211,10 @@ func (MockComputeClient) WaitForVolumeDetached(ctx context.Context, attachmentID
 type MockVirtualNetworkClient struct {
 }
 
+func (c *MockVirtualNetworkClient) IsRegionalSubnet(ctx context.Context, id string) (bool, error) {
+	return subnets[id].AvailabilityDomain == nil, nil
+}
+
 func (c *MockVirtualNetworkClient) GetPrivateIP(ctx context.Context, id string) (*core.PrivateIp, error) {
 	return nil, nil
 }
@@ -192,7 +235,7 @@ func (c *MockVirtualNetworkClient) GetSecurityList(ctx context.Context, id strin
 	return core.GetSecurityListResponse{}, nil
 }
 
-func (c *MockVirtualNetworkClient) UpdateSecurityList(ctx context.Context, request core.UpdateSecurityListRequest) (core.UpdateSecurityListResponse, error) {
+func (c *MockVirtualNetworkClient) UpdateSecurityList(ctx context.Context, id string, etag string, ingressRules []core.IngressSecurityRule, egressRules []core.EgressSecurityRule) (core.UpdateSecurityListResponse, error) {
 	return core.UpdateSecurityListResponse{}, nil
 }
 
@@ -262,11 +305,7 @@ func (c *MockLoadBalancerClient) AwaitWorkRequest(ctx context.Context, id string
 // MockBlockStorageClient mocks BlockStoargae client implementation
 type MockBlockStorageClient struct{}
 
-func (MockBlockStorageClient) AwaitVolumeAvailable(ctx context.Context, id string) (*core.Volume, error) {
-	return nil, nil
-}
-
-func (MockBlockStorageClient) AwaitVolumeAvailableORTimeout(ctx context.Context, id string, timeout time.Duration) (*core.Volume, error) {
+func (MockBlockStorageClient) AwaitVolumeAvailableORTimeout(ctx context.Context, id string) (*core.Volume, error) {
 	return nil, nil
 }
 
@@ -338,6 +377,44 @@ func (MockIdentityClient) GetAvailabilityDomainByName(ctx context.Context, compa
 
 func (MockIdentityClient) ListAvailabilityDomains(ctx context.Context, compartmentID string) ([]identity.AvailabilityDomain, error) {
 	return nil, nil
+}
+
+type mockInstanceCache struct{}
+
+func (m mockInstanceCache) Add(obj interface{}) error {
+	return nil
+}
+
+func (m mockInstanceCache) Update(obj interface{}) error {
+	return nil
+}
+
+func (m mockInstanceCache) Delete(obj interface{}) error {
+	return nil
+}
+
+func (m mockInstanceCache) List() []interface{} {
+	return nil
+}
+
+func (m mockInstanceCache) ListKeys() []string {
+	return nil
+}
+
+func (m mockInstanceCache) Get(obj interface{}) (item interface{}, exists bool, err error) {
+	return &core.Instance{CompartmentId: &comportmentID}, true, nil
+}
+
+func (m mockInstanceCache) GetByKey(key string) (item interface{}, exists bool, err error) {
+	return &core.Instance{CompartmentId: &comportmentID}, true, nil
+}
+
+func (m mockInstanceCache) Replace(i []interface{}, s string) error {
+	return nil
+}
+
+func (m mockInstanceCache) Resync() error {
+	return nil
 }
 
 func TestExtractNodeAddresses(t *testing.T) {
@@ -420,8 +497,10 @@ func TestExtractNodeAddresses(t *testing.T) {
 	}
 
 	cp := &CloudProvider{
-		client: MockOCIClient{},
-		config: &providercfg.Config{CompartmentID: "testCompartment"},
+		client:        MockOCIClient{},
+		config:        &providercfg.Config{CompartmentID: "testCompartment"},
+		NodeLister:    &mockNodeLister{},
+		instanceCache: &mockInstanceCache{},
 	}
 
 	for _, tt := range testCases {
@@ -435,4 +514,19 @@ func TestExtractNodeAddresses(t *testing.T) {
 			}
 		})
 	}
+}
+
+type mockNodeLister struct{}
+
+func (s *mockNodeLister) List(selector labels.Selector) (ret []*v1.Node, err error) {
+
+	return nil, nil
+}
+
+func (s *mockNodeLister) Get(name string) (*v1.Node, error) {
+	return nil, nil
+}
+
+func (l *mockNodeLister) ListWithPredicate(predicate listersv1.NodeConditionPredicate) ([]*v1.Node, error) {
+	return nil, nil
 }

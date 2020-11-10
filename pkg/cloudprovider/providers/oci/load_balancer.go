@@ -70,9 +70,26 @@ const (
 	// on the service to specify the idle connection timeout.
 	ServiceAnnotationLoadBalancerConnectionIdleTimeout = "service.beta.kubernetes.io/oci-load-balancer-connection-idle-timeout"
 
+	// ServiceAnnotationLoadBalancerConnectionProxyProtocolVersion is the annotation used
+	// on the service to specify the proxy protocol version.
+	ServiceAnnotationLoadBalancerConnectionProxyProtocolVersion = "service.beta.kubernetes.io/oci-load-balancer-connection-proxy-protocol-version"
+
 	// ServiceAnnotaionLoadBalancerSecurityListManagementMode is a Service annotation for
 	// specifying the security list managment mode ("All", "Frontend", "None") that configures how security lists are managed by the CCM
 	ServiceAnnotaionLoadBalancerSecurityListManagementMode = "service.beta.kubernetes.io/oci-load-balancer-security-list-management-mode"
+
+	// ServiceAnnotationLoadBalancerHealthCheckRetries is the annotation used
+	// on the service to specify the number of retries to attempt before a backend server is considered "unhealthy".
+	ServiceAnnotationLoadBalancerHealthCheckRetries = "service.beta.kubernetes.io/oci-load-balancer-health-check-retries"
+
+	// ServiceAnnotationLoadBalancerHealthCheckInterval is a Service annotation for
+	// specifying the interval between health checks, in milliseconds.
+	ServiceAnnotationLoadBalancerHealthCheckInterval = "service.beta.kubernetes.io/oci-load-balancer-health-check-interval"
+
+	// ServiceAnnotationLoadBalancerHealthCheckTimeout is a Service annotation for
+	// specifying the maximum time, in milliseconds, to wait for a reply to a health check. A health check is successful only if a reply
+	// returns within this timeout period.
+	ServiceAnnotationLoadBalancerHealthCheckTimeout = "service.beta.kubernetes.io/oci-load-balancer-health-check-timeout"
 
 	// ServiceAnnotationLoadBalancerBEProtocol is a Service annotation for specifying the
 	// load balancer listener backend protocol ("TCP", "HTTP").
@@ -96,6 +113,11 @@ const (
 	lbNodesHealthCheckPort      = k8sports.ProxyHealthzPort
 	lbNodesHealthCheckProtoHTTP = "HTTP"
 	lbNodesHealthCheckProtoTCP  = "TCP"
+
+	// default connection idle timeout per protocol
+	// https://docs.cloud.oracle.com/en-us/iaas/Content/Balance/Reference/connectionreuse.htm#ConnectionConfiguration
+	lbConnectionIdleTimeoutTCP  = 300
+	lbConnectionIdleTimeoutHTTP = 60
 )
 
 // GetLoadBalancerName returns the name of the loadbalancer
@@ -139,7 +161,7 @@ func getSubnets(ctx context.Context, subnetIDs []string, n client.NetworkingInte
 
 // getSubnetsForNodes returns the de-duplicated subnets in which the given
 // internal IP addresses reside.
-func getSubnetsForNodes(ctx context.Context, nodes []*v1.Node, client client.Interface, compartmentID string) ([]*core.Subnet, error) {
+func getSubnetsForNodes(ctx context.Context, nodes []*v1.Node, client client.Interface) ([]*core.Subnet, error) {
 	var (
 		subnetOCIDs = sets.NewString()
 		subnets     []*core.Subnet
@@ -174,6 +196,11 @@ func getSubnetsForNodes(ctx context.Context, nodes []*v1.Node, client client.Int
 		id, err := MapProviderIDToInstanceID(node.Spec.ProviderID)
 		if err != nil {
 			return nil, errors.Wrap(err, "MapProviderIDToInstanceID")
+		}
+
+		compartmentID, ok := node.Annotations[CompartmentIDAnnotation]
+		if !ok {
+			return nil, errors.Errorf("%q annotation not present on node %q", CompartmentIDAnnotation, node.Name)
 		}
 
 		vnic, err := client.Compute().GetPrimaryVNICForInstance(ctx, compartmentID, id)
@@ -255,7 +282,7 @@ func (cp *CloudProvider) createLoadBalancer(ctx context.Context, spec *LBSpec) (
 	if err != nil {
 		return nil, errors.Wrap(err, "getting subnets for load balancers")
 	}
-	nodeSubnets, err := getSubnetsForNodes(ctx, spec.nodes, cp.client, cp.config.CompartmentID)
+	nodeSubnets, err := getSubnetsForNodes(ctx, spec.nodes, cp.client)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting subnets for nodes")
 	}
@@ -328,7 +355,12 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		secretBackendSetString := service.Annotations[ServiceAnnotationLoadBalancerTLSBackendSetSecret]
 		sslConfig = NewSSLConfig(secretListenerString, secretBackendSetString, service, ports, cp)
 	}
-	subnets := getDefaultLBSubnets(cp.config.LoadBalancer.Subnet1, cp.config.LoadBalancer.Subnet2)
+	subnets, err := cp.getLoadBalancerSubnets(ctx, logger, service)
+	if err != nil {
+		logger.With(zap.Error(err)).Error("Failed to get Load balancer Subnets.")
+		return nil, err
+	}
+
 	spec, err := NewLBSpec(logger, service, nodes, subnets, sslConfig, cp.securityListManagerFactory)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to derive LBSpec")
@@ -370,6 +402,52 @@ func getDefaultLBSubnets(subnet1, subnet2 string) []string {
 	return subnets
 }
 
+func (cp *CloudProvider) getLoadBalancerSubnets(ctx context.Context, logger *zap.SugaredLogger, svc *v1.Service) ([]string, error) {
+	_, internal := svc.Annotations[ServiceAnnotationLoadBalancerInternal]
+
+	// NOTE: These will be overridden for existing load balancers as load
+	// balancer subnets cannot be modified.
+	subnets := getDefaultLBSubnets(cp.config.LoadBalancer.Subnet1, cp.config.LoadBalancer.Subnet2)
+
+	if s, ok := svc.Annotations[ServiceAnnotationLoadBalancerSubnet1]; ok && len(s) != 0 {
+		subnets[0] = s
+		r, err := cp.client.Networking().IsRegionalSubnet(ctx, s)
+		if err != nil {
+			return nil, err
+		}
+		if r {
+			return subnets[:1], nil
+		}
+	}
+
+	if s, ok := svc.Annotations[ServiceAnnotationLoadBalancerSubnet2]; ok && len(s) != 0 {
+		r, err := cp.client.Networking().IsRegionalSubnet(ctx, s)
+		if err != nil {
+			return nil, err
+		}
+		if r {
+			subnets[0] = s
+			logger.Debugf("Considering annotation %s: %s for LB as it is the only regional subnet in annotations provided.", ServiceAnnotationLoadBalancerSubnet2, s)
+			return subnets[:1], nil
+		} else if len(subnets) > 1 {
+			subnets[1] = s
+		} else {
+			subnets = append(subnets, s)
+		}
+	}
+
+	if internal {
+		// Public load balancers need two subnets if they are AD specific and only first subnet is used if regional. Internal load
+		// balancers will always use the first subnet.
+		if subnets[0] == "" {
+			return nil, errors.Errorf("a configuration for subnet1 must be specified for an internal load balancer")
+		}
+		return subnets[:1], nil
+	}
+
+	return subnets, nil
+}
+
 func (cp *CloudProvider) updateLoadBalancer(ctx context.Context, lb *loadbalancer.LoadBalancer, spec *LBSpec) error {
 	lbID := *lb.Id
 
@@ -383,17 +461,26 @@ func (cp *CloudProvider) updateLoadBalancer(ctx context.Context, lb *loadbalance
 	desiredListeners := spec.Listeners
 	listenerActions := getListenerChanges(logger, actualListeners, desiredListeners)
 
-	if len(backendSetActions) == 0 && len(listenerActions) == 0 {
-		return nil // Nothing to do.
-	}
-
 	lbSubnets, err := getSubnets(ctx, spec.Subnets, cp.client.Networking())
 	if err != nil {
 		return errors.Wrapf(err, "getting load balancer subnets")
 	}
-	nodeSubnets, err := getSubnetsForNodes(ctx, spec.nodes, cp.client, cp.config.CompartmentID)
+	nodeSubnets, err := getSubnetsForNodes(ctx, spec.nodes, cp.client)
 	if err != nil {
 		return errors.Wrap(err, "get subnets for nodes")
+	}
+
+	if len(backendSetActions) == 0 && len(listenerActions) == 0 {
+		// If there are no backendSetActions or Listener actions
+		// this function must have been called because of a failed
+		// seclist update when the load balancer was created
+		// We try to update the seclist this way to prevent replication
+		// of seclist reconciliation logic
+		for _, ports := range spec.Ports {
+			if err = spec.securityListManager.Update(ctx, lbSubnets, nodeSubnets, spec.SourceCIDRs, nil, ports); err != nil {
+				return err
+			}
+		}
 	}
 
 	actions := sortAndCombineActions(logger, backendSetActions, listenerActions)
@@ -621,7 +708,7 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 	if err != nil {
 		return errors.Wrap(err, "fetching nodes by internal ips")
 	}
-	nodeSubnets, err := getSubnetsForNodes(ctx, nodes, cp.client, cp.config.CompartmentID)
+	nodeSubnets, err := getSubnetsForNodes(ctx, nodes, cp.client)
 	if err != nil {
 		return errors.Wrap(err, "getting subnets for nodes")
 	}

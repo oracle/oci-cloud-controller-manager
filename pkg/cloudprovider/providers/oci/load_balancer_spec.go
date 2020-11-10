@@ -105,7 +105,7 @@ type LBSpec struct {
 }
 
 // NewLBSpec creates a LB Spec from a Kubernetes service and a slice of nodes.
-func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, defaultSubnets []string, sslConfig *SSLConfig, secListFactory securityListManagerFactory) (*LBSpec, error) {
+func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, subnets []string, sslConfig *SSLConfig, secListFactory securityListManagerFactory) (*LBSpec, error) {
 	if err := validateService(svc); err != nil {
 		return nil, errors.Wrap(err, "invalid service")
 	}
@@ -124,26 +124,17 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, def
 		return nil, err
 	}
 
-	// NOTE: These will be overridden for existing load balancers as load
-	// balancer subnets cannot be modified.
-	subnets := defaultSubnets
-	if s, ok := svc.Annotations[ServiceAnnotationLoadBalancerSubnet1]; ok {
-		subnets[0] = s
-	}
-	if s, ok := svc.Annotations[ServiceAnnotationLoadBalancerSubnet2]; ok {
-		subnets[1] = s
-	}
-
-	if internal {
-		// Only public load balancers need two subnets.  Internal load
-		// balancers will always use the first subnet.
-		if subnets[0] == "" {
-			return nil, errors.Errorf("a configuration for subnet1 must be specified for an internal load balancer")
-		}
-		subnets = subnets[:1]
-	}
-
 	listeners, err := getListeners(svc, sslConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	backendSets, err := getBackendSets(logger, svc, nodes, sslConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	ports, err := getPorts(svc)
 	if err != nil {
 		return nil, err
 	}
@@ -154,9 +145,9 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, def
 		Internal:    internal,
 		Subnets:     subnets,
 		Listeners:   listeners,
-		BackendSets: getBackendSets(logger, svc, nodes, sslConfig),
+		BackendSets: backendSets,
 
-		Ports:       getPorts(svc),
+		Ports:       ports,
 		SSLConfig:   sslConfig,
 		SourceCIDRs: sourceCIDRs,
 
@@ -244,18 +235,21 @@ func getBackendSetName(protocol string, port int) string {
 	return fmt.Sprintf("%s-%d", protocol, port)
 }
 
-func getPorts(svc *v1.Service) map[string]portSpec {
+func getPorts(svc *v1.Service) (map[string]portSpec, error) {
 	ports := make(map[string]portSpec)
 	for _, servicePort := range svc.Spec.Ports {
 		name := getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
+		healthChecker, err := getHealthChecker(nil, int(servicePort.Port), svc)
+		if err != nil {
+			return nil, err
+		}
 		ports[name] = portSpec{
 			BackendPort:       int(servicePort.NodePort),
 			ListenerPort:      int(servicePort.Port),
-			HealthCheckerPort: *getHealthChecker(nil, int(servicePort.Port), svc).Port,
+			HealthCheckerPort: *healthChecker.Port,
 		}
-
 	}
-	return ports
+	return ports, nil
 }
 
 func getBackends(logger *zap.SugaredLogger, nodes []*v1.Node, nodePort int32) []loadbalancer.BackendDetails {
@@ -275,7 +269,7 @@ func getBackends(logger *zap.SugaredLogger, nodes []*v1.Node, nodePort int32) []
 	return backends
 }
 
-func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sslCfg *SSLConfig) map[string]loadbalancer.BackendSetDetails {
+func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sslCfg *SSLConfig) (map[string]loadbalancer.BackendSetDetails, error) {
 	backendSets := make(map[string]loadbalancer.BackendSetDetails)
 	for _, servicePort := range svc.Spec.Ports {
 		name := getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
@@ -284,21 +278,52 @@ func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node
 		if sslCfg != nil && len(sslCfg.BackendSetSSLSecretName) != 0 {
 			secretName = sslCfg.BackendSetSSLSecretName
 		}
+		healthChecker, err := getHealthChecker(sslCfg, port, svc)
+		if err != nil {
+			return nil, err
+		}
 		backendSets[name] = loadbalancer.BackendSetDetails{
 			Policy:           common.String(DefaultLoadBalancerPolicy),
 			Backends:         getBackends(logger, nodes, servicePort.NodePort),
-			HealthChecker:    getHealthChecker(sslCfg, port, svc),
+			HealthChecker:    healthChecker,
 			SslConfiguration: getSSLConfiguration(sslCfg, secretName, port),
 		}
 	}
-	return backendSets
+	return backendSets, nil
 }
 
-func getHealthChecker(cfg *SSLConfig, port int, svc *v1.Service) *loadbalancer.HealthCheckerDetails {
+func getHealthChecker(cfg *SSLConfig, port int, svc *v1.Service) (*loadbalancer.HealthCheckerDetails, error) {
 	// If the health-check has SSL enabled use TCP rather than HTTP.
 	protocol := lbNodesHealthCheckProtoHTTP
 	if cfg != nil && cfg.Ports.Has(port) {
 		protocol = lbNodesHealthCheckProtoTCP
+	}
+	// Setting default values as per defined in the doc (https://docs.cloud.oracle.com/en-us/iaas/Content/Balance/Tasks/editinghealthcheck.htm#console)
+	var retries = 3
+	if r, ok := svc.Annotations[ServiceAnnotationLoadBalancerHealthCheckRetries]; ok {
+		rInt, err := strconv.Atoi(r)
+		if err != nil {
+			return nil, fmt.Errorf("invalid value: %s provided for annotation: %s", r, ServiceAnnotationLoadBalancerHealthCheckRetries)
+		}
+		retries = rInt
+	}
+	// Setting default values as per defined in the doc (https://docs.cloud.oracle.com/en-us/iaas/Content/Balance/Tasks/editinghealthcheck.htm#console)
+	var intervalInMillis = 10000
+	if i, ok := svc.Annotations[ServiceAnnotationLoadBalancerHealthCheckInterval]; ok {
+		iInt, err := strconv.Atoi(i)
+		if err != nil {
+			return nil, fmt.Errorf("invalid value: %s provided for annotation: %s", i, ServiceAnnotationLoadBalancerHealthCheckInterval)
+		}
+		intervalInMillis = iInt
+	}
+	// Setting default values as per defined in the doc (https://docs.cloud.oracle.com/en-us/iaas/Content/Balance/Tasks/editinghealthcheck.htm#console)
+	var timeoutInMillis = 3000
+	if t, ok := svc.Annotations[ServiceAnnotationLoadBalancerHealthCheckTimeout]; ok {
+		tInt, err := strconv.Atoi(t)
+		if err != nil {
+			return nil, fmt.Errorf("invalid value: %s provided for annotation: %s", t, ServiceAnnotationLoadBalancerHealthCheckTimeout)
+		}
+		timeoutInMillis = tInt
 	}
 	checkPath, checkPort := apiservice.GetServiceHealthCheckPathPort(svc)
 	if checkPath != "" {
@@ -306,14 +331,20 @@ func getHealthChecker(cfg *SSLConfig, port int, svc *v1.Service) *loadbalancer.H
 			Protocol: &protocol,
 			UrlPath:  &checkPath,
 			Port:     common.Int(int(checkPort)),
-		}
+			Retries:  &retries,
+			IntervalInMillis: &intervalInMillis,
+			TimeoutInMillis: &timeoutInMillis,
+		}, nil
 	}
 
 	return &loadbalancer.HealthCheckerDetails{
 		Protocol: &protocol,
 		UrlPath:  common.String(lbNodesHealthCheckPath),
 		Port:     common.Int(lbNodesHealthCheckPort),
-	}
+		Retries:  &retries,
+		IntervalInMillis: &intervalInMillis,
+		TimeoutInMillis: &timeoutInMillis,
+	}, nil
 }
 
 func getSSLConfiguration(cfg *SSLConfig, name string, port int) *loadbalancer.SslConfigurationDetails {
@@ -329,7 +360,7 @@ func getSSLConfiguration(cfg *SSLConfig, name string, port int) *loadbalancer.Ss
 
 func getListeners(svc *v1.Service, sslCfg *SSLConfig) (map[string]loadbalancer.ListenerDetails, error) {
 	// Determine if connection idle timeout has been specified
-	var connectionIdleTimeout int
+	var connectionIdleTimeout *int64
 	connectionIdleTimeoutAnnotation := svc.Annotations[ServiceAnnotationLoadBalancerConnectionIdleTimeout]
 	if connectionIdleTimeoutAnnotation != "" {
 		timeout, err := strconv.ParseInt(connectionIdleTimeoutAnnotation, 10, 64)
@@ -340,7 +371,22 @@ func getListeners(svc *v1.Service, sslCfg *SSLConfig) (map[string]loadbalancer.L
 			)
 		}
 
-		connectionIdleTimeout = int(timeout)
+		connectionIdleTimeout = common.Int64(timeout)
+	}
+
+	// Determine if proxy protocol has been specified
+	var proxyProtocolVersion *int
+	proxyProtocolVersionAnnotation := svc.Annotations[ServiceAnnotationLoadBalancerConnectionProxyProtocolVersion]
+	if proxyProtocolVersionAnnotation != "" {
+		version, err := strconv.Atoi(proxyProtocolVersionAnnotation)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing service annotation: %s=%s",
+				ServiceAnnotationLoadBalancerConnectionProxyProtocolVersion,
+				proxyProtocolVersionAnnotation,
+			)
+		}
+
+		proxyProtocolVersion = common.Int(version)
 	}
 
 	listeners := make(map[string]loadbalancer.ListenerDetails)
@@ -373,9 +419,23 @@ func getListeners(svc *v1.Service, sslCfg *SSLConfig) (map[string]loadbalancer.L
 			SslConfiguration:      sslConfiguration,
 		}
 
-		if connectionIdleTimeout > 0 {
+		// If proxy protocol has been set, we also need to set connectionIdleTimeout
+		// because it's a required parameter as per the LB API contract.
+		// The default value is dependent on the protocol used for the listener.
+		actualConnectionIdleTimeout := connectionIdleTimeout
+		if proxyProtocolVersion != nil && connectionIdleTimeout == nil {
+			// At that point LB only supports HTTP and TCP
+			defaultIdleTimeoutPerProtocol := map[string]int64{
+				"HTTP": lbConnectionIdleTimeoutHTTP,
+				"TCP":  lbConnectionIdleTimeoutTCP,
+			}
+			actualConnectionIdleTimeout = common.Int64(defaultIdleTimeoutPerProtocol[strings.ToUpper(protocol)])
+		}
+
+		if actualConnectionIdleTimeout != nil {
 			listener.ConnectionConfiguration = &loadbalancer.ConnectionConfiguration{
-				IdleTimeout: common.Int64(int64(connectionIdleTimeout)),
+				IdleTimeout:                    actualConnectionIdleTimeout,
+				BackendTcpProxyProtocolVersion: proxyProtocolVersion,
 			}
 		}
 

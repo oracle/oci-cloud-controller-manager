@@ -120,7 +120,7 @@ func (s *baseSecurityListManager) updateBackendRules(ctx context.Context, lbSubn
 
 		logger.Info("Node subnet security list changed")
 
-		err = s.updateSecurityListRules(ctx, *secList.Id, etag, ingressRules, secList.EgressSecurityRules)
+		_, err = s.client.Networking().UpdateSecurityList(ctx, *secList.Id, etag, ingressRules, secList.EgressSecurityRules)
 		if err != nil {
 			return errors.Wrapf(err, "update security list rules %q for subnet %q", *secList.Id, *subnet.Id)
 		}
@@ -163,7 +163,7 @@ func (s *baseSecurityListManager) updateLoadBalancerRules(ctx context.Context, l
 
 		logger.Info("Load balancer subnet security list changed")
 
-		err = s.updateSecurityListRules(ctx, *secList.Id, etag, lbIngressRules, lbEgressRules)
+		_, err = s.client.Networking().UpdateSecurityList(ctx, *secList.Id, etag, lbIngressRules, lbEgressRules)
 		if err != nil {
 			return errors.Wrapf(err, "update lb security list rules %q for subnet %q", *secList.Id, *lbSubnet.Id)
 		}
@@ -317,19 +317,6 @@ func securityListRulesChanged(securityList *core.SecurityList, ingressRules []co
 	}
 
 	return false
-}
-
-// updateSecurityListRules updates the security list rules and saves the security list in the cache upon successful update.
-func (s *baseSecurityListManager) updateSecurityListRules(ctx context.Context, id string, etag string, ingressRules []core.IngressSecurityRule, egressRules []core.EgressSecurityRule) error {
-	_, err := s.client.Networking().UpdateSecurityList(ctx, core.UpdateSecurityListRequest{
-		SecurityListId: &id,
-		IfMatch:        &etag,
-		UpdateSecurityListDetails: core.UpdateSecurityListDetails{
-			IngressSecurityRules: ingressRules,
-			EgressSecurityRules:  egressRules,
-		},
-	})
-	return err
 }
 
 func portRangeMatchesSpec(r core.PortRange, ports *portSpec) bool {

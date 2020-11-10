@@ -697,6 +697,47 @@ func TestGetListenerChanges(t *testing.T) {
 			},
 		},
 		{
+			name: "proxy protocol version change",
+			desired: map[string]loadbalancer.ListenerDetails{
+				"TCP-80": loadbalancer.ListenerDetails{
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
+					ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
+						IdleTimeout:                    common.Int64(100),
+						BackendTcpProxyProtocolVersion: common.Int(2),
+					},
+				},
+			},
+			actual: map[string]loadbalancer.Listener{
+				"TCP-80": loadbalancer.Listener{
+					Name:                  common.String("TCP-80"),
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
+					ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
+						IdleTimeout:                    common.Int64(100),
+						BackendTcpProxyProtocolVersion: nil,
+					},
+				},
+			},
+			expected: []Action{
+				&ListenerAction{
+					name:       "TCP-80",
+					actionType: Update,
+					Listener: loadbalancer.ListenerDetails{
+						DefaultBackendSetName: common.String("TCP-80"),
+						Protocol:              common.String("TCP"),
+						Port:                  common.Int(80),
+						ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
+							IdleTimeout:                    common.Int64(100),
+							BackendTcpProxyProtocolVersion: common.Int(2),
+						},
+					},
+				},
+			},
+		},
+		{
 			name: "ssl config change [legacy listeners]",
 			desired: map[string]loadbalancer.ListenerDetails{
 				"TCP-80": loadbalancer.ListenerDetails{
@@ -730,6 +771,64 @@ func TestGetListenerChanges(t *testing.T) {
 						SslConfiguration: &loadbalancer.SslConfigurationDetails{
 							CertificateName: common.String("desired"),
 						},
+					},
+				},
+			},
+		},
+		{
+			name: "protocol change TCP to HTTP",
+			desired: map[string]loadbalancer.ListenerDetails{
+				"HTTP-80": loadbalancer.ListenerDetails{
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("HTTP"),
+					Port:                  common.Int(80),
+				},
+			},
+			actual: map[string]loadbalancer.Listener{
+				"TCP-80": loadbalancer.Listener{
+					Name:                  common.String("TCP-80"),
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
+				},
+			},
+			expected: []Action{
+				&ListenerAction{
+					name:       "TCP-80",
+					actionType: Update,
+					Listener: loadbalancer.ListenerDetails{
+						DefaultBackendSetName: common.String("TCP-80"),
+						Protocol:              common.String("HTTP"),
+						Port:                  common.Int(80),
+					},
+				},
+			},
+		},
+		{
+			name: "protocol change HTTP to TCP",
+			desired: map[string]loadbalancer.ListenerDetails{
+				"TCP-80": loadbalancer.ListenerDetails{
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
+				},
+			},
+			actual: map[string]loadbalancer.Listener{
+				"HTTP-80": loadbalancer.Listener{
+					Name:                  common.String("HTTP-80"),
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("HTTP"),
+					Port:                  common.Int(80),
+				},
+			},
+			expected: []Action{
+				&ListenerAction{
+					name:       "HTTP-80",
+					actionType: Update,
+					Listener: loadbalancer.ListenerDetails{
+						DefaultBackendSetName: common.String("TCP-80"),
+						Protocol:              common.String("TCP"),
+						Port:                  common.Int(80),
 					},
 				},
 			},
@@ -890,6 +989,11 @@ func TestGetSanitizedName(t *testing.T) {
 		{
 			"new name (suffix secret name omitted)",
 			"TCP-80",
+			"TCP-80",
+		},
+		{
+			"Name has HTTP",
+			"HTTP-80",
 			"TCP-80",
 		},
 	}
@@ -1094,7 +1198,8 @@ func TestHasListenerChanged(t *testing.T) {
 					VerifyDepth:     common.Int(1),
 				},
 				ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
-					IdleTimeout: common.Int64(300),
+					IdleTimeout:                    common.Int64(300),
+					BackendTcpProxyProtocolVersion: common.Int(1),
 				},
 			},
 			actual: loadbalancer.Listener{
@@ -1119,11 +1224,17 @@ func TestHasListenerChanged(t *testing.T) {
 			isListenerChanged := hasListenerChanged(zap.S(), tt.actual, tt.desired)
 			if isListenerChanged == tt.expected {
 				return
+			} else {
+				t.Errorf("expected ListenerChange\n%+v\nbut got\n%+v", tt.expected, isListenerChanged)
 			}
-			t.Errorf("expected ListenerChange\n%+v\nbut got\n%+v", tt.expected, isListenerChanged)
 		})
 	}
 }
+
+var (
+	testBackendPort    = int(30500)
+	testNewBackendPort = int(30600)
+)
 
 func TestHasBackendSetChanged(t *testing.T) {
 	var testCases = []struct {
@@ -1292,6 +1403,128 @@ func TestHasBackendSetChanged(t *testing.T) {
 			expected: true,
 		},
 		{
+			name: "HealthChecker retries changes",
+			desired: loadbalancer.BackendSetDetails{
+				HealthChecker: &loadbalancer.HealthCheckerDetails{
+					Port:    common.Int(20),
+					Retries: common.Int(2),
+				},
+			},
+			actual: loadbalancer.BackendSet{
+				HealthChecker: &loadbalancer.HealthChecker{
+					Port:    common.Int(20),
+					Retries: common.Int(3),
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "HealthChecker IntervalInMillis changes",
+			desired: loadbalancer.BackendSetDetails{
+				HealthChecker: &loadbalancer.HealthCheckerDetails{
+					Port:             common.Int(20),
+					IntervalInMillis: common.Int(1000),
+				},
+			},
+			actual: loadbalancer.BackendSet{
+				HealthChecker: &loadbalancer.HealthChecker{
+					Port:             common.Int(20),
+					IntervalInMillis: common.Int(300),
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "HealthChecker TimeoutInMillis present in desired and not in actual",
+			desired: loadbalancer.BackendSetDetails{
+				HealthChecker: &loadbalancer.HealthCheckerDetails{
+					Port:            common.Int(20),
+					TimeoutInMillis: common.Int(1),
+				},
+			},
+			actual: loadbalancer.BackendSet{
+				HealthChecker: &loadbalancer.HealthChecker{
+					Port: common.Int(20),
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "HealthChecker retries present in desired and not in actual",
+			desired: loadbalancer.BackendSetDetails{
+				HealthChecker: &loadbalancer.HealthCheckerDetails{
+					Port:    common.Int(20),
+					Retries: common.Int(2),
+				},
+			},
+			actual: loadbalancer.BackendSet{
+				HealthChecker: &loadbalancer.HealthChecker{
+					Port: common.Int(20),
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "HealthChecker IntervalInMillis present in desired and not in actual",
+			desired: loadbalancer.BackendSetDetails{
+				HealthChecker: &loadbalancer.HealthCheckerDetails{
+					Port:             common.Int(20),
+					IntervalInMillis: common.Int(1000),
+				},
+			},
+			actual: loadbalancer.BackendSet{
+				HealthChecker: &loadbalancer.HealthChecker{
+					Port: common.Int(20),
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "HealthChecker TimeoutInMillis present in actual and not in desired",
+			desired: loadbalancer.BackendSetDetails{
+				HealthChecker: &loadbalancer.HealthCheckerDetails{
+					Port: common.Int(20),
+				},
+			},
+			actual: loadbalancer.BackendSet{
+				HealthChecker: &loadbalancer.HealthChecker{
+					Port:            common.Int(20),
+					TimeoutInMillis: common.Int(1),
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "HealthChecker retries present in actual and not in desired",
+			desired: loadbalancer.BackendSetDetails{
+				HealthChecker: &loadbalancer.HealthCheckerDetails{
+					Port: common.Int(20),
+				},
+			},
+			actual: loadbalancer.BackendSet{
+				HealthChecker: &loadbalancer.HealthChecker{
+					Port:    common.Int(20),
+					Retries: common.Int(2),
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "HealthChecker IntervalInMillis present in actual and not in desired",
+			desired: loadbalancer.BackendSetDetails{
+				HealthChecker: &loadbalancer.HealthCheckerDetails{
+					Port: common.Int(20),
+				},
+			},
+			actual: loadbalancer.BackendSet{
+				HealthChecker: &loadbalancer.HealthChecker{
+					Port:             common.Int(20),
+					IntervalInMillis: common.Int(1000),
+				},
+			},
+			expected: true,
+		},
+		{
 			name: "HealthChecker UrlPath changes",
 			desired: loadbalancer.BackendSetDetails{
 				HealthChecker: &loadbalancer.HealthCheckerDetails{
@@ -1343,6 +1576,46 @@ func TestHasBackendSetChanged(t *testing.T) {
 			},
 			expected: false,
 		},
+		{
+			name: "no change - nodeport",
+			desired: loadbalancer.BackendSetDetails{
+				Policy: common.String("policy"),
+				Backends: []loadbalancer.BackendDetails{
+					{
+						Port: &testBackendPort,
+					},
+				},
+			},
+			actual: loadbalancer.BackendSet{
+				Policy: common.String("policy"),
+				Backends: []loadbalancer.Backend{
+					{
+						Port: &testBackendPort,
+					},
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "nodeport change",
+			desired: loadbalancer.BackendSetDetails{
+				Policy: common.String("policy"),
+				Backends: []loadbalancer.BackendDetails{
+					{
+						Port: &testBackendPort,
+					},
+				},
+			},
+			actual: loadbalancer.BackendSet{
+				Policy: common.String("policy"),
+				Backends: []loadbalancer.Backend{
+					{
+						Port: &testNewBackendPort,
+					},
+				},
+			},
+			expected: true,
+		},
 	}
 
 	for _, tt := range testCases {
@@ -1350,8 +1623,9 @@ func TestHasBackendSetChanged(t *testing.T) {
 			isListenerChanged := hasBackendSetChanged(zap.S(), tt.actual, tt.desired)
 			if isListenerChanged == tt.expected {
 				return
+			} else {
+				t.Errorf("expected BackendSetChanges\n%+v\nbut got\n%+v", tt.expected, isListenerChanged)
 			}
-			t.Errorf("expected BackendSetChanges\n%+v\nbut got\n%+v", tt.expected, isListenerChanged)
 		})
 	}
 }
@@ -1465,6 +1739,7 @@ func TestGetConnectionConfigurationChanges(t *testing.T) {
 			},
 			expected: []string{
 				fmt.Sprintf(changeFmtStr, "Listner:ConnectionConfiguration:IdleTimeout", 400, 300),
+				fmt.Sprintf(changeFmtStr, "Listner:ConnectionConfiguration:BackendTcpProxyProtocolVersion", 3, 2),
 			},
 		},
 	}

@@ -27,11 +27,12 @@ import (
 type NetworkingInterface interface {
 	GetSubnet(ctx context.Context, id string) (*core.Subnet, error)
 	GetSubnetFromCacheByIP(ip string) (*core.Subnet, error)
+	IsRegionalSubnet(ctx context.Context, id string) (bool, error)
 
 	GetVcn(ctx context.Context, id string) (*core.Vcn, error)
 
 	GetSecurityList(ctx context.Context, id string) (core.GetSecurityListResponse, error)
-	UpdateSecurityList(ctx context.Context, request core.UpdateSecurityListRequest) (core.UpdateSecurityListResponse, error)
+	UpdateSecurityList(ctx context.Context, id string, etag string, ingressRules []core.IngressSecurityRule, egressRules []core.EgressSecurityRule) (core.UpdateSecurityListResponse, error)
 
 	GetPrivateIP(ctx context.Context, id string) (*core.PrivateIp, error)
 }
@@ -42,7 +43,8 @@ func (c *client) GetVNIC(ctx context.Context, id string) (*core.Vnic, error) {
 	}
 
 	resp, err := c.network.GetVnic(ctx, core.GetVnicRequest{
-		VnicId: &id,
+		VnicId:          &id,
+		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, getVerb, vnicResource)
 
@@ -67,7 +69,8 @@ func (c *client) GetSubnet(ctx context.Context, id string) (*core.Subnet, error)
 	}
 
 	resp, err := c.network.GetSubnet(ctx, core.GetSubnetRequest{
-		SubnetId: &id,
+		SubnetId:        &id,
+		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, getVerb, subnetResource)
 
@@ -99,12 +102,21 @@ func (c *client) GetSubnetFromCacheByIP(ip string) (*core.Subnet, error) {
 	return nil, nil
 }
 
+func (c *client) IsRegionalSubnet(ctx context.Context, id string) (bool, error) {
+	subnet, err := c.GetSubnet(ctx, id)
+	if err != nil {
+		return false, err
+	}
+	return subnet.AvailabilityDomain == nil, nil
+}
+
 func (c *client) GetVcn(ctx context.Context, id string) (*core.Vcn, error) {
 	if !c.rateLimiter.Reader.TryAccept() {
 		return nil, RateLimitError(false, "GetVcn")
 	}
 	resp, err := c.network.GetVcn(ctx, core.GetVcnRequest{
-		VcnId: &id,
+		VcnId:           &id,
+		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, getVerb, vcnResource)
 
@@ -122,19 +134,28 @@ func (c *client) GetSecurityList(ctx context.Context, id string) (core.GetSecuri
 	}
 
 	resp, err := c.network.GetSecurityList(ctx, core.GetSecurityListRequest{
-		SecurityListId: &id,
+		SecurityListId:  &id,
+		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, getVerb, securityListResource)
 
 	return resp, errors.WithStack(err)
 }
 
-func (c *client) UpdateSecurityList(ctx context.Context, request core.UpdateSecurityListRequest) (core.UpdateSecurityListResponse, error) {
+func (c *client) UpdateSecurityList(ctx context.Context, id string, etag string, ingressRules []core.IngressSecurityRule, egressRules []core.EgressSecurityRule) (core.UpdateSecurityListResponse, error) {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return core.UpdateSecurityListResponse{}, RateLimitError(true, "UpdateSecurityList")
 	}
 
-	resp, err := c.network.UpdateSecurityList(ctx, request)
+	resp, err := c.network.UpdateSecurityList(ctx, core.UpdateSecurityListRequest{
+		SecurityListId: &id,
+		IfMatch:        &etag,
+		UpdateSecurityListDetails: core.UpdateSecurityListDetails{
+			IngressSecurityRules: ingressRules,
+			EgressSecurityRules:  egressRules,
+		},
+		RequestMetadata: c.requestMetadata,
+	})
 	incRequestCounter(err, updateVerb, securityListResource)
 	return resp, errors.WithStack(err)
 }
@@ -148,7 +169,10 @@ func (c *client) GetPrivateIP(ctx context.Context, id string) (*core.PrivateIp, 
 		return nil, RateLimitError(false, "GetPrivateIp")
 	}
 
-	resp, err := c.network.GetPrivateIp(ctx, core.GetPrivateIpRequest{PrivateIpId: &id})
+	resp, err := c.network.GetPrivateIp(ctx, core.GetPrivateIpRequest{
+		PrivateIpId:     &id,
+		RequestMetadata: c.requestMetadata,
+	})
 	incRequestCounter(err, getVerb, privateIPResource)
 
 	if err != nil {

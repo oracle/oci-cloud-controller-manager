@@ -41,7 +41,9 @@ func (c *client) GetInstance(ctx context.Context, id string) (*core.Instance, er
 		return nil, RateLimitError(false, "GetInstance")
 	}
 
-	resp, err := c.compute.GetInstance(ctx, core.GetInstanceRequest{InstanceId: &id})
+	resp, err := c.compute.GetInstance(ctx, core.GetInstanceRequest{
+		InstanceId:      &id,
+		RequestMetadata: c.requestMetadata})
 	incRequestCounter(err, getVerb, instanceResource)
 
 	if err != nil {
@@ -61,9 +63,10 @@ func (c *client) getInstanceByDisplayName(ctx context.Context, compartmentID, di
 			return nil, RateLimitError(false, "ListInstances")
 		}
 		resp, err := c.compute.ListInstances(ctx, core.ListInstancesRequest{
-			CompartmentId: &compartmentID,
-			DisplayName:   &displayName,
-			Page:          page,
+			CompartmentId:   &compartmentID,
+			DisplayName:     &displayName,
+			Page:            page,
+			RequestMetadata: c.requestMetadata,
 		})
 		incRequestCounter(err, listVerb, instanceResource)
 
@@ -108,9 +111,10 @@ func (c *client) GetPrimaryVNICForInstance(ctx context.Context, compartmentID, i
 	var page *string
 	for {
 		resp, err := c.listVNICAttachments(ctx, core.ListVnicAttachmentsRequest{
-			InstanceId:    &instanceID,
-			CompartmentId: &compartmentID,
-			Page:          page,
+			InstanceId:      &instanceID,
+			CompartmentId:   &compartmentID,
+			Page:            page,
+			RequestMetadata: c.requestMetadata,
 		})
 
 		if err != nil {
@@ -163,8 +167,9 @@ func (c *client) GetInstanceByNodeName(ctx context.Context, compartmentID, vcnID
 	)
 	for {
 		resp, err := c.listVNICAttachments(ctx, core.ListVnicAttachmentsRequest{
-			CompartmentId: &compartmentID,
-			Page:          page,
+			CompartmentId:   &compartmentID,
+			Page:            page,
+			RequestMetadata: c.requestMetadata,
 		})
 		if err != nil {
 			return nil, errors.WithStack(err)
@@ -197,6 +202,7 @@ func (c *client) GetInstanceByNodeName(ctx context.Context, compartmentID, vcnID
 			}
 
 			if (vnic.PublicIp != nil && *vnic.PublicIp == nodeName) ||
+				(vnic.PrivateIp != nil && *vnic.PrivateIp == nodeName) ||
 				(vnic.HostnameLabel != nil && (*vnic.HostnameLabel != "" && strings.HasPrefix(nodeName, *vnic.HostnameLabel))) {
 				instance, err := c.GetInstance(ctx, *attachment.InstanceId)
 				if err != nil {

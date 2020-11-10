@@ -124,7 +124,8 @@ type client struct {
 	bs           blockstorageClient
 	identity     identityClient
 
-	rateLimiter RateLimiter
+	requestMetadata common.RequestMetadata
+	rateLimiter     RateLimiter
 
 	subnetCache cache.Store
 	logger      *zap.SugaredLogger
@@ -201,6 +202,9 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 		filestorage:  &fss,
 
 		rateLimiter: *opRateLimiter,
+		requestMetadata: common.RequestMetadata{
+			RetryPolicy: newRetryPolicy(),
+		},
 
 		subnetCache: cache.NewTTLStore(subnetCacheKeyFn, time.Duration(24)*time.Hour),
 		logger:      logger,

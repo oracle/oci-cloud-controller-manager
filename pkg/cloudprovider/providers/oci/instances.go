@@ -18,13 +18,15 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"strings"
+
+	"github.com/oracle/oci-go-sdk/core"
+	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/pkg/errors"
 	api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/cloud-provider"
+	cloudprovider "k8s.io/cloud-provider"
 )
 
 var _ cloudprovider.Instances = &CloudProvider{}
@@ -35,15 +37,42 @@ func mapNodeNameToInstanceName(nodeName types.NodeName) string {
 	return string(nodeName)
 }
 
-// mapInstanceToNodeName maps a OCI instance display name to a kube NodeName.
-func mapInstanceNameToNodeName(displayName string) types.NodeName {
-	// Node names are always lowercase
-	return types.NodeName(strings.ToLower(displayName))
+func (cp *CloudProvider) getCompartmentIDByInstanceID(instanceID string) (string, error) {
+	item, exists, err := cp.instanceCache.GetByKey(instanceID)
+	if err != nil {
+		return "", errors.Wrap(err, "error fetching instance from instanceCache")
+	}
+	if exists {
+		return *item.(*core.Instance).CompartmentId, nil
+	}
+	nodeList, err := cp.NodeLister.List(labels.Everything())
+	if err != nil {
+		return "", errors.Wrap(err, "error listing all the nodes using node informer")
+	}
+	for _, node := range nodeList {
+		providerID, err := MapProviderIDToInstanceID(node.Spec.ProviderID)
+		if err != nil {
+			return "", errors.New("Failed to map providerID to instanceID")
+		}
+		if providerID == instanceID {
+			if compartmentID, ok := node.Annotations[CompartmentIDAnnotation]; ok {
+				if compartmentID != "" {
+					return compartmentID, nil
+				}
+			}
+		}
+	}
+	return "", errors.New("compartmentID annotation missing in the node. Would retry")
 }
 
 func (cp *CloudProvider) extractNodeAddresses(ctx context.Context, instanceID string) ([]api.NodeAddress, error) {
 	addresses := []api.NodeAddress{}
-	vnic, err := cp.client.Compute().GetPrimaryVNICForInstance(ctx, cp.config.CompartmentID, instanceID)
+	compartmentID, err := cp.getCompartmentIDByInstanceID(instanceID)
+	if err != nil {
+		return nil, err
+	}
+
+	vnic, err := cp.client.Compute().GetPrimaryVNICForInstance(ctx, compartmentID, instanceID)
 	if err != nil {
 		return nil, errors.Wrap(err, "GetPrimaryVNICForInstance")
 	}
@@ -98,7 +127,12 @@ func (cp *CloudProvider) extractNodeAddresses(ctx context.Context, instanceID st
 func (cp *CloudProvider) NodeAddresses(ctx context.Context, name types.NodeName) ([]api.NodeAddress, error) {
 	cp.logger.With("nodeName", name).Debug("Getting node addresses")
 
-	inst, err := cp.client.Compute().GetInstanceByNodeName(ctx, cp.config.CompartmentID, cp.config.VCNID, mapNodeNameToInstanceName(name))
+	nodeName := mapNodeNameToInstanceName(name)
+	compartmentID, err := cp.getCompartmentIDByNodeName(nodeName)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting CompartmentID from Node Name")
+	}
+	inst, err := cp.client.Compute().GetInstanceByNodeName(ctx, compartmentID, cp.config.VCNID, mapNodeNameToInstanceName(name))
 	if err != nil {
 		return nil, errors.Wrap(err, "GetInstanceByNodeName")
 	}
@@ -126,7 +160,15 @@ func (cp *CloudProvider) InstanceID(ctx context.Context, nodeName types.NodeName
 	cp.logger.With("nodeName", nodeName).Debug("Getting instance id for node name")
 
 	name := mapNodeNameToInstanceName(nodeName)
-	inst, err := cp.client.Compute().GetInstanceByNodeName(ctx, cp.config.CompartmentID, cp.config.VCNID, name)
+	compartmentID, err := cp.getCompartmentIDByNodeName(name)
+	if err != nil {
+		if  cp.config.CompartmentID != "" {
+			compartmentID = cp.config.CompartmentID
+		} else {
+			return "", errors.Wrap(err, "error getting CompartmentID from Node Name")
+		}
+	}
+	inst, err := cp.client.Compute().GetInstanceByNodeName(ctx, compartmentID, cp.config.VCNID, name)
 	if err != nil {
 		if client.IsNotFound(err) {
 			return "", cloudprovider.InstanceNotFound
@@ -139,8 +181,11 @@ func (cp *CloudProvider) InstanceID(ctx context.Context, nodeName types.NodeName
 // InstanceType returns the type of the specified instance.
 func (cp *CloudProvider) InstanceType(ctx context.Context, name types.NodeName) (string, error) {
 	cp.logger.With("nodeName", name).Debug("Getting instance type by node name")
-
-	inst, err := cp.client.Compute().GetInstanceByNodeName(ctx, cp.config.CompartmentID, cp.config.VCNID, mapNodeNameToInstanceName(name))
+	compartmentID, err := cp.getCompartmentIDByNodeName(mapNodeNameToInstanceName(name))
+	if err != nil {
+		return "", errors.Wrap(err, "error getting CompartmentID from Node Name")
+	}
+	inst, err := cp.client.Compute().GetInstanceByNodeName(ctx, compartmentID, cp.config.VCNID, mapNodeNameToInstanceName(name))
 	if err != nil {
 		return "", errors.Wrap(err, "GetInstanceByNodeName")
 	}
@@ -155,9 +200,20 @@ func (cp *CloudProvider) InstanceTypeByProviderID(ctx context.Context, providerI
 	if err != nil {
 		return "", errors.Wrap(err, "MapProviderIDToInstanceID")
 	}
+	item, exists, err := cp.instanceCache.GetByKey(instanceID)
+	if err != nil {
+		return "", errors.Wrap(err, "error fetching instance from instanceCache, will retry")
+	}
+	if exists {
+		return *item.(*core.Instance).Shape, nil
+	}
+	cp.logger.Debug("Unable to find the instance information from instanceCache. Calling OCI API")
 	inst, err := cp.client.Compute().GetInstance(ctx, instanceID)
 	if err != nil {
 		return "", errors.Wrap(err, "GetInstance")
+	}
+	if err := cp.instanceCache.Add(inst); err != nil {
+		return "", errors.Wrap(err, "failed to add instance in instanceCache")
 	}
 	return *inst.Shape, nil
 }
@@ -179,6 +235,7 @@ func (cp *CloudProvider) CurrentNodeName(ctx context.Context, hostname string) (
 // provider id still is running. If false is returned with no error, the
 // instance will be immediately deleted by the cloud controller manager.
 func (cp *CloudProvider) InstanceExistsByProviderID(ctx context.Context, providerID string) (bool, error) {
+	//Please do not try to optimise it by using InstanceCache because we prefer correctness over efficiency here
 	cp.logger.With("instanceID", providerID).Debug("Checking instance exists by provider id")
 	instanceID, err := MapProviderIDToInstanceID(providerID)
 	if err != nil {
@@ -197,6 +254,7 @@ func (cp *CloudProvider) InstanceExistsByProviderID(ctx context.Context, provide
 
 // InstanceShutdownByProviderID returns true if the instance is shutdown in cloudprovider.
 func (cp *CloudProvider) InstanceShutdownByProviderID(ctx context.Context, providerID string) (bool, error) {
+	//Please do not try to optimise it by using InstanceCache because we prefer correctness over efficiency here
 	cp.logger.With("instanceID", providerID).Debug("Checking instance is stopped by provider id")
 	instanceID, err := MapProviderIDToInstanceID(providerID)
 	if err != nil {
@@ -209,4 +267,19 @@ func (cp *CloudProvider) InstanceShutdownByProviderID(ctx context.Context, provi
 	}
 
 	return client.IsInstanceInStoppedState(instance), nil
+}
+
+func (cp *CloudProvider) getCompartmentIDByNodeName(nodeName string) (string, error) {
+	node, err := cp.NodeLister.Get(nodeName)
+	if err != nil {
+		cp.logger.Errorf("Error getting node using node informer %v", err)
+		return "", errors.Wrap(err, "error getting node using node informer")
+	}
+	if compartmentID, present := node.ObjectMeta.Annotations[CompartmentIDAnnotation]; present {
+		if compartmentID != "" {
+			return compartmentID, nil
+		}
+	}
+	cp.logger.Debug("CompartmentID annotation is not present")
+	return "", errors.New("compartmentID annotation missing in the node. Would retry")
 }

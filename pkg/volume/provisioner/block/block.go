@@ -17,6 +17,10 @@ package block
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strconv"
+	"time"
+
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
 	"github.com/oracle/oci-go-sdk/common"
@@ -27,9 +31,7 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"regexp"
 	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
-	"strconv"
 )
 
 const (
@@ -41,6 +43,7 @@ const (
 	FSType                    = "fsType"
 	volumeRoundingUpEnabled   = "volumeRoundingUpEnabled"
 	volumeBackupOCIDPrefixExp = `^ocid[v]?[\d+]?[\.:]volumebackup[\.:]`
+	timeout                   = time.Minute * 3
 )
 
 // blockProvisioner is the internal provisioner for OCI block volumes
@@ -107,7 +110,8 @@ func volumeRoundingEnabled(param map[string]string) bool {
 
 // Provision creates an OCI block volume
 func (block *blockProvisioner) Provision(options controller.ProvisionOptions, ad *identity.AvailabilityDomain) (*v1.PersistentVolume, error) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 	for _, accessMode := range options.PVC.Spec.AccessModes {
 		if accessMode != v1.ReadWriteOnce {
 			return nil, fmt.Errorf("invalid access mode %v specified. Only %v is supported", accessMode, v1.ReadWriteOnce)
@@ -155,7 +159,7 @@ func (block *blockProvisioner) Provision(options controller.ProvisionOptions, ad
 	}
 
 	//make sure this method is idempotent by checking existence of volume with same name.
-	volumes, err := block.client.BlockStorage().GetVolumesByName(context.Background(), string(options.PVC.UID), block.compartmentID)
+	volumes, err := block.client.BlockStorage().GetVolumesByName(ctx, string(options.PVC.UID), block.compartmentID)
 	if err != nil {
 		logger.Error("Failed to find existence of volume %s", err)
 		return nil, fmt.Errorf("failed to check existence of volume %v", err)
@@ -180,12 +184,12 @@ func (block *blockProvisioner) Provision(options controller.ProvisionOptions, ad
 		volume, err = block.client.BlockStorage().CreateVolume(ctx, volumeDetails)
 		if err != nil {
 			logger.With("Compartment Id", block.compartmentID).Error("Failed to create volume %s", err)
-			return nil, err
+			return nil, errors.Wrap(err, "Failed to create volume")
 		}
 	}
 
 	logger.With("volumeID", *volume.Id).Info("Waiting for volume to become available.")
-	volume, err = block.client.BlockStorage().AwaitVolumeAvailable(ctx, *volume.Id)
+	volume, err = block.client.BlockStorage().AwaitVolumeAvailableORTimeout(ctx, *volume.Id)
 	if err != nil {
 		_ = block.client.BlockStorage().DeleteVolume(ctx, *volume.Id)
 		return nil, errors.Wrap(err, "waiting for volume to become available")

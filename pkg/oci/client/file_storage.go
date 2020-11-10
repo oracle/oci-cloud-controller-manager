@@ -52,7 +52,10 @@ func (c *client) CreateFileSystem(ctx context.Context, details fss.CreateFileSys
 		return nil, RateLimitError(false, "CreateFileSystem")
 	}
 
-	resp, err := c.filestorage.CreateFileSystem(ctx, fss.CreateFileSystemRequest{CreateFileSystemDetails: details})
+	resp, err := c.filestorage.CreateFileSystem(ctx, fss.CreateFileSystemRequest{
+		CreateFileSystemDetails: details,
+		RequestMetadata:         c.requestMetadata,
+	})
 	incRequestCounter(err, createVerb, fileSystemResource)
 
 	if err != nil {
@@ -67,7 +70,10 @@ func (c *client) GetFileSystem(ctx context.Context, id string) (*fss.FileSystem,
 		return nil, RateLimitError(false, "GetFileSystem")
 	}
 
-	resp, err := c.filestorage.GetFileSystem(ctx, fss.GetFileSystemRequest{FileSystemId: &id})
+	resp, err := c.filestorage.GetFileSystem(ctx, fss.GetFileSystemRequest{
+		FileSystemId:    &id,
+		RequestMetadata: c.requestMetadata,
+	})
 	incRequestCounter(err, getVerb, fileSystemResource)
 
 	if err != nil {
@@ -117,6 +123,7 @@ func (c *client) GetFileSystemSummaryByDisplayName(ctx context.Context, compartm
 		CompartmentId:      &compartmentID,
 		AvailabilityDomain: &ad,
 		DisplayName:        &displayName,
+		RequestMetadata:    c.requestMetadata,
 	})
 	incRequestCounter(err, listVerb, fileSystemResource)
 	if err != nil {
@@ -138,7 +145,10 @@ func (c *client) DeleteFileSystem(ctx context.Context, id string) error {
 		return RateLimitError(true, "DeleteFileSystem")
 	}
 
-	_, err := c.filestorage.DeleteFileSystem(ctx, fss.DeleteFileSystemRequest{FileSystemId: &id})
+	_, err := c.filestorage.DeleteFileSystem(ctx, fss.DeleteFileSystemRequest{
+		FileSystemId:    &id,
+		RequestMetadata: c.requestMetadata,
+	})
 	incRequestCounter(err, deleteVerb, fileSystemResource)
 
 	if err != nil {
@@ -153,7 +163,10 @@ func (c *client) GetMountTarget(ctx context.Context, id string) (*fss.MountTarge
 		return nil, RateLimitError(false, "GetMountTarget")
 	}
 
-	resp, err := c.filestorage.GetMountTarget(ctx, fss.GetMountTargetRequest{MountTargetId: &id})
+	resp, err := c.filestorage.GetMountTarget(ctx, fss.GetMountTargetRequest{
+		MountTargetId:   &id,
+		RequestMetadata: c.requestMetadata,
+	})
 	incRequestCounter(err, getVerb, mountTargetResource)
 
 	if err != nil {
@@ -200,7 +213,10 @@ func (c *client) CreateExport(ctx context.Context, details fss.CreateExportDetai
 		return nil, RateLimitError(false, "CreateExport")
 	}
 
-	resp, err := c.filestorage.CreateExport(ctx, fss.CreateExportRequest{CreateExportDetails: details})
+	resp, err := c.filestorage.CreateExport(ctx, fss.CreateExportRequest{
+		CreateExportDetails: details,
+		RequestMetadata:     c.requestMetadata,
+	})
 	incRequestCounter(err, createVerb, exportResource)
 
 	if err != nil {
@@ -216,7 +232,10 @@ func (c *client) GetExport(ctx context.Context, id string) (*fss.Export, error) 
 		return nil, RateLimitError(false, "GetExport")
 	}
 
-	resp, err := c.filestorage.GetExport(ctx, fss.GetExportRequest{ExportId: &id})
+	resp, err := c.filestorage.GetExport(ctx, fss.GetExportRequest{
+		ExportId:        &id,
+		RequestMetadata: c.requestMetadata,
+	})
 	incRequestCounter(err, getVerb, exportResource)
 
 	if err != nil {
@@ -235,10 +254,11 @@ func (c *client) FindExport(ctx context.Context, compartmentID, fsID, exportSetI
 			return nil, RateLimitError(false, "ListExports")
 		}
 		resp, err := c.filestorage.ListExports(ctx, fss.ListExportsRequest{
-			CompartmentId: &compartmentID,
-			FileSystemId:  &fsID,
-			ExportSetId:   &exportSetID,
-			Page:          page,
+			CompartmentId:   &compartmentID,
+			FileSystemId:    &fsID,
+			ExportSetId:     &exportSetID,
+			Page:            page,
+			RequestMetadata: c.requestMetadata,
 		})
 		incRequestCounter(err, listVerb, exportResource)
 		if err != nil {
@@ -293,7 +313,10 @@ func (c *client) DeleteExport(ctx context.Context, id string) error {
 		return RateLimitError(true, "DeleteExport")
 	}
 
-	_, err := c.filestorage.DeleteExport(ctx, fss.DeleteExportRequest{ExportId: &id})
+	_, err := c.filestorage.DeleteExport(ctx, fss.DeleteExportRequest{
+		ExportId:        &id,
+		RequestMetadata: c.requestMetadata,
+	})
 	incRequestCounter(err, deleteVerb, exportResource)
 
 	if err != nil {

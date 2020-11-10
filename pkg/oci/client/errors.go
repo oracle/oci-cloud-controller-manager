@@ -15,13 +15,25 @@
 package client
 
 import (
+	"math"
 	"net/http"
+	"time"
 
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/pkg/errors"
 )
 
 var errNotFound = errors.New("not found")
+
+const (
+	HTTP400RelatedResourceNotAuthorizedOrNotFoundCode = "RelatedResourceNotAuthorizedOrNotFound"
+	HTTP401NotAuthenticatedCode                       = "NotAuthenticated"
+	HTTP404NotAuthorizedOrNotFoundCode                = "NotAuthorizedOrNotFound"
+	HTTP409IncorrectStateCode                         = "IncorrectState"
+	HTTP409NotAuthorizedOrResourceAlreadyExistsCode   = "NotAuthorizedOrResourceAlreadyExists"
+	HTTP429TooManyRequestsCode                        = "TooManyRequests"
+	HTTP500InternalServerErrorCode                    = "InternalServerError"
+)
 
 // IsNotFound returns true if the given error indicates that a resource could
 // not be found.
@@ -39,7 +51,7 @@ func IsNotFound(err error) bool {
 	return ok && serviceErr.GetHTTPStatusCode() == http.StatusNotFound
 }
 
-// IsRetryable returns true if the given error is retriable.
+//IsRetryable returns true if the given error is retriable.
 func IsRetryable(err error) bool {
 	if err == nil {
 		return false
@@ -47,18 +59,21 @@ func IsRetryable(err error) bool {
 
 	err = errors.Cause(err)
 	serviceErr, ok := common.IsServiceError(err)
-	return ok && serviceErr.GetHTTPStatusCode() == http.StatusTooManyRequests
-}
-
-// IsConflict returns true if the given error is a conflict.
-func IsConflict(err error) bool {
-	if err == nil {
+	if !ok {
 		return false
 	}
 
-	err = errors.Cause(err)
-	serviceErr, ok := common.IsServiceError(err)
-	return ok && serviceErr.GetHTTPStatusCode() == http.StatusConflict
+	return isRetryableServiceError(serviceErr)
+}
+
+func isRetryableServiceError(serviceErr common.ServiceError) bool {
+	return ((serviceErr.GetHTTPStatusCode() == http.StatusBadRequest) && (serviceErr.GetCode() == HTTP400RelatedResourceNotAuthorizedOrNotFoundCode)) ||
+		((serviceErr.GetHTTPStatusCode() == http.StatusUnauthorized) && (serviceErr.GetCode() == HTTP401NotAuthenticatedCode)) ||
+		((serviceErr.GetHTTPStatusCode() == http.StatusNotFound) && (serviceErr.GetCode() == HTTP404NotAuthorizedOrNotFoundCode)) ||
+		((serviceErr.GetHTTPStatusCode() == http.StatusConflict) && (serviceErr.GetCode() == HTTP409IncorrectStateCode)) ||
+		((serviceErr.GetHTTPStatusCode() == http.StatusConflict) && (serviceErr.GetCode() == HTTP409NotAuthorizedOrResourceAlreadyExistsCode)) ||
+		((serviceErr.GetHTTPStatusCode() == http.StatusTooManyRequests) && (serviceErr.GetCode() == HTTP429TooManyRequestsCode)) ||
+		((serviceErr.GetHTTPStatusCode() == http.StatusInternalServerError) && (serviceErr.GetCode() == HTTP500InternalServerErrorCode))
 }
 
 // RateLimitError produces an Errorf for rate limiting.
@@ -68,4 +83,27 @@ func RateLimitError(isWrite bool, opName string) error {
 		opType = "write"
 	}
 	return errors.Errorf("rate limited(%s) for operation: %s", opType, opName)
+}
+
+func newRetryPolicy() *common.RetryPolicy {
+	return NewRetryPolicyWithMaxAttempts(uint(2))
+}
+
+// NewRetryPolicyWithMaxAttempts returns a RetryPolicy with the specified max retryAttempts
+func NewRetryPolicyWithMaxAttempts(retryAttempts uint) *common.RetryPolicy {
+	isRetryableOperation := func(r common.OCIOperationResponse) bool {
+		return IsRetryable(r.Error)
+	}
+
+	nextDuration := func(r common.OCIOperationResponse) time.Duration {
+		// you might want wait longer for next retry when your previous one failed
+		// this function will return the duration as:
+		// 1s, 2s, 4s, 8s, 16s, 32s, 64s etc...
+		return time.Duration(math.Pow(float64(2), float64(r.AttemptNumber-1))) * time.Second
+	}
+
+	policy := common.NewRetryPolicy(
+		retryAttempts, isRetryableOperation, nextDuration,
+	)
+	return &policy
 }

@@ -19,6 +19,8 @@ export CLUSTER_KUBECONFIG=<file path to your cluster's kubeconfig>
 export CLOUD_CONFIG=<path that points to cloud-provider.yaml for your cluster>
 ```
 
+Then run
+
 ```bash
 make run-ccm-e2e-tests-local
 ```
