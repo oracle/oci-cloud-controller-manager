@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/oracle/oci-go-sdk/core"
+	"github.com/oracle/oci-go-sdk/v31/core"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
@@ -162,7 +162,7 @@ func (cp *CloudProvider) InstanceID(ctx context.Context, nodeName types.NodeName
 	name := mapNodeNameToInstanceName(nodeName)
 	compartmentID, err := cp.getCompartmentIDByNodeName(name)
 	if err != nil {
-		if  cp.config.CompartmentID != "" {
+		if cp.config.CompartmentID != "" {
 			compartmentID = cp.config.CompartmentID
 		} else {
 			return "", errors.Wrap(err, "error getting CompartmentID from Node Name")

@@ -2,8 +2,11 @@ package driver
 
 import (
 	"context"
+	"errors"
+	"regexp"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/util/iscsi"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util/disk"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -34,18 +37,43 @@ func (d *NodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolu
 
 	logger := d.logger.With("volumeId", req.VolumeId, "stagingPath", req.StagingTargetPath)
 
-	scsiInfo, err := extractISCSIInformation(req.PublishContext)
-	if err != nil {
-		logger.With(zap.Error(err)).Error("Failed to get SCSI info from publish context.")
-		return nil, status.Error(codes.InvalidArgument, "PublishContext is invalid.")
+	attachment, ok := req.PublishContext[attachmentType]
+
+	if !ok {
+		logger.Error("Unable to get the attachmentType from the attribute list, assuming iscsi")
+		attachment = attachmentTypeISCSI
+	}
+	var devicePath string
+	var mountHandler disk.Interface
+
+	switch attachment {
+	case attachmentTypeISCSI:
+		scsiInfo, err := extractISCSIInformation(req.PublishContext)
+		if err != nil {
+			logger.With(zap.Error(err)).Error("Failed to get SCSI info from publish context.")
+			return nil, status.Error(codes.InvalidArgument, "PublishContext is invalid.")
+		}
+
+		// Get the device path using the publish context
+		devicePath = getDevicePath(scsiInfo)
+
+		mountHandler = disk.NewFromISCSIDisk(d.logger, scsiInfo)
+		logger.With("devicePath", devicePath).Info("starting to stage iSCSI Mounting.")
+
+	case attachmentTypeParavirtualized:
+		devicePath, ok = req.PublishContext[device]
+		if !ok {
+			logger.Error("Unable to get the device from the attribute list")
+			return nil, status.Error(codes.InvalidArgument, "Unable to get the device from the attribute list")
+		}
+		mountHandler = disk.NewFromPVDisk(d.logger)
+		logger.With("devicePath", devicePath).Info("starting to stage paravirtualized Mounting.")
+	default:
+		logger.Error("unknown attachment type. supported attachment types are iscsi and paravirtualized")
+		return nil, status.Error(codes.InvalidArgument, "unknown attachment type. supported attachment types are iscsi and paravirtualized")
 	}
 
-	// Get the device path using the publish context
-	devicePath := getDevicePath(scsiInfo)
-
-	iSCSIMounter := iscsi.NewFromISCSIDisk(d.logger, scsiInfo)
-
-	isMounted, oErr := iSCSIMounter.DeviceOpened(devicePath)
+	isMounted, oErr := mountHandler.DeviceOpened(devicePath)
 	if oErr != nil {
 		logger.With(zap.Error(oErr)).Error("getting error to get the details about volume is already mounted or not.")
 		return nil, status.Error(codes.Internal, oErr.Error())
@@ -54,19 +82,19 @@ func (d *NodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolu
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
-	err = iSCSIMounter.AddToDB()
+	err := mountHandler.AddToDB()
 	if err != nil {
 		logger.With(zap.Error(err)).Error("failed to add the iSCSI node record.")
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	err = iSCSIMounter.SetAutomaticLogin()
+	err = mountHandler.SetAutomaticLogin()
 	if err != nil {
 		logger.With(zap.Error(err)).Error("failed to set the iSCSI node to automatically login.")
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	err = iSCSIMounter.Login()
+	err = mountHandler.Login()
 	if err != nil {
 		logger.With(zap.Error(err)).Error("failed to log into the iSCSI target.")
 		return nil, status.Error(codes.Internal, err.Error())
@@ -82,15 +110,16 @@ func (d *NodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolu
 
 	fsType := validateFsType(logger, mnt.FsType)
 
-	logger.With("device path", devicePath, "staging target path", req.StagingTargetPath,
-		"fs type", fsType).Info("mounting the volume to staging path.")
-	err = iSCSIMounter.FormatAndMount(devicePath, req.StagingTargetPath, fsType, options)
+	logger.With("devicePath", devicePath,
+		"fsType", fsType).Info("mounting the volume to staging path.")
+	err = mountHandler.FormatAndMount(devicePath, req.StagingTargetPath, fsType, options)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("failed to format and mount volume to staging path.")
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	logger.With("device path", devicePath, "staging target path", req.StagingTargetPath,
-		"fs type", fsType).Info("Mounting the volume to staging path is completed.")
+	logger.With("devicePath", devicePath, "fsType", fsType, "attachmentType", attachment).
+		Info("Mounting the volume to staging path is completed.")
+
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
@@ -106,21 +135,41 @@ func (d *NodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstage
 
 	logger := d.logger.With("volumeId", req.VolumeId, "stagingPath", req.StagingTargetPath)
 
-	scsiInfo, err := extractISCSIInformationFromMountPath(d.logger, req.GetStagingTargetPath())
+	diskPath, err := disk.GetDiskPathFromMountPath(d.logger, req.GetStagingTargetPath())
+
 	if err != nil {
-		logger.With(zap.Error(err)).Error("failed to ISCSI info.")
+		logger.With(zap.Error(err)).With("mountPath", req.GetStagingTargetPath()).Error("unable to get diskPath from mount path")
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	if scsiInfo == nil {
-		logger.Warn("unable to get the ISCSI info")
-		return &csi.NodeUnstageVolumeResponse{}, nil
+
+	attachmentType, devicePath, err := getDevicePathAndAttachmentType(d.logger, diskPath)
+	if err != nil {
+		logger.With(zap.Error(err)).With("diskPath", diskPath).Error("unable to determine the attachment type")
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	iSCSIMounter := iscsi.NewFromISCSIDisk(d.logger, scsiInfo)
-
-	devicePath := getDevicePath(scsiInfo)
-
-	isMounted, oErr := iSCSIMounter.DeviceOpened(devicePath)
+	var mountHandler disk.Interface
+	switch attachmentType {
+	case attachmentTypeISCSI:
+		scsiInfo, err := extractISCSIInformationFromMountPath(d.logger, diskPath)
+		if err != nil {
+			logger.With(zap.Error(err)).Error("failed to ISCSI info.")
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		if scsiInfo == nil {
+			logger.Warn("unable to get the ISCSI info")
+			return &csi.NodeUnstageVolumeResponse{}, nil
+		}
+		mountHandler = disk.NewFromISCSIDisk(d.logger, scsiInfo)
+		logger.Info("starting to unsatge iscsi Mounting.")
+	case attachmentTypeParavirtualized:
+		mountHandler = disk.NewFromPVDisk(d.logger)
+		logger.Info("starting to unsatge paravirtualized Mounting.")
+	default:
+		logger.Error("unknown attachment type. supported attachment types are iscsi and paravirtualized")
+		return nil, status.Error(codes.InvalidArgument, "unknown attachment type. supported attachment types are iscsi and paravirtualized")
+	}
+	isMounted, oErr := mountHandler.DeviceOpened(devicePath)
 	if oErr != nil {
 		logger.With(zap.Error(oErr)).Error("getting error to get the details about volume is already mounted or not.")
 		return nil, status.Error(codes.Internal, oErr.Error())
@@ -129,26 +178,26 @@ func (d *NodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstage
 		return &csi.NodeUnstageVolumeResponse{}, nil
 	}
 
-	err = iSCSIMounter.UnmountPath(req.StagingTargetPath)
+	err = mountHandler.UnmountPath(req.StagingTargetPath)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("failed to unmount the staging path")
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	err = iSCSIMounter.Logout()
+	err = mountHandler.Logout()
 	if err != nil {
 		logger.With(zap.Error(err)).Error("failed to logout from the iSCSI target")
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	err = iSCSIMounter.RemoveFromDB()
+	err = mountHandler.RemoveFromDB()
 	if err != nil {
 		logger.With(zap.Error(err)).Error("failed to remove the iSCSI node record")
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	logger.With("device path", devicePath, "staging target path",
-		req.StagingTargetPath).Info("Un-mounting the volume from staging path is completed.")
+	logger.With("devicePath", devicePath, "stagingPath",
+		req.StagingTargetPath, "attachmentType", attachmentType).Info("Un-mounting the volume from staging path is completed.")
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
 
@@ -176,14 +225,31 @@ func (d *NodeDriver) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 
 	logger := d.logger.With("volumeId", req.VolumeId, "targetPath", req.TargetPath)
 
-	scsiInfo, err := extractISCSIInformation(req.PublishContext)
-	if err != nil {
-		logger.With(zap.Error(err)).Error("Failed to get iSCSI info from publish context")
-		return nil, status.Error(codes.InvalidArgument, "PublishContext is invalid")
+	attachment, ok := req.PublishContext[attachmentType]
+	if !ok {
+		logger.Error("Unable to get the attachmentType from the attribute list, assuming iscsi")
+		attachment = attachmentTypeISCSI
 	}
 
-	//iSCSIMounter := iscsi.New(d.logger, "", "", 0)
-	iSCSIMounter := iscsi.NewFromISCSIDisk(logger, scsiInfo)
+	var mountHandler disk.Interface
+
+	switch attachment {
+	case attachmentTypeISCSI:
+		scsiInfo, err := extractISCSIInformation(req.PublishContext)
+		if err != nil {
+			logger.With(zap.Error(err)).Error("Failed to get iSCSI info from publish context")
+			return nil, status.Error(codes.InvalidArgument, "PublishContext is invalid")
+		}
+		mountHandler = disk.NewFromISCSIDisk(logger, scsiInfo)
+		logger.Info("starting to publish iSCSI Mounting.")
+
+	case attachmentTypeParavirtualized:
+		mountHandler = disk.NewFromPVDisk(d.logger)
+		logger.Info("starting to publish paravirtualized Mounting.")
+	default:
+		logger.Error("unknown attachment type. supported attachment types are iscsi and paravirtualized")
+		return nil, status.Error(codes.InvalidArgument, "unknown attachment type. supported attachment types are iscsi and paravirtualized")
+	}
 
 	mnt := req.VolumeCapability.GetMount()
 	options := mnt.MountFlags
@@ -195,13 +261,14 @@ func (d *NodeDriver) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 
 	fsType := validateFsType(logger, mnt.FsType)
 
-	err = iSCSIMounter.Mount(req.StagingTargetPath, req.TargetPath, fsType, options)
+	err := mountHandler.Mount(req.StagingTargetPath, req.TargetPath, fsType, options)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("failed to format and mount.")
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	logger.Info("Publish volume to the Node is Completed.")
+	logger.With("attachmentType", attachment).Info("Publish volume to the Node is Completed.")
+
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
@@ -217,22 +284,60 @@ func (d *NodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpub
 
 	logger := d.logger.With("volumeId", req.VolumeId, "targetPath", req.TargetPath)
 
-	scsiInfo, _ := extractISCSIInformationFromMountPath(d.logger, req.TargetPath)
-	if scsiInfo == nil {
-		logger.Warn("unable to get the ISCSI info")
-		return &csi.NodeUnpublishVolumeResponse{}, nil
+	diskPath, err := disk.GetDiskPathFromMountPath(d.logger, req.TargetPath)
+	if err != nil {
+		logger.With(zap.Error(err)).With("mountPath", req.TargetPath).Error("unable to get diskPath from mount path")
+		return nil, status.Error(codes.Internal, err.Error())
 	}
-	d.logger.With("ISCSIInfo", scsiInfo, "Mount Path", req.GetTargetPath()).Info("Found ISCSIInfo for NodeUnpublishVolume.")
 
-	iSCSIMounter := iscsi.NewFromISCSIDisk(d.logger, scsiInfo)
+	attachmentType, _, err := getDevicePathAndAttachmentType(d.logger, diskPath)
+	if err != nil {
+		logger.With(zap.Error(err)).With("diskPath", diskPath).Error("unable to determine the attachment type")
+		return nil, status.Error(codes.Internal, err.Error())
+	}
 
-	if err := iSCSIMounter.UnmountPath(req.TargetPath); err != nil {
+	var mountHandler disk.Interface
+	switch attachmentType {
+	case attachmentTypeISCSI:
+		scsiInfo, _ := extractISCSIInformationFromMountPath(d.logger, diskPath)
+		if scsiInfo == nil {
+			logger.Warn("unable to get the ISCSI info")
+			return &csi.NodeUnpublishVolumeResponse{}, nil
+		}
+		mountHandler = disk.NewFromISCSIDisk(d.logger, scsiInfo)
+		d.logger.With("ISCSIInfo", scsiInfo, "mountPath", req.GetTargetPath()).Info("Found ISCSIInfo for NodeUnpublishVolume.")
+	case attachmentTypeParavirtualized:
+		mountHandler = disk.NewFromPVDisk(d.logger)
+		logger.Info("starting to unpublish paravirtualized Mounting.")
+	default:
+		logger.Error("unknown attachment type. supported attachment types are iscsi and paravirtualized")
+		return nil, status.Error(codes.InvalidArgument, "unknown attachment type. supported attachment types are iscsi and paravirtualized")
+	}
+
+	if err := mountHandler.UnmountPath(req.TargetPath); err != nil {
 		logger.With(zap.Error(err)).Error("failed to unmount the target path, error")
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	logger.Info("Un-publish volume from the Node is Completed.")
 	return &csi.NodeUnpublishVolumeResponse{}, nil
+}
+
+func getDevicePathAndAttachmentType(logger *zap.SugaredLogger, path []string) (string, string, error) {
+	for _, diskByPath := range path {
+		matched, _ := regexp.MatchString(diskByPathPatternPV, diskByPath)
+		if matched {
+			return attachmentTypeParavirtualized, diskByPath, nil
+		}
+	}
+	for _, diskByPath := range path {
+		matched, _ := regexp.MatchString(diskByPathPatternISCSI, diskByPath)
+		if matched {
+			return attachmentTypeISCSI, diskByPath, nil
+		}
+	}
+
+	return "", "", errors.New("unable to determine the attachment type")
 }
 
 // NodeGetCapabilities returns the supported capabilities of the node server

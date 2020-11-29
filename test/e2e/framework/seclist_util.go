@@ -19,7 +19,7 @@ import (
 	"time"
 
 	client "github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	core "github.com/oracle/oci-go-sdk/core"
+	core "github.com/oracle/oci-go-sdk/v31/core"
 )
 
 // CountSinglePortSecListRules counts the number of 'single port'

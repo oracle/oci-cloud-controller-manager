@@ -9,11 +9,11 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-go-sdk/common"
-	"github.com/oracle/oci-go-sdk/core"
-	"github.com/oracle/oci-go-sdk/filestorage"
-	"github.com/oracle/oci-go-sdk/identity"
-	"github.com/oracle/oci-go-sdk/loadbalancer"
+	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v31/core"
+	"github.com/oracle/oci-go-sdk/v31/filestorage"
+	"github.com/oracle/oci-go-sdk/v31/identity"
+	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"k8s.io/client-go/kubernetes"
@@ -22,6 +22,49 @@ import (
 const (
 	testMinimumVolumeSizeInBytes int64 = 50 * client.GiB
 )
+
+var (
+	inTransitEncryptionEnabled  = true
+	inTransitEncryptionDisabled = false
+	instances                   = map[string]*core.Instance{
+		"inTransitEnabled": {
+			LaunchOptions: &core.LaunchOptions{
+				IsPvEncryptionInTransitEnabled: &inTransitEncryptionEnabled,
+			},
+		},
+		"inTransitDisabled": {
+			LaunchOptions: &core.LaunchOptions{
+				IsPvEncryptionInTransitEnabled: &inTransitEncryptionDisabled,
+			},
+		},
+	}
+)
+
+type MockOCIClient struct{}
+
+func (MockOCIClient) Compute() client.ComputeInterface {
+	return &MockComputeClient{}
+}
+
+func (MockOCIClient) LoadBalancer() client.LoadBalancerInterface {
+	return &MockLoadBalancerClient{}
+}
+
+func (MockOCIClient) Networking() client.NetworkingInterface {
+	return &MockVirtualNetworkClient{}
+}
+
+func (MockOCIClient) BlockStorage() client.BlockStorageInterface {
+	return &MockBlockStorageClient{}
+}
+
+func (MockOCIClient) FSS() client.FileStorageInterface {
+	return &MockFileStorageClient{}
+}
+
+func (MockOCIClient) Identity() client.IdentityInterface {
+	return &MockIdentityClient{}
+}
 
 type MockBlockStorageClient struct {
 }
@@ -161,7 +204,12 @@ func (c *MockLoadBalancerClient) AwaitWorkRequest(ctx context.Context, id string
 func (c *MockLoadBalancerClient) CreateBackend(ctx context.Context, lbID, bsName string, details loadbalancer.BackendDetails) (string, error) {
 	return "", nil
 }
+
 func (c *MockLoadBalancerClient) DeleteBackend(ctx context.Context, lbID, bsName, name string) (string, error) {
+	return "", nil
+}
+
+func (c *MockLoadBalancerClient) UpdateLoadBalancerShape(ctx context.Context, lbID string, details loadbalancer.UpdateLoadBalancerShapeDetails) (string, error) {
 	return "", nil
 }
 
@@ -174,7 +222,10 @@ type MockComputeClient struct{}
 
 // GetInstance gets information about the specified instance.
 func (c *MockComputeClient) GetInstance(ctx context.Context, id string) (*core.Instance, error) {
-	return nil, nil
+	if instance, ok := instances[id]; ok {
+		return instance, nil
+	}
+	return nil, errors.New("instance not found")
 }
 
 // GetInstanceByNodeName gets the OCI instance corresponding to the given
@@ -192,6 +243,10 @@ func (c *MockComputeClient) FindVolumeAttachment(ctx context.Context, compartmen
 }
 
 func (c *MockComputeClient) FindActiveVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
+	return nil, nil
+}
+
+func (MockComputeClient) AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool) (core.VolumeAttachment, error) {
 	return nil, nil
 }
 
@@ -533,44 +588,44 @@ func Test_extractStorage(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "Nil CapacityRange",
-			args: args{capRange:  nil},
-			want: testMinimumVolumeSizeInBytes,
+			name:    "Nil CapacityRange",
+			args:    args{capRange: nil},
+			want:    testMinimumVolumeSizeInBytes,
 			wantErr: false,
 		},
 		{
-			name: "Empty CapacityRange",
-			args: args{capRange:  &csi.CapacityRange{}},
-			want: testMinimumVolumeSizeInBytes,
+			name:    "Empty CapacityRange",
+			args:    args{capRange: &csi.CapacityRange{}},
+			want:    testMinimumVolumeSizeInBytes,
 			wantErr: false,
 		},
 		{
 			name: "Limit bytes is less than required",
-			args: args{capRange:  &csi.CapacityRange{
-				RequiredBytes: 100*client.GiB,
-				LimitBytes: 50*client.GiB,
-				},
+			args: args{capRange: &csi.CapacityRange{
+				RequiredBytes: 100 * client.GiB,
+				LimitBytes:    50 * client.GiB,
 			},
-			want: 0,
+			},
+			want:    0,
 			wantErr: true,
 		},
 		{
 			name: "Required set and limit not set",
-			args: args{capRange:  &csi.CapacityRange{
-				RequiredBytes: 100*client.GiB,
+			args: args{capRange: &csi.CapacityRange{
+				RequiredBytes: 100 * client.GiB,
 			},
 			},
-			want: 100*client.GiB,
+			want:    100 * client.GiB,
 			wantErr: false,
 		},
 		{
 			name: "Required set and limit set",
-			args: args{capRange:  &csi.CapacityRange{
-				RequiredBytes: 70*client.GiB,
-				LimitBytes: 100*client.GiB,
+			args: args{capRange: &csi.CapacityRange{
+				RequiredBytes: 70 * client.GiB,
+				LimitBytes:    100 * client.GiB,
 			},
 			},
-			want: 100*client.GiB,
+			want:    100 * client.GiB,
 			wantErr: false,
 		},
 	}
@@ -583,6 +638,167 @@ func Test_extractStorage(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Errorf("extractStorage() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestExtractVolumeParameters(t *testing.T) {
+	tests := map[string]struct {
+		storageParameters map[string]string
+		volumeParameters  VolumeParameters
+		wantErr           bool
+	}{
+		"Wrong Attachment Type": {
+			storageParameters: map[string]string{
+				attachmentType: "foo",
+			},
+			volumeParameters: VolumeParameters{
+				diskEncryptionKey:   "",
+				attachmentParameter: make(map[string]string),
+			},
+			wantErr: true,
+		},
+		"StorageClass Parameters are empty": {
+			storageParameters: map[string]string{},
+			volumeParameters: VolumeParameters{
+				diskEncryptionKey:   "",
+				attachmentParameter: make(map[string]string),
+			},
+			wantErr: false,
+		},
+		"StorageClass with CMEK and attachment type paravirtualized": {
+			storageParameters: map[string]string{
+				attachmentType: attachmentTypeParavirtualized,
+				kmsKey:         "foo",
+			},
+			volumeParameters: VolumeParameters{
+				diskEncryptionKey: "foo",
+				attachmentParameter: map[string]string{
+					attachmentType: attachmentTypeParavirtualized,
+				},
+			},
+			wantErr: false,
+		},
+		"StorageClass with CMEK and attachment type iscsi": {
+			storageParameters: map[string]string{
+				attachmentType: attachmentTypeISCSI,
+				kmsKey:         "bar",
+			},
+			volumeParameters: VolumeParameters{
+				diskEncryptionKey: "bar",
+				attachmentParameter: map[string]string{
+					attachmentType: attachmentTypeISCSI,
+				},
+			},
+			wantErr: false,
+		},
+		"StorageClass with CMEK and attachment type IScsi(string casing is different)": {
+			storageParameters: map[string]string{
+				attachmentType: "IScsi",
+				kmsKey:         "bar",
+			},
+			volumeParameters: VolumeParameters{
+				diskEncryptionKey: "bar",
+				attachmentParameter: map[string]string{
+					attachmentType: attachmentTypeISCSI,
+				},
+			},
+			wantErr: false,
+		},
+		"StorageClass with CMEK and attachment type ParaVirtualized(string casing is different)": {
+			storageParameters: map[string]string{
+				attachmentType: "ParaVirtualized",
+				kmsKey:         "foo",
+			},
+			volumeParameters: VolumeParameters{
+				diskEncryptionKey: "foo",
+				attachmentParameter: map[string]string{
+					attachmentType: attachmentTypeParavirtualized,
+				},
+			},
+			wantErr: false,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			volumeParameters, err := extractVolumeParameters(tt.storageParameters)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("extractVolumeParameters() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(volumeParameters, tt.volumeParameters) {
+				t.Errorf("extractStorage() = %v, want %v", volumeParameters, tt.volumeParameters)
+			}
+		})
+	}
+}
+
+func TestGetAttachmentOptions(t *testing.T) {
+	tests := map[string]struct {
+		attachmentType         string
+		instanceID             string
+		volumeAttachmentOption VolumeAttachmentOption
+		wantErr                bool
+	}{
+		"PV attachment with instance in-transit encryption enabled": {
+			attachmentType: attachmentTypeParavirtualized,
+			instanceID:     "inTransitEnabled",
+			volumeAttachmentOption: VolumeAttachmentOption{
+				enableInTransitEncryption:    true,
+				useParavirtualizedAttachment: true,
+			},
+			wantErr: false,
+		},
+
+		"PV attachment with instance in-transit encryption disabled": {
+			attachmentType: attachmentTypeParavirtualized,
+			instanceID:     "inTransitDisabled",
+			volumeAttachmentOption: VolumeAttachmentOption{
+				enableInTransitEncryption:    false,
+				useParavirtualizedAttachment: true,
+			},
+			wantErr: false,
+		},
+		"ISCSI attachment with instance in-transit encryption enabled": {
+			attachmentType: attachmentTypeISCSI,
+			instanceID:     "inTransitEnabled",
+			volumeAttachmentOption: VolumeAttachmentOption{
+				enableInTransitEncryption:    true,
+				useParavirtualizedAttachment: true,
+			},
+			wantErr: false,
+		},
+		"ISCSI attachment with instance in-transit encryption disabled": {
+			attachmentType: attachmentTypeISCSI,
+			instanceID:     "inTransitDisabled",
+			volumeAttachmentOption: VolumeAttachmentOption{
+				enableInTransitEncryption:    false,
+				useParavirtualizedAttachment: false,
+			},
+			wantErr: false,
+		},
+		"API error": {
+			attachmentType:         attachmentTypeISCSI,
+			instanceID:             "foo",
+			volumeAttachmentOption: VolumeAttachmentOption{},
+			wantErr:                true,
+		},
+	}
+
+	computeClient := MockOCIClient{}.Compute()
+
+	for name, tt := range tests {
+
+		t.Run(name, func(t *testing.T) {
+			volumeAttachmentOption, err := getAttachmentOptions(context.Background(), computeClient, tt.attachmentType, tt.instanceID)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getAttachmentOptions() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(volumeAttachmentOption, tt.volumeAttachmentOption) {
+				t.Errorf("getAttachmentOptions() = %v, want %v", volumeAttachmentOption, tt.volumeAttachmentOption)
 			}
 		})
 	}

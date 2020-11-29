@@ -10,16 +10,16 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/container-storage-interface/spec/lib/go/csi"
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/metrics"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
-	"go.uber.org/zap"
 )
 
 const (
@@ -46,11 +46,12 @@ type Driver struct {
 
 // ControllerDriver implements CSI Controller interfaces
 type ControllerDriver struct {
-	KubeClient kubernetes.Interface
-	logger     *zap.SugaredLogger
-	config     *providercfg.Config
-	client     client.Interface
-	util       *Util
+	KubeClient   kubernetes.Interface
+	logger       *zap.SugaredLogger
+	config       *providercfg.Config
+	client       client.Interface
+	util         *Util
+	metricPusher *metrics.MetricPusher
 }
 
 // NodeDriver implements CSI Node interfaces
@@ -160,6 +161,19 @@ func (d *Driver) Run() error {
 	csi.RegisterIdentityServer(d.srv, d)
 	csi.RegisterControllerServer(d.srv, d)
 	csi.RegisterNodeServer(d.srv, d)
+
+	metricPusher, err := metrics.NewMetricPusher(d.logger)
+	if err != nil {
+		d.logger.With("error", err).Error("Metrics collection could not be enabled")
+		// disable metric collection
+		metricPusher = nil
+	}
+	if metricPusher != nil {
+		d.logger.Info("Metrics collection has been enabled")
+		d.metricPusher = metricPusher
+	} else {
+		d.logger.Info("Metrics collection is not enabled")
+	}
 
 	d.logger.Info("CSI ControllerDriver has started.")
 	return d.srv.Serve(listener)

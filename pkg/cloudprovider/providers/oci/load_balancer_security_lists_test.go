@@ -18,8 +18,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/oracle/oci-go-sdk/common"
-	"github.com/oracle/oci-go-sdk/core"
+	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v31/core"
 	"go.uber.org/zap"
 
 	"k8s.io/api/core/v1"

@@ -23,7 +23,7 @@ import (
 // NewStorageClassTemplate returns the default template for this jig, but
 // does not actually create the storage class. The default storage class has the same name
 // as the jig
-func (f *CloudProviderFramework) newStorageClassTemplate(name string, provisionerType string, parameters map[string]string, testLabels map[string]string) *storagev1beta1.StorageClass {
+func (f *CloudProviderFramework) newStorageClassTemplate(name string, provisionerType string, parameters map[string]string, testLabels map[string]string, volumeBindingMode *storagev1beta1.VolumeBindingMode) *storagev1beta1.StorageClass {
 	return &storagev1beta1.StorageClass{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "StorageClass",
@@ -33,20 +33,25 @@ func (f *CloudProviderFramework) newStorageClassTemplate(name string, provisione
 			Name:   name,
 			Labels: testLabels,
 		},
-		Provisioner: provisionerType,
-		Parameters:  parameters,
+		Provisioner:       provisionerType,
+		Parameters:        parameters,
+		VolumeBindingMode: volumeBindingMode,
 	}
 }
 
 // CreateStorageClassOrFail creates a new storage class based on the jig's defaults.
-func (f *CloudProviderFramework) CreateStorageClassOrFail(name string, provisionerType string, parameters map[string]string, testLabels map[string]string) string {
-	classTemp := f.newStorageClassTemplate(name, provisionerType, parameters, testLabels)
+func (f *CloudProviderFramework) CreateStorageClassOrFail(name string, provisionerType string, parameters map[string]string, testLabels map[string]string, bindingMode string) string {
+	volumeBindingMode := storagev1beta1.VolumeBindingImmediate
+	if bindingMode == "WaitForFirstConsumer" {
+		volumeBindingMode = storagev1beta1.VolumeBindingWaitForFirstConsumer
+	}
+	classTemp := f.newStorageClassTemplate(name, provisionerType, parameters, testLabels, &volumeBindingMode)
 
 	class, err := f.ClientSet.StorageV1beta1().StorageClasses().Create(classTemp)
 	if err != nil {
 		if apierrors.IsAlreadyExists(err) {
 			Logf("Storage Class already exists. Updating existing storage class.")
-			f.ClientSet.StorageV1beta1().StorageClasses().Update(f.newStorageClassTemplate(name, provisionerType, parameters, testLabels))
+			f.ClientSet.StorageV1beta1().StorageClasses().Update(f.newStorageClassTemplate(name, provisionerType, parameters, testLabels, &volumeBindingMode))
 			return name
 		}
 		Failf("Failed to create storage class %q: %v", name, err)

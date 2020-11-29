@@ -17,21 +17,22 @@ package oci
 import (
 	"context"
 	"errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"reflect"
 	"testing"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"k8s.io/apimachinery/pkg/labels"
 	listersv1 "k8s.io/client-go/listers/core/v1"
 
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-go-sdk/common"
-	"github.com/oracle/oci-go-sdk/core"
-	"github.com/oracle/oci-go-sdk/filestorage"
-	"github.com/oracle/oci-go-sdk/identity"
-	"github.com/oracle/oci-go-sdk/loadbalancer"
+	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v31/core"
+	"github.com/oracle/oci-go-sdk/v31/filestorage"
+	"github.com/oracle/oci-go-sdk/v31/identity"
+	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 )
@@ -187,27 +188,27 @@ var (
 					CompartmentIDAnnotation: "default",
 				},
 			},
-			Spec:   v1.NodeSpec{
-				ProviderID:          "default",
+			Spec: v1.NodeSpec{
+				ProviderID: "default",
 			},
 		},
 		"instance1": &v1.Node{
 			ObjectMeta: metav1.ObjectMeta{
-				Annotations:               map[string]string{
+				Annotations: map[string]string{
 					CompartmentIDAnnotation: "compartment1",
 				},
 			},
-			Spec:   v1.NodeSpec{
-				ProviderID:          "instance1",
+			Spec: v1.NodeSpec{
+				ProviderID: "instance1",
 			},
 		},
 	}
 
 	loadBalancers = map[string]*loadbalancer.LoadBalancer{
 		"privateLB": {
-			Id:                      common.String("privateLB"),
-			DisplayName:             common.String("privateLB"),
-			IpAddresses:             []loadbalancer.IpAddress{
+			Id:          common.String("privateLB"),
+			DisplayName: common.String("privateLB"),
+			IpAddresses: []loadbalancer.IpAddress{
 				{
 					IpAddress: common.String("10.0.50.5"),
 					IsPublic:  common.Bool(false),
@@ -215,9 +216,9 @@ var (
 			},
 		},
 		"privateLB-no-IP": {
-			Id:                      common.String("privateLB-no-IP"),
-			DisplayName:             common.String("privateLB-no-IP"),
-			IpAddresses:             []loadbalancer.IpAddress{},
+			Id:          common.String("privateLB-no-IP"),
+			DisplayName: common.String("privateLB-no-IP"),
+			IpAddresses: []loadbalancer.IpAddress{},
 		},
 	}
 )
@@ -282,6 +283,10 @@ func (MockComputeClient) GetPrimaryVNICForInstance(ctx context.Context, compartm
 }
 
 func (MockComputeClient) FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
+	return nil, nil
+}
+
+func (MockComputeClient) AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool) (core.VolumeAttachment, error) {
 	return nil, nil
 }
 
@@ -404,6 +409,10 @@ func (c *MockLoadBalancerClient) DeleteListener(ctx context.Context, lbID, name 
 
 func (c *MockLoadBalancerClient) AwaitWorkRequest(ctx context.Context, id string) (*loadbalancer.WorkRequest, error) {
 	return nil, nil
+}
+
+func (c *MockLoadBalancerClient) UpdateLoadBalancerShape(ctx context.Context, id string, details loadbalancer.UpdateLoadBalancerShapeDetails) (string, error) {
+	return "", nil
 }
 
 // MockBlockStorageClient mocks BlockStoargae client implementation
@@ -634,13 +643,13 @@ func TestInstanceID(t *testing.T) {
 			name: "get instance id from instance in the cache",
 			in:   "instance1",
 			out:  "instance1",
-			err: nil,
+			err:  nil,
 		},
 		{
 			name: "get instance id from instance not in the cache",
 			in:   "default",
 			out:  "default",
-			err: nil,
+			err:  nil,
 		},
 	}
 
@@ -676,13 +685,13 @@ func TestInstanceType(t *testing.T) {
 			name: "check node shape of instance in cache",
 			in:   "instance1",
 			out:  "VM.Standard1.2",
-			err: nil,
+			err:  nil,
 		},
 		{
 			name: "check node shape of instance not in cache",
 			in:   "default",
 			out:  "VM.Standard1.2",
-			err: nil,
+			err:  nil,
 		},
 	}
 
@@ -718,19 +727,19 @@ func TestInstanceTypeByProviderID(t *testing.T) {
 			name: "provider id without provider prefix",
 			in:   "instance1",
 			out:  "VM.Standard1.2",
-			err: nil,
+			err:  nil,
 		},
 		{
 			name: "provider id with provider prefix",
-			in:   providerPrefix+"instance1",
+			in:   providerPrefix + "instance1",
 			out:  "VM.Standard1.2",
-			err: nil,
+			err:  nil,
 		},
 		{
 			name: "provider id with provider prefix and instance not in cache",
-			in:   providerPrefix+"noncacheinstance",
+			in:   providerPrefix + "noncacheinstance",
 			out:  "VM.Standard1.2",
-			err: nil,
+			err:  nil,
 		},
 	}
 
@@ -773,7 +782,7 @@ func TestNodeAddressesByProviderID(t *testing.T) {
 		},
 		{
 			name: "provider id with provider prefix",
-			in:   providerPrefix+"basic-complete",
+			in:   providerPrefix + "basic-complete",
 			out: []v1.NodeAddress{
 				v1.NodeAddress{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
 				v1.NodeAddress{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
@@ -814,19 +823,19 @@ func TestInstanceExistsByProviderID(t *testing.T) {
 			name: "provider id without provider prefix",
 			in:   "instance1",
 			out:  true,
-			err: nil,
+			err:  nil,
 		},
 		{
 			name: "provider id with provider prefix",
-			in:   providerPrefix+"instance1",
+			in:   providerPrefix + "instance1",
 			out:  true,
-			err: nil,
+			err:  nil,
 		},
 		{
 			name: "provider id with provider prefix and instance not in cache",
-			in:   providerPrefix+"noncacheinstance",
+			in:   providerPrefix + "noncacheinstance",
 			out:  true,
-			err: nil,
+			err:  nil,
 		},
 	}
 
@@ -862,19 +871,19 @@ func TestInstanceShutdownByProviderID(t *testing.T) {
 			name: "provider id without provider prefix",
 			in:   "instance1",
 			out:  false,
-			err: nil,
+			err:  nil,
 		},
 		{
 			name: "provider id with provider prefix",
-			in:   providerPrefix+"instance1",
+			in:   providerPrefix + "instance1",
 			out:  false,
-			err: nil,
+			err:  nil,
 		},
 		{
 			name: "provider id with provider prefix and instance not in cache",
-			in:   providerPrefix+"noncacheinstance",
+			in:   providerPrefix + "noncacheinstance",
 			out:  false,
-			err: nil,
+			err:  nil,
 		},
 	}
 
@@ -909,20 +918,20 @@ func TestGetCompartmentIDByInstanceID(t *testing.T) {
 		{
 			name: "instance found in cache",
 			in:   "instance1",
-			out: "compartment1",
-			err: nil,
+			out:  "compartment1",
+			err:  nil,
 		},
 		{
 			name: "instance found in node lister",
 			in:   "default",
-			out: "default",
-			err: nil,
+			out:  "default",
+			err:  nil,
 		},
 		{
 			name: "instance neither found in cache nor node lister",
 			in:   "instancex",
-			out: "",
-			err: errors.New("compartmentID annotation missing in the node. Would retry"),
+			out:  "",
+			err:  errors.New("compartmentID annotation missing in the node. Would retry"),
 		},
 	}
 
@@ -962,6 +971,6 @@ func (s *mockNodeLister) Get(name string) (*v1.Node, error) {
 	return nil, nil
 }
 
-func (l *mockNodeLister) ListWithPredicate(predicate listersv1.NodeConditionPredicate) ([]*v1.Node, error) {
+func (s *mockNodeLister) ListWithPredicate(predicate listersv1.NodeConditionPredicate) ([]*v1.Node, error) {
 	return nil, nil
 }

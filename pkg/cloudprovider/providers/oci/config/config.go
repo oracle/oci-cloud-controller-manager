@@ -19,8 +19,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/oracle/oci-go-sdk/common"
-	"github.com/oracle/oci-go-sdk/common/auth"
+	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v31/common/auth"
 	"github.com/pkg/errors"
 
 	"go.uber.org/zap"
@@ -103,12 +103,26 @@ type RateLimiterConfig struct {
 	DisableRateLimiter   bool    `yaml:"disableRateLimiter"`
 }
 
+// MetricsConfig holds the configuration for collection metrics
+// which are pushed to OCI Monitoring. More details present at
+// https://docs.cloud.oracle.com/en-us/iaas/Content/Monitoring/Tasks/publishingcustommetrics.htm
+type MetricsConfig struct {
+	CompartmentID string `yaml:"compartmentID"`
+	Namespace     string `yaml:"namespace"`
+	ResourceGroup string `yaml:"resourceGroup"`
+	// +optional
+	// This prefix is added to all the metric names
+	Prefix string `yaml:"prefix"`
+}
+
 // Config holds the OCI cloud-provider config passed to Kubernetes components
 // via the --cloud-config option.
 type Config struct {
 	Auth         AuthConfig          `yaml:"auth"`
 	LoadBalancer *LoadBalancerConfig `yaml:"loadBalancer"`
 	RateLimiter  *RateLimiterConfig  `yaml:"rateLimiter"`
+	// Metrics collection is enabled when this configuration is provided
+	Metrics *MetricsConfig `yaml:"metrics"`
 
 	RegionKey string `yaml:"regionKey"`
 

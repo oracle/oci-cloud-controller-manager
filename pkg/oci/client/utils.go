@@ -19,7 +19,7 @@ import (
 	"strings"
 
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
-	"github.com/oracle/oci-go-sdk/common"
+	"github.com/oracle/oci-go-sdk/v31/common"
 	"go.uber.org/zap"
 	"k8s.io/client-go/util/flowcontrol"
 )

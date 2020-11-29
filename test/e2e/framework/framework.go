@@ -52,20 +52,21 @@ const (
 )
 
 var (
-	compartment1                 string
-	adlocation                   string
-	clusterkubeconfig            string // path to kubeconfig file
-	deleteNamespace              bool   // whether or not to delete test namespaces
-	cloudConfigFile              string // path to cloud provider config file
-	nodePortTest                 bool   // whether or not to test the connectivity of node ports.
-	ccmSeclistID                 string // The ocid of the loadbalancer subnet seclist. Optional.
-	k8sSeclistID                 string // The ocid of the k8s worker subnet seclist. Optional.
-	mntTargetOCID                string // Mount Target ID is specified to identify the mount target to be attached to the volumes. Optional.
-	nginx                        string // Image for nginx
-	netexec                      string // Image for netexec
-	busyBoxImage                 string // Image for busyBoxImage
-	centos                       string // Image for centos
-	imagePullRepo                string // Repo to pull images from. Will pull public images if not specified.
+	compartment1      string
+	adlocation        string
+	clusterkubeconfig string // path to kubeconfig file
+	deleteNamespace   bool   // whether or not to delete test namespaces
+	cloudConfigFile   string // path to cloud provider config file
+	nodePortTest      bool   // whether or not to test the connectivity of node ports.
+	ccmSeclistID      string // The ocid of the loadbalancer subnet seclist. Optional.
+	k8sSeclistID      string // The ocid of the k8s worker subnet seclist. Optional.
+	mntTargetOCID     string // Mount Target ID is specified to identify the mount target to be attached to the volumes. Optional.
+	nginx             string // Image for nginx
+	netexec           string // Image for netexec
+	busyBoxImage      string // Image for busyBoxImage
+	centos            string // Image for centos
+	imagePullRepo     string // Repo to pull images from. Will pull public images if not specified.
+	cmekKMSKey        string //KMS key for CMEK testing
 )
 
 func init() {
@@ -85,6 +86,7 @@ func init() {
 	flag.StringVar(&mntTargetOCID, "mnt-target-id", "", "Mount Target ID is specified to identify the mount target to be attached to the volumes")
 
 	flag.StringVar(&imagePullRepo, "image-pull-repo", "", "Repo to pull images from. Will pull public images if not specified.")
+	flag.StringVar(&cmekKMSKey, "cmek-kms-key", "", "KMS key to be used for CMEK testing")
 	flag.Parse()
 }
 
@@ -106,6 +108,7 @@ type Framework struct {
 	CloudConfigPath string
 
 	MntTargetOcid string
+	CMEKKMSKey    string
 }
 
 // New creates a new a framework that holds the context of the test
@@ -119,8 +122,9 @@ func NewWithConfig() *Framework {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	f := &Framework{
-		AdLocation:               adlocation,
-		MntTargetOcid:            mntTargetOCID,
+		AdLocation:    adlocation,
+		MntTargetOcid: mntTargetOCID,
+		CMEKKMSKey:    cmekKMSKey,
 	}
 
 	f.CloudConfigPath = cloudConfigFile
@@ -147,6 +151,8 @@ func (f *Framework) Initialize() {
 	Logf("OCI AdLabel: %s", f.AdLabel)
 	f.MntTargetOcid = mntTargetOCID
 	Logf("OCI Mount Target OCID: %s", f.MntTargetOcid)
+	f.CMEKKMSKey = cmekKMSKey
+	Logf("CMEK KMS Key: %s", f.CMEKKMSKey)
 	f.Compartment1 = compartment1
 	Logf("OCI compartment1 OCID: %s", f.Compartment1)
 	f.setImages()

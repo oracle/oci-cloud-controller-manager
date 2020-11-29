@@ -18,7 +18,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/oracle/oci-go-sdk/core"
+	"github.com/oracle/oci-go-sdk/v31/core"
 	"k8s.io/client-go/util/flowcontrol"
 )
 
@@ -170,6 +170,10 @@ func (c *mockComputeClient) AttachVolume(ctx context.Context, request core.Attac
 
 func (c *mockComputeClient) DetachVolume(ctx context.Context, request core.DetachVolumeRequest) (response core.DetachVolumeResponse, err error) {
 	return core.DetachVolumeResponse{}, nil
+}
+
+func (c *mockComputeClient) ListInstanceDevices(ctx context.Context, request core.ListInstanceDevicesRequest) (response core.ListInstanceDevicesResponse, err error) {
+	return core.ListInstanceDevicesResponse{}, nil
 }
 
 /* Mock NetworkClient interface implementations */

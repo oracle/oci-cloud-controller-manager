@@ -168,13 +168,14 @@ github.com/onsi/gomega/matchers/support/goraph/node
 github.com/onsi/gomega/matchers/support/goraph/util
 # github.com/opencontainers/go-digest v1.0.0-rc1
 github.com/opencontainers/go-digest
-# github.com/oracle/oci-go-sdk v0.0.0-00000000000000-857a54193bc062afe3933d02b38e3fe9d158f744
-github.com/oracle/oci-go-sdk/common
-github.com/oracle/oci-go-sdk/core
-github.com/oracle/oci-go-sdk/loadbalancer
-github.com/oracle/oci-go-sdk/common/auth
-github.com/oracle/oci-go-sdk/filestorage
-github.com/oracle/oci-go-sdk/identity
+# github.com/oracle/oci-go-sdk/v31 v31.0.0
+github.com/oracle/oci-go-sdk/v31/common
+github.com/oracle/oci-go-sdk/v31/core
+github.com/oracle/oci-go-sdk/v31/loadbalancer
+github.com/oracle/oci-go-sdk/v31/common/auth
+github.com/oracle/oci-go-sdk/v31/monitoring
+github.com/oracle/oci-go-sdk/v31/filestorage
+github.com/oracle/oci-go-sdk/v31/identity
 # github.com/pborman/uuid v1.2.0
 github.com/pborman/uuid
 # github.com/pelletier/go-toml v1.2.0
@@ -215,7 +216,7 @@ github.com/spf13/jwalterweatherman
 github.com/spf13/pflag
 # github.com/spf13/viper v1.3.2
 github.com/spf13/viper
-# github.com/stretchr/testify v1.4.0
+# github.com/stretchr/testify v1.6.1
 github.com/stretchr/testify/require
 github.com/stretchr/testify/assert
 # go.uber.org/atomic v1.3.2
@@ -342,6 +343,8 @@ gopkg.in/square/go-jose.v2/json
 gopkg.in/tomb.v1
 # gopkg.in/yaml.v2 v2.2.2
 gopkg.in/yaml.v2
+# gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
+gopkg.in/yaml.v3
 # k8s.io/api v0.0.0 => k8s.io/api v0.0.0-20190620084959-7cf5895f2711
 k8s.io/api/core/v1
 k8s.io/api/batch/v1
@@ -405,11 +408,13 @@ k8s.io/apimachinery/pkg/util/validation
 k8s.io/apimachinery/pkg/conversion
 k8s.io/apimachinery/pkg/selection
 k8s.io/apimachinery/pkg/watch
+k8s.io/apimachinery/pkg/runtime/serializer
 k8s.io/apimachinery/pkg/api/meta
 k8s.io/apimachinery/pkg/util/cache
 k8s.io/apimachinery/pkg/util/clock
 k8s.io/apimachinery/pkg/util/diff
 k8s.io/apimachinery/pkg/util/naming
+k8s.io/apimachinery/pkg/util/strategicpatch
 k8s.io/apimachinery/pkg/runtime/serializer/streaming
 k8s.io/apimachinery/pkg/util/version
 k8s.io/apimachinery/pkg/conversion/queryparams
@@ -417,20 +422,18 @@ k8s.io/apimachinery/pkg/util/json
 k8s.io/apimachinery/pkg/runtime/serializer/recognizer
 k8s.io/apimachinery/pkg/apis/meta/internalversion
 k8s.io/apimachinery/pkg/util/rand
-k8s.io/apimachinery/pkg/util/strategicpatch
 k8s.io/apimachinery/pkg/api/equality
-k8s.io/apimachinery/pkg/runtime/serializer
 k8s.io/apimachinery/pkg/util/waitgroup
 k8s.io/apimachinery/pkg/runtime/serializer/json
 k8s.io/apimachinery/pkg/runtime/serializer/versioning
 k8s.io/apimachinery/third_party/forked/golang/reflect
-k8s.io/apimachinery/pkg/apis/meta/v1beta1
+k8s.io/apimachinery/pkg/runtime/serializer/protobuf
 k8s.io/apimachinery/pkg/apis/meta/v1/unstructured
 k8s.io/apimachinery/pkg/util/mergepatch
 k8s.io/apimachinery/third_party/forked/golang/json
+k8s.io/apimachinery/pkg/apis/meta/v1beta1
 k8s.io/apimachinery/pkg/api/validation
 k8s.io/apimachinery/pkg/apis/meta/v1/validation
-k8s.io/apimachinery/pkg/runtime/serializer/protobuf
 k8s.io/apimachinery/pkg/api/validation/path
 k8s.io/apimachinery/pkg/util/framer
 k8s.io/apimachinery/pkg/util/yaml
@@ -553,11 +556,15 @@ k8s.io/client-go/kubernetes
 k8s.io/client-go/tools/clientcmd
 k8s.io/client-go/informers
 k8s.io/client-go/informers/core/v1
+k8s.io/client-go/kubernetes/scheme
+k8s.io/client-go/kubernetes/typed/core/v1
 k8s.io/client-go/listers/core/v1
 k8s.io/client-go/tools/cache
+k8s.io/client-go/tools/record
+k8s.io/client-go/util/retry
+k8s.io/client-go/util/workqueue
 k8s.io/client-go/rest
 k8s.io/client-go/util/flowcontrol
-k8s.io/client-go/util/retry
 k8s.io/client-go/tools/leaderelection
 k8s.io/client-go/tools/leaderelection/resourcelock
 k8s.io/client-go/tools/metrics
@@ -580,7 +587,6 @@ k8s.io/client-go/kubernetes/typed/batch/v2alpha1
 k8s.io/client-go/kubernetes/typed/certificates/v1beta1
 k8s.io/client-go/kubernetes/typed/coordination/v1
 k8s.io/client-go/kubernetes/typed/coordination/v1beta1
-k8s.io/client-go/kubernetes/typed/core/v1
 k8s.io/client-go/kubernetes/typed/events/v1beta1
 k8s.io/client-go/kubernetes/typed/extensions/v1beta1
 k8s.io/client-go/kubernetes/typed/networking/v1
@@ -620,16 +626,14 @@ k8s.io/client-go/informers/rbac
 k8s.io/client-go/informers/scheduling
 k8s.io/client-go/informers/settings
 k8s.io/client-go/informers/storage
+k8s.io/client-go/tools/reference
 k8s.io/client-go/tools/pager
+k8s.io/client-go/tools/record/util
 k8s.io/client-go/pkg/version
 k8s.io/client-go/plugin/pkg/client/auth/exec
 k8s.io/client-go/rest/watch
 k8s.io/client-go/transport
 k8s.io/client-go/util/cert
-k8s.io/client-go/kubernetes/scheme
-k8s.io/client-go/tools/record
-k8s.io/client-go/tools/reference
-k8s.io/client-go/util/workqueue
 k8s.io/client-go/dynamic/dynamicinformer
 k8s.io/client-go/tools/watch
 k8s.io/client-go/informers/apps/v1
@@ -673,7 +677,6 @@ k8s.io/client-go/pkg/apis/clientauthentication/v1alpha1
 k8s.io/client-go/pkg/apis/clientauthentication/v1beta1
 k8s.io/client-go/util/connrotation
 k8s.io/client-go/util/keyutil
-k8s.io/client-go/tools/record/util
 k8s.io/client-go/dynamic
 k8s.io/client-go/dynamic/dynamiclister
 k8s.io/client-go/scale/scheme

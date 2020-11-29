@@ -21,8 +21,8 @@ import (
 	"sort"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-go-sdk/common"
-	"github.com/oracle/oci-go-sdk/core"
+	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v31/core"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	api "k8s.io/api/core/v1"

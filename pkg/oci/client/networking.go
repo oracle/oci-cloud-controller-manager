@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/oracle/oci-go-sdk/core"
+	"github.com/oracle/oci-go-sdk/v31/core"
 	"github.com/pkg/errors"
 )
 

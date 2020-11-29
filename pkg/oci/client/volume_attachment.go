@@ -18,7 +18,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/oracle/oci-go-sdk/core"
+	"github.com/oracle/oci-go-sdk/v31/core"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
@@ -35,6 +35,8 @@ type VolumeAttachmentInterface interface {
 	// AttachVolume attaches a block storage volume to the specified instance.
 	// See https://docs.us-phoenix-1.oraclecloud.com/api/#/en/iaas/20160918/VolumeAttachment/AttachVolume
 	AttachVolume(ctx context.Context, instanceID, volumeID string) (core.VolumeAttachment, error)
+
+	AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool) (core.VolumeAttachment, error)
 
 	// WaitForVolumeAttached polls waiting for a OCI block volume to be in the
 	// ATTACHED state.
@@ -127,6 +129,44 @@ func (c *client) AttachVolume(ctx context.Context, instanceID, volumeID string) 
 	return resp.VolumeAttachment, nil
 }
 
+func (c *client) AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool) (core.VolumeAttachment, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return nil, RateLimitError(false, "")
+	}
+	//in case of paraviryalized attachment, the only unique way to identity the disk as device is if we use consistent
+	//device path https://docs.cloud.oracle.com/en-us/iaas/Content/Block/References/consistentdevicepaths.htm. here we
+	//are getting first available consistent device using ListInstanceDevices using that device in time of attachment
+	limit := 1
+	isAvailable := true
+	listInstanceDevicesResp, err := c.compute.ListInstanceDevices(ctx, core.ListInstanceDevicesRequest{
+		InstanceId:  &instanceID,
+		Limit:       &limit,
+		IsAvailable: &isAvailable,
+	})
+	incRequestCounter(err, listVerb, instanceResource)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	device := listInstanceDevicesResp.Items[0].Name
+
+	resp, err := c.compute.AttachVolume(ctx, core.AttachVolumeRequest{
+		AttachVolumeDetails: core.AttachParavirtualizedVolumeDetails{
+			InstanceId:                     &instanceID,
+			VolumeId:                       &volumeID,
+			IsPvEncryptionInTransitEnabled: &isPvEncryptionInTransitEnabled,
+			Device:                         device,
+		},
+		RequestMetadata: c.requestMetadata,
+	})
+	incRequestCounter(err, createVerb, volumeAttachmentResource)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return resp.VolumeAttachment, nil
+}
+
 func (c *client) WaitForVolumeAttached(ctx context.Context, id string) (core.VolumeAttachment, error) {
 	var va core.VolumeAttachment
 	if err := wait.PollImmediateUntil(attachmentPollInterval, func() (done bool, err error) {
@@ -185,7 +225,6 @@ func (c *client) WaitForVolumeDetached(ctx context.Context, id string) error {
 
 	return nil
 }
-
 
 func (c *client) FindActiveVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
 	var page *string

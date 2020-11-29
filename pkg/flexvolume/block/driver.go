@@ -16,22 +16,25 @@ package block
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
-	ociprovider "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/flexvolume"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/util/iscsi"
-	"github.com/oracle/oci-go-sdk/core"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+
+	ociprovider "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/flexvolume"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/metrics"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util/disk"
+	"github.com/oracle/oci-go-sdk/v31/core"
 )
 
 const (
@@ -40,12 +43,23 @@ const (
 	volumeOCIDTemplate   = "ocid1.volume.oc1.%s.%s"
 	ocidPrefix           = "ocid1."
 	iscsiError           = "Only ISCSI volume attachments are currently supported"
+	flexvolumeDriver     = "flexvolume"
+
+	// pvAttachFailureMetric is the metric for PV attach failures
+	pvAttachFailureMetric = "PV_ATTACH_FAILURE"
+	// pvDetachFailureMetric is the metric for PV detach failure
+	pvDetachFailureMetric = "PV_DETACH_FAILURE"
+	// pvAttachSuccessMetric is the metric for PV attach failures
+	pvAttachSuccessMetric = "PV_ATTACH_SUCCESS"
+	// pvDetachSuccessMetric is the metric for PV detach failure
+	pvDetachSuccessMetric = "PV_DETACH_SUCCESS"
 )
 
 // OCIFlexvolumeDriver implements the flexvolume.Driver interface for OCI.
 type OCIFlexvolumeDriver struct {
-	K      kubernetes.Interface
-	master bool
+	K            kubernetes.Interface
+	master       bool
+	metricPusher *metrics.MetricPusher
 }
 
 // NewOCIFlexvolumeDriver creates a new driver
@@ -63,7 +77,21 @@ func NewOCIFlexvolumeDriver(logger *zap.SugaredLogger) (fvd *OCIFlexvolumeDriver
 		if err != nil {
 			return nil, err
 		}
-		return &OCIFlexvolumeDriver{K: k, master: true}, nil
+		var metricPusher *metrics.MetricPusher
+
+		metricPusher, err = metrics.NewMetricPusher(logger)
+		if err != nil {
+			logger.With("error", err).Error("Metrics collection could not be enabled")
+			// disable metric collection
+			metricPusher = nil
+		}
+		if metricPusher != nil {
+			logger.Info("Metrics collection has been enabled")
+		} else {
+			logger.Info("Metric collection not is enabled")
+		}
+
+		return &OCIFlexvolumeDriver{K: k, master: true, metricPusher: metricPusher}, nil
 	} else if os.IsNotExist(err) {
 		logger.With(zap.Error(err), "path", path).Debug("Config file does not exist. Assuming worker node.")
 		return &OCIFlexvolumeDriver{}, nil
@@ -179,24 +207,32 @@ func getISCSIAttachment(attachment core.VolumeAttachment) (*core.IScsiVolumeAtta
 // Attach initiates the attachment of the given OCI volume to the k8s worker
 // node.
 func (d OCIFlexvolumeDriver) Attach(logger *zap.SugaredLogger, opts flexvolume.Options, nodeName string) flexvolume.DriverStatus {
+	// startTime := time.Now()
+
 	cfg, err := config.FromFile(GetConfigPath())
 	if err != nil {
+		// metrics.SendMetricData(d.metricPusher, pvDetachFailureMetric, time.Since(startTime).Seconds(), flexvolumeDriver, "")
 		return flexvolume.Fail(logger, err)
 	}
 
+	volumeOCID := deriveVolumeOCID(cfg.RegionKey, opts["kubernetes.io/pvOrVolumeName"])
+
 	c, err := client.GetClient(logger, cfg)
 	if err != nil {
+		// metrics.SendMetricData(d.metricPusher, pvDetachFailureMetric, time.Since(startTime).Seconds(), flexvolumeDriver, volumeOCID)
 		return flexvolume.Fail(logger, err)
 	}
 
 	id, err := lookupNodeID(d.K, nodeName)
 	if err != nil {
+		// metrics.SendMetricData(d.metricPusher, pvDetachFailureMetric, time.Since(startTime).Seconds(), flexvolumeDriver, volumeOCID)
 		return flexvolume.Fail(logger, "Failed to look up node id: ", err)
 	}
 
 	// Handle possible oci:// prefix.
 	id, err = ociprovider.MapProviderIDToInstanceID(id)
 	if err != nil {
+		// metrics.SendMetricData(d.metricPusher, pvDetachFailureMetric, time.Since(startTime).Seconds(), flexvolumeDriver, volumeOCID)
 		return flexvolume.Fail(logger, "Failed to map nodes provider id to instance id: ", err)
 	}
 
@@ -204,24 +240,28 @@ func (d OCIFlexvolumeDriver) Attach(logger *zap.SugaredLogger, opts flexvolume.O
 
 	instance, err := c.Compute().GetInstance(ctx, id)
 	if err != nil {
+		// metrics.SendMetricData(d.metricPusher, pvDetachFailureMetric, time.Since(startTime).Seconds(), flexvolumeDriver, volumeOCID)
 		return flexvolume.Fail(logger, "Failed to get instance: ", err)
 	}
 
-	volumeOCID := deriveVolumeOCID(cfg.RegionKey, opts["kubernetes.io/pvOrVolumeName"])
+	compartmentID := *instance.CompartmentId
 
 	//Checking if the volume is already attached
-	attachment, err := c.Compute().FindVolumeAttachment(ctx, cfg.CompartmentID, volumeOCID)
+	attachment, err := c.Compute().FindVolumeAttachment(ctx, compartmentID, volumeOCID)
 	if err != nil && !client.IsNotFound(err) {
+		// metrics.SendMetricData(d.metricPusher, pvDetachFailureMetric, time.Since(startTime).Seconds(), flexvolumeDriver, volumeOCID)
 		return flexvolume.Fail(logger, "Got error in finding volume attachment", err)
 	}
 	// volume already attached to an instance
 	if err == nil {
 		if *attachment.GetInstanceId() != *instance.Id {
+			// metrics.SendMetricData(d.metricPusher, pvDetachFailureMetric, time.Since(startTime).Seconds(), flexvolumeDriver, volumeOCID)
 			return flexvolume.Fail(logger, "Already attached to another instance: ", *attachment.GetInstanceId())
 		}
 		logger.With("volumeID", volumeOCID, "instanceID", *instance.Id).Info("Volume is already attached to instance")
 		iscsiAttachment, err := getISCSIAttachment(attachment)
 		if err != nil {
+			// metrics.SendMetricData(d.metricPusher, pvDetachFailureMetric, time.Since(startTime).Seconds(), flexvolumeDriver, volumeOCID)
 			return flexvolume.Fail(logger, iscsiError)
 		}
 		return flexvolume.DriverStatus{
@@ -233,18 +273,23 @@ func (d OCIFlexvolumeDriver) Attach(logger *zap.SugaredLogger, opts flexvolume.O
 	logger.With("volumeID", volumeOCID, "instanceID", *instance.Id).Info("Attaching volume to instance")
 	attachment, err = c.Compute().AttachVolume(ctx, *instance.Id, volumeOCID)
 	if err != nil {
+		// metrics.SendMetricData(d.metricPusher, pvDetachFailureMetric, time.Since(startTime).Seconds(), flexvolumeDriver, volumeOCID)
 		return flexvolume.Fail(logger, "Failed to attach volume: ", err)
 	}
 	attachment, err = c.Compute().WaitForVolumeAttached(ctx, *attachment.GetId())
 	if err != nil {
+		// metrics.SendMetricData(d.metricPusher, pvDetachFailureMetric, time.Since(startTime).Seconds(), flexvolumeDriver, volumeOCID)
 		return flexvolume.Fail(logger, err)
 	}
 	logger.With("attachmentID", *attachment.GetId()).Info("Volume attached")
 
 	iscsiAttachment, err := getISCSIAttachment(attachment)
 	if err != nil {
+		// metrics.SendMetricData(d.metricPusher, pvDetachFailureMetric, time.Since(startTime).Seconds(), flexvolumeDriver, volumeOCID)
 		return flexvolume.Fail(logger, iscsiError)
 	}
+
+	// 	metrics.SendMetricData(d.metricPusher,pvAttachSuccessMetric, time.Since(startTime).Seconds(), flexvolumeDriver, volumeOCID)
 
 	return flexvolume.DriverStatus{
 		Status: flexvolume.StatusSuccess,
@@ -254,6 +299,7 @@ func (d OCIFlexvolumeDriver) Attach(logger *zap.SugaredLogger, opts flexvolume.O
 
 // Detach detaches the volume from the worker node.
 func (d OCIFlexvolumeDriver) Detach(logger *zap.SugaredLogger, pvOrVolumeName, nodeName string) flexvolume.DriverStatus {
+	// startTime := time.Now()
 	logger = logger.With("node", nodeName, "volume", pvOrVolumeName)
 	logger.Info("Looking for volume to detach.")
 	cfg, err := config.FromFile(GetConfigPath())
@@ -267,20 +313,32 @@ func (d OCIFlexvolumeDriver) Detach(logger *zap.SugaredLogger, pvOrVolumeName, n
 
 	volumeOCID := deriveVolumeOCID(cfg.RegionKey, pvOrVolumeName)
 	ctx := context.Background()
-	attachment, err := c.Compute().FindVolumeAttachment(ctx, cfg.CompartmentID, volumeOCID)
+
+	compartmentID, err := util.LookupNodeCompartment(d.K, nodeName)
 	if err != nil {
+		return flexvolume.Fail(logger, "failed to get compartmentID from node annotation: ", err)
+	}
+
+	attachment, err := c.Compute().FindVolumeAttachment(ctx, compartmentID, volumeOCID)
+	if err != nil {
+		// metrics.SendMetricData(d.metricPusher, pvDetachFailureMetric, time.Since(startTime).Seconds(), flexvolumeDriver, "")
 		return flexvolume.Fail(logger, "Failed to find volume attachment: ", err)
 	}
 	logger.Info("Found volume to detach.")
 	err = c.Compute().DetachVolume(ctx, *attachment.GetId())
 	if err != nil {
+		// metrics.SendMetricData(d.metricPusher, pvDetachFailureMetric, time.Since(startTime).Seconds(), flexvolumeDriver, "")
 		return flexvolume.Fail(logger, err)
 	}
 
 	err = c.Compute().WaitForVolumeDetached(ctx, *attachment.GetId())
 	if err != nil {
+		// metrics.SendMetricData(d.metricPusher, pvDetachFailureMetric, time.Since(startTime).Seconds(), flexvolumeDriver, "")
 		return flexvolume.Fail(logger, err)
 	}
+
+	// metrics.SendMetricData(d.metricPusher,pvDetachSuccessMetric, time.Since(startTime).Seconds(), flexvolumeDriver, volumeOCID)
+
 	return flexvolume.Succeed(logger, "Volume detachment completed.")
 }
 
@@ -309,7 +367,13 @@ func (d OCIFlexvolumeDriver) IsAttached(logger *zap.SugaredLogger, opts flexvolu
 
 	ctx := context.Background()
 	volumeOCID := deriveVolumeOCID(cfg.RegionKey, opts["kubernetes.io/pvOrVolumeName"])
-	attachment, err := c.Compute().FindVolumeAttachment(ctx, cfg.CompartmentID, volumeOCID)
+
+	compartmentID, err := util.LookupNodeCompartment(d.K, nodeName)
+	if err != nil {
+		return flexvolume.Fail(logger, "Failed to look up node compartment id: ", err)
+	}
+
+	attachment, err := c.Compute().FindVolumeAttachment(ctx, compartmentID, volumeOCID)
 	if err != nil {
 		return flexvolume.DriverStatus{
 			Status:   flexvolume.StatusSuccess,
@@ -329,7 +393,7 @@ func (d OCIFlexvolumeDriver) IsAttached(logger *zap.SugaredLogger, opts flexvolu
 // MountDevice connects the iSCSI target on the k8s worker node before mounting
 // and (if necessary) formatting the disk.
 func (d OCIFlexvolumeDriver) MountDevice(logger *zap.SugaredLogger, mountDir, mountDevice string, opts flexvolume.Options) flexvolume.DriverStatus {
-	iSCSIMounter, err := iscsi.NewFromDevicePath(logger, mountDevice)
+	iSCSIMounter, err := disk.NewFromDevicePath(logger, mountDevice)
 	if err != nil {
 		return flexvolume.Fail(logger, err)
 	}
@@ -369,9 +433,9 @@ func (d OCIFlexvolumeDriver) MountDevice(logger *zap.SugaredLogger, mountDir, mo
 // UnmountDevice unmounts the disk, logs out the iscsi target, and deletes the
 // iscsi node record.
 func (d OCIFlexvolumeDriver) UnmountDevice(logger *zap.SugaredLogger, mountPath string) flexvolume.DriverStatus {
-	iSCSIMounter, err := iscsi.NewFromMountPointPath(logger, mountPath)
+	iSCSIMounter, err := disk.NewFromMountPointPath(logger, mountPath)
 	if err != nil {
-		if err == iscsi.ErrMountPointNotFound {
+		if err == disk.ErrMountPointNotFound {
 			return flexvolume.Succeed(logger, "Mount point not found. Nothing to do.")
 		}
 		return flexvolume.Fail(logger, err)

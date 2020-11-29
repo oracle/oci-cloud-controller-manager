@@ -15,6 +15,7 @@
 package oci
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"reflect"
@@ -24,8 +25,8 @@ import (
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/oracle/oci-go-sdk/common"
-	"github.com/oracle/oci-go-sdk/loadbalancer"
+	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
 )
 
 func TestSortAndCombineActions(t *testing.T) {
@@ -1224,9 +1225,8 @@ func TestHasListenerChanged(t *testing.T) {
 			isListenerChanged := hasListenerChanged(zap.S(), tt.actual, tt.desired)
 			if isListenerChanged == tt.expected {
 				return
-			} else {
-				t.Errorf("expected ListenerChange\n%+v\nbut got\n%+v", tt.expected, isListenerChanged)
 			}
+			t.Errorf("expected ListenerChange\n%+v\nbut got\n%+v", tt.expected, isListenerChanged)
 		})
 	}
 }
@@ -1623,9 +1623,8 @@ func TestHasBackendSetChanged(t *testing.T) {
 			isListenerChanged := hasBackendSetChanged(zap.S(), tt.actual, tt.desired)
 			if isListenerChanged == tt.expected {
 				return
-			} else {
-				t.Errorf("expected BackendSetChanges\n%+v\nbut got\n%+v", tt.expected, isListenerChanged)
 			}
+			t.Errorf("expected BackendSetChanges\n%+v\nbut got\n%+v", tt.expected, isListenerChanged)
 		})
 	}
 }
@@ -1752,6 +1751,85 @@ func TestGetConnectionConfigurationChanges(t *testing.T) {
 			}
 			if !reflect.DeepEqual(changes, tt.expected) {
 				t.Errorf("expected ConnectionConfigurationChanges\n%+v\nbut got\n%+v", tt.expected, changes)
+			}
+		})
+	}
+}
+
+var (
+	hundredMbps   = "100Mbps"
+	flexibleShape = "flexible"
+	flexShape10   = 10
+	flexShape100  = 100
+	flexShape1000 = 1000
+)
+
+func TestHasLoadbalancerShapeChanged(t *testing.T) {
+	var testCases = []struct {
+		name     string
+		lb       loadbalancer.LoadBalancer
+		lbSpec   LBSpec
+		expected bool
+	}{
+		{
+			name: "No Changes",
+			lb: loadbalancer.LoadBalancer{
+				ShapeName: &hundredMbps,
+			},
+			lbSpec: LBSpec{
+				Shape: "100Mbps",
+			},
+			expected: false,
+		},
+		{
+			name: "No Changes flex",
+			lb: loadbalancer.LoadBalancer{
+				ShapeName: &flexibleShape,
+				ShapeDetails: &loadbalancer.ShapeDetails{
+					MinimumBandwidthInMbps: &flexShape10,
+					MaximumBandwidthInMbps: &flexShape100,
+				},
+			},
+			lbSpec: LBSpec{
+				Shape:   "flexible",
+				FlexMin: &flexShape10,
+				FlexMax: &flexShape100,
+			},
+			expected: false,
+		},
+		{
+			name: "Change fixed shape",
+			lb: loadbalancer.LoadBalancer{
+				ShapeName: &hundredMbps,
+			},
+			lbSpec: LBSpec{
+				Shape: "400Mbps",
+			},
+			expected: true,
+		},
+		{
+			name: "Change flex shape",
+			lb: loadbalancer.LoadBalancer{
+				ShapeName: &flexibleShape,
+				ShapeDetails: &loadbalancer.ShapeDetails{
+					MinimumBandwidthInMbps: &flexShape10,
+					MaximumBandwidthInMbps: &flexShape100,
+				},
+			},
+			lbSpec: LBSpec{
+				Shape:   "flexible",
+				FlexMin: &flexShape100,
+				FlexMax: &flexShape1000,
+			},
+			expected: true,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			changed := hasLoadbalancerShapeChanged(context.TODO(), &tt.lbSpec, &tt.lb)
+			if changed != tt.expected {
+				t.Errorf("expected hasLBShapeChanged to be %+v\nbut got\n%+v", tt.expected, changed)
 			}
 		})
 	}

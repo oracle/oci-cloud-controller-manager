@@ -21,17 +21,19 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
-	"github.com/oracle/oci-go-sdk/common"
-	"github.com/oracle/oci-go-sdk/core"
-	"github.com/oracle/oci-go-sdk/identity"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/metrics"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
+	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v31/core"
+	"github.com/oracle/oci-go-sdk/v31/identity"
 )
 
 const (
@@ -43,6 +45,7 @@ const (
 	FSType                    = "fsType"
 	volumeRoundingUpEnabled   = "volumeRoundingUpEnabled"
 	volumeBackupOCIDPrefixExp = `^ocid[v]?[\d+]?[\.:]volumebackup[\.:]`
+	flexvolume                = "flexvolume"
 	timeout                   = time.Minute * 3
 )
 
@@ -54,8 +57,8 @@ type blockProvisioner struct {
 
 	region        string
 	compartmentID string
-
-	logger *zap.SugaredLogger
+	metricPusher  *metrics.MetricPusher
+	logger        *zap.SugaredLogger
 }
 
 var _ plugin.ProvisionerPlugin = &blockProvisioner{}
@@ -69,6 +72,21 @@ func NewBlockProvisioner(
 	volumeRoundingEnabled bool,
 	minVolumeSize resource.Quantity,
 ) plugin.ProvisionerPlugin {
+	var metricPusher *metrics.MetricPusher
+	var err error
+
+	metricPusher, err = metrics.NewMetricPusher(logger)
+	if err != nil {
+		logger.With("error", err).Error("Metrics collection could not be enabled")
+		// disable metric collection
+		metricPusher = nil
+	}
+	if metricPusher != nil {
+		logger.Info("Metrics collection has been enabled")
+	} else {
+		logger.Info("Metrics collection has not been enabled")
+	}
+
 	return &blockProvisioner{
 		client:                client,
 		region:                region,
@@ -76,6 +94,7 @@ func NewBlockProvisioner(
 		minVolumeSize:         minVolumeSize,
 		compartmentID:         compartmentID,
 		logger:                logger,
+		metricPusher:          metricPusher,
 	}
 }
 
@@ -110,6 +129,7 @@ func volumeRoundingEnabled(param map[string]string) bool {
 
 // Provision creates an OCI block volume
 func (block *blockProvisioner) Provision(options controller.ProvisionOptions, ad *identity.AvailabilityDomain) (*v1.PersistentVolume, error) {
+	startTime := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	for _, accessMode := range options.PVC.Spec.AccessModes {
@@ -161,11 +181,13 @@ func (block *blockProvisioner) Provision(options controller.ProvisionOptions, ad
 	//make sure this method is idempotent by checking existence of volume with same name.
 	volumes, err := block.client.BlockStorage().GetVolumesByName(ctx, string(options.PVC.UID), block.compartmentID)
 	if err != nil {
+		metrics.SendMetricData(block.metricPusher, metrics.PVProvisionFailure, time.Since(startTime).Seconds(), flexvolume, "")
 		logger.Error("Failed to find existence of volume %s", err)
 		return nil, fmt.Errorf("failed to check existence of volume %v", err)
 	}
 
 	if len(volumes) > 1 {
+		metrics.SendMetricData(block.metricPusher, metrics.PVProvisionFailure, time.Since(startTime).Seconds(), flexvolume, "")
 		logger.Error("Duplicate volume exists")
 		return nil, fmt.Errorf("duplicate volume %q exists", string(options.PVC.UID))
 	}
@@ -183,6 +205,7 @@ func (block *blockProvisioner) Provision(options controller.ProvisionOptions, ad
 		logger.Info("Creating new volume!")
 		volume, err = block.client.BlockStorage().CreateVolume(ctx, volumeDetails)
 		if err != nil {
+			metrics.SendMetricData(block.metricPusher, metrics.PVProvisionFailure, time.Since(startTime).Seconds(), flexvolume, "")
 			logger.With("Compartment Id", block.compartmentID).Error("Failed to create volume %s", err)
 			return nil, errors.Wrap(err, "Failed to create volume")
 		}
@@ -191,6 +214,7 @@ func (block *blockProvisioner) Provision(options controller.ProvisionOptions, ad
 	logger.With("volumeID", *volume.Id).Info("Waiting for volume to become available.")
 	volume, err = block.client.BlockStorage().AwaitVolumeAvailableORTimeout(ctx, *volume.Id)
 	if err != nil {
+		metrics.SendMetricData(block.metricPusher, metrics.PVProvisionFailure, time.Since(startTime).Seconds(), flexvolume, *volume.Id)
 		_ = block.client.BlockStorage().DeleteVolume(ctx, *volume.Id)
 		return nil, errors.Wrap(err, "waiting for volume to become available")
 	}
@@ -224,6 +248,7 @@ func (block *blockProvisioner) Provision(options controller.ProvisionOptions, ad
 		},
 	}
 
+	metrics.SendMetricData(block.metricPusher, metrics.PVProvisionSuccess, time.Since(startTime).Seconds(), flexvolume, *volume.Id)
 	return pv, nil
 }
 
@@ -234,6 +259,7 @@ func isVolumeBackupOcid(ocid string) bool {
 
 // Delete destroys a OCI volume created by Provision
 func (block *blockProvisioner) Delete(volume *v1.PersistentVolume) error {
+	startTime := time.Now()
 	ctx := context.Background()
 
 	id, ok := volume.Annotations[OCIVolumeID]
@@ -248,6 +274,12 @@ func (block *blockProvisioner) Delete(volume *v1.PersistentVolume) error {
 	if client.IsNotFound(err) {
 		logger.With(zap.Error(err)).Info("Volume not found. Presuming already deleted.")
 		return nil
+	}
+
+	if err != nil {
+		metrics.SendMetricData(block.metricPusher, metrics.PVProvisionFailure, time.Since(startTime).Seconds(), flexvolume, id)
+	} else {
+		metrics.SendMetricData(block.metricPusher, metrics.PVDeleteSuccess, time.Since(startTime).Seconds(), flexvolume, id)
 	}
 
 	return errors.Wrap(err, "failed to delete volume from OCI")
