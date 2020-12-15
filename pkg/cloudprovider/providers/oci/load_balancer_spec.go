@@ -16,9 +16,10 @@ package oci
 
 import (
 	"fmt"
-	"go.uber.org/zap"
 	"strconv"
 	"strings"
+
+	"go.uber.org/zap"
 
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/loadbalancer"
@@ -110,7 +111,10 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sub
 		return nil, errors.Wrap(err, "invalid service")
 	}
 
-	_, internal := svc.Annotations[ServiceAnnotationLoadBalancerInternal]
+	internal, err := isInternalLB(svc)
+	if err != nil {
+		return nil, err
+	}
 
 	// TODO (apryde): We should detect when this changes and WARN as we don't
 	// support updating a load balancer's Shape.
@@ -328,22 +332,22 @@ func getHealthChecker(cfg *SSLConfig, port int, svc *v1.Service) (*loadbalancer.
 	checkPath, checkPort := apiservice.GetServiceHealthCheckPathPort(svc)
 	if checkPath != "" {
 		return &loadbalancer.HealthCheckerDetails{
-			Protocol: &protocol,
-			UrlPath:  &checkPath,
-			Port:     common.Int(int(checkPort)),
-			Retries:  &retries,
+			Protocol:         &protocol,
+			UrlPath:          &checkPath,
+			Port:             common.Int(int(checkPort)),
+			Retries:          &retries,
 			IntervalInMillis: &intervalInMillis,
-			TimeoutInMillis: &timeoutInMillis,
+			TimeoutInMillis:  &timeoutInMillis,
 		}, nil
 	}
 
 	return &loadbalancer.HealthCheckerDetails{
-		Protocol: &protocol,
-		UrlPath:  common.String(lbNodesHealthCheckPath),
-		Port:     common.Int(lbNodesHealthCheckPort),
-		Retries:  &retries,
+		Protocol:         &protocol,
+		UrlPath:          common.String(lbNodesHealthCheckPath),
+		Port:             common.Int(lbNodesHealthCheckPort),
+		Retries:          &retries,
 		IntervalInMillis: &intervalInMillis,
-		TimeoutInMillis: &timeoutInMillis,
+		TimeoutInMillis:  &timeoutInMillis,
 	}, nil
 }
 
@@ -454,4 +458,15 @@ func getSecretParts(secretString string, service *v1.Service) (name string, name
 	}
 	parts := strings.Split(secretString, "/")
 	return parts[1], parts[0]
+}
+
+func isInternalLB(svc *v1.Service) (bool, error) {
+	if private, ok := svc.Annotations[ServiceAnnotationLoadBalancerInternal]; ok {
+		internal, err := strconv.ParseBool(private)
+		if err != nil {
+			return false, errors.Wrap(err, fmt.Sprintf("invalid value: %s provided for annotation: %s", private, ServiceAnnotationLoadBalancerInternal))
+		}
+		return internal, nil
+	}
+	return false, nil
 }

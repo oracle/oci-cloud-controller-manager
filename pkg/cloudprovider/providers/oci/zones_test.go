@@ -15,6 +15,12 @@
 package oci
 
 import (
+	"context"
+	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
+	"go.uber.org/zap"
+	"k8s.io/apimachinery/pkg/types"
+	cloudprovider "k8s.io/cloud-provider"
+	"reflect"
 	"testing"
 )
 
@@ -31,6 +37,102 @@ func TestMapAvailabilityDomainToFailureDomain(t *testing.T) {
 			v := mapAvailabilityDomainToFailureDomain(ad)
 			if v != fd {
 				t.Errorf("mapAvailabilityDomainToFailureDomain(%q) => %q, want %q", ad, v, fd)
+			}
+		})
+	}
+}
+
+func TestGetZoneByProviderID(t *testing.T) {
+	testCases := []struct {
+		name string
+		in   string
+		out  cloudprovider.Zone
+		err  error
+	}{
+		{
+			name: "provider id without provider prefix",
+			in:   "instance_zone_test",
+			out:  cloudprovider.Zone{
+				FailureDomain: "PHX-AD-1",
+				Region:        "PHX",
+			},
+			err: nil,
+		},
+		{
+			name: "provider id with provider prefix",
+			in:   providerPrefix+"instance_zone_test",
+			out:  cloudprovider.Zone{
+				FailureDomain: "PHX-AD-1",
+				Region:        "PHX",
+			},
+			err: nil,
+		},
+		{
+			name: "provider id with provider prefix and instance not in cache",
+			in:   providerPrefix+"instance_zone_test_noncache",
+			out:  cloudprovider.Zone{
+				FailureDomain: "PHX-AD-1",
+				Region:        "PHX",
+			},
+			err: nil,
+		},
+	}
+
+	cp := &CloudProvider{
+		NodeLister:    &mockNodeLister{},
+		client:        MockOCIClient{},
+		config:        &providercfg.Config{CompartmentID: "testCompartment"},
+		logger:        zap.S(),
+		instanceCache: &mockInstanceCache{},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := cp.GetZoneByProviderID(context.Background(), tt.in)
+			if err != nil && err.Error() != tt.err.Error() {
+				t.Errorf("GetZoneByProviderID(context, %+v) got error %v, expected %v", tt.in, err, tt.err)
+			}
+			if !reflect.DeepEqual(result, tt.out) {
+				t.Errorf("GetZoneByProviderID(context, %+v) => %+v, want %+v", tt.in, result, tt.out)
+			}
+		})
+	}
+}
+
+func TestGetZoneByNodeName(t *testing.T) {
+	testCases := []struct {
+		name string
+		in   types.NodeName
+		out  cloudprovider.Zone
+		err  error
+	}{
+		{
+			name: "get zone by node name",
+			in:   "default",
+			out:  cloudprovider.Zone{
+				FailureDomain: "PHX-AD-1",
+				Region:        "PHX",
+			},
+			err: nil,
+		},
+	}
+
+	cp := &CloudProvider{
+		NodeLister:    &mockNodeLister{},
+		client:        MockOCIClient{},
+		config:        &providercfg.Config{CompartmentID: "testCompartment"},
+		logger:        zap.S(),
+		instanceCache: &mockInstanceCache{},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := cp.GetZoneByNodeName(context.Background(), tt.in)
+			if err != nil && err.Error() != tt.err.Error() {
+				t.Errorf("GetZoneByNodeName(context, %+v) got error %v, expected %v", tt.in, err, tt.err)
+			}
+			if !reflect.DeepEqual(result, tt.out) {
+				t.Errorf("GetZoneByNodeName(context, %+v) => %+v, want %+v", tt.in, result, tt.out)
 			}
 		})
 	}

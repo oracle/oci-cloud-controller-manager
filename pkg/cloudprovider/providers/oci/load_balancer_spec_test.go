@@ -130,7 +130,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					Name:      "testservice",
 					UID:       "test-uid",
 					Annotations: map[string]string{
-						ServiceAnnotationLoadBalancerInternal: "",
+						ServiceAnnotationLoadBalancerInternal: "true",
 					},
 				},
 				Spec: v1.ServiceSpec{
@@ -188,7 +188,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					Name:      "testservice",
 					UID:       "test-uid",
 					Annotations: map[string]string{
-						ServiceAnnotationLoadBalancerInternal: "",
+						ServiceAnnotationLoadBalancerInternal: "true",
 						ServiceAnnotationLoadBalancerSubnet1:  "regional-subnet",
 					},
 				},
@@ -247,7 +247,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					Name:      "testservice",
 					UID:       "test-uid",
 					Annotations: map[string]string{
-						ServiceAnnotationLoadBalancerInternal: "",
+						ServiceAnnotationLoadBalancerInternal: "true",
 						ServiceAnnotationLoadBalancerSubnet2:  "regional-subnet",
 					},
 				},
@@ -304,7 +304,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					Name:      "testservice",
 					UID:       "test-uid",
 					Annotations: map[string]string{
-						ServiceAnnotationLoadBalancerInternal: "",
+						ServiceAnnotationLoadBalancerInternal: "true",
 						ServiceAnnotationLoadBalancerSubnet1:  "annotation-one",
 					},
 				},
@@ -854,7 +854,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 						ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
-							IdleTimeout: common.Int64(300), // fallback to default timeout for TCP
+							IdleTimeout:                    common.Int64(300), // fallback to default timeout for TCP
 							BackendTcpProxyProtocolVersion: common.Int(2),
 						},
 					},
@@ -863,7 +863,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Port:                  common.Int(443),
 						Protocol:              common.String("HTTP"),
 						ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
-							IdleTimeout: common.Int64(60), // fallback to default timeout for HTTP
+							IdleTimeout:                    common.Int64(60), // fallback to default timeout for HTTP
 							BackendTcpProxyProtocolVersion: common.Int(2),
 						},
 					},
@@ -872,11 +872,11 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					"TCP-80": {
 						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol: common.String("HTTP"),
-							Port:     common.Int(10256),
-							UrlPath:  common.String("/healthz"),
-							Retries: common.Int(3),
-							TimeoutInMillis: common.Int(3000),
+							Protocol:         common.String("HTTP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
 						},
 						Policy: common.String("ROUND_ROBIN"),
@@ -884,11 +884,11 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					"HTTP-443": {
 						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol: common.String("HTTP"),
-							Port:     common.Int(10256),
-							UrlPath:  common.String("/healthz"),
-							Retries: common.Int(3),
-							TimeoutInMillis: common.Int(3000),
+							Protocol:         common.String("HTTP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
 						},
 						Policy: common.String("ROUND_ROBIN"),
@@ -917,7 +917,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					Name:      "testservice",
 					UID:       "test-uid",
 					Annotations: map[string]string{
-						ServiceAnnotationLoadBalancerConnectionIdleTimeout: "404",
+						ServiceAnnotationLoadBalancerConnectionIdleTimeout:          "404",
 						ServiceAnnotationLoadBalancerConnectionProxyProtocolVersion: "2",
 					},
 				},
@@ -942,7 +942,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 						ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
-							IdleTimeout: common.Int64(404),
+							IdleTimeout:                    common.Int64(404),
 							BackendTcpProxyProtocolVersion: common.Int(2),
 						},
 					},
@@ -951,11 +951,11 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					"TCP-80": {
 						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol: common.String("HTTP"),
-							Port:     common.Int(10256),
-							UrlPath:  common.String("/healthz"),
-							Retries: common.Int(3),
-							TimeoutInMillis: common.Int(3000),
+							Protocol:         common.String("HTTP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
 						},
 						Policy: common.String("ROUND_ROBIN"),
@@ -1519,7 +1519,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 					Name:      "testservice",
 					UID:       "test-uid",
 					Annotations: map[string]string{
-						ServiceAnnotationLoadBalancerInternal: "",
+						ServiceAnnotationLoadBalancerInternal: "true",
 					},
 				},
 				Spec: v1.ServiceSpec{
@@ -1537,7 +1537,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 					Name:      "testservice",
 					UID:       "test-uid",
 					Annotations: map[string]string{
-						ServiceAnnotationLoadBalancerInternal: "",
+						ServiceAnnotationLoadBalancerInternal: "true",
 						ServiceAnnotationLoadBalancerSubnet1:  "",
 					},
 				},
@@ -1548,6 +1548,20 @@ func TestNewLBSpecFailure(t *testing.T) {
 				},
 			},
 			expectedErrMsg: "a configuration for subnet1 must be specified for an internal load balancer",
+		},
+		"non boolean internal lb": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInternal: "yes",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports:           []v1.ServicePort{},
+				},
+			},
+			expectedErrMsg: fmt.Sprintf("invalid value: yes provided for annotation: %s: strconv.ParseBool: parsing \"yes\": invalid syntax", ServiceAnnotationLoadBalancerInternal),
 		},
 	}
 
@@ -2112,6 +2126,86 @@ func Test_getBackends(t *testing.T) {
 			logger := zap.L()
 			if got := getBackends(logger.Sugar(), tt.args.nodes, tt.args.nodePort); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("getBackends() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsInternal(t *testing.T) {
+	testCases := map[string]struct {
+		service    *v1.Service
+		isInternal bool
+		err        error
+	}{
+		"no ServiceAnnotationLoadBalancerInternal annotation": {
+			service:    &v1.Service{},
+			isInternal: false,
+			err:        nil,
+		},
+		"ServiceAnnotationLoadBalancerInternal is true": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInternal: "true",
+					},
+				},
+			},
+			isInternal: true,
+			err:        nil,
+		},
+		"ServiceAnnotationLoadBalancerInternal is TRUE": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInternal: "TRUE",
+					},
+				},
+			},
+			isInternal: true,
+			err:        nil,
+		},
+		"ServiceAnnotationLoadBalancerInternal is FALSE": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInternal: "FALSE",
+					},
+				},
+			},
+			isInternal: false,
+			err:        nil,
+		},
+		"ServiceAnnotationLoadBalancerInternal is false": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInternal: "FALSE",
+					},
+				},
+			},
+			isInternal: false,
+			err:        nil,
+		},
+		"ServiceAnnotationLoadBalancerInternal is non boolean": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInternal: "yes",
+					},
+				},
+			},
+			isInternal: false,
+			err:        errors.New(fmt.Sprintf("invalid value: yes provided for annotation: %s: strconv.ParseBool: parsing \"yes\": invalid syntax", ServiceAnnotationLoadBalancerInternal)),
+		},
+	}
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			internal, err := isInternalLB(tc.service)
+			if err != nil && err.Error() != tc.err.Error() {
+				t.Errorf("Expected internal LB error\n%+v\nbut got\n%+v", tc.err, err)
+			}
+			if internal != tc.isInternal {
+				t.Errorf("Expected internal LB\n%+v\nbut got\n%+v", tc.isInternal, internal)
 			}
 		})
 	}

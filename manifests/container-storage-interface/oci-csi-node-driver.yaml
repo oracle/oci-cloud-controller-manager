@@ -1,3 +1,24 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: oci-csi-iscsiadm
+  namespace: kube-system
+data:
+  iscsiadm: |
+    #!/bin/sh
+    if [ -x /host/sbin/iscsiadm ]; then
+      chroot /host /sbin/iscsiadm "$@"
+    elif [ -x /host/usr/local/sbin/iscsiadm ]; then
+      chroot /host /usr/local/sbin/iscsiadm "$@"
+    elif [ -x /host/bin/iscsiadm ]; then
+      chroot /host /bin/iscsiadm "$@"
+    elif [ -x /host/usr/local/bin/iscsiadm ]; then
+      chroot /host /usr/local/bin/iscsiadm "$@"
+    else
+      chroot /host iscsiadm "$@"
+    fi
+---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -33,6 +54,8 @@ spec:
                 fieldRef:
                   apiVersion: v1
                   fieldPath: spec.nodeName
+            - name: PATH
+              value: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/host/usr/bin:/host/sbin
           image: iad.ocir.io/oracle/cloud-provider-oci:latest
           securityContext:
             privileged: true
@@ -46,6 +69,11 @@ spec:
               name: device-dir
             - mountPath: /registration
               name: registration-dir
+            - mountPath: /host
+              name: host-root
+            - mountPath: /sbin/iscsiadm
+              name: chroot-iscsiadm
+              subPath: iscsiadm
         - name: csi-node-registrar
           args:
             - --csi-address=/csi/csi.sock
@@ -98,6 +126,14 @@ spec:
             path: /dev
             type: ""
           name: device-dir
+        - hostPath:
+            path: /
+            type: Directory
+          name: host-root
+        - configMap:
+            name: oci-csi-iscsiadm
+            defaultMode: 0755
+          name: chroot-iscsiadm
   updateStrategy:
     rollingUpdate:
       maxUnavailable: 1

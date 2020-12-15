@@ -17,6 +17,7 @@ package oci
 import (
 	"context"
 	"errors"
+	"github.com/oracle/oci-go-sdk/common"
 	"reflect"
 	"testing"
 
@@ -98,7 +99,7 @@ func TestGetLoadBalancerSubnets(t *testing.T) {
 					Name:      "testservice",
 					UID:       "test-uid",
 					Annotations: map[string]string{
-						ServiceAnnotationLoadBalancerInternal: "",
+						ServiceAnnotationLoadBalancerInternal: "true",
 						ServiceAnnotationLoadBalancerSubnet1:  "regional-subnet",
 					},
 				},
@@ -112,7 +113,7 @@ func TestGetLoadBalancerSubnets(t *testing.T) {
 					Name:      "testservice",
 					UID:       "test-uid",
 					Annotations: map[string]string{
-						ServiceAnnotationLoadBalancerInternal: "",
+						ServiceAnnotationLoadBalancerInternal: "true",
 						ServiceAnnotationLoadBalancerSubnet1:  "regional-subnet",
 					},
 				},
@@ -287,5 +288,106 @@ func TestGetSubnetsForNodes(t *testing.T) {
 			}
 		})
 
+	}
+}
+
+func Test_getSubnets(t *testing.T) {
+	tests := map[string]struct {
+		subnetIds []string
+		want      []*core.Subnet
+		wantErr   bool
+	}{
+		"Get Subnets": {
+			subnetIds: []string{"regional-subnet"},
+			want: []*core.Subnet{
+				{
+					Id:                 common.String("regional-subnet"),
+					DnsLabel:           common.String("subnetwithnovcndnslabel"),
+					VcnId:              common.String("vcnwithoutdnslabel"),
+					AvailabilityDomain: nil,
+				},
+			},
+			wantErr: false,
+		},
+		"Get Subnets Error": {
+			subnetIds: []string{"regional-subnet-not-found"},
+			want:      nil,
+			wantErr:   true,
+		},
+	}
+
+	n := &MockVirtualNetworkClient{}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			got, err := getSubnets(context.Background(), tt.subnetIds, n)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getSubnets() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("getSubnets() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCloudProvider_GetLoadBalancer(t *testing.T) {
+
+	tests := map[string]struct {
+		service *v1.Service
+		want    *v1.LoadBalancerStatus
+		exists  bool
+		wantErr bool
+	}{
+		"Get Load Balancer from LB client": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					UID: "privateLB",
+				},
+			},
+			want: &v1.LoadBalancerStatus{
+				Ingress: []v1.LoadBalancerIngress{
+					{
+						IP: "10.0.50.5",
+					},
+				},
+			},
+			exists:  true,
+			wantErr: false,
+		},
+		"Load Balancer IP address does not exist": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					UID: "privateLB-no-IP",
+				},
+			},
+			want:    nil,
+			exists:  false,
+			wantErr: true,
+		},
+	}
+	cp := &CloudProvider{
+		NodeLister:    &mockNodeLister{},
+		client:        MockOCIClient{},
+		config:        &providercfg.Config{CompartmentID: "testCompartment"},
+		logger:        zap.S(),
+		instanceCache: &mockInstanceCache{},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			clusterName := "test"
+			got, got1, err := cp.GetLoadBalancer(context.Background(), clusterName, tt.service)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetLoadBalancer() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetLoadBalancer() got = %v, want %v", got, tt.want)
+			}
+			if got1 != tt.exists {
+				t.Errorf("GetLoadBalancer() got1 = %v, want %v", got1, tt.exists)
+			}
+		})
 	}
 }
