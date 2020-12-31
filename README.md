@@ -120,7 +120,7 @@ $ kubectl -n kube-system logs oci-cloud-controller-manager-ds-k2txq
 I0905 13:44:51.785964       7 flags.go:52] FLAG: --address="0.0.0.0"
 I0905 13:44:51.786063       7 flags.go:52] FLAG: --allocate-node-cidrs="false"
 I0905 13:44:51.786074       7 flags.go:52] FLAG: --alsologtostderr="false"
-I0905 13:44:51.786078       7 flags.go:52] FLAG: --cloud-config="/etc/oci/cloud-config.cfg"
+I0905 13:44:51.786078       7 flags.go:52] FLAG: --cloud-config="/etc/oci/cloud-provider.yaml"
 I0905 13:44:51.786083       7 flags.go:52] FLAG: --cloud-provider="oci"
 ```
 
