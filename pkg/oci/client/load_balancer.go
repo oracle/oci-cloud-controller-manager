@@ -20,7 +20,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	"github.com/oracle/oci-go-sdk/loadbalancer"
+	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
 	"github.com/pkg/errors"
 )
 
@@ -47,6 +47,8 @@ type LoadBalancerInterface interface {
 	UpdateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error)
 	CreateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error)
 	DeleteListener(ctx context.Context, lbID, name string) (string, error)
+
+	UpdateLoadBalancerShape(context.Context, string, loadbalancer.UpdateLoadBalancerShapeDetails) (string, error)
 
 	AwaitWorkRequest(ctx context.Context, id string) (*loadbalancer.WorkRequest, error)
 }
@@ -400,6 +402,24 @@ func (c *client) DeleteListener(ctx context.Context, lbID, name string) (string,
 		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, deleteVerb, listenerResource)
+
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	return *resp.OpcWorkRequestId, nil
+}
+
+func (c *client) UpdateLoadBalancerShape(ctx context.Context, lbID string, lbShapeDetails loadbalancer.UpdateLoadBalancerShapeDetails) (string, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return "", RateLimitError(true, "UpdateListener")
+	}
+
+	resp, err := c.loadbalancer.UpdateLoadBalancerShape(ctx, loadbalancer.UpdateLoadBalancerShapeRequest{
+		LoadBalancerId:                 &lbID,
+		UpdateLoadBalancerShapeDetails: lbShapeDetails,
+	})
+	incRequestCounter(err, updateVerb, shapeResource)
 
 	if err != nil {
 		return "", errors.WithStack(err)

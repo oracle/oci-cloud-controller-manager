@@ -42,6 +42,8 @@ Use FOCUS=\[storage\]
     * Create PVC with VolumeSize 1Gi but should use default 50Gi
     * Create PVC with VolumeSize 100Gi should use 100G
     * Static Provisioning CSI
+    * CMEK, PV attachment, in-transit encryption with CSI
+    * CMEK, iSCSI attachment, in-transit encryption with CSI
     
 * [Flex Volume Driver](flexvolume_driver.go)
     * Mount a volume

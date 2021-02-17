@@ -24,9 +24,8 @@ cloud-provider specific code out of the Kubernetes codebase.
 
 |          | Kubernetes 1.16        | Kubernetes 1.17        | Kubernetes 1.18        |
 |----------|------------------------|------------------------|------------------------|
-| <=v 0.7  | ✗                      | ✗                      | ✗                       |
-| v 0.8    | ✓                      | ✓                      | ✓                      |
-| v 0.9    | ✓                      | ✓                      | ✓                      |
+| <=v 0.7  | ✗                      | ✗                      | ✗                      |
+| \>=v 0.8 | ✓                      | ✓                      | ✓                      |
 
 Key:
 

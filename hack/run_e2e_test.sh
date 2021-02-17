@@ -39,6 +39,7 @@ function run_e2e_tests_existing_cluster() {
         --adlocation=${ADLOCATION} \
         --delete-namespace=${DELETE_NAMESPACE} \
         --image-pull-repo=${IMAGE_PULL_REPO} \
+        --cmek-kms-key=${CMEK_KMS_KEY} \
     retval=$?
     exit $retval
 }

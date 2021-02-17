@@ -1,13 +1,13 @@
 package oci
 
 import (
-	"github.com/oracle/oci-go-sdk/common"
+	"github.com/oracle/oci-go-sdk/v31/common"
 	"reflect"
 	"testing"
 
 	"go.uber.org/zap"
 
-	"github.com/oracle/oci-go-sdk/core"
+	"github.com/oracle/oci-go-sdk/v31/core"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -117,7 +117,7 @@ func TestGetInstanceByNode(t *testing.T) {
 		"Get Instance when providerID is prefixed with providerName": {
 			node: &v1.Node{
 				Spec: v1.NodeSpec{
-					ProviderID: providerPrefix+instanceID,
+					ProviderID: providerPrefix + instanceID,
 				},
 			},
 			nic: &NodeInfoController{
@@ -137,7 +137,7 @@ func TestGetInstanceByNode(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			instance, err := getInstanceByNode(tc.node, tc.nic, logger.Sugar())
-			if err != nil{
+			if err != nil {
 				t.Fatalf("%s unexpected service add error: %v", name, err)
 			}
 			if !reflect.DeepEqual(instance, tc.expectedInstance) {

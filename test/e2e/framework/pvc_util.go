@@ -16,14 +16,18 @@ package framework
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
-	ocicore "github.com/oracle/oci-go-sdk/core"
+	ocicore "github.com/oracle/oci-go-sdk/v31/core"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -34,11 +38,19 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 )
 
+const (
+	KmsKey                        = "kms-key-id"
+	AttachmentTypeISCSI           = "iscsi"
+	AttachmentTypeParavirtualized = "paravirtualized"
+	SCName                        = "oci-kms"
+	AttachmentType                = "attachment-type"
+)
+
 // PVCTestJig is a jig to help create PVC tests.
 type PVCTestJig struct {
-	ID     string
-	Name   string
-	Labels map[string]string
+	ID                 string
+	Name               string
+	Labels             map[string]string
 	BlockStorageClient *ocicore.BlockstorageClient
 	KubeClient         clientset.Interface
 }
@@ -137,7 +149,7 @@ func (j *PVCTestJig) newPVCTemplateCSI(namespace string, volumeSize string, scNa
 			AccessModes: []v1.PersistentVolumeAccessMode{
 				v1.ReadWriteOnce,
 			},
-				Resources: v1.ResourceRequirements{
+			Resources: v1.ResourceRequirements{
 				Requests: v1.ResourceList{
 					v1.ResourceName(v1.ResourceStorage): resource.MustParse(volumeSize),
 				},
@@ -165,17 +177,17 @@ func (j *PVCTestJig) newPVTemplateCSI(namespace string, scName string, ocid stri
 				v1.ReadWriteOnce,
 			},
 			Capacity: v1.ResourceList{
-					v1.ResourceStorage: resource.MustParse("50Gi"),
+				v1.ResourceStorage: resource.MustParse("50Gi"),
 			},
 			PersistentVolumeSource: v1.PersistentVolumeSource{
-					CSI: &v1.CSIPersistentVolumeSource{
-						Driver:       "blockvolume.csi.oraclecloud.com",
-						FSType:       "ext4",
-						VolumeHandle: ocid,
-					},
+				CSI: &v1.CSIPersistentVolumeSource{
+					Driver:       "blockvolume.csi.oraclecloud.com",
+					FSType:       "ext4",
+					VolumeHandle: ocid,
 				},
+			},
 			PersistentVolumeReclaimPolicy: "Delete",
-			StorageClassName: scName,
+			StorageClassName:              scName,
 		},
 	}
 }
@@ -263,13 +275,13 @@ func (j *PVCTestJig) CreateAndAwaitStaticPVCOrFailCSI(bs ocicore.BlockstorageCli
 
 // CreateVolume is a function to create the block volume
 func (j *PVCTestJig) CreateVolume(bs ocicore.BlockstorageClient, adLabel string, compartmentId string, volName string) *string {
-	var size int64 =50
+	var size int64 = 50
 	request := ocicore.CreateVolumeRequest{
-		CreateVolumeDetails: ocicore.CreateVolumeDetails {
+		CreateVolumeDetails: ocicore.CreateVolumeDetails{
 			AvailabilityDomain: &adLabel,
 			DisplayName:        &volName,
-			SizeInGBs: &size,
-			CompartmentId: &compartmentId,
+			SizeInGBs:          &size,
+			CompartmentId:      &compartmentId,
 		},
 	}
 
@@ -282,7 +294,7 @@ func (j *PVCTestJig) CreateVolume(bs ocicore.BlockstorageClient, adLabel string,
 
 // newPODTemplate returns the default template for this jig,
 // creates the Pod. Attaches PVC to the Pod which is created by CSI
-func (j *PVCTestJig) NewPODForCSI(name string, namespace string, claimName string, adLabel string) {
+func (j *PVCTestJig) NewPODForCSI(name string, namespace string, claimName string, adLabel string) string {
 	By("Creating a pod with the claiming PVC created by CSI")
 	pod, err := j.KubeClient.CoreV1().Pods(namespace).Create(&v1.Pod{
 		TypeMeta: metav1.TypeMeta{
@@ -296,8 +308,8 @@ func (j *PVCTestJig) NewPODForCSI(name string, namespace string, claimName strin
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
 				{
-					Name:  name,
-					Image: centos,
+					Name:    name,
+					Image:   centos,
 					Command: []string{"/bin/sh"},
 					Args:    []string{"-c", "while true; do echo $(date -u) >> /data/out.txt; sleep 5; done"},
 					VolumeMounts: []v1.VolumeMount{
@@ -333,6 +345,7 @@ func (j *PVCTestJig) NewPODForCSI(name string, namespace string, claimName strin
 		Failf("Pod %q is not Running: %v", pod.Name, err)
 	}
 	zap.S().With(pod.Namespace).With(pod.Name).Info("CSI POD is created.")
+	return pod.Name
 }
 
 // WaitForPVCPhase waits for a PersistentVolumeClaim to be in a specific phase or until timeout occurs, whichever comes first.
@@ -479,5 +492,89 @@ func (j *PVCTestJig) CheckVolumeCapacity(expected string, name string, namespace
 
 	if actual.String() != expected {
 		Failf("Expected volume to be %s but got %s", expected, actual)
+	}
+}
+
+// CheckCMEKKey verifies the expected and actual CMEK key
+func (j *PVCTestJig) CheckCMEKKey(bs client.BlockStorageInterface, pvcName, namespace, kmsKeyIDExpected string) {
+
+	By("Checking is Expected and Actual CMEK key matches")
+	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(namespace).Get(pvcName, metav1.GetOptions{})
+	Expect(err).NotTo(HaveOccurred())
+	// Get the bound PV
+	pv, err := j.KubeClient.CoreV1().PersistentVolumes().Get(pvc.Spec.VolumeName, metav1.GetOptions{})
+	if err != nil {
+		Failf("Failed to get persistent volume %q: %v", pvc.Spec.VolumeName, err)
+	}
+	volume, err := bs.GetVolume(context.Background(), pv.Spec.CSI.VolumeHandle)
+	if err != nil {
+		Failf("Volume %q get API error: %v", pv.Spec.CSI.VolumeHandle, err)
+	}
+	Logf("Expected KMSKey:%s, Actual KMSKey:%v", kmsKeyIDExpected, volume.KmsKeyId)
+	if volume.KmsKeyId == nil || *volume.KmsKeyId != kmsKeyIDExpected {
+		Failf("Expected and Actual KMS key for CMEK test doesn't match. Expected KMSKey:%s, Actual KMSKey:%v", kmsKeyIDExpected, volume.KmsKeyId)
+	}
+}
+
+// CheckAttachmentTypeAndEncryptionType verifies attachment type and encryption type
+func (j *PVCTestJig) CheckAttachmentTypeAndEncryptionType(compute client.ComputeInterface, pvcName, namespace, podName, expectedAttachmentType string) {
+	By("Checking attachment type")
+	pod, err := j.KubeClient.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
+	Expect(err).NotTo(HaveOccurred())
+	Logf("node is:%s", pod.Spec.NodeName)
+	node, err := j.KubeClient.CoreV1().Nodes().Get(pod.Spec.NodeName, metav1.GetOptions{})
+	Expect(err).NotTo(HaveOccurred())
+	// Get the bound PV
+	instanceID := strings.Replace(node.Spec.ProviderID, "oci://", "", -1)
+	if instanceID == "" {
+		Failf("ProviderID should not be empty")
+	}
+
+	compartmentID, ok := node.Annotations["oci.oraclecloud.com/compartment-id"]
+	if !ok {
+		Failf("Node CompartmentID annotation should not be empty")
+	}
+
+	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(namespace).Get(pvcName, metav1.GetOptions{})
+	Expect(err).NotTo(HaveOccurred())
+	// Get the bound PV
+	pv, err := j.KubeClient.CoreV1().PersistentVolumes().Get(pvc.Spec.VolumeName, metav1.GetOptions{})
+	if err != nil {
+		Failf("Failed to get persistent volume %q: %v", pvc.Spec.VolumeName, err)
+	}
+
+	attachment, err := compute.FindActiveVolumeAttachment(context.Background(), compartmentID, pv.Spec.CSI.VolumeHandle)
+	if err != nil {
+		Failf("VolumeAttachment %q get API error: %v", instanceID, err)
+	}
+	attachmentType := ""
+	switch v := attachment.(type) {
+	case ocicore.ParavirtualizedVolumeAttachment:
+		Logf("AttachmentType is paravirtualized for attachmentID:%s", *v.GetId())
+		attachmentType = AttachmentTypeParavirtualized
+	case ocicore.IScsiVolumeAttachment:
+		Logf("AttachmentType is iscsi for attachmentID:%s", *v.GetId())
+		attachmentType = AttachmentTypeISCSI
+	default:
+		Failf("Unknown Attachment Type for attachmentID: %v", *v.GetId())
+	}
+
+	instance, err := compute.GetInstance(context.Background(), instanceID)
+	if err != nil {
+		Failf("instance %q get API error: %v", instanceID, err)
+	}
+
+	if *instance.LaunchOptions.IsPvEncryptionInTransitEnabled {
+		expectedAttachmentType = AttachmentTypeParavirtualized
+	}
+	if attachmentType != expectedAttachmentType {
+		Failf("expected attachmentType: %s but got %s", expectedAttachmentType, attachmentType)
+	}
+	By("Checking encryption type")
+	Logf("instance launch option has in-transit encryption %v: volume attachment has in-transit encryption "+
+		"%v", *instance.LaunchOptions.IsPvEncryptionInTransitEnabled, *attachment.GetIsPvEncryptionInTransitEnabled())
+	if *instance.LaunchOptions.IsPvEncryptionInTransitEnabled != *attachment.GetIsPvEncryptionInTransitEnabled() {
+		Failf("instance launch option has in-transit encryption %v, but volume attachment has in-transit "+
+			"encryption %v", *instance.LaunchOptions.IsPvEncryptionInTransitEnabled, *attachment.GetIsPvEncryptionInTransitEnabled())
 	}
 }

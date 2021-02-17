@@ -264,6 +264,76 @@ func TestValidateConfig(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "valid config for Auth, LB and metrics",
+			in: &Config{
+				metadataSvc: metadata.NewErrorMock(),
+				Auth: AuthConfig{
+					metadataSvc:   metadata.NewErrorMock(),
+					Region:        "us-phoenix-1",
+					TenancyID:     "ocid1.tenancy.oc1..aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					CompartmentID: "ocid1.compartment.oc1..aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					UserID:        "ocid1.user.oc1..aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					PrivateKey:    "-----BEGIN RSA PRIVATE KEY----- (etc)",
+					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
+				},
+				LoadBalancer: &LoadBalancerConfig{
+					Subnet1: "ocid1.tenancy.oc1..aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				},
+				Metrics: &MetricsConfig{
+					CompartmentID: "ocid1.compartment.oc1..aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					Namespace:     "test",
+					ResourceGroup: "test-rg",
+					Prefix:        "Prefix.",
+				},
+			},
+			errs: field.ErrorList{},
+		}, {
+			name: "valid config for Auth, LB and invalid config for metrics",
+			in: &Config{
+				metadataSvc: metadata.NewErrorMock(),
+				Auth: AuthConfig{
+					metadataSvc:   metadata.NewErrorMock(),
+					Region:        "us-phoenix-1",
+					TenancyID:     "ocid1.tenancy.oc1..aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					CompartmentID: "ocid1.compartment.oc1..aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					UserID:        "ocid1.user.oc1..aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					PrivateKey:    "-----BEGIN RSA PRIVATE KEY----- (etc)",
+					Fingerprint:   "8c:bf:17:7b:5f:e0:7d:13:75:11:d6:39:0d:e2:84:74",
+				},
+				LoadBalancer: &LoadBalancerConfig{
+					Subnet1: "ocid1.tenancy.oc1..aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					Subnet2: "ocid1.subnet.oc1.phx.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				},
+				Metrics: &MetricsConfig{
+					CompartmentID: "",
+					Namespace:     "",
+					ResourceGroup: "",
+					Prefix:        "Prefix.",
+				},
+			},
+			errs: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeRequired,
+					Field:    "metrics.compartment",
+					BadValue: "",
+					Detail:   "Compartment is required for pushing custom metrics",
+				},
+				&field.Error{
+					Type:     field.ErrorTypeRequired,
+					Field:    "metrics.namespace",
+					BadValue: "",
+					Detail:   "Metric namespace is required for pushing custom metrics",
+				},
+				&field.Error{
+					Type:     field.ErrorTypeRequired,
+					Field:    "metrics.resourceGroup",
+					BadValue: "",
+					Detail:   "Metric resource group is required for pushing custom metrics",
+				},
+			},
+		},
 	}
 
 	for _, tt := range testCases {

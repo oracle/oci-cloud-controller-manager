@@ -22,11 +22,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/oracle/oci-go-sdk/core"
-
-	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -36,6 +31,12 @@ import (
 	listersv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	cloudprovider "k8s.io/cloud-provider"
+
+	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/metrics"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
+	"github.com/oracle/oci-go-sdk/v31/core"
 )
 
 const (
@@ -66,6 +67,7 @@ type CloudProvider struct {
 
 	logger        *zap.SugaredLogger
 	instanceCache cache.Store
+	metricPusher  *metrics.MetricPusher
 }
 
 // Compile time check that CloudProvider implements the cloudprovider.Interface
@@ -109,11 +111,25 @@ func NewCloudProvider(config *providercfg.Config) (cloudprovider.Interface, erro
 		config.VCNID = *subnet.VcnId
 	}
 
+	metricPusher, err := metrics.NewMetricPusher(logger.Sugar())
+	if err != nil {
+		logger.Sugar().With("error", err).Error("Metrics collection could not be enabled")
+		// disable metrics
+		metricPusher = nil
+	}
+
+	if metricPusher != nil {
+		logger.Info("Metrics collection has been enabled")
+	} else {
+		logger.Info("Metrics collection has not been enabled")
+	}
+
 	return &CloudProvider{
 		client:        c,
 		config:        config,
 		logger:        logger.Sugar(),
 		instanceCache: cache.NewTTLStore(instanceCacheKeyFn, time.Duration(24)*time.Hour),
+		metricPusher:  metricPusher,
 	}, nil
 }
 

@@ -21,10 +21,10 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/oracle/oci-go-sdk/common"
-	"github.com/oracle/oci-go-sdk/loadbalancer"
+	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
 	"github.com/pkg/errors"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	sets "k8s.io/apimachinery/pkg/util/sets"
 	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
 )
@@ -91,6 +91,8 @@ func NewSSLConfig(secretListenerString string, secretBackendSetString string, se
 type LBSpec struct {
 	Name        string
 	Shape       string
+	FlexMin     *int
+	FlexMax     *int
 	Subnets     []string
 	Internal    bool
 	Listeners   map[string]loadbalancer.ListenerDetails
@@ -116,11 +118,9 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sub
 		return nil, err
 	}
 
-	// TODO (apryde): We should detect when this changes and WARN as we don't
-	// support updating a load balancer's Shape.
-	shape := lbDefaultShape
-	if s, ok := svc.Annotations[ServiceAnnotationLoadBalancerShape]; ok {
-		shape = s
+	shape, flexShapeMinMbps, flexShapeMaxMbps, err := getLBShape(svc)
+	if err != nil {
+		return nil, err
 	}
 
 	sourceCIDRs, err := getLoadBalancerSourceRanges(svc)
@@ -146,6 +146,8 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sub
 	return &LBSpec{
 		Name:        GetLoadBalancerName(svc),
 		Shape:       shape,
+		FlexMin:     flexShapeMinMbps,
+		FlexMax:     flexShapeMaxMbps,
 		Internal:    internal,
 		Subnets:     subnets,
 		Listeners:   listeners,
@@ -469,4 +471,72 @@ func isInternalLB(svc *v1.Service) (bool, error) {
 		return internal, nil
 	}
 	return false, nil
+}
+
+func getLBShape(svc *v1.Service) (string, *int, *int, error) {
+	shape := lbDefaultShape
+	if s, ok := svc.Annotations[ServiceAnnotationLoadBalancerShape]; ok {
+		shape = s
+	}
+
+	// For flexible shape, LBaaS requires the ShapeName to be in lower case `flexible`
+	// but they have a public documentation bug where it is mentioned as `Flexible`
+	// We are converting to lowercase to check the shape name and send to LBaaS
+	shapeLower := strings.ToLower(shape)
+
+	if shapeLower == flexible {
+		shape = flexible
+	}
+
+	// if it's not a flexshape LB return the ShapeName as the shape
+	if shape != flexible {
+		return shape, nil, nil, nil
+	}
+
+	var flexMinS, flexMaxS string
+	var flexShapeMinMbps, flexShapeMaxMbps int
+
+	if fmin, ok := svc.Annotations[ServiceAnnotationLoadBalancerShapeFlexMin]; ok {
+		flexMinS = fmin
+	}
+
+	if fmax, ok := svc.Annotations[ServiceAnnotationLoadBalancerShapeFlexMax]; ok {
+		flexMaxS = fmax
+	}
+
+	if flexMinS == "" || flexMaxS == "" {
+		return "", nil, nil, fmt.Errorf("error parsing service annotation: %s=flexible requires %s and %s to be set",
+			ServiceAnnotationLoadBalancerShape,
+			ServiceAnnotationLoadBalancerShapeFlexMin,
+			ServiceAnnotationLoadBalancerShapeFlexMax,
+		)
+	}
+
+	flexShapeMinMbps, err := strconv.Atoi(flexMinS)
+	if err != nil {
+		return "", nil, nil, errors.Wrap(err,
+			fmt.Sprintf("The annotation %s should contain only integer value", ServiceAnnotationLoadBalancerShapeFlexMin))
+	}
+	flexShapeMaxMbps, err = strconv.Atoi(flexMaxS)
+	if err != nil {
+		return "", nil, nil, errors.Wrap(err,
+			fmt.Sprintf("The annotation %s should contain only integer value", ServiceAnnotationLoadBalancerShapeFlexMax))
+	}
+	if flexShapeMinMbps < 10 {
+		flexShapeMinMbps = 10
+	}
+	if flexShapeMaxMbps < 10 {
+		flexShapeMaxMbps = 10
+	}
+	if flexShapeMinMbps > 8192 {
+		flexShapeMinMbps = 8192
+	}
+	if flexShapeMaxMbps > 8192 {
+		flexShapeMaxMbps = 8192
+	}
+	if flexShapeMaxMbps < flexShapeMinMbps {
+		flexShapeMaxMbps = flexShapeMinMbps
+	}
+
+	return shape, &flexShapeMinMbps, &flexShapeMaxMbps, nil
 }

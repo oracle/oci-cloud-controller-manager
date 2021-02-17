@@ -18,7 +18,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/oracle/oci-go-sdk/core"
+	"github.com/oracle/oci-go-sdk/v31/core"
 	"github.com/pkg/errors"
 
 	"k8s.io/apimachinery/pkg/types"

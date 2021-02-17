@@ -15,13 +15,14 @@
 package oci
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
 
-	"github.com/oracle/oci-go-sdk/loadbalancer"
+	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
 	"go.uber.org/zap"
 
 	api "k8s.io/api/core/v1"
@@ -546,6 +547,27 @@ func getListenerChanges(logger *zap.SugaredLogger, actual map[string]loadbalance
 	}
 
 	return listenerActions
+}
+
+func hasLoadbalancerShapeChanged(ctx context.Context, spec *LBSpec, lb *loadbalancer.LoadBalancer) bool {
+	if *lb.ShapeName != spec.Shape {
+		return true
+	}
+
+	// in case of fixed shape with no shape change (lb.ShapeDetails == nil for fixedshape),
+	// or flexshape with missing property values return false
+	if lb.ShapeDetails == nil || spec.FlexMin == nil || spec.FlexMax == nil {
+		return false
+	}
+
+	// in case of flex shape with change of min/max bandwitch
+	if *lb.ShapeDetails.MinimumBandwidthInMbps != *spec.FlexMin {
+		return true
+	}
+	if *lb.ShapeDetails.MaximumBandwidthInMbps != *spec.FlexMax {
+		return true
+	}
+	return false
 }
 
 func sslEnabled(sslConfigMap map[int]*loadbalancer.SslConfiguration) bool {

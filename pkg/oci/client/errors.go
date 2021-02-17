@@ -19,12 +19,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/oracle/oci-go-sdk/common"
+	"github.com/oracle/oci-go-sdk/v31/common"
 	"github.com/pkg/errors"
 )
 
 var errNotFound = errors.New("not found")
 
+// HTTP Error Types
 const (
 	HTTP400RelatedResourceNotAuthorizedOrNotFoundCode = "RelatedResourceNotAuthorizedOrNotFound"
 	HTTP401NotAuthenticatedCode                       = "NotAuthenticated"

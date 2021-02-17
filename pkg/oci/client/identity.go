@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/oracle/oci-go-sdk/identity"
+	"github.com/oracle/oci-go-sdk/v31/identity"
 	"github.com/pkg/errors"
 )
 

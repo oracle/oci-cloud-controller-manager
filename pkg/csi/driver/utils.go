@@ -2,12 +2,13 @@ package driver
 
 import (
 	"fmt"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/util/iscsi"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util/disk"
 
 	"go.uber.org/zap"
 
@@ -29,6 +30,11 @@ const (
 type Util struct {
 	logger *zap.SugaredLogger
 }
+
+var (
+	diskByPathPatternPV    = `/dev/disk/by-path/pci-\d+:\d+:\d+\.\d+-scsi-\d+:\d+:\d+:\d+$`
+	diskByPathPatternISCSI = `/dev/disk/by-path/ip-[\w\.]+:\d+-iscsi-[\w\.\-:]+-lun-1$`
+)
 
 func (u *Util) lookupNodeID(k kubernetes.Interface, nodeName string) (string, error) {
 	n, err := k.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
@@ -94,20 +100,20 @@ func (u *Util) getAvailableDomainInNodeLabel(fullAD string) string {
 	return ""
 }
 
-func getDevicePath(sd *iscsi.Disk) string {
+func getDevicePath(sd *disk.Disk) string {
 	return fmt.Sprintf("/dev/disk/by-path/ip-%s:%d-iscsi-%s-lun-1", sd.IPv4, sd.Port, sd.IQN)
 }
 
-func extractISCSIInformation(attributes map[string]string) (*iscsi.Disk, error) {
-	iqn, ok := attributes[iscsi.ISCSIIQN]
+func extractISCSIInformation(attributes map[string]string) (*disk.Disk, error) {
+	iqn, ok := attributes[disk.ISCSIIQN]
 	if !ok {
 		return nil, fmt.Errorf("Unable to get the IQN from the attribute list")
 	}
-	ipv4, ok := attributes[iscsi.ISCSIIP]
+	ipv4, ok := attributes[disk.ISCSIIP]
 	if !ok {
 		return nil, fmt.Errorf("Unable to get the ipv4 from the attribute list")
 	}
-	port, ok := attributes[iscsi.ISCSIPORT]
+	port, ok := attributes[disk.ISCSIPORT]
 	if !ok {
 		return nil, fmt.Errorf("Unable to get the port from the attribute list")
 	}
@@ -117,30 +123,30 @@ func extractISCSIInformation(attributes map[string]string) (*iscsi.Disk, error) 
 		return nil, fmt.Errorf("Invalid port number: %s, error: %v", port, err)
 	}
 
-	return &iscsi.Disk{
+	return &disk.Disk{
 		IQN:  iqn,
 		IPv4: ipv4,
 		Port: nPort,
 	}, nil
 }
 
-func extractISCSIInformationFromMountPath(logger *zap.SugaredLogger, mountPath string) (*iscsi.Disk, error) {
+func extractISCSIInformationFromMountPath(logger *zap.SugaredLogger, diskPath []string) (*disk.Disk, error) {
 
-	logger.Info("Getting ISCSIInfo for the mount path: ", mountPath)
-	m, err := iscsi.FindFromMountPointPath(logger, mountPath)
+	logger.Info("Getting ISCSIInfo for the mount path: ", diskPath)
+	m, err := disk.FindFromMountPointPath(logger, diskPath)
 	if err != nil {
-		logger.With(zap.Error(err)).With("mount path", mountPath).Error("Invalid mount path")
+		logger.With(zap.Error(err)).With("mount path", diskPath).Error("Invalid mount path")
 		return nil, err
 	}
 
 	port, err := strconv.Atoi(m[2])
 	if err != nil {
-		logger.With(zap.Error(err)).With("mount path", mountPath, "port", port).Error("Invalid port")
+		logger.With(zap.Error(err)).With("mount path", diskPath, "port", port).Error("Invalid port")
 		return nil, err
 	}
 
-	logger.With("IQN", m[3], "IPv4", m[1], "Port", port).Info("Found ISCSIInfo for the mount path: ", mountPath)
-	return &iscsi.Disk{
+	logger.With("IQN", m[3], "IPv4", m[1], "Port", port).Info("Found ISCSIInfo for the mount path: ", diskPath)
+	return &disk.Disk{
 		IQN:  m[3],
 		IPv4: m[1],
 		Port: port,

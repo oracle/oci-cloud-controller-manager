@@ -17,6 +17,7 @@ Define the following environment variables in your shell environment -
 export ADLOCATION=<adlocation>
 export CLUSTER_KUBECONFIG=<file path to your cluster's kubeconfig>
 export CLOUD_CONFIG=<path that points to cloud-provider.yaml for your cluster>
+export CMEK_KMS_KEY=<CMEK ocid>
 ```
 
 Then run
@@ -66,6 +67,7 @@ $ ginkgo -v -progress test/e2e/cloud-provider-oci -- \
     --adlocation=$ADLOCATION \
     --ccm-seclist-id=ocid1.securitylist.$ccmloadblancerid \
     --k8s-seclist-id=ocid1.securitylist.$k8sworkerid
+    --cmek-kms-key=${CMEK_KMS_KEY} 
 ```
 
 ---

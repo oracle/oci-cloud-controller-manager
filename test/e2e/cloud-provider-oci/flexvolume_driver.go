@@ -26,7 +26,7 @@ var _ = Describe("flex volume driver", func() {
 		It("should be possible to mount a volume", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "fvd-e2e-tests-pvc")
 
-			scName := f.CreateStorageClassOrFail(framework.ClassOCI, core.ProvisionerNameDefault, nil, pvcJig.Labels)
+			scName := f.CreateStorageClassOrFail(framework.ClassOCI, core.ProvisionerNameDefault, nil, pvcJig.Labels, "")
 
 			By("Provisioning volume to mount")
 			pvc := pvcJig.CreateAndAwaitPVCOrFail(f.Namespace.Name, framework.MinVolumeBlock, scName, setupF.AdLabel, nil)

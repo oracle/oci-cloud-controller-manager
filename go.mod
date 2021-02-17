@@ -57,13 +57,12 @@ require (
 	github.com/onsi/ginkgo v1.8.0
 	github.com/onsi/gomega v1.5.0
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
-	github.com/oracle/oci-go-sdk v0.0.0-00000000000000-857a54193bc062afe3933d02b38e3fe9d158f744
+	github.com/oracle/oci-go-sdk/v31 v31.0.0
 	github.com/pkg/errors v0.8.0
 	github.com/prometheus/client_golang v0.9.2
 	github.com/spf13/cobra v0.0.5 // indirect
 	github.com/spf13/pflag v1.0.3
 	github.com/spf13/viper v1.3.2
-	github.com/stretchr/testify v1.4.0 // indirect
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/zap v1.9.1
 	golang.org/x/net v0.0.0-20190827160401-ba9fcec4b297

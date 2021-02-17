@@ -22,11 +22,11 @@ import (
 	v12 "k8s.io/api/storage/v1"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-go-sdk/common"
-	"github.com/oracle/oci-go-sdk/core"
-	"github.com/oracle/oci-go-sdk/filestorage"
-	"github.com/oracle/oci-go-sdk/identity"
-	"github.com/oracle/oci-go-sdk/loadbalancer"
+	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v31/core"
+	"github.com/oracle/oci-go-sdk/v31/filestorage"
+	"github.com/oracle/oci-go-sdk/v31/identity"
+	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 	"k8s.io/api/core/v1"
@@ -185,6 +185,10 @@ func (c *MockComputeClient) GetPrimaryVNICForInstance(ctx context.Context, compa
 }
 
 func (c *MockComputeClient) FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
+	return nil, nil
+}
+
+func (MockComputeClient) AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool) (core.VolumeAttachment, error) {
 	return nil, nil
 }
 
@@ -357,6 +361,10 @@ func (c *MockLoadBalancerClient) CreateListener(ctx context.Context, lbID, name 
 }
 
 func (c *MockLoadBalancerClient) DeleteListener(ctx context.Context, lbID, name string) (string, error) {
+	return "", nil
+}
+
+func (c *MockLoadBalancerClient) UpdateLoadBalancerShape(ctx context.Context, lbID string, details loadbalancer.UpdateLoadBalancerShapeDetails) (string, error) {
 	return "", nil
 }
 

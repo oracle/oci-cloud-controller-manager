@@ -82,5 +82,21 @@ func ValidateConfig(c *Config) field.ErrorList {
 	if c.LoadBalancer != nil && !c.LoadBalancer.Disabled {
 		allErrs = append(allErrs, validateLoadBalancerConfig(c, field.NewPath("loadBalancer"))...)
 	}
+
+	// Validate metric config if the metrics block is not empty
+	if c.Metrics != nil {
+		if len(c.Metrics.CompartmentID) == 0 {
+			// The compartment is required for pushing metrics to OCI Monitoring
+			allErrs = append(allErrs, field.Required(field.NewPath("metrics", "compartment"), "Compartment is required for pushing custom metrics"))
+		}
+
+		if len(c.Metrics.Namespace) == 0 {
+			allErrs = append(allErrs, field.Required(field.NewPath("metrics", "namespace"), "Metric namespace is required for pushing custom metrics"))
+		}
+
+		if len(c.Metrics.ResourceGroup) == 0 {
+			allErrs = append(allErrs, field.Required(field.NewPath("metrics", "resourceGroup"), "Metric resource group is required for pushing custom metrics"))
+		}
+	}
 	return allErrs
 }
