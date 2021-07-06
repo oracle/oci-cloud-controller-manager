@@ -169,6 +169,13 @@ func (d *ControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolu
 		return nil, status.Errorf(codes.InvalidArgument, "failed to parse storageclass parameters %v", err)
 	}
 
+	var sourceOcid string
+	sourceVolume := req.GetVolumeContentSource()
+
+	if sourceVolume != nil {
+		sourceOcid = sourceVolume.GetVolume().VolumeId
+	}
+
 	provisionedVolume := core.Volume{}
 
 	if len(volumes) > 0 {
@@ -186,7 +193,7 @@ func (d *ControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolu
 			return nil, status.Errorf(codes.InvalidArgument, "invalid available domain: %s or compartment ID: %s", availableDomainShortName, d.config.CompartmentID)
 		}
 
-		provisionedVolume, err = provision(log, d.client, volumeName, size, *ad.Name, d.config.CompartmentID, "", volumeParams.diskEncryptionKey, timeout)
+		provisionedVolume, err = provision(log, d.client, volumeName, size, sourceOcid, *ad.Name, d.config.CompartmentID, "", volumeParams.diskEncryptionKey, timeout)
 		if err != nil {
 			log.With("Ad name", *ad.Name, "Compartment Id", d.config.CompartmentID).Error("New volume creation failed %s", err)
 			metrics.SendMetricData(d.metricPusher, metrics.PVProvisionFailure, time.Since(startTime).Seconds(), csiDriver, "")
@@ -613,7 +620,7 @@ func (d *ControllerDriver) ControllerExpandVolume(ctx context.Context, req *csi.
 	return nil, status.Error(codes.Unimplemented, "ControllerExpandVolume is not supported yet")
 }
 
-func provision(log *zap.SugaredLogger, c client.Interface, volName string, volSize int64, availDomainName, compartmentID, backupID, kmsKeyID string, timeout time.Duration) (core.Volume, error) {
+func provision(log *zap.SugaredLogger, c client.Interface, volName string, volSize int64, sourceOcid, availDomainName, compartmentID, backupID, kmsKeyID string, timeout time.Duration) (core.Volume, error) {
 
 	ctx := context.Background()
 
@@ -629,6 +636,7 @@ func provision(log *zap.SugaredLogger, c client.Interface, volName string, volSi
 		CompartmentId:      &compartmentID,
 		DisplayName:        &volName,
 		SizeInGBs:          &volSizeGB,
+		SourceDetails:      &sourceOcid,
 	}
 
 	if backupID != "" {
