@@ -184,6 +184,7 @@ func (d *ControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolu
 			log.Errorf("Error finding source details", err)
 		}
 
+		// Size Validation
 		if *source.SizeInMBs*client.MiB < req.CapacityRange.RequiredBytes {
 			log.Error("Volume Expansion is not supported : Source Volume Size must be equal to the requested volume size")
 			return nil, fmt.Errorf("Requested volume size is greater than the source volume")
