@@ -171,9 +171,23 @@ func (d *ControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolu
 
 	var sourceOcid string
 	sourceVolume := req.GetVolumeContentSource()
+	log.Info("Volume Content Source: ", sourceVolume)
 
 	if sourceVolume != nil {
 		sourceOcid = sourceVolume.GetVolume().VolumeId
+		if sourceOcid != "" {
+			log.Info("Source Volume Ocid obtained: ", sourceOcid)
+		}
+
+		source, err := d.client.BlockStorage().GetVolume(ctx, sourceOcid)
+		if err != nil {
+			log.Errorf("Error finding source details", err)
+		}
+
+		if *source.SizeInMBs*client.MiB < req.CapacityRange.RequiredBytes {
+			log.Error("Volume Expansion is not supported : Source Volume Size must be equal to the requested volume size")
+			return nil, fmt.Errorf("Requested volume size is greater than the source volume")
+		}
 	}
 
 	provisionedVolume := core.Volume{}
@@ -229,6 +243,7 @@ func (d *ControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolu
 				},
 			},
 			VolumeContext: volumeParams.attachmentParameter,
+			ContentSource: sourceVolume,
 		},
 	}, nil
 }
@@ -505,6 +520,7 @@ func (d *ControllerDriver) ControllerGetCapabilities(ctx context.Context, req *c
 	for _, cap := range []csi.ControllerServiceCapability_RPC_Type{
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 		csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
+		csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
 	} {
 		caps = append(caps, newCap(cap))
 	}
@@ -620,7 +636,7 @@ func (d *ControllerDriver) ControllerExpandVolume(ctx context.Context, req *csi.
 	return nil, status.Error(codes.Unimplemented, "ControllerExpandVolume is not supported yet")
 }
 
-func provision(log *zap.SugaredLogger, c client.Interface, volName string, volSize int64, sourceOcid, availDomainName, compartmentID, backupID, kmsKeyID string, timeout time.Duration) (core.Volume, error) {
+func provision(log *zap.SugaredLogger, c client.Interface, volName string, volSize int64, sourceOcid string, availDomainName, compartmentID, backupID, kmsKeyID string, timeout time.Duration) (core.Volume, error) {
 
 	ctx := context.Background()
 
@@ -636,7 +652,13 @@ func provision(log *zap.SugaredLogger, c client.Interface, volName string, volSi
 		CompartmentId:      &compartmentID,
 		DisplayName:        &volName,
 		SizeInGBs:          &volSizeGB,
-		SourceDetails:      &sourceOcid,
+	}
+
+	if sourceOcid != "" {
+		volumeDetails.SourceDetails = &core.VolumeSourceFromVolumeDetails{Id: &sourceOcid}
+		if volumeDetails.SourceDetails != nil {
+			log.Info("Source Ocid added to volumeDetails: ", sourceOcid)
+		}
 	}
 
 	if backupID != "" {

@@ -30,32 +30,20 @@ replace (
 
 require (
 	github.com/NYTimes/gziphandler v1.0.1 // indirect
-	github.com/VividCortex/gohistogram v1.0.0 // indirect
 	github.com/container-storage-interface/spec v1.1.0
 	github.com/docker/distribution v0.0.0-20180720172123-0dae0957e5fe // indirect
 	github.com/fatih/camelcase v1.0.0 // indirect
-	github.com/ghodss/yaml v1.0.0 // indirect
-	github.com/go-kit/kit v0.9.0 // indirect
 	github.com/golang/groupcache v0.0.0-20190129154638-5b532d6fd5ef // indirect
-	github.com/golang/mock v1.2.0 // indirect
-	github.com/golang/protobuf v1.3.2
-	github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c // indirect
-	github.com/google/go-cmp v0.3.1 // indirect
-	github.com/google/go-querystring v1.0.0 // indirect
+	github.com/golang/protobuf v1.5.2
 	github.com/googleapis/gnostic v0.2.0 // indirect
 	github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7 // indirect
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
 	github.com/imdario/mergo v0.3.7 // indirect
-	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/kubernetes-csi/csi-lib-utils v0.6.1
-	github.com/kubernetes-csi/csi-test v2.0.0+incompatible // indirect
-	github.com/kubernetes-csi/external-attacher v2.0.0+incompatible // indirect
-	github.com/kubernetes-csi/external-provisioner v1.4.0 // indirect
-	github.com/kubernetes-csi/external-snapshotter v1.0.1 // indirect
 	github.com/miekg/dns v1.1.17 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20190414153302-2ae31c8b6b30 // indirect
-	github.com/onsi/ginkgo v1.8.0
-	github.com/onsi/gomega v1.5.0
+	github.com/onsi/ginkgo v1.16.4 // indirect
+	github.com/onsi/gomega v1.14.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/oracle/oci-go-sdk/v31 v31.0.0
 	github.com/pkg/errors v0.8.1
@@ -63,16 +51,13 @@ require (
 	github.com/spf13/cobra v0.0.5 // indirect
 	github.com/spf13/pflag v1.0.3
 	github.com/spf13/viper v1.3.2
-	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/zap v1.9.1
-	golang.org/x/net v0.0.0-20191027093000-83d349e8ac1a
-	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45 // indirect
+	golang.org/x/net v0.0.0-20210428140749-89ef3d95e781
 	google.golang.org/appengine v1.6.2 // indirect
 	google.golang.org/grpc v1.20.1
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
-	gopkg.in/square/go-jose.v2 v2.3.1 // indirect
-	gopkg.in/yaml.v2 v2.2.2
+	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.0.0
 	k8s.io/apimachinery v0.0.0
 	k8s.io/client-go v11.0.0+incompatible
