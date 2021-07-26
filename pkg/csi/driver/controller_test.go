@@ -490,7 +490,44 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 			want:    nil,
 			wantErr: errors.New("required in PreferredTopologies or allowedTopologies"),
 		},
+		{
+			name:   "Clone Volume",
+			fields: fields{},
+			args: args{
+				ctx: context.Background(),
+				req: &csi.CreateVolumeRequest{
+					Name: "ut-volume",
+					VolumeCapabilities: []*csi.VolumeCapability{
+						&csi.VolumeCapability{
+							AccessMode: &csi.VolumeCapability_AccessMode{
+								Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+							},
+						},
+					},
+					CapacityRange: &csi.CapacityRange{
+						RequiredBytes: int64(minimumVolumeSizeInBytes),
+					},
+					AccessibilityRequirements: &csi.TopologyRequirement{
+						Preferred: []*csi.Topology{
+							{
+								Segments: map[string]string{"failure-domain.beta.kubernetes.io/region": "iad", "failure-domain.beta.kubernetes.io/zone": "US-ASHBURN-AD-1"},
+							},
+						},
+					},
+					VolumeContentSource: &csi.VolumeContentSource{
+						Type: &csi.VolumeContentSource_Volume{
+							Volume: &csi.VolumeContentSource_VolumeSource{
+								VolumeId: "ut-volume-source-id",
+							},
+						},
+					},
+				},
+			},
+			want:    nil,
+			wantErr: nil,
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			d := &ControllerDriver{
@@ -498,7 +535,9 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 				logger:     zap.S(),
 				config:     &providercfg.Config{CompartmentID: ""},
 				client:     NewClientProvisioner(nil, &MockBlockStorageClient{}),
-				util:       &Util{},
+				util: &Util{
+					logger: zap.S(),
+				},
 			}
 			got, err := d.CreateVolume(tt.args.ctx, tt.args.req)
 			if tt.wantErr == nil && err != nil {

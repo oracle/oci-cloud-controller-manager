@@ -15,11 +15,18 @@
 package e2e
 
 import (
+	"testing"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
+	v1 "k8s.io/api/core/v1"
 )
+
+var _ = func() bool {
+	testing.Init()
+	return true
+}()
 
 var _ = Describe("CSI Volume Creation", func() {
 	f := framework.NewDefaultFramework("csi-basic")
@@ -57,6 +64,28 @@ var _ = Describe("CSI Volume Creation", func() {
 			time.Sleep(60 * time.Second) //waiting for pod to up and running
 
 			pvcJig.CheckVolumeCapacity("100Gi", pvc.Name, f.Namespace.Name)
+		})
+	})
+})
+
+var _ = Describe("CSI Clone Volume Creation", func() {
+	f := framework.NewDefaultFramework("csi-basic")
+	Context("[cloudprovider][storage][csi]", func() {
+		It("Create Clone PVC and POD for CSI.", func() {
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-provisioner-e2e-tests")
+
+			scName := f.CreateStorageClassOrFail(framework.ClassOCICSI, "blockvolume.csi.oraclecloud.com", nil, pvcJig.Labels, "WaitForFirstConsumer")
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil)
+
+			pvcJig.NewPODForCSI("source-app", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+
+			clonepvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, func(tweak *v1.PersistentVolumeClaim) {
+				tweak.Spec.DataSource = &v1.TypedLocalObjectReference{
+					Kind: "PersistentVolumeClaim",
+					Name: pvc.Name,
+				}
+			})
+			pvcJig.NewPODForCSI("clone-app", f.Namespace.Name, clonepvc.Name, setupF.AdLabel)
 		})
 	})
 })

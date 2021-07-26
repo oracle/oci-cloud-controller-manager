@@ -169,6 +169,37 @@ func (d *ControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolu
 		return nil, status.Errorf(codes.InvalidArgument, "failed to parse storageclass parameters %v", err)
 	}
 
+	var sourceOcid string
+	sourceVolume := req.GetVolumeContentSource()
+
+	if sourceVolume != nil {
+		log.Info("Volume Content Source: ", sourceVolume)
+
+		ObtainedVolume := sourceVolume.GetVolume()
+		if ObtainedVolume != nil {
+			sourceOcid = ObtainedVolume.VolumeId
+		} else {
+			return nil, status.Errorf(codes.Internal, "Error getting Source details")
+		}
+
+		if sourceOcid != "" {
+			log.Info("Source Volume Ocid obtained: ", sourceOcid)
+		} else {
+			return nil, status.Errorf(codes.NotFound, "Error finding Source Volume Ocid")
+		}
+
+		source, err := d.client.BlockStorage().GetVolume(ctx, sourceOcid)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "Error getting source details %v", err.Error())
+		}
+
+		// Size Validation
+		if *source.SizeInMBs*client.MiB < req.CapacityRange.RequiredBytes {
+			log.Error("Volume Expansion is not supported : Source Volume Size must be equal to the requested volume size")
+			return nil, status.Errorf(codes.InvalidArgument, "Requested volume size(%d) is greater than the source volume(%d)", req.CapacityRange.RequiredBytes, *source.SizeInMBs*client.MiB)
+		}
+	}
+
 	provisionedVolume := core.Volume{}
 
 	if len(volumes) > 0 {
@@ -186,7 +217,7 @@ func (d *ControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolu
 			return nil, status.Errorf(codes.InvalidArgument, "invalid available domain: %s or compartment ID: %s", availableDomainShortName, d.config.CompartmentID)
 		}
 
-		provisionedVolume, err = provision(log, d.client, volumeName, size, *ad.Name, d.config.CompartmentID, "", volumeParams.diskEncryptionKey, timeout)
+		provisionedVolume, err = provision(log, d.client, volumeName, size, sourceOcid, *ad.Name, d.config.CompartmentID, "", volumeParams.diskEncryptionKey, timeout)
 		if err != nil {
 			log.With("Ad name", *ad.Name, "Compartment Id", d.config.CompartmentID).Error("New volume creation failed %s", err)
 			metrics.SendMetricData(d.metricPusher, metrics.PVProvisionFailure, time.Since(startTime).Seconds(), csiDriver, "")
@@ -222,6 +253,7 @@ func (d *ControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolu
 				},
 			},
 			VolumeContext: volumeParams.attachmentParameter,
+			ContentSource: sourceVolume,
 		},
 	}, nil
 }
@@ -498,6 +530,7 @@ func (d *ControllerDriver) ControllerGetCapabilities(ctx context.Context, req *c
 	for _, cap := range []csi.ControllerServiceCapability_RPC_Type{
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 		csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
+		csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
 	} {
 		caps = append(caps, newCap(cap))
 	}
@@ -613,7 +646,7 @@ func (d *ControllerDriver) ControllerExpandVolume(ctx context.Context, req *csi.
 	return nil, status.Error(codes.Unimplemented, "ControllerExpandVolume is not supported yet")
 }
 
-func provision(log *zap.SugaredLogger, c client.Interface, volName string, volSize int64, availDomainName, compartmentID, backupID, kmsKeyID string, timeout time.Duration) (core.Volume, error) {
+func provision(log *zap.SugaredLogger, c client.Interface, volName string, volSize int64, sourceOcid string, availDomainName, compartmentID, backupID, kmsKeyID string, timeout time.Duration) (core.Volume, error) {
 
 	ctx := context.Background()
 
@@ -629,6 +662,10 @@ func provision(log *zap.SugaredLogger, c client.Interface, volName string, volSi
 		CompartmentId:      &compartmentID,
 		DisplayName:        &volName,
 		SizeInGBs:          &volSizeGB,
+	}
+
+	if sourceOcid != "" {
+		volumeDetails.SourceDetails = &core.VolumeSourceFromVolumeDetails{Id: &sourceOcid}
 	}
 
 	if backupID != "" {

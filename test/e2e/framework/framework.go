@@ -17,10 +17,12 @@ package framework
 import (
 	"flag"
 	"fmt"
-	imageutils "k8s.io/kubernetes/test/utils/image"
 	"math/rand"
 	"strings"
+	"testing"
 	"time"
+
+	imageutils "k8s.io/kubernetes/test/utils/image"
 )
 
 const (
@@ -87,6 +89,7 @@ func init() {
 
 	flag.StringVar(&imagePullRepo, "image-pull-repo", "", "Repo to pull images from. Will pull public images if not specified.")
 	flag.StringVar(&cmekKMSKey, "cmek-kms-key", "", "KMS key to be used for CMEK testing")
+	testing.Init()
 	flag.Parse()
 }
 
