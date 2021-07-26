@@ -175,11 +175,17 @@ func (d *ControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolu
 	if sourceVolume != nil {
 		log.Info("Volume Content Source: ", sourceVolume)
 
-		sourceOcid = sourceVolume.GetVolume().VolumeId
+		ObtainedVolume := sourceVolume.GetVolume()
+		if ObtainedVolume != nil {
+			sourceOcid = ObtainedVolume.VolumeId
+		} else {
+			return nil, status.Errorf(codes.Internal, "Error getting Source details")
+		}
+
 		if sourceOcid != "" {
 			log.Info("Source Volume Ocid obtained: ", sourceOcid)
 		} else {
-			return nil, status.Error(codes.NotFound, "Error finding Source Ocid")
+			return nil, status.Errorf(codes.NotFound, "Error finding Source Volume Ocid")
 		}
 
 		source, err := d.client.BlockStorage().GetVolume(ctx, sourceOcid)
@@ -660,9 +666,6 @@ func provision(log *zap.SugaredLogger, c client.Interface, volName string, volSi
 
 	if sourceOcid != "" {
 		volumeDetails.SourceDetails = &core.VolumeSourceFromVolumeDetails{Id: &sourceOcid}
-		if volumeDetails.SourceDetails != nil {
-			log.Info("Source Ocid added to volumeDetails: ", sourceOcid)
-		}
 	}
 
 	if backupID != "" {
