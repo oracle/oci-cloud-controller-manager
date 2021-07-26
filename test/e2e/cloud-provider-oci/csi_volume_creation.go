@@ -77,32 +77,15 @@ var _ = Describe("CSI Clone Volume Creation", func() {
 			scName := f.CreateStorageClassOrFail(framework.ClassOCICSI, "blockvolume.csi.oraclecloud.com", nil, pvcJig.Labels, "WaitForFirstConsumer")
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil)
 
-			pvcJig.NewPODForCSI("app1", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+			pvcJig.NewPODForCSI("source-app", f.Namespace.Name, pvc.Name, setupF.AdLabel)
 
 			clonepvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, func(tweak *v1.PersistentVolumeClaim) {
 				tweak.Spec.DataSource = &v1.TypedLocalObjectReference{
 					Kind: "PersistentVolumeClaim",
-					Name: "pvc",
+					Name: pvc.Name,
 				}
 			})
-			pvcJig.NewPODForCSI("app1", f.Namespace.Name, clonepvc.Name, setupF.AdLabel)
-		})
-
-		It("Create Clone PVC of 100Gi for Source PVC of 50Gi.", func() {
-			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-provisioner-e2e-tests")
-
-			scName := f.CreateStorageClassOrFail(framework.ClassOCICSI, "blockvolume.csi.oraclecloud.com", nil, pvcJig.Labels, "WaitForFirstConsumer")
-			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil)
-
-			pvcJig.NewPODForCSI("app1", f.Namespace.Name, pvc.Name, setupF.AdLabel)
-
-			clonepvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MaxVolumeBlock, scName, func(tweak *v1.PersistentVolumeClaim) {
-				tweak.Spec.DataSource = &v1.TypedLocalObjectReference{
-					Kind: "PersistentVolumeClaim",
-					Name: "pvc",
-				}
-			})
-			pvcJig.NewPODForCSI("app1", f.Namespace.Name, clonepvc.Name, setupF.AdLabel)
+			pvcJig.NewPODForCSI("clone-app", f.Namespace.Name, clonepvc.Name, setupF.AdLabel)
 		})
 	})
 })

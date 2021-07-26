@@ -171,23 +171,26 @@ func (d *ControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolu
 
 	var sourceOcid string
 	sourceVolume := req.GetVolumeContentSource()
-	log.Info("Volume Content Source: ", sourceVolume)
 
 	if sourceVolume != nil {
+		log.Info("Volume Content Source: ", sourceVolume)
+
 		sourceOcid = sourceVolume.GetVolume().VolumeId
 		if sourceOcid != "" {
 			log.Info("Source Volume Ocid obtained: ", sourceOcid)
+		} else {
+			return nil, status.Error(codes.NotFound, "Error finding Source Ocid")
 		}
 
 		source, err := d.client.BlockStorage().GetVolume(ctx, sourceOcid)
 		if err != nil {
-			log.Errorf("Error finding source details", err)
+			return nil, status.Errorf(codes.Internal, "Error getting source details %v", err.Error())
 		}
 
 		// Size Validation
 		if *source.SizeInMBs*client.MiB < req.CapacityRange.RequiredBytes {
 			log.Error("Volume Expansion is not supported : Source Volume Size must be equal to the requested volume size")
-			return nil, fmt.Errorf("Requested volume size is greater than the source volume")
+			return nil, status.Errorf(codes.InvalidArgument, "Requested volume size(%d) is greater than the source volume(%d)", req.CapacityRange.RequiredBytes, *source.SizeInMBs*client.MiB)
 		}
 	}
 
