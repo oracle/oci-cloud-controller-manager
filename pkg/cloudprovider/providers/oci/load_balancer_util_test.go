@@ -1600,7 +1600,7 @@ func TestHasBackendSetChanged(t *testing.T) {
 				Backends: []loadbalancer.BackendDetails{
 					{
 						IpAddress: common.String("0.0.0.0"),
-						Port: &testBackendPort,
+						Port:      &testBackendPort,
 					},
 				},
 			},
@@ -1609,7 +1609,7 @@ func TestHasBackendSetChanged(t *testing.T) {
 				Backends: []loadbalancer.Backend{
 					{
 						IpAddress: common.String("0.0.0.0"),
-						Port: &testBackendPort,
+						Port:      &testBackendPort,
 					},
 				},
 			},
@@ -1622,7 +1622,7 @@ func TestHasBackendSetChanged(t *testing.T) {
 				Backends: []loadbalancer.BackendDetails{
 					{
 						IpAddress: common.String("0.0.0.0"),
-						Port: &testBackendPort,
+						Port:      &testBackendPort,
 					},
 				},
 			},
@@ -1631,7 +1631,7 @@ func TestHasBackendSetChanged(t *testing.T) {
 				Backends: []loadbalancer.Backend{
 					{
 						IpAddress: common.String("0.0.0.0"),
-						Port: &testNewBackendPort,
+						Port:      &testNewBackendPort,
 					},
 				},
 			},

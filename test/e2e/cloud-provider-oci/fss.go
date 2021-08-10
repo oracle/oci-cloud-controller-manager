@@ -17,6 +17,7 @@ package e2e
 import (
 	. "github.com/onsi/ginkgo"
 	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
+	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ = Describe("Basic FSS test", func() {
@@ -58,6 +59,7 @@ var _ = Describe("Multiple Pods FSS test", func() {
 		})
 
 		It("Multiple Pods should be able to read write same file with InTransit encryption enabled", func() {
+			checkNodeAvailability(f)
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-e2e-test")
 			pv := pvcJig.CreatePVorFailFSS(f.Namespace.Name, setupF.VolumeHandle, "true")
 			pvc := pvcJig.CreateAndAwaitPVCOrFailFSS(f.Namespace.Name, pv.Name, "50Gi", nil)
@@ -65,3 +67,21 @@ var _ = Describe("Multiple Pods FSS test", func() {
 		})
 	})
 })
+
+func checkNodeAvailability(f *framework.CloudProviderFramework){
+	pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-e2e-test")
+	nodeList, err := pvcJig.KubeClient.CoreV1().Nodes().List(v12.ListOptions{LabelSelector: "oke.oraclecloud.com/e2e.oci-fss-util"})
+	if err != nil {
+		framework.Logf("Error getting applicable nodes: %v", err)
+	}
+	nodesAvailable := false
+	for _, node := range nodeList.Items {
+		if node.Spec.Unschedulable == false {
+			nodesAvailable = true
+			break
+		}
+	}
+	if !nodesAvailable {
+		Skip("Skipping test due to non-availability of nodes with label \"oke.oraclecloud.com/e2e.oci-fss-util\"")
+	}
+}

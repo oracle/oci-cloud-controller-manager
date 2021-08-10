@@ -29,7 +29,7 @@ import (
 	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
 )

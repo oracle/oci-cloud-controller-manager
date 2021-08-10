@@ -27,7 +27,7 @@ import (
 	"github.com/oracle/oci-go-sdk/v31/identity"
 	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
 	"go.uber.org/zap"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

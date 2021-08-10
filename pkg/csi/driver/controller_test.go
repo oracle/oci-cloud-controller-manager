@@ -12,7 +12,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
+	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/v31/common"
 	"github.com/oracle/oci-go-sdk/v31/core"
@@ -729,6 +729,61 @@ func TestExtractVolumeParameters(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		"Invalid defined tags": {
+			storageParameters: map[string]string{
+				initialDefinedTagsOverride: "foo",
+			},
+			volumeParameters: VolumeParameters{
+				diskEncryptionKey:   "",
+				attachmentParameter: make(map[string]string),
+			},
+			wantErr: true,
+		},
+		"Invalid freeform tags": {
+			storageParameters: map[string]string{
+				initialFreeformTagsOverride: "foo",
+			},
+			volumeParameters: VolumeParameters{
+				diskEncryptionKey:   "",
+				attachmentParameter: make(map[string]string),
+			},
+			wantErr: true,
+		},
+		"With freeform tags": {
+			storageParameters: map[string]string{
+				initialFreeformTagsOverride: `{"foo":"bar"}`,
+			},
+			volumeParameters: VolumeParameters{
+				diskEncryptionKey:   "",
+				attachmentParameter: make(map[string]string),
+				freeformTags:        map[string]string{"foo": "bar"},
+			},
+			wantErr: false,
+		},
+		"With defined tags": {
+			storageParameters: map[string]string{
+				initialDefinedTagsOverride: `{"ns":{"foo":"bar"}}`,
+			},
+			volumeParameters: VolumeParameters{
+				diskEncryptionKey:   "",
+				attachmentParameter: make(map[string]string),
+				definedTags:         map[string]map[string]interface{}{"ns": {"foo": "bar"}},
+			},
+			wantErr: false,
+		},
+		"With freeform+defined tags": {
+			storageParameters: map[string]string{
+				initialFreeformTagsOverride: `{"foo":"bar"}`,
+				initialDefinedTagsOverride:  `{"ns":{"foo":"bar"}}`,
+			},
+			volumeParameters: VolumeParameters{
+				diskEncryptionKey:   "",
+				attachmentParameter: make(map[string]string),
+				freeformTags:        map[string]string{"foo": "bar"},
+				definedTags:         map[string]map[string]interface{}{"ns": {"foo": "bar"}},
+			},
+			wantErr: false,
+		},
 	}
 
 	for name, tt := range tests {
@@ -739,7 +794,7 @@ func TestExtractVolumeParameters(t *testing.T) {
 				return
 			}
 			if !reflect.DeepEqual(volumeParameters, tt.volumeParameters) {
-				t.Errorf("extractStorage() = %v, want %v", volumeParameters, tt.volumeParameters)
+				t.Errorf("extractStorage() = %+v, want %+v", volumeParameters, tt.volumeParameters)
 			}
 		})
 	}

@@ -15,9 +15,10 @@
 package config
 
 import (
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 	"strings"
 	"testing"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 )
 
 func TestReadConfigShouldFailWhenNoConfigProvided(t *testing.T) {
@@ -45,6 +46,20 @@ loadBalancer:
   disableSecurityListManagement: false
   subnet1: ocid1.subnet.oc1.phx.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
   subnet2: ocid1.subnet.oc1.phx.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+
+tags:
+  loadBalancer:
+    freeform:
+      test: tags
+    defined:
+      namespace:
+        key: value
+  blockVolume:
+    freeform:
+      test: tags
+    defined:
+      namespace:
+        key: value
 `
 
 const validConfigNoLoadbalancing = `
@@ -98,6 +113,7 @@ func TestReadConfigShouldSucceedWhenProvidedValidConfig(t *testing.T) {
 
 func TestReadConfigShouldHaveNoDefaultRegionIfNoneSpecified(t *testing.T) {
 	config, err := ReadConfig(strings.NewReader(validConfigNoRegion))
+
 	if err != nil {
 		t.Fatalf("expected no error but got '%+v'", err)
 	}

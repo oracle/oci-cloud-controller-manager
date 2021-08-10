@@ -115,6 +115,19 @@ type MetricsConfig struct {
 	Prefix string `yaml:"prefix"`
 }
 
+// TagConfig hold the freeform and defined tags from the cluster level
+// which should be added to the LB and BV provisioned by CCM
+type TagConfig struct {
+	FreeformTags map[string]string                 `yaml:"freeform"`
+	DefinedTags  map[string]map[string]interface{} `yaml:"defined"`
+}
+
+// initialTags are optional tags to apply to all LBs and BVs provisioned in the cluster
+type InitialTags struct {
+	LoadBalancer *TagConfig `yaml:"loadBalancer"`
+	BlockVolume  *TagConfig `yaml:"blockVolume"`
+}
+
 // Config holds the OCI cloud-provider config passed to Kubernetes components
 // via the --cloud-config option.
 type Config struct {
@@ -123,6 +136,8 @@ type Config struct {
 	RateLimiter  *RateLimiterConfig  `yaml:"rateLimiter"`
 	// Metrics collection is enabled when this configuration is provided
 	Metrics *MetricsConfig `yaml:"metrics"`
+	// Tags to be added to managed LB and BV
+	Tags *InitialTags `yaml:"tags"`
 
 	RegionKey string `yaml:"regionKey"`
 

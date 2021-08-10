@@ -2,6 +2,7 @@ package driver
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -14,7 +15,8 @@ import (
 	kubeAPI "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
-	"github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
+	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/metrics"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
@@ -44,6 +46,8 @@ const (
 	attachmentType                = "attachment-type"
 	attachmentTypeISCSI           = "iscsi"
 	attachmentTypeParavirtualized = "paravirtualized"
+	initialFreeformTagsOverride   = "oci.oraclecloud.com/initial-freeform-tags-override"
+	initialDefinedTagsOverride    = "oci.oraclecloud.com/initial-defined-tags-override"
 	//device is the consistent device path that would be used for paravirtualized attachment
 	device = "device"
 )
@@ -62,6 +66,10 @@ type VolumeParameters struct {
 	//kmsKey is the KMS key that would be used as CMEK key for BV attachment
 	diskEncryptionKey   string
 	attachmentParameter map[string]string
+	// freeform tags to add for BVs
+	freeformTags map[string]string
+	// defined tags to add for BVs
+	definedTags map[string]map[string]interface{}
 }
 
 // VolumeAttachmentOption holds config for attachments
@@ -90,7 +98,31 @@ func extractVolumeParameters(parameters map[string]string) (VolumeParameters, er
 					"for storageclass. supported attachment-types are %s and %s", v, attachmentTypeISCSI, attachmentTypeParavirtualized))
 			}
 			p.attachmentParameter[attachmentType] = attachmentTypeLower
+		case initialFreeformTagsOverride:
+			if v == "" {
+				continue
+			}
+			freeformTags := make(map[string]string)
+			err := json.Unmarshal([]byte(v), &freeformTags)
+			if err != nil {
+				return p, status.Errorf(codes.InvalidArgument, "failed to parse freeform tags provided "+
+					"for storageclass. please check the parameters block on the storage class")
+			}
+
+			p.freeformTags = freeformTags
+		case initialDefinedTagsOverride:
+			if v == "" {
+				continue
+			}
+			definedTags := make(map[string]map[string]interface{})
+			err := json.Unmarshal([]byte(v), &definedTags)
+			if err != nil {
+				return p, status.Errorf(codes.InvalidArgument, "failed to parse defined tags provided "+
+					"for storageclass. please check the parameters block on the storage class")
+			}
+			p.definedTags = definedTags
 		}
+
 	}
 	return p, nil
 }
@@ -196,7 +228,24 @@ func (d *ControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolu
 			return nil, status.Errorf(codes.InvalidArgument, "invalid available domain: %s or compartment ID: %s", availableDomainShortName, d.config.CompartmentID)
 		}
 
-		provisionedVolume, err = provision(log, d.client, volumeName, size, *ad.Name, d.config.CompartmentID, "", volumeParams.diskEncryptionKey, timeout)
+		// use initial tags for all BVs
+		bvTags := &config.TagConfig{}
+		if d.config.Tags != nil && d.config.Tags.BlockVolume != nil {
+			bvTags = d.config.Tags.BlockVolume
+		}
+
+		// use storage class level tags if provided
+		scTags := &config.TagConfig{
+			FreeformTags: volumeParams.freeformTags,
+			DefinedTags:  volumeParams.definedTags,
+		}
+
+		// storage class tags overwrite initial BV Tags
+		if scTags.FreeformTags != nil || scTags.DefinedTags != nil {
+			bvTags = scTags
+		}
+
+		provisionedVolume, err = provision(log, d.client, volumeName, size, *ad.Name, d.config.CompartmentID, "", volumeParams.diskEncryptionKey, timeout, bvTags)
 		if err != nil {
 			log.With("Ad name", *ad.Name, "Compartment Id", d.config.CompartmentID).Error("New volume creation failed %s", err)
 			errorType = util.GetError(err)
@@ -685,7 +734,7 @@ func (d *ControllerDriver) ControllerExpandVolume(ctx context.Context, req *csi.
 	return nil, status.Error(codes.Unimplemented, "ControllerExpandVolume is not supported yet")
 }
 
-func provision(log *zap.SugaredLogger, c client.Interface, volName string, volSize int64, availDomainName, compartmentID, backupID, kmsKeyID string, timeout time.Duration) (core.Volume, error) {
+func provision(log *zap.SugaredLogger, c client.Interface, volName string, volSize int64, availDomainName, compartmentID, backupID, kmsKeyID string, timeout time.Duration, bvTags *config.TagConfig) (core.Volume, error) {
 
 	ctx := context.Background()
 
@@ -709,6 +758,12 @@ func provision(log *zap.SugaredLogger, c client.Interface, volName string, volSi
 
 	if kmsKeyID != "" {
 		volumeDetails.KmsKeyId = &kmsKeyID
+	}
+	if bvTags != nil && bvTags.FreeformTags != nil {
+		volumeDetails.FreeformTags = bvTags.FreeformTags
+	}
+	if bvTags != nil && bvTags.DefinedTags != nil {
+		volumeDetails.DefinedTags = bvTags.DefinedTags
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, timeout)

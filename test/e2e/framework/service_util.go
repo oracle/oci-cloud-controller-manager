@@ -747,7 +747,7 @@ func (j *ServiceTestJig) waitForPodsReady(namespace string, pods []string) error
 }
 
 func (j *ServiceTestJig) TestReachableHTTP(secure bool, host string, port int, timeout time.Duration) {
-	j.TestReachableHTTPWithRetriableErrorCodes(secure, host, port, []int{}, timeout)
+	j.TestReachableHTTPWithRetriableErrorCodes(secure, host, port, []int{502}, timeout)
 }
 
 func (j *ServiceTestJig) TestReachableHTTPWithRetriableErrorCodes(secure bool, host string, port int, retriableErrCodes []int, timeout time.Duration) {

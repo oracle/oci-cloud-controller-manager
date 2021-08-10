@@ -22,7 +22,7 @@ import (
 	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -118,6 +118,14 @@ const (
 	// ServiceAnnotationLoadBalancerPolicy is a service annotation for specifying
 	// loadbalancer traffic policy("ROUND_ROBIN", "LEAST_CONNECTION", "IP_HASH")
 	ServiceAnnotationLoadBalancerPolicy = "oci.oraclecloud.com/loadbalancer-policy"
+
+	// ServiceAnnotationLoadBalancerInitialDefinedTagsOverride is a service annotation for specifying
+	// defined tags on the LB
+	ServiceAnnotationLoadBalancerInitialDefinedTagsOverride = "oci.oraclecloud.com/initial-defined-tags-override"
+
+	// ServiceAnnotationLoadBalancerInitialFreeformTagsOverride is a service annotation for specifying
+	// freeform tags on the LB
+	ServiceAnnotationLoadBalancerInitialFreeformTagsOverride = "oci.oraclecloud.com/initial-freeform-tags-override"
 )
 
 // Defines the traffic policy for load balancers created by the CCM.
@@ -343,6 +351,8 @@ func (cp *CloudProvider) createLoadBalancer(ctx context.Context, spec *LBSpec) (
 		Listeners:               spec.Listeners,
 		Certificates:            certs,
 		NetworkSecurityGroupIds: spec.NetworkSecurityGroupIds,
+		FreeformTags:            spec.FreeformTags,
+		DefinedTags:             spec.DefinedTags,
 	}
 
 	if spec.Shape == flexible {
@@ -450,7 +460,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		return nil, err
 	}
 
-	spec, err := NewLBSpec(logger, service, nodes, subnets, sslConfig, cp.securityListManagerFactory)
+	spec, err := NewLBSpec(logger, service, nodes, subnets, sslConfig, cp.securityListManagerFactory, cp.config.Tags)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to derive LBSpec")
 		errorType = util.GetError(err)

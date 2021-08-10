@@ -15,19 +15,21 @@
 package oci
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"strconv"
 	"strings"
 
-	"go.uber.org/zap"
-
-	"github.com/oracle/oci-go-sdk/v31/common"
-	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	sets "k8s.io/apimachinery/pkg/util/sets"
 	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
+	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
 )
 
 // certificateData is a structure containing the data about a K8S secret required
@@ -105,13 +107,15 @@ type LBSpec struct {
 	SSLConfig               *SSLConfig
 	securityListManager     securityListManager
 	NetworkSecurityGroupIds []string
+	FreeformTags            map[string]string
+	DefinedTags             map[string]map[string]interface{}
 
 	service *v1.Service
 	nodes   []*v1.Node
 }
 
 // NewLBSpec creates a LB Spec from a Kubernetes service and a slice of nodes.
-func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, subnets []string, sslConfig *SSLConfig, secListFactory securityListManagerFactory) (*LBSpec, error) {
+func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, subnets []string, sslConfig *SSLConfig, secListFactory securityListManagerFactory, initialLBTags *config.InitialTags) (*LBSpec, error) {
 	if err := validateService(svc); err != nil {
 		return nil, errors.Wrap(err, "invalid service")
 	}
@@ -156,6 +160,11 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sub
 		return nil, err
 	}
 
+	lbTags, err := getLoadBalancerTags(svc, initialLBTags)
+	if err != nil {
+		return nil, err
+	}
+
 	return &LBSpec{
 		Name:           GetLoadBalancerName(svc),
 		Shape:          shape,
@@ -176,6 +185,8 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sub
 		nodes:   nodes,
 		securityListManager: secListFactory(
 			svc.Annotations[ServiceAnnotaionLoadBalancerSecurityListManagementMode]),
+		FreeformTags: lbTags.FreeformTags,
+		DefinedTags:  lbTags.DefinedTags,
 	}, nil
 }
 
@@ -605,4 +616,46 @@ func getLoadBalancerIP(svc *v1.Service) (string, error) {
 		return "", fmt.Errorf("invalid service: cannot create a private load balancer with Reserved IP")
 	}
 	return ipAddress, err
+}
+
+func getLoadBalancerTags(svc *v1.Service, initialTags *config.InitialTags) (*config.TagConfig, error) {
+	freeformTags := make(map[string]string)
+	freeformTagsAnnotation, ok := svc.Annotations[ServiceAnnotationLoadBalancerInitialFreeformTagsOverride]
+	if ok && freeformTagsAnnotation != "" {
+		err := json.Unmarshal([]byte(freeformTagsAnnotation), &freeformTags)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to parse free form tags annotation")
+		}
+	}
+
+	definedTags := make(map[string]map[string]interface{})
+	definedTagsAnnotation, ok := svc.Annotations[ServiceAnnotationLoadBalancerInitialDefinedTagsOverride]
+	if ok && definedTagsAnnotation != "" {
+		err := json.Unmarshal([]byte(definedTagsAnnotation), &definedTags)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to parse defined tags annotation")
+		}
+	}
+
+	var resourceTags config.TagConfig
+	// if no tags are provided freeformTags will be nil
+	if len(freeformTags) > 0 {
+		resourceTags.FreeformTags = freeformTags
+	}
+
+	if len(definedTags) > 0 {
+		resourceTags.DefinedTags = definedTags
+	}
+
+	// if resource level tags are present return resource level tags
+	if len(freeformTags) > 0 || len(definedTags) > 0 {
+		return &resourceTags, nil
+	}
+
+	// if initialTags are not set return nil tags
+	if initialTags == nil || initialTags.LoadBalancer == nil {
+		return &config.TagConfig{}, nil
+	}
+	// return initial tags
+	return initialTags.LoadBalancer, nil
 }

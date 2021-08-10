@@ -255,15 +255,15 @@ var (
 					Name:                  common.String("one"),
 					DefaultBackendSetName: common.String("one"),
 					Port:                  common.Int(5665),
-				},},
+				}},
 			BackendSets: map[string]loadbalancer.BackendSet{
 				"one": {
 					Backends: []loadbalancer.Backend{{
 						Name:      common.String("one"),
 						IpAddress: common.String("10.0.50.5"),
 						Port:      common.Int(5665),
-					},},
-				},},
+					}},
+				}},
 		},
 	}
 )
