@@ -315,6 +315,13 @@ func (d *ControllerDriver) ControllerPublishVolume(ctx context.Context, req *csi
 		metrics.SendMetricData(d.metricPusher, metrics.PVAttach, time.Since(startTime).Seconds(), csiMetricDimension, req.VolumeId)
 		return nil, status.Errorf(codes.Unknown, "failed to get the attachment options. error : %s", err)
 	}
+	//in transit encryption is not supported for other attachment type than paravirtualized
+	if volumeAttachmentOptions.enableInTransitEncryption && !volumeAttachmentOptions.useParavirtualizedAttachment {
+		log.Error("node %s has in transit encryption enabled, but attachment type is not paravirtualized. invalid input", id)
+		csiMetricDimension = util.GetMetricDimensionForComponent(util.ErrValidation, util.CSIStorageType)
+		metrics.SendMetricData(d.metricPusher, metrics.PVAttach, time.Since(startTime).Seconds(), csiMetricDimension, req.VolumeId)
+		return nil, status.Errorf(codes.InvalidArgument, "node %s has in transit encryption enabled, but attachment type is not paravirtualized. invalid input", id)
+	}
 
 	compartmentID, err := util.LookupNodeCompartment(d.KubeClient, req.NodeId)
 	if err != nil {
@@ -737,7 +744,6 @@ func getAttachmentOptions(ctx context.Context, client client.ComputeInterface, a
 	}
 	if *instance.LaunchOptions.IsPvEncryptionInTransitEnabled {
 		volumeAttachmentOption.enableInTransitEncryption = true
-		volumeAttachmentOption.useParavirtualizedAttachment = true
 	}
 	return volumeAttachmentOption, nil
 }

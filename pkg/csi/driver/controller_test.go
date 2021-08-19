@@ -774,7 +774,7 @@ func TestGetAttachmentOptions(t *testing.T) {
 			instanceID:     "inTransitEnabled",
 			volumeAttachmentOption: VolumeAttachmentOption{
 				enableInTransitEncryption:    true,
-				useParavirtualizedAttachment: true,
+				useParavirtualizedAttachment: false,
 			},
 			wantErr: false,
 		},
