@@ -23,9 +23,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"k8s.io/apimachinery/pkg/labels"
-	listersv1 "k8s.io/client-go/listers/core/v1"
-
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/v31/common"
@@ -35,6 +32,7 @@ import (
 	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 var (
@@ -1034,6 +1032,6 @@ func (s *mockNodeLister) Get(name string) (*v1.Node, error) {
 	return nil, nil
 }
 
-func (s *mockNodeLister) ListWithPredicate(predicate listersv1.NodeConditionPredicate) ([]*v1.Node, error) {
+func (s *mockNodeLister) ListWithPredicate() ([]*v1.Node, error) {
 	return nil, nil
 }

@@ -275,7 +275,7 @@ func getSubnetsForNodes(ctx context.Context, nodes []*v1.Node, client client.Int
 // readSSLSecret returns the certificate and private key from a Kubernetes TLS
 // private key Secret.
 func (cp *CloudProvider) readSSLSecret(ns, name string) (*certificateData, error) {
-	secret, err := cp.kubeclient.CoreV1().Secrets(ns).Get(name, metav1.GetOptions{})
+	secret, err := cp.kubeclient.CoreV1().Secrets(ns).Get(context.Background(), name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}

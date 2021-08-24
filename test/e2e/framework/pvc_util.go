@@ -166,7 +166,7 @@ func (j *PVCTestJig) CheckPVCorFail(pvc *v1.PersistentVolumeClaim, tweak func(pv
 	name := types.NamespacedName{Namespace: namespace, Name: j.Name}
 	By(fmt.Sprintf("Creating a PVC %q of volume size %q", name, volumeSize))
 
-	result, err := j.KubeClient.CoreV1().PersistentVolumeClaims(namespace).Create(pvc)
+	result, err := j.KubeClient.CoreV1().PersistentVolumeClaims(namespace).Create(context.Background(), pvc, metav1.CreateOptions{})
 	if err != nil {
 		Failf("Failed to create persistent volume claim %q: %v", name, err)
 	}
@@ -357,7 +357,7 @@ func (j *PVCTestJig) newPVTemplateCSI(namespace string, scName string, ocid stri
 func (j *PVCTestJig) CreatePVorFailFSS(namespace, volumeHandle, encryptInTransit string) *v1.PersistentVolume {
 	pv := j.newPVTemplateFSS(namespace, volumeHandle, encryptInTransit)
 
-	result, err := j.KubeClient.CoreV1().PersistentVolumes().Create(pv)
+	result, err := j.KubeClient.CoreV1().PersistentVolumes().Create(context.Background(), pv, metav1.CreateOptions{})
 	if err != nil {
 		Failf("Failed to create persistent volume claim %q: %v", pv.Name, err)
 	}
@@ -370,7 +370,7 @@ func (j *PVCTestJig) CreatePVorFailFSS(namespace, volumeHandle, encryptInTransit
 func (j *PVCTestJig) CreatePVorFailCSI(namespace string, scName string, ocid string) *v1.PersistentVolume {
 	pv := j.newPVTemplateCSI(namespace, scName, ocid)
 
-	result, err := j.KubeClient.CoreV1().PersistentVolumes().Create(pv)
+	result, err := j.KubeClient.CoreV1().PersistentVolumes().Create(context.Background(), pv, metav1.CreateOptions{})
 	if err != nil {
 		Failf("Failed to create persistent volume claim %q: %v", pv.Name, err)
 	}
@@ -401,7 +401,7 @@ func (j *PVCTestJig) CreateVolume(bs ocicore.BlockstorageClient, adLabel string,
 func (j *PVCTestJig) NewPodForCSI(name string, namespace string, claimName string, adLabel string) string {
 	By("Creating a pod with the claiming PVC created by CSI")
 
-	pod, err := j.KubeClient.CoreV1().Pods(namespace).Create(&v1.Pod{
+	pod, err := j.KubeClient.CoreV1().Pods(namespace).Create(context.Background(), &v1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
 			APIVersion: "v1",
@@ -439,7 +439,7 @@ func (j *PVCTestJig) NewPodForCSI(name string, namespace string, claimName strin
 				plugin.LabelZoneFailureDomain: adLabel,
 			},
 		},
-	})
+	}, metav1.CreateOptions{})
 	if err != nil {
 		Failf("Pod %q Create API error: %v", pod.Name, err)
 	}
@@ -461,7 +461,7 @@ func (j *PVCTestJig) NewPodForCSIFSSWrite(name string, namespace string, claimNa
 	nodeSelectorMap := make(map[string]string)
 	nodeSelectorMap["oke.oraclecloud.com/e2e.oci-fss-util"] = "installed"
 	command := fmt.Sprintf("while true; do echo %s >> /data/%s; sleep 5; done", name, fileName)
-	pod, err := j.KubeClient.CoreV1().Pods(namespace).Create(&v1.Pod{
+	pod, err := j.KubeClient.CoreV1().Pods(namespace).Create(context.Background(), &v1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
 			APIVersion: "v1",
@@ -497,7 +497,7 @@ func (j *PVCTestJig) NewPodForCSIFSSWrite(name string, namespace string, claimNa
 			},
 			NodeSelector: nodeSelectorMap,
 		},
-	})
+	}, metav1.CreateOptions{})
 	if err != nil {
 		Failf("Pod %q Create API error: %v", pod.Name, err)
 	}
@@ -520,7 +520,7 @@ func (j *PVCTestJig) NewPodForCSIFSSRead(matchString string, namespace string, c
 	nodeSelectorMap := make(map[string]string)
 	nodeSelectorMap["oke.oraclecloud.com/e2e.oci-fss-util"] = "installed"
 	command := fmt.Sprintf("grep -q -i %s /data/%s; exit $?", matchString, fileName)
-	pod, err := j.KubeClient.CoreV1().Pods(namespace).Create(&v1.Pod{
+	pod, err := j.KubeClient.CoreV1().Pods(namespace).Create(context.Background(), &v1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
 			APIVersion: "v1",
@@ -557,7 +557,7 @@ func (j *PVCTestJig) NewPodForCSIFSSRead(matchString string, namespace string, c
 			},
 			NodeSelector: nodeSelectorMap,
 		},
-	})
+	}, metav1.CreateOptions{})
 	if err != nil {
 		Failf("CSI Fss read POD Create API error: %v", err)
 	}
@@ -570,12 +570,11 @@ func (j *PVCTestJig) NewPodForCSIFSSRead(matchString string, namespace string, c
 	zap.S().With(pod.Namespace).With(pod.Name).Info("CSI Fss read POD is created.")
 }
 
-
 // WaitForPVCPhase waits for a PersistentVolumeClaim to be in a specific phase or until timeout occurs, whichever comes first.
 func (j *PVCTestJig) WaitForPVCPhase(phase v1.PersistentVolumeClaimPhase, ns string, pvcName string) error {
 	Logf("Waiting up to %v for PersistentVolumeClaim %s to have phase %s", DefaultTimeout, pvcName, phase)
 	for start := time.Now(); time.Since(start) < DefaultTimeout; time.Sleep(Poll) {
-		pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(ns).Get(pvcName, metav1.GetOptions{})
+		pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(ns).Get(context.Background(), pvcName, metav1.GetOptions{})
 		if err != nil {
 			Logf("Failed to get claim %q, retrying in %v. Error: %v", pvcName, Poll, err)
 			continue
@@ -594,7 +593,7 @@ func (j *PVCTestJig) WaitForPVCPhase(phase v1.PersistentVolumeClaimPhase, ns str
 func (j *PVCTestJig) WaitForPVPhase(phase v1.PersistentVolumePhase, pvName string) error {
 	Logf("Waiting up to %v for PersistentVolumeClaim %s to have phase %s", DefaultTimeout, pvName, phase)
 	for start := time.Now(); time.Since(start) < DefaultTimeout; time.Sleep(Poll) {
-		pv, err := j.KubeClient.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})
+		pv, err := j.KubeClient.CoreV1().PersistentVolumes().Get(context.Background(), pvName, metav1.GetOptions{})
 		if err != nil {
 			Logf("Failed to get pv %q, retrying in %v. Error: %v", pvName, Poll, err)
 			continue
@@ -613,10 +612,10 @@ func (j *PVCTestJig) WaitForPVPhase(phase v1.PersistentVolumePhase, pvName strin
 // our expectations.
 func (j *PVCTestJig) SanityCheckPV(pvc *v1.PersistentVolumeClaim) {
 	By("Checking the claim and volume are bound.")
-	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(pvc.Name, metav1.GetOptions{})
+	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.Background(), pvc.Name, metav1.GetOptions{})
 	Expect(err).NotTo(HaveOccurred())
 	// Get the bound PV
-	pv, err := j.KubeClient.CoreV1().PersistentVolumes().Get(pvc.Spec.VolumeName, metav1.GetOptions{})
+	pv, err := j.KubeClient.CoreV1().PersistentVolumes().Get(context.Background(), pvc.Spec.VolumeName, metav1.GetOptions{})
 	if err != nil {
 		Failf("Failed to get persistent volume %q: %v", pvc.Spec.VolumeName, err)
 	}
@@ -656,7 +655,7 @@ func (j *PVCTestJig) SanityCheckPV(pvc *v1.PersistentVolumeClaim) {
 func (j *PVCTestJig) waitForConditionOrFail(namespace, name string, timeout time.Duration, message string, conditionFn func(*v1.PersistentVolumeClaim) bool) *v1.PersistentVolumeClaim {
 	var pvc *v1.PersistentVolumeClaim
 	pollFunc := func() (bool, error) {
-		v, err := j.KubeClient.CoreV1().PersistentVolumeClaims(namespace).Get(name, metav1.GetOptions{})
+		v, err := j.KubeClient.CoreV1().PersistentVolumeClaims(namespace).Get(context.Background(), name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -675,7 +674,7 @@ func (j *PVCTestJig) waitForConditionOrFail(namespace, name string, timeout time
 func (j *PVCTestJig) waitForConditionOrFailForPV(name string, timeout time.Duration, message string, conditionFn func(*v1.PersistentVolume) bool) *v1.PersistentVolume {
 	var pv *v1.PersistentVolume
 	pollFunc := func() (bool, error) {
-		v, err := j.KubeClient.CoreV1().PersistentVolumes().Get(name, metav1.GetOptions{})
+		v, err := j.KubeClient.CoreV1().PersistentVolumes().Get(context.Background(), name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -695,7 +694,7 @@ func (j *PVCTestJig) waitForConditionOrFailForPV(name string, timeout time.Durat
 func (j *PVCTestJig) DeletePersistentVolumeClaim(ns string, pvcName string) error {
 	if j.KubeClient != nil && len(pvcName) > 0 {
 		Logf("Deleting PersistentVolumeClaim %q", pvcName)
-		err := j.KubeClient.CoreV1().PersistentVolumeClaims(ns).Delete(pvcName, nil)
+		err := j.KubeClient.CoreV1().PersistentVolumeClaims(ns).Delete(context.Background(), pvcName, metav1.DeleteOptions{})
 		if err != nil && !apierrors.IsNotFound(err) {
 			return fmt.Errorf("PVC delete API error: %v", err)
 		}
@@ -706,11 +705,11 @@ func (j *PVCTestJig) DeletePersistentVolumeClaim(ns string, pvcName string) erro
 // CheckVolumeCapacity verifies the Capacity of Volume provisioned.
 func (j *PVCTestJig) CheckVolumeCapacity(expected string, name string, namespace string) {
 
-	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(namespace).Get(name, metav1.GetOptions{})
+	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(namespace).Get(context.Background(), name, metav1.GetOptions{})
 	Expect(err).NotTo(HaveOccurred())
 
 	// Get the bound PV
-	pv, err := j.KubeClient.CoreV1().PersistentVolumes().Get(pvc.Spec.VolumeName, metav1.GetOptions{})
+	pv, err := j.KubeClient.CoreV1().PersistentVolumes().Get(context.Background(), pvc.Spec.VolumeName, metav1.GetOptions{})
 	if err != nil {
 		Failf("Failed to get persistent volume %q: %v", pvc.Spec.VolumeName, err)
 	}
@@ -727,10 +726,10 @@ func (j *PVCTestJig) CheckVolumeCapacity(expected string, name string, namespace
 func (j *PVCTestJig) CheckCMEKKey(bs client.BlockStorageInterface, pvcName, namespace, kmsKeyIDExpected string) {
 
 	By("Checking is Expected and Actual CMEK key matches")
-	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(namespace).Get(pvcName, metav1.GetOptions{})
+	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(namespace).Get(context.Background(), pvcName, metav1.GetOptions{})
 	Expect(err).NotTo(HaveOccurred())
 	// Get the bound PV
-	pv, err := j.KubeClient.CoreV1().PersistentVolumes().Get(pvc.Spec.VolumeName, metav1.GetOptions{})
+	pv, err := j.KubeClient.CoreV1().PersistentVolumes().Get(context.Background(), pvc.Spec.VolumeName, metav1.GetOptions{})
 	if err != nil {
 		Failf("Failed to get persistent volume %q: %v", pvc.Spec.VolumeName, err)
 	}
@@ -747,10 +746,10 @@ func (j *PVCTestJig) CheckCMEKKey(bs client.BlockStorageInterface, pvcName, name
 // CheckAttachmentTypeAndEncryptionType verifies attachment type and encryption type
 func (j *PVCTestJig) CheckAttachmentTypeAndEncryptionType(compute client.ComputeInterface, pvcName, namespace, podName, expectedAttachmentType string) {
 	By("Checking attachment type")
-	pod, err := j.KubeClient.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
+	pod, err := j.KubeClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
 	Expect(err).NotTo(HaveOccurred())
 	Logf("node is:%s", pod.Spec.NodeName)
-	node, err := j.KubeClient.CoreV1().Nodes().Get(pod.Spec.NodeName, metav1.GetOptions{})
+	node, err := j.KubeClient.CoreV1().Nodes().Get(context.Background(), pod.Spec.NodeName, metav1.GetOptions{})
 	Expect(err).NotTo(HaveOccurred())
 	// Get the bound PV
 	instanceID := strings.Replace(node.Spec.ProviderID, "oci://", "", -1)
@@ -763,10 +762,10 @@ func (j *PVCTestJig) CheckAttachmentTypeAndEncryptionType(compute client.Compute
 		Failf("Node CompartmentID annotation should not be empty")
 	}
 
-	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(namespace).Get(pvcName, metav1.GetOptions{})
+	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(namespace).Get(context.Background(), pvcName, metav1.GetOptions{})
 	Expect(err).NotTo(HaveOccurred())
 	// Get the bound PV
-	pv, err := j.KubeClient.CoreV1().PersistentVolumes().Get(pvc.Spec.VolumeName, metav1.GetOptions{})
+	pv, err := j.KubeClient.CoreV1().PersistentVolumes().Get(context.Background(), pvc.Spec.VolumeName, metav1.GetOptions{})
 	if err != nil {
 		Failf("Failed to get persistent volume %q: %v", pvc.Spec.VolumeName, err)
 	}

@@ -104,7 +104,7 @@ func (fs FS) AllProcs() (Procs, error) {
 
 	names, err := d.Readdirnames(-1)
 	if err != nil {
-		return Procs{}, fmt.Errorf("could not read %s: %s", d.Name(), err)
+		return Procs{}, fmt.Errorf("could not read %q: %w", d.Name(), err)
 	}
 
 	p := Procs{}
@@ -137,6 +137,27 @@ func (p Proc) CmdLine() ([]string, error) {
 	}
 
 	return strings.Split(string(bytes.TrimRight(data, string("\x00"))), string(byte(0))), nil
+}
+
+// Wchan returns the wchan (wait channel) of a process.
+func (p Proc) Wchan() (string, error) {
+	f, err := os.Open(p.path("wchan"))
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	data, err := ioutil.ReadAll(f)
+	if err != nil {
+		return "", err
+	}
+
+	wchan := string(data)
+	if wchan == "" || wchan == "0" {
+		return "", nil
+	}
+
+	return wchan, nil
 }
 
 // Comm returns the command name of a process.
@@ -196,7 +217,7 @@ func (p Proc) FileDescriptors() ([]uintptr, error) {
 	for i, n := range names {
 		fd, err := strconv.ParseInt(n, 10, 32)
 		if err != nil {
-			return nil, fmt.Errorf("could not parse fd %s: %s", n, err)
+			return nil, fmt.Errorf("could not parse fd %q: %w", n, err)
 		}
 		fds[i] = uintptr(fd)
 	}
@@ -256,7 +277,7 @@ func (p Proc) fileDescriptors() ([]string, error) {
 
 	names, err := d.Readdirnames(-1)
 	if err != nil {
-		return nil, fmt.Errorf("could not read %s: %s", d.Name(), err)
+		return nil, fmt.Errorf("could not read %q: %w", d.Name(), err)
 	}
 
 	return names, nil

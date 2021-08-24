@@ -1,6 +1,7 @@
 package csi_util
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -40,7 +41,7 @@ var (
 )
 
 func (u *Util) LookupNodeID(k kubernetes.Interface, nodeName string) (string, error) {
-	n, err := k.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
+	n, err := k.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
 	if err != nil {
 		u.Logger.With(zap.Error(err)).With("node", nodeName).Error("Failed to get Node by name.")
 		return "", fmt.Errorf("fail to get the node %s", nodeName)
@@ -54,7 +55,7 @@ func (u *Util) LookupNodeID(k kubernetes.Interface, nodeName string) (string, er
 }
 
 func (u *Util) LookupNodeAvailableDomain(k kubernetes.Interface, nodeID string) (string, error) {
-	n, err := k.CoreV1().Nodes().Get(nodeID, metav1.GetOptions{})
+	n, err := k.CoreV1().Nodes().Get(context.Background(), nodeID, metav1.GetOptions{})
 	if err != nil {
 		u.Logger.With(zap.Error(err)).With("nodeId", nodeID).Error("Failed to get Node by name.")
 		return "", fmt.Errorf("failed to get node %s", nodeID)

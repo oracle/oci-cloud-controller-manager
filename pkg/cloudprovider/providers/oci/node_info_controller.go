@@ -19,16 +19,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/oracle/oci-go-sdk/v31/core"
-
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-
-	"k8s.io/client-go/util/retry"
-
+	"github.com/oracle/oci-go-sdk/v31/core"
 	"go.uber.org/zap"
-	"k8s.io/client-go/util/workqueue"
 
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -38,6 +34,8 @@ import (
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/retry"
+	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
 )
 
@@ -178,7 +176,7 @@ func (nic *NodeInfoController) processItem(key string) error {
 	}
 
 	err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		_, err := nic.kubeClient.CoreV1().Nodes().Patch(cacheNode.Name, types.StrategicMergePatchType, nodePatchBytes)
+		_, err := nic.kubeClient.CoreV1().Nodes().Patch(context.Background(), cacheNode.Name, types.StrategicMergePatchType, nodePatchBytes, metav1.PatchOptions{})
 		return err
 	})
 	if err != nil {

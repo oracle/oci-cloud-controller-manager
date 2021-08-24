@@ -15,6 +15,7 @@
 package framework
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -31,8 +32,8 @@ import (
 
 // CheckVolumeMount creates a pod with a dynamically provisioned volume
 func (j *PVCTestJig) CheckVolumeMount(namespace string, pvcParam *v1.PersistentVolumeClaim) {
-	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(pvcParam.Namespace).Get(pvcParam.Name, metav1.GetOptions{})
-	pv, err := j.KubeClient.CoreV1().PersistentVolumes().Get(pvc.Spec.VolumeName, metav1.GetOptions{})
+	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(pvcParam.Namespace).Get(context.Background(), pvcParam.Name, metav1.GetOptions{})
+	pv, err := j.KubeClient.CoreV1().PersistentVolumes().Get(context.Background(), pvc.Spec.VolumeName, metav1.GetOptions{})
 	if err != nil {
 		Failf("Failed to get persistent volume %q: %v", pvc.Spec.VolumeName, err)
 	}
@@ -61,7 +62,7 @@ func (j *PVCTestJig) CheckVolumeMount(namespace string, pvcParam *v1.PersistentV
 
 // DeleteAndAwaitNginxPodOrFail deletes the pod definition based on the namespace and waits for pod to disappear
 func (j *PVCTestJig) DeleteAndAwaitNginxPodOrFail(ns string, podName string) {
-	err := j.KubeClient.CoreV1().Pods(ns).Delete(podName, nil)
+	err := j.KubeClient.CoreV1().Pods(ns).Delete(context.Background(), podName, metav1.DeleteOptions{})
 	if err != nil {
 		Failf("Pod %q Delete API error: %v", podName, err)
 	}
@@ -89,8 +90,8 @@ func (j *PVCTestJig) checkFileExists(namespace string, podName string, dir strin
 
 // CheckVolumeReadWrite creates a pod with a dynamically provisioned volume
 func (j *PVCTestJig) CheckVolumeReadWrite(namespace string, pvcParam *v1.PersistentVolumeClaim) {
-	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(pvcParam.Namespace).Get(pvcParam.Name, metav1.GetOptions{})
-	pv, err := j.KubeClient.CoreV1().PersistentVolumes().Get(pvc.Spec.VolumeName, metav1.GetOptions{})
+	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(pvcParam.Namespace).Get(context.Background(), pvcParam.Name, metav1.GetOptions{})
+	pv, err := j.KubeClient.CoreV1().PersistentVolumes().Get(context.Background(), pvc.Spec.VolumeName, metav1.GetOptions{})
 	if err != nil {
 		Failf("Failed to get persistent volume %q: %v", pvc.Spec.VolumeName, err)
 	}
@@ -144,7 +145,7 @@ func (j *PVCTestJig) CheckVolumeDirectoryOwnership(namespace string, pvcParam *v
 func (j *PVCTestJig) CreateAndAwaitNginxPodOrFail(ns string, pvc *v1.PersistentVolumeClaim, command string) string {
 	By("Creating a pod with the dynamically provisioned volume")
 	fsGroup := int64(1000)
-	pod, err := j.KubeClient.CoreV1().Pods(ns).Create(&v1.Pod{
+	pod, err := j.KubeClient.CoreV1().Pods(ns).Create(context.Background(), &v1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
 			APIVersion: "v1",
@@ -188,7 +189,7 @@ func (j *PVCTestJig) CreateAndAwaitNginxPodOrFail(ns string, pvc *v1.PersistentV
 				},
 			},
 		},
-	})
+	}, metav1.CreateOptions{})
 	if err != nil {
 		Failf("Pod %q Create API error: %v", pod.Name, err)
 	}
@@ -216,7 +217,7 @@ func (j *PVCTestJig) waitTimeoutForPodRunningInNamespace(podName, namespace stri
 
 func (j *PVCTestJig) podRunning(podName, namespace string) wait.ConditionFunc {
 	return func() (bool, error) {
-		pod, err := j.KubeClient.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
+		pod, err := j.KubeClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -230,7 +231,6 @@ func (j *PVCTestJig) podRunning(podName, namespace string) wait.ConditionFunc {
 	}
 }
 
-
 // WaitTimeoutForPodRunningInNamespace waits default amount of time (PodStartTimeout) for the specified pod to become running.
 // Returns an error if timeout occurs first, or pod goes in to failed state.
 func (j *PVCTestJig) waitTimeoutForPodCompletedSuccessfullyInNamespace(podName, namespace string, timeout time.Duration) error {
@@ -239,7 +239,7 @@ func (j *PVCTestJig) waitTimeoutForPodCompletedSuccessfullyInNamespace(podName, 
 
 func (j *PVCTestJig) podCompleted(podName, namespace string) wait.ConditionFunc {
 	return func() (bool, error) {
-		pod, err := j.KubeClient.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
+		pod, err := j.KubeClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -255,7 +255,7 @@ func (j *PVCTestJig) podCompleted(podName, namespace string) wait.ConditionFunc 
 
 func (j *PVCTestJig) podNotFound(podName, namespace string) wait.ConditionFunc {
 	return func() (bool, error) {
-		_, err := j.KubeClient.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
+		_, err := j.KubeClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
 		if apierrors.IsNotFound(err) {
 			return true, nil // done
 		}

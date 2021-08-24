@@ -15,6 +15,7 @@
 package framework
 
 import (
+	"context"
 	storagev1beta1 "k8s.io/api/storage/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,11 +48,11 @@ func (f *CloudProviderFramework) CreateStorageClassOrFail(name string, provision
 	}
 	classTemp := f.newStorageClassTemplate(name, provisionerType, parameters, testLabels, &volumeBindingMode)
 
-	class, err := f.ClientSet.StorageV1beta1().StorageClasses().Create(classTemp)
+	class, err := f.ClientSet.StorageV1beta1().StorageClasses().Create(context.Background(), classTemp, metav1.CreateOptions{})
 	if err != nil {
 		if apierrors.IsAlreadyExists(err) {
 			Logf("Storage Class already exists. Updating existing storage class.")
-			f.ClientSet.StorageV1beta1().StorageClasses().Update(f.newStorageClassTemplate(name, provisionerType, parameters, testLabels, &volumeBindingMode))
+			f.ClientSet.StorageV1beta1().StorageClasses().Update(context.Background(), f.newStorageClassTemplate(name, provisionerType, parameters, testLabels, &volumeBindingMode), metav1.UpdateOptions{})
 			return name
 		}
 		Failf("Failed to create storage class %q: %v", name, err)

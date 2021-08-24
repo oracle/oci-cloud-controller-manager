@@ -1,6 +1,7 @@
 package util
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"regexp"
@@ -34,7 +35,7 @@ const (
 
 // LookupNodeCompartment returns the compartment OCID for the given nodeName.
 func LookupNodeCompartment(k kubernetes.Interface, nodeName string) (string, error) {
-	node, err := k.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
+	node, err := k.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}

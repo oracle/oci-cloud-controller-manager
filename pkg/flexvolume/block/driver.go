@@ -24,10 +24,10 @@ import (
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	ociprovider "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
@@ -178,7 +178,7 @@ func constructKubeClient() (*kubernetes.Clientset, error) {
 
 // lookupNodeID returns the OCID for the given nodeName.
 func lookupNodeID(k kubernetes.Interface, nodeName string) (string, error) {
-	n, err := k.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
+	n, err := k.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}

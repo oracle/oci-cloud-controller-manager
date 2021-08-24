@@ -30,11 +30,11 @@ import (
 // CreateBackupVolume creates a volume backup on OCI from an exsiting volume and returns the backup volume id
 func (j *PVCTestJig) CreateBackupVolume(storageClient ocicore.BlockstorageClient, pvc *v1.PersistentVolumeClaim) (string, error) {
 	By("Creating backup of the volume")
-	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(pvc.Name, metav1.GetOptions{})
+	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(context.Background(), pvc.Name, metav1.GetOptions{})
 	if err != nil {
 		return "", fmt.Errorf("failed to get persistent volume claim %q: %v", pvc.Name, err)
 	}
-	pv, err := j.KubeClient.CoreV1().PersistentVolumes().Get(pvc.Spec.VolumeName, metav1.GetOptions{})
+	pv, err := j.KubeClient.CoreV1().PersistentVolumes().Get(context.Background(), pvc.Spec.VolumeName, metav1.GetOptions{})
 	if err != nil {
 		return "", fmt.Errorf("failed to get persistent volume created name by claim %q: %v", pvc.Spec.VolumeName, err)
 	}

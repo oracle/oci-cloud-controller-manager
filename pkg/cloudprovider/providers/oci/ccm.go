@@ -71,6 +71,11 @@ type CloudProvider struct {
 	metricPusher  *metrics.MetricPusher
 }
 
+func (cp *CloudProvider) InstancesV2() (cloudprovider.InstancesV2, bool) {
+	cp.logger.Debug("Claiming to not support instancesV2")
+	return nil, false
+}
+
 // Compile time check that CloudProvider implements the cloudprovider.Interface
 // interface.
 var _ cloudprovider.Interface = &CloudProvider{}

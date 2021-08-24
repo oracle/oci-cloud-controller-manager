@@ -57,7 +57,7 @@ type PSIStats struct {
 func (fs FS) PSIStatsForResource(resource string) (PSIStats, error) {
 	file, err := os.Open(fs.proc.Path(fmt.Sprintf("%s/%s", "pressure", resource)))
 	if err != nil {
-		return PSIStats{}, fmt.Errorf("psi_stats: unavailable for %s", resource)
+		return PSIStats{}, fmt.Errorf("psi_stats: unavailable for %q: %w", resource, err)
 	}
 
 	defer file.Close()

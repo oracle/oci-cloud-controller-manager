@@ -211,7 +211,7 @@ var _ = Describe("ESIPP [Slow]", func() {
 			serviceLBNames = append(serviceLBNames, cloudprovider.GetLoadBalancerName(svc))
 			defer func() {
 				jig.ChangeServiceType(svc.Namespace, svc.Name, v1.ServiceTypeClusterIP, loadBalancerCreateTimeout)
-				Expect(cs.CoreV1().Services(svc.Namespace).Delete(svc.Name, nil)).NotTo(HaveOccurred())
+				Expect(cs.CoreV1().Services(svc.Namespace).Delete(context.Background(), svc.Name, metav1.DeleteOptions{})).NotTo(HaveOccurred())
 			}()
 
 			healthCheckNodePort := int(svc.Spec.HealthCheckNodePort)
@@ -261,7 +261,7 @@ var _ = Describe("ESIPP [Slow]", func() {
 			serviceLBNames = append(serviceLBNames, cloudprovider.GetLoadBalancerName(svc))
 			defer func() {
 				jig.ChangeServiceType(svc.Namespace, svc.Name, v1.ServiceTypeClusterIP, loadBalancerCreateTimeout)
-				Expect(cs.CoreV1().Services(svc.Namespace).Delete(svc.Name, nil)).NotTo(HaveOccurred())
+				Expect(cs.CoreV1().Services(svc.Namespace).Delete(context.Background(), svc.Name, metav1.DeleteOptions{})).NotTo(HaveOccurred())
 			}()
 
 			ingressIP := sharedfw.GetIngressPoint(&svc.Status.LoadBalancer.Ingress[0])
@@ -276,10 +276,10 @@ var _ = Describe("ESIPP [Slow]", func() {
 				pod.Spec.NodeName = nodeName
 			})
 			defer func() {
-				err := cs.CoreV1().Pods(namespace).Delete(execPodName, nil)
+				err := cs.CoreV1().Pods(namespace).Delete(context.Background(), execPodName, metav1.DeleteOptions{})
 				Expect(err).NotTo(HaveOccurred())
 			}()
-			execPod, err := f.ClientSet.CoreV1().Pods(namespace).Get(execPodName, metav1.GetOptions{})
+			execPod, err := f.ClientSet.CoreV1().Pods(namespace).Get(context.Background(), execPodName, metav1.GetOptions{})
 			sharedfw.ExpectNoError(err)
 
 			sharedfw.Logf("Waiting up to %v wget %v", sharedfw.KubeProxyLagTimeout, path)
@@ -313,7 +313,7 @@ var _ = Describe("End to end TLS", func() {
 			jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
 
 			sslSecretName := "ssl-certificate-secret"
-			_, err := f.ClientSet.CoreV1().Secrets(ns).Create(&v1.Secret{
+			_, err := f.ClientSet.CoreV1().Secrets(ns).Create(context.Background(), &v1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: ns,
 					Name:      sslSecretName,
@@ -324,7 +324,7 @@ var _ = Describe("End to end TLS", func() {
 					cloudprovider.SSLPrivateKeyFileName:  []byte(sharedfw.SSLPrivateData),
 					cloudprovider.SSLPassphrase:          []byte(sharedfw.SSLPassphrase),
 				},
-			})
+			}, metav1.CreateOptions{})
 			sharedfw.ExpectNoError(err)
 			loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
 			if nodes := sharedfw.GetReadySchedulableNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
@@ -376,7 +376,7 @@ var _ = Describe("End to end TLS", func() {
 			tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
 			jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
 
-			err = f.ClientSet.CoreV1().Secrets(ns).Delete(sslSecretName, nil)
+			err = f.ClientSet.CoreV1().Secrets(ns).Delete(context.Background(), sslSecretName, metav1.DeleteOptions{})
 			sharedfw.ExpectNoError(err)
 		})
 	})
@@ -395,7 +395,7 @@ var _ = Describe("BackendSet only enabled TLS", func() {
 			jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
 
 			sslSecretName := "ssl-certificate-secret"
-			_, err := f.ClientSet.CoreV1().Secrets(ns).Create(&v1.Secret{
+			_, err := f.ClientSet.CoreV1().Secrets(ns).Create(context.Background(), &v1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: ns,
 					Name:      sslSecretName,
@@ -406,7 +406,7 @@ var _ = Describe("BackendSet only enabled TLS", func() {
 					cloudprovider.SSLPrivateKeyFileName:  []byte(sharedfw.SSLPrivateData),
 					cloudprovider.SSLPassphrase:          []byte(sharedfw.SSLPassphrase),
 				},
-			})
+			}, metav1.CreateOptions{})
 			sharedfw.ExpectNoError(err)
 			loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
 			if nodes := sharedfw.GetReadySchedulableNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
@@ -455,7 +455,7 @@ var _ = Describe("BackendSet only enabled TLS", func() {
 			tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
 			jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
 
-			err = f.ClientSet.CoreV1().Secrets(ns).Delete(sslSecretName, nil)
+			err = f.ClientSet.CoreV1().Secrets(ns).Delete(context.Background(), sslSecretName, metav1.DeleteOptions{})
 			sharedfw.ExpectNoError(err)
 		})
 	})
@@ -474,7 +474,7 @@ var _ = Describe("Listener only enabled TLS", func() {
 			jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
 
 			sslSecretName := "ssl-certificate-secret"
-			_, err := f.ClientSet.CoreV1().Secrets(ns).Create(&v1.Secret{
+			_, err := f.ClientSet.CoreV1().Secrets(ns).Create(context.Background(), &v1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: ns,
 					Name:      sslSecretName,
@@ -485,7 +485,7 @@ var _ = Describe("Listener only enabled TLS", func() {
 					cloudprovider.SSLPrivateKeyFileName:  []byte(sharedfw.SSLPrivateData),
 					cloudprovider.SSLPassphrase:          []byte(sharedfw.SSLPassphrase),
 				},
-			})
+			}, metav1.CreateOptions{})
 			sharedfw.ExpectNoError(err)
 			loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
 			if nodes := sharedfw.GetReadySchedulableNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
@@ -534,7 +534,7 @@ var _ = Describe("Listener only enabled TLS", func() {
 			tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
 			jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
 
-			err = f.ClientSet.CoreV1().Secrets(ns).Delete(sslSecretName, nil)
+			err = f.ClientSet.CoreV1().Secrets(ns).Delete(context.Background(), sslSecretName, metav1.DeleteOptions{})
 			sharedfw.ExpectNoError(err)
 		})
 	})
@@ -553,7 +553,7 @@ var _ = Describe("End to end enabled TLS - different certificates", func() {
 
 			sslListenerSecretName := "ssl-certificate-secret-lis"
 			sslBackendSetSecretName := "ssl-certificate-secret-backendset"
-			_, err := f.ClientSet.CoreV1().Secrets(ns).Create(&v1.Secret{
+			_, err := f.ClientSet.CoreV1().Secrets(ns).Create(context.Background(), &v1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: ns,
 					Name:      sslListenerSecretName,
@@ -564,9 +564,9 @@ var _ = Describe("End to end enabled TLS - different certificates", func() {
 					cloudprovider.SSLPrivateKeyFileName:  []byte(sharedfw.SSLPrivateData),
 					cloudprovider.SSLPassphrase:          []byte(sharedfw.SSLPassphrase),
 				},
-			})
+			}, metav1.CreateOptions{})
 			sharedfw.ExpectNoError(err)
-			_, err = f.ClientSet.CoreV1().Secrets(ns).Create(&v1.Secret{
+			_, err = f.ClientSet.CoreV1().Secrets(ns).Create(context.Background(), &v1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: ns,
 					Name:      sslBackendSetSecretName,
@@ -577,7 +577,7 @@ var _ = Describe("End to end enabled TLS - different certificates", func() {
 					cloudprovider.SSLPrivateKeyFileName:  []byte(sharedfw.SSLPrivateData),
 					cloudprovider.SSLPassphrase:          []byte(sharedfw.SSLPassphrase),
 				},
-			})
+			}, metav1.CreateOptions{})
 			sharedfw.ExpectNoError(err)
 			loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
 			if nodes := sharedfw.GetReadySchedulableNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
@@ -627,9 +627,9 @@ var _ = Describe("End to end enabled TLS - different certificates", func() {
 			tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
 			jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
 
-			err = f.ClientSet.CoreV1().Secrets(ns).Delete(sslListenerSecretName, nil)
+			err = f.ClientSet.CoreV1().Secrets(ns).Delete(context.Background(), sslListenerSecretName, metav1.DeleteOptions{})
 			sharedfw.ExpectNoError(err)
-			err = f.ClientSet.CoreV1().Secrets(ns).Delete(sslBackendSetSecretName, nil)
+			err = f.ClientSet.CoreV1().Secrets(ns).Delete(context.Background(), sslBackendSetSecretName, metav1.DeleteOptions{})
 			sharedfw.ExpectNoError(err)
 		})
 	})
