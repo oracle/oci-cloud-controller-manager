@@ -35,6 +35,8 @@ type NetworkingInterface interface {
 	UpdateSecurityList(ctx context.Context, id string, etag string, ingressRules []core.IngressSecurityRule, egressRules []core.EgressSecurityRule) (core.UpdateSecurityListResponse, error)
 
 	GetPrivateIP(ctx context.Context, id string) (*core.PrivateIp, error)
+
+	GetPublicIpByIpAddress(ctx context.Context, id string) (*core.PublicIp, error)
 }
 
 func (c *client) GetVNIC(ctx context.Context, id string) (*core.Vnic, error) {
@@ -180,4 +182,22 @@ func (c *client) GetPrivateIP(ctx context.Context, id string) (*core.PrivateIp, 
 	}
 
 	return &resp.PrivateIp, nil
+}
+
+func (c *client) GetPublicIpByIpAddress(ctx context.Context, ip string) (*core.PublicIp, error) {
+	if !c.rateLimiter.Reader.TryAccept() {
+		return nil, RateLimitError(false, "GetPublicIpByIpAddress")
+	}
+	resp, err := c.network.GetPublicIpByIpAddress(ctx, core.GetPublicIpByIpAddressRequest{
+		GetPublicIpByIpAddressDetails: core.GetPublicIpByIpAddressDetails{
+			IpAddress: &ip,
+		},
+		RequestMetadata: c.requestMetadata,
+	})
+	incRequestCounter(err, getVerb, publicReservedIPResource)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return &resp.PublicIp, nil
 }

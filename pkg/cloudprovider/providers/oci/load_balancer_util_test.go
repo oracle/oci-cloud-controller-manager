@@ -277,7 +277,7 @@ func TestGetBackendSetChanges(t *testing.T) {
 				"one": loadbalancer.BackendSet{
 					Name: common.String("one"),
 					Backends: []loadbalancer.Backend{
-						{IpAddress: common.String("0.0.0.0"), Port: common.Int(80), Name: common.String("0.0.0.0:80")},
+						{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
 					},
 				},
 			},
@@ -316,13 +316,20 @@ func TestGetBackendSetChanges(t *testing.T) {
 				},
 			},
 			expected: []Action{
-				&BackendAction{
-					bsName:     "one",
-					actionType: Create,
-					name:       "0.0.0.1:80",
-					Backend: loadbalancer.BackendDetails{
-						IpAddress: common.String("0.0.0.1"),
-						Port:      common.Int(80),
+				&BackendSetAction{
+					name:       "one",
+					actionType: Update,
+					BackendSet: loadbalancer.BackendSetDetails{
+						Backends: []loadbalancer.BackendDetails{
+							{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
+							{IpAddress: common.String("0.0.0.1"), Port: common.Int(80)},
+						},
+					},
+					Ports: portSpec{
+						BackendPort: 80,
+					},
+					OldPorts: &portSpec{
+						BackendPort: 80,
 					},
 				},
 			},
@@ -346,10 +353,20 @@ func TestGetBackendSetChanges(t *testing.T) {
 				},
 			},
 			expected: []Action{
-				&BackendAction{
-					bsName:     "one",
-					actionType: Delete,
-					name:       "0.0.0.1:80",
+				&BackendSetAction{
+					name:       "one",
+					actionType: Update,
+					BackendSet: loadbalancer.BackendSetDetails{
+						Backends: []loadbalancer.BackendDetails{
+							{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
+						},
+					},
+					Ports: portSpec{
+						BackendPort: 80,
+					},
+					OldPorts: &portSpec{
+						BackendPort: 80,
+					},
 				},
 			},
 		},
@@ -431,7 +448,7 @@ func TestGetBackendSetChanges(t *testing.T) {
 				"one": loadbalancer.BackendSet{
 					Name: common.String("one"),
 					Backends: []loadbalancer.Backend{
-						{IpAddress: common.String("0.0.0.0"), Port: common.Int(80), Name: common.String("0.0.0.0:80")},
+						{IpAddress: common.String("0.0.0.0"), Port: common.Int(80)},
 					},
 				},
 			},
@@ -1582,6 +1599,7 @@ func TestHasBackendSetChanged(t *testing.T) {
 				Policy: common.String("policy"),
 				Backends: []loadbalancer.BackendDetails{
 					{
+						IpAddress: common.String("0.0.0.0"),
 						Port: &testBackendPort,
 					},
 				},
@@ -1590,6 +1608,7 @@ func TestHasBackendSetChanged(t *testing.T) {
 				Policy: common.String("policy"),
 				Backends: []loadbalancer.Backend{
 					{
+						IpAddress: common.String("0.0.0.0"),
 						Port: &testBackendPort,
 					},
 				},
@@ -1602,6 +1621,7 @@ func TestHasBackendSetChanged(t *testing.T) {
 				Policy: common.String("policy"),
 				Backends: []loadbalancer.BackendDetails{
 					{
+						IpAddress: common.String("0.0.0.0"),
 						Port: &testBackendPort,
 					},
 				},
@@ -1610,6 +1630,7 @@ func TestHasBackendSetChanged(t *testing.T) {
 				Policy: common.String("policy"),
 				Backends: []loadbalancer.Backend{
 					{
+						IpAddress: common.String("0.0.0.0"),
 						Port: &testNewBackendPort,
 					},
 				},
@@ -1830,6 +1851,37 @@ func TestHasLoadbalancerShapeChanged(t *testing.T) {
 			changed := hasLoadbalancerShapeChanged(context.TODO(), &tt.lbSpec, &tt.lb)
 			if changed != tt.expected {
 				t.Errorf("expected hasLBShapeChanged to be %+v\nbut got\n%+v", tt.expected, changed)
+			}
+		})
+	}
+}
+
+func TestHasLoadBalancerNetworkSecurityGroupsChanged(t *testing.T) {
+	var testCases = []struct {
+		name                        string
+		actualNetworkSecurityGroup  []string
+		desiredNetworkSecurityGroup []string
+		expected                    bool
+	}{
+		{
+			name:                        "No Changes",
+			actualNetworkSecurityGroup:  []string{"ocid1"},
+			desiredNetworkSecurityGroup: []string{"ocid1"},
+			expected:                    false,
+		},
+		{
+			name:                        "Has Changes",
+			actualNetworkSecurityGroup:  []string{"ocid1"},
+			desiredNetworkSecurityGroup: []string{"ocid1, ocid2"},
+			expected:                    true,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			changed := hasLoadBalancerNetworkSecurityGroupsChanged(context.TODO(), tt.actualNetworkSecurityGroup, tt.desiredNetworkSecurityGroup)
+			if changed != tt.expected {
+				t.Errorf("expected hasLoadBalancerNetworkSecurityGroupsChanged to be %+v\nbut got\n%+v", tt.expected, changed)
 			}
 		})
 	}

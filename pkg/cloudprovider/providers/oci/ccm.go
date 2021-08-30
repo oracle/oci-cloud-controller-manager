@@ -36,6 +36,7 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/metrics"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
+	"github.com/oracle/oci-go-sdk/v31/common"
 	"github.com/oracle/oci-go-sdk/v31/core"
 )
 
@@ -146,6 +147,7 @@ func init() {
 
 		return NewCloudProvider(cfg)
 	})
+	common.EnableInstanceMetadataServiceLookup()
 }
 
 // Initialize passes a Kubernetes clientBuilder interface to the cloud provider.

@@ -60,6 +60,7 @@ type NodeDriver struct {
 	KubeClient kubernetes.Interface
 	logger     *zap.SugaredLogger
 	util       *Util
+	volumeLocks *VolumeLocks
 }
 
 // NewNodeDriver creates a new CSI node driver for OCI blockvolume
@@ -74,6 +75,7 @@ func NewNodeDriver(logger *zap.SugaredLogger, endpoint, nodeID, kubeconfig, mast
 		KubeClient: kubeClientSet,
 		logger:     logger,
 		util:       &Util{logger: logger},
+		volumeLocks: NewVolumeLocks(),
 	}
 
 	return &Driver{

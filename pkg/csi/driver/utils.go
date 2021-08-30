@@ -2,9 +2,11 @@ package driver
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
@@ -222,4 +224,31 @@ func validateFsType(logger *zap.SugaredLogger, fsType string) string {
 		//No fsType provided returning ext4
 		return defaultFsType
 	}
+}
+
+type VolumeLocks struct {
+	locks sets.String
+	mux   sync.Mutex
+}
+
+func NewVolumeLocks() *VolumeLocks {
+	return &VolumeLocks{
+		locks: sets.NewString(),
+	}
+}
+
+func (vl *VolumeLocks) TryAcquire(volumeID string) bool {
+	vl.mux.Lock()
+	defer vl.mux.Unlock()
+	if vl.locks.Has(volumeID) {
+		return false
+	}
+	vl.locks.Insert(volumeID)
+	return true
+}
+
+func (vl *VolumeLocks) Release(volumeID string) {
+	vl.mux.Lock()
+	defer vl.mux.Unlock()
+	vl.locks.Delete(volumeID)
 }

@@ -59,7 +59,7 @@ const (
 
 	// LoadBalancerLagTimeoutDefault is the maximum time a load balancer is allowed to
 	// not respond after creation.
-	LoadBalancerLagTimeoutDefault = 2 * time.Minute
+	LoadBalancerLagTimeoutDefault = 5 * time.Minute
 
 	// LoadBalancerLagTimeoutAWS is the delay between ELB creation and serving traffic
 	// on AWS. A few minutes is typical, so use 10m.
@@ -94,6 +94,9 @@ const (
 
 	// OCI LB Shape Update Timeout
 	OCILBShapeUpdateTimeout = 5 * time.Minute
+
+	// OCI LB NSG Update Timeout
+	OCILBNSGUpdateTimeout = 5 * time.Minute
 )
 
 // This should match whatever the default/configured range is
@@ -230,7 +233,7 @@ func (j *ServiceTestJig) ChangeServiceType(namespace, name string, newType v1.Se
 // CreateOnlyLocalNodePortService creates a NodePort service with
 // ExternalTrafficPolicy set to Local and sanity checks its nodePort.
 // If createPod is true, it also creates an RC with 1 replica of
-// the standard netexec container used everywhere in this test.
+// the standard agnhost container used everywhere in this test.
 func (j *ServiceTestJig) CreateOnlyLocalNodePortService(namespace, serviceName string, createPod bool) *v1.Service {
 	By("creating a service " + namespace + "/" + serviceName + " with type=NodePort and ExternalTrafficPolicy=Local")
 	svc := j.CreateTCPServiceOrFail(namespace, func(svc *v1.Service) {
@@ -250,7 +253,7 @@ func (j *ServiceTestJig) CreateOnlyLocalNodePortService(namespace, serviceName s
 // CreateOnlyLocalLoadBalancerService creates a loadbalancer service with
 // ExternalTrafficPolicy set to Local and waits for it to acquire an ingress IP.
 // If createPod is true, it also creates an RC with 1 replica of
-// the standard netexec container used everywhere in this test.
+// the standard agnhost container used everywhere in this test.
 func (j *ServiceTestJig) CreateOnlyLocalLoadBalancerService(namespace, serviceName string, timeout time.Duration, createPod bool,
 	tweak func(svc *v1.Service)) *v1.Service {
 	By("creating a service " + namespace + "/" + serviceName + " with type=LoadBalancer and ExternalTrafficPolicy=Local")
@@ -575,7 +578,7 @@ func (j *ServiceTestJig) waitForConditionOrFail(namespace, name string, timeout 
 
 // newRCTemplate returns the default v1.ReplicationController object for
 // this jig, but does not actually create the RC.  The default RC has the same
-// name as the jig and runs the "netexec" container.
+// name as the jig and runs the "agnhost" container.
 func (j *ServiceTestJig) newRCTemplate(namespace string) *v1.ReplicationController {
 	var replicas int32 = 1
 
@@ -595,9 +598,9 @@ func (j *ServiceTestJig) newRCTemplate(namespace string) *v1.ReplicationControll
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
 						{
-							Name:  "netexec",
-							Image: netexec,
-							Args:  []string{"--http-port=80", "--udp-port=80"},
+							Name:  "agnhost",
+							Image: agnhost,
+							Args:  []string{"netexec", "--http-port=80", "--udp-port=80"},
 							ReadinessProbe: &v1.Probe{
 								PeriodSeconds: 3,
 								Handler: v1.Handler{
@@ -708,7 +711,7 @@ func (j *ServiceTestJig) waitForPdbReady(namespace string) error {
 }
 
 func (j *ServiceTestJig) waitForPodsCreated(namespace string, replicas int) ([]string, error) {
-	timeout := 2 * time.Minute
+	timeout := 5 * time.Minute
 	// List the pods, making sure we observe all the replicas.
 	label := labels.SelectorFromSet(labels.Set(j.Labels))
 	Logf("Waiting up to %v for %d pods to be created", timeout, replicas)
@@ -860,6 +863,25 @@ func (f *CloudProviderFramework) VerifyHealthCheckConfig(loadBalancerId string, 
 		Logf("Health Check config did not match expected - will retry")
 	}
 	return gerrors.Errorf("Timeout waiting for Health check config to be as expected.")
+}
+
+// WaitForLoadBalancerNSGChange polls for validating the associated NSGs
+// to be the same as the spec
+func (f *CloudProviderFramework) WaitForLoadBalancerNSGChange(lb *loadbalancer.LoadBalancer, nsgIds []string) error {
+	condition := func() (bool, error) {
+		updatedLB, err := f.Client.LoadBalancer().GetLoadBalancer(context.TODO(), *lb.Id)
+		if err != nil {
+			return false, err
+		}
+		if !cloudprovider.DeepEqualLists(updatedLB.NetworkSecurityGroupIds, nsgIds) {
+			return false, nil
+		}
+		return true, nil
+	}
+	if err := wait.Poll(15*time.Second, OCILBNSGUpdateTimeout, condition); err != nil {
+		return fmt.Errorf("Failed to update LB NSGs, error: %s", err.Error())
+	}
+	return nil
 }
 
 // WaitForLoadBalancerShapeChange polls for the shape of the LB
@@ -1189,4 +1211,37 @@ func EnableAndDisableInternalLB() (enable func(svc *v1.Service), disable func(sv
 	}
 
 	return
+}
+
+func (f *CloudProviderFramework) VerifyLoadBalancerPolicy(loadBalancerId string, loadbalancerPolicy string) error {
+	pollFunc := func() (done bool, err error) {
+		loadBalancer, err := f.Client.LoadBalancer().GetLoadBalancer(context.TODO(), loadBalancerId)
+		if err != nil {
+			return false, err
+		}
+		success, err := testLoadBalancerPolicy(loadBalancer, loadbalancerPolicy)
+		if err != nil {
+			return false, err
+		}
+		if success {
+			Logf("loadbalancer policy matches expected policy.")
+			return true, nil
+		}
+		Logf("loadbalancer policy did not match expected - will retry")
+		return false, nil
+	}
+	return wait.PollImmediate(5*time.Second, 5*time.Minute, pollFunc)
+}
+
+func testLoadBalancerPolicy(loadBalancer *loadbalancer.LoadBalancer, loadbalancerPolicy string) (bool, error) {
+	if loadBalancer == nil || len(loadBalancer.BackendSets) == 0 {
+		return false, gerrors.Errorf("Could not find load balancer policy.")
+	}
+
+	for _, backendSet := range loadBalancer.BackendSets {
+		if *backendSet.Policy != loadbalancerPolicy {
+			return false, nil
+		}
+	}
+	return true, nil
 }

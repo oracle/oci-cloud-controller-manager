@@ -39,44 +39,44 @@ import (
 
 var (
 	instanceVnics = map[string]*core.Vnic{
-		"basic-complete": &core.Vnic{
+		"basic-complete": {
 			PrivateIp:     common.String("10.0.0.1"),
 			PublicIp:      common.String("0.0.0.1"),
 			HostnameLabel: common.String("basic-complete"),
 			SubnetId:      common.String("subnetwithdnslabel"),
 		},
-		"no-external-ip": &core.Vnic{
+		"no-external-ip": {
 			PrivateIp:     common.String("10.0.0.1"),
 			HostnameLabel: common.String("no-external-ip"),
 			SubnetId:      common.String("subnetwithdnslabel"),
 		},
-		"no-internal-ip": &core.Vnic{
+		"no-internal-ip": {
 			PublicIp:      common.String("0.0.0.1"),
 			HostnameLabel: common.String("no-internal-ip"),
 			SubnetId:      common.String("subnetwithdnslabel"),
 		},
-		"invalid-internal-ip": &core.Vnic{
+		"invalid-internal-ip": {
 			PrivateIp:     common.String("10.0.0."),
 			HostnameLabel: common.String("no-internal-ip"),
 			SubnetId:      common.String("subnetwithdnslabel"),
 		},
-		"invalid-external-ip": &core.Vnic{
+		"invalid-external-ip": {
 			PublicIp:      common.String("0.0.0."),
 			HostnameLabel: common.String("invalid-external-ip"),
 			SubnetId:      common.String("subnetwithdnslabel"),
 		},
-		"no-hostname-label": &core.Vnic{
+		"no-hostname-label": {
 			PrivateIp: common.String("10.0.0.1"),
 			PublicIp:  common.String("0.0.0.1"),
 			SubnetId:  common.String("subnetwithdnslabel"),
 		},
-		"no-subnet-dns-label": &core.Vnic{
+		"no-subnet-dns-label": {
 			PrivateIp:     common.String("10.0.0.1"),
 			PublicIp:      common.String("0.0.0.1"),
 			HostnameLabel: common.String("no-subnet-dns-label"),
 			SubnetId:      common.String("subnetwithoutdnslabel"),
 		},
-		"no-vcn-dns-label": &core.Vnic{
+		"no-vcn-dns-label": {
 			PrivateIp:     common.String("10.0.0.1"),
 			PublicIp:      common.String("0.0.0.1"),
 			HostnameLabel: common.String("no-vcn-dns-label"),
@@ -85,37 +85,37 @@ var (
 	}
 
 	instances = map[string]*core.Instance{
-		"basic-complete": &core.Instance{
+		"basic-complete": {
 			CompartmentId: common.String("default"),
 		},
-		"no-external-ip": &core.Instance{
+		"no-external-ip": {
 			CompartmentId: common.String("default"),
 		},
-		"no-internal-ip": &core.Instance{
+		"no-internal-ip": {
 			CompartmentId: common.String("default"),
 		},
-		"invalid-internal-ip": &core.Instance{
+		"invalid-internal-ip": {
 			CompartmentId: common.String("default"),
 		},
-		"invalid-external-ip": &core.Instance{
+		"invalid-external-ip": {
 			CompartmentId: common.String("default"),
 		},
-		"no-hostname-label": &core.Instance{
+		"no-hostname-label": {
 			CompartmentId: common.String("default"),
 		},
-		"no-subnet-dns-label": &core.Instance{
+		"no-subnet-dns-label": {
 			CompartmentId: common.String("default"),
 		},
-		"no-vcn-dns-label": &core.Instance{
+		"no-vcn-dns-label": {
 			CompartmentId: common.String("default"),
 		},
-		"instance1": &core.Instance{
+		"instance1": {
 			CompartmentId: common.String("compartment1"),
 			Id:            common.String("instance1"),
 			Shape:         common.String("VM.Standard1.2"),
 			DisplayName:   common.String("instance1"),
 		},
-		"instance_zone_test": &core.Instance{
+		"instance_zone_test": {
 			AvailabilityDomain: common.String("NWuj:PHX-AD-1"),
 			CompartmentId:      common.String("compartment1"),
 			Id:                 common.String("instance_zone_test"),
@@ -125,45 +125,45 @@ var (
 		},
 	}
 	subnets = map[string]*core.Subnet{
-		"subnetwithdnslabel": &core.Subnet{
+		"subnetwithdnslabel": {
 			Id:       common.String("subnetwithdnslabel"),
 			DnsLabel: common.String("subnetwithdnslabel"),
 			VcnId:    common.String("vcnwithdnslabel"),
 		},
-		"subnetwithoutdnslabel": &core.Subnet{
+		"subnetwithoutdnslabel": {
 			Id:    common.String("subnetwithoutdnslabel"),
 			VcnId: common.String("vcnwithdnslabel"),
 		},
-		"subnetwithnovcndnslabel": &core.Subnet{
+		"subnetwithnovcndnslabel": {
 			Id:       common.String("subnetwithnovcndnslabel"),
 			DnsLabel: common.String("subnetwithnovcndnslabel"),
 			VcnId:    common.String("vcnwithoutdnslabel"),
 		},
-		"one": &core.Subnet{
+		"one": {
 			Id:                 common.String("one"),
 			DnsLabel:           common.String("subnetwithnovcndnslabel"),
 			VcnId:              common.String("vcnwithoutdnslabel"),
 			AvailabilityDomain: common.String("AD1"),
 		},
-		"two": &core.Subnet{
+		"two": {
 			Id:                 common.String("two"),
 			DnsLabel:           common.String("subnetwithnovcndnslabel"),
 			VcnId:              common.String("vcnwithoutdnslabel"),
 			AvailabilityDomain: common.String("AD2"),
 		},
-		"annotation-one": &core.Subnet{
+		"annotation-one": {
 			Id:                 common.String("annotation-one"),
 			DnsLabel:           common.String("subnetwithnovcndnslabel"),
 			VcnId:              common.String("vcnwithoutdnslabel"),
 			AvailabilityDomain: common.String("AD1"),
 		},
-		"annotation-two": &core.Subnet{
+		"annotation-two": {
 			Id:                 common.String("annotation-two"),
 			DnsLabel:           common.String("subnetwithnovcndnslabel"),
 			VcnId:              common.String("vcnwithoutdnslabel"),
 			AvailabilityDomain: common.String("AD2"),
 		},
-		"regional-subnet": &core.Subnet{
+		"regional-subnet": {
 			Id:                 common.String("regional-subnet"),
 			DnsLabel:           common.String("subnetwithnovcndnslabel"),
 			VcnId:              common.String("vcnwithoutdnslabel"),
@@ -172,17 +172,17 @@ var (
 	}
 
 	vcns = map[string]*core.Vcn{
-		"vcnwithdnslabel": &core.Vcn{
+		"vcnwithdnslabel": {
 			Id:       common.String("vcnwithdnslabel"),
 			DnsLabel: common.String("vcnwithdnslabel"),
 		},
-		"vcnwithoutdnslabel": &core.Vcn{
+		"vcnwithoutdnslabel": {
 			Id: common.String("vcnwithoutdnslabel"),
 		},
 	}
 
 	nodeList = map[string]*v1.Node{
-		"default": &v1.Node{
+		"default": {
 			ObjectMeta: metav1.ObjectMeta{
 				Annotations: map[string]string{
 					CompartmentIDAnnotation: "default",
@@ -192,7 +192,7 @@ var (
 				ProviderID: "default",
 			},
 		},
-		"instance1": &v1.Node{
+		"instance1": {
 			ObjectMeta: metav1.ObjectMeta{
 				Annotations: map[string]string{
 					CompartmentIDAnnotation: "compartment1",
@@ -220,8 +220,65 @@ var (
 			DisplayName: common.String("privateLB-no-IP"),
 			IpAddresses: []loadbalancer.IpAddress{},
 		},
+		"test-uid": {
+			Id:          common.String("test-uid"),
+			DisplayName: common.String("test-uid"),
+			IpAddresses: []loadbalancer.IpAddress{
+				{
+					IpAddress: common.String("10.0.50.5"),
+					IsPublic:  common.Bool(false),
+				},
+			},
+		},
+		"test-uid-delete-err": {
+			Id:          common.String("test-uid-delete-err"),
+			DisplayName: common.String("test-uid-delete-err"),
+			IpAddresses: []loadbalancer.IpAddress{
+				{
+					IpAddress: common.String("10.0.50.5"),
+					IsPublic:  common.Bool(false),
+				},
+			},
+		},
+		"test-uid-node-err": {
+			Id:          common.String("test-uid-delete-err"),
+			DisplayName: common.String("test-uid-delete-err"),
+			IpAddresses: []loadbalancer.IpAddress{
+				{
+					IpAddress: common.String("10.0.50.5"),
+					IsPublic:  common.Bool(false),
+				},
+			},
+			SubnetIds: []string{*subnets["one"].Id, *subnets["two"].Id},
+			Listeners: map[string]loadbalancer.Listener{
+				"one": {
+					Name:                  common.String("one"),
+					DefaultBackendSetName: common.String("one"),
+					Port:                  common.Int(5665),
+				},},
+			BackendSets: map[string]loadbalancer.BackendSet{
+				"one": {
+					Backends: []loadbalancer.Backend{{
+						Name:      common.String("one"),
+						IpAddress: common.String("10.0.50.5"),
+						Port:      common.Int(5665),
+					},},
+				},},
+		},
 	}
 )
+
+type MockSecurityListManager struct{}
+
+func (MockSecurityListManager) Update(ctx context.Context, lbSubnets []*core.Subnet, _ []*core.Subnet, sourceCIDRs []string, actualPorts *portSpec, desiredPorts portSpec) error {
+	return nil
+}
+
+func (MockSecurityListManager) Delete(ctx context.Context, lbSubnets []*core.Subnet, backendSubnets []*core.Subnet, ports portSpec) error {
+	return nil
+}
+
+type MockSecurityListManagerFactory func(mode string) MockSecurityListManager
 
 type MockOCIClient struct{}
 
@@ -345,6 +402,10 @@ func (c *MockVirtualNetworkClient) UpdateSecurityList(ctx context.Context, id st
 	return core.UpdateSecurityListResponse{}, nil
 }
 
+func (c *MockVirtualNetworkClient) GetPublicIpByIpAddress(ctx context.Context, id string) (*core.PublicIp, error) {
+	return nil, nil
+}
+
 //// MockFileStorageClient mocks FileStorage client implementation.
 type MockLoadBalancerClient struct{}
 
@@ -364,6 +425,9 @@ func (c *MockLoadBalancerClient) GetLoadBalancerByName(ctx context.Context, comp
 }
 
 func (c *MockLoadBalancerClient) DeleteLoadBalancer(ctx context.Context, id string) (string, error) {
+	if id == "test-uid-delete-err" {
+		return "workReqId", errors.New("error")
+	}
 	return "", nil
 }
 
@@ -387,14 +451,6 @@ func (c *MockLoadBalancerClient) DeleteBackendSet(ctx context.Context, lbID, nam
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) CreateBackend(ctx context.Context, lbID, bsName string, details loadbalancer.BackendDetails) (string, error) {
-	return "", nil
-}
-
-func (c *MockLoadBalancerClient) DeleteBackend(ctx context.Context, lbID, bsName, name string) (string, error) {
-	return "", nil
-}
-
 func (c *MockLoadBalancerClient) UpdateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error) {
 	return "", nil
 }
@@ -415,7 +471,14 @@ func (c *MockLoadBalancerClient) UpdateLoadBalancerShape(ctx context.Context, id
 	return "", nil
 }
 
-// MockBlockStorageClient mocks BlockStoargae client implementation
+func (c *MockLoadBalancerClient) UpdateNetworkSecurityGroups(ctx context.Context, lbId string, details loadbalancer.UpdateNetworkSecurityGroupsDetails) (string, error) {
+	if lbId == "" {
+		return "", errors.New("provided LB ID is empty")
+	}
+	return "", nil
+}
+
+// MockBlockStorageClient mocks BlockStorage client implementation
 type MockBlockStorageClient struct{}
 
 func (MockBlockStorageClient) AwaitVolumeAvailableORTimeout(ctx context.Context, id string) (*core.Volume, error) {
@@ -544,8 +607,8 @@ func TestExtractNodeAddresses(t *testing.T) {
 			name: "basic-complete",
 			in:   "basic-complete",
 			out: []v1.NodeAddress{
-				v1.NodeAddress{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
-				v1.NodeAddress{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
+				{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
+				{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
 				// v1.NodeAddress{Type: v1.NodeHostName, Address: "basic-complete.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
 				// v1.NodeAddress{Type: v1.NodeInternalDNS, Address: "basic-complete.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
 			},
@@ -555,7 +618,7 @@ func TestExtractNodeAddresses(t *testing.T) {
 			name: "no-external-ip",
 			in:   "no-external-ip",
 			out: []v1.NodeAddress{
-				v1.NodeAddress{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
+				{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
 				// v1.NodeAddress{Type: v1.NodeHostName, Address: "no-external-ip.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
 				// v1.NodeAddress{Type: v1.NodeInternalDNS, Address: "no-external-ip.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
 			},
@@ -565,7 +628,7 @@ func TestExtractNodeAddresses(t *testing.T) {
 			name: "no-internal-ip",
 			in:   "no-internal-ip",
 			out: []v1.NodeAddress{
-				v1.NodeAddress{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
+				{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
 				// v1.NodeAddress{Type: v1.NodeHostName, Address: "no-internal-ip.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
 				// v1.NodeAddress{Type: v1.NodeInternalDNS, Address: "no-internal-ip.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
 			},
@@ -587,8 +650,8 @@ func TestExtractNodeAddresses(t *testing.T) {
 			name: "no-hostname-label",
 			in:   "no-hostname-label",
 			out: []v1.NodeAddress{
-				v1.NodeAddress{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
-				v1.NodeAddress{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
+				{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
+				{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
 			},
 			err: nil,
 		},
@@ -596,8 +659,8 @@ func TestExtractNodeAddresses(t *testing.T) {
 			name: "no-subnet-dns-label",
 			in:   "no-subnet-dns-label",
 			out: []v1.NodeAddress{
-				v1.NodeAddress{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
-				v1.NodeAddress{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
+				{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
+				{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
 			},
 			err: nil,
 		},
@@ -605,8 +668,8 @@ func TestExtractNodeAddresses(t *testing.T) {
 			name: "no-vcn-dns-label",
 			in:   "no-vcn-dns-label",
 			out: []v1.NodeAddress{
-				v1.NodeAddress{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
-				v1.NodeAddress{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
+				{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
+				{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
 			},
 			err: nil,
 		},
@@ -775,8 +838,8 @@ func TestNodeAddressesByProviderID(t *testing.T) {
 			name: "provider id without provider prefix",
 			in:   "basic-complete",
 			out: []v1.NodeAddress{
-				v1.NodeAddress{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
-				v1.NodeAddress{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
+				{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
+				{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
 			},
 			err: nil,
 		},
@@ -784,8 +847,8 @@ func TestNodeAddressesByProviderID(t *testing.T) {
 			name: "provider id with provider prefix",
 			in:   providerPrefix + "basic-complete",
 			out: []v1.NodeAddress{
-				v1.NodeAddress{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
-				v1.NodeAddress{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
+				{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
+				{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
 			},
 			err: nil,
 		},

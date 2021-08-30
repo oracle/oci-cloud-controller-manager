@@ -15,9 +15,10 @@
 package config
 
 import (
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 	"reflect"
 	"testing"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -55,6 +56,7 @@ func TestValidateConfig(t *testing.T) {
 				Auth: AuthConfig{
 					metadataSvc:           metadata.NewMock(&metadata.InstanceMetadata{CompartmentID: "compartment"}),
 					UseInstancePrincipals: true,
+					TenancyID:             "not empty",
 				},
 				LoadBalancer: &LoadBalancerConfig{
 					Subnet1: "ocid1.tenancy.oc1..aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

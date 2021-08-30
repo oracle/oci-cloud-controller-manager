@@ -3,7 +3,7 @@
 This file defines a list of [Service][4] `type: LoadBalancer` annotations which are
 supported by the `oci-cloud-controller-manager`.
 
-All annotations are prefixed with `service.beta.kubernetes.io/`. For example:
+All annotations are prefixed with `service.beta.kubernetes.io/` or `oci.oraclecloud.com/`. For example:
 
 ```yaml
 kind: Service
@@ -14,6 +14,7 @@ metadata:
     service.beta.kubernetes.io/oci-load-balancer-shape: "400Mbps"
     service.beta.kubernetes.io/oci-load-balancer-subnet1: "ocid..."
     service.beta.kubernetes.io/oci-load-balancer-subnet2: "ocid..."
+    oci.oraclecloud.com/oci-network-security-groups: "ocid1..."
 spec:
   ...
 ```
@@ -33,10 +34,12 @@ spec:
 | `oci-load-balancer-health-check-interval`   | The interval between [health checks][6] requests, in milliseconds.                                                                                                                                                                                 | `10000`                                          |
 | `oci-load-balancer-connection-idle-timeout` | The maximum idle time, in seconds, allowed between two successive receive or two successive send operations between the client and backend servers.                                                                                                | `300` for TCP listeners, `60` for HTTP listeners |
 | `oci-load-balancer-security-list-management-mode` | Specifies the [security list mode](##security-list-management-modes) (`"All"`, `"Frontend"`,`"None"`) to configure how security lists are managed by the CCM.                            | `"All"`            
-| `oci-load-balancer-backend-protocol` | Specify protocol on which the listener accepts connection requests. To get a list of valid protocols, use the [`ListProtocols`][5] operation.                          | `"TCP"`            
+| `oci-load-balancer-backend-protocol` | Specifies protocol on which the listener accepts connection requests. To get a list of valid protocols, use the [`ListProtocols`][5] operation.                          | `"TCP"`            
+| `oci-network-security-groups` | Specifies Network Security Groups' OCIDs to be associated with the loadbalancer. Please refer [here][8] for NSG details.                      | `N/A`            
 
-Note: Only one annotation `oci-load-balancer-subnet1` should be passed if it is a regional subnet.
-
+Note: 
+- Only one annotation `oci-load-balancer-subnet1` should be passed if it is a regional subnet.
+- `oci-network-security-groups` uses `oci.oraclecloud.com/` as prefix.
 ## TLS-related
 
 | Name | Description | Default |
@@ -61,3 +64,5 @@ Note:
 [4]: https://kubernetes.io/docs/concepts/services-networking/service/
 [5]: https://docs.cloud.oracle.com/iaas/api/#/en/loadbalancer/20170115/LoadBalancerProtocol/ListProtocols
 [6]: https://docs.cloud.oracle.com/en-us/iaas/api/#/en/loadbalancer/20170115/HealthChecker/
+[7]: https://docs.oracle.com/en-us/iaas/api/#/en/loadbalancer/20170115/LoadBalancerPolicy/ListPolicies
+[8]: https://docs.oracle.com/en-us/iaas/Content/Network/Concepts/networksecuritygroups.htm

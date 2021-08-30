@@ -41,14 +41,12 @@ type LoadBalancerInterface interface {
 	UpdateBackendSet(ctx context.Context, lbID, name string, details loadbalancer.BackendSetDetails) (string, error)
 	DeleteBackendSet(ctx context.Context, lbID, name string) (string, error)
 
-	CreateBackend(ctx context.Context, lbID, bsName string, details loadbalancer.BackendDetails) (string, error)
-	DeleteBackend(ctx context.Context, lbID, bsName, name string) (string, error)
-
 	UpdateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error)
 	CreateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error)
 	DeleteListener(ctx context.Context, lbID, name string) (string, error)
 
 	UpdateLoadBalancerShape(context.Context, string, loadbalancer.UpdateLoadBalancerShapeDetails) (string, error)
+	UpdateNetworkSecurityGroups(context.Context, string, loadbalancer.UpdateNetworkSecurityGroupsDetails) (string, error)
 
 	AwaitWorkRequest(ctx context.Context, id string) (*loadbalancer.WorkRequest, error)
 }
@@ -274,49 +272,6 @@ func (c *client) DeleteBackendSet(ctx context.Context, lbID, name string) (strin
 	return *resp.OpcWorkRequestId, nil
 }
 
-func (c *client) CreateBackend(ctx context.Context, lbID, bsName string, details loadbalancer.BackendDetails) (string, error) {
-	if !c.rateLimiter.Writer.TryAccept() {
-		return "", RateLimitError(true, "CreateBackend")
-	}
-
-	resp, err := c.loadbalancer.CreateBackend(ctx, loadbalancer.CreateBackendRequest{
-		LoadBalancerId: &lbID,
-		BackendSetName: &bsName,
-		CreateBackendDetails: loadbalancer.CreateBackendDetails{
-			IpAddress: details.IpAddress,
-			Port:      details.Port,
-		},
-		RequestMetadata: c.requestMetadata,
-	})
-	incRequestCounter(err, createVerb, backendResource)
-
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-
-	return *resp.OpcWorkRequestId, nil
-}
-
-func (c *client) DeleteBackend(ctx context.Context, lbID, bsName, name string) (string, error) {
-	if !c.rateLimiter.Writer.TryAccept() {
-		return "", RateLimitError(true, "DeleteBackend")
-	}
-
-	resp, err := c.loadbalancer.DeleteBackend(ctx, loadbalancer.DeleteBackendRequest{
-		LoadBalancerId:  &lbID,
-		BackendSetName:  &bsName,
-		BackendName:     &name,
-		RequestMetadata: c.requestMetadata,
-	})
-	incRequestCounter(err, deleteVerb, backendResource)
-
-	if err != nil {
-		return "", errors.WithStack(err)
-	}
-
-	return *resp.OpcWorkRequestId, nil
-}
-
 func (c *client) CreateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error) {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return "", RateLimitError(true, "CreateListener")
@@ -420,6 +375,24 @@ func (c *client) UpdateLoadBalancerShape(ctx context.Context, lbID string, lbSha
 		UpdateLoadBalancerShapeDetails: lbShapeDetails,
 	})
 	incRequestCounter(err, updateVerb, shapeResource)
+
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	return *resp.OpcWorkRequestId, nil
+}
+
+func (c *client) UpdateNetworkSecurityGroups(ctx context.Context, lbID string, lbNetworkSecurityGroupDetails loadbalancer.UpdateNetworkSecurityGroupsDetails) (string, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return "", RateLimitError(true, "UpdateNetworkSecurityGroups")
+	}
+
+	resp, err := c.loadbalancer.UpdateNetworkSecurityGroups(ctx, loadbalancer.UpdateNetworkSecurityGroupsRequest{
+		LoadBalancerId:                     &lbID,
+		UpdateNetworkSecurityGroupsDetails: lbNetworkSecurityGroupDetails,
+	})
+	incRequestCounter(err, updateVerb, nsgResource)
 
 	if err != nil {
 		return "", errors.WithStack(err)

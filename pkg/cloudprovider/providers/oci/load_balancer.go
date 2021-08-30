@@ -22,7 +22,7 @@ import (
 	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -30,6 +30,7 @@ import (
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/metrics"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
 )
 
 const (
@@ -109,11 +110,23 @@ const (
 	// load balancer listener backend protocol ("TCP", "HTTP").
 	// See: https://docs.cloud.oracle.com/iaas/Content/Balance/Concepts/balanceoverview.htm#concepts
 	ServiceAnnotationLoadBalancerBEProtocol = "service.beta.kubernetes.io/oci-load-balancer-backend-protocol"
+
+	// ServiceAnnotationLoadBalancerNetworkSecurityGroup is a service annotation for
+	// specifying Network security group Ids for the Loadbalancer
+	ServiceAnnotationLoadBalancerNetworkSecurityGroups = "oci.oraclecloud.com/oci-network-security-groups"
+
+	// ServiceAnnotationLoadBalancerPolicy is a service annotation for specifying
+	// loadbalancer traffic policy("ROUND_ROBIN", "LEAST_CONNECTION", "IP_HASH")
+	ServiceAnnotationLoadBalancerPolicy = "oci.oraclecloud.com/loadbalancer-policy"
 )
 
-// DefaultLoadBalancerPolicy defines the default traffic policy for load
-// balancers created by the CCM.
-const DefaultLoadBalancerPolicy = "ROUND_ROBIN"
+// Defines the traffic policy for load balancers created by the CCM.
+const (
+	DefaultLoadBalancerPolicy          = "ROUND_ROBIN"
+	RoundRobinLoadBalancerPolicy       = "ROUND_ROBIN"
+	LeastConnectionsLoadBalancerPolicy = "LEAST_CONNECTIONS"
+	IPHashLoadBalancerPolicy           = "IP_HASH"
+)
 
 // DefaultLoadBalancerBEProtocol defines the default protocol for load
 // balancer listeners created by the CCM.
@@ -123,17 +136,16 @@ const (
 	// Fallback value if annotation on service is not set
 	lbDefaultShape = "100Mbps"
 
-	lbNodesHealthCheckPath      = "/healthz"
-	lbNodesHealthCheckPort      = k8sports.ProxyHealthzPort
-	lbNodesHealthCheckProtoHTTP = "HTTP"
-	lbNodesHealthCheckProtoTCP  = "TCP"
+	lbNodesHealthCheckPath  = "/healthz"
+	lbNodesHealthCheckPort  = k8sports.ProxyHealthzPort
+	lbNodesHealthCheckProto = "HTTP"
 
 	// default connection idle timeout per protocol
 	// https://docs.cloud.oracle.com/en-us/iaas/Content/Balance/Reference/connectionreuse.htm#ConnectionConfiguration
-	lbConnectionIdleTimeoutTCP  = 300
-	lbConnectionIdleTimeoutHTTP = 60
-	loadBalancer                = "loadbalancer"
-	flexible                    = "flexible"
+	lbConnectionIdleTimeoutTCP       = 300
+	lbConnectionIdleTimeoutHTTP      = 60
+	flexible                         = "flexible"
+	lbMaximumNetworkSecurityGroupIds = 5
 )
 
 // GetLoadBalancerName returns the name of the loadbalancer
@@ -173,6 +185,18 @@ func getSubnets(ctx context.Context, subnetIDs []string, n client.NetworkingInte
 		subnets[i] = subnet
 	}
 	return subnets, nil
+}
+
+// getReservedIpOcidByIpAddress returns the OCID of public reserved IP if it is in Available state.
+func getReservedIpOcidByIpAddress(ctx context.Context, ipAddress string, n client.NetworkingInterface) (*string, error) {
+	publicIp, err := n.GetPublicIpByIpAddress(ctx, ipAddress)
+	if err != nil {
+		return nil, err
+	}
+	if publicIp.LifecycleState != core.PublicIpLifecycleStateAvailable {
+		return nil, errors.Errorf("The IP address provided is not available for use.")
+	}
+	return publicIp.Id, nil
 }
 
 // getSubnetsForNodes returns the de-duplicated subnets in which the given
@@ -288,7 +312,7 @@ func (cp *CloudProvider) ensureSSLCertificates(ctx context.Context, lb *loadbala
 }
 
 // createLoadBalancer creates a new OCI load balancer based on the given spec.
-func (cp *CloudProvider) createLoadBalancer(ctx context.Context, spec *LBSpec) (*v1.LoadBalancerStatus, string, error) {
+func (cp *CloudProvider) createLoadBalancer(ctx context.Context, spec *LBSpec) (lbStatus *v1.LoadBalancerStatus, lbOCID string, err error) {
 	logger := cp.logger.With("loadBalancerName", spec.Name)
 	logger.Info("Attempting to create a new load balancer")
 
@@ -308,21 +332,36 @@ func (cp *CloudProvider) createLoadBalancer(ctx context.Context, spec *LBSpec) (
 	if err != nil {
 		return nil, "", errors.Wrap(err, "get certificates")
 	}
+
 	details := loadbalancer.CreateLoadBalancerDetails{
-		CompartmentId: &cp.config.CompartmentID,
-		DisplayName:   &spec.Name,
-		ShapeName:     &spec.Shape,
-		IsPrivate:     &spec.Internal,
-		SubnetIds:     spec.Subnets,
-		BackendSets:   spec.BackendSets,
-		Listeners:     spec.Listeners,
-		Certificates:  certs,
+		CompartmentId:           &cp.config.CompartmentID,
+		DisplayName:             &spec.Name,
+		ShapeName:               &spec.Shape,
+		IsPrivate:               &spec.Internal,
+		SubnetIds:               spec.Subnets,
+		BackendSets:             spec.BackendSets,
+		Listeners:               spec.Listeners,
+		Certificates:            certs,
+		NetworkSecurityGroupIds: spec.NetworkSecurityGroupIds,
 	}
 
 	if spec.Shape == flexible {
 		details.ShapeDetails = &loadbalancer.ShapeDetails{
 			MinimumBandwidthInMbps: spec.FlexMin,
 			MaximumBandwidthInMbps: spec.FlexMax,
+		}
+	}
+
+	if spec.LoadBalancerIP != "" {
+		reservedIpOCID, err := getReservedIpOcidByIpAddress(ctx, spec.LoadBalancerIP, cp.client.Networking())
+		if err != nil {
+			return nil, "", err
+		}
+
+		details.ReservedIps = []loadbalancer.ReservedIp{
+			loadbalancer.ReservedIp{
+				Id: reservedIpOCID,
+			},
 		}
 	}
 
@@ -351,7 +390,6 @@ func (cp *CloudProvider) createLoadBalancer(ctx context.Context, spec *LBSpec) (
 		}
 	}
 
-	lbOCID := ""
 	if lb.Id != nil {
 		lbOCID = *lb.Id
 	}
@@ -367,21 +405,36 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 	logger := cp.logger.With("loadbalancerName", lbName, "serviceName", service.Name)
 	logger.With("nodes", len(nodes)).Info("Ensuring load balancer")
 
+	var errorType string
+	var lbMetricDimension string
 	lb, err := cp.client.LoadBalancer().GetLoadBalancerByName(ctx, cp.config.CompartmentID, lbName)
 	if err != nil && !client.IsNotFound(err) {
+		logger.With(zap.Error(err)).Error("Failed to get loadbalancer by name")
+		errorType = util.GetError(err)
+		lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
+		metrics.SendMetricData(cp.metricPusher, metrics.LBUpdate, time.Since(startTime).Seconds(), lbMetricDimension, lbName)
 		return nil, err
 	}
 	exists := !client.IsNotFound(err)
-	// lbOCID := ""
-	// if lb.Id != nil {
-	// 	lbOCID = *lb.Id
-	// }
+	lbOCID := ""
+	if lb != nil && lb.Id != nil {
+		lbOCID = *lb.Id
+	} else {
+		// if the LB does not exist already use the k8s service UID for reference
+		// in logs and metrics
+		lbOCID = GetLoadBalancerName(service)
+	}
+
+	logger = logger.With("lbOCID", lbOCID)
 
 	var sslConfig *SSLConfig
 	if requiresCertificate(service) {
 		ports, err := getSSLEnabledPorts(service)
 		if err != nil {
-			// metrics.SendMetricData(cp.metricPusher, lbUpdateFailureMetricName, time.Since(startTime).Seconds(),loadBalancer, lbOCID)
+			logger.With(zap.Error(err)).Error("Failed to parse SSL port.")
+			errorType = util.GetError(err)
+			lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
+			metrics.SendMetricData(cp.metricPusher, metrics.LBUpdate, time.Since(startTime).Seconds(), lbMetricDimension, lbOCID)
 			return nil, err
 		}
 		secretListenerString := service.Annotations[ServiceAnnotationLoadBalancerTLSSecret]
@@ -391,23 +444,33 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 	subnets, err := cp.getLoadBalancerSubnets(ctx, logger, service)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to get Load balancer Subnets.")
-		// metrics.SendMetricData(cp.metricPusher, lbUpdateFailureMetricName, time.Since(startTime).Seconds(),loadBalancer, lbOCID)
+		errorType = util.GetError(err)
+		lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
+		metrics.SendMetricData(cp.metricPusher, metrics.LBUpdate, time.Since(startTime).Seconds(), lbMetricDimension, lbOCID)
 		return nil, err
 	}
 
 	spec, err := NewLBSpec(logger, service, nodes, subnets, sslConfig, cp.securityListManagerFactory)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to derive LBSpec")
-		// metrics.SendMetricData(cp.metricPusher, lbUpdateFailureMetricName, time.Since(startTime).Seconds(),loadBalancer, lbOCID)
+		errorType = util.GetError(err)
+		lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
+		metrics.SendMetricData(cp.metricPusher, metrics.LBUpdate, time.Since(startTime).Seconds(), lbMetricDimension, lbOCID)
 		return nil, err
 	}
 
 	if !exists {
 		lbStatus, newLBOCID, err := cp.createLoadBalancer(ctx, spec)
 		if err != nil {
-			metrics.SendMetricData(cp.metricPusher, metrics.LBProvisionFailure, time.Since(startTime).Seconds(), loadBalancer, newLBOCID)
+			logger.With(zap.Error(err)).Error("Failed to provision LoadBalancer")
+			errorType = util.GetError(err)
+			lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
+			metrics.SendMetricData(cp.metricPusher, metrics.LBProvision, time.Since(startTime).Seconds(), lbMetricDimension, lbOCID)
 		} else {
-			metrics.SendMetricData(cp.metricPusher, metrics.LBProvisionSuccess, time.Since(startTime).Seconds(), loadBalancer, newLBOCID)
+			logger = cp.logger.With("loadbalancerName", lbName, "serviceName", service.Name, "lbOCID", newLBOCID)
+			logger.Info("Successfully provisioned loadbalancer")
+			lbMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.LoadBalancerType)
+			metrics.SendMetricData(cp.metricPusher, metrics.LBProvision, time.Since(startTime).Seconds(), lbMetricDimension, newLBOCID)
 		}
 		return lbStatus, err
 	}
@@ -422,17 +485,26 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 	// If the load balancer needs an SSL cert ensure it is present.
 	if requiresCertificate(service) {
 		if err := cp.ensureSSLCertificates(ctx, lb, spec); err != nil {
+			logger.With(zap.Error(err)).Error("Failed to ensure ssl certificates")
+			errorType = util.GetError(err)
+			lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
+			metrics.SendMetricData(cp.metricPusher, metrics.LBUpdate, time.Since(startTime).Seconds(), lbMetricDimension, lbOCID)
 			return nil, errors.Wrap(err, "ensuring ssl certificates")
 		}
 	}
 
 	if err := cp.updateLoadBalancer(ctx, lb, spec); err != nil {
-		// metrics.SendMetricData(cp.metricPusher, lbUpdateFailureMetricName, time.Since(startTime).Seconds(),loadBalancer, lbOCID)
+		errorType = util.GetError(err)
+		lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
+		logger.With(zap.Error(err)).Error("Failed to update LoadBalancer")
+		metrics.SendMetricData(cp.metricPusher, metrics.LBUpdate, time.Since(startTime).Seconds(), lbMetricDimension, lbOCID)
 		return nil, err
 	}
 
-	// syncTime := time.Since(startTime).Seconds()
-	// 	metrics.SendMetricData(cp.metricPusher,lbUpdateSuccessMetricName, syncTime, loadBalancer, lbOCID)
+	syncTime := time.Since(startTime).Seconds()
+	logger.Info("Successfully updated loadbalancer")
+	lbMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.LoadBalancerType)
+	metrics.SendMetricData(cp.metricPusher, metrics.LBUpdate, syncTime, lbMetricDimension, lbOCID)
 
 	return loadBalancerToStatus(lb)
 }
@@ -501,6 +573,26 @@ func (cp *CloudProvider) updateLoadBalancer(ctx context.Context, lb *loadbalance
 
 	logger := cp.logger.With("loadBalancerID", lbID, "compartmentID", cp.config.CompartmentID)
 
+	var actualPublicReservedIP *string
+
+	//identify the public reserved IP in IP addresses list
+	for _, ip := range lb.IpAddresses {
+		if ip.IpAddress == nil {
+			continue // should never happen but appears to when EnsureLoadBalancer is called with 0 nodes.
+		}
+		if ip.ReservedIp != nil && *ip.IsPublic {
+			actualPublicReservedIP = ip.IpAddress
+			break
+		}
+	}
+
+	//check if the reservedIP has changed in spec
+	if spec.LoadBalancerIP != "" || actualPublicReservedIP != nil {
+		if actualPublicReservedIP == nil || *actualPublicReservedIP != spec.LoadBalancerIP {
+			return errors.Errorf("The Load Balancer service reserved IP cannot be updated after the Load Balancer is created.")
+		}
+	}
+
 	actualBackendSets := lb.BackendSets
 	desiredBackendSets := spec.BackendSets
 	backendSetActions := getBackendSetChanges(logger, actualBackendSets, desiredBackendSets)
@@ -527,6 +619,14 @@ func (cp *CloudProvider) updateLoadBalancer(ctx context.Context, lb *loadbalance
 		}
 	}
 
+	nsgChanged := hasLoadBalancerNetworkSecurityGroupsChanged(ctx, lb.NetworkSecurityGroupIds, spec.NetworkSecurityGroupIds)
+	if nsgChanged {
+		err = cp.updateLoadBalancerNetworkSecurityGroups(ctx, lb, spec)
+		if err != nil {
+			return err
+		}
+	}
+
 	if len(backendSetActions) == 0 && len(listenerActions) == 0 {
 		// If there are no backendSetActions or Listener actions
 		// this function must have been called because of a failed
@@ -548,13 +648,6 @@ func (cp *CloudProvider) updateLoadBalancer(ctx context.Context, lb *loadbalance
 			if err != nil {
 				return errors.Wrap(err, "updating BackendSet")
 			}
-
-		case *BackendAction:
-			err := cp.updateBackend(ctx, lbID, a)
-			if err != nil {
-				return errors.Wrap(err, "updating Backend")
-			}
-
 		case *ListenerAction:
 			backendSetName := *a.Listener.DefaultBackendSetName
 			var ports portSpec
@@ -612,37 +705,6 @@ func (cp *CloudProvider) updateBackendSet(ctx context.Context, lbID string, acti
 		}
 
 		workRequestID, err = cp.client.LoadBalancer().DeleteBackendSet(ctx, lbID, action.Name())
-	}
-
-	if err != nil {
-		return err
-	}
-
-	_, err = cp.client.LoadBalancer().AwaitWorkRequest(ctx, workRequestID)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (cp *CloudProvider) updateBackend(ctx context.Context, lbID string, action *BackendAction) error {
-	var (
-		workRequestID string
-		err           error
-	)
-
-	cp.logger.With(
-		"actionType", action.Type(),
-		"backendSetName", action.bsName,
-		"backendName", action.Name(),
-		"loadBalancerID", lbID).Info("Applying action on backend")
-
-	switch action.Type() {
-	case Create:
-		workRequestID, err = cp.client.LoadBalancer().CreateBackend(ctx, lbID, action.bsName, action.Backend)
-	case Delete:
-		workRequestID, err = cp.client.LoadBalancer().DeleteBackend(ctx, lbID, action.bsName, action.name)
 	}
 
 	if err != nil {
@@ -743,20 +805,60 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 	name := cp.GetLoadBalancerName(ctx, clusterName, service)
 	logger := cp.logger.With("loadbalancerName", name)
 	logger.Debug("Attempting to delete load balancer")
-
+	var errorType string
+	var lbMetricDimension string
 	lb, err := cp.client.LoadBalancer().GetLoadBalancerByName(ctx, cp.config.CompartmentID, name)
 	if err != nil {
 		if client.IsNotFound(err) {
 			logger.Info("Could not find load balancer. Nothing to do.")
 			return nil
 		}
-		metrics.SendMetricData(cp.metricPusher, metrics.LBDeleteFailure, time.Since(startTime).Seconds(), loadBalancer, "")
+		errorType = util.GetError(err)
+		lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
+		logger.With(zap.Error(err)).Error("Failed to get loadbalancer by name")
+		metrics.SendMetricData(cp.metricPusher, metrics.LBDelete, time.Since(startTime).Seconds(), lbMetricDimension, name)
 		return errors.Wrapf(err, "get load balancer %q by name", name)
 	}
 
 	id := *lb.Id
 	logger = logger.With("loadBalancerID", id)
+	if service.Annotations[ServiceAnnotaionLoadBalancerSecurityListManagementMode] != ManagementModeNone {
+		err := cp.cleanupSecListForLoadBalancerDelete(lb, logger, ctx, service, name)
+		if err != nil {
+			errorType = util.GetError(err)
+			lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
+			metrics.SendMetricData(cp.metricPusher, metrics.LBDelete, time.Since(startTime).Seconds(), lbMetricDimension, id)
+			return err
+		}
+	}
+	logger.Info("Deleting load balancer")
 
+	workReqID, err := cp.client.LoadBalancer().DeleteLoadBalancer(ctx, id)
+	if err != nil {
+		errorType = util.GetError(err)
+		lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
+		logger.With(zap.Error(err)).Error("Failed to delete loadbalancer")
+		metrics.SendMetricData(cp.metricPusher, metrics.LBDelete, time.Since(startTime).Seconds(), lbMetricDimension, id)
+		return errors.Wrapf(err, "delete load balancer %q", id)
+	}
+	_, err = cp.client.LoadBalancer().AwaitWorkRequest(ctx, workReqID)
+	if err != nil {
+		logger.With(zap.Error(err)).Error("Timeout waiting for loadbalancer delete")
+		errorType = util.GetError(err)
+		lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
+		metrics.SendMetricData(cp.metricPusher, metrics.LBDelete, time.Since(startTime).Seconds(), lbMetricDimension, id)
+		return errors.Wrapf(err, "awaiting deletion of load balancer %q", name)
+	}
+
+	logger.Info("Deleted load balancer")
+	lbMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.LoadBalancerType)
+	metrics.SendMetricData(cp.metricPusher, metrics.LBDelete, time.Since(startTime).Seconds(), lbMetricDimension, id)
+
+	return nil
+}
+
+func (cp *CloudProvider) cleanupSecListForLoadBalancerDelete(lb *loadbalancer.LoadBalancer, logger *zap.SugaredLogger, ctx context.Context, service *v1.Service, name string) error {
+	id := *lb.Id
 	nodeIPs := sets.NewString()
 	for _, backendSet := range lb.BackendSets {
 		for _, backend := range backendSet.Backends {
@@ -765,18 +867,18 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 	}
 	nodes, err := cp.getNodesByIPs(nodeIPs.List())
 	if err != nil {
-		metrics.SendMetricData(cp.metricPusher, metrics.LBDeleteFailure, time.Since(startTime).Seconds(), loadBalancer, id)
+		logger.With(zap.Error(err)).Error("Failed to fetch nodes by internal ips")
 		return errors.Wrap(err, "fetching nodes by internal ips")
 	}
 	nodeSubnets, err := getSubnetsForNodes(ctx, nodes, cp.client)
 	if err != nil {
-		metrics.SendMetricData(cp.metricPusher, metrics.LBDeleteFailure, time.Since(startTime).Seconds(), loadBalancer, id)
+		logger.With(zap.Error(err)).Error("Failed to get subnets for nodes")
 		return errors.Wrap(err, "getting subnets for nodes")
 	}
 
 	lbSubnets, err := getSubnets(ctx, lb.SubnetIds, cp.client.Networking())
 	if err != nil {
-		metrics.SendMetricData(cp.metricPusher, metrics.LBDeleteFailure, time.Since(startTime).Seconds(), loadBalancer, id)
+		logger.With(zap.Error(err)).Error("Failed to get subnets for load balancers")
 		return errors.Wrap(err, "getting subnets for load balancers")
 	}
 
@@ -787,7 +889,7 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 		backendSetName := *listener.DefaultBackendSetName
 		bs, ok := lb.BackendSets[backendSetName]
 		if !ok {
-			metrics.SendMetricData(cp.metricPusher, metrics.LBDeleteFailure, time.Since(startTime).Seconds(), loadBalancer, id)
+			logger.With(zap.Error(err)).Errorf("Failed to delete loadbalencer as backend set %q missing (loadbalancer=%q)", backendSetName, id)
 			return errors.Errorf("backend set %q missing (loadbalancer=%q)", backendSetName, id) // Should never happen.
 		}
 
@@ -797,27 +899,10 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 		logger.With("listenerName", listenerName, "ports", ports).Debug("Deleting security rules for listener")
 
 		if err := securityListManager.Delete(ctx, lbSubnets, nodeSubnets, ports); err != nil {
-			metrics.SendMetricData(cp.metricPusher, metrics.LBDeleteFailure, time.Since(startTime).Seconds(), loadBalancer, id)
+			logger.With(zap.Error(err)).Errorf("Failed to delete security rules for listener %q on load balancer %q", listenerName, name)
 			return errors.Wrapf(err, "delete security rules for listener %q on load balancer %q", listenerName, name)
 		}
 	}
-
-	logger.Info("Deleting load balancer")
-
-	workReqID, err := cp.client.LoadBalancer().DeleteLoadBalancer(ctx, id)
-	if err != nil {
-		metrics.SendMetricData(cp.metricPusher, metrics.LBDeleteFailure, time.Since(startTime).Seconds(), loadBalancer, id)
-		return errors.Wrapf(err, "delete load balancer %q", id)
-	}
-	_, err = cp.client.LoadBalancer().AwaitWorkRequest(ctx, workReqID)
-	if err != nil {
-		metrics.SendMetricData(cp.metricPusher, metrics.LBDeleteFailure, time.Since(startTime).Seconds(), loadBalancer, id)
-		return errors.Wrapf(err, "awaiting deletion of load balancer %q", name)
-	}
-
-	logger.Info("Deleted load balancer")
-	metrics.SendMetricData(cp.metricPusher, metrics.LBDeleteSuccess, time.Since(startTime).Seconds(), loadBalancer, id)
-
 	return nil
 }
 
@@ -845,6 +930,20 @@ func (cp *CloudProvider) updateLoadbalancerShape(ctx context.Context, lb *loadba
 	cp.logger.With("old-shape", *lb.ShapeName, "new-shape", spec.Shape,
 		"flexMinimumMbps", spec.FlexMin, "flexMaximumMbps", spec.FlexMax,
 		"opc-request-id", opcRequestID).Info("Successfully created an loadbalancer update shape request")
+	return nil
+}
+
+func (cp *CloudProvider) updateLoadBalancerNetworkSecurityGroups(ctx context.Context, lb *loadbalancer.LoadBalancer, spec *LBSpec) error {
+	nsgDetails := loadbalancer.UpdateNetworkSecurityGroupsDetails{
+		NetworkSecurityGroupIds: spec.NetworkSecurityGroupIds,
+	}
+
+	opcRequestID, err := cp.client.LoadBalancer().UpdateNetworkSecurityGroups(ctx, *lb.Id, nsgDetails)
+	if err != nil {
+		return errors.Wrap(err, "failed to update loadbalancer Network Security Group")
+	}
+	cp.logger.With("existingNSGIds", lb.NetworkSecurityGroupIds, "newNSGIds", spec.NetworkSecurityGroupIds,
+		"opc-request-id", opcRequestID).Info("successfully updated the network security groups")
 	return nil
 }
 

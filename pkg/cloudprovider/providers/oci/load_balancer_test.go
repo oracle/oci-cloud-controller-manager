@@ -17,9 +17,11 @@ package oci
 import (
 	"context"
 	"errors"
-	"github.com/oracle/oci-go-sdk/v31/common"
 	"reflect"
 	"testing"
+
+	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
 
 	"github.com/oracle/oci-go-sdk/v31/core"
 
@@ -387,6 +389,164 @@ func TestCloudProvider_GetLoadBalancer(t *testing.T) {
 			}
 			if got1 != tt.exists {
 				t.Errorf("GetLoadBalancer() got1 = %v, want %v", got1, tt.exists)
+			}
+		})
+	}
+}
+
+func TestUpdateLoadBalancerNetworkSecurityGroups(t *testing.T) {
+	var tests = map[string]struct {
+		spec         *LBSpec
+		loadbalancer *loadbalancer.LoadBalancer
+		wantErr      error
+	}{
+		"Update NSG when there's an issue with LB": {
+			spec: &LBSpec{
+				Name:                    "test",
+				NetworkSecurityGroupIds: []string{"ocid1"},
+			},
+			loadbalancer: &loadbalancer.LoadBalancer{
+				Id:          common.String(""),
+				DisplayName: common.String("privateLB"),
+			},
+			wantErr: errors.New("failed to update loadbalancer Network Security Group: provided LB ID is empty"),
+		},
+		"Update NSG to existing LB": {
+			spec: &LBSpec{
+				Name:                    "test",
+				NetworkSecurityGroupIds: []string{"ocid1"},
+			},
+			loadbalancer: &loadbalancer.LoadBalancer{
+				Id:          common.String("ocid1"),
+				DisplayName: common.String("privateLB"),
+			},
+			wantErr: nil,
+		},
+	}
+	cp := &CloudProvider{
+		NodeLister:    &mockNodeLister{},
+		client:        MockOCIClient{},
+		logger:        zap.S(),
+		instanceCache: &mockInstanceCache{},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			err := cp.updateLoadBalancerNetworkSecurityGroups(context.Background(), tt.loadbalancer, tt.spec)
+			if err != nil && err.Error() != tt.wantErr.Error() {
+				t.Errorf("Expected error = %v, but got %v", err, tt.wantErr)
+				return
+			}
+		})
+	}
+}
+
+func TestCloudProvider_EnsureLoadBalancerDeleted(t *testing.T) {
+	tests := []struct {
+		name string
+		service *v1.Service
+		err  string
+		wantErr bool
+	}{
+		{
+			name: "Security List Management mode 'None' - no err",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotaionLoadBalancerSecurityListManagementMode: "None",
+					},
+				},
+			},
+			err:    "",
+			wantErr: false,
+		},
+		{
+			name: "Security List Management mode 'None' - delete err",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid-delete-err",
+					Annotations: map[string]string{
+						ServiceAnnotaionLoadBalancerSecurityListManagementMode: "None",
+					},
+				},
+			},
+			err:    "delete load balancer \"test-uid-delete-err\"",
+			wantErr: true,
+		},
+		{
+			name: "Security List Management mode 'All' - no err",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotaionLoadBalancerSecurityListManagementMode: "All",
+					},
+				},
+			},
+			err:    "",
+			wantErr: false,
+		},
+		{
+			name: "Security List Management mode 'All' - fetch node failure",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid-node-err",
+					Annotations: map[string]string{
+						ServiceAnnotaionLoadBalancerSecurityListManagementMode: "All",
+					},
+				},
+			},
+			err:    "fetching nodes by internal ips",
+			wantErr: true,
+		},
+		{
+			name: "no management mode provided in annotation - no err",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+				},
+			},
+			err:    "",
+			wantErr: false,
+		},
+		{
+			name: "no management mode provided in annotation - delete err",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid-delete-err",
+				},
+			},
+			err:    "delete load balancer \"test-uid-delete-err\"",
+			wantErr: true,
+		},
+	}
+	cp := &CloudProvider{
+		NodeLister:                 &mockNodeLister{},
+		client:                     MockOCIClient{},
+		securityListManagerFactory: func(mode string) securityListManager {
+										return MockSecurityListManager{}
+									},
+		config:                     &providercfg.Config{CompartmentID: "testCompartment"},
+		logger:                     zap.S(),
+		instanceCache:              &mockInstanceCache{},
+		metricPusher:               nil,
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := cp.EnsureLoadBalancerDeleted(context.Background(), "test", tt.service); (err != nil) != tt.wantErr {
+				t.Errorf("EnsureLoadBalancerDeleted() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

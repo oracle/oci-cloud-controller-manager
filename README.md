@@ -22,15 +22,18 @@ cloud-provider specific code out of the Kubernetes codebase.
 
 ## Compatibility matrix
 
-|          | Kubernetes 1.16        | Kubernetes 1.17        | Kubernetes 1.18        |
-|----------|------------------------|------------------------|------------------------|
-| <=v 0.7  | ✗                      | ✗                      | ✗                      |
-| \>=v 0.8 | ✓                      | ✓                      | ✓                      |
+|           | Kubernetes 1.16        | Kubernetes 1.17        | Kubernetes 1.18        | Kubernetes 1.19        | Kubernetes 1.20        |
+|-----------|------------------------|------------------------|------------------------|------------------------|------------------------|
+| \>=v 0.9  | ✓                      | ✓                      | ✓                      | †                      | †                      |
+| \>=v 0.10 | ✓                      | ✓                      | ✓                      | †                      | †                      |
+| \>=v 0.11 | ✓                      | ✓                      | ✓                      | †                      | †                      |
+| \>=v 0.12 | †                      | †                      | ✓                      | ✓                      | ✓                      |
 
 Key:
 
  * `✓` oci-cloud-controller-manager is fully compatible.
  * `✗` oci-cloud-controller-manager is not compatible.
+ * `†` Not tested with given version.
 
 ## Implementation
  Currently `oci-cloud-controller-manager` implements:
