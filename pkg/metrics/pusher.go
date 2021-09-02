@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 
@@ -21,6 +22,7 @@ const (
 	jitterFactor                  = 0.1
 	configFilePath                = "/etc/oci/config.yaml"
 	telemetryIngestionServiceName = "telemetry-ingestion"
+	configFileName				  = "config.yaml"
 )
 
 // MonitoringClient is wrapper interface over the oci golang monitoring client
@@ -53,10 +55,21 @@ func NewMetricPusher(logger *zap.SugaredLogger) (*MetricPusher, error) {
 	// 3. Monitoring Resource Group
 	// More details are available on this public doc
 	// https://docs.cloud.oracle.com/en-us/iaas/Content/Monitoring/Concepts/monitoringoverview.htm#MetricsOverview
-	var ok bool
+	var cpoOk bool
+	var fvdOk bool
+	var cpoConfig string
+	var fvdConfig string
+	var configPath string
 
-	configPath, ok := os.LookupEnv("CONFIG_YAML_FILENAME")
-	if !ok {
+	// Enable config file for CPO to push metrics
+	cpoConfig, cpoOk = os.LookupEnv("CONFIG_YAML_FILENAME")
+	// Enable config file for FVD to push metrics
+	fvdConfig, fvdOk = os.LookupEnv("OCI_FLEXD_DRIVER_DIRECTORY")
+	if cpoOk {
+		configPath = cpoConfig
+	} else if fvdOk {
+		configPath = fmt.Sprintf("%s/%s", fvdConfig, configFileName)
+	} else {
 		configPath = configFilePath
 	}
 

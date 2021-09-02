@@ -10,40 +10,36 @@ You need to have [ginkgo][2] installed and configured.
 
 If you already have a cluster and wish to run the tests on your existing cluster.
 
-Define the following environment variables in your shell environment - 
-
-```bash
-# ADLOCATION example is IqDk:US-ASHBURN-AD-1
-export ADLOCATION=<adlocation>
-export CLUSTER_KUBECONFIG=<file path to your cluster's kubeconfig>
-export CLOUD_CONFIG=<path that points to cloud-provider.yaml for your cluster>
-export CMEK_KMS_KEY=<CMEK ocid>
-```
-
-Then run
-
-```bash
-make run-ccm-e2e-tests-local
-```
-
 An example of cloud-provider.yaml - See [provider-config-example.yaml](../../../manifests/provider-config-example.yaml)
 For accessing you cluster's kubeconfig refer [organize-cluster-access-kubeconfig][3]
 
 NOTE: Test suite will fail if executed behind a `$HTTP_PROXY` that returns a
 200 OK response upon failure to connect.
 
+Define the environment variables as explained [here](../../../hack/existing-standalone-cluster-env-template.sh) in your shell environment and run below command - 
+
+```bash
+source hack/existing-standalone-cluster-env-template.sh
+```
+
+Then run
+```bash
+make run-ccm-e2e-tests-local
+```
+
 ## Additional option to specify test image pull repo
 
 The tests use below images - 
 *   nginx:stable-alpine
-*   netexec:1.1
+*   agnhost:2.6
 *   centos:latest
 *   busybox:latest
 
 By default, public images are used. But if your Cluster's environment cannot access above public images then below option can be used to specify an accessible repo.
 
 ```bash
-IMAGE_PULL_REPO="accessiblerepo.com/repo/path/" make run-ccm-e2e-tests-local
+export IMAGE_PULL_REPO="accessiblerepo.com/repo/path/" 
+make run-ccm-e2e-tests-local
 ```
 
 Note: Above listed <IMAGE>:<TAG> should be available in the provider repo path and should be accessible.
@@ -66,8 +62,10 @@ $ ginkgo -v -progress test/e2e/cloud-provider-oci -- \
     --cloud-config=$CLOUD_CONFIG \
     --adlocation=$ADLOCATION \
     --ccm-seclist-id=ocid1.securitylist.$ccmloadblancerid \
-    --k8s-seclist-id=ocid1.securitylist.$k8sworkerid
-    --cmek-kms-key=${CMEK_KMS_KEY} 
+    --k8s-seclist-id=ocid1.securitylist.$k8sworkerid \
+    --cmek-kms-key=${CMEK_KMS_KEY} \
+    --nsg-ocids=${NSG_OCIDS} \
+    --reserved-ip=${RESERVED_IP}
 ```
 
 ---

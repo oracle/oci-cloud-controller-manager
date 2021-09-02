@@ -15,6 +15,7 @@
 package oci
 
 import (
+	"k8s.io/apimachinery/pkg/util/sets"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -42,4 +43,16 @@ func NodeInternalIP(node *api.Node) string {
 		}
 	}
 	return ""
+}
+
+// RemoveDuplicatesFromList takes Slice and returns new Slice with no duplicate elements
+// (e.g. if given list is {"a", "b", "a"}, function returns new slice with {"a", "b"}
+func RemoveDuplicatesFromList(list []string) []string {
+	return sets.NewString(list...).List()
+}
+
+// DeepEqualLists diffs two slices and returns bool if the slices are equal/not-equal.
+// the duplicates and order of items in both lists is ignored.
+func DeepEqualLists(listA, listB []string) bool {
+	return sets.NewString(listA...).Equal(sets.NewString(listB...))
 }

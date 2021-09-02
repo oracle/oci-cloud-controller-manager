@@ -142,6 +142,10 @@ func (c *MockVirtualNetworkClient) IsRegionalSubnet(ctx context.Context, id stri
 	return true, nil
 }
 
+func (c *MockVirtualNetworkClient) GetPublicIpByIpAddress(ctx context.Context, id string) (*core.PublicIp, error) {
+	return nil, nil
+}
+
 // Networking mocks client VirtualNetwork implementation.
 func (p *MockProvisionerClient) Networking() client.NetworkingInterface {
 	return &MockVirtualNetworkClient{}
@@ -210,6 +214,10 @@ func (c *MockLoadBalancerClient) DeleteBackend(ctx context.Context, lbID, bsName
 }
 
 func (c *MockLoadBalancerClient) UpdateLoadBalancerShape(ctx context.Context, lbID string, details loadbalancer.UpdateLoadBalancerShapeDetails) (string, error) {
+	return "", nil
+}
+
+func (c *MockLoadBalancerClient) UpdateNetworkSecurityGroups(ctx context.Context, s string, details loadbalancer.UpdateNetworkSecurityGroupsDetails) (string, error) {
 	return "", nil
 }
 

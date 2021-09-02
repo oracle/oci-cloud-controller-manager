@@ -20,8 +20,6 @@ import (
 	"testing"
 	"time"
 
-	v12 "k8s.io/api/storage/v1"
-
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/v31/common"
 	"github.com/oracle/oci-go-sdk/v31/core"
@@ -29,7 +27,8 @@ import (
 	"github.com/oracle/oci-go-sdk/v31/identity"
 	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
 	"go.uber.org/zap"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
+	v12 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
@@ -244,6 +243,10 @@ func (c *MockVirtualNetworkClient) UpdateSecurityList(ctx context.Context, id st
 	return core.UpdateSecurityListResponse{}, nil
 }
 
+func (c *MockVirtualNetworkClient) GetPublicIpByIpAddress(ctx context.Context, id string) (*core.PublicIp, error) {
+	return nil, nil
+}
+
 // MockIdentityClient mocks identity client structure
 type MockIdentityClient struct {
 	common.BaseClient
@@ -345,14 +348,6 @@ func (c *MockLoadBalancerClient) DeleteBackendSet(ctx context.Context, lbID, nam
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) CreateBackend(ctx context.Context, lbID, bsName string, details loadbalancer.BackendDetails) (string, error) {
-	return "", nil
-}
-
-func (c *MockLoadBalancerClient) DeleteBackend(ctx context.Context, lbID, bsName, name string) (string, error) {
-	return "", nil
-}
-
 func (c *MockLoadBalancerClient) UpdateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error) {
 	return "", nil
 }
@@ -371,6 +366,10 @@ func (c *MockLoadBalancerClient) UpdateLoadBalancerShape(ctx context.Context, lb
 
 func (c *MockLoadBalancerClient) AwaitWorkRequest(ctx context.Context, id string) (*loadbalancer.WorkRequest, error) {
 	return nil, nil
+}
+
+func (c *MockLoadBalancerClient) UpdateNetworkSecurityGroups(ctx context.Context, s string, details loadbalancer.UpdateNetworkSecurityGroupsDetails) (string, error) {
+	return "", nil
 }
 
 // NewClientProvisioner creates an OCI client from the given configuration.

@@ -112,10 +112,14 @@ func (c *client) CreateVolume(ctx context.Context, details core.CreateVolumeDeta
 		RequestMetadata: c.requestMetadata})
 	incRequestCounter(err, createVerb, volumeResource)
 
-	if err != nil {
+	if err == nil {
+		logger := c.logger.With("AvailabilityDomain", *(details.AvailabilityDomain),
+			"CompartmentId", *(details.CompartmentId), "VolumeName", *(details.DisplayName),
+			"OpcRequestId",*(resp.OpcRequestId))
+		logger.Info("OPC Request ID recorded while creating volume.")
+	} else  {
 		return nil, errors.WithStack(err)
 	}
-
 	return &resp.Volume, nil
 }
 
@@ -135,19 +139,48 @@ func (c *client) DeleteVolume(ctx context.Context, id string) error {
 
 	return nil
 }
-
+/*
+ * TODO: Expand the API to be generic 'GetVolumes' with the following features as necessary
+ * 1. Option to sort by display name or creation timestamp.
+ * 2. Option to filter by one or more lifecycle states.
+ * 3. Option to filter by CompartmentID
+ */
 func (c *client) GetVolumesByName(ctx context.Context, volumeName, compartmentID string) ([]core.Volume, error) {
-	if !c.rateLimiter.Writer.TryAccept() {
-		return nil, RateLimitError(true, "CreateVolume")
+	var page *string
+	volumeList := make([]core.Volume, 0)
+	for {
+		if !c.rateLimiter.Writer.TryAccept() {
+			return nil, RateLimitError(true, "CreateVolume")
+		}
+
+		listVolumeResponse, err := c.bs.ListVolumes(ctx,
+			core.ListVolumesRequest {
+				CompartmentId:   &compartmentID,
+				Page:            page,
+				DisplayName:	 &volumeName,
+				RequestMetadata: c.requestMetadata,
+			})
+
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		logger := c.logger.With("VolumeName", volumeName, "CompartmentID", compartmentID,
+			"OpcRequestId",*(listVolumeResponse.OpcRequestId))
+		logger.Info("OPC Request ID recorded while fetching volumes by name.")
+
+		for _, volume := range listVolumeResponse.Items {
+			volumeState := volume.LifecycleState
+			if volumeState == core.VolumeLifecycleStateAvailable ||
+					volumeState == core.VolumeLifecycleStateProvisioning {
+				volumeList = append(volumeList, volume)
+			}
+		}
+
+		if page = listVolumeResponse.OpcNextPage; page == nil {
+			break
+		}
 	}
 
-	listVolumeResponse, err := c.bs.ListVolumes(ctx,
-		core.ListVolumesRequest{
-			CompartmentId:   &compartmentID,
-			DisplayName:     &volumeName,
-			RequestMetadata: c.requestMetadata})
-	if err != nil {
-		return nil, err
-	}
-	return listVolumeResponse.Items, nil
+	return volumeList, nil
 }

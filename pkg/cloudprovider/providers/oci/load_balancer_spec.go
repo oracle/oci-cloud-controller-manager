@@ -16,6 +16,7 @@ package oci
 
 import (
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 
@@ -89,19 +90,21 @@ func NewSSLConfig(secretListenerString string, secretBackendSetString string, se
 // LBSpec holds the data required to build a OCI load balancer from a
 // kubernetes service.
 type LBSpec struct {
-	Name        string
-	Shape       string
-	FlexMin     *int
-	FlexMax     *int
-	Subnets     []string
-	Internal    bool
-	Listeners   map[string]loadbalancer.ListenerDetails
-	BackendSets map[string]loadbalancer.BackendSetDetails
+	Name           string
+	Shape          string
+	FlexMin        *int
+	FlexMax        *int
+	Subnets        []string
+	Internal       bool
+	Listeners      map[string]loadbalancer.ListenerDetails
+	BackendSets    map[string]loadbalancer.BackendSetDetails
+	LoadBalancerIP string
 
-	Ports               map[string]portSpec
-	SourceCIDRs         []string
-	SSLConfig           *SSLConfig
-	securityListManager securityListManager
+	Ports                   map[string]portSpec
+	SourceCIDRs             []string
+	SSLConfig               *SSLConfig
+	securityListManager     securityListManager
+	NetworkSecurityGroupIds []string
 
 	service *v1.Service
 	nodes   []*v1.Node
@@ -143,19 +146,31 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sub
 		return nil, err
 	}
 
-	return &LBSpec{
-		Name:        GetLoadBalancerName(svc),
-		Shape:       shape,
-		FlexMin:     flexShapeMinMbps,
-		FlexMax:     flexShapeMaxMbps,
-		Internal:    internal,
-		Subnets:     subnets,
-		Listeners:   listeners,
-		BackendSets: backendSets,
+	networkSecurityGroupIds, err := getNetworkSecurityGroupIds(svc)
+	if err != nil {
+		return nil, err
+	}
 
-		Ports:       ports,
-		SSLConfig:   sslConfig,
-		SourceCIDRs: sourceCIDRs,
+	loadbalancerIP, err := getLoadBalancerIP(svc)
+	if err != nil {
+		return nil, err
+	}
+
+	return &LBSpec{
+		Name:           GetLoadBalancerName(svc),
+		Shape:          shape,
+		FlexMin:        flexShapeMinMbps,
+		FlexMax:        flexShapeMaxMbps,
+		Internal:       internal,
+		Subnets:        subnets,
+		Listeners:      listeners,
+		BackendSets:    backendSets,
+		LoadBalancerIP: loadbalancerIP,
+
+		Ports:                   ports,
+		SSLConfig:               sslConfig,
+		SourceCIDRs:             sourceCIDRs,
+		NetworkSecurityGroupIds: networkSecurityGroupIds,
 
 		service: svc,
 		nodes:   nodes,
@@ -212,14 +227,6 @@ func validateService(svc *v1.Service) error {
 		return errors.New("OCI only supports SessionAffinity \"None\" currently")
 	}
 
-	if svc.Spec.LoadBalancerIP != "" {
-		// TODO(horwitz): We need to figure out in the WG if this should actually log or error.
-		// The docs say: If the loadBalancerIP is specified, but the cloud provider does not support the feature, the field will be ignored.
-		// But no one does that...
-		// https://kubernetes.io/docs/concepts/services-networking/service/#type-loadbalancer
-		return errors.New("OCI does not support setting LoadBalancerIP")
-	}
-
 	return nil
 }
 
@@ -245,7 +252,7 @@ func getPorts(svc *v1.Service) (map[string]portSpec, error) {
 	ports := make(map[string]portSpec)
 	for _, servicePort := range svc.Spec.Ports {
 		name := getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
-		healthChecker, err := getHealthChecker(nil, int(servicePort.Port), svc)
+		healthChecker, err := getHealthChecker(svc)
 		if err != nil {
 			return nil, err
 		}
@@ -277,6 +284,10 @@ func getBackends(logger *zap.SugaredLogger, nodes []*v1.Node, nodePort int32) []
 
 func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sslCfg *SSLConfig) (map[string]loadbalancer.BackendSetDetails, error) {
 	backendSets := make(map[string]loadbalancer.BackendSetDetails)
+	loadbalancerPolicy, err := getLoadBalancerPolicy(svc)
+	if err != nil {
+		return nil, err
+	}
 	for _, servicePort := range svc.Spec.Ports {
 		name := getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
 		port := int(servicePort.Port)
@@ -284,12 +295,12 @@ func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node
 		if sslCfg != nil && len(sslCfg.BackendSetSSLSecretName) != 0 {
 			secretName = sslCfg.BackendSetSSLSecretName
 		}
-		healthChecker, err := getHealthChecker(sslCfg, port, svc)
+		healthChecker, err := getHealthChecker(svc)
 		if err != nil {
 			return nil, err
 		}
 		backendSets[name] = loadbalancer.BackendSetDetails{
-			Policy:           common.String(DefaultLoadBalancerPolicy),
+			Policy:           common.String(loadbalancerPolicy),
 			Backends:         getBackends(logger, nodes, servicePort.NodePort),
 			HealthChecker:    healthChecker,
 			SslConfiguration: getSSLConfiguration(sslCfg, secretName, port),
@@ -298,12 +309,7 @@ func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node
 	return backendSets, nil
 }
 
-func getHealthChecker(cfg *SSLConfig, port int, svc *v1.Service) (*loadbalancer.HealthCheckerDetails, error) {
-	// If the health-check has SSL enabled use TCP rather than HTTP.
-	protocol := lbNodesHealthCheckProtoHTTP
-	if cfg != nil && cfg.Ports.Has(port) {
-		protocol = lbNodesHealthCheckProtoTCP
-	}
+func getHealthChecker(svc *v1.Service) (*loadbalancer.HealthCheckerDetails, error) {
 	// Setting default values as per defined in the doc (https://docs.cloud.oracle.com/en-us/iaas/Content/Balance/Tasks/editinghealthcheck.htm#console)
 	var retries = 3
 	if r, ok := svc.Annotations[ServiceAnnotationLoadBalancerHealthCheckRetries]; ok {
@@ -334,7 +340,7 @@ func getHealthChecker(cfg *SSLConfig, port int, svc *v1.Service) (*loadbalancer.
 	checkPath, checkPort := apiservice.GetServiceHealthCheckPathPort(svc)
 	if checkPath != "" {
 		return &loadbalancer.HealthCheckerDetails{
-			Protocol:         &protocol,
+			Protocol:         common.String(lbNodesHealthCheckProto),
 			UrlPath:          &checkPath,
 			Port:             common.Int(int(checkPort)),
 			Retries:          &retries,
@@ -344,7 +350,7 @@ func getHealthChecker(cfg *SSLConfig, port int, svc *v1.Service) (*loadbalancer.
 	}
 
 	return &loadbalancer.HealthCheckerDetails{
-		Protocol:         &protocol,
+		Protocol:         common.String(lbNodesHealthCheckProto),
 		UrlPath:          common.String(lbNodesHealthCheckPath),
 		Port:             common.Int(lbNodesHealthCheckPort),
 		Retries:          &retries,
@@ -462,6 +468,29 @@ func getSecretParts(secretString string, service *v1.Service) (name string, name
 	return parts[1], parts[0]
 }
 
+func getNetworkSecurityGroupIds(svc *v1.Service) ([]string, error) {
+	var nsgList []string
+	networkSecurityGroupIds, ok := svc.Annotations[ServiceAnnotationLoadBalancerNetworkSecurityGroups]
+	if !ok || networkSecurityGroupIds == "" {
+		return nsgList, nil
+	}
+
+	numOfNsgIds := 0
+	for _, nsgOCID := range RemoveDuplicatesFromList(strings.Split(strings.ReplaceAll(networkSecurityGroupIds, " ", ""), ",")) {
+		numOfNsgIds++
+		if numOfNsgIds > lbMaximumNetworkSecurityGroupIds {
+			return nil, fmt.Errorf("invalid number of Network Security Groups (Max: 5) provided for annotation: %s", ServiceAnnotationLoadBalancerNetworkSecurityGroups)
+		}
+		if nsgOCID != "" {
+			nsgList = append(nsgList, nsgOCID)
+			continue
+		}
+		return nil, fmt.Errorf("invalid NetworkSecurityGroups OCID: [%s] provided for annotation: %s", networkSecurityGroupIds, ServiceAnnotationLoadBalancerNetworkSecurityGroups)
+	}
+
+	return nsgList, nil
+}
+
 func isInternalLB(svc *v1.Service) (bool, error) {
 	if private, ok := svc.Annotations[ServiceAnnotationLoadBalancerInternal]; ok {
 		internal, err := strconv.ParseBool(private)
@@ -539,4 +568,41 @@ func getLBShape(svc *v1.Service) (string, *int, *int, error) {
 	}
 
 	return shape, &flexShapeMinMbps, &flexShapeMaxMbps, nil
+}
+
+func getLoadBalancerPolicy(svc *v1.Service) (string, error) {
+	lbPolicy, ok := svc.Annotations[ServiceAnnotationLoadBalancerPolicy]
+	if !ok {
+		return DefaultLoadBalancerPolicy, nil
+	}
+	knownLBPolicies := map[string]struct{}{
+		IPHashLoadBalancerPolicy:           struct{}{},
+		LeastConnectionsLoadBalancerPolicy: struct{}{},
+		RoundRobinLoadBalancerPolicy:       struct{}{},
+	}
+
+	if _, ok := knownLBPolicies[lbPolicy]; ok {
+		return lbPolicy, nil
+	}
+
+	return "", fmt.Errorf("loadbalancer policy \"%s\" is not valid", svc.Annotations[ServiceAnnotationLoadBalancerPolicy])
+}
+
+func getLoadBalancerIP(svc *v1.Service) (string, error) {
+	ipAddress := svc.Spec.LoadBalancerIP
+	if ipAddress == "" {
+		return "", nil
+	}
+
+	//checks the validity of loadbalancerIP format
+	if net.ParseIP(ipAddress) == nil {
+		return "", fmt.Errorf("invalid value %q provided for LoadBalancerIP", ipAddress)
+	}
+
+	//checks if private loadbalancer is trying to use reservedIP
+	isInternal, err := isInternalLB(svc)
+	if isInternal {
+		return "", fmt.Errorf("invalid service: cannot create a private load balancer with Reserved IP")
+	}
+	return ipAddress, err
 }

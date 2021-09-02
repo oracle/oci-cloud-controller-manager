@@ -45,10 +45,10 @@ import (
 	appsinternal "k8s.io/kubernetes/pkg/apis/apps"
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
 	api "k8s.io/kubernetes/pkg/apis/core"
+	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	extensionsinternal "k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/nodelifecycle"
-	"k8s.io/kubernetes/pkg/scheduler/algorithm/predicates"
 	schedulercache "k8s.io/kubernetes/pkg/scheduler/nodeinfo"
 	testutil "k8s.io/kubernetes/test/utils"
 	uexec "k8s.io/utils/exec"
@@ -497,12 +497,35 @@ func isNodeUntainted(node *v1.Node) bool {
 	}
 	nodeInfo := schedulercache.NewNodeInfo()
 	nodeInfo.SetNode(node)
-	fit, _, err := predicates.PodToleratesNodeTaints(fakePod, nil, nodeInfo)
+	fit, err := PodToleratesNodeTaints(fakePod, nodeInfo)
 	if err != nil {
 		Failf("Can't test predicates for node %s: %v", node.Name, err)
 		return false
 	}
 	return fit
+}
+
+func PodToleratesNodeTaints(pod *v1.Pod, nodeInfo *schedulercache.NodeInfo) (bool, error) {
+	if nodeInfo == nil || nodeInfo.Node() == nil {
+		return false, nil
+	}
+
+	return podToleratesNodeTaints(pod, nodeInfo, func(t *v1.Taint) bool {
+		// PodToleratesNodeTaints is only interested in NoSchedule and NoExecute taints.
+		return t.Effect == v1.TaintEffectNoSchedule || t.Effect == v1.TaintEffectNoExecute
+	})
+}
+
+func podToleratesNodeTaints(pod *v1.Pod, nodeInfo *schedulercache.NodeInfo, filter func(t *v1.Taint) bool) (bool, error) {
+	taints, err := nodeInfo.Taints()
+	if err != nil {
+		return false, err
+	}
+
+	if v1helper.TolerationsTolerateTaintsWithFilter(pod.Spec.Tolerations, taints, filter) {
+		return true, nil
+	}
+	return false, nil
 }
 
 func IsRetryableAPIError(err error) bool {

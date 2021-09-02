@@ -243,6 +243,10 @@ func (c *MockVirtualNetworkClient) UpdateSecurityList(ctx context.Context, id st
 	return core.UpdateSecurityListResponse{}, nil
 }
 
+func (c *MockVirtualNetworkClient) GetPublicIpByIpAddress(ctx context.Context, id string) (*core.PublicIp, error) {
+	return nil, nil
+}
+
 // MockIdentityClient mocks identity client structure
 type MockIdentityClient struct {
 	common.BaseClient
@@ -344,14 +348,6 @@ func (c *MockLoadBalancerClient) DeleteBackendSet(ctx context.Context, lbID, nam
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) CreateBackend(ctx context.Context, lbID, bsName string, details loadbalancer.BackendDetails) (string, error) {
-	return "", nil
-}
-
-func (c *MockLoadBalancerClient) DeleteBackend(ctx context.Context, lbID, bsName, name string) (string, error) {
-	return "", nil
-}
-
 func (c *MockLoadBalancerClient) UpdateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error) {
 	return "", nil
 }
@@ -370,6 +366,10 @@ func (c *MockLoadBalancerClient) UpdateLoadBalancerShape(ctx context.Context, lb
 
 func (c *MockLoadBalancerClient) AwaitWorkRequest(ctx context.Context, id string) (*loadbalancer.WorkRequest, error) {
 	return nil, nil
+}
+
+func (c *MockLoadBalancerClient) UpdateNetworkSecurityGroups(ctx context.Context, s string, details loadbalancer.UpdateNetworkSecurityGroupsDetails) (string, error) {
+	return "", nil
 }
 
 // NewClientProvisioner creates an OCI client from the given configuration.

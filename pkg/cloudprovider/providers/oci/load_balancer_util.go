@@ -42,6 +42,7 @@ const (
 
 const (
 	changeFmtStr = "%v -> Actual:%v - Desired:%v"
+	backendChangeFmtStr = "%v -> Backend:%v"
 )
 
 const lbNamePrefixEnvVar = "LOAD_BALANCER_PREFIX"
@@ -79,43 +80,17 @@ type BackendSetAction struct {
 }
 
 // Type of the Action.
-func (bs *BackendSetAction) Type() ActionType {
-	return bs.actionType
-}
-
-// Name of the action's object.
-func (bs *BackendSetAction) Name() string {
-	return bs.name
-}
-
-func (bs *BackendSetAction) String() string {
-	return fmt.Sprintf("BackendSetAction:{Name: %s, Type: %v, Ports: %+v}", bs.Name(), bs.actionType, bs.Ports)
-}
-
-// BackendAction denotes the action that should be taken on the given
-// Backend.
-type BackendAction struct {
-	Action
-
-	actionType ActionType
-	name       string
-	bsName     string
-
-	Backend loadbalancer.BackendDetails
-}
-
-// Type of the Action.
-func (b *BackendAction) Type() ActionType {
+func (b *BackendSetAction) Type() ActionType {
 	return b.actionType
 }
 
 // Name of the action's object.
-func (b *BackendAction) Name() string {
+func (b *BackendSetAction) Name() string {
 	return b.name
 }
 
-func (b *BackendAction) String() string {
-	return fmt.Sprintf("BackendAction:{Name: %s, Type: %v}", b.Name(), b.actionType)
+func (b *BackendSetAction) String() string {
+	return fmt.Sprintf("BackendSetAction:{Name: %s, Type: %v, Ports: %+v}", b.Name(), b.actionType, b.Ports)
 }
 
 // ListenerAction denotes the action that should be taken on the given Listener.
@@ -240,6 +215,36 @@ func hasBackendSetChanged(logger *zap.SugaredLogger, actual loadbalancer.Backend
 	if toString(actual.Policy) != toString(desired.Policy) {
 		backendSetChanges = append(backendSetChanges, fmt.Sprintf(changeFmtStr, "BackEndSet:Policy", toString(actual.Policy), toString(desired.Policy)))
 	}
+
+	nameFormat := "%s:%d"
+
+	desiredSet := sets.NewString()
+	for _, backend := range desired.Backends {
+		name := fmt.Sprintf(nameFormat, *backend.IpAddress, *backend.Port)
+		desiredSet.Insert(name)
+	}
+
+	actualSet := sets.NewString()
+	var backendChanges []string
+	for _, backend := range actual.Backends {
+		name := fmt.Sprintf(nameFormat, *backend.IpAddress, *backend.Port)
+		if !desiredSet.Has(name) {
+			backendChanges = append(backendChanges, fmt.Sprintf(backendChangeFmtStr, "BackEndSet:Backend Remove", name))
+		}
+		actualSet.Insert(name)
+	}
+
+	for _, backend := range desired.Backends {
+		name := fmt.Sprintf(nameFormat, *backend.IpAddress, *backend.Port)
+		if !actualSet.Has(name) {
+			backendChanges = append(backendChanges, fmt.Sprintf(backendChangeFmtStr, "BackEndSet:Backend Add", name))
+		}
+	}
+
+	if len(backendChanges) != 0 {
+		backendSetChanges = append(backendChanges)
+	}
+
 	if len(backendSetChanges) != 0 {
 		logger.Infof("BackendSet needs to be updated for the change(s) - %s", strings.Join(backendSetChanges, ","))
 		return true
@@ -351,9 +356,6 @@ func getBackendSetChanges(logger *zap.SugaredLogger, actual map[string]loadbalan
 				actionType: Update,
 			})
 		}
-
-		//get the Actions for the Backend changes and append it with the backendSetActions
-		backendSetActions = append(backendSetActions, getBackendChanges(logger, actualBackendSet, desiredBackendSet)...)
 	}
 
 	// Now check if any need to be created.
@@ -370,56 +372,6 @@ func getBackendSetChanges(logger *zap.SugaredLogger, actual map[string]loadbalan
 	}
 
 	return backendSetActions
-}
-
-func getBackendChanges(logger *zap.SugaredLogger, actual loadbalancer.BackendSet, desired loadbalancer.BackendSetDetails) []Action {
-
-	var backendActions []Action
-	nameFormat := "%s:%d"
-
-	desiredSet := sets.NewString()
-	actualSet := sets.NewString()
-	for _, backend := range desired.Backends {
-		name := fmt.Sprintf(nameFormat, *backend.IpAddress, *backend.Port)
-		desiredSet.Insert(name)
-	}
-
-	for _, backend := range actual.Backends {
-		actualSet.Insert(*backend.Name)
-	}
-
-	for name := range actualSet {
-		if !desiredSet.Has(name) {
-			backendActions = append(backendActions, &BackendAction{
-				name:       name,
-				bsName:     *actual.Name,
-				actionType: Delete,
-			})
-		}
-	}
-
-	for name := range desiredSet {
-		if !actualSet.Has(name) {
-			fields := strings.Split(name, ":")
-			ipAddress := fields[0]
-			port, err := strconv.Atoi(fields[1])
-			if err != nil {
-				logger.Errorf("port is not numeric IPAddress=%s, Port=%s, %v", fields[0], fields[1], err)
-				continue
-			}
-			backendActions = append(backendActions, &BackendAction{
-				bsName: *actual.Name,
-				Backend: loadbalancer.BackendDetails{
-					IpAddress: &ipAddress,
-					Port:      &port,
-				},
-				actionType: Create,
-				name:       name,
-			})
-		}
-
-	}
-	return backendActions
 }
 
 func getSSLConfigurationChanges(actual *loadbalancer.SslConfiguration, desired *loadbalancer.SslConfigurationDetails) []string {
@@ -568,6 +520,16 @@ func hasLoadbalancerShapeChanged(ctx context.Context, spec *LBSpec, lb *loadbala
 		return true
 	}
 	return false
+}
+
+// hasLoadBalancerNetworkSecurityGroupsChanged checks for the difference in actual NSGs
+// associated to LoadBalancer with Desired NSGs provided in service annotation
+func hasLoadBalancerNetworkSecurityGroupsChanged(ctx context.Context, actualNetworkSecurityGroup, desiredNetworkSecurityGroup []string) bool {
+	if len(desiredNetworkSecurityGroup) != len(actualNetworkSecurityGroup) {
+		return true
+	}
+
+	return !DeepEqualLists(actualNetworkSecurityGroup, desiredNetworkSecurityGroup)
 }
 
 func sslEnabled(sslConfigMap map[int]*loadbalancer.SslConfiguration) bool {

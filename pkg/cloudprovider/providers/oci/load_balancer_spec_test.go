@@ -1197,7 +1197,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					"TCP-443": {
 						Backends: []loadbalancer.BackendDetails{},
 						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("TCP"),
+							Protocol:         common.String("HTTP"),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -1352,6 +1352,183 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				securityListManager: newSecurityListManagerNOOP(),
+			},
+		},
+		"valid loadbalancer policy": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerShape:  "8000Mbps",
+						ServiceAnnotationLoadBalancerPolicy: "IP_HASH",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Shape:    "8000Mbps",
+				Internal: false,
+				Subnets:  []string{"one", "two"},
+				Listeners: map[string]loadbalancer.ListenerDetails{
+					"TCP-80": {
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]loadbalancer.BackendSetDetails{
+					"TCP-80": {
+						Backends: []loadbalancer.BackendDetails{},
+						HealthChecker: &loadbalancer.HealthCheckerDetails{
+							Protocol:         common.String("HTTP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+						},
+						Policy: common.String("IP_HASH"),
+					},
+				},
+				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager: newSecurityListManagerNOOP(),
+			},
+		},
+		"default loadbalancer policy": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerShape: "8000Mbps",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Shape:    "8000Mbps",
+				Internal: false,
+				Subnets:  []string{"one", "two"},
+				Listeners: map[string]loadbalancer.ListenerDetails{
+					"TCP-80": {
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]loadbalancer.BackendSetDetails{
+					"TCP-80": {
+						Backends: []loadbalancer.BackendDetails{},
+						HealthChecker: &loadbalancer.HealthCheckerDetails{
+							Protocol:         common.String("HTTP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+						},
+						Policy: common.String("ROUND_ROBIN"),
+					},
+				},
+				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager: newSecurityListManagerNOOP(),
+			},
+		},
+		"load balancer with reserved ip": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerShape: "8000Mbps",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					LoadBalancerIP:  "10.0.0.0",
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Shape:    "8000Mbps",
+				Internal: false,
+				Subnets:  []string{"one", "two"},
+				Listeners: map[string]loadbalancer.ListenerDetails{
+					"TCP-80": {
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]loadbalancer.BackendSetDetails{
+					"TCP-80": {
+						Backends: []loadbalancer.BackendDetails{},
+						HealthChecker: &loadbalancer.HealthCheckerDetails{
+							Protocol:         common.String("HTTP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+						},
+						Policy: common.String("ROUND_ROBIN"),
+					},
+				},
+				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager: newSecurityListManagerNOOP(),
+				LoadBalancerIP:      "10.0.0.0",
 			},
 		},
 	}
@@ -1512,18 +1689,6 @@ func TestNewLBSpecFailure(t *testing.T) {
 				},
 			},
 			expectedErrMsg: "invalid service: OCI load balancers do not support UDP",
-		},
-		"unsupported LB IP": {
-			service: &v1.Service{
-				Spec: v1.ServiceSpec{
-					LoadBalancerIP:  "127.0.0.1",
-					SessionAffinity: v1.ServiceAffinityNone,
-					Ports: []v1.ServicePort{
-						{Protocol: v1.ProtocolTCP},
-					},
-				},
-			},
-			expectedErrMsg: "invalid service: OCI does not support setting LoadBalancerIP",
 		},
 		"unsupported session affinity": {
 			service: &v1.Service{
@@ -1696,6 +1861,57 @@ func TestNewLBSpecFailure(t *testing.T) {
 				},
 			},
 			expectedErrMsg: `The annotation service.beta.kubernetes.io/oci-load-balancer-shape-flex-min should contain only integer value: strconv.Atoi: parsing "10Mbps": invalid syntax`,
+		},
+		"invalid loadbalancer policy": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerShapeFlexMin: "10Mbps",
+						ServiceAnnotationLoadBalancerPolicy:       "not-valid-loadbalancer-policy",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{Protocol: v1.ProtocolTCP},
+					},
+				},
+			},
+			expectedErrMsg: `loadbalancer policy "not-valid-loadbalancer-policy" is not valid`,
+		},
+		"invalid loadBalancerIP format": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					LoadBalancerIP:  "non-ip-format",
+					SessionAffinity: v1.ServiceAffinityNone,
+				},
+			},
+			expectedErrMsg: "invalid value \"non-ip-format\" provided for LoadBalancerIP",
+		},
+		"unsupported loadBalancerIP for internal load balancer": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInternal: "true",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					LoadBalancerIP:  "10.0.0.0",
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports:           []v1.ServicePort{},
+				},
+			},
+			expectedErrMsg: `invalid service: cannot create a private load balancer with Reserved IP`,
 		},
 	}
 
@@ -2340,6 +2556,102 @@ func TestIsInternal(t *testing.T) {
 			}
 			if internal != tc.isInternal {
 				t.Errorf("Expected internal LB\n%+v\nbut got\n%+v", tc.isInternal, internal)
+			}
+		})
+	}
+}
+
+func Test_getNetworkSecurityGroups(t *testing.T) {
+	testCases := map[string]struct {
+		service *v1.Service
+		nsgList []string
+		err     error
+	}{
+		"empty ServiceAnnotationLoadBalancerNetworkSecurityGroups annotation": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerNetworkSecurityGroups: "",
+					},
+				},
+			},
+			nsgList: nil,
+			err:     nil,
+		},
+		"no ServiceAnnotationLoadBalancerNetworkSecurityGroups annotation": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+			nsgList: nil,
+			err:     nil,
+		},
+		"ServiceAnnotationLoadBalancerNetworkSecurityGroups update annotation": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerNetworkSecurityGroups: "ocid1.networksecuritygroup.oc1.iad.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					},
+				},
+			},
+			nsgList: []string{"ocid1.networksecuritygroup.oc1.iad.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+			err:     nil,
+		},
+		"ServiceAnnotationLoadBalancerNetworkSecurityGroups Allow maximum NSG OCIDS (Max: 5)": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerNetworkSecurityGroups: "ocid1,ocid2,ocid3,ocid4,ocid5",
+					},
+				},
+			},
+			nsgList: []string{"ocid1", "ocid2", "ocid3", "ocid4", "ocid5"},
+			err:     fmt.Errorf("invalid number of Network Security Groups (Max: 5) provided for annotation: oci.oraclecloud.com/oci-network-security-groups"),
+		},
+		"ServiceAnnotationLoadBalancerNetworkSecurityGroups Exceed maximum NSG OCIDS": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerNetworkSecurityGroups: "ocid1,ocid2,ocid3,ocid4,ocid5,ocid6",
+					},
+				},
+			},
+			nsgList: nil,
+			err:     fmt.Errorf("invalid number of Network Security Groups (Max: 5) provided for annotation: oci.oraclecloud.com/oci-network-security-groups"),
+		},
+		"ServiceAnnotationLoadBalancerNetworkSecurityGroups Invalid NSG OCIDS": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerNetworkSecurityGroups: "ocid1.networksecuritygroup.oc1.iad.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-;,ocid1.networksecuritygroup.oc1.iad.aaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbb",
+					},
+				},
+			},
+			nsgList: []string{"ocid1.networksecuritygroup.oc1.iad.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-;", "ocid1.networksecuritygroup.oc1.iad.aaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbb"},
+			err:     nil,
+		},
+		"ServiceAnnotationLoadBalancerNetworkSecurityGroups duplicate NSG OCIDS": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerNetworkSecurityGroups: "ocid1,ocid2, ocid1",
+					},
+				},
+			},
+			nsgList: []string{"ocid1", "ocid2"},
+			err:     nil,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			nsgList, err := getNetworkSecurityGroupIds(tc.service)
+			if err != nil && err.Error() != tc.err.Error() {
+				t.Errorf("Expected  NSG List error\n%+v\nbut got\n%+v", tc.err, err)
+			}
+			if !reflect.DeepEqual(nsgList, tc.nsgList) {
+				t.Errorf("Expected NSG List\n%+v\nbut got\n%+v", tc.nsgList, nsgList)
 			}
 		})
 	}

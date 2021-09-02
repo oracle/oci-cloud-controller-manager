@@ -39,6 +39,11 @@ type CSIOptions struct {
 	Resync                  time.Duration
 	Timeout                 time.Duration
 	FeatureGates            map[string]bool
+	FinalizerThreads        uint
+	MetricsAddress          string
+	MetricsPath             string
+	ExtraCreateMetadata     bool
+	ReconcileSync           time.Duration
 }
 
 //NewCSIOptions initializes the flag
@@ -61,6 +66,11 @@ func NewCSIOptions() *CSIOptions {
 		StrictTopology:          *flag.Bool("csi-strict-topology", false, "Passes only selected node topology to CreateVolume Request, unlike default behavior of passing aggregated cluster topologies that match with topology keys of the selected node."),
 		Resync:                  *flag.Duration("csi-resync", 10*time.Minute, "Resync interval of the controller."),
 		Timeout:                 *flag.Duration("csi-timeout", 15*time.Second, "Timeout for waiting for attaching or detaching the volume."),
+		FinalizerThreads:        *flag.Uint("cloning-protection-threads", 1, "Number of simultaniously running threads, handling cloning finalizer removal"),
+		MetricsAddress:          *flag.String("metrics-address", "", "The TCP network address where the prometheus metrics endpoint will listen (example: `:8080`). The default is empty string, which means metrics endpoint is disabled."),
+		MetricsPath:             *flag.String("metrics-path", "/metrics", "The HTTP path where prometheus metrics will be exposed. Default is `/metrics`."),
+		ExtraCreateMetadata:     *flag.Bool("extra-create-metadata", false, "If set, add pv/pvc metadata to plugin create requests as parameters."),
+		ReconcileSync:           *flag.Duration("reconcile-sync", 1*time.Minute, "Resync interval of the VolumeAttachment reconciler."),
 	}
 	return &csioptions
 }

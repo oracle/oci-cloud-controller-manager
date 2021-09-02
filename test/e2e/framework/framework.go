@@ -45,10 +45,6 @@ const (
 	MinVolumeBlock    = "50Gi"
 	MaxVolumeBlock    = "100Gi"
 	VolumeFss         = "1Gi"
-	Netexec           = "netexec:1.1"
-	BusyBoxImage      = "busybox:latest"
-	Nginx             = "nginx:stable-alpine"
-	Centos            = "centos:latest"
 )
 
 var (
@@ -62,11 +58,13 @@ var (
 	k8sSeclistID      string // The ocid of the k8s worker subnet seclist. Optional.
 	mntTargetOCID     string // Mount Target ID is specified to identify the mount target to be attached to the volumes. Optional.
 	nginx             string // Image for nginx
-	netexec           string // Image for netexec
+	agnhost           string // Image for agnhost
 	busyBoxImage      string // Image for busyBoxImage
 	centos            string // Image for centos
 	imagePullRepo     string // Repo to pull images from. Will pull public images if not specified.
 	cmekKMSKey        string //KMS key for CMEK testing
+	nsgOCIDS		  string // Testing CCM NSG feature
+	reservedIP        string // Testing public reserved IP feature
 )
 
 func init() {
@@ -87,6 +85,8 @@ func init() {
 
 	flag.StringVar(&imagePullRepo, "image-pull-repo", "", "Repo to pull images from. Will pull public images if not specified.")
 	flag.StringVar(&cmekKMSKey, "cmek-kms-key", "", "KMS key to be used for CMEK testing")
+	flag.StringVar(&nsgOCIDS, "nsg-ocids", "", "NSG OCIDs to be used to associate to LB")
+	flag.StringVar(&reservedIP, "reserved-ip", "", "Public reservedIP to be used for testing loadbalancer with reservedIP")
 	flag.Parse()
 }
 
@@ -109,6 +109,8 @@ type Framework struct {
 
 	MntTargetOcid string
 	CMEKKMSKey    string
+	NsgOCIDS      string
+	ReservedIP    string
 }
 
 // New creates a new a framework that holds the context of the test
@@ -125,6 +127,8 @@ func NewWithConfig() *Framework {
 		AdLocation:    adlocation,
 		MntTargetOcid: mntTargetOCID,
 		CMEKKMSKey:    cmekKMSKey,
+		NsgOCIDS:	   nsgOCIDS,
+		ReservedIP:    reservedIP,
 	}
 
 	f.CloudConfigPath = cloudConfigFile
@@ -153,6 +157,10 @@ func (f *Framework) Initialize() {
 	Logf("OCI Mount Target OCID: %s", f.MntTargetOcid)
 	f.CMEKKMSKey = cmekKMSKey
 	Logf("CMEK KMS Key: %s", f.CMEKKMSKey)
+	f.NsgOCIDS = nsgOCIDS
+	Logf("NSG OCIDS: %s", f.NsgOCIDS)
+	f.ReservedIP = reservedIP
+	Logf("Reserved IP: %s", f.ReservedIP)
 	f.Compartment1 = compartment1
 	Logf("OCI compartment1 OCID: %s", f.Compartment1)
 	f.setImages()
@@ -161,13 +169,18 @@ func (f *Framework) Initialize() {
 }
 
 func (f *Framework) setImages() {
+	var Agnhost           = "agnhost:2.6"
+	var BusyBoxImage      = "busybox:latest"
+	var Nginx             = "nginx:stable-alpine"
+	var Centos            = "centos:latest"
+
 	if imagePullRepo != "" {
-		netexec = fmt.Sprintf("%s%s", imagePullRepo, Netexec)
+		agnhost = fmt.Sprintf("%s%s", imagePullRepo, Agnhost)
 		busyBoxImage = fmt.Sprintf("%s%s", imagePullRepo, BusyBoxImage)
 		nginx = fmt.Sprintf("%s%s", imagePullRepo, Nginx)
 		centos = fmt.Sprintf("%s%s", imagePullRepo, Centos)
 	} else {
-		netexec = imageutils.GetE2EImage(imageutils.Netexec)
+		agnhost = imageutils.GetE2EImage(imageutils.Agnhost)
 		busyBoxImage = BusyBoxImage
 		nginx = Nginx
 		centos = Centos
