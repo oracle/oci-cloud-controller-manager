@@ -154,6 +154,11 @@ func (d *NodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstage
 	diskPath, err := disk.GetDiskPathFromMountPath(d.logger, req.GetStagingTargetPath())
 
 	if err != nil {
+		// do a clean exit in case of mount point not found
+		if err == disk.ErrMountPointNotFound {
+			logger.With(zap.Error(err)).With("mountPath", req.GetStagingTargetPath()).Warn("unable to fetch mount point")
+			return &csi.NodeUnstageVolumeResponse{}, nil
+		}
 		logger.With(zap.Error(err)).With("mountPath", req.GetStagingTargetPath()).Error("unable to get diskPath from mount path")
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -325,6 +330,11 @@ func (d *NodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpub
 
 	diskPath, err := disk.GetDiskPathFromMountPath(d.logger, req.TargetPath)
 	if err != nil {
+		// do a clean exit in case of mount point not found
+		if err == disk.ErrMountPointNotFound {
+			logger.With(zap.Error(err)).With("mountPath", req.TargetPath).Warn("unable to fetch mount point")
+			return &csi.NodeUnpublishVolumeResponse{}, nil
+		}
 		logger.With(zap.Error(err)).With("mountPath", req.TargetPath).Error("unable to get diskPath from mount path")
 		return nil, status.Error(codes.Internal, err.Error())
 	}
