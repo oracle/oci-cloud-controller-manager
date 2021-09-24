@@ -730,10 +730,7 @@ func roundUpSize(volumeSizeBytes int64, allocationUnitBytes int64) int64 {
 }
 
 //We would derive whether the customer wants in-transit encryption or not based on if the node is launched using
-//in-transit encryption enabled or not. we won't give our customers any explicit option to enable in-transit encryption
-//via storage class. In the storage class if the customer opts for iscsi attachment and if the node is launched using
-//in-transit encryption, we would still make the attachment type as paravirtualized and enable in-transit encryption. Refer
-//https://confluence.oci.oraclecorp.com/pages/viewpage.action?spaceKey=OKE&title=Customer+Managed+Encryption+key+and+In-Transit+encryption+support+for+block+volume+for+CSI#CustomerManagedEncryptionkeyandIn-TransitencryptionsupportforblockvolumeforCSI-SupportforIn-TransitEncryptioninPhase1
+//in-transit encryption enabled or not.
 func getAttachmentOptions(ctx context.Context, client client.ComputeInterface, attachmentType, instanceID string) (VolumeAttachmentOption, error) {
 	volumeAttachmentOption := VolumeAttachmentOption{}
 	if attachmentType == attachmentTypeParavirtualized {
@@ -745,7 +742,6 @@ func getAttachmentOptions(ctx context.Context, client client.ComputeInterface, a
 	}
 	if *instance.LaunchOptions.IsPvEncryptionInTransitEnabled {
 		volumeAttachmentOption.enableInTransitEncryption = true
-		volumeAttachmentOption.useParavirtualizedAttachment = true
 	}
 	return volumeAttachmentOption, nil
 }
