@@ -39,7 +39,7 @@ func (j *ServiceTestJig) CreateJobRunningScript(ns string, script string, backOf
 			},
 			BackoffLimit: &backOffLimit,
 		},
-	}, metav1.CreateOptions{})
+	},metav1.CreateOptions{})
 	if err!= nil{
 		Failf("Error creating job: %v", err)
 	}
