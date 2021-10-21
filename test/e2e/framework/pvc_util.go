@@ -16,36 +16,35 @@ package framework
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/labels"
 	"strings"
 	"time"
 
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/csi/driver"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
-	ocicore "github.com/oracle/oci-go-sdk/v49/core"
+	ocicore "github.com/oracle/oci-go-sdk/v31/core"
 )
 
 const (
 	KmsKey                        = "kms-key-id"
 	AttachmentTypeISCSI           = "iscsi"
 	AttachmentTypeParavirtualized = "paravirtualized"
+	SCName                        = "oci-kms"
 	AttachmentType                = "attachment-type"
 )
 
@@ -125,6 +124,7 @@ func (j *PVCTestJig) pvcAddVolumeName(pvc *v1.PersistentVolumeClaim, volumeName 
 	}
 	return pvc
 }
+
 
 func (j *PVCTestJig) pvcExpandVolume(claim *v1.PersistentVolumeClaim, size string) *v1.PersistentVolumeClaim {
 	oldPVC, err := j.KubeClient.CoreV1().
@@ -407,25 +407,6 @@ func (j *PVCTestJig) newPVTemplateCSI(namespace string, scName string, ocid stri
 			Driver:       "blockvolume.csi.oraclecloud.com",
 			FSType:       "ext4",
 			VolumeHandle: ocid,
-		},
-	})
-	return pv
-}
-
-// newPVTemplateCSI returns the default template for this jig, but
-// does not actually create the PV.  The default PV has the same name
-// as the jig
-func (j *PVCTestJig) newPVTemplateCSIHighPerf(namespace string, scName string, ocid string) *v1.PersistentVolume {
-	pv := j.CreatePVTemplate(namespace, "blockvolume.csi.oraclecloud.com", scName, "Delete")
-	pv = j.pvAddAccessMode(pv, "ReadWriteOnce")
-	pv = j.pvAddPersistentVolumeSource(pv, v1.PersistentVolumeSource{
-		CSI: &v1.CSIPersistentVolumeSource{
-			Driver:       "blockvolume.csi.oraclecloud.com",
-			FSType:       "ext4",
-			VolumeHandle: ocid,
-			VolumeAttributes: map[string]string{
-				csi_util.VpusPerGB: "20",
-			},
 		},
 	})
 	return pv
