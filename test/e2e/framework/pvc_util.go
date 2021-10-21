@@ -16,28 +16,28 @@ package framework
 
 import (
 	"fmt"
-	"k8s.io/apimachinery/pkg/labels"
 	"strings"
 	"time"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/csi/driver"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
-	ocicore "github.com/oracle/oci-go-sdk/v31/core"
+	ocicore "github.com/oracle/oci-go-sdk/v49/core"
 )
 
 const (
@@ -964,14 +964,14 @@ func (j *PVCTestJig) CheckMultiplePodReadWrite(namespace string, pvcName string,
 	j.NewPodForCSIFSSRead(string(uuid2), namespace, pvcName, fileName, checkEncryption)
 }
 
-func (j *PVCTestJig) CheckDataPersistenceWithDeployment(pvcName string, ns string){
+func (j *PVCTestJig) CheckDataPersistenceWithDeployment(pvcName string, ns string) {
 	nodes, err := j.KubeClient.CoreV1().Nodes().List(context.Background(),metav1.ListOptions{})
 
-	if err!= nil{
+	if err != nil {
 		Failf("Error getting list of nodes: %v", err)
 	}
 
-	if len(nodes.Items) == 0{
+	if len(nodes.Items) == 0 {
 		Failf("No worker nodes are present in the cluster")
 	}
 
@@ -986,7 +986,7 @@ func (j *PVCTestJig) CheckDataPersistenceWithDeployment(pvcName string, ns strin
 		}
 	}
 
-	if !schedulableNodeFound{
+	if !schedulableNodeFound {
 		Failf("No schedulable nodes found")
 	}
 
@@ -994,7 +994,7 @@ func (j *PVCTestJig) CheckDataPersistenceWithDeployment(pvcName string, ns strin
 
 	dataWritten := "Data written"
 
-	writeCommand := "echo \"" + dataWritten +"\" >> /data/out.txt;"
+	writeCommand := "echo \"" + dataWritten + "\" >> /data/out.txt;"
 	readCommand := "cat /data/out.txt"
 
 	By("Creating a deployment")
@@ -1002,7 +1002,7 @@ func (j *PVCTestJig) CheckDataPersistenceWithDeployment(pvcName string, ns strin
 
 	deployment, err := j.KubeClient.AppsV1().Deployments(ns).Get(context.Background(),deploymentName, metav1.GetOptions{})
 
-	if err!= nil {
+	if err != nil {
 		Failf("Error while fetching deployment %v: %v", deploymentName, err)
 	}
 
@@ -1018,28 +1018,28 @@ func (j *PVCTestJig) CheckDataPersistenceWithDeployment(pvcName string, ns strin
 	By("Writing to the volume using the pod")
 	_, err = RunHostCmd(ns, podName, writeCommand)
 
-	if err!= nil{
+	if err != nil {
 		Failf("Error executing write command a pod: %v", err)
 	}
 
 	By("Deleting the pod used to write to the volume")
 	err = j.KubeClient.CoreV1().Pods(ns).Delete(context.Background(), podName, metav1.DeleteOptions{})
 
-	if err!= nil{
+	if err != nil {
 		Failf("Error sending pod delete request: %v", err)
 	}
 
 	By("Waiting timeout for pod to not be found in namespace")
 	err = j.waitTimeoutForPodNotFoundInNamespace(podName, ns, DefaultTimeout)
 
-	if err!= nil{
+	if err != nil {
 		Failf("Error deleting podt: %v", err)
 	}
 
 	By("Waiting for pod to be restarted")
 	err = j.waitTimeoutForDeploymentAvailable(deploymentName, ns, deploymentAvailableTimeout, 1)
 
-	if err!= nil {
+	if err != nil {
 		Failf("Error waiting for deployment to become available again: %v", err)
 	}
 
@@ -1054,11 +1054,11 @@ func (j *PVCTestJig) CheckDataPersistenceWithDeployment(pvcName string, ns strin
 	By("Reading from the volume using the pod and checking data integrity")
 	output, err := RunHostCmd(ns, podName, readCommand)
 
-	if err!= nil{
+	if err != nil {
 		Failf("Error executing write command a pod: %v", err)
 	}
 
-	if dataWritten != strings.TrimSpace(output){
+	if dataWritten != strings.TrimSpace(output) {
 		Failf("Written data not found on the volume, written: %v, found: %v", dataWritten, strings.TrimSpace(output))
 	}
 

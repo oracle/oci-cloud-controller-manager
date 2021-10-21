@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/oracle/oci-go-sdk/v49/core"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-go-sdk/v31/core"
 	"go.uber.org/zap"
 
 	v1 "k8s.io/api/core/v1"

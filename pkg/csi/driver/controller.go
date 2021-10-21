@@ -21,7 +21,7 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util/disk"
-	"github.com/oracle/oci-go-sdk/v31/core"
+	"github.com/oracle/oci-go-sdk/v49/core"
 )
 
 const (

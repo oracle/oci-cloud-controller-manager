@@ -1,16 +1,17 @@
 package framework
 
 import (
+	"context"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/pointer"
 	"time"
-	"context"
 )
 
 func (j *PVCTestJig) createDeploymentOnNodeAndWait(command string, pvcName string, ns string, name string, replicas int32, nodeSelectorLabels map[string]string) string{
+
 	deployment, err := j.KubeClient.AppsV1().Deployments(ns).Create(context.Background(), &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
@@ -54,6 +55,7 @@ func (j *PVCTestJig) createDeploymentOnNodeAndWait(command string, pvcName strin
 						},
 					},
 					NodeSelector: nodeSelectorLabels,
+
 				},
 			},
 		},
