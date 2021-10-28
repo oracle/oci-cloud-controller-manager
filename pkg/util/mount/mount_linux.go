@@ -519,35 +519,56 @@ func (mounter *SafeFormatAndMount) formatAndMount(source string, target string, 
 	return mountErr
 }
 
-// getDiskFormat uses 'lsblk' to determine a given disk's format
+// getDiskFormat uses 'blkid' to determine a given disk's format
 func (mounter *SafeFormatAndMount) getDiskFormat(disk string) (string, error) {
-	args := []string{"-n", "-o", "FSTYPE", disk}
-	cmd := mounter.Runner.Command("lsblk", args...)
-	mounter.Logger.With("disk", disk, "arguments", args).Info("Attempting to determine if disk is formatted using lsblk.")
+	args := []string{"-p", "-s", "TYPE", "-s", "PTTYPE", "-o", "export", disk}
+	mounter.Logger.Infof("Attempting to determine if disk %q is formatted using blkid with args: (%v)", disk, args)
+	cmd := mounter.Runner.Command("blkid", args...)
 	dataOut, err := cmd.CombinedOutput()
 	output := string(dataOut)
+	mounter.Logger.Infof("Output: %q, err: %v", output, err)
 
 	if err != nil {
-		mounter.Logger.With(zap.Error(err), "disk", disk).Error("Could not determine if disk is formatted.")
+		if exit, ok := err.(utilexec.ExitError); ok {
+			if exit.ExitStatus() == 2 {
+				// Disk device is unformatted.
+				// For `blkid`, if the specified token (TYPE/PTTYPE, etc) was
+				// not found, or no (specified) devices could be identified, an
+				// exit code of 2 is returned.
+				return "", nil
+			}
+		}
+		mounter.Logger.Errorf("Could not determine if disk %q is formatted (%v)", disk, err)
 		return "", err
 	}
-	mounter.Logger.With("output", output).Info("Disk format determined.")
 
-	// Split lsblk output into lines. Unformatted devices should contain only
-	// "\n". Beware of "\n\n", that's a device with one empty partition.
-	output = strings.TrimSuffix(output, "\n") // Avoid last empty line
+	var fstype, pttype string
+
 	lines := strings.Split(output, "\n")
-	if lines[0] != "" {
-		// The device is formatted
-		return lines[0], nil
+	for _, l := range lines {
+		if len(l) <= 0 {
+			// Ignore empty line.
+			continue
+		}
+		cs := strings.Split(l, "=")
+		if len(cs) != 2 {
+			return "", fmt.Errorf("blkid returns invalid output: %s", output)
+		}
+		// TYPE is filesystem type, and PTTYPE is partition table type, according
+		// to https://www.kernel.org/pub/linux/utils/util-linux/v2.21/libblkid-docs/.
+		if cs[0] == "TYPE" {
+			fstype = cs[1]
+		} else if cs[0] == "PTTYPE" {
+			pttype = cs[1]
+		}
 	}
 
-	if len(lines) == 1 {
-		// The device is unformatted and has no dependent devices
-		return "", nil
+	if len(pttype) > 0 {
+		mounter.Logger.Infof("Disk %s detected partition table type: %s", disk, pttype)
+		// Returns a special non-empty string as filesystem type, then kubelet
+		// will not format it.
+		return "unknown data, probably partitions", nil
 	}
 
-	// The device has dependent devices, most probably partitions (LVM, LUKS
-	// and MD RAID are reported as FSTYPE and caught above).
-	return "unknown data, probably partitions", nil
+	return fstype, nil
 }

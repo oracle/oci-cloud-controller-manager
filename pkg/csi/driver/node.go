@@ -3,6 +3,7 @@ package driver
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"regexp"
 
@@ -120,6 +121,28 @@ func (d *NodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolu
 	options := mnt.MountFlags
 
 	fsType := csi_util.ValidateFsType(logger, mnt.FsType)
+
+	exists := true
+	_, err = os.Stat(req.StagingTargetPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			exists = false
+		} else {
+			logger.With(zap.Error(err)).Errorf("failed to check if stagingTargetPath %q exists", req.StagingTargetPath)
+			message := fmt.Sprintf("failed to check if stagingTargetPath %q exists", req.StagingTargetPath)
+			return nil, status.Error(codes.Internal, message)
+		}
+	}
+
+	// When exists is true it means target path was created but device isn't mounted.
+	// We don't want to do anything in that case and let the operation proceed.
+	// Otherwise we need to create the target directory.
+	if !exists {
+		if err := os.MkdirAll(req.StagingTargetPath, 0750); err != nil {
+			logger.With(zap.Error(err)).Error("Failed to create StagingTargetPath directory")
+			return nil, status.Error(codes.Internal, "Failed to create StagingTargetPath directory")
+		}
+	}
 
 	logger.With("devicePath", devicePath,
 		"fsType", fsType).Info("mounting the volume to staging path.")
