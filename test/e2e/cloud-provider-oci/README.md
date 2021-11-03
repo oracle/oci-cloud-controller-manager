@@ -44,6 +44,13 @@ make run-ccm-e2e-tests-local
 
 Note: Above listed <IMAGE>:<TAG> should be available in the provider repo path and should be accessible.
 
+## Running FSS in-transit encryption tests
+
+The two FSS in-transit encryption tests need the oci-fss-utils package to be installed on the nodes running the tests. The package is needed to be downloaded from [here][4] and installed on the applicable nodes. In addition to this, the below label is to be added using the command for each of the nodes which have the package installed to help the test suite recognise the applicable nodes.
+```bash
+kubectl label nodes <node-name> oke.oraclecloud.com/e2e.oci-fss-util=installed
+```
+
 ## Additional Debug Options when running tests on existing cluster
 
 Additional seclist count based sanity checks can be applied during e2e testing
@@ -106,3 +113,4 @@ make run-ccm-e2e-tests-local FOCUS="load_*" FILES="true"
 [1]: https://github.com/kubernetes/kubernetes/blob/0cb15453dae92d8be66cf42e6c1b04e21a2d0fb6/test/e2e/network/service.go
 [2]: https://onsi.github.io/ginkgo/
 [3]: https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/
+[4]: https://www.oracle.com/downloads/cloud/cloud-infrastructure-file-storage-downloads.html
