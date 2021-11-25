@@ -440,7 +440,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		lbOCID = GetLoadBalancerName(service)
 	}
 
-	logger = logger.With("lbOCID", lbOCID)
+	logger = logger.With("loadBalancerID", lbOCID)
 
 	dimensionsMap[metrics.ResourceOCIDDimension] = lbOCID
 
@@ -488,7 +488,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 			dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
 			metrics.SendMetricData(cp.metricPusher, metrics.LBProvision, time.Since(startTime).Seconds(), dimensionsMap)
 		} else {
-			logger = cp.logger.With("loadbalancerName", lbName, "serviceName", service.Name, "lbOCID", newLBOCID)
+			logger = cp.logger.With("loadbalancerName", lbName, "serviceName", service.Name, "loadBalancerID", newLBOCID)
 			logger.Info("Successfully provisioned loadbalancer")
 			lbMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.LoadBalancerType)
 			dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
