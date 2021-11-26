@@ -219,13 +219,13 @@ var _ = Describe("ESIPP [Slow]", func() {
 				sharedfw.Failf("Service HealthCheck NodePort was not allocated")
 			}
 
-			ips := sharedfw.CollectAddresses(nodes, v1.NodeExternalIP)
+			ips := sharedfw.CollectAddresses(nodes, v1.NodeInternalIP)
 
 			ingressIP := sharedfw.GetIngressPoint(&svc.Status.LoadBalancer.Ingress[0])
 			svcTCPPort := int(svc.Spec.Ports[0].Port)
 
-			threshold := 2
 			path := "/healthz"
+
 			for i := 0; i < len(nodes.Items); i++ {
 				endpointNodeName := nodes.Items[i].Name
 
@@ -240,18 +240,13 @@ var _ = Describe("ESIPP [Slow]", func() {
 				By(fmt.Sprintf("waiting for service endpoint on node %v", endpointNodeName))
 				jig.WaitForEndpointOnNode(namespace, serviceName, endpointNodeName)
 
-				// HealthCheck should pass only on the node where num(endpoints) > 0
-				// All other nodes should fail the healthcheck on the service healthCheckNodePort
-				for n, publicIP := range ips {
-					// Make sure the loadbalancer picked up the health check change.
-					// Confirm traffic can reach backend through LB before checking healthcheck nodeport.
-					jig.TestReachableHTTP(false, ingressIP, svcTCPPort, sharedfw.KubeProxyLagTimeout)
-					expectedSuccess := nodes.Items[n].Name == endpointNodeName
-					port := strconv.Itoa(healthCheckNodePort)
-					ipPort := net.JoinHostPort(publicIP, port)
-					sharedfw.Logf("Health checking %s, http://%s%s, expectedSuccess %v", nodes.Items[n].Name, ipPort, path, expectedSuccess)
-					Expect(jig.TestHTTPHealthCheckNodePort(publicIP, healthCheckNodePort, path, sharedfw.KubeProxyEndpointLagTimeout, expectedSuccess, threshold)).NotTo(HaveOccurred())
-				}
+				// Make sure the loadbalancer picked up the health check change.
+				// Confirm traffic can reach backend through LB before checking healthcheck nodeport.
+				jig.TestReachableHTTP(false, ingressIP, svcTCPPort, sharedfw.KubeProxyLagTimeout)
+
+				By("Creating a job to check pods health")
+				script := CreateHealthCheckScript(healthCheckNodePort, ips, path, i)
+				jig.CreateJobRunningScript(namespace, script, 3, "health-checker-"+strconv.Itoa(i))
 				sharedfw.ExpectNoError(sharedfw.DeleteRCAndWaitForGC(f.ClientSet, namespace, serviceName))
 			}
 		})
@@ -1230,3 +1225,25 @@ var _ = Describe("LB Properties", func() {
 		})
 	})
 })
+
+//ips is the list of private IPs of the nodes, the path is the endpoint at which health is checked,
+//and nodeIndex is the node which has the current pod
+func CreateHealthCheckScript(healthCheckNodePort int, ips []string, path string, nodeIndex int) string {
+	script := ""
+
+	for n, privateIP := range ips {
+		port := strconv.Itoa(healthCheckNodePort)
+		ipPort := net.JoinHostPort(privateIP, port)
+		//command to get health status of the pod on the node
+		script += "healthCheckPassed=$(curl -s http://"+ ipPort + path + " | grep -i localEndpoints* | cut -d ':' -f2);"
+		if n == nodeIndex{
+			script += "if ((\"$healthCheckPassed\"==\"0\")); then exit 1; fi;"
+		}else{
+			script += "if ((\"$healthCheckPassed\"==\"1\")); then exit 1; fi;"
+		}
+	}
+
+	sharedfw.Logf("Script used: %v", script)
+
+	return script
+}
