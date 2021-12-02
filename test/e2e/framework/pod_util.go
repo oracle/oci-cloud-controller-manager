@@ -29,7 +29,7 @@ import (
 	"k8s.io/kubernetes/pkg/client/conditions"
 )
 
-// CheckVolumeMount creates a pod with a dymincally provisioned volume
+// CheckVolumeMount creates a pod with a dynamically provisioned volume
 func (j *PVCTestJig) CheckVolumeMount(namespace string, pvcParam *v1.PersistentVolumeClaim) {
 	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(pvcParam.Namespace).Get(pvcParam.Name, metav1.GetOptions{})
 	pv, err := j.KubeClient.CoreV1().PersistentVolumes().Get(pvc.Spec.VolumeName, metav1.GetOptions{})
@@ -87,7 +87,7 @@ func (j *PVCTestJig) checkFileExists(namespace string, podName string, dir strin
 	}
 }
 
-// CheckVolumeReadWrite creates a pod with a dymincally provisioned volume
+// CheckVolumeReadWrite creates a pod with a dynamically provisioned volume
 func (j *PVCTestJig) CheckVolumeReadWrite(namespace string, pvcParam *v1.PersistentVolumeClaim) {
 	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(pvcParam.Namespace).Get(pvcParam.Name, metav1.GetOptions{})
 	pv, err := j.KubeClient.CoreV1().PersistentVolumes().Get(pvc.Spec.VolumeName, metav1.GetOptions{})
@@ -111,9 +111,39 @@ func (j *PVCTestJig) CheckVolumeReadWrite(namespace string, pvcParam *v1.Persist
 	j.CreateAndAwaitNginxPodOrFail(pvc.Namespace, pvc, "grep 'hello world' /mnt/test/data")
 }
 
+func (j *PVCTestJig) checkFileOwnership(namespace string, podName string, dir string) {
+	By("check if the file exists")
+	command := fmt.Sprintf("stat -c '%%g' %s", dir)
+		stdout, err := RunHostCmd(namespace, podName, command)
+		if err != nil {
+			Logf("got err: %v, retry until timeout", err)
+		}
+		fsGroup := strings.TrimSpace(stdout)
+		if fsGroup != "1000" {
+			Failf("Not expected group owner, group owner is %v but should be 1000", fsGroup)
+		}
+		Logf("Expected group owner, group owner is %v ", fsGroup)
+}
+
+// CheckVolumeDirectoryOwnership creates a pod with a dynamically provisioned volume
+func (j *PVCTestJig) CheckVolumeDirectoryOwnership(namespace string, pvcParam *v1.PersistentVolumeClaim) {
+	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(pvcParam.Namespace).Get(pvcParam.Name, metav1.GetOptions{})
+
+	if err != nil {
+		Failf("Failed to get persistent volume %q: %v", pvc.Spec.VolumeName, err)
+	}
+	By("checking the created volume is writable and has the PV's mount options")
+	command := "while true; do echo 'hello world' >> /usr/share/nginx/html/out.txt; sleep 5; done"
+
+	podName := j.CreateAndAwaitNginxPodOrFail(pvc.Namespace, pvc, command)
+
+	j.checkFileOwnership(namespace, podName, "/usr/share/nginx/html/out.txt")
+}
+
 // CreateAndAwaitNginxPodOrFail returns a pod definition based on the namespace using nginx image
 func (j *PVCTestJig) CreateAndAwaitNginxPodOrFail(ns string, pvc *v1.PersistentVolumeClaim, command string) string {
 	By("Creating a pod with the dynamically provisioned volume")
+	fsGroup := int64(1000)
 	pod, err := j.KubeClient.CoreV1().Pods(ns).Create(&v1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
@@ -124,6 +154,9 @@ func (j *PVCTestJig) CreateAndAwaitNginxPodOrFail(ns string, pvc *v1.PersistentV
 			Namespace:    ns,
 		},
 		Spec: v1.PodSpec{
+			SecurityContext: &v1.PodSecurityContext {
+					FSGroup: &fsGroup,
+			},
 			Containers: []v1.Container{
 				{
 					Name:  "write-pod",

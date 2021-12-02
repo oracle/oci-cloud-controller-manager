@@ -41,7 +41,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	csi_fss "github.com/oracle/oci-cloud-controller-manager/pkg/csi-fss"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/csi/driver"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
 	ocicore "github.com/oracle/oci-go-sdk/v31/core"
@@ -331,7 +331,7 @@ func (j *PVCTestJig) newPVTemplateFSS(namespace, volumeHandle, enableIntransitEn
 	pv = j.pvAddAccessMode(pv, "ReadWriteMany")
 	pv = j.pvAddPersistentVolumeSource(pv, v1.PersistentVolumeSource{
 		CSI: &v1.CSIPersistentVolumeSource{
-			Driver:       csi_fss.DriverName,
+			Driver:       driver.FSSDriverName,
 			VolumeHandle: volumeHandle,
 			VolumeAttributes: map[string]string{
 				"encryptInTransit": enableIntransitEncrypt,

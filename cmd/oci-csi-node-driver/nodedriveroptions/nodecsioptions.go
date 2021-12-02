@@ -34,3 +34,14 @@ type NodeCSIOptions struct {
 	FssKubeletRegistrationPath string
 	FssEndpoint                string
 }
+
+type NodeOptions struct {
+	Name					string
+	Endpoint				string
+	NodeID					string
+	Kubeconfig				string
+	Master					string
+	DriverName				string
+	DriverVersion			string
+	EnableControllerServer	bool
+}

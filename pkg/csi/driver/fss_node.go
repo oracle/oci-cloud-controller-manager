@@ -1,4 +1,4 @@
-package csi_fss
+package driver
 
 import (
 	"context"
@@ -18,13 +18,12 @@ import (
 )
 
 const (
-	volumeOperationAlreadyExistsFmt = "An operation for the volume: %s already exists."
 	mountPath                       = "mount"
 	FipsEnabled                     = "1"
 )
 
 // NodeStageVolume mounts the volume to a staging path on the node.
-func (d *NodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
+func (d FSSNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	if req.VolumeId == "" {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
 	}
@@ -157,7 +156,7 @@ func validateVolumeId(id string) (string, string) {
 }
 
 // NodePublishVolume mounts the volume to the target path
-func (d *NodeDriver) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
+func (d FSSNodeDriver) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	if req.VolumeId == "" {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
 	}
@@ -221,7 +220,7 @@ func (d *NodeDriver) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 }
 
 // NodeUnpublishVolume unmounts the volume from the target path
-func (d *NodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
+func (d FSSNodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	if req.VolumeId == "" {
 		return nil, status.Error(codes.InvalidArgument, "NodeUnpublishVolume: Volume ID must be provided")
 	}
@@ -266,7 +265,7 @@ func (d *NodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpub
 }
 
 // NodeUnstageVolume unstage the volume from the staging path
-func (d *NodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
+func (d FSSNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
 	if req.VolumeId == "" {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
 	}
@@ -302,7 +301,7 @@ func (d *NodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstage
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
 
-func (d *NodeDriver) unmountAndCleanup(logger *zap.SugaredLogger, targetPath string, exportPath string, mountTargetIP string) error {
+func (d FSSNodeDriver) unmountAndCleanup(logger *zap.SugaredLogger, targetPath string, exportPath string, mountTargetIP string) error {
 	mounter := mount.New(logger, mountPath)
 	// Use mount.IsNotMountPoint because mounter.IsLikelyNotMountPoint can't detect bind mounts
 	isNotMountPoint, err := mount.IsNotMountPoint(mounter, targetPath)
@@ -354,7 +353,7 @@ func (d *NodeDriver) unmountAndCleanup(logger *zap.SugaredLogger, targetPath str
 }
 
 // NodeGetCapabilities returns the supported capabilities of the node server
-func (d *NodeDriver) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
+func (d FSSNodeDriver) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
 	nscap := &csi.NodeServiceCapability{
 		Type: &csi.NodeServiceCapability_Rpc{
 			Rpc: &csi.NodeServiceCapability_RPC{
@@ -372,7 +371,7 @@ func (d *NodeDriver) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCa
 
 // NodeGetInfo returns the supported capabilities of the node server.
 // The result of this function will be used by the CO in ControllerPublishVolume.
-func (d *NodeDriver) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
+func (d FSSNodeDriver) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
 	ad, err := d.util.LookupNodeAvailableDomain(d.KubeClient, d.nodeID)
 
 	if err != nil {
@@ -381,7 +380,7 @@ func (d *NodeDriver) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoReques
 
 	d.logger.With("nodeId", d.nodeID, "availableDomain", ad).Info("Available domain of node identified.")
 	return &csi.NodeGetInfoResponse{
-		NodeId:            d.nodeID,
+		NodeId: d.nodeID,
 		// make sure that the driver works on this particular AD only
 		AccessibleTopology: &csi.Topology{
 			Segments: map[string]string{
@@ -392,12 +391,12 @@ func (d *NodeDriver) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoReques
 }
 
 // NodeGetVolumeStats return the stats of the volume
-func (d *NodeDriver) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
+func (d FSSNodeDriver) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "NodeGetVolumeStats is not supported yet")
 }
 
 //NodeExpandVolume returns the expand of the volume
-func (d *NodeDriver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
+func (d FSSNodeDriver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "NodeExpandVolume is not supported yet")
 }
 

@@ -23,7 +23,7 @@ const (
 )
 
 // NodeStageVolume mounts the volume to a staging path on the node.
-func (d *NodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
+func (d BlockVolumeNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	if req.VolumeId == "" {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
 	}
@@ -158,7 +158,7 @@ func (d *NodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolu
 }
 
 // NodeUnstageVolume unstage the volume from the staging path
-func (d *NodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
+func (d BlockVolumeNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
 	if req.VolumeId == "" {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
 	}
@@ -248,7 +248,7 @@ func (d *NodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstage
 }
 
 // NodePublishVolume mounts the volume to the target path
-func (d *NodeDriver) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
+func (d BlockVolumeNodeDriver) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	if req.VolumeId == "" {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
 	}
@@ -335,7 +335,7 @@ func (d *NodeDriver) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 }
 
 // NodeUnpublishVolume unmounts the volume from the target path
-func (d *NodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
+func (d BlockVolumeNodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	if req.VolumeId == "" {
 		return nil, status.Error(codes.InvalidArgument, "NodeUnpublishVolume: Volume ID must be provided")
 	}
@@ -415,7 +415,7 @@ func getDevicePathAndAttachmentType(logger *zap.SugaredLogger, path []string) (s
 }
 
 // NodeGetCapabilities returns the supported capabilities of the node server
-func (d *NodeDriver) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
+func (d BlockVolumeNodeDriver) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
 	nscap := &csi.NodeServiceCapability{
 		Type: &csi.NodeServiceCapability_Rpc{
 			Rpc: &csi.NodeServiceCapability_RPC{
@@ -433,7 +433,7 @@ func (d *NodeDriver) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCa
 
 // NodeGetInfo returns the supported capabilities of the node server.
 // The result of this function will be used by the CO in ControllerPublishVolume.
-func (d *NodeDriver) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
+func (d BlockVolumeNodeDriver) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
 	ad, err := d.util.LookupNodeAvailableDomain(d.KubeClient, d.nodeID)
 
 	if err != nil {
@@ -455,11 +455,11 @@ func (d *NodeDriver) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoReques
 }
 
 // NodeGetVolumeStats return the stats of the volume
-func (d *NodeDriver) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
+func (d BlockVolumeNodeDriver) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "NodeGetVolumeStats is not supported yet")
 }
 
 //NodeExpandVolume returns the expand of the volume
-func (d *NodeDriver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
+func (d BlockVolumeNodeDriver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "NodeExpandVolume is not supported yet")
 }

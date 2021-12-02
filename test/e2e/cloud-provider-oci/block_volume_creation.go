@@ -28,21 +28,24 @@ var _ = Describe("Block Volume Creation", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "volume-provisioner-e2e-tests-pvc")
 
 			scName := f.CreateStorageClassOrFail(framework.ClassOCI, core.ProvisionerNameDefault, nil, pvcJig.Labels, "")
-			pvcJig.CreateAndAwaitPVCOrFail(f.Namespace.Name, framework.MinVolumeBlock, scName, setupF.AdLabel, nil)
+			pvc := pvcJig.CreateAndAwaitPVCOrFail(f.Namespace.Name, framework.MinVolumeBlock, scName, setupF.AdLabel, nil)
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 		})
 
 		It("Should be possible to create a persistent volume claim (PVC) for a block storage of Ext3 file system ", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "volume-provisioner-e2e-tests-pvc")
 
 			scName := f.CreateStorageClassOrFail(framework.ClassOCIExt3, core.ProvisionerNameDefault, map[string]string{block.FSType: "ext3"}, pvcJig.Labels, "")
-			pvcJig.CreateAndAwaitPVCOrFail(f.Namespace.Name, framework.MinVolumeBlock, scName, setupF.AdLabel, nil)
+			pvc := pvcJig.CreateAndAwaitPVCOrFail(f.Namespace.Name, framework.MinVolumeBlock, scName, setupF.AdLabel, nil)
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 		})
 
 		It("Should be possible to create a persistent volume claim (PVC) for a block storage with no AD specified ", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "volume-provisioner-e2e-tests-pvc")
 
 			scName := f.CreateStorageClassOrFail(framework.ClassOCI, core.ProvisionerNameDefault, nil, pvcJig.Labels, "")
-			pvcJig.CreateAndAwaitPVCOrFail(f.Namespace.Name, framework.MinVolumeBlock, scName, "", nil)
+			pvc := pvcJig.CreateAndAwaitPVCOrFail(f.Namespace.Name, framework.MinVolumeBlock, scName, "", nil)
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 		})
 	})
 })

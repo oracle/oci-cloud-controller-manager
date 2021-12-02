@@ -22,20 +22,19 @@ import (
 )
 
 //RunNodeDriver main function to start node driver
-func RunNodeDriver(nodecsioptions nodedriveroptions.NodeCSIOptions, stopCh <-chan struct{}) error {
+func RunNodeDriver(nodeOptions nodedriveroptions.NodeOptions, stopCh <-chan struct{}) error {
 	logger := logging.Logger().Sugar()
 	logger.Sync()
 
-	drv, err := driver.NewNodeDriver(logger, nodecsioptions.Endpoint, nodecsioptions.NodeID, nodecsioptions.Kubeconfig, nodecsioptions.Master)
+	csiDriver, err := driver.NewNodeDriver(logger.Named(nodeOptions.Name), nodeOptions)
 	if err != nil {
-		logger.With(zap.Error(err)).Fatal("Failed to create Node driver.")
+		logger.With(zap.Error(err)).Fatalf("Failed to create %s Node driver.", nodeOptions.Name)
 	}
 
-	if err := drv.Run(); err != nil {
-		logger.With(zap.Error(err)).Fatal("Failed to run the CSI driver.")
+	if err := csiDriver.Run(); err != nil {
+		logger.With(zap.Error(err)).Fatalf("Failed to run the %s CSI driver.", nodeOptions.Name)
 	}
-
-	logger.Info("CSI driver exited")
+	logger.Infof("%s CSI driver exited", nodeOptions.Name)
 	<-stopCh
 	return nil
 }
