@@ -15,15 +15,8 @@
 package framework
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/remotecommand"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -940,7 +933,7 @@ func (j *PVCTestJig) CheckDataPersistenceWithDeployment(pvcName string, ns strin
 	podName := pods.Items[0].Name
 
 	By("Writing to the volume using the pod")
-	_, _, err = j.ExecCommandOnPod(podName, writeCommand, nil, ns)
+	_, err = RunHostCmd(ns, podName, writeCommand)
 
 	if err!= nil{
 		Failf("Error executing write command a pod: %v", err)
@@ -950,7 +943,14 @@ func (j *PVCTestJig) CheckDataPersistenceWithDeployment(pvcName string, ns strin
 	err = j.KubeClient.CoreV1().Pods(ns).Delete(podName, &metav1.DeleteOptions{})
 
 	if err!= nil{
-		Failf("Error deleting pod: %v", err)
+		Failf("Error sending pod delete request: %v", err)
+	}
+
+	By("Waiting timeout for pod to not be found in namespace")
+	err = j.waitTimeoutForPodNotFoundInNamespace(podName, ns, DefaultTimeout)
+
+	if err!= nil{
+		Failf("Error deleting podt: %v", err)
 	}
 
 	By("Waiting for pod to be restarted")
@@ -969,61 +969,14 @@ func (j *PVCTestJig) CheckDataPersistenceWithDeployment(pvcName string, ns strin
 	podName = pods.Items[0].Name
 
 	By("Reading from the volume using the pod and checking data integrity")
-	stdout, _, err := j.ExecCommandOnPod(podName, readCommand, nil, ns)
+	output, err := RunHostCmd(ns, podName, readCommand)
 
 	if err!= nil{
 		Failf("Error executing write command a pod: %v", err)
 	}
 
-	if dataWritten != strings.TrimSpace(stdout){
-		Failf("Written data not found on the volume, written: %v, found: %v", dataWritten, strings.TrimSpace(stdout))
+	if dataWritten != strings.TrimSpace(output){
+		Failf("Written data not found on the volume, written: %v, found: %v", dataWritten, strings.TrimSpace(output))
 	}
 
-}
-
-func (j *PVCTestJig) ExecCommandOnPod(podName string, command string, stdin io.Reader, ns string) (string, string, error) {
-	cmd := []string{
-		"sh",
-		"-c",
-		command,
-	}
-
-	req := j.KubeClient.CoreV1().RESTClient().Post().Resource("pods").Name(podName).Namespace(ns).SubResource("exec")
-	option := &v1.PodExecOptions{
-		Command: cmd,
-		Stdin:   true,
-		Stdout:  true,
-		Stderr:  true,
-		TTY:     true,
-	}
-	if stdin == nil {
-		option.Stdin = false
-	}
-	req.VersionedParams(
-		option,
-		scheme.ParameterCodec,
-	)
-
-	kubeconfig := filepath.Join(os.Getenv("HOME"), ".kube", "config_amd")
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-
-	if err != nil {
-		return "", "", fmt.Errorf("error while retrieving kubeconfig: %v", err)
-	}
-
-	exec, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
-	if err != nil {
-		return "", "", fmt.Errorf("error while creating Executor: %v", err)
-	}
-	var stdout, stderr bytes.Buffer
-	err = exec.Stream(remotecommand.StreamOptions{
-		Stdin:  stdin,
-		Stdout: &stdout,
-		Stderr: &stderr,
-	})
-	if err != nil {
-		return "", "", fmt.Errorf("error in Stream: %v", err)
-	}
-
-	return stdout.String(), stderr.String(), nil
 }
