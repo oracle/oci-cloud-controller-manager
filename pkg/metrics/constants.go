@@ -16,4 +16,8 @@ const (
 	PVDetach = "PV_DETACH"
 	// PVDelete is the OCI metric suffix for PV delete
 	PVDelete= "PV_DELETE"
+
+    ResourceOCIDDimension = "resourceOCID"
+	ComponentDimension = "component"
+	BackendSetsCountDimension = "backendSetsCount"
 )

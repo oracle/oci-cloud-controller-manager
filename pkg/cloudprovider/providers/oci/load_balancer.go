@@ -16,6 +16,7 @@ package oci
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/oracle/oci-go-sdk/v31/core"
@@ -415,6 +416,8 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 	logger := cp.logger.With("loadbalancerName", lbName, "serviceName", service.Name)
 	logger.With("nodes", len(nodes)).Info("Ensuring load balancer")
 
+	dimensionsMap := make(map[string]string)
+
 	var errorType string
 	var lbMetricDimension string
 	lb, err := cp.client.LoadBalancer().GetLoadBalancerByName(ctx, cp.config.CompartmentID, lbName)
@@ -422,7 +425,9 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		logger.With(zap.Error(err)).Error("Failed to get loadbalancer by name")
 		errorType = util.GetError(err)
 		lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
-		metrics.SendMetricData(cp.metricPusher, metrics.LBUpdate, time.Since(startTime).Seconds(), lbMetricDimension, lbName)
+		dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
+		dimensionsMap[metrics.ResourceOCIDDimension] = lbName
+		metrics.SendMetricData(cp.metricPusher, metrics.LBUpdate, time.Since(startTime).Seconds(), dimensionsMap)
 		return nil, err
 	}
 	exists := !client.IsNotFound(err)
@@ -437,6 +442,8 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 
 	logger = logger.With("lbOCID", lbOCID)
 
+	dimensionsMap[metrics.ResourceOCIDDimension] = lbOCID
+
 	var sslConfig *SSLConfig
 	if requiresCertificate(service) {
 		ports, err := getSSLEnabledPorts(service)
@@ -444,7 +451,8 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 			logger.With(zap.Error(err)).Error("Failed to parse SSL port.")
 			errorType = util.GetError(err)
 			lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
-			metrics.SendMetricData(cp.metricPusher, metrics.LBUpdate, time.Since(startTime).Seconds(), lbMetricDimension, lbOCID)
+			dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
+			metrics.SendMetricData(cp.metricPusher, metrics.LBUpdate, time.Since(startTime).Seconds(), dimensionsMap)
 			return nil, err
 		}
 		secretListenerString := service.Annotations[ServiceAnnotationLoadBalancerTLSSecret]
@@ -456,7 +464,8 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		logger.With(zap.Error(err)).Error("Failed to get Load balancer Subnets.")
 		errorType = util.GetError(err)
 		lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
-		metrics.SendMetricData(cp.metricPusher, metrics.LBUpdate, time.Since(startTime).Seconds(), lbMetricDimension, lbOCID)
+		dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
+		metrics.SendMetricData(cp.metricPusher, metrics.LBUpdate, time.Since(startTime).Seconds(), dimensionsMap)
 		return nil, err
 	}
 
@@ -465,7 +474,8 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		logger.With(zap.Error(err)).Error("Failed to derive LBSpec")
 		errorType = util.GetError(err)
 		lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
-		metrics.SendMetricData(cp.metricPusher, metrics.LBUpdate, time.Since(startTime).Seconds(), lbMetricDimension, lbOCID)
+		dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
+		metrics.SendMetricData(cp.metricPusher, metrics.LBUpdate, time.Since(startTime).Seconds(), dimensionsMap)
 		return nil, err
 	}
 
@@ -475,12 +485,15 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 			logger.With(zap.Error(err)).Error("Failed to provision LoadBalancer")
 			errorType = util.GetError(err)
 			lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
-			metrics.SendMetricData(cp.metricPusher, metrics.LBProvision, time.Since(startTime).Seconds(), lbMetricDimension, lbOCID)
+			dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
+			metrics.SendMetricData(cp.metricPusher, metrics.LBProvision, time.Since(startTime).Seconds(), dimensionsMap)
 		} else {
 			logger = cp.logger.With("loadbalancerName", lbName, "serviceName", service.Name, "lbOCID", newLBOCID)
 			logger.Info("Successfully provisioned loadbalancer")
 			lbMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.LoadBalancerType)
-			metrics.SendMetricData(cp.metricPusher, metrics.LBProvision, time.Since(startTime).Seconds(), lbMetricDimension, newLBOCID)
+			dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
+			dimensionsMap[metrics.ResourceOCIDDimension] = newLBOCID
+			metrics.SendMetricData(cp.metricPusher, metrics.LBProvision, time.Since(startTime).Seconds(), dimensionsMap)
 		}
 		return lbStatus, err
 	}
@@ -498,7 +511,8 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 			logger.With(zap.Error(err)).Error("Failed to ensure ssl certificates")
 			errorType = util.GetError(err)
 			lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
-			metrics.SendMetricData(cp.metricPusher, metrics.LBUpdate, time.Since(startTime).Seconds(), lbMetricDimension, lbOCID)
+			dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
+			metrics.SendMetricData(cp.metricPusher, metrics.LBUpdate, time.Since(startTime).Seconds(), dimensionsMap)
 			return nil, errors.Wrap(err, "ensuring ssl certificates")
 		}
 	}
@@ -507,14 +521,17 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		errorType = util.GetError(err)
 		lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
 		logger.With(zap.Error(err)).Error("Failed to update LoadBalancer")
-		metrics.SendMetricData(cp.metricPusher, metrics.LBUpdate, time.Since(startTime).Seconds(), lbMetricDimension, lbOCID)
+		dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
+		metrics.SendMetricData(cp.metricPusher, metrics.LBUpdate, time.Since(startTime).Seconds(), dimensionsMap)
 		return nil, err
 	}
 
 	syncTime := time.Since(startTime).Seconds()
 	logger.Info("Successfully updated loadbalancer")
 	lbMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.LoadBalancerType)
-	metrics.SendMetricData(cp.metricPusher, metrics.LBUpdate, syncTime, lbMetricDimension, lbOCID)
+	dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
+	dimensionsMap[metrics.BackendSetsCountDimension] = strconv.Itoa(len(lb.BackendSets))
+	metrics.SendMetricData(cp.metricPusher, metrics.LBUpdate, syncTime, dimensionsMap)
 
 	return loadBalancerToStatus(lb)
 }
@@ -817,6 +834,8 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 	logger.Debug("Attempting to delete load balancer")
 	var errorType string
 	var lbMetricDimension string
+	dimensionsMap := make(map[string]string)
+
 	lb, err := cp.client.LoadBalancer().GetLoadBalancerByName(ctx, cp.config.CompartmentID, name)
 	if err != nil {
 		if client.IsNotFound(err) {
@@ -826,18 +845,22 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 		errorType = util.GetError(err)
 		lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
 		logger.With(zap.Error(err)).Error("Failed to get loadbalancer by name")
-		metrics.SendMetricData(cp.metricPusher, metrics.LBDelete, time.Since(startTime).Seconds(), lbMetricDimension, name)
+		dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
+		dimensionsMap[metrics.ResourceOCIDDimension] = name
+		metrics.SendMetricData(cp.metricPusher, metrics.LBDelete, time.Since(startTime).Seconds(), dimensionsMap)
 		return errors.Wrapf(err, "get load balancer %q by name", name)
 	}
 
 	id := *lb.Id
+	dimensionsMap[metrics.ResourceOCIDDimension] = id
 	logger = logger.With("loadBalancerID", id)
 	if service.Annotations[ServiceAnnotaionLoadBalancerSecurityListManagementMode] != ManagementModeNone {
 		err := cp.cleanupSecListForLoadBalancerDelete(lb, logger, ctx, service, name)
 		if err != nil {
 			errorType = util.GetError(err)
 			lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
-			metrics.SendMetricData(cp.metricPusher, metrics.LBDelete, time.Since(startTime).Seconds(), lbMetricDimension, id)
+			dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
+			metrics.SendMetricData(cp.metricPusher, metrics.LBDelete, time.Since(startTime).Seconds(), dimensionsMap)
 			return err
 		}
 	}
@@ -848,7 +871,8 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 		errorType = util.GetError(err)
 		lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
 		logger.With(zap.Error(err)).Error("Failed to delete loadbalancer")
-		metrics.SendMetricData(cp.metricPusher, metrics.LBDelete, time.Since(startTime).Seconds(), lbMetricDimension, id)
+		dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
+		metrics.SendMetricData(cp.metricPusher, metrics.LBDelete, time.Since(startTime).Seconds(), dimensionsMap)
 		return errors.Wrapf(err, "delete load balancer %q", id)
 	}
 	_, err = cp.client.LoadBalancer().AwaitWorkRequest(ctx, workReqID)
@@ -856,13 +880,15 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 		logger.With(zap.Error(err)).Error("Timeout waiting for loadbalancer delete")
 		errorType = util.GetError(err)
 		lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
-		metrics.SendMetricData(cp.metricPusher, metrics.LBDelete, time.Since(startTime).Seconds(), lbMetricDimension, id)
+		dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
+		metrics.SendMetricData(cp.metricPusher, metrics.LBDelete, time.Since(startTime).Seconds(), dimensionsMap)
 		return errors.Wrapf(err, "awaiting deletion of load balancer %q", name)
 	}
 
 	logger.Info("Deleted load balancer")
 	lbMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.LoadBalancerType)
-	metrics.SendMetricData(cp.metricPusher, metrics.LBDelete, time.Since(startTime).Seconds(), lbMetricDimension, id)
+	dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
+	metrics.SendMetricData(cp.metricPusher, metrics.LBDelete, time.Since(startTime).Seconds(), dimensionsMap)
 
 	return nil
 }

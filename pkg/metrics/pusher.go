@@ -156,16 +156,13 @@ func (p *MetricPusher) sendMetricData(name string, value float64, dimensions map
 }
 
 // SendMetricData is used to send the metric
-func SendMetricData(metricPusher *MetricPusher, metric string, value float64, component, resourceOCID string) {
+func SendMetricData(metricPusher *MetricPusher, metric string, value float64, dimensionsMap map[string]string) {
 	if metricPusher == nil {
 		return
 	}
 
 	// in case of empty dimension value, fill it with unknown
-	dimensions := prepareDimensions(map[string]string{
-		"component":    component,
-		"resourceOCID": resourceOCID,
-	})
+	dimensions := prepareDimensions(dimensionsMap)
 	metricPusher.sendMetricData(metric, value, dimensions)
 }
 
