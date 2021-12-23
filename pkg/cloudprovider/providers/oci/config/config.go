@@ -15,9 +15,10 @@
 package config
 
 import (
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 	"io"
 	"os"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 
 	"github.com/oracle/oci-go-sdk/v31/common"
 	"github.com/oracle/oci-go-sdk/v31/common/auth"
@@ -180,6 +181,8 @@ func (c *AuthConfig) Complete() {
 func (c *Config) Complete() {
 	if c.LoadBalancer != nil {
 		c.LoadBalancer.Complete()
+	} else {
+		c.LoadBalancer = &LoadBalancerConfig{Disabled: true}
 	}
 	c.Auth.Complete()
 	// Ensure backwards compatibility fields are set correctly.
