@@ -455,11 +455,13 @@ func (j *PVCTestJig) NewPodForCSI(name string, namespace string, claimName strin
 
 // NewPodForCSIFSSWrite returns the CSI Fss template for this jig,
 // creates the Pod. Attaches PVC to the Pod which is created by CSI Fss. It does not have a node selector unlike the default pod template.
-func (j *PVCTestJig) NewPodForCSIFSSWrite(name string, namespace string, claimName string, fileName string) string {
+func (j *PVCTestJig) NewPodForCSIFSSWrite(name string, namespace string, claimName string, fileName string, encryptionEnabled bool) string {
 	By("Creating a pod with the claiming PVC created by CSI")
 
 	nodeSelectorMap := make(map[string]string)
-	nodeSelectorMap["oke.oraclecloud.com/e2e.oci-fss-util"] = "installed"
+	if encryptionEnabled {
+		nodeSelectorMap["oke.oraclecloud.com/e2e.oci-fss-util"] = "installed"
+	}
 	command := fmt.Sprintf("while true; do echo %s >> /data/%s; sleep 5; done", name, fileName)
 	pod, err := j.KubeClient.CoreV1().Pods(namespace).Create(context.Background(), &v1.Pod{
 		TypeMeta: metav1.TypeMeta{
@@ -514,11 +516,13 @@ func (j *PVCTestJig) NewPodForCSIFSSWrite(name string, namespace string, claimNa
 // NewPodForCSIFSSRead returns the CSI Fss read pod template for this jig,
 // creates the Pod. Attaches PVC to the Pod which is created by CSI Fss. It does not have a node selector unlike the default pod template.
 // It does a grep on the file with string matchString and goes to completion with an exit code either 0 or 1.
-func (j *PVCTestJig) NewPodForCSIFSSRead(matchString string, namespace string, claimName string, fileName string) {
+func (j *PVCTestJig) NewPodForCSIFSSRead(matchString string, namespace string, claimName string, fileName string, encryptionEnabled bool) {
 	By("Creating a pod with the claiming PVC created by CSI")
 
 	nodeSelectorMap := make(map[string]string)
-	nodeSelectorMap["oke.oraclecloud.com/e2e.oci-fss-util"] = "installed"
+	if encryptionEnabled {
+		nodeSelectorMap["oke.oraclecloud.com/e2e.oci-fss-util"] = "installed"
+	}
 	command := fmt.Sprintf("grep -q -i %s /data/%s; exit $?", matchString, fileName)
 	pod, err := j.KubeClient.CoreV1().Pods(namespace).Create(context.Background(), &v1.Pod{
 		TypeMeta: metav1.TypeMeta{
@@ -832,7 +836,7 @@ func (j *PVCTestJig) CheckSinglePodReadWrite(namespace string, pvcName string, c
 	By("Creating Pod that can create and write to the file")
 	uid := uuid.NewUUID()
 	fileName := fmt.Sprintf("out_%s.txt", uid)
-	podName := j.NewPodForCSIFSSWrite(string(uid), namespace, pvcName, fileName)
+	podName := j.NewPodForCSIFSSWrite(string(uid), namespace, pvcName, fileName, checkEncryption)
 	time.Sleep(30 * time.Second) //waiting for pod to become up and running
 
 	if checkEncryption {
@@ -844,7 +848,7 @@ func (j *PVCTestJig) CheckSinglePodReadWrite(namespace string, pvcName string, c
 	j.checkFileExists(namespace, podName, "/data", fileName)
 
 	By("Creating Pod that can read contents of existing file")
-	j.NewPodForCSIFSSRead(string(uid), namespace, pvcName, fileName)
+	j.NewPodForCSIFSSRead(string(uid), namespace, pvcName, fileName, checkEncryption)
 }
 
 func (j *PVCTestJig) CheckMultiplePodReadWrite(namespace string, pvcName string, checkEncryption bool) {
@@ -852,7 +856,7 @@ func (j *PVCTestJig) CheckMultiplePodReadWrite(namespace string, pvcName string,
 	fileName := fmt.Sprintf("out_%s.txt", uid)
 	By("Creating Pod that can create and write to the file")
 	uuid1 := uuid.NewUUID()
-	podName1 := j.NewPodForCSIFSSWrite(string(uuid1), namespace, pvcName, fileName)
+	podName1 := j.NewPodForCSIFSSWrite(string(uuid1), namespace, pvcName, fileName, checkEncryption)
 	time.Sleep(30 * time.Second) //waiting for pod to become up and running
 
 	By("check if the file exists")
@@ -865,7 +869,7 @@ func (j *PVCTestJig) CheckMultiplePodReadWrite(namespace string, pvcName string,
 
 	By("Creating Pod that can create and write to the file")
 	uuid2 := uuid.NewUUID()
-	podName2 := j.NewPodForCSIFSSWrite(string(uuid2), namespace, pvcName, fileName)
+	podName2 := j.NewPodForCSIFSSWrite(string(uuid2), namespace, pvcName, fileName, checkEncryption)
 	time.Sleep(30 * time.Second) //waiting for pod to become up and running
 
 	if checkEncryption {
@@ -874,10 +878,10 @@ func (j *PVCTestJig) CheckMultiplePodReadWrite(namespace string, pvcName string,
 	}
 
 	By("Creating Pod that can read contents of existing file")
-	j.NewPodForCSIFSSRead(string(uuid1), namespace, pvcName, fileName)
+	j.NewPodForCSIFSSRead(string(uuid1), namespace, pvcName, fileName, checkEncryption)
 
 	By("Creating Pod that can read contents of existing file")
-	j.NewPodForCSIFSSRead(string(uuid2), namespace, pvcName, fileName)
+	j.NewPodForCSIFSSRead(string(uuid2), namespace, pvcName, fileName, checkEncryption)
 }
 
 func (j *PVCTestJig) CheckDataPersistenceWithDeployment(pvcName string, ns string){
