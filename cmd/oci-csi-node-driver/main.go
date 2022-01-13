@@ -16,12 +16,16 @@ package main
 
 import (
 	"flag"
+
+	"github.com/spf13/viper"
+	"go.uber.org/zap/zapcore"
+	"k8s.io/klog"
+
 	"github.com/oracle/oci-cloud-controller-manager/cmd/oci-csi-node-driver/nodedriver"
 	"github.com/oracle/oci-cloud-controller-manager/cmd/oci-csi-node-driver/nodedriveroptions"
 	"github.com/oracle/oci-cloud-controller-manager/cmd/oci-csi-node-driver/nodedriverregistrar"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/csi/driver"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util/signals"
-	"k8s.io/klog"
 )
 
 func main() {
@@ -43,6 +47,8 @@ func main() {
 	klog.InitFlags(nil)
 	flag.Set("logtostderr", "true")
 	flag.Parse()
+
+	viper.Set("log-level", getLevel(nodecsioptions.LogLevel))
 
 	blockvolumeNodeOptions := nodedriveroptions.NodeOptions{
 		Name:                   "BV",
@@ -71,4 +77,25 @@ func main() {
 		go nodedriver.RunNodeDriver(fssNodeOptions, stopCh)
 	}
 	<-stopCh
+}
+
+func getLevel(loglevel string) int8 {
+	switch loglevel {
+	case "debug":
+		return int8(zapcore.DebugLevel)
+	case "info":
+		return int8(zapcore.InfoLevel)
+	case "warn":
+		return int8(zapcore.WarnLevel)
+	case "error":
+		return int8(zapcore.ErrorLevel)
+	case "dpanic":
+		return int8(zapcore.DPanicLevel)
+	case "panic":
+		return int8(zapcore.PanicLevel)
+	case "fatal":
+		return int8(zapcore.FatalLevel)
+	default:
+		return int8(zapcore.InfoLevel)
+	}
 }

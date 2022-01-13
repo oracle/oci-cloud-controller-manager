@@ -42,6 +42,7 @@ const (
 
 	ClassOCI          = "oci"
 	ClassOCICSI       = "oci-bv"
+	ClassOCICSIExpand = "oci-bv-expand"
 	ClassOCIExt3      = "oci-ext3"
 	ClassOCIMntFss    = "oci-fss-mnt"
 	ClassOCISubnetFss = "oci-fss-subnet"

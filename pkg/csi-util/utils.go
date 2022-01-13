@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
-
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	kubeAPI "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -24,6 +24,18 @@ import (
 )
 
 const (
+	// minimumVolumeSizeInBytes is used to validate that the user is not trying
+	// to create a volume that is smaller than what we support
+	MinimumVolumeSizeInBytes int64 = 50 * client.GiB
+
+	// maximumVolumeSizeInBytes is used to validate that the user is not trying
+	// to create a volume that is larger than what we support
+	MaximumVolumeSizeInBytes int64 = 32 * client.TiB
+
+	// defaultVolumeSizeInBytes is used when the user did not provide a size or
+	// the size they provided did not satisfy our requirements
+	defaultVolumeSizeInBytes int64 = MinimumVolumeSizeInBytes
+
 	waitForPathDelay = 1 * time.Second
 
 	// ociVolumeBackupID is the name of the oci volume backup id annotation.
@@ -253,4 +265,65 @@ func (vl *VolumeLocks) Release(volumeID string) {
 	vl.mux.Lock()
 	defer vl.mux.Unlock()
 	vl.locks.Delete(volumeID)
+}
+
+// extractStorage extracts the storage size in bytes from the given capacity
+// range. If the capacity range is not satisfied it returns the default volume
+// size. If the capacity range is below or above supported sizes, it returns an
+// error.
+func ExtractStorage(capRange *csi.CapacityRange) (int64, error) {
+	if capRange == nil {
+		return defaultVolumeSizeInBytes, nil
+	}
+
+	requiredBytes := capRange.GetRequiredBytes()
+	requiredSet := 0 < requiredBytes
+	limitBytes := capRange.GetLimitBytes()
+	limitSet := 0 < limitBytes
+
+	if !requiredSet && !limitSet {
+		return defaultVolumeSizeInBytes, nil
+	}
+
+	if requiredSet && limitSet && limitBytes < requiredBytes {
+		return 0, fmt.Errorf("limit (%v) can not be less than required (%v) size", FormatBytes(limitBytes), FormatBytes(requiredBytes))
+	}
+
+	if requiredSet && !limitSet {
+		return MaxOfInt(requiredBytes, MinimumVolumeSizeInBytes), nil
+	}
+
+	if limitSet {
+		return MaxOfInt(limitBytes, MinimumVolumeSizeInBytes), nil
+	}
+
+	if requiredSet && requiredBytes > MaximumVolumeSizeInBytes {
+		return 0, fmt.Errorf("required (%v) can not exceed maximum supported volume size (%v)", FormatBytes(requiredBytes), FormatBytes(MaximumVolumeSizeInBytes))
+	}
+
+	if !requiredSet && limitSet && limitBytes > MaximumVolumeSizeInBytes {
+		return 0, fmt.Errorf("limit (%v) can not exceed maximum supported volume size (%v)", FormatBytes(limitBytes), FormatBytes(MaximumVolumeSizeInBytes))
+	}
+
+	if requiredSet && limitSet {
+		return MaxOfInt(requiredBytes, limitBytes), nil
+	}
+
+	if requiredSet {
+		return requiredBytes, nil
+	}
+
+	if limitSet {
+		return limitBytes, nil
+	}
+
+	return defaultVolumeSizeInBytes, nil
+}
+
+func RoundUpSize(volumeSizeBytes int64, allocationUnitBytes int64) int64 {
+	return (volumeSizeBytes + allocationUnitBytes - 1) / allocationUnitBytes
+}
+
+func RoundUpMinSize() int64 {
+	return RoundUpSize(MinimumVolumeSizeInBytes, 1*client.GiB)
 }

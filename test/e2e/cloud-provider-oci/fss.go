@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	. "github.com/onsi/ginkgo"
 	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -74,7 +75,7 @@ var _ = Describe("Multiple Pods FSS test", func() {
 
 func checkNodeAvailability(f *framework.CloudProviderFramework){
 	pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-e2e-test")
-	nodeList, err := pvcJig.KubeClient.CoreV1().Nodes().List(v12.ListOptions{LabelSelector: "oke.oraclecloud.com/e2e.oci-fss-util"})
+	nodeList, err := pvcJig.KubeClient.CoreV1().Nodes().List(context.Background(),v12.ListOptions{LabelSelector: "oke.oraclecloud.com/e2e.oci-fss-util"})
 	if err != nil {
 		framework.Logf("Error getting applicable nodes: %v", err)
 	}

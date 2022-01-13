@@ -2,6 +2,7 @@ package driver
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -80,7 +81,29 @@ func (c *MockBlockStorageClient) AwaitVolumeAvailableORTimeout(ctx context.Conte
 }
 
 func (c *MockBlockStorageClient) GetVolume(ctx context.Context, id string) (*core.Volume, error) {
-	return nil, nil
+	if id == "invalid_volume_id"{
+		return nil, fmt.Errorf("failed to find existence of volume")
+	} else if id == "valid_volume_id"{
+		ad := "zkJl:US-ASHBURN-AD-1"
+		var oldSizeInBytes int64 = int64(csi_util.MaximumVolumeSizeInBytes)
+		oldSizeInGB := csi_util.RoundUpSize(oldSizeInBytes, 1*client.GiB)
+		return &core.Volume{
+			Id:                 &id,
+			AvailabilityDomain: &ad,
+			SizeInGBs: &oldSizeInGB,
+		}, nil
+	} else if id == "valid_volume_id_valid_old_size_fail"{
+		ad := "zkJl:US-ASHBURN-AD-1"
+		var oldSizeInBytes int64 = 2147483648
+		oldSizeInGB := csi_util.RoundUpSize(oldSizeInBytes, 1*client.GiB)
+		return &core.Volume{
+			Id:                 &id,
+			AvailabilityDomain: &ad,
+			SizeInGBs: &oldSizeInGB,
+		}, nil
+	} else{
+		return nil, nil
+	}
 }
 
 func (c *MockBlockStorageClient) GetVolumesByName(ctx context.Context, volumeName, compartmentID string) ([]core.Volume, error) {
@@ -95,6 +118,18 @@ func (c *MockBlockStorageClient) CreateVolume(ctx context.Context, details core.
 		Id:                 &id,
 		AvailabilityDomain: &ad,
 	}, nil
+}
+
+func (c *MockBlockStorageClient) UpdateVolume(ctx context.Context, volumeId string, details core.UpdateVolumeDetails) (*core.Volume, error) {
+	if volumeId == "valid_volume_id_valid_old_size_fail" {
+		return nil, fmt.Errorf("Update volume failed")
+	} else {
+		ad := "zkJl:US-ASHBURN-AD-1"
+		return &core.Volume{
+			Id:                 &volumeId,
+			AvailabilityDomain: &ad,
+		}, nil
+	}
 }
 
 // DeleteVolume mocks the BlockStorage DeleteVolume implementation
@@ -465,8 +500,8 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 						},
 					}},
 					CapacityRange: &csi.CapacityRange{
-						RequiredBytes: int64(maximumVolumeSizeInBytes) + int64(1024),
-						LimitBytes:    minimumVolumeSizeInBytes,
+						RequiredBytes: int64(csi_util.MaximumVolumeSizeInBytes) + int64(1024),
+						LimitBytes:    csi_util.MinimumVolumeSizeInBytes,
 					},
 				},
 			},
@@ -487,7 +522,7 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 							},
 						}},
 					CapacityRange: &csi.CapacityRange{
-						RequiredBytes: int64(maximumVolumeSizeInBytes),
+						RequiredBytes: int64(csi_util.MaximumVolumeSizeInBytes),
 					},
 					AccessibilityRequirements: &csi.TopologyRequirement{Requisite: []*csi.Topology{
 						{
@@ -587,6 +622,123 @@ func TestControllerDriver_DeleteVolume(t *testing.T) {
 	}
 }
 
+func TestControllerDriver_ControllerExpandVolume(t *testing.T) {
+	type fields struct {
+		KubeClient kubernetes.Interface
+		logger     *zap.SugaredLogger
+		config     *providercfg.Config
+		client     client.Interface
+		util       *csi_util.Util
+	}
+	type args struct {
+		ctx context.Context
+		req *csi.ControllerExpandVolumeRequest
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    *csi.ControllerExpandVolumeResponse
+		wantErr error
+	}{
+		{
+			name:   "Error for volume OCID missing in controller expand volume",
+			fields: fields{},
+			args: args{
+				ctx: nil,
+				req: &csi.ControllerExpandVolumeRequest{
+					VolumeId: "",
+				},
+			},
+			want:    nil,
+			wantErr: errors.New("UpdateVolume volumeId must be provided"),
+		},
+		{
+			name:   "Error for invalid capacity range in ControllerExpandVolume",
+			fields: fields{},
+			args: args{
+				ctx: nil,
+				req: &csi.ControllerExpandVolumeRequest{
+					VolumeId: "oc1.volume1.xxxx",
+					CapacityRange: &csi.CapacityRange{
+						RequiredBytes: int64(csi_util.MaximumVolumeSizeInBytes) + int64(1024),
+						LimitBytes:    csi_util.MinimumVolumeSizeInBytes,
+					},
+				},
+			},
+			want:    nil,
+			wantErr: errors.New("invalid capacity range"),
+		},
+		{
+			name:   "Error for invalid Volume ID in ControllerExpandVolume",
+			fields: fields{},
+			args: args{
+				ctx: nil,
+				req: &csi.ControllerExpandVolumeRequest{
+					VolumeId: "invalid_volume_id",
+					CapacityRange: &csi.CapacityRange{
+						RequiredBytes: int64(csi_util.MaximumVolumeSizeInBytes),
+					},
+				},
+			},
+			want:    nil,
+			wantErr: errors.New("failed to check existence of volume"),
+		},
+		{
+			name:   "Error for new size not greater than old size in ControllerExpandVolume",
+			fields: fields{},
+			args: args{
+				ctx: nil,
+				req: &csi.ControllerExpandVolumeRequest{
+					VolumeId: "valid_volume_id",
+					CapacityRange: &csi.CapacityRange{
+						RequiredBytes: int64(csi_util.MaximumVolumeSizeInBytes),
+					},
+				},
+			},
+			want:    nil,
+			wantErr: errors.New("Volume size cannot be decreased. Please give a size greater than"),
+		},
+
+		{
+			name:   "Error for update Volume fail for ControllerExpandVolume",
+			fields: fields{},
+			args: args{
+				ctx: nil,
+				req: &csi.ControllerExpandVolumeRequest{
+					VolumeId: "valid_volume_id_valid_old_size_fail",
+					CapacityRange: &csi.CapacityRange{
+						RequiredBytes: int64(csi_util.MaximumVolumeSizeInBytes),
+					},
+				},
+			},
+			want:    nil,
+			wantErr: errors.New("Update volume failed"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := &ControllerDriver{
+				KubeClient: nil,
+				logger:     zap.S(),
+				config:     &providercfg.Config{CompartmentID: ""},
+				client:     NewClientProvisioner(nil, &MockBlockStorageClient{}),
+				util:       &csi_util.Util{},
+			}
+			got, err := d.ControllerExpandVolume(tt.args.ctx, tt.args.req)
+			if tt.wantErr == nil && err != nil {
+				t.Errorf("got error %q, want none", err)
+			}
+			if tt.wantErr != nil && !strings.Contains(err.Error(), tt.wantErr.Error()) {
+				t.Errorf("want error %q to include %q", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ControllerDriver.ControllerExpandVolume() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func Test_extractStorage(t *testing.T) {
 	type args struct {
 		capRange *csi.CapacityRange
@@ -641,7 +793,7 @@ func Test_extractStorage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := extractStorage(tt.args.capRange)
+			got, err := csi_util.ExtractStorage(tt.args.capRange)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("extractStorage() error = %v, wantErr %v", err, tt.wantErr)
 				return

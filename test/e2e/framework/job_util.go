@@ -1,6 +1,7 @@
 package framework
 
 import (
+	"context"
 	"fmt"
 	v1 "k8s.io/api/batch/v1"
 	v12 "k8s.io/api/core/v1"
@@ -13,7 +14,7 @@ var ErrJobFailed = fmt.Errorf("Job failed")
 
 //Creates a new job which will run a pod with the centos container running the given script
 func (j *ServiceTestJig) CreateJobRunningScript(ns string, script string, backOffLimit int32, name string){
-	job, err := j.Client.BatchV1().Jobs(ns).Create(&v1.Job{
+	job, err := j.Client.BatchV1().Jobs(ns).Create(context.Background(), &v1.Job{
 		TypeMeta: metav1.TypeMeta{
 			Kind: "Job",
 			APIVersion: "v1",
@@ -38,7 +39,7 @@ func (j *ServiceTestJig) CreateJobRunningScript(ns string, script string, backOf
 			},
 			BackoffLimit: &backOffLimit,
 		},
-	})
+	}, metav1.CreateOptions{})
 	if err!= nil{
 		Failf("Error creating job: %v", err)
 	}
@@ -54,7 +55,7 @@ func (j *ServiceTestJig) waitTimeoutForJobCompletedInNamespace(jobName, namespac
 
 func (j *ServiceTestJig) jobCompleted(jobName, namespace string) wait.ConditionFunc {
 	return func() (bool, error) {
-		job, err := j.Client.BatchV1().Jobs(namespace).Get(jobName,metav1.GetOptions{})
+		job, err := j.Client.BatchV1().Jobs(namespace).Get(context.Background(),jobName,metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}

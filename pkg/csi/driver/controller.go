@@ -25,18 +25,6 @@ import (
 )
 
 const (
-	// minimumVolumeSizeInBytes is used to validate that the user is not trying
-	// to create a volume that is smaller than what we support
-	minimumVolumeSizeInBytes int64 = 50 * client.GiB
-
-	// maximumVolumeSizeInBytes is used to validate that the user is not trying
-	// to create a volume that is larger than what we support
-	maximumVolumeSizeInBytes int64 = 32 * client.TiB
-
-	// defaultVolumeSizeInBytes is used when the user did not provide a size or
-	// the size they provided did not satisfy our requirements
-	defaultVolumeSizeInBytes int64 = minimumVolumeSizeInBytes
-
 	// Prefix to apply to the name of a created volume. This should be the same as the option '--volume-name-prefix' of csi-provisioner.
 	pvcPrefix = "csi"
 	csiDriver = "csi"
@@ -147,7 +135,7 @@ func (d *ControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolu
 		return nil, status.Error(codes.InvalidArgument, "invalid volume capabilities requested. Only SINGLE_NODE_WRITER is supported ('accessModes.ReadWriteOnce' on Kubernetes)")
 	}
 
-	size, err := extractStorage(req.CapacityRange)
+	size, err := csi_util.ExtractStorage(req.CapacityRange)
 	if err != nil {
 		return nil, status.Errorf(codes.OutOfRange, "invalid capacity range: %v", err)
 	}
@@ -660,6 +648,7 @@ func (d *ControllerDriver) ControllerGetCapabilities(ctx context.Context, req *c
 	for _, cap := range []csi.ControllerServiceCapability_RPC_Type{
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 		csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
+		csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
 	} {
 		caps = append(caps, newCap(cap))
 	}
@@ -669,59 +658,6 @@ func (d *ControllerDriver) ControllerGetCapabilities(ctx context.Context, req *c
 	}
 
 	return resp, nil
-}
-
-// extractStorage extracts the storage size in bytes from the given capacity
-// range. If the capacity range is not satisfied it returns the default volume
-// size. If the capacity range is below or above supported sizes, it returns an
-// error.
-func extractStorage(capRange *csi.CapacityRange) (int64, error) {
-	if capRange == nil {
-		return defaultVolumeSizeInBytes, nil
-	}
-
-	requiredBytes := capRange.GetRequiredBytes()
-	requiredSet := 0 < requiredBytes
-	limitBytes := capRange.GetLimitBytes()
-	limitSet := 0 < limitBytes
-
-	if !requiredSet && !limitSet {
-		return defaultVolumeSizeInBytes, nil
-	}
-
-	if requiredSet && limitSet && limitBytes < requiredBytes {
-		return 0, fmt.Errorf("limit (%v) can not be less than required (%v) size", csi_util.FormatBytes(limitBytes), csi_util.FormatBytes(requiredBytes))
-	}
-
-	if requiredSet && !limitSet {
-		return csi_util.MaxOfInt(requiredBytes, minimumVolumeSizeInBytes), nil
-	}
-
-	if limitSet {
-		return csi_util.MaxOfInt(limitBytes, minimumVolumeSizeInBytes), nil
-	}
-
-	if requiredSet && requiredBytes > maximumVolumeSizeInBytes {
-		return 0, fmt.Errorf("required (%v) can not exceed maximum supported volume size (%v)", csi_util.FormatBytes(requiredBytes), csi_util.FormatBytes(maximumVolumeSizeInBytes))
-	}
-
-	if !requiredSet && limitSet && limitBytes > maximumVolumeSizeInBytes {
-		return 0, fmt.Errorf("limit (%v) can not exceed maximum supported volume size (%v)", csi_util.FormatBytes(limitBytes), csi_util.FormatBytes(maximumVolumeSizeInBytes))
-	}
-
-	if requiredSet && limitSet {
-		return csi_util.MaxOfInt(requiredBytes, limitBytes), nil
-	}
-
-	if requiredSet {
-		return requiredBytes, nil
-	}
-
-	if limitSet {
-		return limitBytes, nil
-	}
-
-	return defaultVolumeSizeInBytes, nil
 }
 
 // validateCapabilities validates the requested capabilities. It returns false
@@ -772,15 +708,84 @@ func (d *ControllerDriver) ListSnapshots(ctx context.Context, req *csi.ListSnaps
 
 // ControllerExpandVolume returns ControllerExpandVolume request
 func (d *ControllerDriver) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "ControllerExpandVolume is not supported yet")
+	startTime := time.Now()
+	volumeId := req.GetVolumeId()
+	if volumeId == "" {
+		return nil, status.Error(codes.InvalidArgument, "UpdateVolume volumeId must be provided")
+	}
+	log := d.logger.With("volumeId", volumeId)
+	var errorType string
+	var csiMetricDimension string
+
+	dimensionsMap := make(map[string]string)
+	dimensionsMap[metrics.ResourceOCIDDimension] = req.VolumeId
+
+	newSize, err := csi_util.ExtractStorage(req.CapacityRange)
+	if err != nil {
+		log.Error("invalid capacity range: %v", err)
+		errorType = util.GetError(err)
+		csiMetricDimension = util.GetMetricDimensionForComponent(errorType, util.CSIStorageType)
+		dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
+		metrics.SendMetricData(d.metricPusher, metrics.PVExpand, time.Since(startTime).Seconds(), dimensionsMap)
+		return nil, status.Errorf(codes.OutOfRange, "invalid capacity range: %v", err)
+	}
+
+	//make sure this method is idempotent by checking existence of volume with same name.
+	volume, err := d.client.BlockStorage().GetVolume(context.Background(), volumeId)
+	if err != nil {
+		log.Error("Failed to find existence of volume %s", err)
+		errorType = util.GetError(err)
+		csiMetricDimension = util.GetMetricDimensionForComponent(errorType, util.CSIStorageType)
+		dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
+		metrics.SendMetricData(d.metricPusher, metrics.PVExpand, time.Since(startTime).Seconds(), dimensionsMap)
+		return nil, status.Errorf(codes.Internal, "failed to check existence of volume %v", err)
+	}
+
+	newSizeInGB := csi_util.RoundUpSize(newSize, 1*client.GiB)
+	oldSize := *volume.SizeInGBs
+
+	if newSizeInGB <= oldSize {
+		message := fmt.Sprintf("Volume size cannot be decreased. Please give a size greater than %v", *volume.SizeInGBs)
+		log.Error(message)
+		csiMetricDimension = util.GetMetricDimensionForComponent(util.ErrValidation, util.CSIStorageType)
+		dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
+		metrics.SendMetricData(d.metricPusher, metrics.PVExpand, time.Since(startTime).Seconds(), dimensionsMap)
+		return nil, status.Error(codes.OutOfRange, message)
+	}
+
+	updateVolumeDetails := core.UpdateVolumeDetails{
+		DisplayName:       volume.DisplayName,
+		SizeInGBs:         &newSizeInGB,
+	}
+
+	volume, err = d.client.BlockStorage().UpdateVolume(ctx, volumeId, updateVolumeDetails)
+
+	if err != nil {
+		message := fmt.Sprintf("Update volume failed %v", err)
+		log.Error(message)
+		errorType = util.GetError(err)
+		csiMetricDimension = util.GetMetricDimensionForComponent(errorType, util.CSIStorageType)
+		dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
+		metrics.SendMetricData(d.metricPusher, metrics.PVExpand, time.Since(startTime).Seconds(), dimensionsMap)
+		return nil, status.Error(codes.Internal, message)
+	}
+
+	log.With("volumeID", volumeId).Info("Volume is expanded.")
+	csiMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.CSIStorageType)
+	dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
+	metrics.SendMetricData(d.metricPusher, metrics.PVExpand, time.Since(startTime).Seconds(), dimensionsMap)
+
+	return &csi.ControllerExpandVolumeResponse{
+		CapacityBytes:         newSize,
+		NodeExpansionRequired: true,
+	}, nil
 }
 
 func provision(log *zap.SugaredLogger, c client.Interface, volName string, volSize int64, availDomainName, compartmentID, backupID, kmsKeyID string, timeout time.Duration, bvTags *config.TagConfig) (core.Volume, error) {
 
 	ctx := context.Background()
 
-	volSizeGB := roundUpSize(volSize, 1*client.GiB)
-	minSizeGB := roundUpSize(minimumVolumeSizeInBytes, 1*client.GiB)
+	volSizeGB, minSizeGB := csi_util.RoundUpSize(volSize, 1*client.GiB), csi_util.RoundUpMinSize()
 
 	if minSizeGB > volSizeGB {
 		volSizeGB = minSizeGB
@@ -819,10 +824,6 @@ func provision(log *zap.SugaredLogger, c client.Interface, volName string, volSi
 	}
 	log.With("volumeName", volName).Info("Volume is provisioned.")
 	return *newVolume, nil
-}
-
-func roundUpSize(volumeSizeBytes int64, allocationUnitBytes int64) int64 {
-	return (volumeSizeBytes + allocationUnitBytes - 1) / allocationUnitBytes
 }
 
 //We would derive whether the customer wants in-transit encryption or not based on if the node is launched using

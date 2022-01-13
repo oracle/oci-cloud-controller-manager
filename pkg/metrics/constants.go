@@ -16,6 +16,8 @@ const (
 	PVDetach = "PV_DETACH"
 	// PVDelete is the OCI metric suffix for PV delete
 	PVDelete= "PV_DELETE"
+	// PVProvision is the OCI metric suffix for PV provision
+	PVExpand = "PV_EXPAND"
 
     ResourceOCIDDimension = "resourceOCID"
 	ComponentDimension = "component"

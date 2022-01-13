@@ -22,10 +22,10 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/oracle/oci-cloud-controller-manager/pkg/util/mount"
-
 	"go.uber.org/zap"
 	"k8s.io/utils/exec"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util/mount"
 )
 
 const (
@@ -88,6 +88,12 @@ type Interface interface {
 	// UnmountPath is a common unmount routine that unmounts the given path and
 	// deletes the remaining directory if successful.
 	UnmountPath(path string) error
+
+	Resize(devicePath string, volumePath string) (bool, error)
+
+	Rescan(devicePath string) error
+
+	GetBlockSizeBytes(devicePath string) (int64, error)
 }
 
 // iSCSIMounter implements Interface.
@@ -371,6 +377,46 @@ func mnt(source string, target string, fstype string, options []string, sm *moun
 }
 func (c *iSCSIMounter) UnmountPath(path string) error {
 	return mount.UnmountPath(c.logger, path, c.mounter)
+}
+
+func (c *iSCSIMounter) Resize(devicePath string, volumePath string) (bool, error) {
+	safeMounter := &mount.SafeFormatAndMount{
+		Interface: c.mounter,
+		Runner:    c.runner,
+		Logger:    c.logger,
+	}
+	return resize(devicePath, volumePath, safeMounter)
+}
+
+func resize(devicePath string, volumePath string, sm *mount.SafeFormatAndMount) (bool, error) {
+	return sm.Resize(devicePath, volumePath)
+}
+
+
+func (c *iSCSIMounter) Rescan(devicePath string) error {
+	safeMounter := &mount.SafeFormatAndMount{
+		Interface: c.mounter,
+		Runner:    c.runner,
+		Logger:    c.logger,
+	}
+	return rescan(devicePath, safeMounter)
+}
+
+func rescan(devicePath string, sm *mount.SafeFormatAndMount) error {
+	return sm.Rescan(devicePath)
+}
+
+func (c *iSCSIMounter) GetBlockSizeBytes(devicePath string) (int64, error) {
+	safeMounter := &mount.SafeFormatAndMount{
+		Interface: c.mounter,
+		Runner:    c.runner,
+		Logger:    c.logger,
+	}
+	return getBlockSizeBytes(devicePath, safeMounter)
+}
+
+func getBlockSizeBytes(devicePath string, sm *mount.SafeFormatAndMount) (int64, error) {
+	return sm.GetBlockSizeBytes(devicePath)
 }
 
 // mountLister is a minimal subset of mount.Interface (used to enable testing).

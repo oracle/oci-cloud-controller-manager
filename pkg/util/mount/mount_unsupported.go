@@ -63,6 +63,26 @@ func (mounter *SafeFormatAndMount) diskLooksUnformatted(disk string) (bool, erro
 	return true, nil
 }
 
+func (mounter *SafeFormatAndMount) resize(devicePath string, volumePath string) (bool, error) {
+	return true, nil
+}
+
+func (mounter *SafeFormatAndMount) extResize(devicePath string) (bool, error) {
+	return true, nil
+}
+
+func (mounter *SafeFormatAndMount) xfsResize(deviceMountPath string) (bool, error) {
+	return true, nil
+}
+
+func (mounter *SafeFormatAndMount) rescan(devicePath string) error {
+	return nil
+}
+
+func (mounter *SafeFormatAndMount) getBlockSizeBytes(devicePath string) (int64, error) {
+	return 0, nil
+}
+
 func IsNotMountPoint(mounter Interface, file string) (bool, error) {
 	return true, nil
 }

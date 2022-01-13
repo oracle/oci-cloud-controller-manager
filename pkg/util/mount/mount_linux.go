@@ -572,3 +572,106 @@ func (mounter *SafeFormatAndMount) getDiskFormat(disk string) (string, error) {
 
 	return fstype, nil
 }
+
+func (mounter *SafeFormatAndMount) resize(devicePath string, volumePath string) (bool, error) {
+	format, err := mounter.getDiskFormat(devicePath)
+
+	if err != nil {
+		formatErr := fmt.Errorf("error checking format for device %s: %v", devicePath, err)
+		return false, formatErr
+	}
+
+	// If disk has no format, there is no need to resize the disk because mkfs.*
+	// by default will use whole disk anyways.
+	if format == "" {
+		return false, nil
+	}
+
+	mounter.Logger.With("devicePath", devicePath).Infof("Expanding mounted volume")
+	switch format {
+	case "ext3", "ext4":
+		return mounter.extResize(devicePath)
+	case "xfs":
+		return mounter.xfsResize(volumePath)
+	}
+	return false, fmt.Errorf("resize of format %s is not supported for device %s mounted at %s", format, devicePath, volumePath)
+}
+
+func (mounter *SafeFormatAndMount) extResize(devicePath string) (bool, error) {
+	cmd := mounter.Runner.Command("resize2fs", devicePath)
+	output, err := cmd.CombinedOutput()
+	if err == nil {
+		mounter.Logger.With("devicePath", devicePath).Infof("Device resized successfully")
+		return true, nil
+	}
+
+	resizeError := fmt.Errorf("resize of device %s failed: %v. resize2fs output: %s", devicePath, err, string(output))
+	return false, resizeError
+
+}
+
+func (mounter *SafeFormatAndMount) xfsResize(deviceMountPath string) (bool, error) {
+	args := []string{"-d", deviceMountPath}
+	cmd := mounter.Runner.Command("xfs_growfs", args...)
+	output, err := cmd.CombinedOutput()
+	if err == nil {
+		mounter.Logger.With("deviceMountPath", deviceMountPath).Infof("Device %s resized successfully")
+		return true, nil
+	}
+
+	resizeError := fmt.Errorf("resize of device %s failed: %v. xfs_growfs output: %s", deviceMountPath, err, string(output))
+	return false, resizeError
+}
+
+func (mounter *SafeFormatAndMount) rescan(devicePath string) error {
+
+	lsblkargs := []string{"-n", "-o", "NAME", devicePath}
+	lsblkcmd := mounter.Runner.Command("lsblk", lsblkargs...)
+	lsblkoutput, err := lsblkcmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("Failed to find device name associated with devicePath %s", devicePath)
+	}
+	deviceName := strings.TrimSpace(string(lsblkoutput))
+	if strings.HasPrefix(deviceName, "/dev/") {
+		deviceName = strings.TrimPrefix(deviceName, "/dev/")
+	}
+	mounter.Logger.With("deviceName", deviceName).Info("Rescanning")
+
+	// run command dd iflag=direct if=/dev/<device_name> of=/dev/null count=1
+	// https://docs.oracle.com/en-us/iaas/Content/Block/Tasks/rescanningdisk.htm#Rescanni
+	devicePathFileArg := fmt.Sprintf("if=%s", devicePath)
+	args := []string{"iflag=direct", devicePathFileArg, "of=/dev/null", "count=1"}
+	cmd := mounter.Runner.Command("dd", args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("command failed: %v\narguments: %s\nOutput: %v\n", err, "dd", string(output))
+	}
+	mounter.Logger.With("command", "dd", "output", string(output)).Debug("dd output")
+	// run command echo 1 | tee /sys/class/block/%s/device/rescan
+	// https://docs.oracle.com/en-us/iaas/Content/Block/Tasks/rescanningdisk.htm#Rescanni
+	cmdStr := fmt.Sprintf("echo 1 | tee /sys/class/block/%s/device/rescan", deviceName)
+	cmd = mounter.Runner.Command("bash", "-c", cmdStr)
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("command failed: %v\narguments: %s\nOutput: %v\n", err, cmdStr, string(output))
+	}
+	mounter.Logger.With("command", cmdStr, "output", string(output)).Debug("rescan output")
+
+	return nil
+}
+
+func (mounter *SafeFormatAndMount) getBlockSizeBytes(devicePath string) (int64, error) {
+	args := []string{"--getsize64", devicePath}
+	cmd := mounter.Runner.Command("blockdev", args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return -1, fmt.Errorf("command failed: %v\narguments: %s\nOutput: %v\n", err, "blockdev", string(output))
+	}
+	strOut := strings.TrimSpace(string(output))
+	mounter.Logger.With("devicePath", devicePath, "command", "blockdev", "output", strOut).Debugf("Get block device size in bytes successful")
+	gotSizeBytes, err := strconv.ParseInt(strOut, 10, 64)
+	if err != nil {
+		return -1, fmt.Errorf("failed to parse size %s into an int64 size", strOut)
+	}
+	return gotSizeBytes, nil
+}

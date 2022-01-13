@@ -54,6 +54,7 @@ type BlockStorageInterface interface {
 	DeleteVolume(ctx context.Context, id string) error
 	GetVolume(ctx context.Context, id string) (*core.Volume, error)
 	GetVolumesByName(ctx context.Context, volumeName, compartmentID string) ([]core.Volume, error)
+	UpdateVolume(ctx context.Context, volumeId string, details core.UpdateVolumeDetails) (*core.Volume, error)
 }
 
 func (c *client) GetVolume(ctx context.Context, id string) (*core.Volume, error) {
@@ -117,6 +118,28 @@ func (c *client) CreateVolume(ctx context.Context, details core.CreateVolumeDeta
 			"CompartmentId", *(details.CompartmentId), "VolumeName", *(details.DisplayName),
 			"OpcRequestId",*(resp.OpcRequestId))
 		logger.Info("OPC Request ID recorded while creating volume.")
+	} else  {
+		return nil, errors.WithStack(err)
+	}
+	return &resp.Volume, nil
+}
+
+func (c *client) UpdateVolume(ctx context.Context, volumeId string, details core.UpdateVolumeDetails) (*core.Volume, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return nil, RateLimitError(true, "UpdateVolume")
+	}
+
+	resp, err := c.bs.UpdateVolume(ctx, core.UpdateVolumeRequest{
+		VolumeId:            &volumeId,
+		UpdateVolumeDetails: details,
+		RequestMetadata:     c.requestMetadata,
+	})
+	incRequestCounter(err, createVerb, volumeResource)
+
+	if err == nil {
+		logger := c.logger.With("VolumeName", *(details.DisplayName),
+			"OpcRequestId",*(resp.OpcRequestId))
+		logger.Info("OPC Request ID recorded while updating volume.")
 	} else  {
 		return nil, errors.WithStack(err)
 	}

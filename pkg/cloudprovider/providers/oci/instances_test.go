@@ -20,7 +20,10 @@ import (
 	"reflect"
 	"testing"
 
+	"go.uber.org/zap"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
@@ -30,9 +33,6 @@ import (
 	"github.com/oracle/oci-go-sdk/v31/filestorage"
 	"github.com/oracle/oci-go-sdk/v31/identity"
 	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
-	"go.uber.org/zap"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
 )
 
 var (
@@ -484,6 +484,10 @@ func (MockBlockStorageClient) AwaitVolumeAvailableORTimeout(ctx context.Context,
 }
 
 func (MockBlockStorageClient) CreateVolume(ctx context.Context, details core.CreateVolumeDetails) (*core.Volume, error) {
+	return nil, nil
+}
+
+func (c MockBlockStorageClient) UpdateVolume(ctx context.Context, volumeId string, details core.UpdateVolumeDetails) (*core.Volume, error) {
 	return nil, nil
 }
 

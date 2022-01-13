@@ -7,10 +7,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/pointer"
 	"time"
+	"context"
 )
 
 func (j *PVCTestJig) createDeploymentOnNodeAndWait(command string, pvcName string, ns string, name string, replicas int32, nodeSelectorLabels map[string]string) string{
-	deployment, err := j.KubeClient.AppsV1().Deployments(ns).Create(&appsv1.Deployment{
+	deployment, err := j.KubeClient.AppsV1().Deployments(ns).Create(context.Background(), &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
@@ -56,7 +57,7 @@ func (j *PVCTestJig) createDeploymentOnNodeAndWait(command string, pvcName strin
 				},
 			},
 		},
-	})
+	}, metav1.CreateOptions{})
 
 	if err != nil{
 		Failf("Error creating deployment %v: %v", name, err)
@@ -80,7 +81,7 @@ func (j *PVCTestJig) waitTimeoutForDeploymentAvailable(deploymentName string, na
 
 func (j *PVCTestJig) deploymentAvailable(deploymentName string, namespace string, replicas int32) wait.ConditionFunc {
 	return func() (bool, error) {
-		deployment, err := j.KubeClient.AppsV1().Deployments(namespace).Get(deploymentName, metav1.GetOptions{})
+		deployment, err := j.KubeClient.AppsV1().Deployments(namespace).Get(context.Background(), deploymentName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}

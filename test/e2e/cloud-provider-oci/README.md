@@ -51,6 +51,10 @@ The two FSS in-transit encryption tests need the oci-fss-utils package to be ins
 kubectl label nodes <node-name> oke.oraclecloud.com/e2e.oci-fss-util=installed
 ```
 
+## Running Block Volume expansion tests
+
+The three BV expand tests need the cluster version and nodepool version to be 1.19+
+
 ## Additional Debug Options when running tests on existing cluster
 
 Additional seclist count based sanity checks can be applied during e2e testing

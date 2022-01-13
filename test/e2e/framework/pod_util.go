@@ -47,7 +47,7 @@ func (j *PVCTestJig) CheckVolumeMount(namespace string, pvcParam *v1.PersistentV
 	}
 	podName := j.CreateAndAwaitNginxPodOrFail(pvc.Namespace, pvc, command)
 
-	j.checkFileExists(namespace, podName, "/usr/share/nginx/html", "out.txt")
+	j.CheckFileExists(namespace, podName, "/usr/share/nginx/html", "out.txt")
 
 	By("Wait for pod with dynamically provisioned volume to be deleted")
 	j.DeleteAndAwaitNginxPodOrFail(namespace, podName)
@@ -57,7 +57,7 @@ func (j *PVCTestJig) CheckVolumeMount(namespace string, pvcParam *v1.PersistentV
 	podName = j.CreateAndAwaitNginxPodOrFail(pvc.Namespace, pvc, command)
 
 	By("Checking if the file exists on the newly created pod")
-	j.checkFileExists(namespace, podName, "/usr/share/nginx/html", "out.txt")
+	j.CheckFileExists(namespace, podName, "/usr/share/nginx/html", "out.txt")
 }
 
 // DeleteAndAwaitNginxPodOrFail deletes the pod definition based on the namespace and waits for pod to disappear
@@ -73,7 +73,7 @@ func (j *PVCTestJig) DeleteAndAwaitNginxPodOrFail(ns string, podName string) {
 	}
 }
 
-func (j *PVCTestJig) checkFileExists(namespace string, podName string, dir string, fileName string) {
+func (j *PVCTestJig) CheckFileExists(namespace string, podName string, dir string, fileName string) {
 	By("check if the file exists")
 	command := fmt.Sprintf("ls %s", dir)
 	if pollErr := wait.PollImmediate(K8sResourcePoll, DefaultTimeout, func() (bool, error) {
@@ -85,6 +85,23 @@ func (j *PVCTestJig) checkFileExists(namespace string, podName string, dir strin
 		return strings.Contains(stdout, fileName), nil
 	}); pollErr != nil {
 		Failf("File does not exist in pod '%v'", podName)
+	}
+}
+
+
+func (j *PVCTestJig) CheckFileCorruption(namespace string, podName string, dir string, fileName string) {
+	By("check if the file is corrupt")
+	md5hash := "e59ff97941044f85df5297e1c302d260"
+	command := fmt.Sprintf("md5sum %s/%s", dir,fileName)
+	if pollErr := wait.PollImmediate(K8sResourcePoll, DefaultTimeout, func() (bool, error) {
+		stdout, err := RunHostCmd(namespace, podName, command)
+		if err != nil {
+			Logf("got err: %v, retry until timeout", err)
+			return false, nil
+		}
+		return strings.Contains(stdout, md5hash), nil
+	}); pollErr != nil {
+		Failf("MD5 hash does not match, file is corrupt in pod '%v'",podName)
 	}
 }
 
@@ -128,7 +145,7 @@ func (j *PVCTestJig) checkFileOwnership(namespace string, podName string, dir st
 
 // CheckVolumeDirectoryOwnership creates a pod with a dynamically provisioned volume
 func (j *PVCTestJig) CheckVolumeDirectoryOwnership(namespace string, pvcParam *v1.PersistentVolumeClaim) {
-	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(pvcParam.Namespace).Get(pvcParam.Name, metav1.GetOptions{})
+	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(pvcParam.Namespace).Get(context.Background(),pvcParam.Name, metav1.GetOptions{})
 
 	if err != nil {
 		Failf("Failed to get persistent volume %q: %v", pvc.Spec.VolumeName, err)
@@ -139,6 +156,48 @@ func (j *PVCTestJig) CheckVolumeDirectoryOwnership(namespace string, pvcParam *v
 	podName := j.CreateAndAwaitNginxPodOrFail(pvc.Namespace, pvc, command)
 
 	j.checkFileOwnership(namespace, podName, "/usr/share/nginx/html/out.txt")
+}
+
+
+//CheckExpandedVolumeReadWrite checks a pvc expanded pod with a dymincally provisioned volume
+func (j *PVCTestJig) CheckExpandedVolumeReadWrite(namespace string,podName string) {
+	pattern := "ReadWriteTest"
+	text := fmt.Sprintf("hello expanded pvc pod %s",pattern)
+	command := fmt.Sprintf("echo '%s' > /data/test1; grep '%s'  /data/test1 ",text,pattern)
+
+	if pollErr := wait.PollImmediate(K8sResourcePoll, DefaultTimeout, func() (bool, error) {
+		stdout, err := RunHostCmd(namespace, podName, command )
+		if err != nil {
+			Logf("got err: %v, retry until timeout", err)
+			return false, nil
+		}
+		return strings.Contains(stdout, text),nil
+	}); pollErr != nil {
+		Failf("Write Test failed in pod '%v' after expanding pvc",podName)
+	}
+
+}
+
+//CheckUsableVolumeSizeInsidePod checks a pvc expanded pod with a dymincally provisioned volume
+func (j *PVCTestJig) CheckUsableVolumeSizeInsidePod(namespace string,podName string) {
+
+	command := fmt.Sprintf("df -BG | grep '/data'")
+
+	if pollErr := wait.PollImmediate(K8sResourcePoll, DefaultTimeout, func() (bool, error) {
+		stdout, err := RunHostCmd(namespace, podName, command )
+		if err != nil {
+			Logf("got err: %v, retry until timeout", err)
+			return false, nil
+		}
+		if strings.Fields(strings.TrimSpace(stdout))[1] != "99G" {
+			return false,nil
+		} else {
+			return true,nil
+		}
+	}); pollErr != nil {
+		Failf("Write Test failed in pod '%v' after expanding pvc",podName)
+	}
+
 }
 
 // CreateAndAwaitNginxPodOrFail returns a pod definition based on the namespace using nginx image

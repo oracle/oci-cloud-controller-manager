@@ -109,6 +109,18 @@ func (mounter *SafeFormatAndMount) Mount(source string, target string, fstype st
 	return mounter.formatAndMount(source, target, fstype, options)
 }
 
+func (mounter *SafeFormatAndMount) Resize(devicePath string, volumePath string) (bool, error) {
+	return mounter.resize(devicePath, volumePath)
+}
+
+func (mounter *SafeFormatAndMount) GetBlockSizeBytes(devicePath string) (int64, error) {
+	return mounter.getBlockSizeBytes(devicePath)
+}
+
+func (mounter *SafeFormatAndMount) Rescan(devicePath string) error {
+	return mounter.rescan(devicePath)
+}
+
 // New returns a mount.Interface for the current system.
 // It provides options to override the default mounter behavior.
 // mounterPath allows using an alternative to `/bin/mount` for mounting.

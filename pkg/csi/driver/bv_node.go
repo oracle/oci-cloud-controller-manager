@@ -14,6 +14,7 @@ import (
 	kubeAPI "k8s.io/api/core/v1"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util/disk"
 )
 
@@ -416,18 +417,21 @@ func getDevicePathAndAttachmentType(logger *zap.SugaredLogger, path []string) (s
 
 // NodeGetCapabilities returns the supported capabilities of the node server
 func (d BlockVolumeNodeDriver) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
-	nscap := &csi.NodeServiceCapability{
-		Type: &csi.NodeServiceCapability_Rpc{
-			Rpc: &csi.NodeServiceCapability_RPC{
-				Type: csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME,
+	var nscaps []*csi.NodeServiceCapability
+	nodeCaps := []csi.NodeServiceCapability_RPC_Type{csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME, csi.NodeServiceCapability_RPC_EXPAND_VOLUME}
+	for _, nodeCap := range nodeCaps {
+		c := &csi.NodeServiceCapability{
+			Type: &csi.NodeServiceCapability_Rpc{
+				Rpc: &csi.NodeServiceCapability_RPC{
+					Type: nodeCap,
+				},
 			},
-		},
+		}
+		nscaps = append(nscaps, c)
 	}
 
 	return &csi.NodeGetCapabilitiesResponse{
-		Capabilities: []*csi.NodeServiceCapability{
-			nscap,
-		},
+		Capabilities: nscaps,
 	}, nil
 }
 
@@ -461,5 +465,89 @@ func (d BlockVolumeNodeDriver) NodeGetVolumeStats(ctx context.Context, req *csi.
 
 //NodeExpandVolume returns the expand of the volume
 func (d BlockVolumeNodeDriver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "NodeExpandVolume is not supported yet")
+	volumeID := req.GetVolumeId()
+	if len(volumeID) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Volume ID not provided")
+	}
+	volumePath := req.GetVolumePath()
+	if len(volumePath) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "volume path must be provided")
+	}
+
+	logger := d.logger.With("volumeId", req.VolumeId, "volumePath", req.VolumePath)
+
+	if acquired := d.volumeLocks.TryAcquire(req.VolumeId); !acquired {
+		logger.Error("Could not acquire lock for NodeUnpublishVolume.")
+		return nil, status.Errorf(codes.Aborted, volumeOperationAlreadyExistsFmt, req.VolumeId)
+	}
+
+	defer d.volumeLocks.Release(req.VolumeId)
+
+	requestedSize, err:= csi_util.ExtractStorage(req.CapacityRange)
+	requestedSizeGB := csi_util.RoundUpSize(requestedSize, 1*client.GiB)
+
+	if err != nil {
+		logger.With(zap.Error(err)).Error("invalid capacity range")
+		return nil, status.Errorf(codes.OutOfRange, "invalid capacity range: %v", err)
+	}
+
+	diskPath, err := disk.GetDiskPathFromMountPath(d.logger, volumePath)
+	if err != nil {
+		// do a clean exit in case of mount point not found
+		if err == disk.ErrMountPointNotFound {
+			logger.With(zap.Error(err)).With("volumePath", volumePath).Warn("unable to fetch mount point")
+			return &csi.NodeExpandVolumeResponse{}, nil
+		}
+		logger.With(zap.Error(err)).With("volumePath", volumePath).Error("unable to get diskPath from mount path")
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	attachmentType, devicePath, err := getDevicePathAndAttachmentType(d.logger, diskPath)
+	if err != nil {
+		logger.With(zap.Error(err)).With("diskPath", diskPath).Error("unable to determine the attachment type")
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	logger.With("diskPath", diskPath, "attachmentType", attachmentType, "devicePath", devicePath).Infof("Extracted attachment type and device path")
+
+	var mountHandler disk.Interface
+	switch attachmentType {
+	case attachmentTypeISCSI:
+		scsiInfo, _ := csi_util.ExtractISCSIInformationFromMountPath(d.logger, diskPath)
+		if scsiInfo == nil {
+			logger.Warn("unable to get the ISCSI info")
+			return &csi.NodeExpandVolumeResponse{}, nil
+		}
+		mountHandler = disk.NewFromISCSIDisk(d.logger, scsiInfo)
+		d.logger.With("ISCSIInfo", scsiInfo, "mountPath", volumePath).Info("Found ISCSIInfo for NodeExpandVolume.")
+	case attachmentTypeParavirtualized:
+		mountHandler = disk.NewFromPVDisk(d.logger)
+		logger.Info("starting to expand paravirtualized Mounting.")
+	default:
+		logger.Error("unknown attachment type. supported attachment types are iscsi and paravirtualized")
+		return nil, status.Error(codes.InvalidArgument, "unknown attachment type. supported attachment types are iscsi and paravirtualized")
+	}
+
+	if err := mountHandler.Rescan(devicePath); err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to rescan volume %q (%q):  %v", volumeID, devicePath, err)
+	}
+	logger.With("devicePath", devicePath).Debug("Rescan completed")
+
+	if _, err := mountHandler.Resize(devicePath, volumePath); err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to resize volume %q (%q):  %v", volumeID, devicePath, err)
+	}
+
+	allocatedSizeBytes, err := mountHandler.GetBlockSizeBytes(devicePath)
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("Failed to get size of block volume at path %s: %v", devicePath, err))
+	}
+
+	allocatedSizeGB := csi_util.RoundUpSize(allocatedSizeBytes, 1*client.GiB)
+
+	if allocatedSizeGB < requestedSizeGB {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("Expand Volume Failed, requested size in GB %d but resize allocated only %d", requestedSizeGB, allocatedSizeGB))
+	}
+
+	return &csi.NodeExpandVolumeResponse{
+		CapacityBytes: allocatedSizeBytes,
+	}, nil
 }

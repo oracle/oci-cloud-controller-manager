@@ -266,7 +266,7 @@ func (f *CloudProviderFramework) AfterEach() {
 
 	for _, storageClass := range f.StorageClasses {
 		By(fmt.Sprintf("Deleting storage class %q", storageClass))
-		err := f.ClientSet.StorageV1beta1().StorageClasses().Delete(context.Background(), storageClass, metav1.DeleteOptions{})
+		err := f.ClientSet.StorageV1().StorageClasses().Delete(context.Background(), storageClass, metav1.DeleteOptions{})
 		if err != nil && !apierrors.IsNotFound(err) {
 			Logf("Storage Class Delete API error: %v", err)
 		}
@@ -283,7 +283,7 @@ func (f *CloudProviderFramework) AfterEach() {
 
 	for _, volId := range f.VolumeIds {
 		By(fmt.Sprintf("Deleting volumes %q", volId))
-		err := f.ClientSet.CoreV1().PersistentVolumes().Delete(volId, nil)
+		err := f.ClientSet.CoreV1().PersistentVolumes().Delete(context.Background() ,volId, metav1.DeleteOptions{})
 		if err != nil && !apierrors.IsNotFound(err) {
 			Logf("Failed to delete persistent volume %q: %v", volId, err)
 		}
