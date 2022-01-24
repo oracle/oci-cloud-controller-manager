@@ -27,12 +27,12 @@ type NodeCSIOptions struct {
 }
 
 type NodeOptions struct {
-	Name					string
-	Endpoint				string
-	NodeID					string
-	Kubeconfig				string
-	Master					string
-	DriverName				string
-	DriverVersion			string
-	EnableControllerServer	bool
+	Name                   string
+	Endpoint               string
+	NodeID                 string
+	Kubeconfig             string
+	Master                 string
+	DriverName             string
+	DriverVersion          string
+	EnableControllerServer bool
 }

@@ -26,7 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
-	k8sports "k8s.io/kubernetes/pkg/master/ports"
+	k8sports "k8s.io/kubernetes/pkg/cluster/ports"
 )
 
 func TestGetNodeIngressRules(t *testing.T) {

@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	mountPath                       = "mount"
-	FipsEnabled                     = "1"
+	mountPath   = "mount"
+	FipsEnabled = "1"
 )
 
 // NodeStageVolume mounts the volume to a staging path on the node.
@@ -32,9 +32,9 @@ func (d FSSNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVo
 		return nil, status.Error(codes.InvalidArgument, "Staging path must be provided")
 	}
 
-	mountTargetIP, exportPath  := validateVolumeId(req.VolumeId)
+	mountTargetIP, exportPath := validateVolumeId(req.VolumeId)
 
-	if mountTargetIP == "" || exportPath == ""{
+	if mountTargetIP == "" || exportPath == "" {
 		return nil, status.Error(codes.InvalidArgument, "Invalid Volume ID provided")
 	}
 
@@ -180,7 +180,7 @@ func (d FSSNodeDriver) NodePublishVolume(ctx context.Context, req *csi.NodePubli
 	readOnly := req.GetReadonly()
 	// Use mount.IsNotMountPoint because mounter.IsLikelyNotMountPoint can't detect bind mounts
 	isNotMountPoint, err := mount.IsNotMountPoint(mounter, targetPath)
-	if err != nil{
+	if err != nil {
 		if os.IsNotExist(err) {
 			logger.With("TargetPath", targetPath).Infof("mount point does not exist")
 			// k8s v1.20+ will not create the TargetPath directory
@@ -236,7 +236,7 @@ func (d FSSNodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnp
 
 	// Use mount.IsNotMountPoint because mounter.IsLikelyNotMountPoint can't detect bind mounts
 	isNotMountPoint, err := mount.IsNotMountPoint(mounter, targetPath)
-	if err != nil{
+	if err != nil {
 		if os.IsNotExist(err) {
 			logger.With("TargetPath", targetPath).Infof("mount point does not exist")
 			return &csi.NodeUnpublishVolumeResponse{}, nil
@@ -270,9 +270,9 @@ func (d FSSNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnsta
 		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
 	}
 
-	mountTargetIP, exportPath  := validateVolumeId(req.VolumeId)
+	mountTargetIP, exportPath := validateVolumeId(req.VolumeId)
 
-	if mountTargetIP == "" || exportPath == ""{
+	if mountTargetIP == "" || exportPath == "" {
 		return nil, status.Error(codes.InvalidArgument, "Invalid Volume ID provided")
 	}
 
@@ -399,4 +399,3 @@ func (d FSSNodeDriver) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetV
 func (d FSSNodeDriver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "NodeExpandVolume is not supported yet")
 }
-

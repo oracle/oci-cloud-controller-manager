@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	//"k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
 	"net"
 	"net/url"
 	"os"
@@ -55,7 +56,7 @@ import (
 	extensionsinternal "k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/nodelifecycle"
-	"k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
+	//"k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
 	testutil "k8s.io/kubernetes/test/utils"
 	uexec "k8s.io/utils/exec"
 )

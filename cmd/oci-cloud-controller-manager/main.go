@@ -17,6 +17,10 @@ package main
 import (
 	goflag "flag"
 	"fmt"
+	"k8s.io/apimachinery/pkg/util/wait"
+	cloudprovider "k8s.io/cloud-provider"
+	"k8s.io/cloud-provider/app/config"
+	"k8s.io/cloud-provider/options"
 	"math/rand"
 	"os"
 	"time"
@@ -25,11 +29,12 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/logging"
 	"github.com/spf13/pflag"
 	"go.uber.org/zap"
+	"k8s.io/cloud-provider/app"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
 	_ "k8s.io/component-base/metrics/prometheus/restclient" // for client metric registration
 	_ "k8s.io/component-base/metrics/prometheus/version"    // for version metric registration
-	"k8s.io/kubernetes/cmd/cloud-controller-manager/app"
+	"k8s.io/klog/v2"
 )
 
 var version string
@@ -42,7 +47,13 @@ func main() {
 	defer logger.Sync()
 	zap.ReplaceGlobals(logger)
 
-	command := app.NewCloudControllerManagerCommand()
+	s, err := options.NewCloudControllerManagerOptions()
+	if err != nil {
+		logger.With(zap.Error(err)).Fatal("unable to initialize command options")
+	}
+
+	fss := cliflag.NamedFlagSets{}
+	command := app.NewCloudControllerManagerCommand(s, cloudInitializer, app.DefaultInitFuncConstructors, fss, wait.NeverStop)
 
 	// TODO: once we switch everything over to Cobra commands, we can go back to calling
 	// utilflag.InitFlags() (by removing its pflag.Parse() call). For now, we have to set the
@@ -60,4 +71,26 @@ func main() {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func cloudInitializer(config *config.CompletedConfig) cloudprovider.Interface {
+	cloudConfig := config.ComponentConfig.KubeCloudShared.CloudProvider
+	// initialize cloud provider with the cloud provider name and config file provided
+	cloud, err := cloudprovider.InitCloudProvider(cloudConfig.Name, cloudConfig.CloudConfigFile)
+	if err != nil {
+		klog.Fatalf("Cloud provider could not be initialized: %v", err)
+	}
+	if cloud == nil {
+		klog.Fatalf("Cloud provider is nil")
+	}
+
+	if !cloud.HasClusterID() {
+		if config.ComponentConfig.KubeCloudShared.AllowUntaggedCloud {
+			klog.Warning("detected a cluster without a ClusterID.  A ClusterID will be required in the future.  Please tag your cluster to avoid any future issues")
+		} else {
+			klog.Fatalf("no ClusterID found.  A ClusterID is required for the cloud provider to function properly.  This check can be bypassed by setting the allow-untagged-cloud option")
+		}
+	}
+
+	return cloud
 }
