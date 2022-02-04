@@ -27,13 +27,12 @@ WORKDIR $SRC
 
 RUN COMPONENT=${COMPONENT} make clean build
 
-FROM oraclelinux:7-slim
+FROM ghcr.io/oracle/oraclelinux:8-slim
 
 COPY --from=0 /go/src/github.com/oracle/oci-cloud-controller-manager/dist/* /usr/local/bin/
 COPY --from=0 /go/src/github.com/oracle/oci-cloud-controller-manager/image/* /usr/local/bin/
 
-RUN yum install -y util-linux \
-  && yum install -y e2fsprogs \
-  && yum clean all
+RUN microdnf install -y util-linux e2fsprogs \
+  && microdnf clean all
 
 COPY --from=0 /go/src/github.com/oracle/oci-cloud-controller-manager/dist/* /usr/local/bin/
