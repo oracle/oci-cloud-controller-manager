@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	//"k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
 	"net"
 	"net/url"
 	"os"
@@ -48,15 +47,15 @@ import (
 	restclient "k8s.io/client-go/rest"
 	clientcmd "k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/remotecommand"
+	v1helper "k8s.io/component-helpers/scheduling/corev1"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	appsinternal "k8s.io/kubernetes/pkg/apis/apps"
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
 	api "k8s.io/kubernetes/pkg/apis/core"
-	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	extensionsinternal "k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/nodelifecycle"
-	//"k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
+	scheduler "k8s.io/kubernetes/pkg/scheduler/framework"
 	testutil "k8s.io/kubernetes/test/utils"
 	uexec "k8s.io/utils/exec"
 )
@@ -625,7 +624,7 @@ func isNodeUntainted(node *v1.Node) bool {
 			},
 		},
 	}
-	nodeInfo := v1alpha1.NewNodeInfo()
+	nodeInfo := scheduler.NewNodeInfo()
 	nodeInfo.SetNode(node)
 	fit, err := PodToleratesNodeTaints(fakePod, nodeInfo)
 	if err != nil {
@@ -635,7 +634,7 @@ func isNodeUntainted(node *v1.Node) bool {
 	return fit
 }
 
-func PodToleratesNodeTaints(pod *v1.Pod, nodeInfo *v1alpha1.NodeInfo) (bool, error) {
+func PodToleratesNodeTaints(pod *v1.Pod, nodeInfo *scheduler.NodeInfo) (bool, error) {
 	if nodeInfo == nil || nodeInfo.Node() == nil {
 		return false, nil
 	}
@@ -646,13 +645,15 @@ func PodToleratesNodeTaints(pod *v1.Pod, nodeInfo *v1alpha1.NodeInfo) (bool, err
 	})
 }
 
-func podToleratesNodeTaints(pod *v1.Pod, nodeInfo *v1alpha1.NodeInfo, filter func(t *v1.Taint) bool) (bool, error) {
+func podToleratesNodeTaints(pod *v1.Pod, nodeInfo *scheduler.NodeInfo, filter func(t *v1.Taint) bool) (bool, error) {
 	taints := nodeInfo.Node().Spec.Taints
 	if len(taints) == 0 {
 		return true, nil
 	}
 
-	if v1helper.TolerationsTolerateTaintsWithFilter(pod.Spec.Tolerations, taints, filter) {
+	_, matchingFlag := v1helper.FindMatchingUntoleratedTaint(taints, pod.Spec.Tolerations, filter)
+
+	if matchingFlag {
 		return true, nil
 	}
 	return false, nil
