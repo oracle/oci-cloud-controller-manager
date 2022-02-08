@@ -477,7 +477,7 @@ func (d BlockVolumeNodeDriver) NodeExpandVolume(ctx context.Context, req *csi.No
 	logger := d.logger.With("volumeId", req.VolumeId, "volumePath", req.VolumePath)
 
 	if acquired := d.volumeLocks.TryAcquire(req.VolumeId); !acquired {
-		logger.Error("Could not acquire lock for NodeUnpublishVolume.")
+		logger.Error("Could not acquire lock for NodeExpandVolume.")
 		return nil, status.Errorf(codes.Aborted, volumeOperationAlreadyExistsFmt, req.VolumeId)
 	}
 
