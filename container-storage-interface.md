@@ -19,14 +19,19 @@ Submit this as a Kubernetes Secret.
 ```bash
 kubectl create secret generic oci-volume-provisioner \
     -n kube-system \
-    --from-file=config.yaml=config.yaml
+    --from-file=config.yaml=provider-config-example.yaml
 ```
 ### Installer
 
 Create the associated RBAC rules if your cluster is configured to use [RBAC][3]
 
+Before applying the below yaml configs make sure to set the version you want to install
 ```bash
-$ kubectl apply -f https://raw.githubusercontent.com/oracle/oci-cloud-controller-manager/master/manifests/container-storage-interface/oci-csi-node-rbac.yaml
+$ export RELEASE=?
+```
+
+```bash
+$ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-csi-node-rbac.yaml
 ```
 Deploy the csi-controller-driver:
 It is provided as a deployment and it has three containers - 
@@ -35,7 +40,7 @@ It is provided as a deployment and it has three containers -
     3. oci-csi-controller-driver
 
 ```bash
-$ kubectl apply -f https://raw.githubusercontent.com/oracle/oci-cloud-controller-manager/master/manifests/container-storage-interface/oci-csi-controller-driver.yaml
+$ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-csi-controller-driver.yaml
 ```
 
 Deploy the node-driver:
@@ -44,7 +49,7 @@ It is provided as a daemon set and it has two containers -
     2. oci-csi-node-driver
 
 ```bash
-$ kubectl apply -f https://raw.githubusercontent.com/oracle/oci-cloud-controller-manager/master/manifests/container-storage-interface/oci-csi-node-driver.yaml
+$ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-csi-node-driver.yaml
 ```
 
 Deploy the csi storage class:

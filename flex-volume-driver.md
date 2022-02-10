@@ -17,8 +17,9 @@ installed on every node in your Kubernetes cluster.
 The recommended way to install the driver is through the DaemonSet installer mechanism. This will create two daemonsets, one specifically for master nodes, allowing configuration via a Kubernetes Secret, and one for worker nodes.
 
 ```bash
-$ kubectl apply -f https://raw.githubusercontent.com/oracle/oci-cloud-controller-manager/master/manifests/flexvolume-driver/oci-flexvolume-driver.yaml
-$ kubectl apply -f https://raw.githubusercontent.com/oracle/oci-cloud-controller-manager/master/manifests/flexvolume-driver/oci-flexvolume-driver-rbac.yaml
+$ export RELEASE=?
+$ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-flexvolume-driver.yaml
+$ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-flexvolume-driver-rbac.yaml
 ```
 
 You'll still need to add the config file as a Kubernetes Secret.

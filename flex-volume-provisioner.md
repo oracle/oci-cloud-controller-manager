@@ -38,8 +38,9 @@ Allow group <name> to manage file-systems in compartment <compartment>
 Deploy the volume provisioner and associated RBAC rules if your cluster is configured to use [RBAC][3]
 
 ```bash
-$ kubectl apply -f https://raw.githubusercontent.com/oracle/oci-cloud-controller-manager/master/manifests/volume-provisioner/oci-volume-provisioner.yaml
-$ kubectl apply -f https://raw.githubusercontent.com/oracle/oci-cloud-controller-manager/master/manifests/volume-provisioner/oci-volume-provisioner-rbac.yaml
+$ export RELEASE=?
+$ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-volume-provisioner.yaml
+$ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-volume-provisioner-rbac.yaml
 ```
 
 Deploy the volume provisioner storage classes:
