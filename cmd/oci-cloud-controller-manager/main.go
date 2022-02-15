@@ -17,10 +17,6 @@ package main
 import (
 	goflag "flag"
 	"fmt"
-	"k8s.io/apimachinery/pkg/util/wait"
-	cloudprovider "k8s.io/cloud-provider"
-	"k8s.io/cloud-provider/app/config"
-	"k8s.io/cloud-provider/options"
 	"math/rand"
 	"os"
 	"time"
@@ -29,7 +25,11 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/logging"
 	"github.com/spf13/pflag"
 	"go.uber.org/zap"
+	"k8s.io/apimachinery/pkg/util/wait"
+	cloudprovider "k8s.io/cloud-provider"
 	"k8s.io/cloud-provider/app"
+	"k8s.io/cloud-provider/app/config"
+	"k8s.io/cloud-provider/options"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
 	_ "k8s.io/component-base/metrics/prometheus/restclient" // for client metric registration
