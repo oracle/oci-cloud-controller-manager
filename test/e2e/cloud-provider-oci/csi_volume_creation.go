@@ -30,7 +30,7 @@ var _ = Describe("CSI Volume Creation", func() {
 			scName := f.CreateStorageClassOrFail(framework.ClassOCICSI, "blockvolume.csi.oraclecloud.com", nil, pvcJig.Labels, "WaitForFirstConsumer")
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil)
 
-			pvcJig.NewPODForCSI("app1", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+			pvcJig.NewPodForCSI("app1", f.Namespace.Name, pvc.Name, setupF.AdLabel)
 		})
 
 		It("Create PVC with VolumeSize 1Gi but should use default 50Gi", func() {
@@ -39,7 +39,7 @@ var _ = Describe("CSI Volume Creation", func() {
 			scName := f.CreateStorageClassOrFail(framework.ClassOCICSI, "blockvolume.csi.oraclecloud.com", nil, pvcJig.Labels, "WaitForFirstConsumer")
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.VolumeFss, scName, nil)
 
-			pvcJig.NewPODForCSI("app2", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+			pvcJig.NewPodForCSI("app2", f.Namespace.Name, pvc.Name, setupF.AdLabel)
 
 			time.Sleep(60 * time.Second) //waiting for pod to up and running
 
@@ -52,7 +52,7 @@ var _ = Describe("CSI Volume Creation", func() {
 			scName := f.CreateStorageClassOrFail(framework.ClassOCICSI, "blockvolume.csi.oraclecloud.com", nil, pvcJig.Labels, "WaitForFirstConsumer")
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MaxVolumeBlock, scName, nil)
 
-			pvcJig.NewPODForCSI("app3", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+			pvcJig.NewPodForCSI("app3", f.Namespace.Name, pvc.Name, setupF.AdLabel)
 
 			time.Sleep(60 * time.Second) //waiting for pod to up and running
 
@@ -81,7 +81,7 @@ var _ = Describe("CSI Static Volume Creation", func() {
 			}
 			pvc := pvcJig.CreateAndAwaitStaticPVCOrFailCSI(f.BlockStorageClient, f.Namespace.Name, framework.MinVolumeBlock, scName, setupF.AdLocation, compartmentId, nil)
 
-			pvcJig.NewPODForCSI("app4", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+			pvcJig.NewPodForCSI("app4", f.Namespace.Name, pvc.Name, setupF.AdLabel)
 
 			time.Sleep(60 * time.Second) //waiting for pod to up and running
 
@@ -114,7 +114,7 @@ func TestCMEKAttachmentTypeAndEncryptionType(f *framework.CloudProviderFramework
 	}
 	scName := f.CreateStorageClassOrFail(framework.SCName, "blockvolume.csi.oraclecloud.com", scParameter, pvcJig.Labels, "WaitForFirstConsumer")
 	pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil)
-	podName := pvcJig.NewPODForCSI("app1", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+	podName := pvcJig.NewPodForCSI("app1", f.Namespace.Name, pvc.Name, setupF.AdLabel)
 	pvcJig.CheckCMEKKey(f.Client.BlockStorage(), pvc.Name, f.Namespace.Name, setupF.CMEKKMSKey)
 	pvcJig.CheckAttachmentTypeAndEncryptionType(f.Client.Compute(), pvc.Name, f.Namespace.Name, podName, expectedAttachmentType)
 

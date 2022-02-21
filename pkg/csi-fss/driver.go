@@ -1,4 +1,4 @@
-package driver
+package csi_fss
 
 import (
 	"context"
@@ -12,47 +12,30 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
-
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"k8s.io/client-go/kubernetes"
 
-	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/metrics"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 )
 
 const (
 	// DriverName defines the driver name to be used in Kubernetes
-	DriverName = "blockvolume.csi.oraclecloud.com"
+	DriverName = "fss.csi.oraclecloud.com"
 
 	// DriverVersion is the version of the CSI driver
 	DriverVersion = "0.1.0"
-
-	// Default config file path
-	configFilePath = "/etc/oci/config.yaml"
 )
 
 //Driver implements only Identity interface and embed Controller and Node interface.
 type Driver struct {
-	*ControllerDriver
 	*NodeDriver
-	endpoint string
-	srv      *grpc.Server
-	readyMu  sync.Mutex // protects ready
-	ready    bool
-	logger   *zap.SugaredLogger
-}
-
-// ControllerDriver implements CSI Controller interfaces
-type ControllerDriver struct {
-	KubeClient   kubernetes.Interface
+	endpoint     string
+	srv          *grpc.Server
+	readyMu      sync.Mutex // protects ready
+	ready        bool
 	logger       *zap.SugaredLogger
-	config       *providercfg.Config
-	client       client.Interface
-	util         *csi_util.Util
 	metricPusher *metrics.MetricPusher
 }
 
@@ -65,10 +48,10 @@ type NodeDriver struct {
 	volumeLocks *csi_util.VolumeLocks
 }
 
-// NewNodeDriver creates a new CSI node driver for OCI blockvolume
+// NewNodeDriver creates a new CSI node driver for OCI FSS
 func NewNodeDriver(logger *zap.SugaredLogger, endpoint, nodeID, kubeconfig, master string) (*Driver, error) {
 	logger.With("endpoint", endpoint, "kubeconfig", kubeconfig, "master", master, "nodeID",
-		nodeID).Info("Creating a new CSI Node driver.")
+		nodeID).Info("Creating a new CSI FSS Node driver.")
 
 	kubeClientSet := csi_util.GetKubeClient(logger, master, kubeconfig)
 
@@ -81,7 +64,6 @@ func NewNodeDriver(logger *zap.SugaredLogger, endpoint, nodeID, kubeconfig, mast
 	}
 
 	return &Driver{
-		ControllerDriver: nil,
 		NodeDriver:       &drv,
 		endpoint:         endpoint,
 		logger:           logger,
@@ -89,35 +71,9 @@ func NewNodeDriver(logger *zap.SugaredLogger, endpoint, nodeID, kubeconfig, mast
 
 }
 
-// NewControllerDriver creates a new CSI driver for OCI blockvolume
-func NewControllerDriver(logger *zap.SugaredLogger, endpoint, kubeconfig, master string) (*Driver, error) {
-	logger.With("endpoint", endpoint, "kubeconfig", kubeconfig, "master",
-		master).Info("Creating a new CSI Controller driver.")
-
-	kubeClientSet := csi_util.GetKubeClient(logger, master, kubeconfig)
-
-	cfg := getConfig(logger)
-
-	c := getClient(logger)
-
-	drv := ControllerDriver{
-		KubeClient: kubeClientSet,
-		logger:     logger,
-		util:       &csi_util.Util{Logger: logger},
-		config:     cfg,
-		client:     c,
-	}
-
-	return &Driver{
-		ControllerDriver: &drv,
-		NodeDriver:       nil,
-		endpoint:         endpoint,
-		logger:           logger,
-	}, nil
-}
-
 // Run starts a gRPC server on the given endpoint
 func (d *Driver) Run() error {
+	d.logger.Info("Running CSI FSS node driver")
 	u, err := url.Parse(d.endpoint)
 	if err != nil {
 		d.logger.With("endpoint", d.endpoint).With("Failed to parse address").Error(err)
@@ -163,7 +119,6 @@ func (d *Driver) Run() error {
 	d.ready = true
 	d.srv = grpc.NewServer(grpc.UnaryInterceptor(errHandler))
 	csi.RegisterIdentityServer(d.srv, d)
-	csi.RegisterControllerServer(d.srv, d)
 	csi.RegisterNodeServer(d.srv, d)
 
 	metricPusher, err := metrics.NewMetricPusher(d.logger)
@@ -179,46 +134,8 @@ func (d *Driver) Run() error {
 		d.logger.Info("Metrics collection is not enabled")
 	}
 
-	d.logger.Info("CSI ControllerDriver has started.")
+	d.logger.Info("CSI FSS Driver has started.")
 	return d.srv.Serve(listener)
-}
-
-func getConfig(logger *zap.SugaredLogger) *providercfg.Config {
-	configPath, ok := os.LookupEnv("CONFIG_YAML_FILENAME")
-	if !ok {
-		configPath = configFilePath
-	}
-
-	cfg, err := providercfg.FromFile(configPath)
-	if err != nil {
-		logger.With(zap.Error(err)).With("config", configPath).Fatal("Failed to load configuration file from given path.")
-	}
-
-	err = cfg.Validate()
-	if err != nil {
-		logger.With(zap.Error(err)).With("config", configPath).Fatal("Failed to validate. Invalid configuration.")
-	}
-
-	if cfg.CompartmentID == "" {
-		metadata, err := metadata.New().Get()
-		if err != nil {
-			logger.With(zap.Error(err)).With("config", configPath).Fatalf("Neither CompartmentID is given. Nor able to retrieve compartment OCID from metadata.")
-		}
-		cfg.CompartmentID = metadata.CompartmentID
-	}
-
-	return cfg
-}
-
-func getClient(logger *zap.SugaredLogger) client.Interface {
-	cfg := getConfig(logger)
-
-	c, err := client.GetClient(logger, cfg)
-
-	if err != nil {
-		logger.With(zap.Error(err)).Fatal("client can not be generated.")
-	}
-	return c
 }
 
 // Stop stops the plugin

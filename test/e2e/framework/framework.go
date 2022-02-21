@@ -65,6 +65,7 @@ var (
 	cmekKMSKey        string //KMS key for CMEK testing
 	nsgOCIDS		  string // Testing CCM NSG feature
 	reservedIP        string // Testing public reserved IP feature
+	volumeHandle      string // The FSS mount volume handle
 )
 
 func init() {
@@ -82,6 +83,7 @@ func init() {
 	flag.BoolVar(&deleteNamespace, "delete-namespace", true, "If true tests will delete namespace after completion. It is only designed to make debugging easier, DO NOT turn it off by default.")
 
 	flag.StringVar(&mntTargetOCID, "mnt-target-id", "", "Mount Target ID is specified to identify the mount target to be attached to the volumes")
+	flag.StringVar(&volumeHandle, "volume-handle", "", "FSS volume handle used to mount the File System")
 
 	flag.StringVar(&imagePullRepo, "image-pull-repo", "", "Repo to pull images from. Will pull public images if not specified.")
 	flag.StringVar(&cmekKMSKey, "cmek-kms-key", "", "KMS key to be used for CMEK testing")
@@ -111,6 +113,7 @@ type Framework struct {
 	CMEKKMSKey    string
 	NsgOCIDS      string
 	ReservedIP    string
+	VolumeHandle  string
 }
 
 // New creates a new a framework that holds the context of the test
@@ -129,6 +132,7 @@ func NewWithConfig() *Framework {
 		CMEKKMSKey:    cmekKMSKey,
 		NsgOCIDS:	   nsgOCIDS,
 		ReservedIP:    reservedIP,
+		VolumeHandle:  volumeHandle,
 	}
 
 	f.CloudConfigPath = cloudConfigFile
@@ -155,6 +159,8 @@ func (f *Framework) Initialize() {
 	Logf("OCI AdLabel: %s", f.AdLabel)
 	f.MntTargetOcid = mntTargetOCID
 	Logf("OCI Mount Target OCID: %s", f.MntTargetOcid)
+	f.VolumeHandle = volumeHandle
+	Logf("FSS Volume Handle is : %s", f.VolumeHandle)
 	f.CMEKKMSKey = cmekKMSKey
 	Logf("CMEK KMS Key: %s", f.CMEKKMSKey)
 	f.NsgOCIDS = nsgOCIDS

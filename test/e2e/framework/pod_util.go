@@ -20,6 +20,7 @@ import (
 	"time"
 
 	. "github.com/onsi/ginkgo"
+	"github.com/pkg/errors"
 
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -45,7 +46,7 @@ func (j *PVCTestJig) CheckVolumeMount(namespace string, pvcParam *v1.PersistentV
 	}
 	podName := j.CreateAndAwaitNginxPodOrFail(pvc.Namespace, pvc, command)
 
-	j.checkFileExists(namespace, podName)
+	j.checkFileExists(namespace, podName, "/usr/share/nginx/html", "out.txt")
 
 	By("Wait for pod with dynamically provisioned volume to be deleted")
 	j.DeleteAndAwaitNginxPodOrFail(namespace, podName)
@@ -55,7 +56,7 @@ func (j *PVCTestJig) CheckVolumeMount(namespace string, pvcParam *v1.PersistentV
 	podName = j.CreateAndAwaitNginxPodOrFail(pvc.Namespace, pvc, command)
 
 	By("Checking if the file exists on the newly created pod")
-	j.checkFileExists(namespace, podName)
+	j.checkFileExists(namespace, podName, "/usr/share/nginx/html", "out.txt")
 }
 
 // DeleteAndAwaitNginxPodOrFail deletes the pod definition based on the namespace and waits for pod to disappear
@@ -71,16 +72,16 @@ func (j *PVCTestJig) DeleteAndAwaitNginxPodOrFail(ns string, podName string) {
 	}
 }
 
-func (j *PVCTestJig) checkFileExists(namespace string, podName string) {
+func (j *PVCTestJig) checkFileExists(namespace string, podName string, dir string, fileName string) {
 	By("check if the file exists")
-
+	command := fmt.Sprintf("ls %s", dir)
 	if pollErr := wait.PollImmediate(K8sResourcePoll, DefaultTimeout, func() (bool, error) {
-		stdout, err := RunHostCmd(namespace, podName, "ls /usr/share/nginx/html")
+		stdout, err := RunHostCmd(namespace, podName, command)
 		if err != nil {
 			Logf("got err: %v, retry until timeout", err)
 			return false, nil
 		}
-		return strings.Contains(stdout, "out.txt"), nil
+		return strings.Contains(stdout, fileName), nil
 	}); pollErr != nil {
 		Failf("File does not exist in pod '%v'", podName)
 	}
@@ -191,6 +192,29 @@ func (j *PVCTestJig) podRunning(podName, namespace string) wait.ConditionFunc {
 			return true, nil
 		case v1.PodFailed, v1.PodSucceeded:
 			return false, conditions.ErrPodCompleted
+		}
+		return false, nil
+	}
+}
+
+
+// WaitTimeoutForPodRunningInNamespace waits default amount of time (PodStartTimeout) for the specified pod to become running.
+// Returns an error if timeout occurs first, or pod goes in to failed state.
+func (j *PVCTestJig) waitTimeoutForPodCompletedSuccessfullyInNamespace(podName, namespace string, timeout time.Duration) error {
+	return wait.PollImmediate(Poll, timeout, j.podCompleted(podName, namespace))
+}
+
+func (j *PVCTestJig) podCompleted(podName, namespace string) wait.ConditionFunc {
+	return func() (bool, error) {
+		pod, err := j.KubeClient.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		switch pod.Status.Phase {
+		case v1.PodSucceeded:
+			return true, nil
+		case v1.PodFailed:
+			return false, errors.Errorf("Pod exited: %s", pod.Status.Reason)
 		}
 		return false, nil
 	}

@@ -7,16 +7,18 @@ import (
 	"testing"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/pkg/errors"
+	"go.uber.org/zap"
+	"k8s.io/client-go/kubernetes"
+
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/v31/common"
 	"github.com/oracle/oci-go-sdk/v31/core"
 	"github.com/oracle/oci-go-sdk/v31/filestorage"
 	"github.com/oracle/oci-go-sdk/v31/identity"
 	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
-	"github.com/pkg/errors"
-	"go.uber.org/zap"
-	"k8s.io/client-go/kubernetes"
 )
 
 const (
@@ -363,7 +365,7 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 		logger     *zap.SugaredLogger
 		config     *providercfg.Config
 		client     client.Interface
-		util       *Util
+		util       *csi_util.Util
 	}
 	type args struct {
 		ctx context.Context
@@ -506,7 +508,7 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 				logger:     zap.S(),
 				config:     &providercfg.Config{CompartmentID: ""},
 				client:     NewClientProvisioner(nil, &MockBlockStorageClient{}),
-				util:       &Util{},
+				util:       &csi_util.Util{},
 			}
 			got, err := d.CreateVolume(tt.args.ctx, tt.args.req)
 			if tt.wantErr == nil && err != nil {
@@ -528,7 +530,7 @@ func TestControllerDriver_DeleteVolume(t *testing.T) {
 		logger     *zap.SugaredLogger
 		config     *providercfg.Config
 		client     client.Interface
-		util       *Util
+		util       *csi_util.Util
 	}
 	type args struct {
 		ctx context.Context
@@ -569,7 +571,7 @@ func TestControllerDriver_DeleteVolume(t *testing.T) {
 				logger:     zap.S(),
 				config:     &providercfg.Config{CompartmentID: ""},
 				client:     NewClientProvisioner(nil, &MockBlockStorageClient{}),
-				util:       &Util{},
+				util:       &csi_util.Util{},
 			}
 			got, err := d.DeleteVolume(tt.args.ctx, tt.args.req)
 			if tt.wantErr == nil && err != nil {
@@ -774,7 +776,7 @@ func TestGetAttachmentOptions(t *testing.T) {
 			instanceID:     "inTransitEnabled",
 			volumeAttachmentOption: VolumeAttachmentOption{
 				enableInTransitEncryption:    true,
-				useParavirtualizedAttachment: false,
+				useParavirtualizedAttachment: true,
 			},
 			wantErr: false,
 		},

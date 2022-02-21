@@ -1,24 +1,25 @@
-package driver
+package csi_util
 
 import (
 	"fmt"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/util/disk"
-
 	"go.uber.org/zap"
 
 	kubeAPI "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util/disk"
+
 )
 
 const (
@@ -30,32 +31,32 @@ const (
 
 //Util interface
 type Util struct {
-	logger *zap.SugaredLogger
+	Logger *zap.SugaredLogger
 }
 
 var (
-	diskByPathPatternPV    = `/dev/disk/by-path/pci-\d+:\d+:\d+\.\d+-scsi-\d+:\d+:\d+:\d+$`
-	diskByPathPatternISCSI = `/dev/disk/by-path/ip-[\w\.]+:\d+-iscsi-[\w\.\-:]+-lun-1$`
+	DiskByPathPatternPV    = `/dev/disk/by-path/pci-\d+:\d+:\d+\.\d+-scsi-\d+:\d+:\d+:\d+$`
+	DiskByPathPatternISCSI = `/dev/disk/by-path/ip-[\w\.]+:\d+-iscsi-[\w\.\-:]+-lun-1$`
 )
 
-func (u *Util) lookupNodeID(k kubernetes.Interface, nodeName string) (string, error) {
+func (u *Util) LookupNodeID(k kubernetes.Interface, nodeName string) (string, error) {
 	n, err := k.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
 	if err != nil {
-		u.logger.With(zap.Error(err)).With("node", nodeName).Error("Failed to get Node by name.")
+		u.Logger.With(zap.Error(err)).With("node", nodeName).Error("Failed to get Node by name.")
 		return "", fmt.Errorf("fail to get the node %s", nodeName)
 	}
 	if n.Spec.ProviderID == "" {
-		u.logger.With("node", nodeName).Error("ProvideID is missing.")
+		u.Logger.With("node", nodeName).Error("ProvideID is missing.")
 		return "", fmt.Errorf("missing provider id for node %s", nodeName)
 	}
-	u.logger.With("node", nodeName).Info("Node is found.")
+	u.Logger.With("node", nodeName).Info("Node is found.")
 	return n.Spec.ProviderID, nil
 }
 
-func (u *Util) lookupNodeAvailableDomain(k kubernetes.Interface, nodeID string) (string, error) {
+func (u *Util) LookupNodeAvailableDomain(k kubernetes.Interface, nodeID string) (string, error) {
 	n, err := k.CoreV1().Nodes().Get(nodeID, metav1.GetOptions{})
 	if err != nil {
-		u.logger.With(zap.Error(err)).With("nodeId", nodeID).Error("Failed to get Node by name.")
+		u.Logger.With(zap.Error(err)).With("nodeId", nodeID).Error("Failed to get Node by name.")
 		return "", fmt.Errorf("failed to get node %s", nodeID)
 	}
 	if n.Labels != nil {
@@ -66,12 +67,12 @@ func (u *Util) lookupNodeAvailableDomain(k kubernetes.Interface, nodeID string) 
 	}
 
 	errMsg := fmt.Sprint("Did not find the label for the fault domain.")
-	u.logger.With("nodeId", nodeID, "label", kubeAPI.LabelZoneFailureDomain).Error(errMsg)
+	u.Logger.With("nodeId", nodeID, "label", kubeAPI.LabelZoneFailureDomain).Error(errMsg)
 	return "", fmt.Errorf(errMsg)
 }
 
 // waitForPathToExist waits for for a given filesystem path to exist.
-func (u *Util) waitForPathToExist(path string, maxRetries int) bool {
+func (u *Util) WaitForPathToExist(path string, maxRetries int) bool {
 	for i := 0; i < maxRetries; i++ {
 		var err error
 		_, err = os.Stat(path)
@@ -90,23 +91,23 @@ func (u *Util) waitForPathToExist(path string, maxRetries int) bool {
 }
 
 // convert "zkJl:US-ASHBURN-AD-1" to "US-ASHBURN-AD-1"
-func (u *Util) getAvailableDomainInNodeLabel(fullAD string) string {
+func (u *Util) GetAvailableDomainInNodeLabel(fullAD string) string {
 	adElements := strings.Split(fullAD, ":")
 	if len(adElements) > 0 {
 		realAD := adElements[len(adElements)-1]
-		u.logger.Infof("Converted %q to %q", fullAD, realAD)
+		u.Logger.Infof("Converted %q to %q", fullAD, realAD)
 		return realAD
 
 	}
-	u.logger.With("fullAD", fullAD).Error("Available Domain for Node Label not found.")
+	u.Logger.With("fullAD", fullAD).Error("Available Domain for Node Label not found.")
 	return ""
 }
 
-func getDevicePath(sd *disk.Disk) string {
+func GetDevicePath(sd *disk.Disk) string {
 	return fmt.Sprintf("/dev/disk/by-path/ip-%s:%d-iscsi-%s-lun-1", sd.IPv4, sd.Port, sd.IQN)
 }
 
-func extractISCSIInformation(attributes map[string]string) (*disk.Disk, error) {
+func ExtractISCSIInformation(attributes map[string]string) (*disk.Disk, error) {
 	iqn, ok := attributes[disk.ISCSIIQN]
 	if !ok {
 		return nil, fmt.Errorf("Unable to get the IQN from the attribute list")
@@ -132,7 +133,7 @@ func extractISCSIInformation(attributes map[string]string) (*disk.Disk, error) {
 	}, nil
 }
 
-func extractISCSIInformationFromMountPath(logger *zap.SugaredLogger, diskPath []string) (*disk.Disk, error) {
+func ExtractISCSIInformationFromMountPath(logger *zap.SugaredLogger, diskPath []string) (*disk.Disk, error) {
 
 	logger.Info("Getting ISCSIInfo for the mount path: ", diskPath)
 	m, err := disk.FindFromMountPointPath(logger, diskPath)
@@ -155,7 +156,7 @@ func extractISCSIInformationFromMountPath(logger *zap.SugaredLogger, diskPath []
 	}, nil
 }
 
-func getKubeClient(logger *zap.SugaredLogger, master, kubeconfig string) *kubernetes.Clientset {
+func GetKubeClient(logger *zap.SugaredLogger, master, kubeconfig string) *kubernetes.Clientset {
 	var (
 		config *rest.Config
 		err    error
@@ -179,14 +180,14 @@ func getKubeClient(logger *zap.SugaredLogger, master, kubeconfig string) *kubern
 	return kubeClientSet
 }
 
-func maxOfInt(a, b int64) int64 {
+func MaxOfInt(a, b int64) int64 {
 	if a > b {
 		return a
 	}
 	return b
 }
 
-func formatBytes(inputBytes int64) string {
+func FormatBytes(inputBytes int64) string {
 	output := float64(inputBytes)
 	unit := ""
 
@@ -212,7 +213,7 @@ func formatBytes(inputBytes int64) string {
 	return result + unit
 }
 
-func validateFsType(logger *zap.SugaredLogger, fsType string) string {
+func ValidateFsType(logger *zap.SugaredLogger, fsType string) string {
 	defaultFsType := "ext4"
 	if fsType == "ext4" || fsType == "ext3" {
 		return fsType

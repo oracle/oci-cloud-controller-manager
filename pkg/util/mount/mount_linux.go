@@ -28,6 +28,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"path/filepath"
 
 	"go.uber.org/zap"
 	utilexec "k8s.io/utils/exec"
@@ -40,9 +41,12 @@ const (
 	expectedNumFieldsPerLine = 6
 	// Location of the mount file to use
 	procMountsPath = "/proc/mounts"
-)
-
-const (
+	FIPS_ENABLED_FILE_PATH = "/host/proc/sys/crypto/fips_enabled"
+	ENCRYPTED_UMOUNT_COMMAND = "umount.oci-fss"
+	UMOUNT_COMMAND = "umount"
+    FINDMNT_COMMAND = "findmnt"
+    CAT_COMMAND = "cat"
+    RPM_COMMAND = "rpm"
 	// 'fsck' found errors and corrected them
 	fsckErrorsCorrected = 1
 	// 'fsck' found errors but exited without correcting them
@@ -127,11 +131,12 @@ func doMount(logger *zap.SugaredLogger, mounterPath string, mountCmd string, sou
 			"target", target,
 			"fsType", fstype,
 			"options", options,
-			"output", output,
+			"output", string(output),
 		).Error("Mount failed.")
-		return fmt.Errorf("mount failed: %v\nMounting command: %s\nMounting arguments: %s %s %s %v\nOutput: %s\n",
+		return fmt.Errorf("mount failed: %v\nMounting command: %s\nMounting arguments: %s %s %s %v\nOutput: %v\n",
 			err, mountCmd, source, target, fstype, options, string(output))
 	}
+	logger.Debugf("Mount output: %v", string(output))
 	return err
 }
 
@@ -156,18 +161,69 @@ func makeMountArgs(source, target, fstype string, options []string) []string {
 
 // Unmount unmounts the target.
 func (mounter *Mounter) Unmount(target string) error {
+	return mounter.unmount(target, UMOUNT_COMMAND)
+}
+
+func (mounter *Mounter) unmount(target string, unmountCommand string) error {
 	mounter.logger.With("target", target).Info("Unmounting.")
-	command := exec.Command("umount", target)
+	command := exec.Command(unmountCommand, target)
 	output, err := command.CombinedOutput()
 	if err != nil {
 		mounter.logger.With(
 			zap.Error(err),
+			"command", unmountCommand,
 			"target", target,
-			"output", output,
+			"output", string(output),
 		).Error("Unmount failed.")
-		return fmt.Errorf("Unmount failed: %v\nUnmounting arguments: %s\nOutput: %s\n", err, target, string(output))
+		return fmt.Errorf("Unmount failed: %v\nUnmounting command: %s\nUnmounting arguments: %s\nOutput: %v\n", err, unmountCommand, target, string(output))
 	}
+	mounter.logger.Debugf("unmount output: %v", string(output))
 	return nil
+}
+
+// Unmount unmounts the target.
+func (mounter *Mounter) UnmountWithEncrypt(target string) error {
+	return mounter.unmount(target, ENCRYPTED_UMOUNT_COMMAND)
+}
+
+func FindMount(mounter Interface, target string) ([]string, error) {
+	mountArgs := []string{"-n", "-o", "SOURCE", "-T", target}
+	command := exec.Command(FINDMNT_COMMAND, mountArgs...)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("findmnt failed: %v\narguments: %s\nOutput: %v\n", err, mountArgs, string(output))
+	}
+
+	sources := strings.Fields(string(output))
+	return sources, nil
+}
+
+func IsFipsEnabled(mounter Interface) (string, error) {
+	command := exec.Command(CAT_COMMAND, FIPS_ENABLED_FILE_PATH)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("command failed: %v\narguments: %s\nOutput: %v\n", err, CAT_COMMAND, string(output))
+	}
+
+	return string(output), nil
+}
+
+func IsInTransitEncryptionPackageInstalled(mounter Interface) (bool, error) {
+	args := []string{"-q", "-a", "--root=/host"}
+	command := exec.Command(RPM_COMMAND, args...)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return false, fmt.Errorf("command failed: %v\narguments: %s\nOutput: %v\n", err, RPM_COMMAND, string(output))
+	}
+
+	if len(output) > 0 {
+		list := string(output)
+		if strings.Contains(list, InTransitEncryptionPackageName) {
+			return true, nil
+		}
+		return false, nil
+	}
+	return false, nil
 }
 
 // List returns a list of all mounted filesystems.
@@ -182,10 +238,6 @@ func (*Mounter) List() ([]MountPoint, error) {
 // will return true. When in fact /tmp/b is a mount point. If this situation
 // if of interest to you, don't use this function...
 func (mounter *Mounter) IsLikelyNotMountPoint(file string) (bool, error) {
-	return IsNotMountPoint(file)
-}
-
-func IsNotMountPoint(file string) (bool, error) {
 	stat, err := os.Stat(file)
 	if err != nil {
 		return true, err
@@ -200,6 +252,59 @@ func IsNotMountPoint(file string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// IsNotMountPoint determines if a directory is a mountpoint.
+// It should return ErrNotExist when the directory does not exist.
+// IsNotMountPoint is more expensive than IsLikelyNotMountPoint.
+// IsNotMountPoint detects bind mounts in linux.
+// IsNotMountPoint enumerates all the mountpoints using List() and
+// the list of mountpoints may be large, then it uses
+// isMountPointMatch to evaluate whether the directory is a mountpoint.
+func IsNotMountPoint(mounter Interface, file string) (bool, error) {
+	// IsLikelyNotMountPoint provides a quick check
+	// to determine whether file IS A mountpoint.
+	notMnt, notMntErr := mounter.IsLikelyNotMountPoint(file)
+	if notMntErr != nil && os.IsPermission(notMntErr) {
+		// We were not allowed to do the simple stat() check, e.g. on NFS with
+		// root_squash. Fall back to /proc/mounts check below.
+		notMnt = true
+		notMntErr = nil
+	}
+	if notMntErr != nil {
+		return notMnt, notMntErr
+	}
+	// identified as mountpoint, so return this fact.
+	if notMnt == false {
+		return notMnt, nil
+	}
+
+	// Resolve any symlinks in file, kernel would do the same and use the resolved path in /proc/mounts.
+	resolvedFile, err := filepath.EvalSymlinks(file)
+	if err != nil {
+		return true, err
+	}
+
+	// check all mountpoints since IsLikelyNotMountPoint
+	// is not reliable for some mountpoint types.
+	mountPoints, mountPointsErr := mounter.List()
+	if mountPointsErr != nil {
+		return notMnt, mountPointsErr
+	}
+	for _, mp := range mountPoints {
+		if isMountPointMatch(mp, resolvedFile) {
+			notMnt = false
+			break
+		}
+	}
+	return notMnt, nil
+}
+
+// isMountPointMatch returns true if the path in mp is the same as dir.
+// Handles case where mountpoint dir has been renamed due to stale NFS mount.
+func isMountPointMatch(mp MountPoint, dir string) bool {
+	deletedDir := fmt.Sprintf("%s\\040(deleted)", dir)
+	return ((mp.Path == dir) || (mp.Path == deletedDir))
 }
 
 // DeviceOpened checks if block device in use by calling Open with O_EXCL flag.

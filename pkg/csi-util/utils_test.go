@@ -1,4 +1,4 @@
-package driver
+package csi_util
 
 import (
 	"testing"
@@ -39,9 +39,9 @@ func TestUtil_getAvailableDomainInNodeLabel(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			u := &Util{
-				logger: tt.fields.logger,
+				Logger: tt.fields.logger,
 			}
-			if got := u.getAvailableDomainInNodeLabel(tt.args.fullAD); got != tt.want {
+			if got := u.GetAvailableDomainInNodeLabel(tt.args.fullAD); got != tt.want {
 				t.Errorf("Util.getAvailableDomainInNodeLabel() = %v, want %v", got, tt.want)
 			}
 		})
@@ -93,7 +93,7 @@ func Test_validateFsType(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := validateFsType(tt.args.logger, tt.args.fsType); got != tt.want {
+			if got := ValidateFsType(tt.args.logger, tt.args.fsType); got != tt.want {
 				t.Errorf("validateFsType() = %v, want %v", got, tt.want)
 			}
 		})

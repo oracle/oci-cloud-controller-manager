@@ -7,11 +7,13 @@ import (
 	"regexp"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/util/disk"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	kubeAPI "k8s.io/api/core/v1"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util/disk"
 )
 
 const (
@@ -50,14 +52,14 @@ func (d *NodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolu
 
 	switch attachment {
 	case attachmentTypeISCSI:
-		scsiInfo, err := extractISCSIInformation(req.PublishContext)
+		scsiInfo, err := csi_util.ExtractISCSIInformation(req.PublishContext)
 		if err != nil {
 			logger.With(zap.Error(err)).Error("Failed to get SCSI info from publish context.")
 			return nil, status.Error(codes.InvalidArgument, "PublishContext is invalid.")
 		}
 
 		// Get the device path using the publish context
-		devicePath = getDevicePath(scsiInfo)
+		devicePath = csi_util.GetDevicePath(scsiInfo)
 
 		mountHandler = disk.NewFromISCSIDisk(d.logger, scsiInfo)
 		logger.With("devicePath", devicePath).Info("starting to stage iSCSI Mounting.")
@@ -109,7 +111,7 @@ func (d *NodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolu
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if !d.util.waitForPathToExist(devicePath, 20) {
+	if !d.util.WaitForPathToExist(devicePath, 20) {
 		logger.Error("failed to wait for device to exist.")
 		return nil, status.Error(codes.DeadlineExceeded, "Failed to wait for device to exist.")
 	}
@@ -117,7 +119,7 @@ func (d *NodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolu
 	mnt := req.VolumeCapability.GetMount()
 	options := mnt.MountFlags
 
-	fsType := validateFsType(logger, mnt.FsType)
+	fsType := csi_util.ValidateFsType(logger, mnt.FsType)
 
 	logger.With("devicePath", devicePath,
 		"fsType", fsType).Info("mounting the volume to staging path.")
@@ -172,7 +174,7 @@ func (d *NodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstage
 	var mountHandler disk.Interface
 	switch attachmentType {
 	case attachmentTypeISCSI:
-		scsiInfo, err := extractISCSIInformationFromMountPath(d.logger, diskPath)
+		scsiInfo, err := csi_util.ExtractISCSIInformationFromMountPath(d.logger, diskPath)
 		if err != nil {
 			logger.With(zap.Error(err)).Error("failed to ISCSI info.")
 			return nil, status.Error(codes.Internal, err.Error())
@@ -272,7 +274,7 @@ func (d *NodeDriver) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 
 	switch attachment {
 	case attachmentTypeISCSI:
-		scsiInfo, err := extractISCSIInformation(req.PublishContext)
+		scsiInfo, err := csi_util.ExtractISCSIInformation(req.PublishContext)
 		if err != nil {
 			logger.With(zap.Error(err)).Error("Failed to get iSCSI info from publish context")
 			return nil, status.Error(codes.InvalidArgument, "PublishContext is invalid")
@@ -296,7 +298,7 @@ func (d *NodeDriver) NodePublishVolume(ctx context.Context, req *csi.NodePublish
 		options = append(options, "ro")
 	}
 
-	fsType := validateFsType(logger, mnt.FsType)
+	fsType := csi_util.ValidateFsType(logger, mnt.FsType)
 
 	err := mountHandler.Mount(req.StagingTargetPath, req.TargetPath, fsType, options)
 	if err != nil {
@@ -348,7 +350,7 @@ func (d *NodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpub
 	var mountHandler disk.Interface
 	switch attachmentType {
 	case attachmentTypeISCSI:
-		scsiInfo, _ := extractISCSIInformationFromMountPath(d.logger, diskPath)
+		scsiInfo, _ := csi_util.ExtractISCSIInformationFromMountPath(d.logger, diskPath)
 		if scsiInfo == nil {
 			logger.Warn("unable to get the ISCSI info")
 			return &csi.NodeUnpublishVolumeResponse{}, nil
@@ -374,13 +376,13 @@ func (d *NodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpub
 
 func getDevicePathAndAttachmentType(logger *zap.SugaredLogger, path []string) (string, string, error) {
 	for _, diskByPath := range path {
-		matched, _ := regexp.MatchString(diskByPathPatternPV, diskByPath)
+		matched, _ := regexp.MatchString(csi_util.DiskByPathPatternPV, diskByPath)
 		if matched {
 			return attachmentTypeParavirtualized, diskByPath, nil
 		}
 	}
 	for _, diskByPath := range path {
-		matched, _ := regexp.MatchString(diskByPathPatternISCSI, diskByPath)
+		matched, _ := regexp.MatchString(csi_util.DiskByPathPatternISCSI, diskByPath)
 		if matched {
 			return attachmentTypeISCSI, diskByPath, nil
 		}
@@ -409,7 +411,7 @@ func (d *NodeDriver) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCa
 // NodeGetInfo returns the supported capabilities of the node server.
 // The result of this function will be used by the CO in ControllerPublishVolume.
 func (d *NodeDriver) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
-	ad, err := d.util.lookupNodeAvailableDomain(d.KubeClient, d.nodeID)
+	ad, err := d.util.LookupNodeAvailableDomain(d.KubeClient, d.nodeID)
 
 	if err != nil {
 		d.logger.With(zap.Error(err)).With("nodeId", d.nodeID, "availableDomain", ad).Error("Available domain of node missing.")

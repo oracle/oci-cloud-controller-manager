@@ -8,17 +8,18 @@ import (
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/oracle/oci-go-sdk/v31/core"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	kubeAPI "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
+	"github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/metrics"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util/disk"
+	"github.com/oracle/oci-go-sdk/v31/core"
 )
 
 const (
@@ -231,7 +232,7 @@ func (d *ControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolu
 			AccessibleTopology: []*csi.Topology{
 				{
 					Segments: map[string]string{
-						kubeAPI.LabelZoneFailureDomain: d.util.getAvailableDomainInNodeLabel(*provisionedVolume.AvailabilityDomain),
+						kubeAPI.LabelZoneFailureDomain: d.util.GetAvailableDomainInNodeLabel(*provisionedVolume.AvailabilityDomain),
 					},
 				},
 			},
@@ -292,7 +293,7 @@ func (d *ControllerDriver) ControllerPublishVolume(ctx context.Context, req *csi
 
 	log := d.logger.With("volumeID", req.VolumeId, "nodeId", req.NodeId)
 
-	id, err := d.util.lookupNodeID(d.KubeClient, req.NodeId)
+	id, err := d.util.LookupNodeID(d.KubeClient, req.NodeId)
 	if err != nil {
 		log.With(zap.Error(err)).Error("Failed to lookup node")
 		errorType = util.GetError(err)
@@ -599,27 +600,27 @@ func extractStorage(capRange *csi.CapacityRange) (int64, error) {
 	}
 
 	if requiredSet && limitSet && limitBytes < requiredBytes {
-		return 0, fmt.Errorf("limit (%v) can not be less than required (%v) size", formatBytes(limitBytes), formatBytes(requiredBytes))
+		return 0, fmt.Errorf("limit (%v) can not be less than required (%v) size", csi_util.FormatBytes(limitBytes), csi_util.FormatBytes(requiredBytes))
 	}
 
 	if requiredSet && !limitSet {
-		return maxOfInt(requiredBytes, minimumVolumeSizeInBytes), nil
+		return csi_util.MaxOfInt(requiredBytes, minimumVolumeSizeInBytes), nil
 	}
 
 	if limitSet {
-		return maxOfInt(limitBytes, minimumVolumeSizeInBytes), nil
+		return csi_util.MaxOfInt(limitBytes, minimumVolumeSizeInBytes), nil
 	}
 
 	if requiredSet && requiredBytes > maximumVolumeSizeInBytes {
-		return 0, fmt.Errorf("required (%v) can not exceed maximum supported volume size (%v)", formatBytes(requiredBytes), formatBytes(maximumVolumeSizeInBytes))
+		return 0, fmt.Errorf("required (%v) can not exceed maximum supported volume size (%v)", csi_util.FormatBytes(requiredBytes), csi_util.FormatBytes(maximumVolumeSizeInBytes))
 	}
 
 	if !requiredSet && limitSet && limitBytes > maximumVolumeSizeInBytes {
-		return 0, fmt.Errorf("limit (%v) can not exceed maximum supported volume size (%v)", formatBytes(limitBytes), formatBytes(maximumVolumeSizeInBytes))
+		return 0, fmt.Errorf("limit (%v) can not exceed maximum supported volume size (%v)", csi_util.FormatBytes(limitBytes), csi_util.FormatBytes(maximumVolumeSizeInBytes))
 	}
 
 	if requiredSet && limitSet {
-		return maxOfInt(requiredBytes, limitBytes), nil
+		return csi_util.MaxOfInt(requiredBytes, limitBytes), nil
 	}
 
 	if requiredSet {
@@ -744,6 +745,7 @@ func getAttachmentOptions(ctx context.Context, client client.ComputeInterface, a
 	}
 	if *instance.LaunchOptions.IsPvEncryptionInTransitEnabled {
 		volumeAttachmentOption.enableInTransitEncryption = true
+		volumeAttachmentOption.useParavirtualizedAttachment = true
 	}
 	return volumeAttachmentOption, nil
 }

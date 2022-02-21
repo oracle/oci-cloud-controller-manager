@@ -63,6 +63,22 @@ func (mounter *SafeFormatAndMount) diskLooksUnformatted(disk string) (bool, erro
 	return true, nil
 }
 
-func IsNotMountPoint(file string) (bool, error) {
+func IsNotMountPoint(mounter Interface, file string) (bool, error) {
 	return true, nil
+}
+
+func FindMount(mounter Interface, target string) ([]string, error) {
+	return nil, nil
+}
+
+func IsFipsEnabled(mounter Interface) (string, error) {
+	return "", nil
+}
+
+func IsInTransitEncryptionPackageInstalled(mounter Interface) (bool, error) {
+	return false, nil
+}
+
+func (mounter *Mounter) UnmountWithEncrypt(target string) error {
+	return nil
 }
