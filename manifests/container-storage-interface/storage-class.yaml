@@ -4,4 +4,5 @@ metadata:
   name: oci-bv
 provisioner: blockvolume.csi.oraclecloud.com
 volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
 reclaimPolicy: Delete

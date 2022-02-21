@@ -35,34 +35,30 @@ require (
 	github.com/container-storage-interface/spec v1.2.0
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.5.2
+	github.com/hashicorp/golang-lru v0.5.4 // indirect
+	github.com/imdario/mergo v0.3.9 // indirect
 	github.com/kubernetes-csi/csi-lib-utils v0.8.1
-	github.com/kubernetes-csi/external-attacher v0.0.0-20201106010650-6d1beabd0fad //v3.0.2
-	github.com/kubernetes-csi/external-provisioner v0.0.0-20210409185916-86c2ba950e76 // v2.0.5
-	github.com/kubernetes-csi/external-snapshotter/client/v2 v2.2.0-rc3
 	github.com/onsi/ginkgo v1.14.1
 	github.com/onsi/gomega v1.10.2
-	github.com/oracle/oci-go-sdk/v31 v31.0.0-00010101000000-000000000000
+	github.com/oracle/oci-go-sdk/v31 v31.0.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.9.0
-	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.6.3
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.16.0
 	golang.org/x/net v0.0.0-20210520170846-37e1c6afe023
-	golang.org/x/sys v0.0.0-20210603081109-ebe580a85c40
+	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1 // indirect
+	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013 // indirect
 	google.golang.org/grpc v1.38.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.19.12
 	k8s.io/apimachinery v0.19.12
-	k8s.io/apiserver v0.19.12
 	k8s.io/client-go v0.19.12
 	k8s.io/cloud-provider v0.19.12
 	k8s.io/component-base v0.19.12
-	k8s.io/csi-translation-lib v0.19.12
 	k8s.io/klog v1.0.0
-	k8s.io/kubelet v0.19.12
 	k8s.io/kubernetes v1.19.12
 	k8s.io/utils v0.0.0-20210305010621-2afb4311ab10
 	sigs.k8s.io/sig-storage-lib-external-provisioner/v6 v6.3.0

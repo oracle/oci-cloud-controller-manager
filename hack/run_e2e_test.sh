@@ -25,6 +25,7 @@ check-env "CLUSTER_KUBECONFIG"    $CLUSTER_KUBECONFIG
 check-env "CLOUD_CONFIG"          $CLOUD_CONFIG
 check-env "ADLOCATION"      $ADLOCATION
 check-env "NSG_OCIDS"       $NSG_OCIDS
+check-env "VOLUME_HANDLE"       $VOLUME_HANDLE
 
 if [ -z "$IMAGE_PULL_REPO" ]; then
     IMAGE_PULL_REPO=""
@@ -43,6 +44,7 @@ function run_e2e_tests_existing_cluster() {
         --cmek-kms-key=${CMEK_KMS_KEY} \
         --nsg-ocids=${NSG_OCIDS} \
         --reserved-ip=${RESERVED_IP} \
+        --volume-handle=${VOLUME_HANDLE} \
     retval=$?
     exit $retval
 }

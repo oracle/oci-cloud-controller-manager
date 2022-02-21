@@ -50,9 +50,18 @@ spec:
               readOnly: true
             - mountPath: /var/run/shared-tmpfs
               name: shared-tmpfs
+        - name: csi-resizer
+          image: quay.io/k8scsi/csi-resizer:v1.0.1
+          args:
+            - --v=5
+            - --csi-address=/var/run/shared-tmpfs/csi.sock
+            - --leader-election
+          imagePullPolicy: "IfNotPresent"
+          volumeMounts:
+            - mountPath: /var/run/shared-tmpfs
+              name: shared-tmpfs
         - name: oci-csi-controller-driver
           args:
-            - --v=2
             - --endpoint=unix://var/run/shared-tmpfs/csi.sock
           command:
             - /usr/local/bin/oci-csi-controller-driver

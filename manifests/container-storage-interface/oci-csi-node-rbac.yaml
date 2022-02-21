@@ -27,7 +27,7 @@ rules:
    resources: ["persistentvolumeclaims"]
    verbs: ["get", "list", "watch", "update", "create"]
  - apiGroups: ["storage.k8s.io"]
-   resources: ["storageclasses", "volumeattachments", "csinodes"]
+   resources: ["storageclasses", "volumeattachments", "volumeattachments/status", "csinodes"]
    verbs: ["get", "list", "watch", "patch"]
  - apiGroups: ["coordination.k8s.io"]
    resources: ["leases"]
@@ -35,6 +35,12 @@ rules:
  - apiGroups: [""]
    resources: ["endpoints"]
    verbs: ["get", "watch", "create", "update"]
+ - apiGroups: [""]
+   resources: ["pods"]
+   verbs: ["get", "list", "watch"]
+ - apiGroups: [""]
+   resources: ["persistentvolumeclaims/status"]
+   verbs: ["patch"]
 ---
 
 kind: ClusterRoleBinding

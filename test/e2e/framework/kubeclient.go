@@ -18,7 +18,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"net"
+	"net/url"
+	"os"
 	"os/exec"
 	"strings"
 	"syscall"
@@ -39,6 +43,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	restclient "k8s.io/client-go/rest"
 	clientcmd "k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/remotecommand"
@@ -143,6 +148,28 @@ Bs7B72+hgS7VwRowRUbNanaZIZt0ZAiwQWN1+Dh7Bj+VbSxc/fna
 type KubeClient struct {
 	Client clientset.Interface
 	config *restclient.Config
+}
+
+func NewKubeClient(kubeConfig string) *KubeClient {
+	tmpfile, err := ioutil.TempFile("", "kubeconfig")
+	Expect(err).NotTo(HaveOccurred())
+	_, err = tmpfile.Write([]byte(kubeConfig))
+
+	Expect(err).NotTo(HaveOccurred())
+	err = tmpfile.Close()
+	Expect(err).NotTo(HaveOccurred())
+	defer os.Remove(tmpfile.Name())
+	config, err := clientcmd.BuildConfigFromFlags("", tmpfile.Name())
+	Expect(err).NotTo(HaveOccurred())
+
+	Logf("kubeclient.NewKubeClient exec provider is %#v", config.ExecProvider)
+
+	client, err := clientset.NewForConfig(config)
+	Expect(err).NotTo(HaveOccurred())
+	return &KubeClient{
+		Client: client,
+		config: config,
+	}
 }
 
 func (kc *KubeClient) NamespaceExists(ns string) bool {
@@ -560,6 +587,23 @@ func isNodeConditionSetAsExpected(node *v1.Node, conditionType v1.NodeConditionT
 	return false
 }
 
+func IsNodeConditionSetAsExpected(node *v1.Node, conditionType v1.NodeConditionType, wantTrue bool) bool {
+	return isNodeConditionSetAsExpected(node, conditionType, wantTrue, false)
+}
+
+func IsNodeConditionSetAsExpectedSilent(node *v1.Node, conditionType v1.NodeConditionType, wantTrue bool) bool {
+	return isNodeConditionSetAsExpected(node, conditionType, wantTrue, true)
+}
+
+func IsNodeConditionUnset(node *v1.Node, conditionType v1.NodeConditionType) bool {
+	for _, cond := range node.Status.Conditions {
+		if cond.Type == conditionType {
+			return false
+		}
+	}
+	return true
+}
+
 // Test whether a fake pod can be scheduled on "node", given its current taints.
 func isNodeUntainted(node *v1.Node) bool {
 	fakePod := &v1.Pod{
@@ -705,6 +749,56 @@ func NewKubectlCommand(args ...string) *kubectlBuilder {
 	return b
 }
 
+func (b *kubectlBuilder) WithEnv(env []string) *kubectlBuilder {
+	b.cmd.Env = env
+	return b
+}
+
+func (b *kubectlBuilder) WithTimeout(t <-chan time.Time) *kubectlBuilder {
+	b.timeout = t
+	return b
+}
+
+func (b kubectlBuilder) WithStdinData(data string) *kubectlBuilder {
+	b.cmd.Stdin = strings.NewReader(data)
+	return &b
+}
+
+func (b kubectlBuilder) WithStdinReader(reader io.Reader) *kubectlBuilder {
+	b.cmd.Stdin = reader
+	return &b
+}
+
+func (b kubectlBuilder) ExecOrDie() string {
+	str, err := b.Exec()
+	Logf("stdout: %q", str)
+	// In case of i/o timeout error, try talking to the apiserver again after 2s before dying.
+	// Note that we're still dying after retrying so that we can get visibility to triage it further.
+	if isTimeout(err) {
+		Logf("Hit i/o timeout error, talking to the server 2s later to see if it's temporary.")
+		time.Sleep(2 * time.Second)
+		retryStr, retryErr := RunKubectl("version")
+		Logf("stdout: %q", retryStr)
+		Logf("err: %v", retryErr)
+	}
+	Expect(err).NotTo(HaveOccurred())
+	return str
+}
+
+func isTimeout(err error) bool {
+	switch err := err.(type) {
+	case net.Error:
+		if err.Timeout() {
+			return true
+		}
+	case *url.Error:
+		if err, ok := err.Err.(net.Error); ok && err.Timeout() {
+			return true
+		}
+	}
+	return false
+}
+
 func (b kubectlBuilder) Exec() (string, error) {
 	var stdout, stderr bytes.Buffer
 	cmd := b.cmd
@@ -837,6 +931,22 @@ func getReplicasFromRuntimeObject(obj runtime.Object) (int32, error) {
 // DeleteRCAndWaitForGC deletes only the Replication Controller and waits for GC to delete the pods.
 func DeleteRCAndWaitForGC(c clientset.Interface, ns, name string) error {
 	return DeleteResourceAndWaitForGC(c, api.Kind("ReplicationController"), ns, name)
+}
+
+// podStoreForSelector creates a PodStore that monitors pods from given namespace matching given selector.
+// It waits until the reflector does a List() before returning.
+func podStoreForSelector(c clientset.Interface, ns string, selector labels.Selector) (*testutil.PodStore, error) {
+	ps, err := testutil.NewPodStore(c, ns, selector, fields.Everything())
+	if err != nil {
+		return nil, err
+	}
+	err = wait.Poll(100*time.Millisecond, 2*time.Minute, func() (bool, error) {
+		if len(ps.Reflector.LastSyncResourceVersion()) != 0 {
+			return true, nil
+		}
+		return false, nil
+	})
+	return ps, err
 }
 
 // waitForPodsInactive waits until there are no active pods left in the PodStore.

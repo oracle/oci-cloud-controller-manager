@@ -23,7 +23,6 @@ import (
 
 	"github.com/oracle/oci-cloud-controller-manager/cmd/oci-csi-node-driver/nodedriver"
 	"github.com/oracle/oci-cloud-controller-manager/cmd/oci-csi-node-driver/nodedriveroptions"
-	"github.com/oracle/oci-cloud-controller-manager/cmd/oci-csi-node-driver/nodedriverregistrar"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/csi/driver"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util/signals"
 )
@@ -36,13 +35,8 @@ func main() {
 	flag.StringVar(&nodecsioptions.LogLevel, "loglevel", "info", "log level")
 	flag.StringVar(&nodecsioptions.Master, "master", "", "kube master")
 	flag.StringVar(&nodecsioptions.Kubeconfig, "kubeconfig", "", "cluster kubeconfig")
-	flag.DurationVar(&nodecsioptions.ConnectionTimeout, "connection-timeout", 0, "The --connection-timeout flag is deprecated")
-	flag.StringVar(&nodecsioptions.CsiAddress, "csi-address", "/run/csi/socket", "Path of the Block Volume CSI driver socket that the node-driver-registrar will connect to.")
-	flag.StringVar(&nodecsioptions.KubeletRegistrationPath, "kubelet-registration-path", "", "Path of the Block Volume CSI driver socket on the Kubernetes host machine.")
 	flag.StringVar(&nodecsioptions.FssEndpoint, "fss-endpoint", "unix://tmp/fss/csi.sock", "FSS CSI endpoint")
-	flag.StringVar(&nodecsioptions.FssCsiAddress, "fss-csi-address", "/run/fss/socket", "Path of the FSS CSI driver socket that the node-driver-registrar will connect to.")
-	flag.StringVar(&nodecsioptions.FssKubeletRegistrationPath, "fss-kubelet-registration-path", "", "Path of the FSS CSI driver socket on the Kubernetes host machine.")
-	flag.BoolVar(&nodecsioptions.EnableFssDriver, "fss-csi-driver-enabled", false, "Handle flag to enable FSS CSI driver")
+	flag.BoolVar(&nodecsioptions.EnableFssDriver, "fss-csi-driver-enabled", true, "Handle flag to enable FSS CSI driver")
 
 	klog.InitFlags(nil)
 	flag.Set("logtostderr", "true")

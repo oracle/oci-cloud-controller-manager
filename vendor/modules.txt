@@ -1,15 +1,3 @@
-# bitbucket.oci.oraclecorp.com/oke/bmc-go-sdk v0.0.0-20180119173458-fe578152e621
-bitbucket.oci.oraclecorp.com/oke/bmc-go-sdk
-# bitbucket.oci.oraclecorp.com/oke/oke-common v1.0.1-0.20201218050159-057951da132b
-## explicit
-bitbucket.oci.oraclecorp.com/oke/oke-common/protobuf
-bitbucket.oci.oraclecorp.com/oke/oke-common/resourceprincipals
-bitbucket.oci.oraclecorp.com/oke/oke-common/types
-bitbucket.oci.oraclecorp.com/oke/oke-common/types/apierrors
-bitbucket.oci.oraclecorp.com/oke/oke-common/types/lists
-bitbucket.oci.oraclecorp.com/oke/oke-common/types/nodepools
-bitbucket.oci.oraclecorp.com/oke/oke-common/types/nodes
-bitbucket.oci.oraclecorp.com/oke/oke-common/types/versions
 # github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78
 github.com/Azure/go-ansiterm
 github.com/Azure/go-ansiterm/winterm
@@ -51,8 +39,6 @@ github.com/emicklei/go-restful/log
 github.com/evanphx/json-patch
 # github.com/fsnotify/fsnotify v1.4.9
 github.com/fsnotify/fsnotify
-# github.com/go-kit/kit v0.10.0
-github.com/go-kit/kit/metrics
 # github.com/go-logr/logr v0.2.0
 github.com/go-logr/logr
 # github.com/go-openapi/jsonpointer v0.19.3
@@ -79,7 +65,6 @@ github.com/golang/protobuf/protoc-gen-go/descriptor
 github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
-github.com/golang/protobuf/ptypes/empty
 github.com/golang/protobuf/ptypes/timestamp
 github.com/golang/protobuf/ptypes/wrappers
 # github.com/google/go-cmp v0.5.5
@@ -88,8 +73,6 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
-# github.com/google/go-querystring v1.0.0
-github.com/google/go-querystring/query
 # github.com/google/gofuzz v1.1.0
 github.com/google/gofuzz
 # github.com/google/uuid v1.1.1
@@ -98,12 +81,10 @@ github.com/google/uuid
 github.com/googleapis/gnostic/compiler
 github.com/googleapis/gnostic/extensions
 github.com/googleapis/gnostic/openapiv2
-# github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
-github.com/grpc-ecosystem/go-grpc-middleware
-github.com/grpc-ecosystem/go-grpc-middleware/recovery
 # github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 github.com/grpc-ecosystem/go-grpc-prometheus
 # github.com/hashicorp/golang-lru v0.5.4
+## explicit
 github.com/hashicorp/golang-lru
 github.com/hashicorp/golang-lru/simplelru
 # github.com/hashicorp/hcl v1.0.0
@@ -118,6 +99,7 @@ github.com/hashicorp/hcl/json/parser
 github.com/hashicorp/hcl/json/scanner
 github.com/hashicorp/hcl/json/token
 # github.com/imdario/mergo v0.3.9
+## explicit
 github.com/imdario/mergo
 # github.com/inconshreveable/mousetrap v1.0.0
 github.com/inconshreveable/mousetrap
@@ -127,28 +109,7 @@ github.com/json-iterator/go
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/kubernetes-csi/csi-lib-utils v0.8.1
 ## explicit
-github.com/kubernetes-csi/csi-lib-utils/connection
-github.com/kubernetes-csi/csi-lib-utils/leaderelection
-github.com/kubernetes-csi/csi-lib-utils/metrics
 github.com/kubernetes-csi/csi-lib-utils/protosanitizer
-github.com/kubernetes-csi/csi-lib-utils/rpc
-# github.com/kubernetes-csi/external-attacher v0.0.0-20201106010650-6d1beabd0fad
-## explicit
-github.com/kubernetes-csi/external-attacher/pkg/attacher
-github.com/kubernetes-csi/external-attacher/pkg/controller
-# github.com/kubernetes-csi/external-provisioner v0.0.0-20210409185916-86c2ba950e76
-## explicit
-github.com/kubernetes-csi/external-provisioner/pkg/capacity
-github.com/kubernetes-csi/external-provisioner/pkg/capacity/topology
-github.com/kubernetes-csi/external-provisioner/pkg/controller
-github.com/kubernetes-csi/external-provisioner/pkg/features
-github.com/kubernetes-csi/external-provisioner/pkg/owner
-# github.com/kubernetes-csi/external-snapshotter/client/v2 v2.2.0-rc3
-## explicit
-github.com/kubernetes-csi/external-snapshotter/client/v2/apis/volumesnapshot/v1beta1
-github.com/kubernetes-csi/external-snapshotter/client/v2/clientset/versioned
-github.com/kubernetes-csi/external-snapshotter/client/v2/clientset/versioned/scheme
-github.com/kubernetes-csi/external-snapshotter/client/v2/clientset/versioned/typed/volumesnapshot/v1beta1
 # github.com/magiconair/properties v1.8.1
 github.com/magiconair/properties
 # github.com/mailru/easyjson v0.7.0
@@ -159,7 +120,7 @@ github.com/mailru/easyjson/jwriter
 github.com/matttproud/golang_protobuf_extensions/pbutil
 # github.com/miekg/dns v1.1.29
 github.com/miekg/dns
-# github.com/mitchellh/mapstructure v1.2.2
+# github.com/mitchellh/mapstructure v1.1.2
 github.com/mitchellh/mapstructure
 # github.com/moby/term v0.0.0-20200312100748-672ec06f55cd
 github.com/moby/term
@@ -213,17 +174,16 @@ github.com/onsi/gomega/matchers/support/goraph/util
 github.com/onsi/gomega/types
 # github.com/opencontainers/go-digest v1.0.0-rc1
 github.com/opencontainers/go-digest
-# github.com/oracle/oci-go-sdk/v31 v31.0.0-00010101000000-000000000000 => bitbucket.oci.oraclecorp.com/sdk/oci-go-sdk/v31 v31.0.0-20201215183620-aed686bb60a8
+# github.com/oracle/oci-go-sdk/v31 v31.0.0
 ## explicit
 github.com/oracle/oci-go-sdk/v31/common
 github.com/oracle/oci-go-sdk/v31/common/auth
-github.com/oracle/oci-go-sdk/v31/containerengine
 github.com/oracle/oci-go-sdk/v31/core
 github.com/oracle/oci-go-sdk/v31/filestorage
 github.com/oracle/oci-go-sdk/v31/identity
 github.com/oracle/oci-go-sdk/v31/loadbalancer
 github.com/oracle/oci-go-sdk/v31/monitoring
-# github.com/pelletier/go-toml v1.7.0
+# github.com/pelletier/go-toml v1.2.0
 github.com/pelletier/go-toml
 # github.com/pkg/errors v0.9.1
 ## explicit
@@ -250,10 +210,9 @@ github.com/sirupsen/logrus
 # github.com/spf13/afero v1.2.2
 github.com/spf13/afero
 github.com/spf13/afero/mem
-# github.com/spf13/cast v1.3.1
+# github.com/spf13/cast v1.3.0
 github.com/spf13/cast
 # github.com/spf13/cobra v1.0.0
-## explicit
 github.com/spf13/cobra
 # github.com/spf13/jwalterweatherman v1.1.0
 github.com/spf13/jwalterweatherman
@@ -304,11 +263,8 @@ go.uber.org/zap/internal/ztest
 go.uber.org/zap/zapcore
 go.uber.org/zap/zaptest
 # golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
-golang.org/x/crypto/blowfish
-golang.org/x/crypto/chacha20
 golang.org/x/crypto/cryptobyte
 golang.org/x/crypto/cryptobyte/asn1
-golang.org/x/crypto/curve25519
 golang.org/x/crypto/ed25519
 golang.org/x/crypto/ed25519/internal/edwards25519
 golang.org/x/crypto/internal/subtle
@@ -316,8 +272,6 @@ golang.org/x/crypto/nacl/secretbox
 golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/poly1305
 golang.org/x/crypto/salsa20/salsa
-golang.org/x/crypto/ssh
-golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
 golang.org/x/crypto/ssh/terminal
 # golang.org/x/net v0.0.0-20210520170846-37e1c6afe023
 ## explicit
@@ -344,7 +298,6 @@ golang.org/x/oauth2/internal
 # golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 golang.org/x/sync/singleflight
 # golang.org/x/sys v0.0.0-20210603081109-ebe580a85c40
-## explicit
 golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
@@ -372,6 +325,7 @@ golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
 golang.org/x/text/width
 # golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1
+## explicit
 golang.org/x/time/rate
 # golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 golang.org/x/xerrors
@@ -385,6 +339,7 @@ google.golang.org/appengine/internal/remote_api
 google.golang.org/appengine/internal/urlfetch
 google.golang.org/appengine/urlfetch
 # google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013
+## explicit
 google.golang.org/genproto/googleapis/rpc/status
 # google.golang.org/grpc v1.38.0 => google.golang.org/grpc v1.26.0
 ## explicit
@@ -456,12 +411,11 @@ google.golang.org/protobuf/runtime/protoimpl
 google.golang.org/protobuf/types/descriptorpb
 google.golang.org/protobuf/types/known/anypb
 google.golang.org/protobuf/types/known/durationpb
-google.golang.org/protobuf/types/known/emptypb
 google.golang.org/protobuf/types/known/timestamppb
 google.golang.org/protobuf/types/known/wrapperspb
 # gopkg.in/inf.v0 v0.9.1
 gopkg.in/inf.v0
-# gopkg.in/ini.v1 v1.55.0
+# gopkg.in/ini.v1 v1.51.0
 gopkg.in/ini.v1
 # gopkg.in/natefinch/lumberjack.v2 v2.0.0
 ## explicit
@@ -581,7 +535,6 @@ k8s.io/apimachinery/third_party/forked/golang/json
 k8s.io/apimachinery/third_party/forked/golang/netutil
 k8s.io/apimachinery/third_party/forked/golang/reflect
 # k8s.io/apiserver v0.19.12 => k8s.io/apiserver v0.19.12
-## explicit
 k8s.io/apiserver/pkg/admission
 k8s.io/apiserver/pkg/admission/configuration
 k8s.io/apiserver/pkg/admission/initializer
@@ -853,7 +806,6 @@ k8s.io/client-go/pkg/version
 k8s.io/client-go/plugin/pkg/client/auth/exec
 k8s.io/client-go/rest
 k8s.io/client-go/rest/watch
-k8s.io/client-go/restmapper
 k8s.io/client-go/scale
 k8s.io/client-go/scale/scheme
 k8s.io/client-go/scale/scheme/appsint
@@ -921,10 +873,6 @@ k8s.io/component-base/metrics/testutil
 k8s.io/component-base/term
 k8s.io/component-base/version
 k8s.io/component-base/version/verflag
-# k8s.io/csi-translation-lib v0.19.12 => k8s.io/csi-translation-lib v0.19.12
-## explicit
-k8s.io/csi-translation-lib
-k8s.io/csi-translation-lib/plugins
 # k8s.io/klog v1.0.0
 ## explicit
 k8s.io/klog
@@ -943,9 +891,6 @@ k8s.io/kube-openapi/pkg/util/proto
 k8s.io/kube-scheduler/extender/v1
 # k8s.io/kubectl v0.0.0 => k8s.io/kubectl v0.19.12
 k8s.io/kubectl/pkg/scale
-# k8s.io/kubelet v0.19.12 => k8s.io/kubelet v0.19.12
-## explicit
-k8s.io/kubelet/pkg/apis/pluginregistration/v1
 # k8s.io/kubernetes v1.19.12 => k8s.io/kubernetes v1.19.12
 ## explicit
 k8s.io/kubernetes/cmd/cloud-controller-manager/app
@@ -1054,19 +999,9 @@ k8s.io/utils/net
 k8s.io/utils/path
 k8s.io/utils/pointer
 k8s.io/utils/trace
-# oracle.com/oci/httpsigner v0.0.0-00010101000000-000000000000 => bitbucket.oci.oraclecorp.com/goiam/httpsigner.git v0.0.0-00000000000000-e8cb27ebf4409946b295b9e22e511a52fc967e91
-oracle.com/oci/httpsigner
-# oracle.com/oci/ociauthz v0.0.0-00010101000000-000000000000 => bitbucket.oci.oraclecorp.com/goiam/ociauthz.git v0.0.0-00000000000000-b00a4280e2092ac2c220111731965f49392734c1
-oracle.com/oci/ociauthz
-# oracle.com/oci/tagging v0.0.0-00010101000000-000000000000 => bitbucket.oci.oraclecorp.com/GOPLEX/tagging.git v0.0.0-00000000000000-20a2e48911da14e503935718f66588ab14aad8d4
-oracle.com/oci/tagging
-oracle.com/oci/tagging/protobuf
 # sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.0.15
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client/pkg/client
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client/proto/client
-# sigs.k8s.io/controller-runtime v0.6.2
-sigs.k8s.io/controller-runtime/pkg/client
-sigs.k8s.io/controller-runtime/pkg/client/apiutil
 # sigs.k8s.io/sig-storage-lib-external-provisioner/v6 v6.3.0
 ## explicit
 sigs.k8s.io/sig-storage-lib-external-provisioner/v6/controller
@@ -1081,7 +1016,6 @@ sigs.k8s.io/structured-merge-diff/v4/value
 # sigs.k8s.io/yaml v1.2.0
 sigs.k8s.io/yaml
 # github.com/docker/docker => github.com/docker/engine v0.0.0-20181106193140-f5749085e9cb
-# github.com/oracle/oci-go-sdk/v31 => bitbucket.oci.oraclecorp.com/sdk/oci-go-sdk/v31 v31.0.0-20201215183620-aed686bb60a8
 # github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.11.0
 # google.golang.org/grpc => google.golang.org/grpc v1.26.0
 # k8s.io/api => k8s.io/api v0.19.12
@@ -1106,9 +1040,3 @@ sigs.k8s.io/yaml
 # k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.19.12
 # k8s.io/metrics => k8s.io/metrics v0.19.12
 # k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.19.12
-# oracle.com/oci/httpiam => bitbucket.oci.oraclecorp.com/goiam/httpiam.git v0.0.0-00000000000000-973dbb679788e9727a86d30ea0cccadcc0fe33d6
-# oracle.com/oci/httpsigner => bitbucket.oci.oraclecorp.com/goiam/httpsigner.git v0.0.0-00000000000000-e8cb27ebf4409946b295b9e22e511a52fc967e91
-# oracle.com/oci/ociauthz => bitbucket.oci.oraclecorp.com/goiam/ociauthz.git v0.0.0-00000000000000-b00a4280e2092ac2c220111731965f49392734c1
-# oracle.com/oci/ocihttpiam => bitbucket.oci.oraclecorp.com/goiam/ocihttpiam.git v0.0.0-00000000000000-996aa4a919d9e80238807c1c63c385980a0302a8
-# oracle.com/oci/tagging => bitbucket.oci.oraclecorp.com/GOPLEX/tagging.git v0.0.0-00000000000000-20a2e48911da14e503935718f66588ab14aad8d4
-# oracle.com/oke/oci-go-common => bitbucket.oci.oraclecorp.com/oke/oci-go-common.git v0.0.0-00000000000000-f93927b2b66cb1de2a10cf0f9f0d7e349bc0ae27

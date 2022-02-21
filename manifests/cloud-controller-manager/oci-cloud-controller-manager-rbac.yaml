@@ -109,6 +109,8 @@ rules:
     - "extension-apiserver-authentication"
   verbs:
     - get
+    - list
+    - watch
 
 - apiGroups:
   - ""
