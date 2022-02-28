@@ -144,7 +144,7 @@ spec:
           args:
             - --csi-address=/csi/csi.sock
             - --kubelet-registration-path=/var/lib/kubelet/plugins/blockvolume.csi.oraclecloud.com/csi.sock
-          image: quay.io/k8scsi/csi-node-driver-registrar:v1.0.2
+          image: k8s.gcr.io/sig-storage/csi-node-driver-registrar:v2.5.0
           securityContext:
             privileged: true
           lifecycle:
@@ -163,7 +163,7 @@ spec:
           args:
             - --csi-address=/fss/csi.sock
             - --kubelet-registration-path=/var/lib/kubelet/plugins/fss.csi.oraclecloud.com/csi.sock
-          image: quay.io/k8scsi/csi-node-driver-registrar:v1.0.2
+          image: k8s.gcr.io/sig-storage/csi-node-driver-registrar:v2.5.0
           securityContext:
             privileged: true
           lifecycle:
@@ -180,8 +180,6 @@ spec:
               name: registration-dir
       dnsPolicy: ClusterFirst
       hostNetwork: true
-      imagePullSecrets:
-        - name: image-pull-secret
       restartPolicy: Always
       schedulerName: default-scheduler
       serviceAccount: csi-oci-node-sa

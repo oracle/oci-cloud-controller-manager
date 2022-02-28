@@ -427,7 +427,8 @@ func (d *ControllerDriver) ControllerPublishVolume(ctx context.Context, req *csi
 				return nil, status.Errorf(codes.Internal, "Failed to attach volume to node. "+
 					"The volume is already attached to another node.")
 			}
-			if volumeAttached.GetLifecycleState() == core.VolumeAttachmentLifecycleStateAttaching {
+			if volumeAttached.GetLifecycleState() == core.VolumeAttachmentLifecycleStateAttaching ||
+				volumeAttached.GetLifecycleState() == core.VolumeAttachmentLifecycleStateAttached {
 				log.Info("Volume is ATTACHING to node.")
 				volumeAttached, err = d.client.Compute().WaitForVolumeAttached(ctx, *volumeAttached.GetId())
 				if err != nil {
@@ -754,8 +755,8 @@ func (d *ControllerDriver) ControllerExpandVolume(ctx context.Context, req *csi.
 	}
 
 	updateVolumeDetails := core.UpdateVolumeDetails{
-		DisplayName:       volume.DisplayName,
-		SizeInGBs:         &newSizeInGB,
+		DisplayName: volume.DisplayName,
+		SizeInGBs:   &newSizeInGB,
 	}
 
 	volume, err = d.client.BlockStorage().UpdateVolume(ctx, volumeId, updateVolumeDetails)

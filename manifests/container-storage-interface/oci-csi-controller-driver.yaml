@@ -22,14 +22,13 @@ spec:
         node-role.kubernetes.io/master: ""
       containers:
         - name: csi-volume-provisioner
-          image: quay.io/k8scsi/csi-provisioner:v1.6.0
+          image: k8s.gcr.io/sig-storage/csi-provisioner:v2.2.2
           args:
             - --csi-address=/var/run/shared-tmpfs/csi.sock
             - --volume-name-prefix=csi
             - --feature-gates=Topology=true
             - --timeout=120s
-            - --enable-leader-election=true
-            - --leader-election-type=leases
+            - --leader-election
             - --leader-election-namespace=kube-system
           volumeMounts:
             - name: config
@@ -38,7 +37,7 @@ spec:
             - mountPath: /var/run/shared-tmpfs
               name: shared-tmpfs
         - name: csi-attacher
-          image: quay.io/k8scsi/csi-attacher:v2.2.0
+          image: k8s.gcr.io/sig-storage/csi-attacher:v3.4.0
           args:
             - --csi-address=/var/run/shared-tmpfs/csi.sock
             - --timeout=120s
@@ -51,9 +50,8 @@ spec:
             - mountPath: /var/run/shared-tmpfs
               name: shared-tmpfs
         - name: csi-resizer
-          image: quay.io/k8scsi/csi-resizer:v1.0.1
+          image: k8s.gcr.io/sig-storage/csi-resizer:v1.2.0
           args:
-            - --v=5
             - --csi-address=/var/run/shared-tmpfs/csi.sock
             - --leader-election
           imagePullPolicy: "IfNotPresent"
