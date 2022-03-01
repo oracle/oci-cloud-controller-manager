@@ -38,6 +38,7 @@ else
     VERSION   ?= ${VERSION}
 endif
 
+RELEASE = v0.13.0
 
 GOOS ?= linux
 ARCH ?= amd64
@@ -85,10 +86,11 @@ build: build-dirs
 
 .PHONY: manifests
 manifests: build-dirs
-	@cp -a manifests/**/*.yaml dist
+	@mkdir -p ${RELEASE}
+	@cp -a manifests/**/*.yaml ${RELEASE}
 	@sed $(SED_INPLACE)                         \
-	  's#${IMAGE}:latest#${IMAGE}:${VERSION}#g' \
-	  dist/*.yaml
+	  's#${IMAGE}:${VERSION}#${IMAGE}:${RELEASE}#g' \
+	  ${RELEASE}/*.yaml
 
 .PHONY: vendor
 vendor:

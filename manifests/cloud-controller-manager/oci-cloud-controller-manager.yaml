@@ -39,7 +39,7 @@ spec:
             path: /etc/kubernetes
       containers:
         - name: oci-cloud-controller-manager
-          image: iad.ocir.io/oracle/cloud-provider-oci:latest
+          image: ghcr.io/oracle/cloud-provider-oci:v0.13.0
           command: ["/usr/local/bin/oci-cloud-controller-manager"]
           args:
             - --cloud-config=/etc/oci/cloud-provider.yaml
