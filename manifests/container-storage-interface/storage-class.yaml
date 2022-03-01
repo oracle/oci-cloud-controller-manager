@@ -16,3 +16,4 @@ parameters:
   attachment-type: "paravirtualized"
 reclaimPolicy: Delete
 volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
