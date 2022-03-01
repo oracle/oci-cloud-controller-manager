@@ -22,11 +22,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
 	"go.uber.org/zap"
-
 	api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+
+	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
 )
 
 const (
@@ -41,7 +41,7 @@ const (
 )
 
 const (
-	changeFmtStr = "%v -> Actual:%v - Desired:%v"
+	changeFmtStr        = "%v -> Actual:%v - Desired:%v"
 	backendChangeFmtStr = "%v -> Backend:%v"
 )
 

@@ -23,4 +23,4 @@ export CGO_ENABLED=0
 TARGETS=$(for d in "$@"; do echo ./$d/...; done)
 
 echo "Running tests..."
-go test -v -installsuffix "static" ${TARGETS}
+GO111MODULE=off go test -coverprofile=coverage.out -v -installsuffix "static" ${TARGETS}

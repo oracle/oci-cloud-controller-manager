@@ -1,3 +1,0 @@
-docker build .
-docker tag <image> <new image name>
-docker push iad.ocir.io/odx-oke/oke-public/<new image name>

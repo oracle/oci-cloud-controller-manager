@@ -34,11 +34,15 @@ const (
 	// Some pods can take much longer to get ready due to volume attach/detach latency.
 	slowPodStartTimeout = 15 * time.Minute
 
+	JobCompletionTimeout = 5 * time.Minute
+	deploymentAvailableTimeout = 5 * time.Minute
+
 	DefaultClusterKubeconfig = "/tmp/clusterkubeconfig"
 	DefaultCloudConfig       = "/tmp/cloudconfig"
 
 	ClassOCI          = "oci"
 	ClassOCICSI       = "oci-bv"
+	ClassOCICSIExpand = "oci-bv-expand"
 	ClassOCIExt3      = "oci-ext3"
 	ClassOCIMntFss    = "oci-fss-mnt"
 	ClassOCISubnetFss = "oci-fss-subnet"
@@ -65,6 +69,7 @@ var (
 	cmekKMSKey        string //KMS key for CMEK testing
 	nsgOCIDS		  string // Testing CCM NSG feature
 	reservedIP        string // Testing public reserved IP feature
+	volumeHandle      string // The FSS mount volume handle
 )
 
 func init() {
@@ -82,12 +87,12 @@ func init() {
 	flag.BoolVar(&deleteNamespace, "delete-namespace", true, "If true tests will delete namespace after completion. It is only designed to make debugging easier, DO NOT turn it off by default.")
 
 	flag.StringVar(&mntTargetOCID, "mnt-target-id", "", "Mount Target ID is specified to identify the mount target to be attached to the volumes")
+	flag.StringVar(&volumeHandle, "volume-handle", "", "FSS volume handle used to mount the File System")
 
 	flag.StringVar(&imagePullRepo, "image-pull-repo", "", "Repo to pull images from. Will pull public images if not specified.")
 	flag.StringVar(&cmekKMSKey, "cmek-kms-key", "", "KMS key to be used for CMEK testing")
 	flag.StringVar(&nsgOCIDS, "nsg-ocids", "", "NSG OCIDs to be used to associate to LB")
 	flag.StringVar(&reservedIP, "reserved-ip", "", "Public reservedIP to be used for testing loadbalancer with reservedIP")
-	flag.Parse()
 }
 
 // Framework is the context of the text execution.
@@ -111,11 +116,13 @@ type Framework struct {
 	CMEKKMSKey    string
 	NsgOCIDS      string
 	ReservedIP    string
+	VolumeHandle  string
 }
 
 // New creates a new a framework that holds the context of the test
 // execution.
 func New() *Framework {
+	flag.Parse()
 	return NewWithConfig()
 }
 
@@ -129,6 +136,7 @@ func NewWithConfig() *Framework {
 		CMEKKMSKey:    cmekKMSKey,
 		NsgOCIDS:	   nsgOCIDS,
 		ReservedIP:    reservedIP,
+		VolumeHandle:  volumeHandle,
 	}
 
 	f.CloudConfigPath = cloudConfigFile
@@ -155,6 +163,8 @@ func (f *Framework) Initialize() {
 	Logf("OCI AdLabel: %s", f.AdLabel)
 	f.MntTargetOcid = mntTargetOCID
 	Logf("OCI Mount Target OCID: %s", f.MntTargetOcid)
+	f.VolumeHandle = volumeHandle
+	Logf("FSS Volume Handle is : %s", f.VolumeHandle)
 	f.CMEKKMSKey = cmekKMSKey
 	Logf("CMEK KMS Key: %s", f.CMEKKMSKey)
 	f.NsgOCIDS = nsgOCIDS

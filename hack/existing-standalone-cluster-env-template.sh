@@ -39,6 +39,9 @@ export CMEK_KMS_KEY=""
 # Mandatory
 export NSG_OCIDS=""
 
+# VOLUME HANDLE in the format filesystem_ocid:mountTargetIP:export_path
+# make sure volume handle is in the same subnet as your nodes
+export VOLUME_HANDLE=""
 # OPTIONAL
 
 # For debugging the tests in existing cluster, do not turn it off by default.

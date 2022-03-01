@@ -68,6 +68,7 @@ type CloudProviderFramework struct {
 	IsBackup           bool
 	BackupIDs          []string
 	StorageClasses     []string
+	VolumeIds          []string
 
 	// To make sure that this framework cleans up after itself, no matter what,
 	// we install a Cleanup action before each test and clear it after.  If we
@@ -137,7 +138,7 @@ func (f *CloudProviderFramework) CreateNamespace(baseName string, labels map[str
 	var got *v1.Namespace
 	if err := wait.PollImmediate(K8sResourcePoll, 30*time.Second, func() (bool, error) {
 		var err error
-		got, err = f.ClientSet.CoreV1().Namespaces().Create(namespaceObj)
+		got, err = f.ClientSet.CoreV1().Namespaces().Create(context.Background(), namespaceObj, metav1.CreateOptions{})
 		if err != nil {
 			Logf("Unexpected error while creating namespace: %v", err)
 			return false, nil
@@ -158,7 +159,7 @@ func (f *CloudProviderFramework) CreateNamespace(baseName string, labels map[str
 // deleted.
 func (f *CloudProviderFramework) DeleteNamespace(namespace string, timeout time.Duration) error {
 	startTime := time.Now()
-	if err := f.ClientSet.CoreV1().Namespaces().Delete(namespace, nil); err != nil {
+	if err := f.ClientSet.CoreV1().Namespaces().Delete(context.Background(), namespace, metav1.DeleteOptions{}); err != nil {
 		if apierrors.IsNotFound(err) {
 			Logf("Namespace %v was already deleted", namespace)
 			return nil
@@ -168,7 +169,7 @@ func (f *CloudProviderFramework) DeleteNamespace(namespace string, timeout time.
 
 	// wait for namespace to delete or timeout.
 	err := wait.PollImmediate(K8sResourcePoll, timeout, func() (bool, error) {
-		if _, err := f.ClientSet.CoreV1().Namespaces().Get(namespace, metav1.GetOptions{}); err != nil {
+		if _, err := f.ClientSet.CoreV1().Namespaces().Get(context.Background(), namespace, metav1.GetOptions{}); err != nil {
 			if apierrors.IsNotFound(err) {
 				return true, nil
 			}
@@ -265,7 +266,7 @@ func (f *CloudProviderFramework) AfterEach() {
 
 	for _, storageClass := range f.StorageClasses {
 		By(fmt.Sprintf("Deleting storage class %q", storageClass))
-		err := f.ClientSet.StorageV1beta1().StorageClasses().Delete(storageClass, nil)
+		err := f.ClientSet.StorageV1().StorageClasses().Delete(context.Background(), storageClass, metav1.DeleteOptions{})
 		if err != nil && !apierrors.IsNotFound(err) {
 			Logf("Storage Class Delete API error: %v", err)
 		}
@@ -277,6 +278,14 @@ func (f *CloudProviderFramework) AfterEach() {
 		_, err := f.BlockStorageClient.DeleteVolumeBackup(ctx, ocicore.DeleteVolumeBackupRequest{VolumeBackupId: &backupID})
 		if err != nil && !apierrors.IsNotFound(err) {
 			Logf("Failed to delete backup id %q: %v", backupID, err)
+		}
+	}
+
+	for _, volId := range f.VolumeIds {
+		By(fmt.Sprintf("Deleting volumes %q", volId))
+		err := f.ClientSet.CoreV1().PersistentVolumes().Delete(context.Background() ,volId, metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			Logf("Failed to delete persistent volume %q: %v", volId, err)
 		}
 	}
 

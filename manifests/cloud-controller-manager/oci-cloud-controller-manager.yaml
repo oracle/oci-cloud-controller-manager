@@ -45,7 +45,7 @@ spec:
             - --cloud-config=/etc/oci/cloud-provider.yaml
             - --cloud-provider=oci
             - --leader-elect-resource-lock=configmaps
-            - -v=2
+            - --v=2
           volumeMounts:
             - name: cfg
               mountPath: /etc/oci

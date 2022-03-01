@@ -39,7 +39,7 @@ import (
 	listersv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
-	"sigs.k8s.io/sig-storage-lib-external-provisioner/controller"
+	"sigs.k8s.io/sig-storage-lib-external-provisioner/v6/controller"
 )
 
 const (
@@ -183,10 +183,10 @@ func mapAvailabilityDomainToFailureDomain(AD string) string {
 }
 
 // Provision creates a storage asset and returns a PV object representing it.
-func (p *OCIProvisioner) Provision(options controller.ProvisionOptions) (*v1.PersistentVolume, error) {
+func (p *OCIProvisioner) Provision(ctx context.Context, options controller.ProvisionOptions) (*v1.PersistentVolume, controller.ProvisioningState, error) {
 	availabilityDomainName, availabilityDomain, err := p.chooseAvailabilityDomain(context.Background(), options.PVC)
 	if err != nil {
-		return nil, err
+		return nil, controller.ProvisioningFinished, err
 	}
 	persistentVolume, err := p.provisioner.Provision(options, availabilityDomain)
 	if err == nil {
@@ -195,12 +195,12 @@ func (p *OCIProvisioner) Provision(options controller.ProvisionOptions) (*v1.Per
 		persistentVolume.ObjectMeta.Annotations[ociCompartment] = p.compartmentID
 		persistentVolume.ObjectMeta.Labels[v1.LabelZoneFailureDomain] = mapAvailabilityDomainToFailureDomain(*availabilityDomain.Name)
 	}
-	return persistentVolume, err
+	return persistentVolume, controller.ProvisioningFinished, err
 }
 
 // Delete removes the storage asset that was created by Provision represented
 // by the given PV.
-func (p *OCIProvisioner) Delete(volume *v1.PersistentVolume) error {
+func (p *OCIProvisioner) Delete(ctx context.Context, volume *v1.PersistentVolume) error {
 	identity, ok := volume.Annotations[ociProvisionerIdentity]
 	if !ok {
 		return errors.New("identity annotation not found on PV")
@@ -297,6 +297,6 @@ func Run(logger *zap.SugaredLogger, kubeconfig string, master string, minVolumeS
 	if err := ociProvisioner.Ready(stopCh); err != nil {
 		return errors.Wrapf(err, "failed to start volume provisioner")
 	}
-	pc.Run(stopCh)
+	pc.Run(context.Background())
 	return errors.Errorf("unreachable")
 }

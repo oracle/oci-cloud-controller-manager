@@ -20,14 +20,15 @@ import (
 	"reflect"
 	"testing"
 
-	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
-	"github.com/oracle/oci-go-sdk/v31/common"
-	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+
+	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
+	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
 )
 
 var (
@@ -69,6 +70,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 		service          *v1.Service
 		expected         *LBSpec
 		sslConfig        *SSLConfig
+		clusterTags      *providercfg.InitialTags
 	}{
 		"defaults": {
 			defaultSubnetOne: "one",
@@ -1531,6 +1533,74 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				LoadBalancerIP:      "10.0.0.0",
 			},
 		},
+		"defaults with tags": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInitialFreeformTagsOverride: `{"cluster":"resource", "unique":"tag"}`,
+						ServiceAnnotationLoadBalancerInitialDefinedTagsOverride:  `{"namespace":{"key":"value", "owner":"team"}}`,
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			clusterTags: &providercfg.InitialTags{
+				LoadBalancer: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"cluster": "cluster"},
+					DefinedTags:  map[string]map[string]interface{}{"namespace": {"cluster": "name", "owner": "cluster"}},
+				},
+			},
+
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"one", "two"},
+				Listeners: map[string]loadbalancer.ListenerDetails{
+					"TCP-80": {
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]loadbalancer.BackendSetDetails{
+					"TCP-80": {
+						Backends: []loadbalancer.BackendDetails{},
+						HealthChecker: &loadbalancer.HealthCheckerDetails{
+							Protocol:         common.String("HTTP"),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+						},
+						Policy: common.String("ROUND_ROBIN"),
+					},
+				},
+				SourceCIDRs: []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager: newSecurityListManagerNOOP(),
+				FreeformTags:        map[string]string{"cluster": "resource", "unique": "tag"},
+				DefinedTags:         map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}},
+			},
+		},
 	}
 
 	cp := &CloudProvider{
@@ -1556,7 +1626,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			slManagerFactory := func(mode string) securityListManager {
 				return newSecurityListManagerNOOP()
 			}
-			result, err := NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, tc.sslConfig, slManagerFactory)
+			result, err := NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, tc.sslConfig, slManagerFactory, tc.clusterTags)
 			if err != nil {
 				t.Error(err)
 			}
@@ -1575,6 +1645,7 @@ func TestNewLBSpecSingleAD(t *testing.T) {
 		nodes            []*v1.Node
 		service          *v1.Service
 		expected         *LBSpec
+		clusterTags      *providercfg.InitialTags
 	}{
 		"single subnet for single AD": {
 			defaultSubnetOne: "one",
@@ -1659,7 +1730,7 @@ func TestNewLBSpecSingleAD(t *testing.T) {
 			slManagerFactory := func(mode string) securityListManager {
 				return newSecurityListManagerNOOP()
 			}
-			result, err := NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, nil, slManagerFactory)
+			result, err := NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, nil, slManagerFactory, tc.clusterTags)
 			if err != nil {
 				t.Error(err)
 			}
@@ -1679,6 +1750,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 		service          *v1.Service
 		//add cp or cp security list
 		expectedErrMsg string
+		clusterTags    *providercfg.InitialTags
 	}{
 		"unsupported udp protocol": {
 			service: &v1.Service{
@@ -1913,6 +1985,27 @@ func TestNewLBSpecFailure(t *testing.T) {
 			},
 			expectedErrMsg: `invalid service: cannot create a private load balancer with Reserved IP`,
 		},
+		"invalid defined tags": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInitialDefinedTagsOverride: "whoops",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{Protocol: v1.ProtocolTCP},
+					},
+				},
+			},
+			expectedErrMsg: "failed to parse defined tags annotation: invalid character 'w' looking for beginning of value",
+		},
 	}
 
 	cp := &CloudProvider{
@@ -1934,7 +2027,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 				slManagerFactory := func(mode string) securityListManager {
 					return newSecurityListManagerNOOP()
 				}
-				_, err = NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, nil, slManagerFactory)
+				_, err = NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, nil, slManagerFactory, tc.clusterTags)
 			}
 			if err == nil || err.Error() != tc.expectedErrMsg {
 				t.Errorf("Expected error with message %q but got %q", tc.expectedErrMsg, err)
@@ -2652,6 +2745,161 @@ func Test_getNetworkSecurityGroups(t *testing.T) {
 			}
 			if !reflect.DeepEqual(nsgList, tc.nsgList) {
 				t.Errorf("Expected NSG List\n%+v\nbut got\n%+v", tc.nsgList, nsgList)
+			}
+		})
+	}
+}
+
+func Test_getLoadBalancerTags(t *testing.T) {
+	emptyInitialTags := providercfg.InitialTags{}
+	emptyTags := providercfg.TagConfig{}
+	testCases := map[string]struct {
+		service       *v1.Service
+		initialTags   *providercfg.InitialTags
+		desiredLBTags *providercfg.TagConfig
+		err           error
+	}{
+		"no tag annotation": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{},
+			},
+			initialTags:   &emptyInitialTags,
+			desiredLBTags: &emptyTags,
+			err:           nil,
+		},
+		"empty ServiceAnnotationLoadBalancerInitialDefinedTagsOverride annotation": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInitialDefinedTagsOverride: "",
+					},
+				},
+			},
+			initialTags:   &emptyInitialTags,
+			desiredLBTags: &emptyTags,
+			err:           nil,
+		},
+		"empty ServiceAnnotationLoadBalancerInitialFreeformTagsOverride annotation": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInitialFreeformTagsOverride: "",
+					},
+				},
+			},
+			initialTags:   &emptyInitialTags,
+			desiredLBTags: &emptyTags,
+			err:           nil,
+		},
+		"invalid ServiceAnnotationLoadBalancerInitialFreeformTagsOverride annotation value": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInitialFreeformTagsOverride: "a",
+					},
+				},
+			},
+			initialTags:   &emptyInitialTags,
+			desiredLBTags: nil,
+			err:           errors.New("failed to parse free form tags annotation: invalid character 'a' looking for beginning of value"),
+		},
+		"invalid ServiceAnnotationLoadBalancerInitialDefinedTagsOverride annotation value": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInitialDefinedTagsOverride: "a",
+					},
+				},
+			},
+			initialTags:   &emptyInitialTags,
+			desiredLBTags: nil,
+			err:           errors.New("failed to parse defined tags annotation: invalid character 'a' looking for beginning of value"),
+		},
+		"invalid json in resource level freeform tags": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInitialFreeformTagsOverride: `{'test':'tag'}`,
+					},
+				},
+			},
+			initialTags:   &emptyInitialTags,
+			desiredLBTags: nil,
+			err:           errors.New(`failed to parse free form tags annotation: invalid character '\'' looking for beginning of object key string`),
+		},
+		"only resource level freeform tags": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInitialFreeformTagsOverride: `{"test":"tag"}`,
+					},
+				},
+			},
+			initialTags: &emptyInitialTags,
+			desiredLBTags: &providercfg.TagConfig{
+				FreeformTags: map[string]string{"test": "tag"},
+				// Defined tags are always present as Oracle-Tags are added by default
+			},
+			err: nil,
+		},
+		"only resource level defined tags": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInitialDefinedTagsOverride: `{"namespace":{"key":"value"}}`,
+					},
+				},
+			},
+			initialTags: &emptyInitialTags,
+			desiredLBTags: &providercfg.TagConfig{
+				DefinedTags: map[string]map[string]interface{}{"namespace": {"key": "value"}},
+			},
+			err: nil,
+		},
+		"only cluster level defined tags": {
+			service: &v1.Service{},
+			initialTags: &providercfg.InitialTags{
+				LoadBalancer: &providercfg.TagConfig{
+					DefinedTags: map[string]map[string]interface{}{"namespace": {"key": "value"}},
+				},
+			},
+			desiredLBTags: &providercfg.TagConfig{
+				DefinedTags: map[string]map[string]interface{}{"namespace": {"key": "value"}},
+			},
+			err: nil,
+		},
+		"resource and cluster level tags, only resource level tags are added": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInitialFreeformTagsOverride: `{"cluster":"resource", "unique":"tag"}`,
+						ServiceAnnotationLoadBalancerInitialDefinedTagsOverride:  `{"namespace":{"key":"value", "owner":"team"}}`,
+					},
+				},
+			},
+			initialTags: &providercfg.InitialTags{
+				LoadBalancer: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"cluster": "cluster"},
+					DefinedTags:  map[string]map[string]interface{}{"namespace": {"cluster": "name", "owner": "cluster"}},
+				},
+			},
+			desiredLBTags: &providercfg.TagConfig{
+				FreeformTags: map[string]string{"cluster": "resource", "unique": "tag"},
+				DefinedTags:  map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}},
+			},
+			err: nil,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			actualTags, err := getLoadBalancerTags(tc.service, tc.initialTags)
+			t.Log("Error:", err)
+			if err != nil && err.Error() != tc.err.Error() {
+				t.Errorf("Expected error\n%+v\nbut got\n%+v", tc.err, err)
+			}
+			if !reflect.DeepEqual(tc.desiredLBTags, actualTags) {
+				t.Errorf("Expected LB Tags\n%+v\nbut got\n%+v", tc.desiredLBTags, actualTags)
 			}
 		})
 	}

@@ -14,19 +14,25 @@
 
 package nodedriveroptions
 
-import (
-	"time"
-)
-
 //NodeCSIOptions contains details about the flag
 type NodeCSIOptions struct {
-	Endpoint   string
+	Endpoint   string // Used for Block Volume CSI driver
 	NodeID     string
 	LogLevel   string
 	Master     string
 	Kubeconfig string
 
-	ConnectionTimeout       time.Duration
-	CsiAddress              string
-	KubeletRegistrationPath string
+	EnableFssDriver            bool
+	FssEndpoint                string
+}
+
+type NodeOptions struct {
+	Name					string
+	Endpoint				string
+	NodeID					string
+	Kubeconfig				string
+	Master					string
+	DriverName				string
+	DriverVersion			string
+	EnableControllerServer	bool
 }

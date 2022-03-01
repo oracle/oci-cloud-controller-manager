@@ -25,15 +25,16 @@ import (
 	"os"
 	"time"
 
+	"github.com/pkg/errors"
+	"go.uber.org/zap"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/flowcontrol"
+
 	"github.com/oracle/oci-go-sdk/v31/common"
 	"github.com/oracle/oci-go-sdk/v31/core"
 	"github.com/oracle/oci-go-sdk/v31/filestorage"
 	"github.com/oracle/oci-go-sdk/v31/identity"
 	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
-	"github.com/pkg/errors"
-	"go.uber.org/zap"
-	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/flowcontrol"
 )
 
 // Interface of consumed OCI API functionality.
@@ -112,6 +113,7 @@ type blockstorageClient interface {
 	CreateVolume(ctx context.Context, request core.CreateVolumeRequest) (response core.CreateVolumeResponse, err error)
 	DeleteVolume(ctx context.Context, request core.DeleteVolumeRequest) (response core.DeleteVolumeResponse, err error)
 	ListVolumes(ctx context.Context, request core.ListVolumesRequest) (response core.ListVolumesResponse, err error)
+	UpdateVolume(ctx context.Context, request core.UpdateVolumeRequest) (response core.UpdateVolumeResponse, err error)
 }
 
 type identityClient interface {

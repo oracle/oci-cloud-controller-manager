@@ -15,11 +15,13 @@
 package framework
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo"
+	"github.com/pkg/errors"
 
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -28,10 +30,10 @@ import (
 	"k8s.io/kubernetes/pkg/client/conditions"
 )
 
-// CheckVolumeMount creates a pod with a dymincally provisioned volume
+// CheckVolumeMount creates a pod with a dynamically provisioned volume
 func (j *PVCTestJig) CheckVolumeMount(namespace string, pvcParam *v1.PersistentVolumeClaim) {
-	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(pvcParam.Namespace).Get(pvcParam.Name, metav1.GetOptions{})
-	pv, err := j.KubeClient.CoreV1().PersistentVolumes().Get(pvc.Spec.VolumeName, metav1.GetOptions{})
+	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(pvcParam.Namespace).Get(context.Background(), pvcParam.Name, metav1.GetOptions{})
+	pv, err := j.KubeClient.CoreV1().PersistentVolumes().Get(context.Background(), pvc.Spec.VolumeName, metav1.GetOptions{})
 	if err != nil {
 		Failf("Failed to get persistent volume %q: %v", pvc.Spec.VolumeName, err)
 	}
@@ -45,7 +47,7 @@ func (j *PVCTestJig) CheckVolumeMount(namespace string, pvcParam *v1.PersistentV
 	}
 	podName := j.CreateAndAwaitNginxPodOrFail(pvc.Namespace, pvc, command)
 
-	j.checkFileExists(namespace, podName)
+	j.CheckFileExists(namespace, podName, "/usr/share/nginx/html", "out.txt")
 
 	By("Wait for pod with dynamically provisioned volume to be deleted")
 	j.DeleteAndAwaitNginxPodOrFail(namespace, podName)
@@ -55,12 +57,12 @@ func (j *PVCTestJig) CheckVolumeMount(namespace string, pvcParam *v1.PersistentV
 	podName = j.CreateAndAwaitNginxPodOrFail(pvc.Namespace, pvc, command)
 
 	By("Checking if the file exists on the newly created pod")
-	j.checkFileExists(namespace, podName)
+	j.CheckFileExists(namespace, podName, "/usr/share/nginx/html", "out.txt")
 }
 
 // DeleteAndAwaitNginxPodOrFail deletes the pod definition based on the namespace and waits for pod to disappear
 func (j *PVCTestJig) DeleteAndAwaitNginxPodOrFail(ns string, podName string) {
-	err := j.KubeClient.CoreV1().Pods(ns).Delete(podName, nil)
+	err := j.KubeClient.CoreV1().Pods(ns).Delete(context.Background(), podName, metav1.DeleteOptions{})
 	if err != nil {
 		Failf("Pod %q Delete API error: %v", podName, err)
 	}
@@ -71,25 +73,42 @@ func (j *PVCTestJig) DeleteAndAwaitNginxPodOrFail(ns string, podName string) {
 	}
 }
 
-func (j *PVCTestJig) checkFileExists(namespace string, podName string) {
+func (j *PVCTestJig) CheckFileExists(namespace string, podName string, dir string, fileName string) {
 	By("check if the file exists")
-
+	command := fmt.Sprintf("ls %s", dir)
 	if pollErr := wait.PollImmediate(K8sResourcePoll, DefaultTimeout, func() (bool, error) {
-		stdout, err := RunHostCmd(namespace, podName, "ls /usr/share/nginx/html")
+		stdout, err := RunHostCmd(namespace, podName, command)
 		if err != nil {
 			Logf("got err: %v, retry until timeout", err)
 			return false, nil
 		}
-		return strings.Contains(stdout, "out.txt"), nil
+		return strings.Contains(stdout, fileName), nil
 	}); pollErr != nil {
 		Failf("File does not exist in pod '%v'", podName)
 	}
 }
 
-// CheckVolumeReadWrite creates a pod with a dymincally provisioned volume
+
+func (j *PVCTestJig) CheckFileCorruption(namespace string, podName string, dir string, fileName string) {
+	By("check if the file is corrupt")
+	md5hash := "e59ff97941044f85df5297e1c302d260"
+	command := fmt.Sprintf("md5sum %s/%s", dir,fileName)
+	if pollErr := wait.PollImmediate(K8sResourcePoll, DefaultTimeout, func() (bool, error) {
+		stdout, err := RunHostCmd(namespace, podName, command)
+		if err != nil {
+			Logf("got err: %v, retry until timeout", err)
+			return false, nil
+		}
+		return strings.Contains(stdout, md5hash), nil
+	}); pollErr != nil {
+		Failf("MD5 hash does not match, file is corrupt in pod '%v'",podName)
+	}
+}
+
+// CheckVolumeReadWrite creates a pod with a dynamically provisioned volume
 func (j *PVCTestJig) CheckVolumeReadWrite(namespace string, pvcParam *v1.PersistentVolumeClaim) {
-	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(pvcParam.Namespace).Get(pvcParam.Name, metav1.GetOptions{})
-	pv, err := j.KubeClient.CoreV1().PersistentVolumes().Get(pvc.Spec.VolumeName, metav1.GetOptions{})
+	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(pvcParam.Namespace).Get(context.Background(), pvcParam.Name, metav1.GetOptions{})
+	pv, err := j.KubeClient.CoreV1().PersistentVolumes().Get(context.Background(), pvc.Spec.VolumeName, metav1.GetOptions{})
 	if err != nil {
 		Failf("Failed to get persistent volume %q: %v", pvc.Spec.VolumeName, err)
 	}
@@ -110,10 +129,82 @@ func (j *PVCTestJig) CheckVolumeReadWrite(namespace string, pvcParam *v1.Persist
 	j.CreateAndAwaitNginxPodOrFail(pvc.Namespace, pvc, "grep 'hello world' /mnt/test/data")
 }
 
+func (j *PVCTestJig) checkFileOwnership(namespace string, podName string, dir string) {
+	By("check if the file exists")
+	command := fmt.Sprintf("stat -c '%%g' %s", dir)
+		stdout, err := RunHostCmd(namespace, podName, command)
+		if err != nil {
+			Logf("got err: %v, retry until timeout", err)
+		}
+		fsGroup := strings.TrimSpace(stdout)
+		if fsGroup != "1000" {
+			Failf("Not expected group owner, group owner is %v but should be 1000", fsGroup)
+		}
+		Logf("Expected group owner, group owner is %v ", fsGroup)
+}
+
+// CheckVolumeDirectoryOwnership creates a pod with a dynamically provisioned volume
+func (j *PVCTestJig) CheckVolumeDirectoryOwnership(namespace string, pvcParam *v1.PersistentVolumeClaim) {
+	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(pvcParam.Namespace).Get(context.Background(),pvcParam.Name, metav1.GetOptions{})
+
+	if err != nil {
+		Failf("Failed to get persistent volume %q: %v", pvc.Spec.VolumeName, err)
+	}
+	By("checking the created volume is writable and has the PV's mount options")
+	command := "while true; do echo 'hello world' >> /usr/share/nginx/html/out.txt; sleep 5; done"
+
+	podName := j.CreateAndAwaitNginxPodOrFail(pvc.Namespace, pvc, command)
+
+	j.checkFileOwnership(namespace, podName, "/usr/share/nginx/html/out.txt")
+}
+
+
+//CheckExpandedVolumeReadWrite checks a pvc expanded pod with a dymincally provisioned volume
+func (j *PVCTestJig) CheckExpandedVolumeReadWrite(namespace string,podName string) {
+	pattern := "ReadWriteTest"
+	text := fmt.Sprintf("hello expanded pvc pod %s",pattern)
+	command := fmt.Sprintf("echo '%s' > /data/test1; grep '%s'  /data/test1 ",text,pattern)
+
+	if pollErr := wait.PollImmediate(K8sResourcePoll, DefaultTimeout, func() (bool, error) {
+		stdout, err := RunHostCmd(namespace, podName, command )
+		if err != nil {
+			Logf("got err: %v, retry until timeout", err)
+			return false, nil
+		}
+		return strings.Contains(stdout, text),nil
+	}); pollErr != nil {
+		Failf("Write Test failed in pod '%v' after expanding pvc",podName)
+	}
+
+}
+
+//CheckUsableVolumeSizeInsidePod checks a pvc expanded pod with a dymincally provisioned volume
+func (j *PVCTestJig) CheckUsableVolumeSizeInsidePod(namespace string,podName string) {
+
+	command := fmt.Sprintf("df -BG | grep '/data'")
+
+	if pollErr := wait.PollImmediate(K8sResourcePoll, DefaultTimeout, func() (bool, error) {
+		stdout, err := RunHostCmd(namespace, podName, command )
+		if err != nil {
+			Logf("got err: %v, retry until timeout", err)
+			return false, nil
+		}
+		if strings.Fields(strings.TrimSpace(stdout))[1] != "99G" {
+			return false,nil
+		} else {
+			return true,nil
+		}
+	}); pollErr != nil {
+		Failf("Write Test failed in pod '%v' after expanding pvc",podName)
+	}
+
+}
+
 // CreateAndAwaitNginxPodOrFail returns a pod definition based on the namespace using nginx image
 func (j *PVCTestJig) CreateAndAwaitNginxPodOrFail(ns string, pvc *v1.PersistentVolumeClaim, command string) string {
 	By("Creating a pod with the dynamically provisioned volume")
-	pod, err := j.KubeClient.CoreV1().Pods(ns).Create(&v1.Pod{
+	fsGroup := int64(1000)
+	pod, err := j.KubeClient.CoreV1().Pods(ns).Create(context.Background(), &v1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
 			APIVersion: "v1",
@@ -123,6 +214,9 @@ func (j *PVCTestJig) CreateAndAwaitNginxPodOrFail(ns string, pvc *v1.PersistentV
 			Namespace:    ns,
 		},
 		Spec: v1.PodSpec{
+			SecurityContext: &v1.PodSecurityContext {
+					FSGroup: &fsGroup,
+			},
 			Containers: []v1.Container{
 				{
 					Name:  "write-pod",
@@ -154,7 +248,7 @@ func (j *PVCTestJig) CreateAndAwaitNginxPodOrFail(ns string, pvc *v1.PersistentV
 				},
 			},
 		},
-	})
+	}, metav1.CreateOptions{})
 	if err != nil {
 		Failf("Pod %q Create API error: %v", pod.Name, err)
 	}
@@ -182,7 +276,7 @@ func (j *PVCTestJig) waitTimeoutForPodRunningInNamespace(podName, namespace stri
 
 func (j *PVCTestJig) podRunning(podName, namespace string) wait.ConditionFunc {
 	return func() (bool, error) {
-		pod, err := j.KubeClient.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
+		pod, err := j.KubeClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -196,9 +290,31 @@ func (j *PVCTestJig) podRunning(podName, namespace string) wait.ConditionFunc {
 	}
 }
 
+// WaitTimeoutForPodRunningInNamespace waits default amount of time (PodStartTimeout) for the specified pod to become running.
+// Returns an error if timeout occurs first, or pod goes in to failed state.
+func (j *PVCTestJig) waitTimeoutForPodCompletedSuccessfullyInNamespace(podName, namespace string, timeout time.Duration) error {
+	return wait.PollImmediate(Poll, timeout, j.podCompleted(podName, namespace))
+}
+
+func (j *PVCTestJig) podCompleted(podName, namespace string) wait.ConditionFunc {
+	return func() (bool, error) {
+		pod, err := j.KubeClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		switch pod.Status.Phase {
+		case v1.PodSucceeded:
+			return true, nil
+		case v1.PodFailed:
+			return false, errors.Errorf("Pod exited: %s", pod.Status.Reason)
+		}
+		return false, nil
+	}
+}
+
 func (j *PVCTestJig) podNotFound(podName, namespace string) wait.ConditionFunc {
 	return func() (bool, error) {
-		_, err := j.KubeClient.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
+		_, err := j.KubeClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
 		if apierrors.IsNotFound(err) {
 			return true, nil // done
 		}

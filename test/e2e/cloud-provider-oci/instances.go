@@ -23,10 +23,10 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apitypes "k8s.io/apimachinery/pkg/types"
 	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/cloud-provider"
+	cloudprovider "k8s.io/cloud-provider"
 )
 
 func assertNodeAddressesContainValidIPs(addrs []v1.NodeAddress) {
@@ -123,16 +123,28 @@ var _ = Describe("Instances", func() {
 			Expect(exists).To(BeTrue())
 		})
 		It("should be possible to check required annotations and labels are added to node", func() {
-			faultDomain := node.ObjectMeta.Labels[oci.FaultDomainLabel]
-			Expect(faultDomain).NotTo(BeEmpty())
+			// OCI Labels and Annotations
 			compartmentID := node.ObjectMeta.Annotations[oci.CompartmentIDAnnotation]
 			Expect(compartmentID).NotTo(BeEmpty())
-			instanceType := node.ObjectMeta.Labels[v1.LabelInstanceType]
-			Expect(instanceType).NotTo(BeEmpty())
+			faultDomain := node.ObjectMeta.Labels[oci.FaultDomainLabel]
+			Expect(faultDomain).NotTo(BeEmpty())
+
+			// Kubernetes Beta Labels
 			fdZone := node.ObjectMeta.Labels[v1.LabelZoneFailureDomain]
 			Expect(fdZone).NotTo(BeEmpty())
 			region := node.ObjectMeta.Labels[v1.LabelZoneRegion]
 			Expect(region).NotTo(BeEmpty())
+			instanceType := node.ObjectMeta.Labels[v1.LabelInstanceType]
+			Expect(instanceType).NotTo(BeEmpty())
+
+			// Kubernetes Stable Labels
+			fdZone = node.ObjectMeta.Labels[v1.LabelZoneFailureDomainStable]
+			Expect(fdZone).NotTo(BeEmpty())
+			region = node.ObjectMeta.Labels[v1.LabelZoneRegionStable]
+			Expect(region).NotTo(BeEmpty())
+			instanceType = node.ObjectMeta.Labels[v1.LabelInstanceTypeStable]
+			Expect(instanceType).NotTo(BeEmpty())
+
 		})
 	})
 })

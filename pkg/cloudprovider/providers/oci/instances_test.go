@@ -20,11 +20,11 @@ import (
 	"reflect"
 	"testing"
 
+	"go.uber.org/zap"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-
 	"k8s.io/apimachinery/pkg/labels"
-	listersv1 "k8s.io/client-go/listers/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
@@ -33,8 +33,6 @@ import (
 	"github.com/oracle/oci-go-sdk/v31/filestorage"
 	"github.com/oracle/oci-go-sdk/v31/identity"
 	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
-	"go.uber.org/zap"
-	v1 "k8s.io/api/core/v1"
 )
 
 var (
@@ -255,15 +253,15 @@ var (
 					Name:                  common.String("one"),
 					DefaultBackendSetName: common.String("one"),
 					Port:                  common.Int(5665),
-				},},
+				}},
 			BackendSets: map[string]loadbalancer.BackendSet{
 				"one": {
 					Backends: []loadbalancer.Backend{{
 						Name:      common.String("one"),
 						IpAddress: common.String("10.0.50.5"),
 						Port:      common.Int(5665),
-					},},
-				},},
+					}},
+				}},
 		},
 	}
 )
@@ -486,6 +484,10 @@ func (MockBlockStorageClient) AwaitVolumeAvailableORTimeout(ctx context.Context,
 }
 
 func (MockBlockStorageClient) CreateVolume(ctx context.Context, details core.CreateVolumeDetails) (*core.Volume, error) {
+	return nil, nil
+}
+
+func (c MockBlockStorageClient) UpdateVolume(ctx context.Context, volumeId string, details core.UpdateVolumeDetails) (*core.Volume, error) {
 	return nil, nil
 }
 
@@ -1034,6 +1036,6 @@ func (s *mockNodeLister) Get(name string) (*v1.Node, error) {
 	return nil, nil
 }
 
-func (s *mockNodeLister) ListWithPredicate(predicate listersv1.NodeConditionPredicate) ([]*v1.Node, error) {
+func (s *mockNodeLister) ListWithPredicate() ([]*v1.Node, error) {
 	return nil, nil
 }

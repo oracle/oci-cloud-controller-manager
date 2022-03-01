@@ -15,9 +15,10 @@
 package disk
 
 import (
-	"github.com/oracle/oci-cloud-controller-manager/pkg/util/mount"
 	"go.uber.org/zap"
 	"k8s.io/utils/exec"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util/mount"
 )
 
 // iSCSIMounter implements Interface.
@@ -88,4 +89,32 @@ func (c *pvMounter) Mount(source string, target string, fstype string, options [
 
 func (c *pvMounter) UnmountPath(path string) error {
 	return mount.UnmountPath(c.logger, path, c.mounter)
+}
+
+func (c *pvMounter) Resize(devicePath string, volumePath string) (bool, error) {
+	safeMounter := &mount.SafeFormatAndMount{
+		Interface: c.mounter,
+		Runner:    c.runner,
+		Logger:    c.logger,
+	}
+	return resize(devicePath, volumePath, safeMounter)
+}
+
+
+func (c *pvMounter) Rescan(devicePath string) error {
+	safeMounter := &mount.SafeFormatAndMount{
+		Interface: c.mounter,
+		Runner:    c.runner,
+		Logger:    c.logger,
+	}
+	return rescan(devicePath, safeMounter)
+}
+
+func (c *pvMounter) GetBlockSizeBytes(devicePath string) (int64, error) {
+	safeMounter := &mount.SafeFormatAndMount{
+		Interface: c.mounter,
+		Runner:    c.runner,
+		Logger:    c.logger,
+	}
+	return getBlockSizeBytes(devicePath, safeMounter)
 }

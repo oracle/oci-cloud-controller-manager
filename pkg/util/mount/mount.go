@@ -31,8 +31,9 @@ import (
 
 const (
 	// Default mount command if mounter path is not specified
-	defaultMountCommand  = "mount"
-	MountsInGlobalPDPath = "mounts"
+	defaultMountCommand            = "mount"
+	MountsInGlobalPDPath           = "mounts"
+	InTransitEncryptionPackageName = "oci-fss-utils"
 )
 
 type Interface interface {
@@ -40,6 +41,8 @@ type Interface interface {
 	Mount(source string, target string, fstype string, options []string) error
 	// Unmount unmounts given target.
 	Unmount(target string) error
+	// unmount given the target and args. It is used for in-transit encryption where unmount accepts args
+	UnmountWithEncrypt(target string) error
 	// List returns a list of all mounted filesystems.  This can be large.
 	// On some platforms, reading mounts is not guaranteed consistent (i.e.
 	// it could change between chunked reads). This is guaranteed to be
@@ -104,6 +107,18 @@ func (mounter *SafeFormatAndMount) Mount(source string, target string, fstype st
 		}
 	}
 	return mounter.formatAndMount(source, target, fstype, options)
+}
+
+func (mounter *SafeFormatAndMount) Resize(devicePath string, volumePath string) (bool, error) {
+	return mounter.resize(devicePath, volumePath)
+}
+
+func (mounter *SafeFormatAndMount) GetBlockSizeBytes(devicePath string) (int64, error) {
+	return mounter.getBlockSizeBytes(devicePath)
+}
+
+func (mounter *SafeFormatAndMount) Rescan(devicePath string) error {
+	return mounter.rescan(devicePath)
 }
 
 // New returns a mount.Interface for the current system.

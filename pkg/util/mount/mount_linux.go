@@ -28,6 +28,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"path/filepath"
 
 	"go.uber.org/zap"
 	utilexec "k8s.io/utils/exec"
@@ -40,9 +41,12 @@ const (
 	expectedNumFieldsPerLine = 6
 	// Location of the mount file to use
 	procMountsPath = "/proc/mounts"
-)
-
-const (
+	FIPS_ENABLED_FILE_PATH = "/host/proc/sys/crypto/fips_enabled"
+	ENCRYPTED_UMOUNT_COMMAND = "umount.oci-fss"
+	UMOUNT_COMMAND = "umount"
+    FINDMNT_COMMAND = "findmnt"
+    CAT_COMMAND = "cat"
+    RPM_COMMAND = "rpm"
 	// 'fsck' found errors and corrected them
 	fsckErrorsCorrected = 1
 	// 'fsck' found errors but exited without correcting them
@@ -127,11 +131,12 @@ func doMount(logger *zap.SugaredLogger, mounterPath string, mountCmd string, sou
 			"target", target,
 			"fsType", fstype,
 			"options", options,
-			"output", output,
+			"output", string(output),
 		).Error("Mount failed.")
-		return fmt.Errorf("mount failed: %v\nMounting command: %s\nMounting arguments: %s %s %s %v\nOutput: %s\n",
+		return fmt.Errorf("mount failed: %v\nMounting command: %s\nMounting arguments: %s %s %s %v\nOutput: %v\n",
 			err, mountCmd, source, target, fstype, options, string(output))
 	}
+	logger.Debugf("Mount output: %v", string(output))
 	return err
 }
 
@@ -156,18 +161,69 @@ func makeMountArgs(source, target, fstype string, options []string) []string {
 
 // Unmount unmounts the target.
 func (mounter *Mounter) Unmount(target string) error {
+	return mounter.unmount(target, UMOUNT_COMMAND)
+}
+
+func (mounter *Mounter) unmount(target string, unmountCommand string) error {
 	mounter.logger.With("target", target).Info("Unmounting.")
-	command := exec.Command("umount", target)
+	command := exec.Command(unmountCommand, target)
 	output, err := command.CombinedOutput()
 	if err != nil {
 		mounter.logger.With(
 			zap.Error(err),
+			"command", unmountCommand,
 			"target", target,
-			"output", output,
+			"output", string(output),
 		).Error("Unmount failed.")
-		return fmt.Errorf("Unmount failed: %v\nUnmounting arguments: %s\nOutput: %s\n", err, target, string(output))
+		return fmt.Errorf("Unmount failed: %v\nUnmounting command: %s\nUnmounting arguments: %s\nOutput: %v\n", err, unmountCommand, target, string(output))
 	}
+	mounter.logger.Debugf("unmount output: %v", string(output))
 	return nil
+}
+
+// Unmount unmounts the target.
+func (mounter *Mounter) UnmountWithEncrypt(target string) error {
+	return mounter.unmount(target, ENCRYPTED_UMOUNT_COMMAND)
+}
+
+func FindMount(mounter Interface, target string) ([]string, error) {
+	mountArgs := []string{"-n", "-o", "SOURCE", "-T", target}
+	command := exec.Command(FINDMNT_COMMAND, mountArgs...)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("findmnt failed: %v\narguments: %s\nOutput: %v\n", err, mountArgs, string(output))
+	}
+
+	sources := strings.Fields(string(output))
+	return sources, nil
+}
+
+func IsFipsEnabled(mounter Interface) (string, error) {
+	command := exec.Command(CAT_COMMAND, FIPS_ENABLED_FILE_PATH)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("command failed: %v\narguments: %s\nOutput: %v\n", err, CAT_COMMAND, string(output))
+	}
+
+	return string(output), nil
+}
+
+func IsInTransitEncryptionPackageInstalled(mounter Interface) (bool, error) {
+	args := []string{"-q", "-a", "--root=/host"}
+	command := exec.Command(RPM_COMMAND, args...)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return false, fmt.Errorf("command failed: %v\narguments: %s\nOutput: %v\n", err, RPM_COMMAND, string(output))
+	}
+
+	if len(output) > 0 {
+		list := string(output)
+		if strings.Contains(list, InTransitEncryptionPackageName) {
+			return true, nil
+		}
+		return false, nil
+	}
+	return false, nil
 }
 
 // List returns a list of all mounted filesystems.
@@ -182,10 +238,6 @@ func (*Mounter) List() ([]MountPoint, error) {
 // will return true. When in fact /tmp/b is a mount point. If this situation
 // if of interest to you, don't use this function...
 func (mounter *Mounter) IsLikelyNotMountPoint(file string) (bool, error) {
-	return IsNotMountPoint(file)
-}
-
-func IsNotMountPoint(file string) (bool, error) {
 	stat, err := os.Stat(file)
 	if err != nil {
 		return true, err
@@ -200,6 +252,59 @@ func IsNotMountPoint(file string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// IsNotMountPoint determines if a directory is a mountpoint.
+// It should return ErrNotExist when the directory does not exist.
+// IsNotMountPoint is more expensive than IsLikelyNotMountPoint.
+// IsNotMountPoint detects bind mounts in linux.
+// IsNotMountPoint enumerates all the mountpoints using List() and
+// the list of mountpoints may be large, then it uses
+// isMountPointMatch to evaluate whether the directory is a mountpoint.
+func IsNotMountPoint(mounter Interface, file string) (bool, error) {
+	// IsLikelyNotMountPoint provides a quick check
+	// to determine whether file IS A mountpoint.
+	notMnt, notMntErr := mounter.IsLikelyNotMountPoint(file)
+	if notMntErr != nil && os.IsPermission(notMntErr) {
+		// We were not allowed to do the simple stat() check, e.g. on NFS with
+		// root_squash. Fall back to /proc/mounts check below.
+		notMnt = true
+		notMntErr = nil
+	}
+	if notMntErr != nil {
+		return notMnt, notMntErr
+	}
+	// identified as mountpoint, so return this fact.
+	if notMnt == false {
+		return notMnt, nil
+	}
+
+	// Resolve any symlinks in file, kernel would do the same and use the resolved path in /proc/mounts.
+	resolvedFile, err := filepath.EvalSymlinks(file)
+	if err != nil {
+		return true, err
+	}
+
+	// check all mountpoints since IsLikelyNotMountPoint
+	// is not reliable for some mountpoint types.
+	mountPoints, mountPointsErr := mounter.List()
+	if mountPointsErr != nil {
+		return notMnt, mountPointsErr
+	}
+	for _, mp := range mountPoints {
+		if isMountPointMatch(mp, resolvedFile) {
+			notMnt = false
+			break
+		}
+	}
+	return notMnt, nil
+}
+
+// isMountPointMatch returns true if the path in mp is the same as dir.
+// Handles case where mountpoint dir has been renamed due to stale NFS mount.
+func isMountPointMatch(mp MountPoint, dir string) bool {
+	deletedDir := fmt.Sprintf("%s\\040(deleted)", dir)
+	return ((mp.Path == dir) || (mp.Path == deletedDir))
 }
 
 // DeviceOpened checks if block device in use by calling Open with O_EXCL flag.
@@ -414,35 +519,159 @@ func (mounter *SafeFormatAndMount) formatAndMount(source string, target string, 
 	return mountErr
 }
 
-// getDiskFormat uses 'lsblk' to determine a given disk's format
+// getDiskFormat uses 'blkid' to determine a given disk's format
 func (mounter *SafeFormatAndMount) getDiskFormat(disk string) (string, error) {
-	args := []string{"-n", "-o", "FSTYPE", disk}
-	cmd := mounter.Runner.Command("lsblk", args...)
-	mounter.Logger.With("disk", disk, "arguments", args).Info("Attempting to determine if disk is formatted using lsblk.")
+	args := []string{"-p", "-s", "TYPE", "-s", "PTTYPE", "-o", "export", disk}
+	mounter.Logger.Infof("Attempting to determine if disk %q is formatted using blkid with args: (%v)", disk, args)
+	cmd := mounter.Runner.Command("blkid", args...)
 	dataOut, err := cmd.CombinedOutput()
 	output := string(dataOut)
+	mounter.Logger.Infof("Output: %q, err: %v", output, err)
 
 	if err != nil {
-		mounter.Logger.With(zap.Error(err), "disk", disk).Error("Could not determine if disk is formatted.")
+		if exit, ok := err.(utilexec.ExitError); ok {
+			if exit.ExitStatus() == 2 {
+				// Disk device is unformatted.
+				// For `blkid`, if the specified token (TYPE/PTTYPE, etc) was
+				// not found, or no (specified) devices could be identified, an
+				// exit code of 2 is returned.
+				return "", nil
+			}
+		}
+		mounter.Logger.Errorf("Could not determine if disk %q is formatted (%v)", disk, err)
 		return "", err
 	}
-	mounter.Logger.With("output", output).Info("Disk format determined.")
 
-	// Split lsblk output into lines. Unformatted devices should contain only
-	// "\n". Beware of "\n\n", that's a device with one empty partition.
-	output = strings.TrimSuffix(output, "\n") // Avoid last empty line
+	var fstype, pttype string
+
 	lines := strings.Split(output, "\n")
-	if lines[0] != "" {
-		// The device is formatted
-		return lines[0], nil
+	for _, l := range lines {
+		if len(l) <= 0 {
+			// Ignore empty line.
+			continue
+		}
+		cs := strings.Split(l, "=")
+		if len(cs) != 2 {
+			return "", fmt.Errorf("blkid returns invalid output: %s", output)
+		}
+		// TYPE is filesystem type, and PTTYPE is partition table type, according
+		// to https://www.kernel.org/pub/linux/utils/util-linux/v2.21/libblkid-docs/.
+		if cs[0] == "TYPE" {
+			fstype = cs[1]
+		} else if cs[0] == "PTTYPE" {
+			pttype = cs[1]
+		}
 	}
 
-	if len(lines) == 1 {
-		// The device is unformatted and has no dependent devices
-		return "", nil
+	if len(pttype) > 0 {
+		mounter.Logger.Infof("Disk %s detected partition table type: %s", disk, pttype)
+		// Returns a special non-empty string as filesystem type, then kubelet
+		// will not format it.
+		return "unknown data, probably partitions", nil
 	}
 
-	// The device has dependent devices, most probably partitions (LVM, LUKS
-	// and MD RAID are reported as FSTYPE and caught above).
-	return "unknown data, probably partitions", nil
+	return fstype, nil
+}
+
+func (mounter *SafeFormatAndMount) resize(devicePath string, volumePath string) (bool, error) {
+	format, err := mounter.getDiskFormat(devicePath)
+
+	if err != nil {
+		formatErr := fmt.Errorf("error checking format for device %s: %v", devicePath, err)
+		return false, formatErr
+	}
+
+	// If disk has no format, there is no need to resize the disk because mkfs.*
+	// by default will use whole disk anyways.
+	if format == "" {
+		return false, nil
+	}
+
+	mounter.Logger.With("devicePath", devicePath).Infof("Expanding mounted volume")
+	switch format {
+	case "ext3", "ext4":
+		return mounter.extResize(devicePath)
+	case "xfs":
+		return mounter.xfsResize(volumePath)
+	}
+	return false, fmt.Errorf("resize of format %s is not supported for device %s mounted at %s", format, devicePath, volumePath)
+}
+
+func (mounter *SafeFormatAndMount) extResize(devicePath string) (bool, error) {
+	cmd := mounter.Runner.Command("resize2fs", devicePath)
+	output, err := cmd.CombinedOutput()
+	if err == nil {
+		mounter.Logger.With("devicePath", devicePath).Infof("Device resized successfully")
+		return true, nil
+	}
+
+	resizeError := fmt.Errorf("resize of device %s failed: %v. resize2fs output: %s", devicePath, err, string(output))
+	return false, resizeError
+
+}
+
+func (mounter *SafeFormatAndMount) xfsResize(deviceMountPath string) (bool, error) {
+	args := []string{"-d", deviceMountPath}
+	cmd := mounter.Runner.Command("xfs_growfs", args...)
+	output, err := cmd.CombinedOutput()
+	if err == nil {
+		mounter.Logger.With("deviceMountPath", deviceMountPath).Infof("Device %s resized successfully")
+		return true, nil
+	}
+
+	resizeError := fmt.Errorf("resize of device %s failed: %v. xfs_growfs output: %s", deviceMountPath, err, string(output))
+	return false, resizeError
+}
+
+func (mounter *SafeFormatAndMount) rescan(devicePath string) error {
+
+	lsblkargs := []string{"-n", "-o", "NAME", devicePath}
+	lsblkcmd := mounter.Runner.Command("lsblk", lsblkargs...)
+	lsblkoutput, err := lsblkcmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("Failed to find device name associated with devicePath %s", devicePath)
+	}
+	deviceName := strings.TrimSpace(string(lsblkoutput))
+	if strings.HasPrefix(deviceName, "/dev/") {
+		deviceName = strings.TrimPrefix(deviceName, "/dev/")
+	}
+	mounter.Logger.With("deviceName", deviceName).Info("Rescanning")
+
+	// run command dd iflag=direct if=/dev/<device_name> of=/dev/null count=1
+	// https://docs.oracle.com/en-us/iaas/Content/Block/Tasks/rescanningdisk.htm#Rescanni
+	devicePathFileArg := fmt.Sprintf("if=%s", devicePath)
+	args := []string{"iflag=direct", devicePathFileArg, "of=/dev/null", "count=1"}
+	cmd := mounter.Runner.Command("dd", args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("command failed: %v\narguments: %s\nOutput: %v\n", err, "dd", string(output))
+	}
+	mounter.Logger.With("command", "dd", "output", string(output)).Debug("dd output")
+	// run command echo 1 | tee /sys/class/block/%s/device/rescan
+	// https://docs.oracle.com/en-us/iaas/Content/Block/Tasks/rescanningdisk.htm#Rescanni
+	cmdStr := fmt.Sprintf("echo 1 | tee /sys/class/block/%s/device/rescan", deviceName)
+	cmd = mounter.Runner.Command("bash", "-c", cmdStr)
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("command failed: %v\narguments: %s\nOutput: %v\n", err, cmdStr, string(output))
+	}
+	mounter.Logger.With("command", cmdStr, "output", string(output)).Debug("rescan output")
+
+	return nil
+}
+
+func (mounter *SafeFormatAndMount) getBlockSizeBytes(devicePath string) (int64, error) {
+	args := []string{"--getsize64", devicePath}
+	cmd := mounter.Runner.Command("blockdev", args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return -1, fmt.Errorf("command failed: %v\narguments: %s\nOutput: %v\n", err, "blockdev", string(output))
+	}
+	strOut := strings.TrimSpace(string(output))
+	mounter.Logger.With("devicePath", devicePath, "command", "blockdev", "output", strOut).Debugf("Get block device size in bytes successful")
+	gotSizeBytes, err := strconv.ParseInt(strOut, 10, 64)
+	if err != nil {
+		return -1, fmt.Errorf("failed to parse size %s into an int64 size", strOut)
+	}
+	return gotSizeBytes, nil
 }

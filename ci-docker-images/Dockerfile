@@ -22,20 +22,20 @@ RUN yum install oracle-softwarecollection-release-el7 -y \
     make \
     openssl \
     pwgen \
-    python \
+    python3 \
     wget \
     python-yaml \
     unzip && \
     yum clean all && rm -rf /var/cache/yum
 
-RUN wget https://bootstrap.pypa.io/get-pip.py
-RUN python get-pip.py
+RUN wget https://bootstrap.pypa.io/pip/3.6/get-pip.py
+RUN python3 get-pip.py
 
 # Install golang environment
-RUN curl https://storage.googleapis.com/golang/go1.12.17.linux-amd64.tar.gz -O && \
+RUN curl https://storage.googleapis.com/golang/go1.15.12.linux-amd64.tar.gz -O && \
     mkdir /tools && \
-    tar xzf go1.12.17.linux-amd64.tar.gz -C /tools && \
-    rm go1.12.17.linux-amd64.tar.gz && \
+    tar xzf go1.15.12.linux-amd64.tar.gz -C /tools && \
+    rm go1.15.12.linux-amd64.tar.gz && \
     mkdir -p /go/bin
 
 ENV PATH=/tools/go/bin:/go/bin:/tools/linux-amd64:$PATH \
@@ -43,28 +43,9 @@ ENV PATH=/tools/go/bin:/go/bin:/tools/linux-amd64:$PATH \
     GOROOT=/tools/go
 
 # Install the kubectl client
-RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.16.0/bin/linux/amd64/kubectl && \
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.19.0/bin/linux/amd64/kubectl && \
     chmod +x ./kubectl && \
     mv ./kubectl /usr/local/bin/kubectl
-
-# Install Ginkgo
-RUN go get -u github.com/onsi/ginkgo/ginkgo && \
-    go get -u github.com/onsi/gomega/...
-
-# Install golint
-RUN go get -u golang.org/x/lint/golint
-
-# Install Terraform
-RUN curl https://releases.hashicorp.com/terraform/0.10.7/terraform_0.10.7_linux_amd64.zip -LO && \
-    unzip terraform_0.10.7_linux_amd64.zip && \
-    mv terraform /usr/bin && \
-    rm -f terraform terraform_0.10.7_linux_amd64.zip
-
-# Installs the OCI terraform provider
-RUN curl -LO https://github.com/oracle/terraform-provider-oci/releases/download/2.0.2/linux.tar.gz && \
-    tar -xvf linux.tar.gz -C / && \
-    echo "providers { oci = \"/linux_amd64/terraform-provider-oci_v2.0.2\" }" > ~/.terraformrc && \
-    rm -f linux.tar.gz
 
 # Install OCI client
 RUN pip install \

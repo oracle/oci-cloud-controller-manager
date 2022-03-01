@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 PKG := github.com/oracle/oci-cloud-controller-manager
 
 ifeq "$(CI_IMAGE_REGISTRY)" ""
@@ -28,6 +27,8 @@ else
 endif
 IMAGE ?= $(OSS_REGISTRY)/cloud-provider-oci
 COMPONENT ?= oci-cloud-controller-manager oci-volume-provisioner oci-flexvolume-driver oci-csi-controller-driver oci-csi-node-driver
+
+ALL_ARCH = amd64 arm64
 
 ifeq "$(VERSION)" ""
     BUILD := $(shell git describe --exact-match 2> /dev/null || git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
@@ -139,12 +140,38 @@ run-volume-provisioner-dev:
 BUILD_ARGS = --build-arg CI_IMAGE_REGISTRY="$(CI_IMAGE_REGISTRY)" --build-arg COMPONENT="$(COMPONENT)"
 image:
 	docker  build $(BUILD_ARGS) \
-		-t $(IMAGE):$(VERSION) .
+		-t $(IMAGE)-amd64:$(VERSION) .
+	docker  build $(BUILD_ARGS) \
+		-t $(IMAGE)-arm64:$(VERSION) -f Dockerfile_arm_all .
 
 .PHONY: push
 push: image
 	docker login --username="${oss_docker_username}" --password="${oss_docker_password}" $(OSS_REGISTRY)
 	docker push $(IMAGE):$(VERSION)
+
+.PHONY: build
+build-arm-all: build-dirs
+	@for component in $(COMPONENT); do \
+    	GOOS=$(GOOS) GOARCH=arm64 CGO_ENABLED=0 go build -o dist/arm/$$component -ldflags "-X main.version=$(VERSION) -X main.build=$(BUILD)" ./cmd/$$component ; \
+    done
+
+.PHONY: docker-push
+docker-push: ## Push the docker image
+	docker push $(IMAGE)-$(ARCH):$(VERSION)
+
+docker-push-%:
+	$(MAKE) ARCH=$* docker-push
+
+.PHONY: docker-push-all ## Push all the architecture docker images
+docker-push-all: $(addprefix docker-push-,$(ALL_ARCH))
+	$(MAKE) docker-push-manifest
+
+.PHONY: docker-push-manifest
+docker-push-manifest: ## Push the fat manifest docker image.
+	## Minimum docker version 18.06.0 is required for creating and pushing manifest images.
+	docker manifest create --amend $(IMAGE):$(VERSION) $(shell echo $(ALL_ARCH) | sed -e "s~[^ ]*~$(IMAGE)\-&:$(VERSION)~g")
+	@for arch in $(ALL_ARCH); do docker manifest annotate --arch $${arch} ${IMAGE}:${VERSION} ${IMAGE}-$${arch}:${VERSION}; done
+	docker manifest push --purge ${IMAGE}:${VERSION}
 
 .PHONY: version
 version:

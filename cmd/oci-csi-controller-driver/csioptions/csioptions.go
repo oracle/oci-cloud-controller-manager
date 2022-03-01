@@ -44,6 +44,7 @@ type CSIOptions struct {
 	MetricsPath             string
 	ExtraCreateMetadata     bool
 	ReconcileSync           time.Duration
+	EnableResizer           bool
 }
 
 //NewCSIOptions initializes the flag
@@ -71,6 +72,7 @@ func NewCSIOptions() *CSIOptions {
 		MetricsPath:             *flag.String("metrics-path", "/metrics", "The HTTP path where prometheus metrics will be exposed. Default is `/metrics`."),
 		ExtraCreateMetadata:     *flag.Bool("extra-create-metadata", false, "If set, add pv/pvc metadata to plugin create requests as parameters."),
 		ReconcileSync:           *flag.Duration("reconcile-sync", 1*time.Minute, "Resync interval of the VolumeAttachment reconciler."),
+		EnableResizer:           *flag.Bool("csi-bv-expansion-enabled", false, "Enables go routine csi-resizer."),
 	}
 	return &csioptions
 }

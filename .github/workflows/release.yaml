@@ -1,0 +1,32 @@
+name: Release
+
+on:
+  push:
+    # Build and publish artifacts for a release
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Log into GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${GITHUB_ACTOR,,} --password-stdin
+
+      - name: Build Image
+        run: OSS_REGISTRY="ghcr.io/oracle" VERSION="${{ github.ref_name }}" make image
+
+      - name: Push Image
+        run: OSS_REGISTRY="ghcr.io/oracle" VERSION="${{ github.ref_name }}" make docker-push-all

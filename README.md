@@ -22,18 +22,14 @@ cloud-provider specific code out of the Kubernetes codebase.
 
 ## Compatibility matrix
 
-|           | Kubernetes 1.16        | Kubernetes 1.17        | Kubernetes 1.18        | Kubernetes 1.19        | Kubernetes 1.20        |
-|-----------|------------------------|------------------------|------------------------|------------------------|------------------------|
-| \>=v 0.9  | ✓                      | ✓                      | ✓                      | †                      | †                      |
-| \>=v 0.10 | ✓                      | ✓                      | ✓                      | †                      | †                      |
-| \>=v 0.11 | ✓                      | ✓                      | ✓                      | †                      | †                      |
-| \>=v 0.12 | †                      | †                      | ✓                      | ✓                      | ✓                      |
+|           | Min Kubernetes Version      | Max Kubernetes Version       |
+|-----------|-----------------------------|------------------------------|
+| \>=v 0.11 | v1.16                       | v1.18                        |
+| \>=v 0.12 | v1.18                       | v1.21                        |
+| \>=v 0.13 | v1.19                       | v1.21                        |
 
-Key:
-
- * `✓` oci-cloud-controller-manager is fully compatible.
- * `✗` oci-cloud-controller-manager is not compatible.
- * `†` Not tested with given version.
+Note: 
+Versions older than v0.13.0 are no longer supported, new features / bug fixes will be available in v0.13.0 and later. 
 
 ## Implementation
  Currently `oci-cloud-controller-manager` implements:
@@ -97,7 +93,7 @@ For CCM -
 ```bash
 $ kubectl  create secret generic oci-cloud-controller-manager \
      -n kube-system                                           \
-     --from-file=cloud-provider.yaml=cloud-provider-example.yaml
+     --from-file=cloud-provider.yaml=provider-config-example.yaml
 ```
 Note that you must ensure the secret contains the key `cloud-provider.yaml`
 rather than the name of the file on disk.
@@ -105,11 +101,12 @@ rather than the name of the file on disk.
 ### Deployment
 
 Deploy the controller manager and associated RBAC rules if your cluster
-is configured to use RBAC:
+is configured to use RBAC (replace ? with the version you want to install to):
 
 ```bash
-$ kubectl apply -f https://raw.githubusercontent.com/oracle/oci-cloud-controller-manager/master/manifests/cloud-controller-manager/oci-cloud-controller-manager.yaml
-$ kubectl apply -f https://raw.githubusercontent.com/oracle/oci-cloud-controller-manager/master/manifests/cloud-controller-manager/oci-cloud-controller-manager-rbac.yaml
+$ export RELEASE=?
+$ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-cloud-controller-manager-rbac.yaml
+$ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-cloud-controller-manager.yaml
 ```
 
 Check the CCM logs to ensure it's running correctly:

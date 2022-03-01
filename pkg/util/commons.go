@@ -1,14 +1,16 @@
 package util
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	metricErrors "github.com/pkg/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	"regexp"
 	"strconv"
 	"strings"
+
+	metricErrors "github.com/pkg/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 const (
@@ -25,17 +27,15 @@ const (
 
 	// Components generating errors
 	// Load Balancer
-	LoadBalancerType	 = "LB"
+	LoadBalancerType = "LB"
 	// storage types
-	CSIStorageType       = "CSI"
-	FVDStorageType       = "FVD"
-
-
+	CSIStorageType = "CSI"
+	FVDStorageType = "FVD"
 )
 
 // LookupNodeCompartment returns the compartment OCID for the given nodeName.
 func LookupNodeCompartment(k kubernetes.Interface, nodeName string) (string, error) {
-	node, err := k.CoreV1().Nodes().Get(nodeName, metav1.GetOptions{})
+	node, err := k.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -81,5 +81,5 @@ func GetMetricDimensionForComponent(err string, component string) string {
 	if err == "" || component == "" {
 		return ""
 	}
-	return fmt.Sprintf("%s_%s",component,err)
+	return fmt.Sprintf("%s_%s", component, err)
 }

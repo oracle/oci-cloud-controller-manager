@@ -19,9 +19,12 @@ package mount
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"go.uber.org/zap"
 )
+
+const directoryDeletePollInterval = 5 * time.Second
 
 // UnmountPath is a common unmount routine that unmounts the given path and
 // deletes the remaining directory if successful.
@@ -52,9 +55,25 @@ func UnmountPath(logger *zap.SugaredLogger, mountPath string, mounter Interface)
 	}
 	if notMnt {
 		logger.With("mount path", mountPath).Info("Mount path is unmounted. Removing directory.")
-		return os.Remove(mountPath)
+		return WaitForDirectoryDeletion(logger, mountPath)
 	}
 	return fmt.Errorf("Failed to unmount path %v", mountPath)
+}
+
+func WaitForDirectoryDeletion(logger *zap.SugaredLogger, mountPath string) error {
+	var err error
+	// Try removing the mount path thrice, else suppress the error
+	for loopCounter := 0; loopCounter < 3; loopCounter += 1 {
+		if err = os.Remove(mountPath); err != nil {
+			logger.With("mount path", mountPath, "error", err).Warn("Mount path couldn't be deleted. Trying again...")
+			time.Sleep(directoryDeletePollInterval)
+		} else {
+			logger.With("mount path", mountPath).Info("Mount path deleted.")
+			return nil
+		}
+	}
+	logger.With("mount path", mountPath, "error", err).Warn("Mount path couldn't be deleted.")
+	return nil
 }
 
 // PathExists returns true if the specified path exists.
