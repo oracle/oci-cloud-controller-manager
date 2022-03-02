@@ -68,6 +68,7 @@ const (
 	lbConnectionIdleTimeoutHTTP      = 60
 	flexible                         = "flexible"
 	lbMaximumNetworkSecurityGroupIds = 5
+	excludeBackendFromLBLabel = "node.kubernetes.io/exclude-from-external-load-balancers"
 )
 
 // CloudLoadBalancerProvider is an implementation of the cloud-provider struct
@@ -458,6 +459,18 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 			metrics.SendMetricData(cp.metricPusher, getMetric(loadBalancerType, Update), time.Since(startTime).Seconds(), dimensionsMap)
 
 			return nil, errors.Wrap(err, "ensuring ssl certificates")
+		}
+	}
+
+	if len(nodes) == 0 {
+		allNodesNotReady, err := cp.checkAllBackendNodesNotReady()
+		if err != nil {
+			logger.With(zap.Error(err)).Error("Failed to check if all backend nodes are not ready")
+			return nil, err
+		}
+		if allNodesNotReady {
+			logger.Info("Not removing backends since all nodes are Not Ready")
+			return loadBalancerToStatus(lb)
 		}
 	}
 
@@ -992,4 +1005,28 @@ func loadBalancerToStatus(lb *client.GenericLoadBalancer) (*v1.LoadBalancerStatu
 		ingress = append(ingress, v1.LoadBalancerIngress{IP: *ip.IpAddress})
 	}
 	return &v1.LoadBalancerStatus{Ingress: ingress}, nil
+}
+
+func (cp *CloudProvider) checkAllBackendNodesNotReady() (bool, error) {
+	nodeList, err := cp.NodeLister.List(labels.Everything())
+	if err != nil {
+		return false, err
+	}
+	if len(nodeList) == 0 {
+		return false, nil
+	}
+	for _, node := range nodeList {
+		if _, hasExcludeBalancerLabel := node.Labels[excludeBackendFromLBLabel]; hasExcludeBalancerLabel {
+			continue
+		}
+		for _, cond := range node.Status.Conditions {
+			if cond.Type == v1.NodeReady {
+				if cond.Status == v1.ConditionTrue {
+					return false, nil
+				}
+				break
+			}
+		}
+	}
+	return true, nil
 }
