@@ -19,10 +19,10 @@ jobs:
         go-version: 1.15
         
     - name: Check
-      run: go fmt lint vet -v ./...
+      run: go fmt lint vet -v cmd
+
+    - name: Test
+      run: go test -v pkg
       
     - name: Build
       run: go build -v ./...
-
-    - name: Test
-      run: go test -v ./...
