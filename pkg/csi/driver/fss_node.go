@@ -38,7 +38,7 @@ func (d FSSNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVo
 		return nil, status.Error(codes.InvalidArgument, "Invalid Volume ID provided")
 	}
 
-	logger := d.logger.With("volumeId", req.VolumeId)
+	logger := d.logger.With("volumeID", req.VolumeId)
 	logger.Debugf("volume context: %v", req.VolumeContext)
 
 	var fsType = ""
@@ -169,7 +169,7 @@ func (d FSSNodeDriver) NodePublishVolume(ctx context.Context, req *csi.NodePubli
 		return nil, status.Error(codes.InvalidArgument, "Target Path must be provided")
 	}
 
-	logger := d.logger.With("volumeId", req.VolumeId)
+	logger := d.logger.With("volumeID", req.VolumeId)
 	logger.Debugf("volume context: %v", req.VolumeContext)
 
 	var fsType = ""
@@ -229,7 +229,7 @@ func (d FSSNodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnp
 		return nil, status.Error(codes.InvalidArgument, "NodeUnpublishVolume: Target Path must be provided")
 	}
 
-	logger := d.logger.With("volumeId", req.VolumeId, "targetPath", req.TargetPath)
+	logger := d.logger.With("volumeID", req.VolumeId, "targetPath", req.TargetPath)
 
 	mounter := mount.New(logger, mountPath)
 	targetPath := req.GetTargetPath()
@@ -280,7 +280,7 @@ func (d FSSNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnsta
 		return nil, status.Error(codes.InvalidArgument, "Staging path must be provided")
 	}
 
-	logger := d.logger.With("volumeId", req.VolumeId, "stagingPath", req.StagingTargetPath)
+	logger := d.logger.With("volumeID", req.VolumeId, "stagingPath", req.StagingTargetPath)
 
 	if acquired := d.volumeLocks.TryAcquire(req.VolumeId); !acquired {
 		logger.Error("Could not acquire lock for NodeUnstageVolume.")

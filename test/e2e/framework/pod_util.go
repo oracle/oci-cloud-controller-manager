@@ -88,11 +88,10 @@ func (j *PVCTestJig) CheckFileExists(namespace string, podName string, dir strin
 	}
 }
 
-
 func (j *PVCTestJig) CheckFileCorruption(namespace string, podName string, dir string, fileName string) {
 	By("check if the file is corrupt")
 	md5hash := "e59ff97941044f85df5297e1c302d260"
-	command := fmt.Sprintf("md5sum %s/%s", dir,fileName)
+	command := fmt.Sprintf("md5sum %s/%s", dir, fileName)
 	if pollErr := wait.PollImmediate(K8sResourcePoll, DefaultTimeout, func() (bool, error) {
 		stdout, err := RunHostCmd(namespace, podName, command)
 		if err != nil {
@@ -101,7 +100,7 @@ func (j *PVCTestJig) CheckFileCorruption(namespace string, podName string, dir s
 		}
 		return strings.Contains(stdout, md5hash), nil
 	}); pollErr != nil {
-		Failf("MD5 hash does not match, file is corrupt in pod '%v'",podName)
+		Failf("MD5 hash does not match, file is corrupt in pod '%v'", podName)
 	}
 }
 
@@ -132,20 +131,20 @@ func (j *PVCTestJig) CheckVolumeReadWrite(namespace string, pvcParam *v1.Persist
 func (j *PVCTestJig) checkFileOwnership(namespace string, podName string, dir string) {
 	By("check if the file exists")
 	command := fmt.Sprintf("stat -c '%%g' %s", dir)
-		stdout, err := RunHostCmd(namespace, podName, command)
-		if err != nil {
-			Logf("got err: %v, retry until timeout", err)
-		}
-		fsGroup := strings.TrimSpace(stdout)
-		if fsGroup != "1000" {
-			Failf("Not expected group owner, group owner is %v but should be 1000", fsGroup)
-		}
-		Logf("Expected group owner, group owner is %v ", fsGroup)
+	stdout, err := RunHostCmd(namespace, podName, command)
+	if err != nil {
+		Logf("got err: %v, retry until timeout", err)
+	}
+	fsGroup := strings.TrimSpace(stdout)
+	if fsGroup != "1000" {
+		Failf("Not expected group owner, group owner is %v but should be 1000", fsGroup)
+	}
+	Logf("Expected group owner, group owner is %v ", fsGroup)
 }
 
 // CheckVolumeDirectoryOwnership creates a pod with a dynamically provisioned volume
 func (j *PVCTestJig) CheckVolumeDirectoryOwnership(namespace string, pvcParam *v1.PersistentVolumeClaim) {
-	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(pvcParam.Namespace).Get(context.Background(),pvcParam.Name, metav1.GetOptions{})
+	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(pvcParam.Namespace).Get(context.Background(), pvcParam.Name, metav1.GetOptions{})
 
 	if err != nil {
 		Failf("Failed to get persistent volume %q: %v", pvc.Spec.VolumeName, err)
@@ -158,44 +157,43 @@ func (j *PVCTestJig) CheckVolumeDirectoryOwnership(namespace string, pvcParam *v
 	j.checkFileOwnership(namespace, podName, "/usr/share/nginx/html/out.txt")
 }
 
-
 //CheckExpandedVolumeReadWrite checks a pvc expanded pod with a dymincally provisioned volume
-func (j *PVCTestJig) CheckExpandedVolumeReadWrite(namespace string,podName string) {
+func (j *PVCTestJig) CheckExpandedVolumeReadWrite(namespace string, podName string) {
 	pattern := "ReadWriteTest"
-	text := fmt.Sprintf("hello expanded pvc pod %s",pattern)
-	command := fmt.Sprintf("echo '%s' > /data/test1; grep '%s'  /data/test1 ",text,pattern)
+	text := fmt.Sprintf("hello expanded pvc pod %s", pattern)
+	command := fmt.Sprintf("echo '%s' > /data/test1; grep '%s'  /data/test1 ", text, pattern)
 
 	if pollErr := wait.PollImmediate(K8sResourcePoll, DefaultTimeout, func() (bool, error) {
-		stdout, err := RunHostCmd(namespace, podName, command )
+		stdout, err := RunHostCmd(namespace, podName, command)
 		if err != nil {
 			Logf("got err: %v, retry until timeout", err)
 			return false, nil
 		}
-		return strings.Contains(stdout, text),nil
+		return strings.Contains(stdout, text), nil
 	}); pollErr != nil {
-		Failf("Write Test failed in pod '%v' after expanding pvc",podName)
+		Failf("Write Test failed in pod '%v' after expanding pvc", podName)
 	}
 
 }
 
 //CheckUsableVolumeSizeInsidePod checks a pvc expanded pod with a dymincally provisioned volume
-func (j *PVCTestJig) CheckUsableVolumeSizeInsidePod(namespace string,podName string) {
+func (j *PVCTestJig) CheckUsableVolumeSizeInsidePod(namespace string, podName string) {
 
 	command := fmt.Sprintf("df -BG | grep '/data'")
 
 	if pollErr := wait.PollImmediate(K8sResourcePoll, DefaultTimeout, func() (bool, error) {
-		stdout, err := RunHostCmd(namespace, podName, command )
+		stdout, err := RunHostCmd(namespace, podName, command)
 		if err != nil {
 			Logf("got err: %v, retry until timeout", err)
 			return false, nil
 		}
 		if strings.Fields(strings.TrimSpace(stdout))[1] != "99G" {
-			return false,nil
+			return false, nil
 		} else {
-			return true,nil
+			return true, nil
 		}
 	}); pollErr != nil {
-		Failf("Write Test failed in pod '%v' after expanding pvc",podName)
+		Failf("Write Test failed in pod '%v' after expanding pvc", podName)
 	}
 
 }
@@ -214,8 +212,8 @@ func (j *PVCTestJig) CreateAndAwaitNginxPodOrFail(ns string, pvc *v1.PersistentV
 			Namespace:    ns,
 		},
 		Spec: v1.PodSpec{
-			SecurityContext: &v1.PodSecurityContext {
-					FSGroup: &fsGroup,
+			SecurityContext: &v1.PodSecurityContext{
+				FSGroup: &fsGroup,
 			},
 			Containers: []v1.Container{
 				{

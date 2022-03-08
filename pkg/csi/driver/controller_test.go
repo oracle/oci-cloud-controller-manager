@@ -81,27 +81,27 @@ func (c *MockBlockStorageClient) AwaitVolumeAvailableORTimeout(ctx context.Conte
 }
 
 func (c *MockBlockStorageClient) GetVolume(ctx context.Context, id string) (*core.Volume, error) {
-	if id == "invalid_volume_id"{
+	if id == "invalid_volume_id" {
 		return nil, fmt.Errorf("failed to find existence of volume")
-	} else if id == "valid_volume_id"{
+	} else if id == "valid_volume_id" {
 		ad := "zkJl:US-ASHBURN-AD-1"
-		var oldSizeInBytes int64 = int64(csi_util.MaximumVolumeSizeInBytes)
+		var oldSizeInBytes = int64(csi_util.MaximumVolumeSizeInBytes)
 		oldSizeInGB := csi_util.RoundUpSize(oldSizeInBytes, 1*client.GiB)
 		return &core.Volume{
 			Id:                 &id,
 			AvailabilityDomain: &ad,
-			SizeInGBs: &oldSizeInGB,
+			SizeInGBs:          &oldSizeInGB,
 		}, nil
-	} else if id == "valid_volume_id_valid_old_size_fail"{
+	} else if id == "valid_volume_id_valid_old_size_fail" {
 		ad := "zkJl:US-ASHBURN-AD-1"
 		var oldSizeInBytes int64 = 2147483648
 		oldSizeInGB := csi_util.RoundUpSize(oldSizeInBytes, 1*client.GiB)
 		return &core.Volume{
 			Id:                 &id,
 			AvailabilityDomain: &ad,
-			SizeInGBs: &oldSizeInGB,
+			SizeInGBs:          &oldSizeInGB,
 		}, nil
-	} else{
+	} else {
 		return nil, nil
 	}
 }
@@ -430,7 +430,7 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 				ctx: nil,
 				req: &csi.CreateVolumeRequest{
 					Name: "ut-volume",
-					VolumeCapabilities: []*csi.VolumeCapability{&csi.VolumeCapability{
+					VolumeCapabilities: []*csi.VolumeCapability{{
 						AccessMode: &csi.VolumeCapability_AccessMode{
 							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
 						},
@@ -460,7 +460,7 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 				ctx: nil,
 				req: &csi.CreateVolumeRequest{
 					Name: "ut-volume",
-					VolumeCapabilities: []*csi.VolumeCapability{&csi.VolumeCapability{
+					VolumeCapabilities: []*csi.VolumeCapability{{
 						AccessMode: &csi.VolumeCapability_AccessMode{
 							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY,
 						},
@@ -477,7 +477,7 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 				ctx: nil,
 				req: &csi.CreateVolumeRequest{
 					Name: "ut-volume",
-					VolumeCapabilities: []*csi.VolumeCapability{&csi.VolumeCapability{
+					VolumeCapabilities: []*csi.VolumeCapability{{
 						AccessMode: &csi.VolumeCapability_AccessMode{
 							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_SINGLE_WRITER,
 						},
@@ -494,7 +494,7 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 				ctx: nil,
 				req: &csi.CreateVolumeRequest{
 					Name: "ut-volume",
-					VolumeCapabilities: []*csi.VolumeCapability{&csi.VolumeCapability{
+					VolumeCapabilities: []*csi.VolumeCapability{{
 						AccessMode: &csi.VolumeCapability_AccessMode{
 							Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
 						},
@@ -516,7 +516,7 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 				req: &csi.CreateVolumeRequest{
 					Name: "ut-volume",
 					VolumeCapabilities: []*csi.VolumeCapability{
-						&csi.VolumeCapability{
+						{
 							AccessMode: &csi.VolumeCapability_AccessMode{
 								Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
 							},
@@ -818,6 +818,7 @@ func TestExtractVolumeParameters(t *testing.T) {
 			volumeParameters: VolumeParameters{
 				diskEncryptionKey:   "",
 				attachmentParameter: make(map[string]string),
+				vpusPerGB:           10,
 			},
 			wantErr: true,
 		},
@@ -826,6 +827,7 @@ func TestExtractVolumeParameters(t *testing.T) {
 			volumeParameters: VolumeParameters{
 				diskEncryptionKey:   "",
 				attachmentParameter: make(map[string]string),
+				vpusPerGB:           10,
 			},
 			wantErr: false,
 		},
@@ -839,6 +841,7 @@ func TestExtractVolumeParameters(t *testing.T) {
 				attachmentParameter: map[string]string{
 					attachmentType: attachmentTypeParavirtualized,
 				},
+				vpusPerGB: 10,
 			},
 			wantErr: false,
 		},
@@ -852,6 +855,7 @@ func TestExtractVolumeParameters(t *testing.T) {
 				attachmentParameter: map[string]string{
 					attachmentType: attachmentTypeISCSI,
 				},
+				vpusPerGB: 10,
 			},
 			wantErr: false,
 		},
@@ -865,6 +869,7 @@ func TestExtractVolumeParameters(t *testing.T) {
 				attachmentParameter: map[string]string{
 					attachmentType: attachmentTypeISCSI,
 				},
+				vpusPerGB: 10,
 			},
 			wantErr: false,
 		},
@@ -878,6 +883,7 @@ func TestExtractVolumeParameters(t *testing.T) {
 				attachmentParameter: map[string]string{
 					attachmentType: attachmentTypeParavirtualized,
 				},
+				vpusPerGB: 10,
 			},
 			wantErr: false,
 		},
@@ -888,6 +894,7 @@ func TestExtractVolumeParameters(t *testing.T) {
 			volumeParameters: VolumeParameters{
 				diskEncryptionKey:   "",
 				attachmentParameter: make(map[string]string),
+				vpusPerGB:           10,
 			},
 			wantErr: true,
 		},
@@ -898,6 +905,7 @@ func TestExtractVolumeParameters(t *testing.T) {
 			volumeParameters: VolumeParameters{
 				diskEncryptionKey:   "",
 				attachmentParameter: make(map[string]string),
+				vpusPerGB:           10,
 			},
 			wantErr: true,
 		},
@@ -909,6 +917,7 @@ func TestExtractVolumeParameters(t *testing.T) {
 				diskEncryptionKey:   "",
 				attachmentParameter: make(map[string]string),
 				freeformTags:        map[string]string{"foo": "bar"},
+				vpusPerGB:           10,
 			},
 			wantErr: false,
 		},
@@ -920,6 +929,7 @@ func TestExtractVolumeParameters(t *testing.T) {
 				diskEncryptionKey:   "",
 				attachmentParameter: make(map[string]string),
 				definedTags:         map[string]map[string]interface{}{"ns": {"foo": "bar"}},
+				vpusPerGB:           10,
 			},
 			wantErr: false,
 		},
@@ -933,8 +943,73 @@ func TestExtractVolumeParameters(t *testing.T) {
 				attachmentParameter: make(map[string]string),
 				freeformTags:        map[string]string{"foo": "bar"},
 				definedTags:         map[string]map[string]interface{}{"ns": {"foo": "bar"}},
+				vpusPerGB:           10,
 			},
 			wantErr: false,
+		},
+		"if low performance level then vpusPerGB should be 0": {
+			storageParameters: map[string]string{
+				csi_util.VpusPerGB: "0",
+			},
+			volumeParameters: VolumeParameters{
+				diskEncryptionKey:   "",
+				attachmentParameter: make(map[string]string),
+				vpusPerGB:           0,
+			},
+			wantErr: false,
+		},
+		"if balanced performance level then vpusPerGB should be 10": {
+			storageParameters: map[string]string{
+				csi_util.VpusPerGB: "10",
+			},
+			volumeParameters: VolumeParameters{
+				diskEncryptionKey:   "",
+				attachmentParameter: make(map[string]string),
+				vpusPerGB:           10,
+			},
+			wantErr: false,
+		},
+		"if high performance level then vpusPerGB should be 20": {
+			storageParameters: map[string]string{
+				csi_util.VpusPerGB: "20",
+			},
+			volumeParameters: VolumeParameters{
+				diskEncryptionKey:   "",
+				attachmentParameter: make(map[string]string),
+				vpusPerGB:           20,
+			},
+			wantErr: false,
+		},
+		"if no parameters for performance level then default should be 10": {
+			storageParameters: map[string]string{},
+			volumeParameters: VolumeParameters{
+				diskEncryptionKey:   "",
+				attachmentParameter: make(map[string]string),
+				vpusPerGB:           10,
+			},
+			wantErr: false,
+		},
+		"if out of range parameter for performance level then return error": {
+			storageParameters: map[string]string{
+				csi_util.VpusPerGB: "40",
+			},
+			volumeParameters: VolumeParameters{
+				diskEncryptionKey:   "",
+				attachmentParameter: make(map[string]string),
+				vpusPerGB:           10,
+			},
+			wantErr: true,
+		},
+		"if invalid parameter for performance level then return error": {
+			storageParameters: map[string]string{
+				csi_util.VpusPerGB: "abc",
+			},
+			volumeParameters: VolumeParameters{
+				diskEncryptionKey:   "",
+				attachmentParameter: make(map[string]string),
+				vpusPerGB:           10,
+			},
+			wantErr: true,
 		},
 	}
 
