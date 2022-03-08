@@ -47,6 +47,7 @@ func main() {
 		"pid", os.Getpid(),
 		"version", version,
 		"build", build,
+		"component", "flexvolume-driver",
 	)
 	logger.Debug("OCI Flexvolume driver")
 	d, err := block.NewOCIFlexvolumeDriver(logger)

@@ -60,6 +60,11 @@ func (c *pvMounter) Logout() error {
 	return nil
 }
 
+func (c *pvMounter) UpdateQueueDepth() error {
+	c.logger.Info("Attachment type paravirtualized. UpdateQueueDepth() not needed for paravirtualized attachment")
+	return nil
+}
+
 func (c *pvMounter) RemoveFromDB() error {
 	c.logger.Info("Attachment type paravirtualized. RemoveFromDB() not needed for paravirtualized attachment")
 	return nil
@@ -99,7 +104,6 @@ func (c *pvMounter) Resize(devicePath string, volumePath string) (bool, error) {
 	}
 	return resize(devicePath, volumePath, safeMounter)
 }
-
 
 func (c *pvMounter) Rescan(devicePath string) error {
 	safeMounter := &mount.SafeFormatAndMount{

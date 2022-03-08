@@ -34,7 +34,7 @@ const (
 	// Some pods can take much longer to get ready due to volume attach/detach latency.
 	slowPodStartTimeout = 15 * time.Minute
 
-	JobCompletionTimeout = 5 * time.Minute
+	JobCompletionTimeout       = 5 * time.Minute
 	deploymentAvailableTimeout = 5 * time.Minute
 
 	DefaultClusterKubeconfig = "/tmp/clusterkubeconfig"
@@ -43,9 +43,11 @@ const (
 	ClassOCI          = "oci"
 	ClassOCICSI       = "oci-bv"
 	ClassOCICSIExpand = "oci-bv-expand"
+	ClassOCILowCost   = "oci-bv-low"
+	ClassOCIBalanced  = "oci-bal"
+	ClassOCIHigh      = "oci-bv-high"
+	ClassOCIKMS       = "oci-kms"
 	ClassOCIExt3      = "oci-ext3"
-	ClassOCIMntFss    = "oci-fss-mnt"
-	ClassOCISubnetFss = "oci-fss-subnet"
 	MinVolumeBlock    = "50Gi"
 	MaxVolumeBlock    = "100Gi"
 	VolumeFss         = "1Gi"

@@ -22,12 +22,12 @@ import (
 )
 
 //StartControllerDriver main function to start CSI Controller Driver
-func StartControllerDriver(csiOptions csioptions.CSIOptions) {
+func StartControllerDriver(csioptions csioptions.CSIOptions) {
 
 	logger := logging.Logger().Sugar()
 	logger.Sync()
 
-	drv, err := driver.NewControllerDriver(logger.Named("BV"), csiOptions.Endpoint, csiOptions.Kubeconfig, csiOptions.Master,
+	drv, err := driver.NewControllerDriver(logger.Named("BV").With(zap.String("component", "csi-controller")), csioptions.Endpoint, csioptions.Kubeconfig, csioptions.Master,
 		true, driver.BlockVolumeDriverName, driver.BlockVolumeDriverVersion)
 	if err != nil {
 		logger.With(zap.Error(err)).Fatal("Failed to create controller driver.")
