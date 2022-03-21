@@ -769,12 +769,11 @@ func (d *ControllerDriver) ControllerExpandVolume(ctx context.Context, req *csi.
 	oldSize := *volume.SizeInGBs
 
 	if newSizeInGB <= oldSize {
-		message := fmt.Sprintf("Volume size cannot be decreased. Please give a size greater than %v", *volume.SizeInGBs)
-		log.Error(message)
-		csiMetricDimension = util.GetMetricDimensionForComponent(util.ErrValidation, util.CSIStorageType)
-		dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
-		metrics.SendMetricData(d.metricPusher, metrics.PVExpand, time.Since(startTime).Seconds(), dimensionsMap)
-		return nil, status.Error(codes.OutOfRange, message)
+		log.Infof("Existing volume size: %v Requested volume size: %v No action needed.", *volume.SizeInGBs, newSizeInGB)
+		return &csi.ControllerExpandVolumeResponse{
+			CapacityBytes:         oldSize,
+			NodeExpansionRequired: true,
+		}, nil
 	}
 
 	updateVolumeDetails := core.UpdateVolumeDetails{

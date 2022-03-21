@@ -103,6 +103,7 @@ func (d BlockVolumeNodeDriver) NodeStageVolume(ctx context.Context, req *csi.Nod
 
 	v, ok := req.PublishContext[csi_util.VpusPerGB]
 	if !ok {
+		logger.Errorf("vpusPerGB not found in PublishContext %v", req.PublishContext)
 		return nil, status.Errorf(codes.InvalidArgument, "unable to get the vpusPerGB from the publish context")
 	}
 	vpusPerGB, err := csi_util.ExtractBlockVolumePerformanceLevel(v)
@@ -500,7 +501,7 @@ func (d BlockVolumeNodeDriver) NodeExpandVolume(ctx context.Context, req *csi.No
 
 	defer d.volumeLocks.Release(req.VolumeId)
 
-	requestedSize, err := csi_util.ExtractStorage(req.CapacityRange)
+	requestedSize, err:= csi_util.ExtractStorage(req.CapacityRange)
 	requestedSizeGB := csi_util.RoundUpSize(requestedSize, 1*client.GiB)
 
 	if err != nil {

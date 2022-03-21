@@ -684,21 +684,6 @@ func TestControllerDriver_ControllerExpandVolume(t *testing.T) {
 			want:    nil,
 			wantErr: errors.New("failed to check existence of volume"),
 		},
-		{
-			name:   "Error for new size not greater than old size in ControllerExpandVolume",
-			fields: fields{},
-			args: args{
-				ctx: nil,
-				req: &csi.ControllerExpandVolumeRequest{
-					VolumeId: "valid_volume_id",
-					CapacityRange: &csi.CapacityRange{
-						RequiredBytes: int64(csi_util.MaximumVolumeSizeInBytes),
-					},
-				},
-			},
-			want:    nil,
-			wantErr: errors.New("Volume size cannot be decreased. Please give a size greater than"),
-		},
 
 		{
 			name:   "Error for update Volume fail for ControllerExpandVolume",
