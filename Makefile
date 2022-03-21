@@ -77,12 +77,18 @@ check: gofmt govet golint
 .PHONY: build-dirs
 build-dirs:
 	@mkdir -p dist/
+	@mkdir -p dist/arm/
 
 .PHONY: build
 build: build-dirs
 	@for component in $(COMPONENT); do \
-		GOOS=$(GOOS) GOARCH=$(ARCH) CGO_ENABLED=0 go build -o dist/$$component -ldflags "-X main.version=$(VERSION) -X main.build=$(BUILD)" ./cmd/$$component ; \
+		GOOS=$(GOOS) GOARCH=$(ARCH) CGO_ENABLED=1 go build -mod vendor -o dist/$$component -ldflags "-X main.version=$(VERSION) -X main.build=$(BUILD)" ./cmd/$$component ; \
     done
+
+.PHONY: build-arm
+build-arm: build-dirs
+	GOOS=$(GOOS) GOARCH=arm64 CGO_ENABLED=0 go build -mod vendor -o dist/arm/oci-csi-node-driver -ldflags "-X main.version=$(VERSION) -X main.build=$(BUILD)" ./cmd/oci-csi-node-driver ;
+	GOOS=$(GOOS) GOARCH=arm64 CGO_ENABLED=0 go build -mod vendor -o dist/arm/oci-flexvolume-driver -ldflags "-X main.version=$(VERSION) -X main.build=$(BUILD)" ./cmd/oci-flexvolume-driver ; \
 
 .PHONY: manifests
 manifests: build-dirs
@@ -99,6 +105,11 @@ vendor:
 .PHONY: test
 test:
 	@./hack/test.sh $(SRC_DIRS)
+
+.PHONY: coverage
+coverage: test
+	GO111MODULE=off go tool cover -html=coverage.out -o coverage.html
+	GO111MODULE=off go tool cover -func=coverage.out > coverage.txt
 
 # Run the canary tests - in single run mode.
 .PHONY: canary-run-once
@@ -190,7 +201,7 @@ test-local: build-dirs
 			 -v $(PWD):$(DOCKER_REPO_ROOT) \
 			 -e COMPONENT="$(COMPONENT)" \
 			 -e GOPATH=/go/ \
-			odo-docker-signed-local.artifactory.oci.oraclecorp.com/odx-oke/oke/k8-manager-base:go1.16.1-1.0.9 \
+			odo-docker-signed-local.artifactory.oci.oraclecorp.com/odx-oke/oke/k8-manager-base:go1.17.7-1.0.10 \
 			make coverage image
 
 .PHONY: run-ccm-e2e-tests-local
