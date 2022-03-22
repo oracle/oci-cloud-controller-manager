@@ -1,5 +1,115 @@
 # CHANGELOG
 
+## v0.13.0
+### Major Update
+k8s vendor dependencies upgraded to 1.19 from 1.16. Cluster with kubernetes version 1.18 or lesser will not be compatible with any of the components in this release.
+
+### Min required K8s version
+1.19
+
+### Features
+* ARM support with multiarch images
+* OKE (CSI) Expand Volume support. https://github.com/oracle/oci-cloud-controller-manager/blob/master/docs/expand-block-volume-using-csi.md
+* Support for tagging OCI LB and BV
+* Support Static Provisioning of FSS using CSI Driver with In-transit Encryption. https://github.com/oracle/oci-cloud-controller-manager/blob/master/docs/statically-provisioned-fss-using-csi.md
+
+### Enhancements
+* Add arm image support and minor bug fix
+* fixed encryption disabled fss tests
+* Replaced lbOCID with loadBalancerID in log objects
+* Removed hardcoded function and race condition
+* Addition of Backendset size dimension to LB metrics
+* Added health checks of nodes from pods using a job
+* added test to check data integrity on pod restart
+
+### Bug Fixes
+* CSI Block Volume - Unexpected formatting when staging target path does not exist and mount fails
+* Bug fix for block volume encryption
+* Adding error condition when in transit is on and attachment type is iscsi
+* Clean exit if mount point is not found and mitigating remove directory error
+
+## v0.13.0-alpha1
+
+## 0.12.0
+#### Important points
+* NSG Support
+* Reserved IP Support
+* Kubernetes 1.19 and 1.20 Support
+* Bug fixes
+#### Summary of changes
+* Fix for pod deletion and recreation in fvd test
+* removed TCP health check for SSL enabled traffic
+* CCM should use LB bulk update API to add /delete backend in backendset
+* CCM should stop fetching node and lb subnet in time of LB deletion if CCM is not managing the security list.
+* Make all RPCs mutually exclusive
+* CCM support for public reserved IP
+* Introduce paging to ListVolumes, no limit, filter by display-name
+* [CSI] Create targetPath if not already created
+* Support for Associating NetworkSecurityGroups to LoadBalancer
+* Add resourceName to provision failures to dedupe metrics
+* Enable metrics for update operations
+* Enable IMDS server lookup
+
+## 0.11.0
+
+* Handle Volume Attachments created in the non-cluster compartment
+* Fix nil pointer dereference when node not found by IP
+* Add support for updating LB Shape and provisioning of Flexible shape LBs
+
+## 0.10.0
+
+* Service annotation oci-load-balancer-internal: false is not honoured
+* CSI - Wait for volume to reach DETACHED state before attempting to attach
+* Add unit tests for CSI
+* Fix Backup Restore E2E test for multi Attach Error
+* Drop iSCSI package installation and add util-linux to the cloud-provider-oci image
+
+## 0.9.0
+##### Major changes -
+
+* CSI support
+* Regional Subnet support via LB annotation
+* Health check config support for backend sets
+* Support LB Service creation if nodepool belongs to a different compartment than cluster's compartment
+* Bug fixes
+
+##### Detailed changes -
+
+* Kubernetes 1.18 compatibility
+* Fix node info controller to trim providerID prefix to support backward compatibility to non-oke clusters.
+* CCM should support LB Service creation if nodepool belongs to a different compartment
+* CCM should set node address properly to cross compartment node and Fault Domain Label to all the Nodes.
+* Opensource CSI in OGHO
+* remove wercker references
+* CCM is not honouring oci-load-balancer-connection-idle-timeout annotation during update event
+* Update seclist when lb service nodeport changes
+* Ensure LB SecList is synced if there are no Backend/Backendset/Listerner changes
+* merge internal repo commits to oss
+* oci-cloud-provider should retry on all retryable errors
+* Regional Subnet via LB annotation re-work. Remove subnets annotation and keep old annotaion.
+* Support health check config for backend sets.
+* Customer should be able to edit the service to add/update listener even if the customer uses the service.beta.kubernetes.io/oci-load- balancer-backend-protocol: "HTTP" 2. When customers add service.beta.kubernetes.io/oci-load-balancer-backend-protocol: "HTTP" in existing service, CCM should update the existing listener with the new protocol( i.e only change the protocol of the listener, not create and delete the listerner)
+
+## 0.8.0
+* Kubernetes version 1.14, 1.15, 1.16 and 1.17 support.
+* Change documentation as per new release. fix rbac manifest and readme compatibility matrix
+* add/delete/update backend servers instead of updating the entire backendsets
+* Fix the documentation around how to run e2e tests for CCM
+* Fix issues with ccm e2e tests.
+* CCM is not honouring oci-load-balancer-connection-idle-timeout annotation during update event
+* Change log level to debug for config file not found on worker node
+* Fixing CCM build target
+* Resolve dependency conflict for Sirupsen by bumping up the version of docker/docker
+* CCM should ignore nodes for backends that aren't setup yet.
+* move to go mod
+* Avoid CCM panic due to index out of range
+* update oci-go-sdk
+* correction to boilerplate header validation and remove e2e test automation
+* Enable provisioning BV from another BV
+* Deploy single container with CCM and FVP
+* Cert rotation should avoid listener recreation
+* Fix test to avoid appending secret name to listeners name
+
 ## 0.7.0
 
 * Support assigning SSL certs to BackendSets [#243][30]
