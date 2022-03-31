@@ -16,9 +16,11 @@ package client
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/oracle/oci-go-sdk/v49/core"
+	"github.com/oracle/oci-go-sdk/v49/loadbalancer"
 	"k8s.io/client-go/util/flowcontrol"
 )
 
@@ -203,4 +205,62 @@ func (c *mockVirtualNetworkClient) GetPrivateIp(ctx context.Context, request cor
 
 func (c *mockVirtualNetworkClient) GetPublicIpByIpAddress(ctx context.Context, request core.GetPublicIpByIpAddressRequest) (response core.GetPublicIpByIpAddressResponse, err error) {
 	return core.GetPublicIpByIpAddressResponse{}, nil
+}
+
+func TestBackendTcpProxyProtocolOptionsStringArrayToEnum(t *testing.T) {
+	testCases := map[string]struct {
+		state    []string
+		expected []loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum
+	}{
+		"empty options": {
+			state:    []string{},
+			expected: []loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum{},
+		},
+		"PP2_TYPE_AUTHORITY": {
+			state:    []string{"PP2_TYPE_AUTHORITY"},
+			expected: []loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum{"PP2_TYPE_AUTHORITY"},
+		},
+		"PP2_TYPE_AUTHORITY, PP3_TYPE_AUTHORITY": {
+			state:    []string{"PP2_TYPE_AUTHORITY", "PP3_TYPE_AUTHORITY"},
+			expected: []loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum{"PP2_TYPE_AUTHORITY", "PP3_TYPE_AUTHORITY"},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			result := backendTcpProxyProtocolOptionsStringArrayToEnum(tc.state)
+			if !reflect.DeepEqual(result, tc.expected) {
+				t.Errorf("Expected enum\n%+v\nbut got\n%+v", tc.expected, result)
+			}
+		})
+	}
+}
+
+func TestStringArrayToBackendTcpProxyProtocolOptionsEnum(t *testing.T) {
+	testCases := map[string]struct {
+		state    []loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum
+		expected []string
+	}{
+		"empty options": {
+			state:    []loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum{},
+			expected: []string{},
+		},
+		"PP2_TYPE_AUTHORITY": {
+			state:    []loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum{"PP2_TYPE_AUTHORITY"},
+			expected: []string{"PP2_TYPE_AUTHORITY"},
+		},
+		"PP2_TYPE_AUTHORITY, PP3_TYPE_AUTHORITY": {
+			state:    []loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum{"PP2_TYPE_AUTHORITY", "PP3_TYPE_AUTHORITY"},
+			expected: []string{"PP2_TYPE_AUTHORITY", "PP3_TYPE_AUTHORITY"},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			result := stringArrayToBackendTcpProxyProtocolOptionsEnum(tc.state)
+			if !reflect.DeepEqual(result, tc.expected) {
+				t.Errorf("Expected string\n%+v\nbut got\n%+v", tc.expected, result)
+			}
+		})
+	}
 }
