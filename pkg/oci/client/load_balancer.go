@@ -662,7 +662,7 @@ func (c *loadbalancerClientStruct) genericBackendSetDetailsToBackendSets(backend
 }
 
 func (c *loadbalancerClientStruct) workRequestToGenericWorkRequest(request *loadbalancer.WorkRequest) *GenericWorkRequest {
-	if request == nil{
+	if request == nil {
 		return nil
 	}
 	lifecycleState := string(request.LifecycleState)
@@ -678,7 +678,7 @@ func (c *loadbalancerClientStruct) workRequestToGenericWorkRequest(request *load
 }
 
 func certificateToGenericCertificate(certificate *loadbalancer.Certificate) *GenericCertificate {
-	if certificate == nil{
+	if certificate == nil {
 		return nil
 	}
 	genericCertificateDetails := &GenericCertificate{
@@ -692,13 +692,13 @@ func certificateToGenericCertificate(certificate *loadbalancer.Certificate) *Gen
 func (c *loadbalancerClientStruct) genericCertificatesToCertificates(genericCertificates map[string]GenericCertificate) map[string]loadbalancer.CertificateDetails {
 	certificates := make(map[string]loadbalancer.CertificateDetails)
 
-	for k, cert := range genericCertificates{
+	for k, cert := range genericCertificates {
 		certStruct := loadbalancer.CertificateDetails{
-			CertificateName: 	cert.CertificateName,
-			Passphrase:      	cert.Passphrase,
-			PrivateKey:      	cert.PrivateKey,
-			PublicCertificate: 	cert.PublicCertificate,
-			CaCertificate: 		cert.CaCertificate,
+			CertificateName:   cert.CertificateName,
+			Passphrase:        cert.Passphrase,
+			PrivateKey:        cert.PrivateKey,
+			PublicCertificate: cert.PublicCertificate,
+			CaCertificate:     cert.CaCertificate,
 		}
 		certificates[k] = certStruct
 	}
@@ -786,16 +786,16 @@ func sslConfigurationToGenericSslConfiguration(details *loadbalancer.SslConfigur
 
 func backendTcpProxyProtocolOptionsStringArrayToEnum(options []string) []loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum {
 	ccString := make([]loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum, 0)
-	for k, _ := range options {
-		ccString[k] = loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum(options[k])
+	for _, option := range options {
+		ccString = append(ccString, loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum(option))
 	}
 	return ccString
 }
 
 func stringArrayToBackendTcpProxyProtocolOptionsEnum(options []loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum) []string {
 	ccString := make([]string, 0)
-	for k, _ := range options {
-		ccString[k] = string(options[k])
+	for _, option := range options {
+		ccString = append(ccString, string(option))
 	}
 	return ccString
 }
