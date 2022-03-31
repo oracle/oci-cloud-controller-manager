@@ -99,3 +99,47 @@ func (f *CloudProviderFramework) UpdateStorageClassOrFail(storageClass *storagev
 		metav1.UpdateOptions{})
 	return class, err
 }
+
+// NewCSIDriverTemplate returns the default template for this jig, but
+// does not actually create the CSI Driver.
+func (f *CloudProviderFramework) newCSIDriverTemplate(name string, testLabels map[string]string, fsGroupPolicy storagev1.FSGroupPolicy) *storagev1.CSIDriver {
+	return &storagev1.CSIDriver{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "CSIDriver",
+			APIVersion: "storage.k8s.io/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   name,
+			Labels: testLabels,
+		},
+		Spec: storagev1.CSIDriverSpec{
+			FSGroupPolicy: &fsGroupPolicy,
+		},
+	}
+}
+
+// CreateCSIDriverOrFail creates a new storage class based on the jig's defaults.
+func (f *CloudProviderFramework) CreateCSIDriverOrFail(name string,
+	testLabels map[string]string, fsGroupPolicy storagev1.FSGroupPolicy) string {
+
+	csiDriverTemp := f.newCSIDriverTemplate(name, testLabels, fsGroupPolicy)
+
+	csiDriver, err := f.ClientSet.StorageV1().CSIDrivers().Create(context.Background(), csiDriverTemp, metav1.CreateOptions{})
+	if err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			Logf("CSI Driver already exists. Continuing with the existing one.")
+			return csiDriver.Name
+		}
+		Failf("Failed to create CSI Driver %q: %v", name, err)
+	}
+	return csiDriver.Name
+}
+
+// DeleteCSIDriver deletes a CSI Driver given the name
+func (f *CloudProviderFramework) DeleteCSIDriver(name string) error {
+	err := f.ClientSet.StorageV1().CSIDrivers().Delete(context.Background(), name, metav1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+	return nil
+}

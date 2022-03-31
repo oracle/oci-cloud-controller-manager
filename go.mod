@@ -35,9 +35,7 @@ replace (
 )
 
 require (
-	github.com/NYTimes/gziphandler v1.0.1 // indirect
 	github.com/container-storage-interface/spec v1.5.0
-	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.5.2
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/imdario/mergo v0.3.9 // indirect
@@ -47,28 +45,26 @@ require (
 	github.com/oracle/oci-go-sdk/v50 v50.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.11.0
-	github.com/spf13/cobra v1.1.3
+	github.com/spf13/cobra v1.1.3 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.17.0
 	golang.org/x/net v0.0.0-20211209124913-491a49abca63
-	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1 // indirect
-	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013 // indirect
 	google.golang.org/grpc v1.38.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.22.5
 	k8s.io/apimachinery v0.22.5
-	k8s.io/apiserver v0.22.5
+	k8s.io/apiserver v0.22.5 // indirect
 	k8s.io/client-go v0.22.5
 	k8s.io/cloud-provider v0.22.5
 	k8s.io/component-base v0.22.5
 	k8s.io/component-helpers v0.22.5
-	k8s.io/csi-translation-lib v0.22.5
+	k8s.io/csi-translation-lib v0.22.5 // indirect
 	k8s.io/klog v1.0.0
 	k8s.io/klog/v2 v2.9.0
-	k8s.io/kubelet v0.22.5
+	k8s.io/kubelet v0.22.5 // indirect
 	k8s.io/kubernetes v1.22.5
 	k8s.io/utils v0.0.0-20210819203725-bdf08cb9a70a
 	sigs.k8s.io/sig-storage-lib-external-provisioner/v6 v6.3.0

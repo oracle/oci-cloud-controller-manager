@@ -117,9 +117,65 @@ Check if PVC is now in bound state:
 $ kubectl describe pvc/oci-bv-claim
 ```
 
+# Troubleshoot
+
+### FsGroup policy not propagated from pod security context
+
+If your fsGroup is not being applied on the files in your volume.
+
+Read more about [fsGroup Policy][7].
+
+Ex. 
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: security-context-demo
+spec:
+  securityContext:
+    fsGroup: 2000
+  containers:
+  - name: sec-ctx-demo
+    image: busybox:1.28
+    command: [ "sh", "-c", "sleep 1h" ]
+    volumeMounts:
+    - name: sec-ctx-vol
+      mountPath: /data/demo
+```
+
+```bash
+kubectl exec -it security-context-demo -- sh -c "cd /data/demo && echo hello > testfile"
+kubectl exec -it security-context-demo -- sh -c "ls -l /data/demo/testfile"
+```
+
+The output you would expect is that the `/data/demo/testfile` file has group ID 2000, which is the value of fsGroup
+```bash
+-rw-r--r-- 1 root 2000 6 Jun  6 20:08 testfile
+```
+
+But the same does not reflect on your volume, i.e. the permissions on your files/folders are not what you would expect.
+Ex:
+```bash
+-rw-r--r-- 1 root root 6 Jun  6 20:08 testfile
+```
+
+### Solution:
+Create a CSI Driver object with spec: `fsGroupPolicy: File`.
+Ex:
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: CSIDriver
+metadata:
+name: blockvolume.csi.oraclecloud.com
+spec:
+  fsGroupPolicy: File
+```
+`File` - Indicates that the CSI volume driver supports volume ownership and permission change via fsGroup, and Kubernetes may use fsGroup to change permissions and ownership of the volume to match user requested fsGroup in the pod's SecurityPolicy regardless of fstype or access mode.
+
 [1]: https://docs.us-phoenix-1.oraclecloud.com/Content/Block/Concepts/overview.htm
 [2]: https://kubernetes.io/blog/2019/01/15/container-storage-interface-ga/
 [3]: https://kubernetes.io/docs/admin/authorization/rbac/
 [4]: https://kubernetes-csi.github.io/docs/external-provisioner.html
 [5]: https://kubernetes-csi.github.io/docs/external-attacher.html
 [6]: https://kubernetes-csi.github.io/docs/node-driver-registrar.html
+[7]: https://kubernetes-csi.github.io/docs/support-fsgroup.html#csi-volume-fsgroup-policy
