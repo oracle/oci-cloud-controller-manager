@@ -68,7 +68,7 @@ const (
 	lbConnectionIdleTimeoutHTTP      = 60
 	flexible                         = "flexible"
 	lbMaximumNetworkSecurityGroupIds = 5
-	excludeBackendFromLBLabel = "node.kubernetes.io/exclude-from-external-load-balancers"
+	excludeBackendFromLBLabel        = "node.kubernetes.io/exclude-from-external-load-balancers"
 )
 
 // CloudLoadBalancerProvider is an implementation of the cloud-provider struct
@@ -245,12 +245,13 @@ func (clb *CloudLoadBalancerProvider) ensureSSLCertificates(ctx context.Context,
 			if err != nil {
 				return err
 			}
+			logger.With("workRequestID", wrID).Info("Await workrequest for create certificate")
 			_, err = clb.lbClient.AwaitWorkRequest(ctx, wrID)
 			if err != nil {
 				return err
 			}
 
-			logger.Info("Certificate created")
+			logger.Info("Workrequest for certificate create succeeded")
 		}
 	}
 	return nil
@@ -316,10 +317,12 @@ func (clb *CloudLoadBalancerProvider) createLoadBalancer(ctx context.Context, sp
 	if err != nil {
 		return nil, "", errors.Wrap(err, "creating load balancer")
 	}
+	logger.With("workRequestID", wrID).Info("Await workrequest for create loadbalancer")
 	wr, err := clb.lbClient.AwaitWorkRequest(ctx, wrID)
 	if err != nil {
 		return nil, "", errors.Wrap(err, "awaiting load balancer")
 	}
+	logger.With("workRequestID", wrID).Info("Workrequest for create loadbalancer succeeded")
 
 	if wr.LoadBalancerId == nil {
 		return nil, "", errors.New("Could not get LoadBalancerId from workrequest")
@@ -690,12 +693,13 @@ func (clb *CloudLoadBalancerProvider) updateBackendSet(ctx context.Context, lbID
 		ports         = action.Ports
 	)
 
-	clb.logger.With(
+	logger := clb.logger.With(
 		"actionType", action.Type(),
 		"backendSetName", action.Name(),
 		"ports", ports,
 		"loadBalancerID", lbID,
-		"loadBalancerType", getLoadBalancerType(spec.service)).Info("Applying action on backend set")
+		"loadBalancerType", getLoadBalancerType(spec.service))
+	logger.Info("Applying action on backend set")
 
 	switch action.Type() {
 	case Create:
@@ -724,11 +728,13 @@ func (clb *CloudLoadBalancerProvider) updateBackendSet(ctx context.Context, lbID
 	if err != nil {
 		return err
 	}
-
+	logger = logger.With("workRequestID", workRequestID)
+	logger.Info("Await workrequest for loadbalancer backendset")
 	_, err = clb.lbClient.AwaitWorkRequest(ctx, workRequestID)
 	if err != nil {
 		return err
 	}
+	logger.Info("Workrequest for loadbalancer backendset completed successfully")
 
 	return nil
 }
@@ -739,12 +745,13 @@ func (clb *CloudLoadBalancerProvider) updateListener(ctx context.Context, lbID s
 	listener := action.Listener
 	ports.ListenerPort = *listener.Port
 
-	clb.logger.With(
+	logger := clb.logger.With(
 		"actionType", action.Type(),
 		"listenerName", action.Name(),
 		"ports", ports,
 		"loadBalancerID", lbID,
-		"loadBalancerType", getLoadBalancerType(spec.service)).Info("Applying action on listener")
+		"loadBalancerType", getLoadBalancerType(spec.service))
+	logger.Info("Applying action on listener")
 
 	switch action.Type() {
 	case Create:
@@ -773,9 +780,14 @@ func (clb *CloudLoadBalancerProvider) updateListener(ctx context.Context, lbID s
 	if err != nil {
 		return err
 	}
-
+	logger = logger.With("workRequestID", workRequestID)
+	logger.Info("Await workrequest for loadbalancer listener")
 	_, err = clb.lbClient.AwaitWorkRequest(ctx, workRequestID)
-	return err
+	if err != nil {
+		return err
+	}
+	logger.Info("Workrequest for loadbalancer listener completed successfully")
+	return nil
 }
 
 // UpdateLoadBalancer : TODO find out where this is called
@@ -863,7 +875,6 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 		}
 	}
 	logger.Info("Deleting load balancer")
-
 	workReqID, err := lbProvider.lbClient.DeleteLoadBalancer(ctx, id)
 	if err != nil {
 		errorType = util.GetError(err)
@@ -874,6 +885,7 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 
 		return errors.Wrapf(err, "delete load balancer %q", id)
 	}
+	logger.With("workRequestID", workReqID).Info("Await workrequest for delete loadbalancer")
 	_, err = lbProvider.lbClient.AwaitWorkRequest(ctx, workReqID)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Timeout waiting for loadbalancer delete")
@@ -883,8 +895,8 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 		metrics.SendMetricData(cp.metricPusher, getMetric(loadBalancerType, Delete), time.Since(startTime).Seconds(), dimensionsMap)
 		return errors.Wrapf(err, "awaiting deletion of load balancer %q", name)
 	}
-
-	logger.Info("Deleted load balancer")
+	logger.With("workRequestID", workReqID).Info("Workrequest for delete loadbalancer succeeded")
+	logger.Info("Loadbalancer deleted")
 	lbMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.LoadBalancerType)
 	dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
 	metrics.SendMetricData(cp.metricPusher, getMetric(loadBalancerType, Delete), time.Since(startTime).Seconds(), dimensionsMap)

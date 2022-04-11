@@ -25,7 +25,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-const workRequestPollInterval = 5 * time.Second
+const (
+	workRequestPollInterval = 5 * time.Second
+)
 
 type loadbalancerClientStruct struct {
 	loadbalancer    loadBalancerClient
@@ -384,8 +386,10 @@ func (c *loadbalancerClientStruct) UpdateListener(ctx context.Context, lbID stri
 
 func (c *loadbalancerClientStruct) AwaitWorkRequest(ctx context.Context, id string) (*GenericWorkRequest, error) {
 	var wr *loadbalancer.WorkRequest
+	contextWithTimeout, cancel := context.WithTimeout(ctx, defaultSynchronousAPIContextTimeout)
+	defer cancel()
 	err := wait.PollUntil(workRequestPollInterval, func() (done bool, err error) {
-		twr, err := c.GetWorkRequest(ctx, id)
+		twr, err := c.GetWorkRequest(contextWithTimeout, id)
 		if err != nil {
 			if IsRetryable(err) {
 				return false, nil
