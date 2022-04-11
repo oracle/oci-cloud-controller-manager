@@ -276,8 +276,10 @@ func (c *networkLoadbalancer) UpdateListener(ctx context.Context, lbID string, n
 
 func (c *networkLoadbalancer) AwaitWorkRequest(ctx context.Context, id string) (*GenericWorkRequest, error) {
 	var wr *networkloadbalancer.WorkRequest
+	contextWithTimeout, cancel := context.WithTimeout(ctx, defaultSynchronousAPIContextTimeout)
+	defer cancel()
 	err := wait.PollUntil(workRequestPollInterval, func() (done bool, err error) {
-		twr, err := c.GetWorkRequest(ctx, id)
+		twr, err := c.GetWorkRequest(contextWithTimeout, id)
 		if err != nil {
 			if IsRetryable(err) {
 				return false, nil
