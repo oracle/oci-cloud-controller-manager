@@ -3,8 +3,8 @@ name: Release
 on:
   push:
     # Build and publish artifacts for a release
-    tags:
-      - "v*.*.*"
+    branches:
+      - 'oss-oke-nlb-k8-119'
 
 jobs:
   build:
