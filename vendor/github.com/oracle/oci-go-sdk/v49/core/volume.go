@@ -45,7 +45,8 @@ type Volume struct {
 	// The current state of a volume.
 	LifecycleState VolumeLifecycleStateEnum `mandatory:"true" json:"lifecycleState"`
 
-	// The size of the volume in MBs. This field is deprecated. Use sizeInGBs instead.
+	// The size of the volume in MBs. This field is deprecated. Use
+	// sizeInGBs instead.
 	SizeInMBs *int64 `mandatory:"true" json:"sizeInMBs"`
 
 	// The date and time the volume was created. Format defined by RFC3339 (https://tools.ietf.org/html/rfc3339).
@@ -83,8 +84,6 @@ type Volume struct {
 	// The size of the volume in GBs.
 	SizeInGBs *int64 `mandatory:"false" json:"sizeInGBs"`
 
-	// The volume source, either an existing volume in the same availability domain or a volume backup.
-	// If null, an empty volume is created.
 	SourceDetails VolumeSourceDetails `mandatory:"false" json:"sourceDetails"`
 
 	// The OCID of the source volume group.

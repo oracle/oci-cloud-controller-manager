@@ -471,6 +471,10 @@ github.com/opencontainers/selinux v1.5.1/go.mod h1:yTcKuYAh6R95iDpefGLQaPaRwJFwy
 github.com/opencontainers/selinux v1.5.2/go.mod h1:yTcKuYAh6R95iDpefGLQaPaRwJFwyzAJufJyiTt7s0g=
 github.com/oracle/oci-go-sdk/v31 v31.0.0 h1:LEstCAlSNcuuPIRUMLuX3UF+V3ID2B1LN4k9Dvbd5tM=
 github.com/oracle/oci-go-sdk/v31 v31.0.0/go.mod h1:4MlbGGDlqigjplvUfbVecEqNCN2cYZbdJ8PpAMVAQkw=
+github.com/oracle/oci-go-sdk/v49 v49.2.0 h1:l4PUk81EKdTDD4mDg5wrELpdWFqYeE9KYejfNgtsyUI=
+github.com/oracle/oci-go-sdk/v49 v49.2.0/go.mod h1:E8q2DXmXnSozLdXHUFF+o3L2gzcWbiFIPFYOYWdqOfc=
+github.com/oracle/oci-go-sdk/v50 v50.1.0 h1:6WyLNxEmnUuc1fYYVTuIeH2iQiGVdwlE//qSuYF7bK4=
+github.com/oracle/oci-go-sdk/v50 v50.1.0/go.mod h1:5tboHcoGIrAUerGgH3Sdc6eJdhw5YyywE78g99hzHpw=
 github.com/pborman/uuid v1.2.0 h1:J7Q5mO4ysT1dv8hyrUGHb9+ooztCXu1D8MY8DZYsu3g=
 github.com/pborman/uuid v1.2.0/go.mod h1:X/NO0urCmaxf9VXbdlT7C2Yzkj2IKimNn4k+gtPdI/k=
 github.com/pelletier/go-toml v1.2.0 h1:T5zMGML61Wp+FlcbWjRDT7yAxhJNAiPPLOFECq181zc=
@@ -520,6 +524,8 @@ github.com/smartystreets/goconvey v1.6.4 h1:fv0U8FUIMPNf1L9lnHLvLhgicrIVChEkdzIK
 github.com/smartystreets/goconvey v1.6.4/go.mod h1:syvi0/a8iFYH4r/RixwvyeAJjdLS9QV7WQ/tjFTllLA=
 github.com/soheilhy/cmux v0.1.4 h1:0HKaf1o97UwFjHH9o5XsHUOF+tqmdA7KEzXLpiyaw0E=
 github.com/soheilhy/cmux v0.1.4/go.mod h1:IM3LyeVVIOuxMH7sFAkER9+bJ4dT7Ms6E4xg4kGIyLM=
+github.com/sony/gobreaker v0.4.2-0.20210216022020-dd874f9dd33b h1:br+bPNZsJWKicw/5rALEo67QHs5weyD5tf8WST+4sJ0=
+github.com/sony/gobreaker v0.4.2-0.20210216022020-dd874f9dd33b/go.mod h1:ZKptC7FHNvhBz7dN2LGjPVBz2sZJmc0/PkyDJOjmxWY=
 github.com/spf13/afero v1.1.2/go.mod h1:j4pytiNVoe2o6bmDsKpLACNPDBIoEAkihy7loJ1B0CQ=
 github.com/spf13/afero v1.2.2 h1:5jhuqJyZCZf2JRofRvN/nIFgIWNzPa3/Vz8mYylgbWc=
 github.com/spf13/afero v1.2.2/go.mod h1:9ZxEEn6pIJ8Rxe320qSDBk6AsU0r9pR7Q4OcevTdifk=

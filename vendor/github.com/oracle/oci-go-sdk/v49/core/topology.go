@@ -75,10 +75,6 @@ func (m *topology) UnmarshalPolymorphicJSON(data []byte) (interface{}, error) {
 		mm := NetworkingTopology{}
 		err = json.Unmarshal(data, &mm)
 		return mm, err
-	case "SUBNET":
-		mm := SubnetTopology{}
-		err = json.Unmarshal(data, &mm)
-		return mm, err
 	default:
 		return *m, nil
 	}
@@ -110,13 +106,11 @@ type TopologyTypeEnum string
 const (
 	TopologyTypeNetworking TopologyTypeEnum = "NETWORKING"
 	TopologyTypeVcn        TopologyTypeEnum = "VCN"
-	TopologyTypeSubnet     TopologyTypeEnum = "SUBNET"
 )
 
 var mappingTopologyType = map[string]TopologyTypeEnum{
 	"NETWORKING": TopologyTypeNetworking,
 	"VCN":        TopologyTypeVcn,
-	"SUBNET":     TopologyTypeSubnet,
 }
 
 // GetTopologyTypeEnumValues Enumerates the set of values for TopologyTypeEnum

@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2021, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -15,7 +15,7 @@ package core
 
 import (
 	"encoding/json"
-	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v49/common"
 )
 
 // InstanceConfigurationLaunchInstanceDetails Instance launch details for creating an instance from an instance configuration. Use the `sourceDetails`
@@ -27,15 +27,16 @@ type InstanceConfigurationLaunchInstanceDetails struct {
 	// Example: `Uocm:PHX-AD-1`
 	AvailabilityDomain *string `mandatory:"false" json:"availabilityDomain"`
 
+	// The OCID of the compute capacity reservation this instance is launched under.
+	CapacityReservationId *string `mandatory:"false" json:"capacityReservationId"`
+
 	// The OCID of the compartment.
 	CompartmentId *string `mandatory:"false" json:"compartmentId"`
 
-	// Details for the primary VNIC, which is automatically created and attached when
-	// the instance is launched.
 	CreateVnicDetails *InstanceConfigurationCreateVnicDetails `mandatory:"false" json:"createVnicDetails"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a
-	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -53,7 +54,7 @@ type InstanceConfigurationLaunchInstanceDetails struct {
 	ExtendedMetadata map[string]interface{} `mandatory:"false" json:"extendedMetadata"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
-	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
@@ -74,7 +75,7 @@ type InstanceConfigurationLaunchInstanceDetails struct {
 	// iqn.2015-02.oracle.boot.
 	// For more information about the Bring Your Own Image feature of
 	// Oracle Cloud Infrastructure, see
-	// Bring Your Own Image (https://docs.cloud.oracle.com/Content/Compute/References/bringyourownimage.htm).
+	// Bring Your Own Image (https://docs.cloud.oracle.com/iaas/Content/Compute/References/bringyourownimage.htm).
 	// For more information about iPXE, see http://ipxe.org.
 	IpxeScript *string `mandatory:"false" json:"ipxeScript"`
 
@@ -122,8 +123,8 @@ type InstanceConfigurationLaunchInstanceDetails struct {
 
 	ShapeConfig *InstanceConfigurationLaunchInstanceShapeConfigDetails `mandatory:"false" json:"shapeConfig"`
 
-	// Details for creating an instance.
-	// Use this parameter to specify whether a boot volume or an image should be used to launch a new instance.
+	PlatformConfig InstanceConfigurationLaunchInstancePlatformConfig `mandatory:"false" json:"platformConfig"`
+
 	SourceDetails InstanceConfigurationInstanceSourceDetails `mandatory:"false" json:"sourceDetails"`
 
 	// A fault domain is a grouping of hardware and infrastructure within an availability domain.
@@ -145,13 +146,12 @@ type InstanceConfigurationLaunchInstanceDetails struct {
 	DedicatedVmHostId *string `mandatory:"false" json:"dedicatedVmHostId"`
 
 	// Specifies the configuration mode for launching virtual machine (VM) instances. The configuration modes are:
-	// * `NATIVE` - VM instances launch with iSCSI boot and VFIO devices. The default value for Oracle-provided images.
+	// * `NATIVE` - VM instances launch with iSCSI boot and VFIO devices. The default value for platform images.
 	// * `EMULATED` - VM instances launch with emulated devices, such as the E1000 network driver and emulated SCSI disk controller.
 	// * `PARAVIRTUALIZED` - VM instances launch with paravirtualized devices using VirtIO drivers.
 	// * `CUSTOM` - VM instances launch with custom configuration settings specified in the `LaunchOptions` parameter.
 	LaunchMode InstanceConfigurationLaunchInstanceDetailsLaunchModeEnum `mandatory:"false" json:"launchMode,omitempty"`
 
-	// Options for tuning the compatibility and performance of VM shapes. The values that you specify override any default values.
 	LaunchOptions *InstanceConfigurationLaunchOptions `mandatory:"false" json:"launchOptions"`
 
 	AgentConfig *InstanceConfigurationLaunchInstanceAgentConfigDetails `mandatory:"false" json:"agentConfig"`
@@ -166,8 +166,9 @@ type InstanceConfigurationLaunchInstanceDetails struct {
 
 	InstanceOptions *InstanceConfigurationInstanceOptions `mandatory:"false" json:"instanceOptions"`
 
-	// Options for defining the availabiity of a VM instance after a maintenance event that impacts the underlying hardware.
 	AvailabilityConfig *InstanceConfigurationAvailabilityConfig `mandatory:"false" json:"availabilityConfig"`
+
+	PreemptibleInstanceConfig *PreemptibleInstanceConfigDetails `mandatory:"false" json:"preemptibleInstanceConfig"`
 }
 
 func (m InstanceConfigurationLaunchInstanceDetails) String() string {
@@ -178,6 +179,7 @@ func (m InstanceConfigurationLaunchInstanceDetails) String() string {
 func (m *InstanceConfigurationLaunchInstanceDetails) UnmarshalJSON(data []byte) (e error) {
 	model := struct {
 		AvailabilityDomain             *string                                                                  `json:"availabilityDomain"`
+		CapacityReservationId          *string                                                                  `json:"capacityReservationId"`
 		CompartmentId                  *string                                                                  `json:"compartmentId"`
 		CreateVnicDetails              *InstanceConfigurationCreateVnicDetails                                  `json:"createVnicDetails"`
 		DefinedTags                    map[string]map[string]interface{}                                        `json:"definedTags"`
@@ -188,6 +190,7 @@ func (m *InstanceConfigurationLaunchInstanceDetails) UnmarshalJSON(data []byte) 
 		Metadata                       map[string]string                                                        `json:"metadata"`
 		Shape                          *string                                                                  `json:"shape"`
 		ShapeConfig                    *InstanceConfigurationLaunchInstanceShapeConfigDetails                   `json:"shapeConfig"`
+		PlatformConfig                 instanceconfigurationlaunchinstanceplatformconfig                        `json:"platformConfig"`
 		SourceDetails                  instanceconfigurationinstancesourcedetails                               `json:"sourceDetails"`
 		FaultDomain                    *string                                                                  `json:"faultDomain"`
 		DedicatedVmHostId              *string                                                                  `json:"dedicatedVmHostId"`
@@ -198,6 +201,7 @@ func (m *InstanceConfigurationLaunchInstanceDetails) UnmarshalJSON(data []byte) 
 		PreferredMaintenanceAction     InstanceConfigurationLaunchInstanceDetailsPreferredMaintenanceActionEnum `json:"preferredMaintenanceAction"`
 		InstanceOptions                *InstanceConfigurationInstanceOptions                                    `json:"instanceOptions"`
 		AvailabilityConfig             *InstanceConfigurationAvailabilityConfig                                 `json:"availabilityConfig"`
+		PreemptibleInstanceConfig      *PreemptibleInstanceConfigDetails                                        `json:"preemptibleInstanceConfig"`
 	}{}
 
 	e = json.Unmarshal(data, &model)
@@ -206,6 +210,8 @@ func (m *InstanceConfigurationLaunchInstanceDetails) UnmarshalJSON(data []byte) 
 	}
 	var nn interface{}
 	m.AvailabilityDomain = model.AvailabilityDomain
+
+	m.CapacityReservationId = model.CapacityReservationId
 
 	m.CompartmentId = model.CompartmentId
 
@@ -226,6 +232,16 @@ func (m *InstanceConfigurationLaunchInstanceDetails) UnmarshalJSON(data []byte) 
 	m.Shape = model.Shape
 
 	m.ShapeConfig = model.ShapeConfig
+
+	nn, e = model.PlatformConfig.UnmarshalPolymorphicJSON(model.PlatformConfig.JsonData)
+	if e != nil {
+		return
+	}
+	if nn != nil {
+		m.PlatformConfig = nn.(InstanceConfigurationLaunchInstancePlatformConfig)
+	} else {
+		m.PlatformConfig = nil
+	}
 
 	nn, e = model.SourceDetails.UnmarshalPolymorphicJSON(model.SourceDetails.JsonData)
 	if e != nil {
@@ -254,6 +270,8 @@ func (m *InstanceConfigurationLaunchInstanceDetails) UnmarshalJSON(data []byte) 
 	m.InstanceOptions = model.InstanceOptions
 
 	m.AvailabilityConfig = model.AvailabilityConfig
+
+	m.PreemptibleInstanceConfig = model.PreemptibleInstanceConfig
 
 	return
 }

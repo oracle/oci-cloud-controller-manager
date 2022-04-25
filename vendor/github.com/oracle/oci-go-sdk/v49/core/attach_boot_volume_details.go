@@ -26,8 +26,7 @@ type AttachBootVolumeDetails struct {
 	// The OCID of the instance.
 	InstanceId *string `mandatory:"true" json:"instanceId"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
-	// Avoid entering confidential information.
+	// A user-friendly name. Does not have to be unique, and it cannot be changed. Avoid entering confidential information.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Refer the top-level definition of encryptionInTransitType.

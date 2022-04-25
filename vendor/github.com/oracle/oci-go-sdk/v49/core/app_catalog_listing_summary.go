@@ -23,8 +23,7 @@ type AppCatalogListingSummary struct {
 	// the region free ocid of the listing resource.
 	ListingId *string `mandatory:"false" json:"listingId"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
-	// Avoid entering confidential information.
+	// The display name of the listing.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// The short summary for the listing.

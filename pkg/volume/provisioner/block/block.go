@@ -32,9 +32,9 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
-	"github.com/oracle/oci-go-sdk/v49/common"
-	"github.com/oracle/oci-go-sdk/v49/core"
-	"github.com/oracle/oci-go-sdk/v49/identity"
+	"github.com/oracle/oci-go-sdk/v50/common"
+	"github.com/oracle/oci-go-sdk/v50/core"
+	"github.com/oracle/oci-go-sdk/v50/identity"
 )
 
 const (

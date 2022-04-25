@@ -20,10 +20,10 @@ import (
 // CreateRemotePeeringConnectionDetails The representation of CreateRemotePeeringConnectionDetails
 type CreateRemotePeeringConnectionDetails struct {
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the compartment to contain the RPC.
+	// The OCID of the compartment to contain the RPC.
 	CompartmentId *string `mandatory:"true" json:"compartmentId"`
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the DRG the RPC belongs to.
+	// The OCID of the DRG the RPC belongs to.
 	DrgId *string `mandatory:"true" json:"drgId"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a

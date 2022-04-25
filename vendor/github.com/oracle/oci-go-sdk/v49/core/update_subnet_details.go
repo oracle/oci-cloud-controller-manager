@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2021, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -14,14 +14,14 @@
 package core
 
 import (
-	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v49/common"
 )
 
 // UpdateSubnetDetails The representation of UpdateSubnetDetails
 type UpdateSubnetDetails struct {
 
 	// Defined tags for this resource. Each key is predefined and scoped to a
-	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -33,7 +33,7 @@ type UpdateSubnetDetails struct {
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
-	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
@@ -46,14 +46,24 @@ type UpdateSubnetDetails struct {
 	// applied to the individual VNICs in the subnet.
 	SecurityListIds []string `mandatory:"false" json:"securityListIds"`
 
-	// The CIDR IP address block of the Subnet. The CIDR must maintain the following rules -
-	// a. The CIDR block is valid and correctly formatted.
-	// b. The new range is within one of the parent VCN ranges.
-	// c. The old and new CIDR ranges both use the same base address. Example: 10.0.0.0/25 and 10.0.0.0/24.
-	// d. The new CIDR range contains all previously allocated private IP addresses in the old CIDR range.
-	// e. No previously allocated IP address overlaps the broadcast address (the last IP of a subnet CIDR range) of the new CIDR range.
+	// The CIDR block of the subnet. The new CIDR block must meet the following criteria:
+	// - Must be valid.
+	// - The CIDR block's IP range must be completely within one of the VCN's CIDR block ranges.
+	// - The old and new CIDR block ranges must use the same network address. Example: `10.0.0.0/25` and `10.0.0.0/24`.
+	// - Must contain all IP addresses in use in the old CIDR range.
+	// - The new CIDR range's broadcast address (last IP address of CIDR range) must not be an IP address in use in the old CIDR range.
+	// **Note:** If you are changing the CIDR block, you cannot create VNICs or private IPs for this resource while the update is in progress.
 	// Example: `172.16.0.0/16`
 	CidrBlock *string `mandatory:"false" json:"cidrBlock"`
+
+	// This is the IPv6 CIDR block for the subnet's IP address space.
+	// The subnet size is always /64.
+	// See IPv6 Addresses (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/ipv6.htm).
+	// The provided CIDR must maintain the following rules -
+	// a. The IPv6 CIDR block is valid and correctly formatted.
+	// b. The IPv6 CIDR is within the parent VCN IPv6 range.
+	// Example: `2001:0db8:0123:1111::/64`
+	Ipv6CidrBlock *string `mandatory:"false" json:"ipv6CidrBlock"`
 }
 
 func (m UpdateSubnetDetails) String() string {

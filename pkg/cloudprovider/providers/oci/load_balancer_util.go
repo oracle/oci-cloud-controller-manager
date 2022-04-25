@@ -29,7 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-go-sdk/v49/loadbalancer"
+	"github.com/oracle/oci-go-sdk/v50/loadbalancer"
 )
 
 const (

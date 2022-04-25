@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2021, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -14,7 +14,7 @@
 package core
 
 import (
-	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v49/common"
 )
 
 // CreateVcnDetails The representation of CreateVcnDetails
@@ -23,43 +23,24 @@ type CreateVcnDetails struct {
 	// The OCID of the compartment to contain the VCN.
 	CompartmentId *string `mandatory:"true" json:"compartmentId"`
 
-	// Deprecated. Instead use 'cidrBlocks'. It is an error to set both cidrBlock and
-	// cidrBlocks.
+	// **Deprecated.** Do *not* set this value. Use `cidrBlocks` instead.
 	// Example: `10.0.0.0/16`
 	CidrBlock *string `mandatory:"false" json:"cidrBlock"`
 
-	// List of IPv4 CIDR blocks associated with the VCN. The CIDRs must maintain the following
-	// rules -
-	// a. The list of CIDRs provided are valid
-	// b. There is no overlap between different CIDRs
-	// c. The number of CIDRs should not exceed the max limit of CIDRs per VCN
-	// d. It is an error to set both cidrBlock and cidrBlocks.
+	// The list of one or more IPv4 CIDR blocks for the VCN that meet the following criteria:
+	// - The CIDR blocks must be valid.
+	// - They must not overlap with each other or with the on-premises network CIDR block.
+	// - The number of CIDR blocks must not exceed the limit of CIDR blocks allowed per VCN.
+	// **Important:** Do *not* specify a value for `cidrBlock`. Use this parameter instead.
 	CidrBlocks []string `mandatory:"false" json:"cidrBlocks"`
 
-	// If you enable IPv6 for the VCN (see `isIpv6Enabled`), you may optionally provide an IPv6
-	// /48 CIDR block from the supported ranges (see IPv6 Addresses (https://docs.cloud.oracle.com/Content/Network/Concepts/ipv6.htm).
-	// The addresses in this block will be considered private and cannot be accessed
-	// from the internet. The documentation refers to this as a *custom CIDR* for the VCN.
-	// If you don't provide a custom CIDR for the VCN, Oracle assigns the VCN's IPv6 /48 CIDR block.
-	// Regardless of whether you or Oracle assigns the `ipv6CidrBlock`,
-	// Oracle *also* assigns the VCN an IPv6 CIDR block for the VCN's public IP address space
-	// (see the `ipv6PublicCidrBlock` of the Vcn object). If you do
-	// not assign a custom CIDR, Oracle uses the *same* Oracle-assigned CIDR for both the private
-	// IP address space (`ipv6CidrBlock` in the `Vcn` object) and the public IP addreses space
-	// (`ipv6PublicCidrBlock` in the `Vcn` object). This means that a given VNIC might use the same
-	// IPv6 IP address for both private and public (internet) communication. You control whether
-	// an IPv6 address can be used for internet communication by using the `isInternetAccessAllowed`
-	// attribute in the Ipv6 object.
-	// For important details about IPv6 addressing in a VCN, see IPv6 Addresses (https://docs.cloud.oracle.com/Content/Network/Concepts/ipv6.htm).
-	// Example: `2001:0db8:0123::/48`
-	Ipv6CidrBlock *string `mandatory:"false" json:"ipv6CidrBlock"`
-
 	// Defined tags for this resource. Each key is predefined and scoped to a
-	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable. Avoid entering confidential information.
+	// A user-friendly name. Does not have to be unique, and it's changeable.
+	// Avoid entering confidential information.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// A DNS label for the VCN, used in conjunction with the VNIC's hostname and
@@ -72,17 +53,18 @@ type CreateVcnDetails struct {
 	// resolve other instances in the VCN. Otherwise the Internet and VCN Resolver
 	// will not work.
 	// For more information, see
-	// DNS in Your Virtual Cloud Network (https://docs.cloud.oracle.com/Content/Network/Concepts/dns.htm).
+	// DNS in Your Virtual Cloud Network (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/dns.htm).
 	// Example: `vcn1`
 	DnsLabel *string `mandatory:"false" json:"dnsLabel"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
-	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
-	// Whether IPv6 is enabled for the VCN. Default is `false`. You cannot change this later.
-	// For important details about IPv6 addressing in a VCN, see IPv6 Addresses (https://docs.cloud.oracle.com/Content/Network/Concepts/ipv6.htm).
+	// Whether IPv6 is enabled for the VCN. Default is `false`.
+	// If enabled, Oracle will assign the VCN a IPv6 /56 CIDR block.
+	// For important details about IPv6 addressing in a VCN, see IPv6 Addresses (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/ipv6.htm).
 	// Example: `true`
 	IsIpv6Enabled *bool `mandatory:"false" json:"isIpv6Enabled"`
 }

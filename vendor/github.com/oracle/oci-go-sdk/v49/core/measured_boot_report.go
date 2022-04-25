@@ -17,10 +17,10 @@ import (
 	"github.com/oracle/oci-go-sdk/v49/common"
 )
 
-// MeasuredBootReport The measured boot report for a shielded instance.
+// MeasuredBootReport The Measured Boot report for a shielded instance.
 type MeasuredBootReport struct {
 
-	// Whether the verification succeeded, and the new values match the expected values.
+	// Whether the verification succeeded and the new values matched the expected values.
 	IsPolicyVerificationSuccessful *bool `mandatory:"true" json:"isPolicyVerificationSuccessful"`
 
 	Measurements *MeasuredBootReportMeasurements `mandatory:"false" json:"measurements"`

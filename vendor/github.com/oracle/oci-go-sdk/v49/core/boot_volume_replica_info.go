@@ -20,8 +20,7 @@ import (
 // BootVolumeReplicaInfo Information about the boot volume replica in the destination availability domain.
 type BootVolumeReplicaInfo struct {
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
-	// Avoid entering confidential information.
+	// The display name of the boot volume replica
 	DisplayName *string `mandatory:"true" json:"displayName"`
 
 	// The boot volume replica's Oracle ID (OCID).

@@ -38,6 +38,7 @@ type CreateDedicatedVmHostDetails struct {
 
 	// A user-friendly name. Does not have to be unique, and it's changeable.
 	// Avoid entering confidential information.
+	// Example: `My dedicated VM host`
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// The fault domain for the dedicated virtual machine host's assigned instances.

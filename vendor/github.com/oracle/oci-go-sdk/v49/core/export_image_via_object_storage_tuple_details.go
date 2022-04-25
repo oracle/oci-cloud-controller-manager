@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2021, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -15,7 +15,7 @@ package core
 
 import (
 	"encoding/json"
-	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v49/common"
 )
 
 // ExportImageViaObjectStorageTupleDetails The representation of ExportImageViaObjectStorageTupleDetails
@@ -29,6 +29,21 @@ type ExportImageViaObjectStorageTupleDetails struct {
 
 	// The Object Storage object name for the exported image.
 	ObjectName *string `mandatory:"true" json:"objectName"`
+
+	// The format to export the image to. The default value is `OCI`.
+	// The following image formats are available:
+	// - `OCI` - Oracle Cloud Infrastructure file with a QCOW2 image and Oracle Cloud Infrastructure metadata (.oci).
+	// Use this format to export a custom image that you want to import into other tenancies or regions.
+	// - `QCOW2` - QEMU Copy On Write (.qcow2)
+	// - `VDI` - Virtual Disk Image (.vdi) for Oracle VM VirtualBox
+	// - `VHD` - Virtual Hard Disk (.vhd) for Hyper-V
+	// - `VMDK` - Virtual Machine Disk (.vmdk)
+	ExportFormat ExportImageDetailsExportFormatEnum `mandatory:"false" json:"exportFormat,omitempty"`
+}
+
+//GetExportFormat returns ExportFormat
+func (m ExportImageViaObjectStorageTupleDetails) GetExportFormat() ExportImageDetailsExportFormatEnum {
+	return m.ExportFormat
 }
 
 func (m ExportImageViaObjectStorageTupleDetails) String() string {

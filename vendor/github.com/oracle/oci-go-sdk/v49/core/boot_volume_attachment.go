@@ -45,8 +45,9 @@ type BootVolumeAttachment struct {
 	// Example: `2016-08-25T21:10:29.600Z`
 	TimeCreated *common.SDKTime `mandatory:"true" json:"timeCreated"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
+	// A user-friendly name. Does not have to be unique, and it cannot be changed.
 	// Avoid entering confidential information.
+	// Example: `My boot volume`
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Whether in-transit encryption for the boot volume's paravirtualized attachment is enabled or not.

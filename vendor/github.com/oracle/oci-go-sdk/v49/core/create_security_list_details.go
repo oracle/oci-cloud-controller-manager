@@ -20,7 +20,7 @@ import (
 // CreateSecurityListDetails The representation of CreateSecurityListDetails
 type CreateSecurityListDetails struct {
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the compartment to contain the security list.
+	// The OCID of the compartment to contain the security list.
 	CompartmentId *string `mandatory:"true" json:"compartmentId"`
 
 	// Rules for allowing egress IP packets.
@@ -29,7 +29,7 @@ type CreateSecurityListDetails struct {
 	// Rules for allowing ingress IP packets.
 	IngressSecurityRules []IngressSecurityRule `mandatory:"true" json:"ingressSecurityRules"`
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the VCN the security list belongs to.
+	// The OCID of the VCN the security list belongs to.
 	VcnId *string `mandatory:"true" json:"vcnId"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a
@@ -37,7 +37,8 @@ type CreateSecurityListDetails struct {
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable. Avoid entering confidential information.
+	// A user-friendly name. Does not have to be unique, and it's changeable.
+	// Avoid entering confidential information.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no

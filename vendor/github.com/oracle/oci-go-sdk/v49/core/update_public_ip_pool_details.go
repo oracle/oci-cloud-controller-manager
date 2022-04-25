@@ -17,7 +17,7 @@ import (
 	"github.com/oracle/oci-go-sdk/v49/common"
 )
 
-// UpdatePublicIpPoolDetails The data to update a public ip pool
+// UpdatePublicIpPoolDetails The data to update for a public IP pool.
 type UpdatePublicIpPoolDetails struct {
 
 	// Defined tags for this resource. Each key is predefined and scoped to a
@@ -25,8 +25,8 @@ type UpdatePublicIpPoolDetails struct {
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
-	// Avoid entering confidential information.
+	// A user-friendly name. Does not have to be unique, and it's changeable. Avoid
+	// entering confidential information.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no

@@ -30,8 +30,7 @@ type ComputeImageCapabilitySchemaSummary struct {
 	// The OCID of the image associated with this compute image capability schema
 	ImageId *string `mandatory:"true" json:"imageId"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
-	// Avoid entering confidential information.
+	// A user-friendly name for the compute image capability schema.
 	DisplayName *string `mandatory:"true" json:"displayName"`
 
 	// The date and time the compute image capability schema was created, in the format defined by RFC3339 (https://tools.ietf.org/html/rfc3339).

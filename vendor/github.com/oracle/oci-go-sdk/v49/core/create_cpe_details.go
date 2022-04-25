@@ -20,7 +20,7 @@ import (
 // CreateCpeDetails The representation of CreateCpeDetails
 type CreateCpeDetails struct {
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the compartment to contain the CPE.
+	// The OCID of the compartment to contain the CPE.
 	CompartmentId *string `mandatory:"true" json:"compartmentId"`
 
 	// The public IP address of the on-premises router.
@@ -32,7 +32,8 @@ type CreateCpeDetails struct {
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable. Avoid entering confidential information.
+	// A user-friendly name. Does not have to be unique, and it's changeable.
+	// Avoid entering confidential information.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no

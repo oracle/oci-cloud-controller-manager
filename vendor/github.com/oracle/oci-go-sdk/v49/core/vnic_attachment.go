@@ -44,7 +44,7 @@ type VnicAttachment struct {
 	// Example: `2016-08-25T21:10:29.600Z`
 	TimeCreated *common.SDKTime `mandatory:"true" json:"timeCreated"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
+	// A user-friendly name. Does not have to be unique.
 	// Avoid entering confidential information.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 

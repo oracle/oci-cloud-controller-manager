@@ -25,8 +25,8 @@ type UpdatePrivateIpDetails struct {
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
-	// Avoid entering confidential information.
+	// A user-friendly name. Does not have to be unique, and it's changeable. Avoid
+	// entering confidential information.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
@@ -45,7 +45,7 @@ type UpdatePrivateIpDetails struct {
 	// Example: `bminstance-1`
 	HostnameLabel *string `mandatory:"false" json:"hostnameLabel"`
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the VNIC to reassign the private IP to. The VNIC must
+	// The OCID of the VNIC to reassign the private IP to. The VNIC must
 	// be in the same subnet as the current VNIC.
 	VnicId *string `mandatory:"false" json:"vnicId"`
 }

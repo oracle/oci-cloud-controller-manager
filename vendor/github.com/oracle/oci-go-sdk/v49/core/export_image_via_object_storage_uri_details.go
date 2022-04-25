@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2021, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -15,15 +15,32 @@ package core
 
 import (
 	"encoding/json"
-	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v49/common"
 )
 
 // ExportImageViaObjectStorageUriDetails The representation of ExportImageViaObjectStorageUriDetails
 type ExportImageViaObjectStorageUriDetails struct {
 
-	// The Object Storage URL to export the image to. See Object Storage URLs (https://docs.cloud.oracle.com/Content/Compute/Tasks/imageimportexport.htm#URLs)
-	// and Using Pre-Authenticated Requests (https://docs.cloud.oracle.com/Content/Object/Tasks/usingpreauthenticatedrequests.htm) for constructing URLs for image import/export.
+	// The Object Storage URL to export the image to. See Object
+	// Storage URLs (https://docs.cloud.oracle.com/iaas/Content/Compute/Tasks/imageimportexport.htm#URLs)
+	// and Using Pre-Authenticated Requests (https://docs.cloud.oracle.com/iaas/Content/Object/Tasks/usingpreauthenticatedrequests.htm)
+	// for constructing URLs for image import/export.
 	DestinationUri *string `mandatory:"true" json:"destinationUri"`
+
+	// The format to export the image to. The default value is `OCI`.
+	// The following image formats are available:
+	// - `OCI` - Oracle Cloud Infrastructure file with a QCOW2 image and Oracle Cloud Infrastructure metadata (.oci).
+	// Use this format to export a custom image that you want to import into other tenancies or regions.
+	// - `QCOW2` - QEMU Copy On Write (.qcow2)
+	// - `VDI` - Virtual Disk Image (.vdi) for Oracle VM VirtualBox
+	// - `VHD` - Virtual Hard Disk (.vhd) for Hyper-V
+	// - `VMDK` - Virtual Machine Disk (.vmdk)
+	ExportFormat ExportImageDetailsExportFormatEnum `mandatory:"false" json:"exportFormat,omitempty"`
+}
+
+//GetExportFormat returns ExportFormat
+func (m ExportImageViaObjectStorageUriDetails) GetExportFormat() ExportImageDetailsExportFormatEnum {
+	return m.ExportFormat
 }
 
 func (m ExportImageViaObjectStorageUriDetails) String() string {

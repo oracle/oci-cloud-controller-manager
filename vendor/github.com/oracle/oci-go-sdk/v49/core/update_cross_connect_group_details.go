@@ -29,15 +29,14 @@ type UpdateCrossConnectGroupDetails struct {
 	// Avoid entering confidential information.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
-	// A reference name or identifier for the physical fiber connection this cross-connect group uses.
+	// A reference name or identifier for the physical fiber connection that this cross-connect
+	// group uses.
 	CustomerReferenceName *string `mandatory:"false" json:"customerReferenceName"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
 	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
-
-	MacsecProperties *UpdateMacsecProperties `mandatory:"false" json:"macsecProperties"`
 }
 
 func (m UpdateCrossConnectGroupDetails) String() string {

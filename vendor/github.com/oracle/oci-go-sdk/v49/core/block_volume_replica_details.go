@@ -24,8 +24,8 @@ type BlockVolumeReplicaDetails struct {
 	// Example: `Uocm:PHX-AD-1`
 	AvailabilityDomain *string `mandatory:"true" json:"availabilityDomain"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
-	// Avoid entering confidential information.
+	// The display name of the block volume replica. You may optionally specify a *display name* for
+	// the block volume replica, otherwise a default is provided.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 }
 

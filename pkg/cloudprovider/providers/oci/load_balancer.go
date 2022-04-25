@@ -30,7 +30,7 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/metrics"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
-	"github.com/oracle/oci-go-sdk/v49/core"
+	"github.com/oracle/oci-go-sdk/v50/core"
 	"github.com/pkg/errors"
 )
 

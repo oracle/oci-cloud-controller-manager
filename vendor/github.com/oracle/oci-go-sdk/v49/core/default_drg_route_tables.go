@@ -32,7 +32,7 @@ type DefaultDrgRouteTables struct {
 	// of type IPSEC_TUNNEL on creation.
 	IpsecTunnel *string `mandatory:"false" json:"ipsecTunnel"`
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the default DRG route table to be assigned to DRG attachments
+	// The OCID of the default DRG route table to be assigned to DRG attachments
 	// of type VIRTUAL_CIRCUIT on creation.
 	VirtualCircuit *string `mandatory:"false" json:"virtualCircuit"`
 

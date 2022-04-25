@@ -34,6 +34,7 @@ type DedicatedVmHost struct {
 
 	// A user-friendly name. Does not have to be unique, and it's changeable.
 	// Avoid entering confidential information.
+	// Example: `My Dedicated Vm Host`
 	DisplayName *string `mandatory:"true" json:"displayName"`
 
 	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the dedicated VM host.

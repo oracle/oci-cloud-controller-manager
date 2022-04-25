@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2021, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -14,16 +14,16 @@
 package core
 
 import (
-	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v49/common"
 )
 
-// ByoipAllocatedRangeSummary Subrange of ByoipRange which is allocated to a PublicIpPool
+// ByoipAllocatedRangeSummary A summary of CIDR block subranges that are currently allocated to an IP pool.
 type ByoipAllocatedRangeSummary struct {
 
-	// The address range part of the ByoipRange which is used for a publicIpPool.
+	// The BYOIP CIDR block range or subrange allocated to an IP pool. This could be all or part of a BYOIP CIDR block.
 	CidrBlock *string `mandatory:"false" json:"cidrBlock"`
 
-	// The OCID of the PublicIpPool containing the part of the Byoip range.
+	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the IP pool containing the CIDR block.
 	PublicIpPoolId *string `mandatory:"false" json:"publicIpPoolId"`
 }
 

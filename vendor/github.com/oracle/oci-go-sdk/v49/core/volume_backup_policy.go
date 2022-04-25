@@ -24,7 +24,7 @@ import (
 // supply string values using the API.
 type VolumeBackupPolicy struct {
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
+	// A user-friendly name for the volume backup policy. Does not have to be unique and it's changeable.
 	// Avoid entering confidential information.
 	DisplayName *string `mandatory:"true" json:"displayName"`
 
@@ -44,9 +44,6 @@ type VolumeBackupPolicy struct {
 	// The OCID of the compartment that contains the volume backup.
 	CompartmentId *string `mandatory:"false" json:"compartmentId"`
 
-	// The current state of a volume backup. This will only ever be sent to SPLAT for reconciliation.
-	LifecycleState VolumeBackupPolicyLifecycleStateEnum `mandatory:"false" json:"lifecycleState,omitempty"`
-
 	// Defined tags for this resource. Each key is predefined and scoped to a
 	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
@@ -60,25 +57,4 @@ type VolumeBackupPolicy struct {
 
 func (m VolumeBackupPolicy) String() string {
 	return common.PointerString(m)
-}
-
-// VolumeBackupPolicyLifecycleStateEnum Enum with underlying type: string
-type VolumeBackupPolicyLifecycleStateEnum string
-
-// Set of constants representing the allowable values for VolumeBackupPolicyLifecycleStateEnum
-const (
-	VolumeBackupPolicyLifecycleStateAvailable VolumeBackupPolicyLifecycleStateEnum = "AVAILABLE"
-)
-
-var mappingVolumeBackupPolicyLifecycleState = map[string]VolumeBackupPolicyLifecycleStateEnum{
-	"AVAILABLE": VolumeBackupPolicyLifecycleStateAvailable,
-}
-
-// GetVolumeBackupPolicyLifecycleStateEnumValues Enumerates the set of values for VolumeBackupPolicyLifecycleStateEnum
-func GetVolumeBackupPolicyLifecycleStateEnumValues() []VolumeBackupPolicyLifecycleStateEnum {
-	values := make([]VolumeBackupPolicyLifecycleStateEnum, 0)
-	for _, v := range mappingVolumeBackupPolicyLifecycleState {
-		values = append(values, v)
-	}
-	return values
 }

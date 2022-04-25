@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2021, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -14,14 +14,19 @@
 package core
 
 import (
-	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v49/common"
 )
 
 // UpdateInstanceDetails The representation of UpdateInstanceDetails
 type UpdateInstanceDetails struct {
 
+	// The OCID of the compute capacity reservation this instance is launched under.
+	// You can remove the instance from a reservation by specifying an empty string as input for this field.
+	// For more information, see Capacity Reservations (https://docs.cloud.oracle.com/iaas/Content/Compute/Tasks/reserve-capacity.htm#default).
+	CapacityReservationId *string `mandatory:"false" json:"capacityReservationId"`
+
 	// Defined tags for this resource. Each key is predefined and scoped to a
-	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -31,11 +36,10 @@ type UpdateInstanceDetails struct {
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
-	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
-	// Instance agent configuration options to choose for updating the instance
 	AgentConfig *UpdateInstanceAgentConfigDetails `mandatory:"false" json:"agentConfig"`
 
 	// Custom metadata key/value string pairs that you provide. Any set of key/value pairs
@@ -89,10 +93,8 @@ type UpdateInstanceDetails struct {
 	// Example: `FAULT-DOMAIN-1`
 	FaultDomain *string `mandatory:"false" json:"faultDomain"`
 
-	// Options for tuning the compatibility and performance of VM shapes.
 	LaunchOptions *UpdateLaunchOptions `mandatory:"false" json:"launchOptions"`
 
-	// Options for defining the availability of a VM instance after a maintenance event that impacts the underlying hardware.
 	AvailabilityConfig *UpdateInstanceAvailabilityConfigDetails `mandatory:"false" json:"availabilityConfig"`
 }
 

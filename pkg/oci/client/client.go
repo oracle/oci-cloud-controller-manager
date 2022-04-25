@@ -25,12 +25,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/oracle/oci-go-sdk/v49/common"
-	"github.com/oracle/oci-go-sdk/v49/core"
-	"github.com/oracle/oci-go-sdk/v49/filestorage"
-	"github.com/oracle/oci-go-sdk/v49/identity"
-	"github.com/oracle/oci-go-sdk/v49/loadbalancer"
-	"github.com/oracle/oci-go-sdk/v49/networkloadbalancer"
+	"github.com/oracle/oci-go-sdk/v50/common"
+	"github.com/oracle/oci-go-sdk/v50/core"
+	"github.com/oracle/oci-go-sdk/v50/filestorage"
+	"github.com/oracle/oci-go-sdk/v50/identity"
+	"github.com/oracle/oci-go-sdk/v50/loadbalancer"
+	"github.com/oracle/oci-go-sdk/v50/networkloadbalancer"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"k8s.io/client-go/tools/cache"
@@ -191,8 +191,6 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 	if err != nil {
 		return nil, errors.Wrap(err, "NewNetworkLoadBalancerClientWithConfigurationProvider")
 	}
-
-	setupBaseClient(&nlb.BaseClient, signer, interceptor)
 
 	err = configureCustomTransport(logger, &nlb.BaseClient)
 	if err != nil {

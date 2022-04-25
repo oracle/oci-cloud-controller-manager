@@ -32,8 +32,7 @@ type AppCatalogSubscription struct {
 	// Listing resource id.
 	ListingResourceId *string `mandatory:"false" json:"listingResourceId"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
-	// Avoid entering confidential information.
+	// The display name of the listing.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// The short summary to the listing.

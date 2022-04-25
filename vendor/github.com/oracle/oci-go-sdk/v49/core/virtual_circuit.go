@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2021, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -14,7 +14,7 @@
 package core
 
 import (
-	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v49/common"
 )
 
 // VirtualCircuit For use with Oracle Cloud Infrastructure FastConnect.
@@ -22,7 +22,7 @@ import (
 // network connections to provide a single, logical connection between the edge router
 // on the customer's existing network and Oracle Cloud Infrastructure. *Private*
 // virtual circuits support private peering, and *public* virtual circuits support
-// public peering. For more information, see FastConnect Overview (https://docs.cloud.oracle.com/Content/Network/Concepts/fastconnect.htm).
+// public peering. For more information, see FastConnect Overview (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/fastconnect.htm).
 // Each virtual circuit is made up of information shared between a customer, Oracle,
 // and a provider (if the customer is using FastConnect via a provider). Who fills in
 // a given property of a virtual circuit depends on whether the BGP session related to
@@ -32,12 +32,10 @@ import (
 // provider and Oracle each do their part to provision the virtual circuit.
 // To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized,
 // talk to an administrator. If you're an administrator who needs to write policies to give users access, see
-// Getting Started with Policies (https://docs.cloud.oracle.com/Content/Identity/Concepts/policygetstarted.htm).
-// **Warning:** Oracle recommends that you avoid using any confidential information when you
-// supply string values using the API.
+// Getting Started with Policies (https://docs.cloud.oracle.com/iaas/Content/Identity/Concepts/policygetstarted.htm).
 type VirtualCircuit struct {
 
-	// The provisioned data rate of the connection.  To get a list of the
+	// The provisioned data rate of the connection. To get a list of the
 	// available bandwidth levels (that is, shapes), see
 	// ListFastConnectProviderVirtualCircuitBandwidthShapes.
 	// Example: `10 Gbps`
@@ -47,8 +45,11 @@ type VirtualCircuit struct {
 	// FastConnectProviderService.
 	BgpManagement VirtualCircuitBgpManagementEnum `mandatory:"false" json:"bgpManagement,omitempty"`
 
-	// The state of the BGP session associated with the virtual circuit.
+	// The state of the Ipv4 BGP session associated with the virtual circuit.
 	BgpSessionState VirtualCircuitBgpSessionStateEnum `mandatory:"false" json:"bgpSessionState,omitempty"`
+
+	// The state of the Ipv6 BGP session associated with the virtual circuit.
+	BgpIpv6SessionState VirtualCircuitBgpIpv6SessionStateEnum `mandatory:"false" json:"bgpIpv6SessionState,omitempty"`
 
 	// The OCID of the compartment containing the virtual circuit.
 	CompartmentId *string `mandatory:"false" json:"compartmentId"`
@@ -57,6 +58,12 @@ type VirtualCircuit struct {
 	// cross-connect or cross-connect group that is associated with this
 	// virtual circuit.
 	CrossConnectMappings []CrossConnectMapping `mandatory:"false" json:"crossConnectMappings"`
+
+	// The routing policy sets how routing information about the Oracle cloud is shared over a public virtual circuit.
+	// Policies available are: `ORACLE_SERVICE_NETWORK`, `REGIONAL`, `MARKET_LEVEL`, and `GLOBAL`.
+	// See Route Filtering (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/routingonprem.htm#route_filtering) for details.
+	// By default, routing information is shared for all routes in the same market.
+	RoutingPolicy []VirtualCircuitRoutingPolicyEnum `mandatory:"false" json:"routingPolicy,omitempty"`
 
 	// Deprecated. Instead use `customerAsn`.
 	// If you specify values for both, the request will be rejected.
@@ -71,7 +78,7 @@ type VirtualCircuit struct {
 	CustomerAsn *int64 `mandatory:"false" json:"customerAsn"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a
-	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -80,7 +87,7 @@ type VirtualCircuit struct {
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
-	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
@@ -93,7 +100,7 @@ type VirtualCircuit struct {
 
 	// The virtual circuit's current state. For information about
 	// the different states, see
-	// FastConnect Overview (https://docs.cloud.oracle.com/Content/Network/Concepts/fastconnect.htm).
+	// FastConnect Overview (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/fastconnect.htm).
 	LifecycleState VirtualCircuitLifecycleStateEnum `mandatory:"false" json:"lifecycleState,omitempty"`
 
 	// The Oracle BGP ASN.
@@ -139,7 +146,7 @@ type VirtualCircuit struct {
 	TimeCreated *common.SDKTime `mandatory:"false" json:"timeCreated"`
 
 	// Whether the virtual circuit supports private or public peering. For more information,
-	// see FastConnect Overview (https://docs.cloud.oracle.com/Content/Network/Concepts/fastconnect.htm).
+	// see FastConnect Overview (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/fastconnect.htm).
 	Type VirtualCircuitTypeEnum `mandatory:"false" json:"type,omitempty"`
 }
 
@@ -190,6 +197,56 @@ var mappingVirtualCircuitBgpSessionState = map[string]VirtualCircuitBgpSessionSt
 func GetVirtualCircuitBgpSessionStateEnumValues() []VirtualCircuitBgpSessionStateEnum {
 	values := make([]VirtualCircuitBgpSessionStateEnum, 0)
 	for _, v := range mappingVirtualCircuitBgpSessionState {
+		values = append(values, v)
+	}
+	return values
+}
+
+// VirtualCircuitBgpIpv6SessionStateEnum Enum with underlying type: string
+type VirtualCircuitBgpIpv6SessionStateEnum string
+
+// Set of constants representing the allowable values for VirtualCircuitBgpIpv6SessionStateEnum
+const (
+	VirtualCircuitBgpIpv6SessionStateUp   VirtualCircuitBgpIpv6SessionStateEnum = "UP"
+	VirtualCircuitBgpIpv6SessionStateDown VirtualCircuitBgpIpv6SessionStateEnum = "DOWN"
+)
+
+var mappingVirtualCircuitBgpIpv6SessionState = map[string]VirtualCircuitBgpIpv6SessionStateEnum{
+	"UP":   VirtualCircuitBgpIpv6SessionStateUp,
+	"DOWN": VirtualCircuitBgpIpv6SessionStateDown,
+}
+
+// GetVirtualCircuitBgpIpv6SessionStateEnumValues Enumerates the set of values for VirtualCircuitBgpIpv6SessionStateEnum
+func GetVirtualCircuitBgpIpv6SessionStateEnumValues() []VirtualCircuitBgpIpv6SessionStateEnum {
+	values := make([]VirtualCircuitBgpIpv6SessionStateEnum, 0)
+	for _, v := range mappingVirtualCircuitBgpIpv6SessionState {
+		values = append(values, v)
+	}
+	return values
+}
+
+// VirtualCircuitRoutingPolicyEnum Enum with underlying type: string
+type VirtualCircuitRoutingPolicyEnum string
+
+// Set of constants representing the allowable values for VirtualCircuitRoutingPolicyEnum
+const (
+	VirtualCircuitRoutingPolicyOracleServiceNetwork VirtualCircuitRoutingPolicyEnum = "ORACLE_SERVICE_NETWORK"
+	VirtualCircuitRoutingPolicyRegional             VirtualCircuitRoutingPolicyEnum = "REGIONAL"
+	VirtualCircuitRoutingPolicyMarketLevel          VirtualCircuitRoutingPolicyEnum = "MARKET_LEVEL"
+	VirtualCircuitRoutingPolicyGlobal               VirtualCircuitRoutingPolicyEnum = "GLOBAL"
+)
+
+var mappingVirtualCircuitRoutingPolicy = map[string]VirtualCircuitRoutingPolicyEnum{
+	"ORACLE_SERVICE_NETWORK": VirtualCircuitRoutingPolicyOracleServiceNetwork,
+	"REGIONAL":               VirtualCircuitRoutingPolicyRegional,
+	"MARKET_LEVEL":           VirtualCircuitRoutingPolicyMarketLevel,
+	"GLOBAL":                 VirtualCircuitRoutingPolicyGlobal,
+}
+
+// GetVirtualCircuitRoutingPolicyEnumValues Enumerates the set of values for VirtualCircuitRoutingPolicyEnum
+func GetVirtualCircuitRoutingPolicyEnumValues() []VirtualCircuitRoutingPolicyEnum {
+	values := make([]VirtualCircuitRoutingPolicyEnum, 0)
+	for _, v := range mappingVirtualCircuitRoutingPolicy {
 		values = append(values, v)
 	}
 	return values

@@ -21,8 +21,7 @@ import (
 // InstanceConfigurationIscsiAttachVolumeDetails The representation of InstanceConfigurationIscsiAttachVolumeDetails
 type InstanceConfigurationIscsiAttachVolumeDetails struct {
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
-	// Avoid entering confidential information.
+	// A user-friendly name. Does not have to be unique, and it cannot be changed. Avoid entering confidential information.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Whether the attachment should be created in read-only mode.

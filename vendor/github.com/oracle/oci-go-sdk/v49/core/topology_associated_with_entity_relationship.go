@@ -29,8 +29,6 @@ type TopologyAssociatedWithEntityRelationship struct {
 
 	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the second entity in the relationship.
 	Id2 *string `mandatory:"true" json:"id2"`
-
-	AssociatedWithDetails *TopologyAssociatedWithRelationshipDetails `mandatory:"false" json:"associatedWithDetails"`
 }
 
 //GetId1 returns Id1

@@ -20,7 +20,7 @@ import (
 // CreateCrossConnectDetails The representation of CreateCrossConnectDetails
 type CreateCrossConnectDetails struct {
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the compartment to contain the cross-connect.
+	// The OCID of the compartment to contain the cross-connect.
 	CompartmentId *string `mandatory:"true" json:"compartmentId"`
 
 	// The name of the FastConnect location where this cross-connect will be installed.
@@ -34,7 +34,7 @@ type CreateCrossConnectDetails struct {
 	// Example: `10 Gbps`
 	PortSpeedShapeName *string `mandatory:"true" json:"portSpeedShapeName"`
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the cross-connect group to put this cross-connect in.
+	// The OCID of the cross-connect group to put this cross-connect in.
 	CrossConnectGroupId *string `mandatory:"false" json:"crossConnectGroupId"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a
@@ -48,7 +48,7 @@ type CreateCrossConnectDetails struct {
 
 	// If you already have an existing cross-connect or cross-connect group at this FastConnect
 	// location, and you want this new cross-connect to be on a different router (for the
-	// purposes of redundancy), provide the OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of that existing cross-connect or
+	// purposes of redundancy), provide the OCID of that existing cross-connect or
 	// cross-connect group.
 	FarCrossConnectOrCrossConnectGroupId *string `mandatory:"false" json:"farCrossConnectOrCrossConnectGroupId"`
 
@@ -59,14 +59,12 @@ type CreateCrossConnectDetails struct {
 
 	// If you already have an existing cross-connect or cross-connect group at this FastConnect
 	// location, and you want this new cross-connect to be on the same router, provide the
-	// OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of that existing cross-connect or cross-connect group.
+	// OCID of that existing cross-connect or cross-connect group.
 	NearCrossConnectOrCrossConnectGroupId *string `mandatory:"false" json:"nearCrossConnectOrCrossConnectGroupId"`
 
 	// A reference name or identifier for the physical fiber connection that this cross-connect
 	// uses.
 	CustomerReferenceName *string `mandatory:"false" json:"customerReferenceName"`
-
-	MacsecProperties *CreateMacsecProperties `mandatory:"false" json:"macsecProperties"`
 }
 
 func (m CreateCrossConnectDetails) String() string {

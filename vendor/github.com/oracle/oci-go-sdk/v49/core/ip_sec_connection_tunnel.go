@@ -45,11 +45,10 @@ type IpSecConnectionTunnel struct {
 	// Internet Key Exchange protocol version.
 	IkeVersion IpSecConnectionTunnelIkeVersionEnum `mandatory:"false" json:"ikeVersion,omitempty"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
-	// Avoid entering confidential information.
+	// A user-friendly name. Does not have to be unique, and it's changeable. Avoid
+	// entering confidential information.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
-	// Information for establishing the tunnel's BGP session.
 	BgpSessionInfo *BgpSessionInfo `mandatory:"false" json:"bgpSessionInfo"`
 
 	EncryptionDomainConfig *EncryptionDomainConfig `mandatory:"false" json:"encryptionDomainConfig"`
@@ -64,13 +63,6 @@ type IpSecConnectionTunnel struct {
 	// When the status of the tunnel last changed, in the format defined by RFC3339 (https://tools.ietf.org/html/rfc3339).
 	// Example: `2016-08-25T21:10:29.600Z`
 	TimeStatusUpdated *common.SDKTime `mandatory:"false" json:"timeStatusUpdated"`
-
-	// can oracle initiate the Tunnel
-	OracleCanInitiate IpSecConnectionTunnelOracleCanInitiateEnum `mandatory:"false" json:"oracleCanInitiate,omitempty"`
-
-	PhaseOneDetails *TunnelPhaseOneDetails `mandatory:"false" json:"phaseOneDetails"`
-
-	PhaseTwoDetails *TunnelPhaseTwoDetails `mandatory:"false" json:"phaseTwoDetails"`
 }
 
 func (m IpSecConnectionTunnel) String() string {
@@ -174,29 +166,6 @@ var mappingIpSecConnectionTunnelRouting = map[string]IpSecConnectionTunnelRoutin
 func GetIpSecConnectionTunnelRoutingEnumValues() []IpSecConnectionTunnelRoutingEnum {
 	values := make([]IpSecConnectionTunnelRoutingEnum, 0)
 	for _, v := range mappingIpSecConnectionTunnelRouting {
-		values = append(values, v)
-	}
-	return values
-}
-
-// IpSecConnectionTunnelOracleCanInitiateEnum Enum with underlying type: string
-type IpSecConnectionTunnelOracleCanInitiateEnum string
-
-// Set of constants representing the allowable values for IpSecConnectionTunnelOracleCanInitiateEnum
-const (
-	IpSecConnectionTunnelOracleCanInitiateInitiatorOrResponder IpSecConnectionTunnelOracleCanInitiateEnum = "INITIATOR_OR_RESPONDER"
-	IpSecConnectionTunnelOracleCanInitiateResponderOnly        IpSecConnectionTunnelOracleCanInitiateEnum = "RESPONDER_ONLY"
-)
-
-var mappingIpSecConnectionTunnelOracleCanInitiate = map[string]IpSecConnectionTunnelOracleCanInitiateEnum{
-	"INITIATOR_OR_RESPONDER": IpSecConnectionTunnelOracleCanInitiateInitiatorOrResponder,
-	"RESPONDER_ONLY":         IpSecConnectionTunnelOracleCanInitiateResponderOnly,
-}
-
-// GetIpSecConnectionTunnelOracleCanInitiateEnumValues Enumerates the set of values for IpSecConnectionTunnelOracleCanInitiateEnum
-func GetIpSecConnectionTunnelOracleCanInitiateEnumValues() []IpSecConnectionTunnelOracleCanInitiateEnum {
-	values := make([]IpSecConnectionTunnelOracleCanInitiateEnum, 0)
-	for _, v := range mappingIpSecConnectionTunnelOracleCanInitiate {
 		values = append(values, v)
 	}
 	return values

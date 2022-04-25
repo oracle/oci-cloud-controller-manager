@@ -20,7 +20,7 @@ import (
 // ConnectLocalPeeringGatewaysDetails Information about the other local peering gateway (LPG).
 type ConnectLocalPeeringGatewaysDetails struct {
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the LPG you want to peer with.
+	// The OCID of the LPG you want to peer with.
 	PeerId *string `mandatory:"true" json:"peerId"`
 }
 

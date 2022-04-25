@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2021, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -14,7 +14,7 @@
 package core
 
 import (
-	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v49/common"
 )
 
 // UpdateVirtualCircuitDetails The representation of UpdateVirtualCircuitDetails
@@ -33,6 +33,12 @@ type UpdateVirtualCircuitDetails struct {
 	// CrossConnectMapping.
 	CrossConnectMappings []CrossConnectMapping `mandatory:"false" json:"crossConnectMappings"`
 
+	// The routing policy sets how routing information about the Oracle cloud is shared over a public virtual circuit.
+	// Policies available are: `ORACLE_SERVICE_NETWORK`, `REGIONAL`, `MARKET_LEVEL`, and `GLOBAL`.
+	// See Route Filtering (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/routingonprem.htm#route_filtering) for details.
+	// By default, routing information is shared for all routes in the same market.
+	RoutingPolicy []UpdateVirtualCircuitDetailsRoutingPolicyEnum `mandatory:"false" json:"routingPolicy,omitempty"`
+
 	// Deprecated. Instead use `customerAsn`.
 	// If you specify values for both, the request will be rejected.
 	CustomerBgpAsn *int `mandatory:"false" json:"customerBgpAsn"`
@@ -49,7 +55,7 @@ type UpdateVirtualCircuitDetails struct {
 	CustomerAsn *int64 `mandatory:"false" json:"customerAsn"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a
-	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -59,7 +65,7 @@ type UpdateVirtualCircuitDetails struct {
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
-	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
@@ -69,7 +75,7 @@ type UpdateVirtualCircuitDetails struct {
 	GatewayId *string `mandatory:"false" json:"gatewayId"`
 
 	// The provider's state in relation to this virtual circuit. Relevant only
-	// if the customer is using FastConnect via a provider.  ACTIVE
+	// if the customer is using FastConnect via a provider. ACTIVE
 	// means the provider has provisioned the virtual circuit from their
 	// end. INACTIVE means the provider has not yet provisioned the virtual
 	// circuit, or has de-provisioned it.
@@ -87,6 +93,33 @@ type UpdateVirtualCircuitDetails struct {
 
 func (m UpdateVirtualCircuitDetails) String() string {
 	return common.PointerString(m)
+}
+
+// UpdateVirtualCircuitDetailsRoutingPolicyEnum Enum with underlying type: string
+type UpdateVirtualCircuitDetailsRoutingPolicyEnum string
+
+// Set of constants representing the allowable values for UpdateVirtualCircuitDetailsRoutingPolicyEnum
+const (
+	UpdateVirtualCircuitDetailsRoutingPolicyOracleServiceNetwork UpdateVirtualCircuitDetailsRoutingPolicyEnum = "ORACLE_SERVICE_NETWORK"
+	UpdateVirtualCircuitDetailsRoutingPolicyRegional             UpdateVirtualCircuitDetailsRoutingPolicyEnum = "REGIONAL"
+	UpdateVirtualCircuitDetailsRoutingPolicyMarketLevel          UpdateVirtualCircuitDetailsRoutingPolicyEnum = "MARKET_LEVEL"
+	UpdateVirtualCircuitDetailsRoutingPolicyGlobal               UpdateVirtualCircuitDetailsRoutingPolicyEnum = "GLOBAL"
+)
+
+var mappingUpdateVirtualCircuitDetailsRoutingPolicy = map[string]UpdateVirtualCircuitDetailsRoutingPolicyEnum{
+	"ORACLE_SERVICE_NETWORK": UpdateVirtualCircuitDetailsRoutingPolicyOracleServiceNetwork,
+	"REGIONAL":               UpdateVirtualCircuitDetailsRoutingPolicyRegional,
+	"MARKET_LEVEL":           UpdateVirtualCircuitDetailsRoutingPolicyMarketLevel,
+	"GLOBAL":                 UpdateVirtualCircuitDetailsRoutingPolicyGlobal,
+}
+
+// GetUpdateVirtualCircuitDetailsRoutingPolicyEnumValues Enumerates the set of values for UpdateVirtualCircuitDetailsRoutingPolicyEnum
+func GetUpdateVirtualCircuitDetailsRoutingPolicyEnumValues() []UpdateVirtualCircuitDetailsRoutingPolicyEnum {
+	values := make([]UpdateVirtualCircuitDetailsRoutingPolicyEnum, 0)
+	for _, v := range mappingUpdateVirtualCircuitDetailsRoutingPolicy {
+		values = append(values, v)
+	}
+	return values
 }
 
 // UpdateVirtualCircuitDetailsProviderStateEnum Enum with underlying type: string
