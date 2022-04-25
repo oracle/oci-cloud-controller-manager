@@ -460,7 +460,14 @@ func (c *MockLoadBalancerClient) DeleteListener(ctx context.Context, lbID, name 
 	return "", nil
 }
 
+var awaitLoadbalancerWorkrequestMap = map[string]error{
+	"failedToGetUpdateNetworkSecurityGroupsWorkRequest": errors.New("internal server error for get workrequest call"),
+}
+
 func (c *MockLoadBalancerClient) AwaitWorkRequest(ctx context.Context, id string) (*client.GenericWorkRequest, error) {
+	if err, ok := awaitLoadbalancerWorkrequestMap[id]; ok {
+		return nil, err
+	}
 	return nil, nil
 }
 
@@ -468,9 +475,20 @@ func (c *MockLoadBalancerClient) UpdateLoadBalancerShape(context.Context, string
 	return "", nil
 }
 
+var updateNetworkSecurityGroupsLBsFailures = map[string]error{
+	"":                      errors.New("provided LB ID is empty"),
+	"failedToCreateRequest": errors.New("internal server error"),
+}
+var updateNetworkSecurityGroupsLBsWorkRequests = map[string]string{
+	"failedToGetUpdateNetworkSecurityGroupsWorkRequest": "failedToGetUpdateNetworkSecurityGroupsWorkRequest",
+}
+
 func (c *MockLoadBalancerClient) UpdateNetworkSecurityGroups(ctx context.Context, lbId string, nsgIds []string) (string, error) {
-	if lbId == "" {
-		return "", errors.New("provided LB ID is empty")
+	if err, ok := updateNetworkSecurityGroupsLBsFailures[lbId]; ok {
+		return "", err
+	}
+	if wrID, ok := updateNetworkSecurityGroupsLBsWorkRequests[lbId]; ok {
+		return wrID, nil
 	}
 	return "", nil
 }

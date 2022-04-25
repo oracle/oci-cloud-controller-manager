@@ -983,23 +983,35 @@ func (clb *CloudLoadBalancerProvider) updateLoadbalancerShape(ctx context.Contex
 			MaximumBandwidthInMbps: spec.FlexMax,
 		}
 	}
-	opcRequestID, err := clb.lbClient.UpdateLoadBalancerShape(ctx, *lb.Id, &shapeDetails)
+	wrID, err := clb.lbClient.UpdateLoadBalancerShape(ctx, *lb.Id, &shapeDetails)
 	if err != nil {
-		return errors.Wrap(err, "failed to update loadbalancer shape")
+		return errors.Wrap(err, "failed to create UpdateLoadBalancerShape request")
 	}
-	clb.logger.With("old-shape", *lb.ShapeName, "new-shape", spec.Shape,
+	logger := clb.logger.With("old-shape", *lb.ShapeName, "new-shape", spec.Shape,
 		"flexMinimumMbps", spec.FlexMin, "flexMaximumMbps", spec.FlexMax,
-		"opc-request-id", opcRequestID, "loadBalancerType", getLoadBalancerType(spec.service)).Info("Successfully created an loadbalancer update shape request")
+		"opc-workrequest-id", wrID, "loadBalancerType", getLoadBalancerType(spec.service))
+	logger.Info("Awaiting UpdateLoadBalancerShape workrequest")
+	_, err = clb.lbClient.AwaitWorkRequest(ctx, wrID)
+	if err != nil {
+		return err
+	}
+	logger.Info("UpdateLoadBalancerShape request completed successfully")
 	return nil
 }
 
 func (clb *CloudLoadBalancerProvider) updateLoadBalancerNetworkSecurityGroups(ctx context.Context, lb *client.GenericLoadBalancer, spec *LBSpec) error {
-	opcRequestID, err := clb.lbClient.UpdateNetworkSecurityGroups(ctx, *lb.Id, spec.NetworkSecurityGroupIds)
+	wrID, err := clb.lbClient.UpdateNetworkSecurityGroups(ctx, *lb.Id, spec.NetworkSecurityGroupIds)
 	if err != nil {
-		return errors.Wrap(err, "failed to update loadbalancer Network Security Group")
+		return errors.Wrap(err, "failed to create UpdateNetworkSecurityGroups request")
 	}
-	clb.logger.With("existingNSGIds", lb.NetworkSecurityGroupIds, "newNSGIds", spec.NetworkSecurityGroupIds,
-		"opc-request-id", opcRequestID).Info("successfully updated the network security groups")
+	logger := clb.logger.With("existingNSGIds", lb.NetworkSecurityGroupIds, "newNSGIds", spec.NetworkSecurityGroupIds,
+		"opc-workrequest-id", wrID)
+	logger.Info("Awaiting UpdateNetworkSecurityGroups workrequest")
+	_, err = clb.lbClient.AwaitWorkRequest(ctx, wrID)
+	if err != nil {
+		return errors.Wrap(err, "failed to await UpdateNetworkSecurityGroups workrequest")
+	}
+	logger.Info("Loadbalancer UpdateNetworkSecurityGroups workrequest completed successfully")
 	return nil
 }
 

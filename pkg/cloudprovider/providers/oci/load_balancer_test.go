@@ -24,10 +24,10 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/v50/common"
 	"github.com/oracle/oci-go-sdk/v50/core"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 )
 
 func Test_getDefaultLBSubnets(t *testing.T) {
@@ -476,7 +476,7 @@ func TestUpdateLoadBalancerNetworkSecurityGroups(t *testing.T) {
 		loadbalancer *client.GenericLoadBalancer
 		wantErr      error
 	}{
-		"Update NSG when there's an issue with LB": {
+		"lb id is missing": {
 			spec: &LBSpec{
 				Name:                    "test",
 				NetworkSecurityGroupIds: []string{"ocid1"},
@@ -485,7 +485,29 @@ func TestUpdateLoadBalancerNetworkSecurityGroups(t *testing.T) {
 				Id:          common.String(""),
 				DisplayName: common.String("privateLB"),
 			},
-			wantErr: errors.New("failed to update loadbalancer Network Security Group: provided LB ID is empty"),
+			wantErr: errors.New("failed to create UpdateNetworkSecurityGroups request: provided LB ID is empty"),
+		},
+		"failed to create workrequest": {
+			spec: &LBSpec{
+				Name:                    "test",
+				NetworkSecurityGroupIds: []string{"ocid1"},
+			},
+			loadbalancer: &client.GenericLoadBalancer{
+				Id:          common.String("failedToCreateRequest"),
+				DisplayName: common.String("privateLB"),
+			},
+			wantErr: errors.New("failed to create UpdateNetworkSecurityGroups request: internal server error"),
+		},
+		"failed to get workrequest": {
+			spec: &LBSpec{
+				Name:                    "test",
+				NetworkSecurityGroupIds: []string{"ocid1"},
+			},
+			loadbalancer: &client.GenericLoadBalancer{
+				Id:          common.String("failedToGetUpdateNetworkSecurityGroupsWorkRequest"),
+				DisplayName: common.String("privateLB"),
+			},
+			wantErr: errors.New("failed to await UpdateNetworkSecurityGroups workrequest: internal server error for get workrequest call"),
 		},
 		"Update NSG to existing LB": {
 			spec: &LBSpec{
@@ -507,8 +529,8 @@ func TestUpdateLoadBalancerNetworkSecurityGroups(t *testing.T) {
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
 			err := cp.updateLoadBalancerNetworkSecurityGroups(context.Background(), tt.loadbalancer, tt.spec)
-			if err != nil && err.Error() != tt.wantErr.Error() {
-				t.Errorf("Expected error = %v, but got %v", err, tt.wantErr)
+			if !assertError(err, tt.wantErr) {
+				t.Errorf("Expected error = %v, but got %v", tt.wantErr, err)
 				return
 			}
 		})
@@ -625,4 +647,11 @@ func TestCloudProvider_EnsureLoadBalancerDeleted(t *testing.T) {
 			}
 		})
 	}
+}
+
+func assertError(actual, expected error) bool {
+	if expected == nil || actual == nil {
+		return expected == actual
+	}
+	return actual.Error() == expected.Error()
 }
