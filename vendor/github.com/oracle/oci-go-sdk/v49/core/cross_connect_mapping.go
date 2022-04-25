@@ -48,7 +48,7 @@ type CrossConnectMapping struct {
 	// means you don't use BGP MD5 authentication.
 	BgpMd5AuthKey *string `mandatory:"false" json:"bgpMd5AuthKey"`
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the cross-connect or cross-connect group for this mapping.
+	// The OCID of the cross-connect or cross-connect group for this mapping.
 	// Specified by the owner of the cross-connect or cross-connect group (the
 	// customer if the customer is colocated with Oracle, or the provider if the
 	// customer is connecting via provider).
@@ -82,7 +82,7 @@ type CrossConnectMapping struct {
 	// Example: `2001:db8::1/64`
 	CustomerBgpPeeringIpv6 *string `mandatory:"false" json:"customerBgpPeeringIpv6"`
 
-	// The IPv6 address for Oracle's end of the BGP session.  Only subnet masks from /64 up to /127 are allowed.
+	// The IPv6 address for Oracle's end of the BGP session. Only subnet masks from /64 up to /127 are allowed.
 	// If the session goes from Oracle to a customer's edge router,
 	// the customer specifies this information. If the session goes from Oracle to
 	// a provider's edge router, the provider specifies this.

@@ -20,8 +20,6 @@ const (
 	RegionAPSydney1 Region = "ap-sydney-1"
 	//RegionAPTokyo1 region Tokyo
 	RegionAPTokyo1 Region = "ap-tokyo-1"
-	//RegionAPSingapore1 region Singapore
-	RegionAPSingapore1 Region = "ap-singapore-1"
 	//RegionCAMontreal1 region Montreal
 	RegionCAMontreal1 Region = "ca-montreal-1"
 	//RegionCAToronto1 region Toronto
@@ -48,26 +46,12 @@ const (
 	RegionPHX Region = "us-phoenix-1"
 	//RegionSJC1 region Sanjose
 	RegionSJC1 Region = "us-sanjose-1"
-	//RegionMEAbudhabi1 region Abudhabi
-	RegionMEAbudhabi1 Region = "me-abudhabi-1"
 	//RegionSAVinhedo1 region Vinhedo
 	RegionSAVinhedo1 Region = "sa-vinhedo-1"
 	//RegionSASantiago1 region Santiago
 	RegionSASantiago1 Region = "sa-santiago-1"
-	//RegionEUMarseille1 region Marseille
-	RegionEUMarseille1 Region = "eu-marseille-1"
 	//RegionILJerusalem1 region Jerusalem
 	RegionILJerusalem1 Region = "il-jerusalem-1"
-	//RegionEUStockholm1 region Stockholm
-	RegionEUStockholm1 Region = "eu-stockholm-1"
-	//RegionEUMilan1 region Milan
-	RegionEUMilan1 Region = "eu-milan-1"
-	//RegionAFJohannesburg1 region Johannesburg
-	RegionAFJohannesburg1 Region = "af-johannesburg-1"
-	//RegionEUParis1 region Paris
-	RegionEUParis1 Region = "eu-paris-1"
-	//RegionMXQueretaro1 region Queretaro
-	RegionMXQueretaro1 Region = "mx-queretaro-1"
 	//RegionUSLangley1 region Langley
 	RegionUSLangley1 Region = "us-langley-1"
 	//RegionUSLuke1 region Luke
@@ -86,10 +70,6 @@ const (
 	RegionAPChiyoda1 Region = "ap-chiyoda-1"
 	//RegionAPIbaraki1 region Ibaraki
 	RegionAPIbaraki1 Region = "ap-ibaraki-1"
-	//RegionMEDccMuscat1 region Muscat
-	RegionMEDccMuscat1 Region = "me-dcc-muscat-1"
-	//RegionAPDccCanberra1 region Canberra
-	RegionAPDccCanberra1 Region = "ap-dcc-canberra-1"
 )
 
 var shortNameRegion = map[string]Region{
@@ -101,7 +81,6 @@ var shortNameRegion = map[string]Region{
 	"icn": RegionAPSeoul1,
 	"syd": RegionAPSydney1,
 	"nrt": RegionAPTokyo1,
-	"sin": RegionAPSingapore1,
 	"yul": RegionCAMontreal1,
 	"yyz": RegionCAToronto1,
 	"ams": RegionEUAmsterdam1,
@@ -115,16 +94,9 @@ var shortNameRegion = map[string]Region{
 	"iad": RegionIAD,
 	"phx": RegionPHX,
 	"sjc": RegionSJC1,
-	"auh": RegionMEAbudhabi1,
 	"vcp": RegionSAVinhedo1,
 	"scl": RegionSASantiago1,
-	"mrs": RegionEUMarseille1,
 	"mtz": RegionILJerusalem1,
-	"arn": RegionEUStockholm1,
-	"lin": RegionEUMilan1,
-	"jnb": RegionAFJohannesburg1,
-	"cdg": RegionEUParis1,
-	"qro": RegionMXQueretaro1,
 	"lfi": RegionUSLangley1,
 	"luf": RegionUSLuke1,
 	"ric": RegionUSGovAshburn1,
@@ -134,53 +106,41 @@ var shortNameRegion = map[string]Region{
 	"brs": RegionUKGovCardiff1,
 	"nja": RegionAPChiyoda1,
 	"ukb": RegionAPIbaraki1,
-	"mct": RegionMEDccMuscat1,
-	"wga": RegionAPDccCanberra1,
 }
 
 var realm = map[string]string{
-	"oc1":  "oraclecloud.com",
-	"oc2":  "oraclegovcloud.com",
-	"oc3":  "oraclegovcloud.com",
-	"oc4":  "oraclegovcloud.uk",
-	"oc8":  "oraclecloud8.com",
-	"oc9":  "oraclecloud9.com",
-	"oc10": "oraclecloud10.com",
+	"oc1": "oraclecloud.com",
+	"oc2": "oraclegovcloud.com",
+	"oc3": "oraclegovcloud.com",
+	"oc4": "oraclegovcloud.uk",
+	"oc8": "oraclecloud8.com",
 }
 
 var regionRealm = map[Region]string{
-	RegionAPChuncheon1:    "oc1",
-	RegionAPHyderabad1:    "oc1",
-	RegionAPMelbourne1:    "oc1",
-	RegionAPMumbai1:       "oc1",
-	RegionAPOsaka1:        "oc1",
-	RegionAPSeoul1:        "oc1",
-	RegionAPSydney1:       "oc1",
-	RegionAPTokyo1:        "oc1",
-	RegionAPSingapore1:    "oc1",
-	RegionCAMontreal1:     "oc1",
-	RegionCAToronto1:      "oc1",
-	RegionEUAmsterdam1:    "oc1",
-	RegionFRA:             "oc1",
-	RegionEUZurich1:       "oc1",
-	RegionMEJeddah1:       "oc1",
-	RegionMEDubai1:        "oc1",
-	RegionSASaopaulo1:     "oc1",
-	RegionUKCardiff1:      "oc1",
-	RegionLHR:             "oc1",
-	RegionIAD:             "oc1",
-	RegionPHX:             "oc1",
-	RegionSJC1:            "oc1",
-	RegionMEAbudhabi1:     "oc1",
-	RegionSAVinhedo1:      "oc1",
-	RegionSASantiago1:     "oc1",
-	RegionEUMarseille1:    "oc1",
-	RegionILJerusalem1:    "oc1",
-	RegionEUStockholm1:    "oc1",
-	RegionEUMilan1:        "oc1",
-	RegionAFJohannesburg1: "oc1",
-	RegionEUParis1:        "oc1",
-	RegionMXQueretaro1:    "oc1",
+	RegionAPChuncheon1: "oc1",
+	RegionAPHyderabad1: "oc1",
+	RegionAPMelbourne1: "oc1",
+	RegionAPMumbai1:    "oc1",
+	RegionAPOsaka1:     "oc1",
+	RegionAPSeoul1:     "oc1",
+	RegionAPSydney1:    "oc1",
+	RegionAPTokyo1:     "oc1",
+	RegionCAMontreal1:  "oc1",
+	RegionCAToronto1:   "oc1",
+	RegionEUAmsterdam1: "oc1",
+	RegionFRA:          "oc1",
+	RegionEUZurich1:    "oc1",
+	RegionMEJeddah1:    "oc1",
+	RegionMEDubai1:     "oc1",
+	RegionSASaopaulo1:  "oc1",
+	RegionUKCardiff1:   "oc1",
+	RegionLHR:          "oc1",
+	RegionIAD:          "oc1",
+	RegionPHX:          "oc1",
+	RegionSJC1:         "oc1",
+	RegionSAVinhedo1:   "oc1",
+	RegionSASantiago1:  "oc1",
+	RegionILJerusalem1: "oc1",
 
 	RegionUSLangley1: "oc2",
 	RegionUSLuke1:    "oc2",
@@ -194,8 +154,4 @@ var regionRealm = map[Region]string{
 
 	RegionAPChiyoda1: "oc8",
 	RegionAPIbaraki1: "oc8",
-
-	RegionMEDccMuscat1: "oc9",
-
-	RegionAPDccCanberra1: "oc10",
 }

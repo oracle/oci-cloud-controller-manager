@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2021, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -16,8 +16,8 @@ package core
 import (
 	"context"
 	"fmt"
-	"github.com/oracle/oci-go-sdk/v31/common"
-	"github.com/oracle/oci-go-sdk/v31/common/auth"
+	"github.com/oracle/oci-go-sdk/v49/common"
+	"github.com/oracle/oci-go-sdk/v49/common/auth"
 	"net/http"
 )
 
@@ -54,6 +54,9 @@ func NewVirtualNetworkClientWithOboToken(configProvider common.ConfigurationProv
 }
 
 func newVirtualNetworkClientFromBaseClient(baseClient common.BaseClient, configProvider common.ConfigurationProvider) (client VirtualNetworkClient, err error) {
+	common.ConfigCircuitBreakerFromEnvVar(&baseClient)
+	common.ConfigCircuitBreakerFromGlobalVar(&baseClient)
+
 	client = VirtualNetworkClient{BaseClient: baseClient}
 	client.BasePath = "20160918"
 	err = client.setConfigurationProvider(configProvider)
@@ -81,6 +84,182 @@ func (client *VirtualNetworkClient) setConfigurationProvider(configProvider comm
 // ConfigurationProvider the ConfigurationProvider used in this client, or null if none set
 func (client *VirtualNetworkClient) ConfigurationProvider() *common.ConfigurationProvider {
 	return client.config
+}
+
+// AddDrgRouteDistributionStatements Adds one or more route distribution statements to the specified route distribution.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/AddDrgRouteDistributionStatements.go.html to see an example of how to use AddDrgRouteDistributionStatements API.
+func (client VirtualNetworkClient) AddDrgRouteDistributionStatements(ctx context.Context, request AddDrgRouteDistributionStatementsRequest) (response AddDrgRouteDistributionStatementsResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.addDrgRouteDistributionStatements, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = AddDrgRouteDistributionStatementsResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = AddDrgRouteDistributionStatementsResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(AddDrgRouteDistributionStatementsResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into AddDrgRouteDistributionStatementsResponse")
+	}
+	return
+}
+
+// addDrgRouteDistributionStatements implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) addDrgRouteDistributionStatements(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/drgRouteDistributions/{drgRouteDistributionId}/actions/addDrgRouteDistributionStatements", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response AddDrgRouteDistributionStatementsResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// AddDrgRouteRules Adds one or more static route rules to the specified DRG route table.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/AddDrgRouteRules.go.html to see an example of how to use AddDrgRouteRules API.
+func (client VirtualNetworkClient) AddDrgRouteRules(ctx context.Context, request AddDrgRouteRulesRequest) (response AddDrgRouteRulesResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.addDrgRouteRules, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = AddDrgRouteRulesResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = AddDrgRouteRulesResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(AddDrgRouteRulesResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into AddDrgRouteRulesResponse")
+	}
+	return
+}
+
+// addDrgRouteRules implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) addDrgRouteRules(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/drgRouteTables/{drgRouteTableId}/actions/addDrgRouteRules", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response AddDrgRouteRulesResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// AddIpv6VcnCidr Add an IPv6 CIDR to a VCN. The VCN size is always /56 and assigned by Oracle.
+// Once added the IPv6 CIDR block cannot be removed or modified.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/AddIpv6VcnCidr.go.html to see an example of how to use AddIpv6VcnCidr API.
+func (client VirtualNetworkClient) AddIpv6VcnCidr(ctx context.Context, request AddIpv6VcnCidrRequest) (response AddIpv6VcnCidrResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.addIpv6VcnCidr, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = AddIpv6VcnCidrResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = AddIpv6VcnCidrResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(AddIpv6VcnCidrResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into AddIpv6VcnCidrResponse")
+	}
+	return
+}
+
+// addIpv6VcnCidr implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) addIpv6VcnCidr(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/vcns/{vcnId}/actions/addIpv6Cidr", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response AddIpv6VcnCidrResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
 }
 
 // AddNetworkSecurityGroupSecurityRules Adds one or more security rules to the specified network security group.
@@ -118,8 +297,9 @@ func (client VirtualNetworkClient) AddNetworkSecurityGroupSecurityRules(ctx cont
 }
 
 // addNetworkSecurityGroupSecurityRules implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) addNetworkSecurityGroupSecurityRules(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/networkSecurityGroups/{networkSecurityGroupId}/actions/addSecurityRules")
+func (client VirtualNetworkClient) addNetworkSecurityGroupSecurityRules(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/networkSecurityGroups/{networkSecurityGroupId}/actions/addSecurityRules", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -137,10 +317,8 @@ func (client VirtualNetworkClient) addNetworkSecurityGroupSecurityRules(ctx cont
 	return response, err
 }
 
-// AddPublicIpPoolCapacity Adds a Cidr from the named Byoip Range prefix to the referenced Public IP Pool.
-// The cidr must be a subset of the Byoip Range in question.
-// The cidr must not overlap with any other cidr already added to this
-// or any other Public Ip Pool.
+// AddPublicIpPoolCapacity Adds some or all of a CIDR block to a public IP pool.
+// The CIDR block (or subrange) must not overlap with any other CIDR block already added to this or any other public IP pool.
 //
 // See also
 //
@@ -180,8 +358,9 @@ func (client VirtualNetworkClient) AddPublicIpPoolCapacity(ctx context.Context, 
 }
 
 // addPublicIpPoolCapacity implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) addPublicIpPoolCapacity(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/publicIpPools/{publicIpPoolId}/actions/addCapacity")
+func (client VirtualNetworkClient) addPublicIpPoolCapacity(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/publicIpPools/{publicIpPoolId}/actions/addCapacity", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -199,11 +378,11 @@ func (client VirtualNetworkClient) addPublicIpPoolCapacity(ctx context.Context, 
 	return response, err
 }
 
-// AddVcnCidr Add a CIDR to a VCN. The new CIDR must maintain the following rules -
-// a. The CIDR provided is valid
-// b. The new CIDR range should not overlap with any existing CIDRs
-// c. The new CIDR should not exceed the max limit of CIDRs per VCNs
-// d. The new CIDR range does not overlap with any peered VCNs
+// AddVcnCidr Adds a CIDR block to a VCN. The CIDR block you add:
+// - Must be valid.
+// - Must not overlap with another CIDR block in the VCN, a CIDR block of a peered VCN, or the on-premises network CIDR block.
+// - Must not exceed the limit of CIDR blocks allowed per VCN.
+// **Note:** Adding a CIDR block places your VCN in an updating state until the changes are complete. You cannot create or update the VCN's subnets, VLANs, LPGs, or route tables during this operation. The time to completion can take a few minutes. You can use the `GetWorkRequest` operation to check the status of the update.
 //
 // See also
 //
@@ -243,8 +422,9 @@ func (client VirtualNetworkClient) AddVcnCidr(ctx context.Context, request AddVc
 }
 
 // addVcnCidr implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) addVcnCidr(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/vcns/{vcnId}/actions/addCidr")
+func (client VirtualNetworkClient) addVcnCidr(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/vcns/{vcnId}/actions/addCidr", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -262,8 +442,8 @@ func (client VirtualNetworkClient) addVcnCidr(ctx context.Context, request commo
 	return response, err
 }
 
-// AdvertiseByoipRange initiate route advertisements for the Byoip Range prefix.
-// the prefix must be in PROVISIONED state
+// AdvertiseByoipRange Begins BGP route advertisements for the BYOIP CIDR block you imported to the Oracle Cloud.
+// The `ByoipRange` resource must be in the PROVISIONED state before the BYOIP CIDR block routes can be advertised with BGP.
 //
 // See also
 //
@@ -298,8 +478,9 @@ func (client VirtualNetworkClient) AdvertiseByoipRange(ctx context.Context, requ
 }
 
 // advertiseByoipRange implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) advertiseByoipRange(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/byoipRanges/{byoipRangeId}/actions/advertise")
+func (client VirtualNetworkClient) advertiseByoipRange(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/byoipRanges/{byoipRangeId}/actions/advertise", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -360,8 +541,9 @@ func (client VirtualNetworkClient) AttachServiceId(ctx context.Context, request 
 }
 
 // attachServiceId implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) attachServiceId(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/serviceGateways/{serviceGatewayId}/actions/attachService")
+func (client VirtualNetworkClient) attachServiceId(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/serviceGateways/{serviceGatewayId}/actions/attachService", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -412,8 +594,9 @@ func (client VirtualNetworkClient) BulkAddVirtualCircuitPublicPrefixes(ctx conte
 }
 
 // bulkAddVirtualCircuitPublicPrefixes implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) bulkAddVirtualCircuitPublicPrefixes(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/virtualCircuits/{virtualCircuitId}/actions/bulkAddPublicPrefixes")
+func (client VirtualNetworkClient) bulkAddVirtualCircuitPublicPrefixes(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/virtualCircuits/{virtualCircuitId}/actions/bulkAddPublicPrefixes", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -464,8 +647,9 @@ func (client VirtualNetworkClient) BulkDeleteVirtualCircuitPublicPrefixes(ctx co
 }
 
 // bulkDeleteVirtualCircuitPublicPrefixes implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) bulkDeleteVirtualCircuitPublicPrefixes(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/virtualCircuits/{virtualCircuitId}/actions/bulkDeletePublicPrefixes")
+func (client VirtualNetworkClient) bulkDeleteVirtualCircuitPublicPrefixes(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/virtualCircuits/{virtualCircuitId}/actions/bulkDeletePublicPrefixes", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -483,7 +667,7 @@ func (client VirtualNetworkClient) bulkDeleteVirtualCircuitPublicPrefixes(ctx co
 	return response, err
 }
 
-// ChangeByoipRangeCompartment Moves a byoip range into a different compartment within the same tenancy. For information
+// ChangeByoipRangeCompartment Moves a BYOIP CIDR block to a different compartment. For information
 // about moving resources between compartments, see
 // Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/iaas/Content/Identity/Tasks/managingcompartments.htm#moveRes).
 //
@@ -525,8 +709,9 @@ func (client VirtualNetworkClient) ChangeByoipRangeCompartment(ctx context.Conte
 }
 
 // changeByoipRangeCompartment implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) changeByoipRangeCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/byoipRanges/{byoipRangeId}/actions/changeCompartment")
+func (client VirtualNetworkClient) changeByoipRangeCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/byoipRanges/{byoipRangeId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -586,8 +771,9 @@ func (client VirtualNetworkClient) ChangeCpeCompartment(ctx context.Context, req
 }
 
 // changeCpeCompartment implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) changeCpeCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/cpes/{cpeId}/actions/changeCompartment")
+func (client VirtualNetworkClient) changeCpeCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/cpes/{cpeId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -647,8 +833,9 @@ func (client VirtualNetworkClient) ChangeCrossConnectCompartment(ctx context.Con
 }
 
 // changeCrossConnectCompartment implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) changeCrossConnectCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/crossConnects/{crossConnectId}/actions/changeCompartment")
+func (client VirtualNetworkClient) changeCrossConnectCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/crossConnects/{crossConnectId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -708,8 +895,9 @@ func (client VirtualNetworkClient) ChangeCrossConnectGroupCompartment(ctx contex
 }
 
 // changeCrossConnectGroupCompartment implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) changeCrossConnectGroupCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/crossConnectGroups/{crossConnectGroupId}/actions/changeCompartment")
+func (client VirtualNetworkClient) changeCrossConnectGroupCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/crossConnectGroups/{crossConnectGroupId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -769,8 +957,9 @@ func (client VirtualNetworkClient) ChangeDhcpOptionsCompartment(ctx context.Cont
 }
 
 // changeDhcpOptionsCompartment implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) changeDhcpOptionsCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/dhcps/{dhcpId}/actions/changeCompartment")
+func (client VirtualNetworkClient) changeDhcpOptionsCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/dhcps/{dhcpId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -830,8 +1019,9 @@ func (client VirtualNetworkClient) ChangeDrgCompartment(ctx context.Context, req
 }
 
 // changeDrgCompartment implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) changeDrgCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/drgs/{drgId}/actions/changeCompartment")
+func (client VirtualNetworkClient) changeDrgCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/drgs/{drgId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -891,8 +1081,9 @@ func (client VirtualNetworkClient) ChangeIPSecConnectionCompartment(ctx context.
 }
 
 // changeIPSecConnectionCompartment implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) changeIPSecConnectionCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/ipsecConnections/{ipscId}/actions/changeCompartment")
+func (client VirtualNetworkClient) changeIPSecConnectionCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/ipsecConnections/{ipscId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -952,8 +1143,9 @@ func (client VirtualNetworkClient) ChangeInternetGatewayCompartment(ctx context.
 }
 
 // changeInternetGatewayCompartment implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) changeInternetGatewayCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/internetGateways/{igId}/actions/changeCompartment")
+func (client VirtualNetworkClient) changeInternetGatewayCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/internetGateways/{igId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1013,8 +1205,9 @@ func (client VirtualNetworkClient) ChangeLocalPeeringGatewayCompartment(ctx cont
 }
 
 // changeLocalPeeringGatewayCompartment implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) changeLocalPeeringGatewayCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/localPeeringGateways/{localPeeringGatewayId}/actions/changeCompartment")
+func (client VirtualNetworkClient) changeLocalPeeringGatewayCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/localPeeringGateways/{localPeeringGatewayId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1074,8 +1267,9 @@ func (client VirtualNetworkClient) ChangeNatGatewayCompartment(ctx context.Conte
 }
 
 // changeNatGatewayCompartment implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) changeNatGatewayCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/natGateways/{natGatewayId}/actions/changeCompartment")
+func (client VirtualNetworkClient) changeNatGatewayCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/natGateways/{natGatewayId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1134,8 +1328,9 @@ func (client VirtualNetworkClient) ChangeNetworkSecurityGroupCompartment(ctx con
 }
 
 // changeNetworkSecurityGroupCompartment implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) changeNetworkSecurityGroupCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/networkSecurityGroups/{networkSecurityGroupId}/actions/changeCompartment")
+func (client VirtualNetworkClient) changeNetworkSecurityGroupCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/networkSecurityGroups/{networkSecurityGroupId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1197,8 +1392,9 @@ func (client VirtualNetworkClient) ChangePublicIpCompartment(ctx context.Context
 }
 
 // changePublicIpCompartment implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) changePublicIpCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/publicIps/{publicIpId}/actions/changeCompartment")
+func (client VirtualNetworkClient) changePublicIpCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/publicIps/{publicIpId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1216,7 +1412,7 @@ func (client VirtualNetworkClient) changePublicIpCompartment(ctx context.Context
 	return response, err
 }
 
-// ChangePublicIpPoolCompartment Moves a public IP pool into a different compartment within the same tenancy. For information
+// ChangePublicIpPoolCompartment Moves a public IP pool to a different compartment. For information
 // about moving resources between compartments, see
 // Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/iaas/Content/Identity/Tasks/managingcompartments.htm#moveRes).
 //
@@ -1258,8 +1454,9 @@ func (client VirtualNetworkClient) ChangePublicIpPoolCompartment(ctx context.Con
 }
 
 // changePublicIpPoolCompartment implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) changePublicIpPoolCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/publicIpPools/{publicIpPoolId}/actions/changeCompartment")
+func (client VirtualNetworkClient) changePublicIpPoolCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/publicIpPools/{publicIpPoolId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1319,8 +1516,9 @@ func (client VirtualNetworkClient) ChangeRemotePeeringConnectionCompartment(ctx 
 }
 
 // changeRemotePeeringConnectionCompartment implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) changeRemotePeeringConnectionCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/remotePeeringConnections/{remotePeeringConnectionId}/actions/changeCompartment")
+func (client VirtualNetworkClient) changeRemotePeeringConnectionCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/remotePeeringConnections/{remotePeeringConnectionId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1380,8 +1578,9 @@ func (client VirtualNetworkClient) ChangeRouteTableCompartment(ctx context.Conte
 }
 
 // changeRouteTableCompartment implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) changeRouteTableCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/routeTables/{rtId}/actions/changeCompartment")
+func (client VirtualNetworkClient) changeRouteTableCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/routeTables/{rtId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1441,8 +1640,9 @@ func (client VirtualNetworkClient) ChangeSecurityListCompartment(ctx context.Con
 }
 
 // changeSecurityListCompartment implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) changeSecurityListCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/securityLists/{securityListId}/actions/changeCompartment")
+func (client VirtualNetworkClient) changeSecurityListCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/securityLists/{securityListId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1502,8 +1702,9 @@ func (client VirtualNetworkClient) ChangeServiceGatewayCompartment(ctx context.C
 }
 
 // changeServiceGatewayCompartment implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) changeServiceGatewayCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/serviceGateways/{serviceGatewayId}/actions/changeCompartment")
+func (client VirtualNetworkClient) changeServiceGatewayCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/serviceGateways/{serviceGatewayId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1563,8 +1764,9 @@ func (client VirtualNetworkClient) ChangeSubnetCompartment(ctx context.Context, 
 }
 
 // changeSubnetCompartment implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) changeSubnetCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/subnets/{subnetId}/actions/changeCompartment")
+func (client VirtualNetworkClient) changeSubnetCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/subnets/{subnetId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1624,8 +1826,9 @@ func (client VirtualNetworkClient) ChangeVcnCompartment(ctx context.Context, req
 }
 
 // changeVcnCompartment implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) changeVcnCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/vcns/{vcnId}/actions/changeCompartment")
+func (client VirtualNetworkClient) changeVcnCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/vcns/{vcnId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1685,8 +1888,9 @@ func (client VirtualNetworkClient) ChangeVirtualCircuitCompartment(ctx context.C
 }
 
 // changeVirtualCircuitCompartment implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) changeVirtualCircuitCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/virtualCircuits/{virtualCircuitId}/actions/changeCompartment")
+func (client VirtualNetworkClient) changeVirtualCircuitCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/virtualCircuits/{virtualCircuitId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1746,8 +1950,9 @@ func (client VirtualNetworkClient) ChangeVlanCompartment(ctx context.Context, re
 }
 
 // changeVlanCompartment implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) changeVlanCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/vlans/{vlanId}/actions/changeCompartment")
+func (client VirtualNetworkClient) changeVlanCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/vlans/{vlanId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1771,7 +1976,7 @@ func (client VirtualNetworkClient) changeVlanCompartment(ctx context.Context, re
 // an Identity and Access Management (IAM) policy that gives the requestor permission
 // to connect to LPGs in the acceptor's compartment. Without that permission, this
 // operation will fail. For more information, see
-// VCN Peering (https://docs.cloud.oracle.com/Content/Network/Tasks/VCNpeering.htm).
+// VCN Peering (https://docs.cloud.oracle.com/iaas/Content/Network/Tasks/VCNpeering.htm).
 //
 // See also
 //
@@ -1806,8 +2011,9 @@ func (client VirtualNetworkClient) ConnectLocalPeeringGateways(ctx context.Conte
 }
 
 // connectLocalPeeringGateways implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) connectLocalPeeringGateways(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/localPeeringGateways/{localPeeringGatewayId}/actions/connect")
+func (client VirtualNetworkClient) connectLocalPeeringGateways(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/localPeeringGateways/{localPeeringGatewayId}/actions/connect", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1831,7 +2037,7 @@ func (client VirtualNetworkClient) connectLocalPeeringGateways(ctx context.Conte
 // an Identity and Access Management (IAM) policy that gives the requestor permission
 // to connect to RPCs in the acceptor's compartment. Without that permission, this
 // operation will fail. For more information, see
-// VCN Peering (https://docs.cloud.oracle.com/Content/Network/Tasks/VCNpeering.htm).
+// VCN Peering (https://docs.cloud.oracle.com/iaas/Content/Network/Tasks/VCNpeering.htm).
 //
 // See also
 //
@@ -1866,8 +2072,9 @@ func (client VirtualNetworkClient) ConnectRemotePeeringConnections(ctx context.C
 }
 
 // connectRemotePeeringConnections implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) connectRemotePeeringConnections(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/remotePeeringConnections/{remotePeeringConnectionId}/actions/connect")
+func (client VirtualNetworkClient) connectRemotePeeringConnections(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/remotePeeringConnections/{remotePeeringConnectionId}/actions/connect", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1885,7 +2092,7 @@ func (client VirtualNetworkClient) connectRemotePeeringConnections(ctx context.C
 	return response, err
 }
 
-// CreateByoipRange Creates a Byoip Range prefix.
+// CreateByoipRange Creates a subrange of the BYOIP CIDR block.
 //
 // See also
 //
@@ -1925,8 +2132,9 @@ func (client VirtualNetworkClient) CreateByoipRange(ctx context.Context, request
 }
 
 // createByoipRange implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) createByoipRange(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/byoipRanges")
+func (client VirtualNetworkClient) createByoipRange(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/byoipRanges", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1945,15 +2153,15 @@ func (client VirtualNetworkClient) createByoipRange(ctx context.Context, request
 }
 
 // CreateCpe Creates a new virtual customer-premises equipment (CPE) object in the specified compartment. For
-// more information, see IPSec VPNs (https://docs.cloud.oracle.com/Content/Network/Tasks/managingIPsec.htm).
-// For the purposes of access control, you must provide the OCID of the compartment where you want
+// more information, see IPSec VPNs (https://docs.cloud.oracle.com/iaas/Content/Network/Tasks/managingIPsec.htm).
+// For the purposes of access control, you must provide the OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the compartment where you want
 // the CPE to reside. Notice that the CPE doesn't have to be in the same compartment as the IPSec
 // connection or other Networking Service components. If you're not sure which compartment to
 // use, put the CPE in the same compartment as the DRG. For more information about
-// compartments and access control, see Overview of the IAM Service (https://docs.cloud.oracle.com/Content/Identity/Concepts/overview.htm).
-// For information about OCIDs, see Resource Identifiers (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm).
+// compartments and access control, see Overview of the IAM Service (https://docs.cloud.oracle.com/iaas/Content/Identity/Concepts/overview.htm).
+// For information about OCIDs, see Resource Identifiers (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm).
 // You must provide the public IP address of your on-premises router. See
-// Configuring Your On-Premises Router for an IPSec VPN (https://docs.cloud.oracle.com/Content/Network/Tasks/configuringCPE.htm).
+// Configuring Your On-Premises Router for an IPSec VPN (https://docs.cloud.oracle.com/iaas/Content/Network/Tasks/configuringCPE.htm).
 // You may optionally specify a *display name* for the CPE, otherwise a default is provided. It does not have to
 // be unique, and you can change it. Avoid entering confidential information.
 //
@@ -1995,8 +2203,9 @@ func (client VirtualNetworkClient) CreateCpe(ctx context.Context, request Create
 }
 
 // createCpe implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) createCpe(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/cpes")
+func (client VirtualNetworkClient) createCpe(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/cpes", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2019,15 +2228,15 @@ func (client VirtualNetworkClient) createCpe(ctx context.Context, request common
 // with the connection.
 // After creating the `CrossConnect` object, you need to go the FastConnect location
 // and request to have the physical cable installed. For more information, see
-// FastConnect Overview (https://docs.cloud.oracle.com/Content/Network/Concepts/fastconnect.htm).
-// For the purposes of access control, you must provide the OCID of the
+// FastConnect Overview (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/fastconnect.htm).
+// For the purposes of access control, you must provide the OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the
 // compartment where you want the cross-connect to reside. If you're
 // not sure which compartment to use, put the cross-connect in the
 // same compartment with your VCN. For more information about
 // compartments and access control, see
-// Overview of the IAM Service (https://docs.cloud.oracle.com/Content/Identity/Concepts/overview.htm).
+// Overview of the IAM Service (https://docs.cloud.oracle.com/iaas/Content/Identity/Concepts/overview.htm).
 // For information about OCIDs, see
-// Resource Identifiers (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm).
+// Resource Identifiers (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm).
 // You may optionally specify a *display name* for the cross-connect.
 // It does not have to be unique, and you can change it. Avoid entering confidential information.
 //
@@ -2069,8 +2278,9 @@ func (client VirtualNetworkClient) CreateCrossConnect(ctx context.Context, reque
 }
 
 // createCrossConnect implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) createCrossConnect(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/crossConnects")
+func (client VirtualNetworkClient) createCrossConnect(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/crossConnects", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2090,15 +2300,15 @@ func (client VirtualNetworkClient) createCrossConnect(ctx context.Context, reque
 
 // CreateCrossConnectGroup Creates a new cross-connect group to use with Oracle Cloud Infrastructure
 // FastConnect. For more information, see
-// FastConnect Overview (https://docs.cloud.oracle.com/Content/Network/Concepts/fastconnect.htm).
-// For the purposes of access control, you must provide the OCID of the
+// FastConnect Overview (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/fastconnect.htm).
+// For the purposes of access control, you must provide the OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the
 // compartment where you want the cross-connect group to reside. If you're
 // not sure which compartment to use, put the cross-connect group in the
 // same compartment with your VCN. For more information about
 // compartments and access control, see
-// Overview of the IAM Service (https://docs.cloud.oracle.com/Content/Identity/Concepts/overview.htm).
+// Overview of the IAM Service (https://docs.cloud.oracle.com/iaas/Content/Identity/Concepts/overview.htm).
 // For information about OCIDs, see
-// Resource Identifiers (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm).
+// Resource Identifiers (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm).
 // You may optionally specify a *display name* for the cross-connect group.
 // It does not have to be unique, and you can change it. Avoid entering confidential information.
 //
@@ -2140,8 +2350,9 @@ func (client VirtualNetworkClient) CreateCrossConnectGroup(ctx context.Context, 
 }
 
 // createCrossConnectGroup implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) createCrossConnectGroup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/crossConnectGroups")
+func (client VirtualNetworkClient) createCrossConnectGroup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/crossConnectGroups", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2161,12 +2372,12 @@ func (client VirtualNetworkClient) createCrossConnectGroup(ctx context.Context, 
 
 // CreateDhcpOptions Creates a new set of DHCP options for the specified VCN. For more information, see
 // DhcpOptions.
-// For the purposes of access control, you must provide the OCID of the compartment where you want the set of
+// For the purposes of access control, you must provide the OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the compartment where you want the set of
 // DHCP options to reside. Notice that the set of options doesn't have to be in the same compartment as the VCN,
 // subnets, or other Networking Service components. If you're not sure which compartment to use, put the set
 // of DHCP options in the same compartment as the VCN. For more information about compartments and access control, see
-// Overview of the IAM Service (https://docs.cloud.oracle.com/Content/Identity/Concepts/overview.htm). For information about OCIDs, see
-// Resource Identifiers (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm).
+// Overview of the IAM Service (https://docs.cloud.oracle.com/iaas/Content/Identity/Concepts/overview.htm). For information about OCIDs, see
+// Resource Identifiers (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm).
 // You may optionally specify a *display name* for the set of DHCP options, otherwise a default is provided.
 // It does not have to be unique, and you can change it. Avoid entering confidential information.
 //
@@ -2208,8 +2419,9 @@ func (client VirtualNetworkClient) CreateDhcpOptions(ctx context.Context, reques
 }
 
 // createDhcpOptions implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) createDhcpOptions(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/dhcps")
+func (client VirtualNetworkClient) createDhcpOptions(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/dhcps", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2228,13 +2440,13 @@ func (client VirtualNetworkClient) createDhcpOptions(ctx context.Context, reques
 }
 
 // CreateDrg Creates a new dynamic routing gateway (DRG) in the specified compartment. For more information,
-// see Dynamic Routing Gateways (DRGs) (https://docs.cloud.oracle.com/Content/Network/Tasks/managingDRGs.htm).
+// see Dynamic Routing Gateways (DRGs) (https://docs.cloud.oracle.com/iaas/Content/Network/Tasks/managingDRGs.htm).
 // For the purposes of access control, you must provide the OCID of the compartment where you want
 // the DRG to reside. Notice that the DRG doesn't have to be in the same compartment as the VCN,
 // the DRG attachment, or other Networking Service components. If you're not sure which compartment
 // to use, put the DRG in the same compartment as the VCN. For more information about compartments
-// and access control, see Overview of the IAM Service (https://docs.cloud.oracle.com/Content/Identity/Concepts/overview.htm).
-// For information about OCIDs, see Resource Identifiers (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm).
+// and access control, see Overview of the IAM Service (https://docs.cloud.oracle.com/iaas/Content/Identity/Concepts/overview.htm).
+// For information about OCIDs, see Resource Identifiers (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm).
 // You may optionally specify a *display name* for the DRG, otherwise a default is provided.
 // It does not have to be unique, and you can change it. Avoid entering confidential information.
 //
@@ -2276,8 +2488,9 @@ func (client VirtualNetworkClient) CreateDrg(ctx context.Context, request Create
 }
 
 // createDrg implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) createDrg(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/drgs")
+func (client VirtualNetworkClient) createDrg(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/drgs", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2295,15 +2508,15 @@ func (client VirtualNetworkClient) createDrg(ctx context.Context, request common
 	return response, err
 }
 
-// CreateDrgAttachment Attaches the specified DRG to the specified VCN. A VCN can be attached to only one DRG at a time,
-// and vice versa. The response includes a `DrgAttachment` object with its own OCID. For more
-// information about DRGs, see
-// Dynamic Routing Gateways (DRGs) (https://docs.cloud.oracle.com/Content/Network/Tasks/managingDRGs.htm).
+// CreateDrgAttachment Attaches the specified DRG to the specified network resource. A VCN can be attached to only one DRG
+// at a time, but a DRG can be attached to more than one VCN. The response includes a `DrgAttachment`
+// object with its own OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm). For more information about DRGs, see
+// Dynamic Routing Gateways (DRGs) (https://docs.cloud.oracle.com/iaas/Content/Network/Tasks/managingDRGs.htm).
 // You may optionally specify a *display name* for the attachment, otherwise a default is provided.
 // It does not have to be unique, and you can change it. Avoid entering confidential information.
-// For the purposes of access control, the DRG attachment is automatically placed into the same compartment
-// as the VCN. For more information about compartments and access control, see
-// Overview of the IAM Service (https://docs.cloud.oracle.com/Content/Identity/Concepts/overview.htm).
+// For the purposes of access control, the DRG attachment is automatically placed into the currently selected compartment.
+// For more information about compartments and access control, see
+// Overview of the IAM Service (https://docs.cloud.oracle.com/iaas/Content/Identity/Concepts/overview.htm).
 //
 // See also
 //
@@ -2343,8 +2556,9 @@ func (client VirtualNetworkClient) CreateDrgAttachment(ctx context.Context, requ
 }
 
 // createDrgAttachment implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) createDrgAttachment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/drgAttachments")
+func (client VirtualNetworkClient) createDrgAttachment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/drgAttachments", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2362,20 +2576,143 @@ func (client VirtualNetworkClient) createDrgAttachment(ctx context.Context, requ
 	return response, err
 }
 
+// CreateDrgRouteDistribution Creates a new route distribution for the specified DRG.
+// Assign the route distribution as an import distribution to a DRG route table using the `UpdateDrgRouteTable` or `CreateDrgRouteTable` operations.
+// Assign the route distribution as an export distribution to a DRG attachment
+// using the `UpdateDrgAttachment` or `CreateDrgAttachment` operations.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/CreateDrgRouteDistribution.go.html to see an example of how to use CreateDrgRouteDistribution API.
+func (client VirtualNetworkClient) CreateDrgRouteDistribution(ctx context.Context, request CreateDrgRouteDistributionRequest) (response CreateDrgRouteDistributionResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.createDrgRouteDistribution, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = CreateDrgRouteDistributionResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = CreateDrgRouteDistributionResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(CreateDrgRouteDistributionResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into CreateDrgRouteDistributionResponse")
+	}
+	return
+}
+
+// createDrgRouteDistribution implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) createDrgRouteDistribution(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/drgRouteDistributions", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response CreateDrgRouteDistributionResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// CreateDrgRouteTable Creates a new DRG route table for the specified DRG. Assign the DRG route table to a DRG attachment
+// using the `UpdateDrgAttachment` or `CreateDrgAttachment` operations.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/CreateDrgRouteTable.go.html to see an example of how to use CreateDrgRouteTable API.
+func (client VirtualNetworkClient) CreateDrgRouteTable(ctx context.Context, request CreateDrgRouteTableRequest) (response CreateDrgRouteTableResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.createDrgRouteTable, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = CreateDrgRouteTableResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = CreateDrgRouteTableResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(CreateDrgRouteTableResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into CreateDrgRouteTableResponse")
+	}
+	return
+}
+
+// createDrgRouteTable implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) createDrgRouteTable(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/drgRouteTables", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response CreateDrgRouteTableResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // CreateIPSecConnection Creates a new IPSec connection between the specified DRG and CPE. For more information, see
-// IPSec VPNs (https://docs.cloud.oracle.com/Content/Network/Tasks/managingIPsec.htm).
+// IPSec VPNs (https://docs.cloud.oracle.com/iaas/Content/Network/Tasks/managingIPsec.htm).
 // If you configure at least one tunnel to use static routing, then in the request you must provide
 // at least one valid static route (you're allowed a maximum of 10). For example: 10.0.0.0/16.
 // If you configure both tunnels to use BGP dynamic routing, you can provide an empty list for
 // the static routes. For more information, see the important note in
 // IPSecConnection.
-// For the purposes of access control, you must provide the OCID of the compartment where you want the
+// For the purposes of access control, you must provide the OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the compartment where you want the
 // IPSec connection to reside. Notice that the IPSec connection doesn't have to be in the same compartment
 // as the DRG, CPE, or other Networking Service components. If you're not sure which compartment to
 // use, put the IPSec connection in the same compartment as the DRG. For more information about
 // compartments and access control, see
-// Overview of the IAM Service (https://docs.cloud.oracle.com/Content/Identity/Concepts/overview.htm).
-// For information about OCIDs, see Resource Identifiers (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm).
+// Overview of the IAM Service (https://docs.cloud.oracle.com/iaas/Content/Identity/Concepts/overview.htm).
 // You may optionally specify a *display name* for the IPSec connection, otherwise a default is provided.
 // It does not have to be unique, and you can change it. Avoid entering confidential information.
 // After creating the IPSec connection, you need to configure your on-premises router
@@ -2384,7 +2721,7 @@ func (client VirtualNetworkClient) createDrgAttachment(ctx context.Context, requ
 //   * IPSecConnectionTunnelSharedSecret
 // For each tunnel, you need the IP address of Oracle's VPN headend and the shared secret
 // (that is, the pre-shared key). For more information, see
-// Configuring Your On-Premises Router for an IPSec VPN (https://docs.cloud.oracle.com/Content/Network/Tasks/configuringCPE.htm).
+// Configuring Your On-Premises Router for an IPSec VPN (https://docs.cloud.oracle.com/iaas/Content/Network/Tasks/configuringCPE.htm).
 //
 // See also
 //
@@ -2424,8 +2761,9 @@ func (client VirtualNetworkClient) CreateIPSecConnection(ctx context.Context, re
 }
 
 // createIPSecConnection implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) createIPSecConnection(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/ipsecConnections")
+func (client VirtualNetworkClient) createIPSecConnection(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/ipsecConnections", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2444,13 +2782,12 @@ func (client VirtualNetworkClient) createIPSecConnection(ctx context.Context, re
 }
 
 // CreateInternetGateway Creates a new internet gateway for the specified VCN. For more information, see
-// Access to the Internet (https://docs.cloud.oracle.com/Content/Network/Tasks/managingIGs.htm).
-// For the purposes of access control, you must provide the OCID of the compartment where you want the Internet
+// Access to the Internet (https://docs.cloud.oracle.com/iaas/Content/Network/Tasks/managingIGs.htm).
+// For the purposes of access control, you must provide the OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the compartment where you want the Internet
 // Gateway to reside. Notice that the internet gateway doesn't have to be in the same compartment as the VCN or
 // other Networking Service components. If you're not sure which compartment to use, put the Internet
 // Gateway in the same compartment with the VCN. For more information about compartments and access control, see
-// Overview of the IAM Service (https://docs.cloud.oracle.com/Content/Identity/Concepts/overview.htm). For information about OCIDs, see
-// Resource Identifiers (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm).
+// Overview of the IAM Service (https://docs.cloud.oracle.com/iaas/Content/Identity/Concepts/overview.htm).
 // You may optionally specify a *display name* for the internet gateway, otherwise a default is provided. It
 // does not have to be unique, and you can change it. Avoid entering confidential information.
 // For traffic to flow between a subnet and an internet gateway, you must create a route rule accordingly in
@@ -2499,8 +2836,9 @@ func (client VirtualNetworkClient) CreateInternetGateway(ctx context.Context, re
 }
 
 // createInternetGateway implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) createInternetGateway(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/internetGateways")
+func (client VirtualNetworkClient) createInternetGateway(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/internetGateways", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2558,8 +2896,9 @@ func (client VirtualNetworkClient) CreateIpv6(ctx context.Context, request Creat
 }
 
 // createIpv6 implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) createIpv6(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/ipv6")
+func (client VirtualNetworkClient) createIpv6(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/ipv6", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2617,8 +2956,9 @@ func (client VirtualNetworkClient) CreateLocalPeeringGateway(ctx context.Context
 }
 
 // createLocalPeeringGateway implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) createLocalPeeringGateway(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/localPeeringGateways")
+func (client VirtualNetworkClient) createLocalPeeringGateway(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/localPeeringGateways", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2677,8 +3017,9 @@ func (client VirtualNetworkClient) CreateNatGateway(ctx context.Context, request
 }
 
 // createNatGateway implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) createNatGateway(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/natGateways")
+func (client VirtualNetworkClient) createNatGateway(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/natGateways", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2736,8 +3077,9 @@ func (client VirtualNetworkClient) CreateNetworkSecurityGroup(ctx context.Contex
 }
 
 // createNetworkSecurityGroup implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) createNetworkSecurityGroup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/networkSecurityGroups")
+func (client VirtualNetworkClient) createNetworkSecurityGroup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/networkSecurityGroups", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2757,7 +3099,7 @@ func (client VirtualNetworkClient) createNetworkSecurityGroup(ctx context.Contex
 
 // CreatePrivateIp Creates a secondary private IP for the specified VNIC.
 // For more information about secondary private IPs, see
-// IP Addresses (https://docs.cloud.oracle.com/Content/Network/Tasks/managingIPaddresses.htm).
+// IP Addresses (https://docs.cloud.oracle.com/iaas/Content/Network/Tasks/managingIPaddresses.htm).
 //
 // See also
 //
@@ -2797,8 +3139,9 @@ func (client VirtualNetworkClient) CreatePrivateIp(ctx context.Context, request 
 }
 
 // createPrivateIp implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) createPrivateIp(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/privateIps")
+func (client VirtualNetworkClient) createPrivateIp(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/privateIps", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2818,7 +3161,7 @@ func (client VirtualNetworkClient) createPrivateIp(ctx context.Context, request 
 
 // CreatePublicIp Creates a public IP. Use the `lifetime` property to specify whether it's an ephemeral or
 // reserved public IP. For information about limits on how many you can create, see
-// Public IP Addresses (https://docs.cloud.oracle.com/Content/Network/Tasks/managingpublicIPs.htm).
+// Public IP Addresses (https://docs.cloud.oracle.com/iaas/Content/Network/Tasks/managingpublicIPs.htm).
 // * **For an ephemeral public IP assigned to a private IP:** You must also specify a `privateIpId`
 // with the OCID of the primary private IP you want to assign the public IP to. The public IP is
 // created in the same availability domain as the private IP. An ephemeral public IP must always be
@@ -2872,8 +3215,9 @@ func (client VirtualNetworkClient) CreatePublicIp(ctx context.Context, request C
 }
 
 // createPublicIp implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) createPublicIp(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/publicIps")
+func (client VirtualNetworkClient) createPublicIp(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/publicIps", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2891,7 +3235,7 @@ func (client VirtualNetworkClient) createPublicIp(ctx context.Context, request c
 	return response, err
 }
 
-// CreatePublicIpPool Creates a Public Ip Pool
+// CreatePublicIpPool Creates a public IP pool.
 //
 // See also
 //
@@ -2931,8 +3275,9 @@ func (client VirtualNetworkClient) CreatePublicIpPool(ctx context.Context, reque
 }
 
 // createPublicIpPool implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) createPublicIpPool(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/publicIpPools")
+func (client VirtualNetworkClient) createPublicIpPool(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/publicIpPools", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2990,8 +3335,9 @@ func (client VirtualNetworkClient) CreateRemotePeeringConnection(ctx context.Con
 }
 
 // createRemotePeeringConnection implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) createRemotePeeringConnection(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/remotePeeringConnections")
+func (client VirtualNetworkClient) createRemotePeeringConnection(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/remotePeeringConnections", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -3011,15 +3357,15 @@ func (client VirtualNetworkClient) createRemotePeeringConnection(ctx context.Con
 
 // CreateRouteTable Creates a new route table for the specified VCN. In the request you must also include at least one route
 // rule for the new route table. For information on the number of rules you can have in a route table, see
-// Service Limits (https://docs.cloud.oracle.com/Content/General/Concepts/servicelimits.htm). For general information about route
+// Service Limits (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/servicelimits.htm). For general information about route
 // tables in your VCN and the types of targets you can use in route rules,
-// see Route Tables (https://docs.cloud.oracle.com/Content/Network/Tasks/managingroutetables.htm).
+// see Route Tables (https://docs.cloud.oracle.com/iaas/Content/Network/Tasks/managingroutetables.htm).
 // For the purposes of access control, you must provide the OCID of the compartment where you want the route
 // table to reside. Notice that the route table doesn't have to be in the same compartment as the VCN, subnets,
 // or other Networking Service components. If you're not sure which compartment to use, put the route
 // table in the same compartment as the VCN. For more information about compartments and access control, see
-// Overview of the IAM Service (https://docs.cloud.oracle.com/Content/Identity/Concepts/overview.htm). For information about OCIDs, see
-// Resource Identifiers (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm).
+// Overview of the IAM Service (https://docs.cloud.oracle.com/iaas/Content/Identity/Concepts/overview.htm). For information about OCIDs, see
+// Resource Identifiers (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm).
 // You may optionally specify a *display name* for the route table, otherwise a default is provided.
 // It does not have to be unique, and you can change it. Avoid entering confidential information.
 //
@@ -3061,8 +3407,9 @@ func (client VirtualNetworkClient) CreateRouteTable(ctx context.Context, request
 }
 
 // createRouteTable implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) createRouteTable(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/routeTables")
+func (client VirtualNetworkClient) createRouteTable(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/routeTables", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -3081,15 +3428,15 @@ func (client VirtualNetworkClient) createRouteTable(ctx context.Context, request
 }
 
 // CreateSecurityList Creates a new security list for the specified VCN. For more information
-// about security lists, see Security Lists (https://docs.cloud.oracle.com/Content/Network/Concepts/securitylists.htm).
+// about security lists, see Security Lists (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/securitylists.htm).
 // For information on the number of rules you can have in a security list, see
-// Service Limits (https://docs.cloud.oracle.com/Content/General/Concepts/servicelimits.htm).
+// Service Limits (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/servicelimits.htm).
 // For the purposes of access control, you must provide the OCID of the compartment where you want the security
 // list to reside. Notice that the security list doesn't have to be in the same compartment as the VCN, subnets,
 // or other Networking Service components. If you're not sure which compartment to use, put the security
 // list in the same compartment as the VCN. For more information about compartments and access control, see
-// Overview of the IAM Service (https://docs.cloud.oracle.com/Content/Identity/Concepts/overview.htm). For information about OCIDs, see
-// Resource Identifiers (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm).
+// Overview of the IAM Service (https://docs.cloud.oracle.com/iaas/Content/Identity/Concepts/overview.htm). For information about OCIDs, see
+// Resource Identifiers (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm).
 // You may optionally specify a *display name* for the security list, otherwise a default is provided.
 // It does not have to be unique, and you can change it. Avoid entering confidential information.
 //
@@ -3131,8 +3478,9 @@ func (client VirtualNetworkClient) CreateSecurityList(ctx context.Context, reque
 }
 
 // createSecurityList implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) createSecurityList(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/securityLists")
+func (client VirtualNetworkClient) createSecurityList(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/securityLists", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -3153,8 +3501,8 @@ func (client VirtualNetworkClient) createSecurityList(ctx context.Context, reque
 // CreateServiceGateway Creates a new service gateway in the specified compartment.
 // For the purposes of access control, you must provide the OCID of the compartment where you want
 // the service gateway to reside. For more information about compartments and access control, see
-// Overview of the IAM Service (https://docs.cloud.oracle.com/Content/Identity/Concepts/overview.htm).
-// For information about OCIDs, see Resource Identifiers (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm).
+// Overview of the IAM Service (https://docs.cloud.oracle.com/iaas/Content/Identity/Concepts/overview.htm).
+// For information about OCIDs, see Resource Identifiers (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm).
 // You may optionally specify a *display name* for the service gateway, otherwise a default is provided.
 // It does not have to be unique, and you can change it. Avoid entering confidential information.
 //
@@ -3196,8 +3544,9 @@ func (client VirtualNetworkClient) CreateServiceGateway(ctx context.Context, req
 }
 
 // createServiceGateway implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) createServiceGateway(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/serviceGateways")
+func (client VirtualNetworkClient) createServiceGateway(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/serviceGateways", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -3217,29 +3566,29 @@ func (client VirtualNetworkClient) createServiceGateway(ctx context.Context, req
 
 // CreateSubnet Creates a new subnet in the specified VCN. You can't change the size of the subnet after creation,
 // so it's important to think about the size of subnets you need before creating them.
-// For more information, see VCNs and Subnets (https://docs.cloud.oracle.com/Content/Network/Tasks/managingVCNs.htm).
+// For more information, see VCNs and Subnets (https://docs.cloud.oracle.com/iaas/Content/Network/Tasks/managingVCNs.htm).
 // For information on the number of subnets you can have in a VCN, see
-// Service Limits (https://docs.cloud.oracle.com/Content/General/Concepts/servicelimits.htm).
+// Service Limits (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/servicelimits.htm).
 // For the purposes of access control, you must provide the OCID of the compartment where you want the subnet
 // to reside. Notice that the subnet doesn't have to be in the same compartment as the VCN, route tables, or
 // other Networking Service components. If you're not sure which compartment to use, put the subnet in
 // the same compartment as the VCN. For more information about compartments and access control, see
-// Overview of the IAM Service (https://docs.cloud.oracle.com/Content/Identity/Concepts/overview.htm). For information about OCIDs,
-// see Resource Identifiers (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm).
+// Overview of the IAM Service (https://docs.cloud.oracle.com/iaas/Content/Identity/Concepts/overview.htm). For information about OCIDs,
+// see Resource Identifiers (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm).
 // You may optionally associate a route table with the subnet. If you don't, the subnet will use the
 // VCN's default route table. For more information about route tables, see
-// Route Tables (https://docs.cloud.oracle.com/Content/Network/Tasks/managingroutetables.htm).
+// Route Tables (https://docs.cloud.oracle.com/iaas/Content/Network/Tasks/managingroutetables.htm).
 // You may optionally associate a security list with the subnet. If you don't, the subnet will use the
 // VCN's default security list. For more information about security lists, see
-// Security Lists (https://docs.cloud.oracle.com/Content/Network/Concepts/securitylists.htm).
+// Security Lists (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/securitylists.htm).
 // You may optionally associate a set of DHCP options with the subnet. If you don't, the subnet will use the
 // VCN's default set. For more information about DHCP options, see
-// DHCP Options (https://docs.cloud.oracle.com/Content/Network/Tasks/managingDHCP.htm).
+// DHCP Options (https://docs.cloud.oracle.com/iaas/Content/Network/Tasks/managingDHCP.htm).
 // You may optionally specify a *display name* for the subnet, otherwise a default is provided.
 // It does not have to be unique, and you can change it. Avoid entering confidential information.
 // You can also add a DNS label for the subnet, which is required if you want the Internet and
 // VCN Resolver to resolve hostnames for instances in the subnet. For more information, see
-// DNS in Your Virtual Cloud Network (https://docs.cloud.oracle.com/Content/Network/Concepts/dns.htm).
+// DNS in Your Virtual Cloud Network (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/dns.htm).
 //
 // See also
 //
@@ -3279,8 +3628,9 @@ func (client VirtualNetworkClient) CreateSubnet(ctx context.Context, request Cre
 }
 
 // createSubnet implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) createSubnet(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/subnets")
+func (client VirtualNetworkClient) createSubnet(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/subnets", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -3299,33 +3649,30 @@ func (client VirtualNetworkClient) createSubnet(ctx context.Context, request com
 }
 
 // CreateVcn Creates a new virtual cloud network (VCN). For more information, see
-// VCNs and Subnets (https://docs.cloud.oracle.com/Content/Network/Tasks/managingVCNs.htm).
-// To create the VCN, you may specify a list of IPv4 CIDR blocks. The CIDRs must maintain
-// the following rules -
-// a. The list of CIDRs provided are valid
-// b. There is no overlap between different CIDRs
-// c. The list of CIDRs does not exceed the max limit of CIDRs per VCN
-// Oracle recommends using one of the private IP address ranges specified in RFC 1918
-//  (https://tools.ietf.org/html/rfc1918) (10.0.0.0/8, 172.16/12, and 192.168/16). Example:
-// 172.16.0.0/16. The CIDR blocks can range from /16 to /30, and they must not overlap with
-// your on-premises network.
+// VCNs and Subnets (https://docs.cloud.oracle.com/iaas/Content/Network/Tasks/managingVCNs.htm).
+// For the VCN, you specify a list of one or more IPv4 CIDR blocks that meet the following criteria:
+// - The CIDR blocks must be valid.
+// - They must not overlap with each other or with the on-premises network CIDR block.
+// - The number of CIDR blocks does not exceed the limit of CIDR blocks allowed per VCN.
+// For a CIDR block, Oracle recommends that you use one of the private IP address ranges specified in RFC 1918 (https://tools.ietf.org/html/rfc1918) (10.0.0.0/8, 172.16/12, and 192.168/16). Example:
+// 172.16.0.0/16. The CIDR blocks can range from /16 to /30.
 // For the purposes of access control, you must provide the OCID of the compartment where you want the VCN to
 // reside. Consult an Oracle Cloud Infrastructure administrator in your organization if you're not sure which
 // compartment to use. Notice that the VCN doesn't have to be in the same compartment as the subnets or other
 // Networking Service components. For more information about compartments and access control, see
-// Overview of the IAM Service (https://docs.cloud.oracle.com/Content/Identity/Concepts/overview.htm). For information about OCIDs, see
-// Resource Identifiers (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm).
+// Overview of the IAM Service (https://docs.cloud.oracle.com/iaas/Content/Identity/Concepts/overview.htm). For information about OCIDs, see
+// Resource Identifiers (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm).
 // You may optionally specify a *display name* for the VCN, otherwise a default is provided. It does not have to
 // be unique, and you can change it. Avoid entering confidential information.
 // You can also add a DNS label for the VCN, which is required if you want the instances to use the
 // Interent and VCN Resolver option for DNS in the VCN. For more information, see
-// DNS in Your Virtual Cloud Network (https://docs.cloud.oracle.com/Content/Network/Concepts/dns.htm).
+// DNS in Your Virtual Cloud Network (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/dns.htm).
 // The VCN automatically comes with a default route table, default security list, and default set of DHCP options.
 // The OCID for each is returned in the response. You can't delete these default objects, but you can change their
 // contents (that is, change the route rules, security list rules, and so on).
 // The VCN and subnets you create are not accessible until you attach an internet gateway or set up an IPSec VPN
 // or FastConnect. For more information, see
-// Overview of the Networking Service (https://docs.cloud.oracle.com/Content/Network/Concepts/overview.htm).
+// Overview of the Networking Service (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm).
 //
 // See also
 //
@@ -3365,8 +3712,9 @@ func (client VirtualNetworkClient) CreateVcn(ctx context.Context, request Create
 }
 
 // createVcn implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) createVcn(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/vcns")
+func (client VirtualNetworkClient) createVcn(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/vcns", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -3386,22 +3734,22 @@ func (client VirtualNetworkClient) createVcn(ctx context.Context, request common
 
 // CreateVirtualCircuit Creates a new virtual circuit to use with Oracle Cloud
 // Infrastructure FastConnect. For more information, see
-// FastConnect Overview (https://docs.cloud.oracle.com/Content/Network/Concepts/fastconnect.htm).
+// FastConnect Overview (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/fastconnect.htm).
 // For the purposes of access control, you must provide the OCID of the
 // compartment where you want the virtual circuit to reside. If you're
 // not sure which compartment to use, put the virtual circuit in the
 // same compartment with the DRG it's using. For more information about
 // compartments and access control, see
-// Overview of the IAM Service (https://docs.cloud.oracle.com/Content/Identity/Concepts/overview.htm).
+// Overview of the IAM Service (https://docs.cloud.oracle.com/iaas/Content/Identity/Concepts/overview.htm).
 // For information about OCIDs, see
-// Resource Identifiers (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm).
+// Resource Identifiers (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm).
 // You may optionally specify a *display name* for the virtual circuit.
 // It does not have to be unique, and you can change it. Avoid entering confidential information.
 // **Important:** When creating a virtual circuit, you specify a DRG for
 // the traffic to flow through. Make sure you attach the DRG to your
 // VCN and confirm the VCN's routing sends traffic to the DRG. Otherwise
 // traffic will not flow. For more information, see
-// Route Tables (https://docs.cloud.oracle.com/Content/Network/Tasks/managingroutetables.htm).
+// Route Tables (https://docs.cloud.oracle.com/iaas/Content/Network/Tasks/managingroutetables.htm).
 //
 // See also
 //
@@ -3441,8 +3789,9 @@ func (client VirtualNetworkClient) CreateVirtualCircuit(ctx context.Context, req
 }
 
 // createVirtualCircuit implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) createVirtualCircuit(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/virtualCircuits")
+func (client VirtualNetworkClient) createVirtualCircuit(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/virtualCircuits", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -3500,8 +3849,9 @@ func (client VirtualNetworkClient) CreateVlan(ctx context.Context, request Creat
 }
 
 // createVlan implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) createVlan(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/vlans")
+func (client VirtualNetworkClient) createVlan(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/vlans", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -3519,11 +3869,11 @@ func (client VirtualNetworkClient) createVlan(ctx context.Context, request commo
 	return response, err
 }
 
-// DeleteByoipRange Deletes the specified Byoip Range prefix.
-// The prefix must be in CREATING, PROVISIONED or FAILED state.
-// It must not have any subranges allocated to a Public Ip Pool object.
-// You must specify the object's OCID.
-// In case the range is currently PROVISIONED, the operation will be asynchronous as it needs to be de-ptovisioned first.
+// DeleteByoipRange Deletes the specified `ByoipRange` resource.
+// The resource must be in one of the following states: CREATING, PROVISIONED, ACTIVE, or FAILED.
+// It must not have any subranges currently allocated to a PublicIpPool object or the deletion will fail.
+// You must specify the OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm).
+// If the `ByoipRange` resource is currently in the PROVISIONED or ACTIVE state, it will be de-provisioned and then deleted.
 //
 // See also
 //
@@ -3558,8 +3908,9 @@ func (client VirtualNetworkClient) DeleteByoipRange(ctx context.Context, request
 }
 
 // deleteByoipRange implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) deleteByoipRange(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/byoipRanges/{byoipRangeId}")
+func (client VirtualNetworkClient) deleteByoipRange(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/byoipRanges/{byoipRangeId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -3614,8 +3965,9 @@ func (client VirtualNetworkClient) DeleteCpe(ctx context.Context, request Delete
 }
 
 // deleteCpe implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) deleteCpe(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/cpes/{cpeId}")
+func (client VirtualNetworkClient) deleteCpe(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/cpes/{cpeId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -3669,8 +4021,9 @@ func (client VirtualNetworkClient) DeleteCrossConnect(ctx context.Context, reque
 }
 
 // deleteCrossConnect implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) deleteCrossConnect(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/crossConnects/{crossConnectId}")
+func (client VirtualNetworkClient) deleteCrossConnect(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/crossConnects/{crossConnectId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -3725,8 +4078,9 @@ func (client VirtualNetworkClient) DeleteCrossConnectGroup(ctx context.Context, 
 }
 
 // deleteCrossConnectGroup implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) deleteCrossConnectGroup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/crossConnectGroups/{crossConnectGroupId}")
+func (client VirtualNetworkClient) deleteCrossConnectGroup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/crossConnectGroups/{crossConnectGroupId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -3782,8 +4136,9 @@ func (client VirtualNetworkClient) DeleteDhcpOptions(ctx context.Context, reques
 }
 
 // deleteDhcpOptions implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) deleteDhcpOptions(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/dhcps/{dhcpId}")
+func (client VirtualNetworkClient) deleteDhcpOptions(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/dhcps/{dhcpId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -3839,8 +4194,9 @@ func (client VirtualNetworkClient) DeleteDrg(ctx context.Context, request Delete
 }
 
 // deleteDrg implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) deleteDrg(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/drgs/{drgId}")
+func (client VirtualNetworkClient) deleteDrg(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/drgs/{drgId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -3858,8 +4214,8 @@ func (client VirtualNetworkClient) deleteDrg(ctx context.Context, request common
 	return response, err
 }
 
-// DeleteDrgAttachment Detaches a DRG from a VCN by deleting the corresponding `DrgAttachment`. This is an asynchronous
-// operation. The attachment's `lifecycleState` will change to DETACHING temporarily until the attachment
+// DeleteDrgAttachment Detaches a DRG from a network resource by deleting the corresponding `DrgAttachment` resource. This is an asynchronous
+// operation. The attachment's `lifecycleState` will temporarily change to DETACHING until the attachment
 // is completely removed.
 //
 // See also
@@ -3895,13 +4251,125 @@ func (client VirtualNetworkClient) DeleteDrgAttachment(ctx context.Context, requ
 }
 
 // deleteDrgAttachment implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) deleteDrgAttachment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/drgAttachments/{drgAttachmentId}")
+func (client VirtualNetworkClient) deleteDrgAttachment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/drgAttachments/{drgAttachmentId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
 
 	var response DeleteDrgAttachmentResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// DeleteDrgRouteDistribution Deletes the specified route distribution. You can't delete a route distribution currently in use by a DRG attachment or DRG route table.
+// Remove the DRG route distribution from a DRG attachment or DRG route table by using the "RemoveExportDrgRouteDistribution" or "RemoveImportDrgRouteDistribution' operations.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/DeleteDrgRouteDistribution.go.html to see an example of how to use DeleteDrgRouteDistribution API.
+func (client VirtualNetworkClient) DeleteDrgRouteDistribution(ctx context.Context, request DeleteDrgRouteDistributionRequest) (response DeleteDrgRouteDistributionResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.deleteDrgRouteDistribution, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = DeleteDrgRouteDistributionResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = DeleteDrgRouteDistributionResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(DeleteDrgRouteDistributionResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into DeleteDrgRouteDistributionResponse")
+	}
+	return
+}
+
+// deleteDrgRouteDistribution implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) deleteDrgRouteDistribution(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/drgRouteDistributions/{drgRouteDistributionId}", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response DeleteDrgRouteDistributionResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// DeleteDrgRouteTable Deletes the specified DRG route table. There must not be any DRG attachments assigned.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/DeleteDrgRouteTable.go.html to see an example of how to use DeleteDrgRouteTable API.
+func (client VirtualNetworkClient) DeleteDrgRouteTable(ctx context.Context, request DeleteDrgRouteTableRequest) (response DeleteDrgRouteTableResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.deleteDrgRouteTable, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = DeleteDrgRouteTableResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = DeleteDrgRouteTableResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(DeleteDrgRouteTableResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into DeleteDrgRouteTableResponse")
+	}
+	return
+}
+
+// deleteDrgRouteTable implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) deleteDrgRouteTable(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/drgRouteTables/{drgRouteTableId}", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response DeleteDrgRouteTableResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)
@@ -3955,8 +4423,9 @@ func (client VirtualNetworkClient) DeleteIPSecConnection(ctx context.Context, re
 }
 
 // deleteIPSecConnection implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) deleteIPSecConnection(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/ipsecConnections/{ipscId}")
+func (client VirtualNetworkClient) deleteIPSecConnection(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/ipsecConnections/{ipscId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -4012,8 +4481,9 @@ func (client VirtualNetworkClient) DeleteInternetGateway(ctx context.Context, re
 }
 
 // deleteInternetGateway implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) deleteInternetGateway(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/internetGateways/{igId}")
+func (client VirtualNetworkClient) deleteInternetGateway(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/internetGateways/{igId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -4031,7 +4501,7 @@ func (client VirtualNetworkClient) deleteInternetGateway(ctx context.Context, re
 	return response, err
 }
 
-// DeleteIpv6 Unassigns and deletes the specified IPv6. You must specify the object's OCID.
+// DeleteIpv6 Unassigns and deletes the specified IPv6. You must specify the object's OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm).
 // The IPv6 address is returned to the subnet's pool of available addresses.
 //
 // See also
@@ -4067,8 +4537,9 @@ func (client VirtualNetworkClient) DeleteIpv6(ctx context.Context, request Delet
 }
 
 // deleteIpv6 implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) deleteIpv6(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/ipv6/{ipv6Id}")
+func (client VirtualNetworkClient) deleteIpv6(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/ipv6/{ipv6Id}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -4123,8 +4594,9 @@ func (client VirtualNetworkClient) DeleteLocalPeeringGateway(ctx context.Context
 }
 
 // deleteLocalPeeringGateway implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) deleteLocalPeeringGateway(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/localPeeringGateways/{localPeeringGatewayId}")
+func (client VirtualNetworkClient) deleteLocalPeeringGateway(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/localPeeringGateways/{localPeeringGatewayId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -4180,8 +4652,9 @@ func (client VirtualNetworkClient) DeleteNatGateway(ctx context.Context, request
 }
 
 // deleteNatGateway implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) deleteNatGateway(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/natGateways/{natGatewayId}")
+func (client VirtualNetworkClient) deleteNatGateway(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/natGateways/{natGatewayId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -4239,8 +4712,9 @@ func (client VirtualNetworkClient) DeleteNetworkSecurityGroup(ctx context.Contex
 }
 
 // deleteNetworkSecurityGroup implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) deleteNetworkSecurityGroup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/networkSecurityGroups/{networkSecurityGroupId}")
+func (client VirtualNetworkClient) deleteNetworkSecurityGroup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/networkSecurityGroups/{networkSecurityGroupId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -4264,7 +4738,7 @@ func (client VirtualNetworkClient) deleteNetworkSecurityGroup(ctx context.Contex
 // This operation cannot be used with primary private IPs, which are
 // automatically unassigned and deleted when the VNIC is terminated.
 // **Important:** If a secondary private IP is the
-// target of a route rule (https://docs.cloud.oracle.com/Content/Network/Tasks/managingroutetables.htm#privateip),
+// target of a route rule (https://docs.cloud.oracle.com/iaas/Content/Network/Tasks/managingroutetables.htm#privateip),
 // unassigning it from the VNIC causes that route rule to blackhole and the traffic
 // will be dropped.
 //
@@ -4301,8 +4775,9 @@ func (client VirtualNetworkClient) DeletePrivateIp(ctx context.Context, request 
 }
 
 // deletePrivateIp implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) deletePrivateIp(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/privateIps/{privateIpId}")
+func (client VirtualNetworkClient) deletePrivateIp(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/privateIps/{privateIpId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -4366,8 +4841,9 @@ func (client VirtualNetworkClient) DeletePublicIp(ctx context.Context, request D
 }
 
 // deletePublicIp implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) deletePublicIp(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/publicIps/{publicIpId}")
+func (client VirtualNetworkClient) deletePublicIp(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/publicIps/{publicIpId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -4385,9 +4861,9 @@ func (client VirtualNetworkClient) deletePublicIp(ctx context.Context, request c
 	return response, err
 }
 
-// DeletePublicIpPool Deletes the specified Public Ip Pool
-// It must not have any active address allocations
-// You must specify the object's OCID.
+// DeletePublicIpPool Deletes the specified public IP pool.
+// To delete a public IP pool it must not have any active IP address allocations.
+// You must specify the object's OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) when deleting an IP pool.
 //
 // See also
 //
@@ -4422,8 +4898,9 @@ func (client VirtualNetworkClient) DeletePublicIpPool(ctx context.Context, reque
 }
 
 // deletePublicIpPool implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) deletePublicIpPool(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/publicIpPools/{publicIpPoolId}")
+func (client VirtualNetworkClient) deletePublicIpPool(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/publicIpPools/{publicIpPoolId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -4478,8 +4955,9 @@ func (client VirtualNetworkClient) DeleteRemotePeeringConnection(ctx context.Con
 }
 
 // deleteRemotePeeringConnection implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) deleteRemotePeeringConnection(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/remotePeeringConnections/{remotePeeringConnectionId}")
+func (client VirtualNetworkClient) deleteRemotePeeringConnection(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/remotePeeringConnections/{remotePeeringConnectionId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -4535,8 +5013,9 @@ func (client VirtualNetworkClient) DeleteRouteTable(ctx context.Context, request
 }
 
 // deleteRouteTable implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) deleteRouteTable(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/routeTables/{rtId}")
+func (client VirtualNetworkClient) deleteRouteTable(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/routeTables/{rtId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -4592,8 +5071,9 @@ func (client VirtualNetworkClient) DeleteSecurityList(ctx context.Context, reque
 }
 
 // deleteSecurityList implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) deleteSecurityList(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/securityLists/{securityListId}")
+func (client VirtualNetworkClient) deleteSecurityList(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/securityLists/{securityListId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -4647,8 +5127,9 @@ func (client VirtualNetworkClient) DeleteServiceGateway(ctx context.Context, req
 }
 
 // deleteServiceGateway implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) deleteServiceGateway(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/serviceGateways/{serviceGatewayId}")
+func (client VirtualNetworkClient) deleteServiceGateway(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/serviceGateways/{serviceGatewayId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -4703,8 +5184,9 @@ func (client VirtualNetworkClient) DeleteSubnet(ctx context.Context, request Del
 }
 
 // deleteSubnet implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) deleteSubnet(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/subnets/{subnetId}")
+func (client VirtualNetworkClient) deleteSubnet(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/subnets/{subnetId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -4759,8 +5241,9 @@ func (client VirtualNetworkClient) DeleteVcn(ctx context.Context, request Delete
 }
 
 // deleteVcn implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) deleteVcn(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/vcns/{vcnId}")
+func (client VirtualNetworkClient) deleteVcn(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/vcns/{vcnId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -4816,8 +5299,9 @@ func (client VirtualNetworkClient) DeleteVirtualCircuit(ctx context.Context, req
 }
 
 // deleteVirtualCircuit implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) deleteVirtualCircuit(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/virtualCircuits/{virtualCircuitId}")
+func (client VirtualNetworkClient) deleteVirtualCircuit(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/virtualCircuits/{virtualCircuitId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -4870,8 +5354,9 @@ func (client VirtualNetworkClient) DeleteVlan(ctx context.Context, request Delet
 }
 
 // deleteVlan implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) deleteVlan(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/vlans/{vlanId}")
+func (client VirtualNetworkClient) deleteVlan(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/vlans/{vlanId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -4934,8 +5419,9 @@ func (client VirtualNetworkClient) DetachServiceId(ctx context.Context, request 
 }
 
 // detachServiceId implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) detachServiceId(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/serviceGateways/{serviceGatewayId}/actions/detachService")
+func (client VirtualNetworkClient) detachServiceId(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/serviceGateways/{serviceGatewayId}/actions/detachService", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -4953,7 +5439,62 @@ func (client VirtualNetworkClient) detachServiceId(ctx context.Context, request 
 	return response, err
 }
 
-// GetByoipRange Gets the specified Byoip Range object. You must specify the object's OCID.
+// GetAllDrgAttachments Returns a complete list of DRG attachments that belong to a particular DRG.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/GetAllDrgAttachments.go.html to see an example of how to use GetAllDrgAttachments API.
+func (client VirtualNetworkClient) GetAllDrgAttachments(ctx context.Context, request GetAllDrgAttachmentsRequest) (response GetAllDrgAttachmentsResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.getAllDrgAttachments, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = GetAllDrgAttachmentsResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = GetAllDrgAttachmentsResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(GetAllDrgAttachmentsResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into GetAllDrgAttachmentsResponse")
+	}
+	return
+}
+
+// getAllDrgAttachments implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) getAllDrgAttachments(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/drgs/{drgId}/actions/getAllDrgAttachments", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetAllDrgAttachmentsResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// GetByoipRange Gets the `ByoipRange` resource. You must specify the OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm).
 //
 // See also
 //
@@ -4988,8 +5529,9 @@ func (client VirtualNetworkClient) GetByoipRange(ctx context.Context, request Ge
 }
 
 // getByoipRange implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getByoipRange(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/byoipRanges/{byoipRangeId}")
+func (client VirtualNetworkClient) getByoipRange(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/byoipRanges/{byoipRangeId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -5042,8 +5584,9 @@ func (client VirtualNetworkClient) GetCpe(ctx context.Context, request GetCpeReq
 }
 
 // getCpe implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getCpe(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/cpes/{cpeId}")
+func (client VirtualNetworkClient) getCpe(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/cpes/{cpeId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -5110,8 +5653,9 @@ func (client VirtualNetworkClient) GetCpeDeviceConfigContent(ctx context.Context
 }
 
 // getCpeDeviceConfigContent implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getCpeDeviceConfigContent(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/cpes/{cpeId}/cpeConfigContent")
+func (client VirtualNetworkClient) getCpeDeviceConfigContent(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/cpes/{cpeId}/cpeConfigContent", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -5170,8 +5714,9 @@ func (client VirtualNetworkClient) GetCpeDeviceShape(ctx context.Context, reques
 }
 
 // getCpeDeviceShape implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getCpeDeviceShape(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/cpeDeviceShapes/{cpeDeviceShapeId}")
+func (client VirtualNetworkClient) getCpeDeviceShape(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/cpeDeviceShapes/{cpeDeviceShapeId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -5224,8 +5769,9 @@ func (client VirtualNetworkClient) GetCrossConnect(ctx context.Context, request 
 }
 
 // getCrossConnect implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getCrossConnect(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/crossConnects/{crossConnectId}")
+func (client VirtualNetworkClient) getCrossConnect(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/crossConnects/{crossConnectId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -5278,8 +5824,9 @@ func (client VirtualNetworkClient) GetCrossConnectGroup(ctx context.Context, req
 }
 
 // getCrossConnectGroup implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getCrossConnectGroup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/crossConnectGroups/{crossConnectGroupId}")
+func (client VirtualNetworkClient) getCrossConnectGroup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/crossConnectGroups/{crossConnectGroupId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -5332,8 +5879,9 @@ func (client VirtualNetworkClient) GetCrossConnectLetterOfAuthority(ctx context.
 }
 
 // getCrossConnectLetterOfAuthority implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getCrossConnectLetterOfAuthority(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/crossConnects/{crossConnectId}/letterOfAuthority")
+func (client VirtualNetworkClient) getCrossConnectLetterOfAuthority(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/crossConnects/{crossConnectId}/letterOfAuthority", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -5386,8 +5934,9 @@ func (client VirtualNetworkClient) GetCrossConnectStatus(ctx context.Context, re
 }
 
 // getCrossConnectStatus implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getCrossConnectStatus(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/crossConnects/{crossConnectId}/status")
+func (client VirtualNetworkClient) getCrossConnectStatus(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/crossConnects/{crossConnectId}/status", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -5440,8 +5989,9 @@ func (client VirtualNetworkClient) GetDhcpOptions(ctx context.Context, request G
 }
 
 // getDhcpOptions implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getDhcpOptions(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/dhcps/{dhcpId}")
+func (client VirtualNetworkClient) getDhcpOptions(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/dhcps/{dhcpId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -5494,8 +6044,9 @@ func (client VirtualNetworkClient) GetDrg(ctx context.Context, request GetDrgReq
 }
 
 // getDrg implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getDrg(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/drgs/{drgId}")
+func (client VirtualNetworkClient) getDrg(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/drgs/{drgId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -5513,7 +6064,7 @@ func (client VirtualNetworkClient) getDrg(ctx context.Context, request common.OC
 	return response, err
 }
 
-// GetDrgAttachment Gets the information for the specified `DrgAttachment`.
+// GetDrgAttachment Gets the `DrgAttachment` resource.
 //
 // See also
 //
@@ -5548,8 +6099,9 @@ func (client VirtualNetworkClient) GetDrgAttachment(ctx context.Context, request
 }
 
 // getDrgAttachment implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getDrgAttachment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/drgAttachments/{drgAttachmentId}")
+func (client VirtualNetworkClient) getDrgAttachment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/drgAttachments/{drgAttachmentId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -5568,7 +6120,7 @@ func (client VirtualNetworkClient) getDrgAttachment(ctx context.Context, request
 }
 
 // GetDrgRedundancyStatus Gets the redundancy status for the specified DRG. For more information, see
-// Redundancy Remedies (https://docs.cloud.oracle.com/Content/Network/Troubleshoot/drgredundancy.htm).
+// Redundancy Remedies (https://docs.cloud.oracle.com/iaas/Content/Network/Troubleshoot/drgredundancy.htm).
 //
 // See also
 //
@@ -5603,8 +6155,9 @@ func (client VirtualNetworkClient) GetDrgRedundancyStatus(ctx context.Context, r
 }
 
 // getDrgRedundancyStatus implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getDrgRedundancyStatus(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/drgs/{drgId}/redundancyStatus")
+func (client VirtualNetworkClient) getDrgRedundancyStatus(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/drgs/{drgId}/redundancyStatus", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -5622,8 +6175,118 @@ func (client VirtualNetworkClient) getDrgRedundancyStatus(ctx context.Context, r
 	return response, err
 }
 
+// GetDrgRouteDistribution Gets the specified route distribution's information.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/GetDrgRouteDistribution.go.html to see an example of how to use GetDrgRouteDistribution API.
+func (client VirtualNetworkClient) GetDrgRouteDistribution(ctx context.Context, request GetDrgRouteDistributionRequest) (response GetDrgRouteDistributionResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.getDrgRouteDistribution, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = GetDrgRouteDistributionResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = GetDrgRouteDistributionResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(GetDrgRouteDistributionResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into GetDrgRouteDistributionResponse")
+	}
+	return
+}
+
+// getDrgRouteDistribution implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) getDrgRouteDistribution(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/drgRouteDistributions/{drgRouteDistributionId}", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetDrgRouteDistributionResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// GetDrgRouteTable Gets the specified DRG route table's information.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/GetDrgRouteTable.go.html to see an example of how to use GetDrgRouteTable API.
+func (client VirtualNetworkClient) GetDrgRouteTable(ctx context.Context, request GetDrgRouteTableRequest) (response GetDrgRouteTableResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.getDrgRouteTable, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = GetDrgRouteTableResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = GetDrgRouteTableResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(GetDrgRouteTableResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into GetDrgRouteTableResponse")
+	}
+	return
+}
+
+// getDrgRouteTable implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) getDrgRouteTable(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/drgRouteTables/{drgRouteTableId}", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetDrgRouteTableResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // GetFastConnectProviderService Gets the specified provider service.
-// For more information, see FastConnect Overview (https://docs.cloud.oracle.com/Content/Network/Concepts/fastconnect.htm).
+// For more information, see FastConnect Overview (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/fastconnect.htm).
 //
 // See also
 //
@@ -5658,8 +6321,9 @@ func (client VirtualNetworkClient) GetFastConnectProviderService(ctx context.Con
 }
 
 // getFastConnectProviderService implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getFastConnectProviderService(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/fastConnectProviderServices/{providerServiceId}")
+func (client VirtualNetworkClient) getFastConnectProviderService(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/fastConnectProviderServices/{providerServiceId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -5713,8 +6377,9 @@ func (client VirtualNetworkClient) GetFastConnectProviderServiceKey(ctx context.
 }
 
 // getFastConnectProviderServiceKey implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getFastConnectProviderServiceKey(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/fastConnectProviderServices/{providerServiceId}/providerServiceKeys/{providerServiceKeyName}")
+func (client VirtualNetworkClient) getFastConnectProviderServiceKey(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/fastConnectProviderServices/{providerServiceId}/providerServiceKeys/{providerServiceKeyName}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -5769,8 +6434,9 @@ func (client VirtualNetworkClient) GetIPSecConnection(ctx context.Context, reque
 }
 
 // getIPSecConnection implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getIPSecConnection(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/ipsecConnections/{ipscId}")
+func (client VirtualNetworkClient) getIPSecConnection(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/ipsecConnections/{ipscId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -5825,8 +6491,9 @@ func (client VirtualNetworkClient) GetIPSecConnectionDeviceConfig(ctx context.Co
 }
 
 // getIPSecConnectionDeviceConfig implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getIPSecConnectionDeviceConfig(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/ipsecConnections/{ipscId}/deviceConfig")
+func (client VirtualNetworkClient) getIPSecConnectionDeviceConfig(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/ipsecConnections/{ipscId}/deviceConfig", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -5880,8 +6547,9 @@ func (client VirtualNetworkClient) GetIPSecConnectionDeviceStatus(ctx context.Co
 }
 
 // getIPSecConnectionDeviceStatus implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getIPSecConnectionDeviceStatus(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/ipsecConnections/{ipscId}/deviceStatus")
+func (client VirtualNetworkClient) getIPSecConnectionDeviceStatus(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/ipsecConnections/{ipscId}/deviceStatus", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -5936,8 +6604,9 @@ func (client VirtualNetworkClient) GetIPSecConnectionTunnel(ctx context.Context,
 }
 
 // getIPSecConnectionTunnel implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getIPSecConnectionTunnel(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/ipsecConnections/{ipscId}/tunnels/{tunnelId}")
+func (client VirtualNetworkClient) getIPSecConnectionTunnel(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/ipsecConnections/{ipscId}/tunnels/{tunnelId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -5991,8 +6660,9 @@ func (client VirtualNetworkClient) GetIPSecConnectionTunnelSharedSecret(ctx cont
 }
 
 // getIPSecConnectionTunnelSharedSecret implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getIPSecConnectionTunnelSharedSecret(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/ipsecConnections/{ipscId}/tunnels/{tunnelId}/sharedSecret")
+func (client VirtualNetworkClient) getIPSecConnectionTunnelSharedSecret(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/ipsecConnections/{ipscId}/tunnels/{tunnelId}/sharedSecret", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -6045,8 +6715,9 @@ func (client VirtualNetworkClient) GetInternetGateway(ctx context.Context, reque
 }
 
 // getInternetGateway implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getInternetGateway(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/internetGateways/{igId}")
+func (client VirtualNetworkClient) getInternetGateway(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/internetGateways/{igId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -6114,8 +6785,9 @@ func (client VirtualNetworkClient) GetIpsecCpeDeviceConfigContent(ctx context.Co
 }
 
 // getIpsecCpeDeviceConfigContent implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getIpsecCpeDeviceConfigContent(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/ipsecConnections/{ipscId}/cpeConfigContent")
+func (client VirtualNetworkClient) getIpsecCpeDeviceConfigContent(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/ipsecConnections/{ipscId}/cpeConfigContent", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -6132,7 +6804,7 @@ func (client VirtualNetworkClient) getIpsecCpeDeviceConfigContent(ctx context.Co
 	return response, err
 }
 
-// GetIpv6 Gets the specified IPv6. You must specify the object's OCID.
+// GetIpv6 Gets the specified IPv6. You must specify the object's OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm).
 // Alternatively, you can get the object by using
 // ListIpv6s
 // with the IPv6 address (for example, 2001:0db8:0123:1111:98fe:dcba:9876:4321) and subnet OCID.
@@ -6170,8 +6842,9 @@ func (client VirtualNetworkClient) GetIpv6(ctx context.Context, request GetIpv6R
 }
 
 // getIpv6 implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getIpv6(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/ipv6/{ipv6Id}")
+func (client VirtualNetworkClient) getIpv6(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/ipv6/{ipv6Id}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -6224,8 +6897,9 @@ func (client VirtualNetworkClient) GetLocalPeeringGateway(ctx context.Context, r
 }
 
 // getLocalPeeringGateway implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getLocalPeeringGateway(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/localPeeringGateways/{localPeeringGatewayId}")
+func (client VirtualNetworkClient) getLocalPeeringGateway(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/localPeeringGateways/{localPeeringGatewayId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -6278,8 +6952,9 @@ func (client VirtualNetworkClient) GetNatGateway(ctx context.Context, request Ge
 }
 
 // getNatGateway implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getNatGateway(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/natGateways/{natGatewayId}")
+func (client VirtualNetworkClient) getNatGateway(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/natGateways/{natGatewayId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -6336,13 +7011,69 @@ func (client VirtualNetworkClient) GetNetworkSecurityGroup(ctx context.Context, 
 }
 
 // getNetworkSecurityGroup implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getNetworkSecurityGroup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/networkSecurityGroups/{networkSecurityGroupId}")
+func (client VirtualNetworkClient) getNetworkSecurityGroup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/networkSecurityGroups/{networkSecurityGroupId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
 
 	var response GetNetworkSecurityGroupResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// GetNetworkingTopology Gets a virtual networking topology for the current region.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/GetNetworkingTopology.go.html to see an example of how to use GetNetworkingTopology API.
+func (client VirtualNetworkClient) GetNetworkingTopology(ctx context.Context, request GetNetworkingTopologyRequest) (response GetNetworkingTopologyResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.getNetworkingTopology, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = GetNetworkingTopologyResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = GetNetworkingTopologyResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(GetNetworkingTopologyResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into GetNetworkingTopologyResponse")
+	}
+	return
+}
+
+// getNetworkingTopology implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) getNetworkingTopology(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/networkingTopology", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetNetworkingTopologyResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)
@@ -6393,8 +7124,9 @@ func (client VirtualNetworkClient) GetPrivateIp(ctx context.Context, request Get
 }
 
 // getPrivateIp implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getPrivateIp(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/privateIps/{privateIpId}")
+func (client VirtualNetworkClient) getPrivateIp(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/privateIps/{privateIpId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -6454,8 +7186,9 @@ func (client VirtualNetworkClient) GetPublicIp(ctx context.Context, request GetP
 }
 
 // getPublicIp implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getPublicIp(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/publicIps/{publicIpId}")
+func (client VirtualNetworkClient) getPublicIp(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/publicIps/{publicIpId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -6511,8 +7244,9 @@ func (client VirtualNetworkClient) GetPublicIpByIpAddress(ctx context.Context, r
 }
 
 // getPublicIpByIpAddress implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getPublicIpByIpAddress(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/publicIps/actions/getByIpAddress")
+func (client VirtualNetworkClient) getPublicIpByIpAddress(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/publicIps/actions/getByIpAddress", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -6574,8 +7308,9 @@ func (client VirtualNetworkClient) GetPublicIpByPrivateIpId(ctx context.Context,
 }
 
 // getPublicIpByPrivateIpId implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getPublicIpByPrivateIpId(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/publicIps/actions/getByPrivateIpId")
+func (client VirtualNetworkClient) getPublicIpByPrivateIpId(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/publicIps/actions/getByPrivateIpId", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -6593,7 +7328,7 @@ func (client VirtualNetworkClient) getPublicIpByPrivateIpId(ctx context.Context,
 	return response, err
 }
 
-// GetPublicIpPool Gets the specified Public Ip Pool object. You must specify the object's OCID.
+// GetPublicIpPool Gets the specified `PublicIpPool` object. You must specify the object's OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm).
 //
 // See also
 //
@@ -6628,8 +7363,9 @@ func (client VirtualNetworkClient) GetPublicIpPool(ctx context.Context, request 
 }
 
 // getPublicIpPool implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getPublicIpPool(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/publicIpPools/{publicIpPoolId}")
+func (client VirtualNetworkClient) getPublicIpPool(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/publicIpPools/{publicIpPoolId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -6682,8 +7418,9 @@ func (client VirtualNetworkClient) GetRemotePeeringConnection(ctx context.Contex
 }
 
 // getRemotePeeringConnection implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getRemotePeeringConnection(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/remotePeeringConnections/{remotePeeringConnectionId}")
+func (client VirtualNetworkClient) getRemotePeeringConnection(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/remotePeeringConnections/{remotePeeringConnectionId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -6736,8 +7473,9 @@ func (client VirtualNetworkClient) GetRouteTable(ctx context.Context, request Ge
 }
 
 // getRouteTable implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getRouteTable(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/routeTables/{rtId}")
+func (client VirtualNetworkClient) getRouteTable(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/routeTables/{rtId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -6790,8 +7528,9 @@ func (client VirtualNetworkClient) GetSecurityList(ctx context.Context, request 
 }
 
 // getSecurityList implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getSecurityList(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/securityLists/{securityListId}")
+func (client VirtualNetworkClient) getSecurityList(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/securityLists/{securityListId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -6844,8 +7583,9 @@ func (client VirtualNetworkClient) GetService(ctx context.Context, request GetSe
 }
 
 // getService implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getService(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/services/{serviceId}")
+func (client VirtualNetworkClient) getService(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/services/{serviceId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -6898,8 +7638,9 @@ func (client VirtualNetworkClient) GetServiceGateway(ctx context.Context, reques
 }
 
 // getServiceGateway implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getServiceGateway(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/serviceGateways/{serviceGatewayId}")
+func (client VirtualNetworkClient) getServiceGateway(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/serviceGateways/{serviceGatewayId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -6952,8 +7693,9 @@ func (client VirtualNetworkClient) GetSubnet(ctx context.Context, request GetSub
 }
 
 // getSubnet implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getSubnet(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/subnets/{subnetId}")
+func (client VirtualNetworkClient) getSubnet(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/subnets/{subnetId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -7010,8 +7752,9 @@ func (client VirtualNetworkClient) GetTunnelCpeDeviceConfig(ctx context.Context,
 }
 
 // getTunnelCpeDeviceConfig implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getTunnelCpeDeviceConfig(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/ipsecConnections/{ipscId}/tunnels/{tunnelId}/tunnelDeviceConfig")
+func (client VirtualNetworkClient) getTunnelCpeDeviceConfig(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/ipsecConnections/{ipscId}/tunnels/{tunnelId}/tunnelDeviceConfig", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -7078,8 +7821,9 @@ func (client VirtualNetworkClient) GetTunnelCpeDeviceConfigContent(ctx context.C
 }
 
 // getTunnelCpeDeviceConfigContent implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getTunnelCpeDeviceConfigContent(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/ipsecConnections/{ipscId}/tunnels/{tunnelId}/tunnelDeviceConfig/content")
+func (client VirtualNetworkClient) getTunnelCpeDeviceConfigContent(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/ipsecConnections/{ipscId}/tunnels/{tunnelId}/tunnelDeviceConfig/content", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -7087,6 +7831,61 @@ func (client VirtualNetworkClient) getTunnelCpeDeviceConfigContent(ctx context.C
 	var response GetTunnelCpeDeviceConfigContentResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// GetUpgradeStatus Returns the DRG upgrade status. The status can be not updated, in progress, or updated. Also indicates how much of the upgrade is completed.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/GetUpgradeStatus.go.html to see an example of how to use GetUpgradeStatus API.
+func (client VirtualNetworkClient) GetUpgradeStatus(ctx context.Context, request GetUpgradeStatusRequest) (response GetUpgradeStatusResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.getUpgradeStatus, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = GetUpgradeStatusResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = GetUpgradeStatusResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(GetUpgradeStatusResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into GetUpgradeStatusResponse")
+	}
+	return
+}
+
+// getUpgradeStatus implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) getUpgradeStatus(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/drgs/{drgId}/actions/upgradeStatus", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetUpgradeStatusResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
 	response.RawResponse = httpResponse
 	if err != nil {
 		return response, err
@@ -7131,8 +7930,9 @@ func (client VirtualNetworkClient) GetVcn(ctx context.Context, request GetVcnReq
 }
 
 // getVcn implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getVcn(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/vcns/{vcnId}")
+func (client VirtualNetworkClient) getVcn(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/vcns/{vcnId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -7185,13 +7985,69 @@ func (client VirtualNetworkClient) GetVcnDnsResolverAssociation(ctx context.Cont
 }
 
 // getVcnDnsResolverAssociation implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getVcnDnsResolverAssociation(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/vcns/{vcnId}/dnsResolverAssociation")
+func (client VirtualNetworkClient) getVcnDnsResolverAssociation(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/vcns/{vcnId}/dnsResolverAssociation", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
 
 	var response GetVcnDnsResolverAssociationResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// GetVcnTopology Gets a virtual network topology for a given VCN.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/GetVcnTopology.go.html to see an example of how to use GetVcnTopology API.
+func (client VirtualNetworkClient) GetVcnTopology(ctx context.Context, request GetVcnTopologyRequest) (response GetVcnTopologyResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.getVcnTopology, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = GetVcnTopologyResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = GetVcnTopologyResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(GetVcnTopologyResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into GetVcnTopologyResponse")
+	}
+	return
+}
+
+// getVcnTopology implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) getVcnTopology(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/vcnTopology", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetVcnTopologyResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)
@@ -7239,8 +8095,9 @@ func (client VirtualNetworkClient) GetVirtualCircuit(ctx context.Context, reques
 }
 
 // getVirtualCircuit implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getVirtualCircuit(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/virtualCircuits/{virtualCircuitId}")
+func (client VirtualNetworkClient) getVirtualCircuit(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/virtualCircuits/{virtualCircuitId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -7293,8 +8150,9 @@ func (client VirtualNetworkClient) GetVlan(ctx context.Context, request GetVlanR
 }
 
 // getVlan implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getVlan(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/vlans/{vlanId}")
+func (client VirtualNetworkClient) getVlan(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/vlans/{vlanId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -7350,8 +8208,9 @@ func (client VirtualNetworkClient) GetVnic(ctx context.Context, request GetVnicR
 }
 
 // getVnic implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) getVnic(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/vnics/{vnicId}")
+func (client VirtualNetworkClient) getVnic(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/vnics/{vnicId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -7370,7 +8229,7 @@ func (client VirtualNetworkClient) getVnic(ctx context.Context, request common.O
 }
 
 // ListAllowedPeerRegionsForRemotePeering Lists the regions that support remote VCN peering (which is peering across regions).
-// For more information, see VCN Peering (https://docs.cloud.oracle.com/Content/Network/Tasks/VCNpeering.htm).
+// For more information, see VCN Peering (https://docs.cloud.oracle.com/iaas/Content/Network/Tasks/VCNpeering.htm).
 //
 // See also
 //
@@ -7405,8 +8264,9 @@ func (client VirtualNetworkClient) ListAllowedPeerRegionsForRemotePeering(ctx co
 }
 
 // listAllowedPeerRegionsForRemotePeering implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listAllowedPeerRegionsForRemotePeering(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/allowedPeerRegionsForRemotePeering")
+func (client VirtualNetworkClient) listAllowedPeerRegionsForRemotePeering(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/allowedPeerRegionsForRemotePeering", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -7424,8 +8284,8 @@ func (client VirtualNetworkClient) listAllowedPeerRegionsForRemotePeering(ctx co
 	return response, err
 }
 
-// ListByoipAllocatedRanges Lists the ByoipAllocatedRange objects for the ByoipRange.
-// Each ByoipAllocatedRange object has a CIDR block part of the ByoipRange and the PublicIpPool it is assigned to.
+// ListByoipAllocatedRanges Lists the subranges of a BYOIP CIDR block currently allocated to an IP pool.
+// Each `ByoipAllocatedRange` object also lists the IP pool where it is allocated.
 //
 // See also
 //
@@ -7460,8 +8320,9 @@ func (client VirtualNetworkClient) ListByoipAllocatedRanges(ctx context.Context,
 }
 
 // listByoipAllocatedRanges implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listByoipAllocatedRanges(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/byoipRanges/{byoipRangeId}/byoipAllocatedRanges")
+func (client VirtualNetworkClient) listByoipAllocatedRanges(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/byoipRanges/{byoipRangeId}/byoipAllocatedRanges", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -7479,8 +8340,8 @@ func (client VirtualNetworkClient) listByoipAllocatedRanges(ctx context.Context,
 	return response, err
 }
 
-// ListByoipRanges Lists the ByoipRange objects in the specified compartment.
-// You can filter the list by using query parameters.
+// ListByoipRanges Lists the `ByoipRange` resources in the specified compartment.
+// You can filter the list using query parameters.
 //
 // See also
 //
@@ -7515,8 +8376,9 @@ func (client VirtualNetworkClient) ListByoipRanges(ctx context.Context, request 
 }
 
 // listByoipRanges implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listByoipRanges(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/byoipRanges")
+func (client VirtualNetworkClient) listByoipRanges(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/byoipRanges", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -7539,7 +8401,7 @@ func (client VirtualNetworkClient) listByoipRanges(ctx context.Context, request 
 // the actual CPE device represented by a Cpe object.
 // If you want to generate CPE configuration content for one of the returned CPE device types,
 // ensure that the Cpe object's `cpeDeviceShapeId` attribute is set
-// to the CPE device type's OCID (returned by this operation).
+// to the CPE device type's OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) (returned by this operation).
 // For information about generating CPE configuration content, see these operations:
 //   * GetCpeDeviceConfigContent
 //   * GetIpsecCpeDeviceConfigContent
@@ -7578,8 +8440,9 @@ func (client VirtualNetworkClient) ListCpeDeviceShapes(ctx context.Context, requ
 }
 
 // listCpeDeviceShapes implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listCpeDeviceShapes(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/cpeDeviceShapes")
+func (client VirtualNetworkClient) listCpeDeviceShapes(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/cpeDeviceShapes", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -7632,8 +8495,9 @@ func (client VirtualNetworkClient) ListCpes(ctx context.Context, request ListCpe
 }
 
 // listCpes implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listCpes(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/cpes")
+func (client VirtualNetworkClient) listCpes(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/cpes", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -7686,8 +8550,9 @@ func (client VirtualNetworkClient) ListCrossConnectGroups(ctx context.Context, r
 }
 
 // listCrossConnectGroups implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listCrossConnectGroups(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/crossConnectGroups")
+func (client VirtualNetworkClient) listCrossConnectGroups(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/crossConnectGroups", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -7741,8 +8606,9 @@ func (client VirtualNetworkClient) ListCrossConnectLocations(ctx context.Context
 }
 
 // listCrossConnectLocations implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listCrossConnectLocations(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/crossConnectLocations")
+func (client VirtualNetworkClient) listCrossConnectLocations(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/crossConnectLocations", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -7760,8 +8626,64 @@ func (client VirtualNetworkClient) listCrossConnectLocations(ctx context.Context
 	return response, err
 }
 
+// ListCrossConnectMappings Lists the Cross Connect mapping Details for the specified
+// virtual circuit.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/ListCrossConnectMappings.go.html to see an example of how to use ListCrossConnectMappings API.
+func (client VirtualNetworkClient) ListCrossConnectMappings(ctx context.Context, request ListCrossConnectMappingsRequest) (response ListCrossConnectMappingsResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listCrossConnectMappings, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = ListCrossConnectMappingsResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = ListCrossConnectMappingsResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListCrossConnectMappingsResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListCrossConnectMappingsResponse")
+	}
+	return
+}
+
+// listCrossConnectMappings implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) listCrossConnectMappings(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/virtualCircuits/{virtualCircuitId}/crossConnectMappings", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListCrossConnectMappingsResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // ListCrossConnects Lists the cross-connects in the specified compartment. You can filter the list
-// by specifying the OCID of a cross-connect group.
+// by specifying the OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of a cross-connect group.
 //
 // See also
 //
@@ -7796,8 +8718,9 @@ func (client VirtualNetworkClient) ListCrossConnects(ctx context.Context, reques
 }
 
 // listCrossConnects implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listCrossConnects(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/crossConnects")
+func (client VirtualNetworkClient) listCrossConnects(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/crossConnects", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -7852,8 +8775,9 @@ func (client VirtualNetworkClient) ListCrossconnectPortSpeedShapes(ctx context.C
 }
 
 // listCrossconnectPortSpeedShapes implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listCrossconnectPortSpeedShapes(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/crossConnectPortSpeedShapes")
+func (client VirtualNetworkClient) listCrossconnectPortSpeedShapes(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/crossConnectPortSpeedShapes", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -7909,8 +8833,9 @@ func (client VirtualNetworkClient) ListDhcpOptions(ctx context.Context, request 
 }
 
 // listDhcpOptions implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listDhcpOptions(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/dhcps")
+func (client VirtualNetworkClient) listDhcpOptions(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/dhcps", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -7928,8 +8853,11 @@ func (client VirtualNetworkClient) listDhcpOptions(ctx context.Context, request 
 	return response, err
 }
 
-// ListDrgAttachments Lists the `DrgAttachment` objects for the specified compartment. You can filter the
-// results by VCN or DRG.
+// ListDrgAttachments Lists the `DrgAttachment` resource for the specified compartment. You can filter the
+// results by DRG, attached network, attachment type, DRG route table or
+// VCN route table.
+// The LIST API lists DRG attachments by attachment type. It will default to list VCN attachments,
+// but you may request to list ALL attachments of ALL types.
 //
 // See also
 //
@@ -7964,13 +8892,237 @@ func (client VirtualNetworkClient) ListDrgAttachments(ctx context.Context, reque
 }
 
 // listDrgAttachments implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listDrgAttachments(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/drgAttachments")
+func (client VirtualNetworkClient) listDrgAttachments(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/drgAttachments", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
 
 	var response ListDrgAttachmentsResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ListDrgRouteDistributionStatements Lists the statements for the specified route distribution.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/ListDrgRouteDistributionStatements.go.html to see an example of how to use ListDrgRouteDistributionStatements API.
+func (client VirtualNetworkClient) ListDrgRouteDistributionStatements(ctx context.Context, request ListDrgRouteDistributionStatementsRequest) (response ListDrgRouteDistributionStatementsResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listDrgRouteDistributionStatements, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = ListDrgRouteDistributionStatementsResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = ListDrgRouteDistributionStatementsResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListDrgRouteDistributionStatementsResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListDrgRouteDistributionStatementsResponse")
+	}
+	return
+}
+
+// listDrgRouteDistributionStatements implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) listDrgRouteDistributionStatements(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/drgRouteDistributions/{drgRouteDistributionId}/drgRouteDistributionStatements", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListDrgRouteDistributionStatementsResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ListDrgRouteDistributions Lists the route distributions in the specified DRG.
+// To retrieve the statements in a distribution, use the
+// ListDrgRouteDistributionStatements operation.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/ListDrgRouteDistributions.go.html to see an example of how to use ListDrgRouteDistributions API.
+func (client VirtualNetworkClient) ListDrgRouteDistributions(ctx context.Context, request ListDrgRouteDistributionsRequest) (response ListDrgRouteDistributionsResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listDrgRouteDistributions, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = ListDrgRouteDistributionsResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = ListDrgRouteDistributionsResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListDrgRouteDistributionsResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListDrgRouteDistributionsResponse")
+	}
+	return
+}
+
+// listDrgRouteDistributions implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) listDrgRouteDistributions(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/drgRouteDistributions", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListDrgRouteDistributionsResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ListDrgRouteRules Lists the route rules in the specified DRG route table.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/ListDrgRouteRules.go.html to see an example of how to use ListDrgRouteRules API.
+func (client VirtualNetworkClient) ListDrgRouteRules(ctx context.Context, request ListDrgRouteRulesRequest) (response ListDrgRouteRulesResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listDrgRouteRules, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = ListDrgRouteRulesResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = ListDrgRouteRulesResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListDrgRouteRulesResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListDrgRouteRulesResponse")
+	}
+	return
+}
+
+// listDrgRouteRules implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) listDrgRouteRules(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/drgRouteTables/{drgRouteTableId}/drgRouteRules", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListDrgRouteRulesResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ListDrgRouteTables Lists the DRG route tables for the specified DRG.
+// Use the `ListDrgRouteRules` operation to retrieve the route rules in a table.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/ListDrgRouteTables.go.html to see an example of how to use ListDrgRouteTables API.
+func (client VirtualNetworkClient) ListDrgRouteTables(ctx context.Context, request ListDrgRouteTablesRequest) (response ListDrgRouteTablesResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listDrgRouteTables, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = ListDrgRouteTablesResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = ListDrgRouteTablesResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListDrgRouteTablesResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListDrgRouteTablesResponse")
+	}
+	return
+}
+
+// listDrgRouteTables implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) listDrgRouteTables(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/drgRouteTables", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListDrgRouteTablesResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)
@@ -8018,8 +9170,9 @@ func (client VirtualNetworkClient) ListDrgs(ctx context.Context, request ListDrg
 }
 
 // listDrgs implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listDrgs(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/drgs")
+func (client VirtualNetworkClient) listDrgs(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/drgs", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -8040,8 +9193,8 @@ func (client VirtualNetworkClient) listDrgs(ctx context.Context, request common.
 // ListFastConnectProviderServices Lists the service offerings from supported providers. You need this
 // information so you can specify your desired provider and service
 // offering when you create a virtual circuit.
-// For the compartment ID, provide the OCID of your tenancy (the root compartment).
-// For more information, see FastConnect Overview (https://docs.cloud.oracle.com/Content/Network/Concepts/fastconnect.htm).
+// For the compartment ID, provide the OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of your tenancy (the root compartment).
+// For more information, see FastConnect Overview (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/fastconnect.htm).
 //
 // See also
 //
@@ -8076,8 +9229,9 @@ func (client VirtualNetworkClient) ListFastConnectProviderServices(ctx context.C
 }
 
 // listFastConnectProviderServices implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listFastConnectProviderServices(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/fastConnectProviderServices")
+func (client VirtualNetworkClient) listFastConnectProviderServices(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/fastConnectProviderServices", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -8097,7 +9251,7 @@ func (client VirtualNetworkClient) listFastConnectProviderServices(ctx context.C
 
 // ListFastConnectProviderVirtualCircuitBandwidthShapes Gets the list of available virtual circuit bandwidth levels for a provider.
 // You need this information so you can specify your desired bandwidth level (shape) when you create a virtual circuit.
-// For more information about virtual circuits, see FastConnect Overview (https://docs.cloud.oracle.com/Content/Network/Concepts/fastconnect.htm).
+// For more information about virtual circuits, see FastConnect Overview (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/fastconnect.htm).
 //
 // See also
 //
@@ -8132,8 +9286,9 @@ func (client VirtualNetworkClient) ListFastConnectProviderVirtualCircuitBandwidt
 }
 
 // listFastConnectProviderVirtualCircuitBandwidthShapes implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listFastConnectProviderVirtualCircuitBandwidthShapes(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/fastConnectProviderServices/{providerServiceId}/virtualCircuitBandwidthShapes")
+func (client VirtualNetworkClient) listFastConnectProviderVirtualCircuitBandwidthShapes(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/fastConnectProviderServices/{providerServiceId}/virtualCircuitBandwidthShapes", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -8186,8 +9341,9 @@ func (client VirtualNetworkClient) ListIPSecConnectionTunnels(ctx context.Contex
 }
 
 // listIPSecConnectionTunnels implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listIPSecConnectionTunnels(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/ipsecConnections/{ipscId}/tunnels")
+func (client VirtualNetworkClient) listIPSecConnectionTunnels(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/ipsecConnections/{ipscId}/tunnels", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -8241,8 +9397,9 @@ func (client VirtualNetworkClient) ListIPSecConnections(ctx context.Context, req
 }
 
 // listIPSecConnections implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listIPSecConnections(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/ipsecConnections")
+func (client VirtualNetworkClient) listIPSecConnections(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/ipsecConnections", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -8296,8 +9453,9 @@ func (client VirtualNetworkClient) ListInternetGateways(ctx context.Context, req
 }
 
 // listInternetGateways implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listInternetGateways(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/internetGateways")
+func (client VirtualNetworkClient) listInternetGateways(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/internetGateways", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -8356,8 +9514,9 @@ func (client VirtualNetworkClient) ListIpv6s(ctx context.Context, request ListIp
 }
 
 // listIpv6s implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listIpv6s(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/ipv6")
+func (client VirtualNetworkClient) listIpv6s(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/ipv6", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -8411,8 +9570,9 @@ func (client VirtualNetworkClient) ListLocalPeeringGateways(ctx context.Context,
 }
 
 // listLocalPeeringGateways implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listLocalPeeringGateways(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/localPeeringGateways")
+func (client VirtualNetworkClient) listLocalPeeringGateways(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/localPeeringGateways", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -8466,8 +9626,9 @@ func (client VirtualNetworkClient) ListNatGateways(ctx context.Context, request 
 }
 
 // listNatGateways implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listNatGateways(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/natGateways")
+func (client VirtualNetworkClient) listNatGateways(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/natGateways", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -8520,8 +9681,9 @@ func (client VirtualNetworkClient) ListNetworkSecurityGroupSecurityRules(ctx con
 }
 
 // listNetworkSecurityGroupSecurityRules implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listNetworkSecurityGroupSecurityRules(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/networkSecurityGroups/{networkSecurityGroupId}/securityRules")
+func (client VirtualNetworkClient) listNetworkSecurityGroupSecurityRules(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/networkSecurityGroups/{networkSecurityGroupId}/securityRules", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -8574,8 +9736,9 @@ func (client VirtualNetworkClient) ListNetworkSecurityGroupVnics(ctx context.Con
 }
 
 // listNetworkSecurityGroupVnics implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listNetworkSecurityGroupVnics(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/networkSecurityGroups/{networkSecurityGroupId}/vnics")
+func (client VirtualNetworkClient) listNetworkSecurityGroupVnics(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/networkSecurityGroups/{networkSecurityGroupId}/vnics", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -8593,7 +9756,8 @@ func (client VirtualNetworkClient) listNetworkSecurityGroupVnics(ctx context.Con
 	return response, err
 }
 
-// ListNetworkSecurityGroups Lists the network security groups in the specified compartment.
+// ListNetworkSecurityGroups Lists either the network security groups in the specified compartment, or those associated with the specified VLAN.
+// You must specify either a `vlanId` or a `compartmentId`, but not both. If you specify a `vlanId`, all other parameters are ignored.
 //
 // See also
 //
@@ -8628,8 +9792,9 @@ func (client VirtualNetworkClient) ListNetworkSecurityGroups(ctx context.Context
 }
 
 // listNetworkSecurityGroups implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listNetworkSecurityGroups(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/networkSecurityGroups")
+func (client VirtualNetworkClient) listNetworkSecurityGroups(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/networkSecurityGroups", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -8694,8 +9859,9 @@ func (client VirtualNetworkClient) ListPrivateIps(ctx context.Context, request L
 }
 
 // listPrivateIps implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listPrivateIps(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/privateIps")
+func (client VirtualNetworkClient) listPrivateIps(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/privateIps", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -8713,8 +9879,8 @@ func (client VirtualNetworkClient) listPrivateIps(ctx context.Context, request c
 	return response, err
 }
 
-// ListPublicIpPools Lists the PublicIpPool objects in the specified compartment.
-// You can filter the list by using query parameters.
+// ListPublicIpPools Lists the public IP pools in the specified compartment.
+// You can filter the list using query parameters.
 //
 // See also
 //
@@ -8749,8 +9915,9 @@ func (client VirtualNetworkClient) ListPublicIpPools(ctx context.Context, reques
 }
 
 // listPublicIpPools implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listPublicIpPools(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/publicIpPools")
+func (client VirtualNetworkClient) listPublicIpPools(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/publicIpPools", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -8818,8 +9985,9 @@ func (client VirtualNetworkClient) ListPublicIps(ctx context.Context, request Li
 }
 
 // listPublicIps implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listPublicIps(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/publicIps")
+func (client VirtualNetworkClient) listPublicIps(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/publicIps", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -8873,8 +10041,9 @@ func (client VirtualNetworkClient) ListRemotePeeringConnections(ctx context.Cont
 }
 
 // listRemotePeeringConnections implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listRemotePeeringConnections(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/remotePeeringConnections")
+func (client VirtualNetworkClient) listRemotePeeringConnections(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/remotePeeringConnections", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -8930,8 +10099,9 @@ func (client VirtualNetworkClient) ListRouteTables(ctx context.Context, request 
 }
 
 // listRouteTables implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listRouteTables(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/routeTables")
+func (client VirtualNetworkClient) listRouteTables(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/routeTables", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -8985,8 +10155,9 @@ func (client VirtualNetworkClient) ListSecurityLists(ctx context.Context, reques
 }
 
 // listSecurityLists implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listSecurityLists(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/securityLists")
+func (client VirtualNetworkClient) listSecurityLists(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/securityLists", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -9040,8 +10211,9 @@ func (client VirtualNetworkClient) ListServiceGateways(ctx context.Context, requ
 }
 
 // listServiceGateways implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listServiceGateways(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/serviceGateways")
+func (client VirtualNetworkClient) listServiceGateways(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/serviceGateways", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -9095,8 +10267,9 @@ func (client VirtualNetworkClient) ListServices(ctx context.Context, request Lis
 }
 
 // listServices implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listServices(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/services")
+func (client VirtualNetworkClient) listServices(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/services", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -9150,8 +10323,9 @@ func (client VirtualNetworkClient) ListSubnets(ctx context.Context, request List
 }
 
 // listSubnets implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listSubnets(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/subnets")
+func (client VirtualNetworkClient) listSubnets(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/subnets", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -9204,8 +10378,9 @@ func (client VirtualNetworkClient) ListVcns(ctx context.Context, request ListVcn
 }
 
 // listVcns implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listVcns(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/vcns")
+func (client VirtualNetworkClient) listVcns(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/vcns", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -9258,8 +10433,9 @@ func (client VirtualNetworkClient) ListVirtualCircuitBandwidthShapes(ctx context
 }
 
 // listVirtualCircuitBandwidthShapes implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listVirtualCircuitBandwidthShapes(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/virtualCircuitBandwidthShapes")
+func (client VirtualNetworkClient) listVirtualCircuitBandwidthShapes(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/virtualCircuitBandwidthShapes", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -9313,8 +10489,9 @@ func (client VirtualNetworkClient) ListVirtualCircuitPublicPrefixes(ctx context.
 }
 
 // listVirtualCircuitPublicPrefixes implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listVirtualCircuitPublicPrefixes(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/virtualCircuits/{virtualCircuitId}/publicPrefixes")
+func (client VirtualNetworkClient) listVirtualCircuitPublicPrefixes(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/virtualCircuits/{virtualCircuitId}/publicPrefixes", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -9367,8 +10544,9 @@ func (client VirtualNetworkClient) ListVirtualCircuits(ctx context.Context, requ
 }
 
 // listVirtualCircuits implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listVirtualCircuits(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/virtualCircuits")
+func (client VirtualNetworkClient) listVirtualCircuits(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/virtualCircuits", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -9421,8 +10599,9 @@ func (client VirtualNetworkClient) ListVlans(ctx context.Context, request ListVl
 }
 
 // listVlans implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) listVlans(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/vlans")
+func (client VirtualNetworkClient) listVlans(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/vlans", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -9440,13 +10619,13 @@ func (client VirtualNetworkClient) listVlans(ctx context.Context, request common
 	return response, err
 }
 
-// ModifyVcnCidr Update a CIDR from a VCN. The new CIDR must maintain the following rules -
-// a. The CIDR provided is valid
-// b. The new CIDR range should not overlap with any existing CIDRs
-// c. The new CIDR should not exceed the max limit of CIDRs per VCNs
-// d. The new CIDR range does not overlap with any peered VCNs
-// e. The new CIDR should overlap with any existing route rule within a VCN
-// f. All existing subnet CIDRs are subsets of the updated CIDR ranges
+// ModifyVcnCidr Updates the specified CIDR block of a VCN. The new CIDR IP range must meet the following criteria:
+// - Must be valid.
+// - Must not overlap with another CIDR block in the VCN, a CIDR block of a peered VCN, or the on-premises network CIDR block.
+// - Must not exceed the limit of CIDR blocks allowed per VCN.
+// - Must include IP addresses from the original CIDR block that are used in the VCN's existing route rules.
+// - No IP address in an existing subnet should be outside of the new CIDR block range.
+// **Note:** Modifying a CIDR block places your VCN in an updating state until the changes are complete. You cannot create or update the VCN's subnets, VLANs, LPGs, or route tables during this operation. The time to completion can vary depending on the size of your network. Updating a small network could take about a minute, and updating a large network could take up to an hour. You can use the `GetWorkRequest` operation to check the status of the update.
 //
 // See also
 //
@@ -9486,13 +10665,235 @@ func (client VirtualNetworkClient) ModifyVcnCidr(ctx context.Context, request Mo
 }
 
 // modifyVcnCidr implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) modifyVcnCidr(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/vcns/{vcnId}/actions/modifyCidr")
+func (client VirtualNetworkClient) modifyVcnCidr(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/vcns/{vcnId}/actions/modifyCidr", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
 
 	var response ModifyVcnCidrResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// RemoveDrgRouteDistributionStatements Removes one or more route distribution statements from the specified route distribution's map.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/RemoveDrgRouteDistributionStatements.go.html to see an example of how to use RemoveDrgRouteDistributionStatements API.
+func (client VirtualNetworkClient) RemoveDrgRouteDistributionStatements(ctx context.Context, request RemoveDrgRouteDistributionStatementsRequest) (response RemoveDrgRouteDistributionStatementsResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.removeDrgRouteDistributionStatements, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = RemoveDrgRouteDistributionStatementsResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = RemoveDrgRouteDistributionStatementsResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(RemoveDrgRouteDistributionStatementsResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into RemoveDrgRouteDistributionStatementsResponse")
+	}
+	return
+}
+
+// removeDrgRouteDistributionStatements implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) removeDrgRouteDistributionStatements(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/drgRouteDistributions/{drgRouteDistributionId}/actions/removeDrgRouteDistributionStatements", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response RemoveDrgRouteDistributionStatementsResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// RemoveDrgRouteRules Removes one or more route rules from the specified DRG route table.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/RemoveDrgRouteRules.go.html to see an example of how to use RemoveDrgRouteRules API.
+func (client VirtualNetworkClient) RemoveDrgRouteRules(ctx context.Context, request RemoveDrgRouteRulesRequest) (response RemoveDrgRouteRulesResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.removeDrgRouteRules, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = RemoveDrgRouteRulesResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = RemoveDrgRouteRulesResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(RemoveDrgRouteRulesResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into RemoveDrgRouteRulesResponse")
+	}
+	return
+}
+
+// removeDrgRouteRules implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) removeDrgRouteRules(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/drgRouteTables/{drgRouteTableId}/actions/removeDrgRouteRules", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response RemoveDrgRouteRulesResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// RemoveExportDrgRouteDistribution Removes the export route distribution from the DRG attachment so no routes are advertised to it.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/RemoveExportDrgRouteDistribution.go.html to see an example of how to use RemoveExportDrgRouteDistribution API.
+func (client VirtualNetworkClient) RemoveExportDrgRouteDistribution(ctx context.Context, request RemoveExportDrgRouteDistributionRequest) (response RemoveExportDrgRouteDistributionResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.removeExportDrgRouteDistribution, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = RemoveExportDrgRouteDistributionResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = RemoveExportDrgRouteDistributionResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(RemoveExportDrgRouteDistributionResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into RemoveExportDrgRouteDistributionResponse")
+	}
+	return
+}
+
+// removeExportDrgRouteDistribution implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) removeExportDrgRouteDistribution(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/drgAttachments/{drgAttachmentId}/actions/removeExportDrgRouteDistribution", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response RemoveExportDrgRouteDistributionResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// RemoveImportDrgRouteDistribution Removes the import route distribution from the DRG route table so no routes are imported
+// into it.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/RemoveImportDrgRouteDistribution.go.html to see an example of how to use RemoveImportDrgRouteDistribution API.
+func (client VirtualNetworkClient) RemoveImportDrgRouteDistribution(ctx context.Context, request RemoveImportDrgRouteDistributionRequest) (response RemoveImportDrgRouteDistributionResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.removeImportDrgRouteDistribution, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = RemoveImportDrgRouteDistributionResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = RemoveImportDrgRouteDistributionResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(RemoveImportDrgRouteDistributionResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into RemoveImportDrgRouteDistributionResponse")
+	}
+	return
+}
+
+// removeImportDrgRouteDistribution implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) removeImportDrgRouteDistribution(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/drgRouteTables/{drgRouteTableId}/actions/removeImportDrgRouteDistribution", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response RemoveImportDrgRouteDistributionResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)
@@ -9540,8 +10941,9 @@ func (client VirtualNetworkClient) RemoveNetworkSecurityGroupSecurityRules(ctx c
 }
 
 // removeNetworkSecurityGroupSecurityRules implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) removeNetworkSecurityGroupSecurityRules(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/networkSecurityGroups/{networkSecurityGroupId}/actions/removeSecurityRules")
+func (client VirtualNetworkClient) removeNetworkSecurityGroupSecurityRules(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/networkSecurityGroups/{networkSecurityGroupId}/actions/removeSecurityRules", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -9559,7 +10961,7 @@ func (client VirtualNetworkClient) removeNetworkSecurityGroupSecurityRules(ctx c
 	return response, err
 }
 
-// RemovePublicIpPoolCapacity Removes a Cidr from the referenced Public IP Pool.
+// RemovePublicIpPoolCapacity Removes a CIDR block from the referenced public IP pool.
 //
 // See also
 //
@@ -9599,8 +11001,9 @@ func (client VirtualNetworkClient) RemovePublicIpPoolCapacity(ctx context.Contex
 }
 
 // removePublicIpPoolCapacity implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) removePublicIpPoolCapacity(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/publicIpPools/{publicIpPoolId}/actions/removeCapacity")
+func (client VirtualNetworkClient) removePublicIpPoolCapacity(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/publicIpPools/{publicIpPoolId}/actions/removeCapacity", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -9618,8 +11021,10 @@ func (client VirtualNetworkClient) removePublicIpPoolCapacity(ctx context.Contex
 	return response, err
 }
 
-// RemoveVcnCidr Remove a CIDR from a VCN. The CIDR being removed should not have
-// any resources allocated from it.
+// RemoveVcnCidr Removes a specified CIDR block from a VCN.
+// **Notes:**
+// - You cannot remove a CIDR block if an IP address in its range is in use.
+// - Removing a CIDR block places your VCN in an updating state until the changes are complete. You cannot create or update the VCN's subnets, VLANs, LPGs, or route tables during this operation. The time to completion can take a few minutes. You can use the `GetWorkRequest` operation to check the status of the update.
 //
 // See also
 //
@@ -9659,8 +11064,9 @@ func (client VirtualNetworkClient) RemoveVcnCidr(ctx context.Context, request Re
 }
 
 // removeVcnCidr implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) removeVcnCidr(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/vcns/{vcnId}/actions/removeCidr")
+func (client VirtualNetworkClient) removeVcnCidr(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/vcns/{vcnId}/actions/removeCidr", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -9678,7 +11084,7 @@ func (client VirtualNetworkClient) removeVcnCidr(ctx context.Context, request co
 	return response, err
 }
 
-// UpdateByoipRange Updates the specified Byoip Range.
+// UpdateByoipRange Updates the tags or display name associated to the specified BYOIP CIDR block.
 //
 // See also
 //
@@ -9713,8 +11119,9 @@ func (client VirtualNetworkClient) UpdateByoipRange(ctx context.Context, request
 }
 
 // updateByoipRange implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateByoipRange(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/byoipRanges/{byoipRangeId}")
+func (client VirtualNetworkClient) updateByoipRange(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/byoipRanges/{byoipRangeId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -9768,8 +11175,9 @@ func (client VirtualNetworkClient) UpdateCpe(ctx context.Context, request Update
 }
 
 // updateCpe implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateCpe(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/cpes/{cpeId}")
+func (client VirtualNetworkClient) updateCpe(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/cpes/{cpeId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -9822,8 +11230,9 @@ func (client VirtualNetworkClient) UpdateCrossConnect(ctx context.Context, reque
 }
 
 // updateCrossConnect implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateCrossConnect(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/crossConnects/{crossConnectId}")
+func (client VirtualNetworkClient) updateCrossConnect(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/crossConnects/{crossConnectId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -9877,8 +11286,9 @@ func (client VirtualNetworkClient) UpdateCrossConnectGroup(ctx context.Context, 
 }
 
 // updateCrossConnectGroup implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateCrossConnectGroup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/crossConnectGroups/{crossConnectGroupId}")
+func (client VirtualNetworkClient) updateCrossConnectGroup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/crossConnectGroups/{crossConnectGroupId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -9933,8 +11343,9 @@ func (client VirtualNetworkClient) UpdateDhcpOptions(ctx context.Context, reques
 }
 
 // updateDhcpOptions implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateDhcpOptions(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/dhcps/{dhcpId}")
+func (client VirtualNetworkClient) updateDhcpOptions(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/dhcps/{dhcpId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -9987,8 +11398,9 @@ func (client VirtualNetworkClient) UpdateDrg(ctx context.Context, request Update
 }
 
 // updateDrg implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateDrg(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/drgs/{drgId}")
+func (client VirtualNetworkClient) updateDrg(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/drgs/{drgId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -10006,7 +11418,7 @@ func (client VirtualNetworkClient) updateDrg(ctx context.Context, request common
 	return response, err
 }
 
-// UpdateDrgAttachment Updates the display name for the specified `DrgAttachment`.
+// UpdateDrgAttachment Updates the display name and routing information for the specified `DrgAttachment`.
 // Avoid entering confidential information.
 //
 // See also
@@ -10042,13 +11454,234 @@ func (client VirtualNetworkClient) UpdateDrgAttachment(ctx context.Context, requ
 }
 
 // updateDrgAttachment implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateDrgAttachment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/drgAttachments/{drgAttachmentId}")
+func (client VirtualNetworkClient) updateDrgAttachment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/drgAttachments/{drgAttachmentId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
 
 	var response UpdateDrgAttachmentResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// UpdateDrgRouteDistribution Updates the specified route distribution
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/UpdateDrgRouteDistribution.go.html to see an example of how to use UpdateDrgRouteDistribution API.
+func (client VirtualNetworkClient) UpdateDrgRouteDistribution(ctx context.Context, request UpdateDrgRouteDistributionRequest) (response UpdateDrgRouteDistributionResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.updateDrgRouteDistribution, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = UpdateDrgRouteDistributionResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = UpdateDrgRouteDistributionResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(UpdateDrgRouteDistributionResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into UpdateDrgRouteDistributionResponse")
+	}
+	return
+}
+
+// updateDrgRouteDistribution implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) updateDrgRouteDistribution(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/drgRouteDistributions/{drgRouteDistributionId}", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response UpdateDrgRouteDistributionResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// UpdateDrgRouteDistributionStatements Updates one or more route distribution statements in the specified route distribution.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/UpdateDrgRouteDistributionStatements.go.html to see an example of how to use UpdateDrgRouteDistributionStatements API.
+func (client VirtualNetworkClient) UpdateDrgRouteDistributionStatements(ctx context.Context, request UpdateDrgRouteDistributionStatementsRequest) (response UpdateDrgRouteDistributionStatementsResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.updateDrgRouteDistributionStatements, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = UpdateDrgRouteDistributionStatementsResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = UpdateDrgRouteDistributionStatementsResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(UpdateDrgRouteDistributionStatementsResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into UpdateDrgRouteDistributionStatementsResponse")
+	}
+	return
+}
+
+// updateDrgRouteDistributionStatements implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) updateDrgRouteDistributionStatements(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/drgRouteDistributions/{drgRouteDistributionId}/actions/updateDrgRouteDistributionStatements", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response UpdateDrgRouteDistributionStatementsResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// UpdateDrgRouteRules Updates one or more route rules in the specified DRG route table.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/UpdateDrgRouteRules.go.html to see an example of how to use UpdateDrgRouteRules API.
+func (client VirtualNetworkClient) UpdateDrgRouteRules(ctx context.Context, request UpdateDrgRouteRulesRequest) (response UpdateDrgRouteRulesResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.updateDrgRouteRules, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = UpdateDrgRouteRulesResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = UpdateDrgRouteRulesResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(UpdateDrgRouteRulesResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into UpdateDrgRouteRulesResponse")
+	}
+	return
+}
+
+// updateDrgRouteRules implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) updateDrgRouteRules(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/drgRouteTables/{drgRouteTableId}/actions/updateDrgRouteRules", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response UpdateDrgRouteRulesResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// UpdateDrgRouteTable Updates the specified DRG route table.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/UpdateDrgRouteTable.go.html to see an example of how to use UpdateDrgRouteTable API.
+func (client VirtualNetworkClient) UpdateDrgRouteTable(ctx context.Context, request UpdateDrgRouteTableRequest) (response UpdateDrgRouteTableResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.updateDrgRouteTable, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = UpdateDrgRouteTableResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = UpdateDrgRouteTableResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(UpdateDrgRouteTableResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into UpdateDrgRouteTableResponse")
+	}
+	return
+}
+
+// updateDrgRouteTable implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) updateDrgRouteTable(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/drgRouteTables/{drgRouteTableId}", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response UpdateDrgRouteTableResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)
@@ -10098,8 +11731,9 @@ func (client VirtualNetworkClient) UpdateIPSecConnection(ctx context.Context, re
 }
 
 // updateIPSecConnection implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateIPSecConnection(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/ipsecConnections/{ipscId}")
+func (client VirtualNetworkClient) updateIPSecConnection(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/ipsecConnections/{ipscId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -10160,8 +11794,9 @@ func (client VirtualNetworkClient) UpdateIPSecConnectionTunnel(ctx context.Conte
 }
 
 // updateIPSecConnectionTunnel implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateIPSecConnectionTunnel(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/ipsecConnections/{ipscId}/tunnels/{tunnelId}")
+func (client VirtualNetworkClient) updateIPSecConnectionTunnel(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/ipsecConnections/{ipscId}/tunnels/{tunnelId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -10215,8 +11850,9 @@ func (client VirtualNetworkClient) UpdateIPSecConnectionTunnelSharedSecret(ctx c
 }
 
 // updateIPSecConnectionTunnelSharedSecret implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateIPSecConnectionTunnelSharedSecret(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/ipsecConnections/{ipscId}/tunnels/{tunnelId}/sharedSecret")
+func (client VirtualNetworkClient) updateIPSecConnectionTunnelSharedSecret(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/ipsecConnections/{ipscId}/tunnels/{tunnelId}/sharedSecret", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -10272,8 +11908,9 @@ func (client VirtualNetworkClient) UpdateInternetGateway(ctx context.Context, re
 }
 
 // updateInternetGateway implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateInternetGateway(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/internetGateways/{igId}")
+func (client VirtualNetworkClient) updateInternetGateway(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/internetGateways/{igId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -10331,8 +11968,9 @@ func (client VirtualNetworkClient) UpdateIpv6(ctx context.Context, request Updat
 }
 
 // updateIpv6 implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateIpv6(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/ipv6/{ipv6Id}")
+func (client VirtualNetworkClient) updateIpv6(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/ipv6/{ipv6Id}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -10385,8 +12023,9 @@ func (client VirtualNetworkClient) UpdateLocalPeeringGateway(ctx context.Context
 }
 
 // updateLocalPeeringGateway implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateLocalPeeringGateway(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/localPeeringGateways/{localPeeringGatewayId}")
+func (client VirtualNetworkClient) updateLocalPeeringGateway(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/localPeeringGateways/{localPeeringGatewayId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -10439,8 +12078,9 @@ func (client VirtualNetworkClient) UpdateNatGateway(ctx context.Context, request
 }
 
 // updateNatGateway implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateNatGateway(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/natGateways/{natGatewayId}")
+func (client VirtualNetworkClient) updateNatGateway(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/natGateways/{natGatewayId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -10503,8 +12143,9 @@ func (client VirtualNetworkClient) UpdateNetworkSecurityGroup(ctx context.Contex
 }
 
 // updateNetworkSecurityGroup implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateNetworkSecurityGroup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/networkSecurityGroups/{networkSecurityGroupId}")
+func (client VirtualNetworkClient) updateNetworkSecurityGroup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/networkSecurityGroups/{networkSecurityGroupId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -10557,8 +12198,9 @@ func (client VirtualNetworkClient) UpdateNetworkSecurityGroupSecurityRules(ctx c
 }
 
 // updateNetworkSecurityGroupSecurityRules implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateNetworkSecurityGroupSecurityRules(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/networkSecurityGroups/{networkSecurityGroupId}/actions/updateSecurityRules")
+func (client VirtualNetworkClient) updateNetworkSecurityGroupSecurityRules(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/networkSecurityGroups/{networkSecurityGroupId}/actions/updateSecurityRules", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -10618,8 +12260,9 @@ func (client VirtualNetworkClient) UpdatePrivateIp(ctx context.Context, request 
 }
 
 // updatePrivateIp implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updatePrivateIp(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/privateIps/{privateIpId}")
+func (client VirtualNetworkClient) updatePrivateIp(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/privateIps/{privateIpId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -10668,7 +12311,7 @@ func (client VirtualNetworkClient) updatePrivateIp(ctx context.Context, request 
 // a VNIC or instance can have. If you try to move a reserved public IP
 // to a VNIC or instance that has already reached its public IP limit, an error is
 // returned. For information about the public IP limits, see
-// Public IP Addresses (https://docs.cloud.oracle.com/Content/Network/Tasks/managingpublicIPs.htm).
+// Public IP Addresses (https://docs.cloud.oracle.com/iaas/Content/Network/Tasks/managingpublicIPs.htm).
 //
 // See also
 //
@@ -10703,8 +12346,9 @@ func (client VirtualNetworkClient) UpdatePublicIp(ctx context.Context, request U
 }
 
 // updatePublicIp implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updatePublicIp(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/publicIps/{publicIpId}")
+func (client VirtualNetworkClient) updatePublicIp(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/publicIps/{publicIpId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -10722,7 +12366,7 @@ func (client VirtualNetworkClient) updatePublicIp(ctx context.Context, request c
 	return response, err
 }
 
-// UpdatePublicIpPool Updates the specified Public Ip Pool.
+// UpdatePublicIpPool Updates the specified public IP pool.
 //
 // See also
 //
@@ -10757,8 +12401,9 @@ func (client VirtualNetworkClient) UpdatePublicIpPool(ctx context.Context, reque
 }
 
 // updatePublicIpPool implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updatePublicIpPool(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/publicIpPools/{publicIpPoolId}")
+func (client VirtualNetworkClient) updatePublicIpPool(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/publicIpPools/{publicIpPoolId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -10811,8 +12456,9 @@ func (client VirtualNetworkClient) UpdateRemotePeeringConnection(ctx context.Con
 }
 
 // updateRemotePeeringConnection implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateRemotePeeringConnection(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/remotePeeringConnections/{remotePeeringConnectionId}")
+func (client VirtualNetworkClient) updateRemotePeeringConnection(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/remotePeeringConnections/{remotePeeringConnectionId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -10867,8 +12513,9 @@ func (client VirtualNetworkClient) UpdateRouteTable(ctx context.Context, request
 }
 
 // updateRouteTable implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateRouteTable(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/routeTables/{rtId}")
+func (client VirtualNetworkClient) updateRouteTable(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/routeTables/{rtId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -10924,8 +12571,9 @@ func (client VirtualNetworkClient) UpdateSecurityList(ctx context.Context, reque
 }
 
 // updateSecurityList implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateSecurityList(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/securityLists/{securityListId}")
+func (client VirtualNetworkClient) updateSecurityList(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/securityLists/{securityListId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -10979,8 +12627,9 @@ func (client VirtualNetworkClient) UpdateServiceGateway(ctx context.Context, req
 }
 
 // updateServiceGateway implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateServiceGateway(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/serviceGateways/{serviceGatewayId}")
+func (client VirtualNetworkClient) updateServiceGateway(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/serviceGateways/{serviceGatewayId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -11033,8 +12682,9 @@ func (client VirtualNetworkClient) UpdateSubnet(ctx context.Context, request Upd
 }
 
 // updateSubnet implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateSubnet(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/subnets/{subnetId}")
+func (client VirtualNetworkClient) updateSubnet(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/subnets/{subnetId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -11094,8 +12744,9 @@ func (client VirtualNetworkClient) UpdateTunnelCpeDeviceConfig(ctx context.Conte
 }
 
 // updateTunnelCpeDeviceConfig implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateTunnelCpeDeviceConfig(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/ipsecConnections/{ipscId}/tunnels/{tunnelId}/tunnelDeviceConfig")
+func (client VirtualNetworkClient) updateTunnelCpeDeviceConfig(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/ipsecConnections/{ipscId}/tunnels/{tunnelId}/tunnelDeviceConfig", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -11148,8 +12799,9 @@ func (client VirtualNetworkClient) UpdateVcn(ctx context.Context, request Update
 }
 
 // updateVcn implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateVcn(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/vcns/{vcnId}")
+func (client VirtualNetworkClient) updateVcn(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/vcns/{vcnId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -11181,7 +12833,7 @@ func (client VirtualNetworkClient) updateVcn(ctx context.Context, request common
 // its state will return to PROVISIONED. Make sure you confirm that
 // the associated BGP session is back up. For more information
 // about the various states and how to test connectivity, see
-// FastConnect Overview (https://docs.cloud.oracle.com/Content/Network/Concepts/fastconnect.htm).
+// FastConnect Overview (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/fastconnect.htm).
 // To change the list of public IP prefixes for a public virtual circuit,
 // use BulkAddVirtualCircuitPublicPrefixes
 // and
@@ -11223,8 +12875,9 @@ func (client VirtualNetworkClient) UpdateVirtualCircuit(ctx context.Context, req
 }
 
 // updateVirtualCircuit implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateVirtualCircuit(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/virtualCircuits/{virtualCircuitId}")
+func (client VirtualNetworkClient) updateVirtualCircuit(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/virtualCircuits/{virtualCircuitId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -11242,9 +12895,8 @@ func (client VirtualNetworkClient) updateVirtualCircuit(ctx context.Context, req
 	return response, err
 }
 
-// UpdateVlan Updates the specified VLAN. This could result in changes to all
-// the VNICs in the VLAN, which can take time. During that transition
-// period, the VLAN will be in the UPDATING state.
+// UpdateVlan Updates the specified VLAN. Note that this operation might require changes to all
+// the VNICs in the VLAN, which can take a while. The VLAN will be in the UPDATING state until the changes are complete.
 //
 // See also
 //
@@ -11279,8 +12931,9 @@ func (client VirtualNetworkClient) UpdateVlan(ctx context.Context, request Updat
 }
 
 // updateVlan implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateVlan(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/vlans/{vlanId}")
+func (client VirtualNetworkClient) updateVlan(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/vlans/{vlanId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -11333,8 +12986,9 @@ func (client VirtualNetworkClient) UpdateVnic(ctx context.Context, request Updat
 }
 
 // updateVnic implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) updateVnic(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/vnics/{vnicId}")
+func (client VirtualNetworkClient) updateVnic(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/vnics/{vnicId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -11352,8 +13006,69 @@ func (client VirtualNetworkClient) updateVnic(ctx context.Context, request commo
 	return response, err
 }
 
-// ValidateByoipRange submit the Byoip Range for validation. This presumes the user has
-// updated their IP registry record in accordance to validation requirements
+// UpgradeDrg Upgrades the DRG. After upgrade, you can control routing inside your DRG
+// via DRG attachments, route distributions, and DRG route tables.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/UpgradeDrg.go.html to see an example of how to use UpgradeDrg API.
+func (client VirtualNetworkClient) UpgradeDrg(ctx context.Context, request UpgradeDrgRequest) (response UpgradeDrgResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.upgradeDrg, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = UpgradeDrgResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = UpgradeDrgResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(UpgradeDrgResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into UpgradeDrgResponse")
+	}
+	return
+}
+
+// upgradeDrg implements the OCIOperation interface (enables retrying operations)
+func (client VirtualNetworkClient) upgradeDrg(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/drgs/{drgId}/actions/upgrade", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response UpgradeDrgResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ValidateByoipRange Submits the BYOIP CIDR block you are importing for validation. Do not submit to Oracle for validation if you have not already
+// modified the information for the BYOIP CIDR block with your Regional Internet Registry. See To import a CIDR block (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/BYOIP.htm#import_cidr) for details.
 //
 // See also
 //
@@ -11388,8 +13103,9 @@ func (client VirtualNetworkClient) ValidateByoipRange(ctx context.Context, reque
 }
 
 // validateByoipRange implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) validateByoipRange(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/byoipRanges/{byoipRangeId}/actions/validate")
+func (client VirtualNetworkClient) validateByoipRange(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/byoipRanges/{byoipRangeId}/actions/validate", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -11407,7 +13123,7 @@ func (client VirtualNetworkClient) validateByoipRange(ctx context.Context, reque
 	return response, err
 }
 
-// WithdrawByoipRange stop route advertisements for the Byoip Range prefix.
+// WithdrawByoipRange Withdraws BGP route advertisement for the BYOIP CIDR block.
 //
 // See also
 //
@@ -11442,8 +13158,9 @@ func (client VirtualNetworkClient) WithdrawByoipRange(ctx context.Context, reque
 }
 
 // withdrawByoipRange implements the OCIOperation interface (enables retrying operations)
-func (client VirtualNetworkClient) withdrawByoipRange(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/byoipRanges/{byoipRangeId}/actions/withdraw")
+func (client VirtualNetworkClient) withdrawByoipRange(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/byoipRanges/{byoipRangeId}/actions/withdraw", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}

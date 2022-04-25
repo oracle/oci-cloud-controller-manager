@@ -50,7 +50,7 @@ type CreateServiceGatewayDetails struct {
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the route table the service gateway will use.
+	// The OCID of the route table the service gateway will use.
 	// If you don't specify a route table here, the service gateway is created without an associated route
 	// table. The Networking service does NOT automatically associate the attached VCN's default route table
 	// with the service gateway.

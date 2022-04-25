@@ -20,13 +20,13 @@ import (
 // VcnDnsResolverAssociation The information about the VCN and the DNS resolver in the association.
 type VcnDnsResolverAssociation struct {
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the VCN in the association.
+	// The OCID of the VCN in the association.
 	VcnId *string `mandatory:"true" json:"vcnId"`
 
 	// The current state of the association.
 	LifecycleState VcnDnsResolverAssociationLifecycleStateEnum `mandatory:"true" json:"lifecycleState"`
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the DNS resolver in the association.
+	// The OCID of the DNS resolver in the association.
 	DnsResolverId *string `mandatory:"false" json:"dnsResolverId"`
 }
 

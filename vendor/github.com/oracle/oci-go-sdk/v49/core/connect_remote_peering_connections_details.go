@@ -20,7 +20,7 @@ import (
 // ConnectRemotePeeringConnectionsDetails Information about the other remote peering connection (RPC).
 type ConnectRemotePeeringConnectionsDetails struct {
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the RPC you want to peer with.
+	// The OCID of the RPC you want to peer with.
 	PeerId *string `mandatory:"true" json:"peerId"`
 
 	// The name of the region that contains the RPC you want to peer with.

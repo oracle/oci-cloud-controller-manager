@@ -21,8 +21,7 @@ import (
 // UpdateComputeImageCapabilitySchemaDetails Create Image Capability Schema for an image.
 type UpdateComputeImageCapabilitySchemaDetails struct {
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
-	// Avoid entering confidential information.
+	// A user-friendly name for the compute image capability schema
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no

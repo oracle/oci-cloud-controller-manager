@@ -51,8 +51,7 @@ type InstancePool struct {
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
-	// Avoid entering confidential information.
+	// The user-friendly name. Does not have to be unique.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
@@ -62,18 +61,6 @@ type InstancePool struct {
 
 	// The load balancers attached to the instance pool.
 	LoadBalancers []InstancePoolLoadBalancerAttachment `mandatory:"false" json:"loadBalancers"`
-
-	// The last date and time the instance pool state was updated, in the format defined by RFC3339 (https://tools.ietf.org/html/rfc3339).
-	//         Example: `2016-08-25T21:10:29.600Z`
-	TimeStateUpdated *common.SDKTime `mandatory:"false" json:"timeStateUpdated"`
-
-	// A user-friendly formatter for the instance pool's instances. Instance displaynames follow the format.
-	// The formatter does not retroactively change instance's displaynames, only instance displaynames in the future follow the format
-	InstanceDisplayNameFormatter *string `mandatory:"false" json:"instanceDisplayNameFormatter"`
-
-	// A user-friendly formatter for the instance pool's instances. Instance hostnames follow the format.
-	// The formatter does not retroactively change instance's hostnames, only instance hostnames in the future follow the format
-	InstanceHostnameFormatter *string `mandatory:"false" json:"instanceHostnameFormatter"`
 }
 
 func (m InstancePool) String() string {

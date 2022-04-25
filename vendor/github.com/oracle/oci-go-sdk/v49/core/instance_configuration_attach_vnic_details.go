@@ -19,12 +19,9 @@ import (
 
 // InstanceConfigurationAttachVnicDetails The representation of InstanceConfigurationAttachVnicDetails
 type InstanceConfigurationAttachVnicDetails struct {
-
-	// Details for creating a new VNIC.
 	CreateVnicDetails *InstanceConfigurationCreateVnicDetails `mandatory:"false" json:"createVnicDetails"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
-	// Avoid entering confidential information.
+	// A user-friendly name for the attachment. Does not have to be unique, and it cannot be changed.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Which physical network interface card (NIC) the VNIC will use. Defaults to 0.

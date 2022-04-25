@@ -21,7 +21,7 @@ import (
 // see FastConnect Overview (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/fastconnect.htm).
 type FastConnectProviderService struct {
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the service offered by the provider.
+	// The OCID of the service offered by the provider.
 	Id *string `mandatory:"true" json:"id"`
 
 	// Who is responsible for managing the private peering BGP information.

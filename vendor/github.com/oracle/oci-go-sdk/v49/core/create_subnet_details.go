@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2021, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -14,7 +14,7 @@
 package core
 
 import (
-	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v49/common"
 )
 
 // CreateSubnetDetails The representation of CreateSubnetDetails
@@ -45,7 +45,7 @@ type CreateSubnetDetails struct {
 	AvailabilityDomain *string `mandatory:"false" json:"availabilityDomain"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a
-	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -53,7 +53,8 @@ type CreateSubnetDetails struct {
 	// provide a value, the subnet uses the VCN's default set of DHCP options.
 	DhcpOptionsId *string `mandatory:"false" json:"dhcpOptionsId"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable. Avoid entering confidential information.
+	// A user-friendly name. Does not have to be unique, and it's changeable.
+	// Avoid entering confidential information.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// A DNS label for the subnet, used in conjunction with the VNIC's hostname and
@@ -65,21 +66,29 @@ type CreateSubnetDetails struct {
 	// hostnames of instances in the subnet. It can only be set if the VCN itself
 	// was created with a DNS label.
 	// For more information, see
-	// DNS in Your Virtual Cloud Network (https://docs.cloud.oracle.com/Content/Network/Concepts/dns.htm).
+	// DNS in Your Virtual Cloud Network (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/dns.htm).
 	// Example: `subnet123`
 	DnsLabel *string `mandatory:"false" json:"dnsLabel"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
-	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
 	// Use this to enable IPv6 addressing for this subnet. The VCN must be enabled for IPv6.
 	// You can't change this subnet characteristic later. All subnets are /64 in size. The subnet
 	// portion of the IPv6 address is the fourth hextet from the left (1111 in the following example).
-	// For important details about IPv6 addressing in a VCN, see IPv6 Addresses (https://docs.cloud.oracle.com/Content/Network/Concepts/ipv6.htm).
+	// For important details about IPv6 addressing in a VCN, see IPv6 Addresses (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/ipv6.htm).
 	// Example: `2001:0db8:0123:1111::/64`
 	Ipv6CidrBlock *string `mandatory:"false" json:"ipv6CidrBlock"`
+
+	// Whether to disallow ingress internet traffic to VNICs within this subnet. Defaults to false.
+	// For IPv6, if `prohibitInternetIngress` is set to `true`, internet access is not allowed for any
+	// IPv6s assigned to VNICs in the subnet. Otherwise, ingress internet traffic is allowed by default.
+	// `prohibitPublicIpOnVnic` will be set to the value of `prohibitInternetIngress` to dictate IPv4
+	// behavior in this subnet. Only one or the other flag should be specified.
+	// Example: `true`
+	ProhibitInternetIngress *bool `mandatory:"false" json:"prohibitInternetIngress"`
 
 	// Whether VNICs within this subnet can have public IP addresses.
 	// Defaults to false, which means VNICs created in this subnet will
@@ -89,8 +98,8 @@ type CreateSubnetDetails struct {
 	// If `prohibitPublicIpOnVnic` is set to true, VNICs created in this
 	// subnet cannot have public IP addresses (that is, it's a private
 	// subnet).
-	// For IPv6, if `prohibitPublicIpOnVnic` is set to `true`, internet access is not allowed for any
-	// IPv6s assigned to VNICs in the subnet.
+	// If you intend to use an IPv6 CIDR block, you should use the flag `prohibitInternetIngress` to
+	// specify ingress internet traffic behavior of the subnet.
 	// Example: `true`
 	ProhibitPublicIpOnVnic *bool `mandatory:"false" json:"prohibitPublicIpOnVnic"`
 

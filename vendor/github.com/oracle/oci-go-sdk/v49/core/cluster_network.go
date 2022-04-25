@@ -25,7 +25,7 @@ type ClusterNetwork struct {
 	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the cluster network.
 	Id *string `mandatory:"true" json:"id"`
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the compartment containing the cluster network.
+	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the compartment containing the cluster netowrk.
 	CompartmentId *string `mandatory:"true" json:"compartmentId"`
 
 	// The current state of the cluster network.
@@ -45,7 +45,6 @@ type ClusterNetwork struct {
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
 	// A user-friendly name. Does not have to be unique, and it's changeable.
-	// Avoid entering confidential information.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
@@ -57,7 +56,6 @@ type ClusterNetwork struct {
 	// Each cluster network can have one instance pool.
 	InstancePools []InstancePool `mandatory:"false" json:"instancePools"`
 
-	// The placement configuration for the instance pools in the cluster network.
 	PlacementConfiguration *ClusterNetworkPlacementConfigurationDetails `mandatory:"false" json:"placementConfiguration"`
 }
 

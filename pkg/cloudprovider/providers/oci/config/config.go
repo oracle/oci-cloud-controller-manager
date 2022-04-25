@@ -19,8 +19,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/oracle/oci-go-sdk/v31/common"
-	"github.com/oracle/oci-go-sdk/v31/common/auth"
+	"github.com/oracle/oci-go-sdk/v50/common"
+	"github.com/oracle/oci-go-sdk/v50/common/auth"
 	"github.com/pkg/errors"
 
 	"go.uber.org/zap"

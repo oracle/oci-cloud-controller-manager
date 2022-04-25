@@ -28,7 +28,6 @@ type CreateClusterNetworkDetails struct {
 	// Each cluster network can have one instance pool.
 	InstancePools []CreateClusterNetworkInstancePoolDetails `mandatory:"true" json:"instancePools"`
 
-	// The placement configuration for the instance pools in the cluster network.
 	PlacementConfiguration *ClusterNetworkPlacementConfigurationDetails `mandatory:"true" json:"placementConfiguration"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a
@@ -36,8 +35,8 @@ type CreateClusterNetworkDetails struct {
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
-	// Avoid entering confidential information.
+	// A user-friendly name for the cluster network. Does not have to be unique, and it's
+	// changeable. Avoid entering confidential information.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no

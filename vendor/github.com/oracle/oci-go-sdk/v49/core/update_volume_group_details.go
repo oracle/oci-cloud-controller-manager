@@ -25,8 +25,7 @@ type UpdateVolumeGroupDetails struct {
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
-	// Avoid entering confidential information.
+	// A user-friendly name for the volume group. Avoid entering confidential information.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
@@ -36,10 +35,6 @@ type UpdateVolumeGroupDetails struct {
 
 	// OCIDs for the volumes in this volume group.
 	VolumeIds []string `mandatory:"false" json:"volumeIds"`
-
-	// The list of volume group replicas that this volume group will be updated to have
-	// in the specified destination availability domains.
-	VolumeGroupReplicas []VolumeGroupReplicaDetails `mandatory:"false" json:"volumeGroupReplicas"`
 }
 
 func (m UpdateVolumeGroupDetails) String() string {

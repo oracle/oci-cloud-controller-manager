@@ -27,7 +27,7 @@ type LetterOfAuthority struct {
 	// The type of cross-connect fiber, termination, and optical specification.
 	CircuitType LetterOfAuthorityCircuitTypeEnum `mandatory:"false" json:"circuitType,omitempty"`
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the cross-connect.
+	// The OCID of the cross-connect.
 	CrossConnectId *string `mandatory:"false" json:"crossConnectId"`
 
 	// The address of the FastConnect location.

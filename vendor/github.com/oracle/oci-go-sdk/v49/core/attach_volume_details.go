@@ -27,11 +27,10 @@ type AttachVolumeDetails interface {
 	// The OCID of the volume.
 	GetVolumeId() *string
 
-	// The device name. To retrieve a list of devices for a given instance, see ListInstanceDevices.
+	// The device name.
 	GetDevice() *string
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
-	// Avoid entering confidential information.
+	// A user-friendly name. Does not have to be unique, and it cannot be changed. Avoid entering confidential information.
 	GetDisplayName() *string
 
 	// Whether the attachment was created in read-only mode.

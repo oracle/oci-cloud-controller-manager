@@ -23,7 +23,9 @@ type CreateVolumeGroupBackupDetails struct {
 	// The OCID of the volume group that needs to be backed up.
 	VolumeGroupId *string `mandatory:"true" json:"volumeGroupId"`
 
-	// The OCID of the compartment that will contain the volume group backup. This parameter is optional, by default backup will be created in the same compartment and source volume group.
+	// The OCID of the compartment that will contain the volume group
+	// backup. This parameter is optional, by default backup will be created in
+	// the same compartment and source volume group.
 	CompartmentId *string `mandatory:"false" json:"compartmentId"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a
@@ -31,8 +33,8 @@ type CreateVolumeGroupBackupDetails struct {
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
-	// Avoid entering confidential information.
+	// A user-friendly name for the volume group backup. Does not have
+	// to be unique and it's changeable. Avoid entering confidential information.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no

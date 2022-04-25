@@ -20,7 +20,7 @@ import (
 // CreateCrossConnectGroupDetails The representation of CreateCrossConnectGroupDetails
 type CreateCrossConnectGroupDetails struct {
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the compartment to contain the cross-connect group.
+	// The OCID of the compartment to contain the cross-connect group.
 	CompartmentId *string `mandatory:"true" json:"compartmentId"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a
@@ -40,8 +40,6 @@ type CreateCrossConnectGroupDetails struct {
 	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
-
-	MacsecProperties *CreateMacsecProperties `mandatory:"false" json:"macsecProperties"`
 }
 
 func (m CreateCrossConnectGroupDetails) String() string {

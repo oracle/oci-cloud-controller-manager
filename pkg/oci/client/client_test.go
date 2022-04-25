@@ -19,8 +19,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/oracle/oci-go-sdk/v49/core"
-	"github.com/oracle/oci-go-sdk/v49/loadbalancer"
+	"github.com/oracle/oci-go-sdk/v50/core"
+	"github.com/oracle/oci-go-sdk/v50/loadbalancer"
 	"k8s.io/client-go/util/flowcontrol"
 )
 

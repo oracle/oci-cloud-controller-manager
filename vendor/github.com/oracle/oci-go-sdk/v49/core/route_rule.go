@@ -21,7 +21,7 @@ import (
 // packets to (a target).
 type RouteRule struct {
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) for the route rule's target. For information about the type of
+	// The OCID for the route rule's target. For information about the type of
 	// targets you can specify, see
 	// Route Tables (https://docs.cloud.oracle.com/iaas/Content/Network/Tasks/managingroutetables.htm).
 	NetworkEntityId *string `mandatory:"true" json:"networkEntityId"`

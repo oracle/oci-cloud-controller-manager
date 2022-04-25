@@ -40,10 +40,9 @@ type UpdateCrossConnectDetails struct {
 	// Example: `true`
 	IsActive *bool `mandatory:"false" json:"isActive"`
 
-	// A reference name or identifier for the physical fiber connection this cross-connect uses.
+	// A reference name or identifier for the physical fiber connection that this cross-connect
+	// uses.
 	CustomerReferenceName *string `mandatory:"false" json:"customerReferenceName"`
-
-	MacsecProperties *UpdateMacsecProperties `mandatory:"false" json:"macsecProperties"`
 }
 
 func (m UpdateCrossConnectDetails) String() string {

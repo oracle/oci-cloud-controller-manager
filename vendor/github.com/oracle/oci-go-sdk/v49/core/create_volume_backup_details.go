@@ -23,15 +23,12 @@ type CreateVolumeBackupDetails struct {
 	// The OCID of the volume that needs to be backed up.
 	VolumeId *string `mandatory:"true" json:"volumeId"`
 
-	// The OCID of the compartment that contains the backup. If omitted, the backup will be created in the compartment of the source volume.
-	CompartmentId *string `mandatory:"false" json:"compartmentId"`
-
 	// Defined tags for this resource. Each key is predefined and scoped to a
 	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
+	// A user-friendly name for the volume backup. Does not have to be unique and it's changeable.
 	// Avoid entering confidential information.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 

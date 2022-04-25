@@ -20,13 +20,13 @@ import (
 // CreateRouteTableDetails The representation of CreateRouteTableDetails
 type CreateRouteTableDetails struct {
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the compartment to contain the route table.
+	// The OCID of the compartment to contain the route table.
 	CompartmentId *string `mandatory:"true" json:"compartmentId"`
 
 	// The collection of rules used for routing destination IPs to network devices.
 	RouteRules []RouteRule `mandatory:"true" json:"routeRules"`
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the VCN the route table belongs to.
+	// The OCID of the VCN the route table belongs to.
 	VcnId *string `mandatory:"true" json:"vcnId"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a
@@ -34,7 +34,8 @@ type CreateRouteTableDetails struct {
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable. Avoid entering confidential information.
+	// A user-friendly name. Does not have to be unique, and it's changeable.
+	// Avoid entering confidential information.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no

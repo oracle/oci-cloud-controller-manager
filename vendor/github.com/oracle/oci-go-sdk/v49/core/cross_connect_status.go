@@ -20,10 +20,10 @@ import (
 // CrossConnectStatus The status of the cross-connect.
 type CrossConnectStatus struct {
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the cross-connect.
+	// The OCID of the cross-connect.
 	CrossConnectId *string `mandatory:"true" json:"crossConnectId"`
 
-	// Indicates whether Oracle's side of the interface is up or down.
+	// Whether Oracle's side of the interface is up or down.
 	InterfaceState CrossConnectStatusInterfaceStateEnum `mandatory:"false" json:"interfaceState,omitempty"`
 
 	// The light level of the cross-connect (in dBm).
@@ -37,19 +37,6 @@ type CrossConnectStatus struct {
 	//   * **BAD:** There's measurable light but the signal-to-noise ratio is bad
 	//   * **GOOD:** Good light level
 	LightLevelIndicator CrossConnectStatusLightLevelIndicatorEnum `mandatory:"false" json:"lightLevelIndicator,omitempty"`
-
-	// Encryption status of this cross connect.
-	// Possible values:
-	// * **UP:** Traffic is encrypted over this cross-connect
-	// * **DOWN:** Traffic is not encrypted over this cross-connect
-	// * **CIPHER_MISMATCH:** The MACSEC encryption cipher doesn't match the cipher on the CPE
-	// * **CKN_MISMATCH:** The MACSEC Connectivity association Key Name (CKN) doesn't match the CKN on the CPE
-	// * **CAK_MISMATCH:** The MACSEC Connectivity Association Key (CAK) doesn't match the CAK on the CPE
-	EncryptionStatus CrossConnectStatusEncryptionStatusEnum `mandatory:"false" json:"encryptionStatus,omitempty"`
-
-	// The light levels of the cross-connect (in dBm).
-	// Example: `[14.0, -14.0, 2.1, -10.1]`
-	LightLevelsInDBm []float32 `mandatory:"false" json:"lightLevelsInDBm"`
 }
 
 func (m CrossConnectStatus) String() string {
@@ -103,35 +90,6 @@ var mappingCrossConnectStatusLightLevelIndicator = map[string]CrossConnectStatus
 func GetCrossConnectStatusLightLevelIndicatorEnumValues() []CrossConnectStatusLightLevelIndicatorEnum {
 	values := make([]CrossConnectStatusLightLevelIndicatorEnum, 0)
 	for _, v := range mappingCrossConnectStatusLightLevelIndicator {
-		values = append(values, v)
-	}
-	return values
-}
-
-// CrossConnectStatusEncryptionStatusEnum Enum with underlying type: string
-type CrossConnectStatusEncryptionStatusEnum string
-
-// Set of constants representing the allowable values for CrossConnectStatusEncryptionStatusEnum
-const (
-	CrossConnectStatusEncryptionStatusUp             CrossConnectStatusEncryptionStatusEnum = "UP"
-	CrossConnectStatusEncryptionStatusDown           CrossConnectStatusEncryptionStatusEnum = "DOWN"
-	CrossConnectStatusEncryptionStatusCipherMismatch CrossConnectStatusEncryptionStatusEnum = "CIPHER_MISMATCH"
-	CrossConnectStatusEncryptionStatusCknMismatch    CrossConnectStatusEncryptionStatusEnum = "CKN_MISMATCH"
-	CrossConnectStatusEncryptionStatusCakMismatch    CrossConnectStatusEncryptionStatusEnum = "CAK_MISMATCH"
-)
-
-var mappingCrossConnectStatusEncryptionStatus = map[string]CrossConnectStatusEncryptionStatusEnum{
-	"UP":              CrossConnectStatusEncryptionStatusUp,
-	"DOWN":            CrossConnectStatusEncryptionStatusDown,
-	"CIPHER_MISMATCH": CrossConnectStatusEncryptionStatusCipherMismatch,
-	"CKN_MISMATCH":    CrossConnectStatusEncryptionStatusCknMismatch,
-	"CAK_MISMATCH":    CrossConnectStatusEncryptionStatusCakMismatch,
-}
-
-// GetCrossConnectStatusEncryptionStatusEnumValues Enumerates the set of values for CrossConnectStatusEncryptionStatusEnum
-func GetCrossConnectStatusEncryptionStatusEnumValues() []CrossConnectStatusEncryptionStatusEnum {
-	values := make([]CrossConnectStatusEncryptionStatusEnum, 0)
-	for _, v := range mappingCrossConnectStatusEncryptionStatus {
 		values = append(values, v)
 	}
 	return values

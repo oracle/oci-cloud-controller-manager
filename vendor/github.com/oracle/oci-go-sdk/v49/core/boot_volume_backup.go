@@ -31,7 +31,7 @@ type BootVolumeBackup struct {
 	// The OCID of the compartment that contains the boot volume backup.
 	CompartmentId *string `mandatory:"true" json:"compartmentId"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
+	// A user-friendly name for the boot volume backup. Does not have to be unique and it's changeable.
 	// Avoid entering confidential information.
 	DisplayName *string `mandatory:"true" json:"displayName"`
 

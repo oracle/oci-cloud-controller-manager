@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2021, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -14,7 +14,7 @@
 package core
 
 import (
-	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v49/common"
 )
 
 // InstanceShapeConfig The shape configuration for an instance. The shape configuration determines
@@ -26,6 +26,14 @@ type InstanceShapeConfig struct {
 
 	// The total amount of memory available to the instance, in gigabytes.
 	MemoryInGBs *float32 `mandatory:"false" json:"memoryInGBs"`
+
+	// The baseline OCPU utilization for a subcore burstable VM instance. Leave this attribute blank for a
+	// non-burstable instance, or explicitly specify non-burstable with `BASELINE_1_1`.
+	// The following values are supported:
+	// - `BASELINE_1_8` - baseline usage is 1/8 of an OCPU.
+	// - `BASELINE_1_2` - baseline usage is 1/2 of an OCPU.
+	// - `BASELINE_1_1` - baseline usage is the entire OCPU. This represents a non-burstable instance.
+	BaselineOcpuUtilization InstanceShapeConfigBaselineOcpuUtilizationEnum `mandatory:"false" json:"baselineOcpuUtilization,omitempty"`
 
 	// A short description of the instance's processor (CPU).
 	ProcessorDescription *string `mandatory:"false" json:"processorDescription"`
@@ -57,4 +65,29 @@ type InstanceShapeConfig struct {
 
 func (m InstanceShapeConfig) String() string {
 	return common.PointerString(m)
+}
+
+// InstanceShapeConfigBaselineOcpuUtilizationEnum Enum with underlying type: string
+type InstanceShapeConfigBaselineOcpuUtilizationEnum string
+
+// Set of constants representing the allowable values for InstanceShapeConfigBaselineOcpuUtilizationEnum
+const (
+	InstanceShapeConfigBaselineOcpuUtilization8 InstanceShapeConfigBaselineOcpuUtilizationEnum = "BASELINE_1_8"
+	InstanceShapeConfigBaselineOcpuUtilization2 InstanceShapeConfigBaselineOcpuUtilizationEnum = "BASELINE_1_2"
+	InstanceShapeConfigBaselineOcpuUtilization1 InstanceShapeConfigBaselineOcpuUtilizationEnum = "BASELINE_1_1"
+)
+
+var mappingInstanceShapeConfigBaselineOcpuUtilization = map[string]InstanceShapeConfigBaselineOcpuUtilizationEnum{
+	"BASELINE_1_8": InstanceShapeConfigBaselineOcpuUtilization8,
+	"BASELINE_1_2": InstanceShapeConfigBaselineOcpuUtilization2,
+	"BASELINE_1_1": InstanceShapeConfigBaselineOcpuUtilization1,
+}
+
+// GetInstanceShapeConfigBaselineOcpuUtilizationEnumValues Enumerates the set of values for InstanceShapeConfigBaselineOcpuUtilizationEnum
+func GetInstanceShapeConfigBaselineOcpuUtilizationEnumValues() []InstanceShapeConfigBaselineOcpuUtilizationEnum {
+	values := make([]InstanceShapeConfigBaselineOcpuUtilizationEnum, 0)
+	for _, v := range mappingInstanceShapeConfigBaselineOcpuUtilization {
+		values = append(values, v)
+	}
+	return values
 }

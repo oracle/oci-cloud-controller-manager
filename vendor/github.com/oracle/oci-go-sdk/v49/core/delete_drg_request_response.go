@@ -16,11 +16,11 @@ import (
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/DeleteDrg.go.html to see an example of how to use DeleteDrgRequest.
 type DeleteDrgRequest struct {
 
-	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the DRG.
+	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm)](/iaas/Content/General/Concepts/identifiers.htm) of the DRG.
 	DrgId *string `mandatory:"true" contributesTo:"path" name:"drgId"`
 
 	// For optimistic concurrency control. In the PUT or DELETE call for a resource, set the `if-match`
-	// parameter to the value of the etag from a previous GET or POST response for that resource.  The resource
+	// parameter to the value of the etag from a previous GET or POST response for that resource. The resource
 	// will be updated or deleted only if the etag you provide matches the resource's current etag value.
 	IfMatch *string `mandatory:"false" contributesTo:"header" name:"if-match"`
 

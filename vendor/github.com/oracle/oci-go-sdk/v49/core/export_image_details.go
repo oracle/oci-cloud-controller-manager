@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2021, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -15,7 +15,7 @@ package core
 
 import (
 	"encoding/json"
-	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v49/common"
 )
 
 // ExportImageDetails The destination details for the image export.
@@ -26,11 +26,22 @@ import (
 // use ExportImageViaObjectStorageUriDetails
 // when specifying the Object Storage URL.
 type ExportImageDetails interface {
+
+	// The format to export the image to. The default value is `OCI`.
+	// The following image formats are available:
+	// - `OCI` - Oracle Cloud Infrastructure file with a QCOW2 image and Oracle Cloud Infrastructure metadata (.oci).
+	// Use this format to export a custom image that you want to import into other tenancies or regions.
+	// - `QCOW2` - QEMU Copy On Write (.qcow2)
+	// - `VDI` - Virtual Disk Image (.vdi) for Oracle VM VirtualBox
+	// - `VHD` - Virtual Hard Disk (.vhd) for Hyper-V
+	// - `VMDK` - Virtual Machine Disk (.vmdk)
+	GetExportFormat() ExportImageDetailsExportFormatEnum
 }
 
 type exportimagedetails struct {
 	JsonData        []byte
-	DestinationType string `json:"destinationType"`
+	ExportFormat    ExportImageDetailsExportFormatEnum `mandatory:"false" json:"exportFormat,omitempty"`
+	DestinationType string                             `json:"destinationType"`
 }
 
 // UnmarshalJSON unmarshals json
@@ -44,6 +55,7 @@ func (m *exportimagedetails) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
+	m.ExportFormat = s.Model.ExportFormat
 	m.DestinationType = s.Model.DestinationType
 
 	return err
@@ -71,6 +83,40 @@ func (m *exportimagedetails) UnmarshalPolymorphicJSON(data []byte) (interface{},
 	}
 }
 
+//GetExportFormat returns ExportFormat
+func (m exportimagedetails) GetExportFormat() ExportImageDetailsExportFormatEnum {
+	return m.ExportFormat
+}
+
 func (m exportimagedetails) String() string {
 	return common.PointerString(m)
+}
+
+// ExportImageDetailsExportFormatEnum Enum with underlying type: string
+type ExportImageDetailsExportFormatEnum string
+
+// Set of constants representing the allowable values for ExportImageDetailsExportFormatEnum
+const (
+	ExportImageDetailsExportFormatQcow2 ExportImageDetailsExportFormatEnum = "QCOW2"
+	ExportImageDetailsExportFormatVmdk  ExportImageDetailsExportFormatEnum = "VMDK"
+	ExportImageDetailsExportFormatOci   ExportImageDetailsExportFormatEnum = "OCI"
+	ExportImageDetailsExportFormatVhd   ExportImageDetailsExportFormatEnum = "VHD"
+	ExportImageDetailsExportFormatVdi   ExportImageDetailsExportFormatEnum = "VDI"
+)
+
+var mappingExportImageDetailsExportFormat = map[string]ExportImageDetailsExportFormatEnum{
+	"QCOW2": ExportImageDetailsExportFormatQcow2,
+	"VMDK":  ExportImageDetailsExportFormatVmdk,
+	"OCI":   ExportImageDetailsExportFormatOci,
+	"VHD":   ExportImageDetailsExportFormatVhd,
+	"VDI":   ExportImageDetailsExportFormatVdi,
+}
+
+// GetExportImageDetailsExportFormatEnumValues Enumerates the set of values for ExportImageDetailsExportFormatEnum
+func GetExportImageDetailsExportFormatEnumValues() []ExportImageDetailsExportFormatEnum {
+	values := make([]ExportImageDetailsExportFormatEnum, 0)
+	for _, v := range mappingExportImageDetailsExportFormat {
+		values = append(values, v)
+	}
+	return values
 }

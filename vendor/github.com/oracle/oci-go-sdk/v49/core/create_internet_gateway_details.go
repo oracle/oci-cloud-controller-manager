@@ -20,13 +20,13 @@ import (
 // CreateInternetGatewayDetails The representation of CreateInternetGatewayDetails
 type CreateInternetGatewayDetails struct {
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the compartment to contain the internet gateway.
+	// The OCID of the compartment to contain the internet gateway.
 	CompartmentId *string `mandatory:"true" json:"compartmentId"`
 
 	// Whether the gateway is enabled upon creation.
 	IsEnabled *bool `mandatory:"true" json:"isEnabled"`
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the VCN the internet gateway is attached to.
+	// The OCID of the VCN the internet gateway is attached to.
 	VcnId *string `mandatory:"true" json:"vcnId"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a
@@ -34,7 +34,8 @@ type CreateInternetGatewayDetails struct {
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable. Avoid entering confidential information.
+	// A user-friendly name. Does not have to be unique, and it's changeable.
+	// Avoid entering confidential information.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no

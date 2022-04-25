@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2021, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -15,7 +15,7 @@ package core
 
 import (
 	"encoding/json"
-	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v49/common"
 )
 
 // IScsiVolumeAttachment An ISCSI volume attachment.
@@ -45,7 +45,8 @@ type IScsiVolumeAttachment struct {
 	// Example: `169.254.0.2`
 	Ipv4 *string `mandatory:"true" json:"ipv4"`
 
-	// The target volume's iSCSI Qualified Name in the format defined by RFC 3720 (https://tools.ietf.org/html/rfc3720#page-32).
+	// The target volume's iSCSI Qualified Name in the format defined
+	// by RFC 3720 (https://tools.ietf.org/html/rfc3720#page-32).
 	// Example: `iqn.2015-12.us.oracle.com:<CHAP_username>`
 	Iqn *string `mandatory:"true" json:"iqn"`
 
@@ -64,22 +65,41 @@ type IScsiVolumeAttachment struct {
 	// Whether the attachment was created in read-only mode.
 	IsReadOnly *bool `mandatory:"false" json:"isReadOnly"`
 
-	// Whether the attachment should be created in shareable mode. If an attachment is created in shareable mode, then other instances can attach the same volume, provided that they also create their attachments in shareable mode. Only certain volume types can be attached in shareable mode. Defaults to false if not specified.
+	// Whether the attachment should be created in shareable mode. If an attachment
+	// is created in shareable mode, then other instances can attach the same volume, provided
+	// that they also create their attachments in shareable mode. Only certain volume types can
+	// be attached in shareable mode. Defaults to false if not specified.
 	IsShareable *bool `mandatory:"false" json:"isShareable"`
 
 	// Whether in-transit encryption for the data volume's paravirtualized attachment is enabled or not.
 	IsPvEncryptionInTransitEnabled *bool `mandatory:"false" json:"isPvEncryptionInTransitEnabled"`
 
-	// The Challenge-Handshake-Authentication-Protocol (CHAP) secret valid for the associated CHAP user name.
+	// Whether the attachment is multipath or not.
+	IsMultipath *bool `mandatory:"false" json:"isMultipath"`
+
+	// The Challenge-Handshake-Authentication-Protocol (CHAP) secret
+	// valid for the associated CHAP user name.
 	// (Also called the "CHAP password".)
 	ChapSecret *string `mandatory:"false" json:"chapSecret"`
 
-	// The volume's system-generated Challenge-Handshake-Authentication-Protocol (CHAP) user name. See RFC 1994 (https://tools.ietf.org/html/rfc1994) for more on CHAP.
+	// The volume's system-generated Challenge-Handshake-Authentication-Protocol
+	// (CHAP) user name. See RFC 1994 (https://tools.ietf.org/html/rfc1994) for more on CHAP.
 	// Example: `ocid1.volume.oc1.phx.<unique_ID>`
 	ChapUsername *string `mandatory:"false" json:"chapUsername"`
 
+	// A list of secondary multipath devices
+	MultipathDevices []MultipathDevice `mandatory:"false" json:"multipathDevices"`
+
 	// The current state of the volume attachment.
 	LifecycleState VolumeAttachmentLifecycleStateEnum `mandatory:"true" json:"lifecycleState"`
+
+	// The iscsi login state of the volume attachment. For a multipath volume attachment,
+	// all iscsi sessions need to be all logged-in or logged-out to be in logged-in or logged-out state.
+	IscsiLoginState VolumeAttachmentIscsiLoginStateEnum `mandatory:"false" json:"iscsiLoginState,omitempty"`
+
+	// Refer the top-level definition of encryptionInTransitType.
+	// The default value is NONE.
+	EncryptionInTransitType EncryptionInTransitTypeEnum `mandatory:"false" json:"encryptionInTransitType,omitempty"`
 }
 
 //GetAvailabilityDomain returns AvailabilityDomain
@@ -140,6 +160,16 @@ func (m IScsiVolumeAttachment) GetVolumeId() *string {
 //GetIsPvEncryptionInTransitEnabled returns IsPvEncryptionInTransitEnabled
 func (m IScsiVolumeAttachment) GetIsPvEncryptionInTransitEnabled() *bool {
 	return m.IsPvEncryptionInTransitEnabled
+}
+
+//GetIsMultipath returns IsMultipath
+func (m IScsiVolumeAttachment) GetIsMultipath() *bool {
+	return m.IsMultipath
+}
+
+//GetIscsiLoginState returns IscsiLoginState
+func (m IScsiVolumeAttachment) GetIscsiLoginState() VolumeAttachmentIscsiLoginStateEnum {
+	return m.IscsiLoginState
 }
 
 func (m IScsiVolumeAttachment) String() string {

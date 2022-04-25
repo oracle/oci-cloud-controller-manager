@@ -20,7 +20,7 @@ type TerminateClusterNetworkRequest struct {
 	ClusterNetworkId *string `mandatory:"true" contributesTo:"path" name:"clusterNetworkId"`
 
 	// For optimistic concurrency control. In the PUT or DELETE call for a resource, set the `if-match`
-	// parameter to the value of the etag from a previous GET or POST response for that resource.  The resource
+	// parameter to the value of the etag from a previous GET or POST response for that resource. The resource
 	// will be updated or deleted only if the etag you provide matches the resource's current etag value.
 	IfMatch *string `mandatory:"false" contributesTo:"header" name:"if-match"`
 
@@ -65,7 +65,7 @@ type TerminateClusterNetworkResponse struct {
 	// Oracle about a particular request, please provide the request ID.
 	OpcRequestId *string `presentIn:"header" name:"opc-request-id"`
 
-	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the work request. Use GetWorkRequest (https://docs.cloud.oracle.com/api/#/en/workrequests/20160918/WorkRequest/GetWorkRequest)
+	// The OCID of the work request. Use GetWorkRequest (https://docs.cloud.oracle.com/api/#/en/workrequests/20160918/WorkRequest/GetWorkRequest)
 	// with this ID to track the status of the request.
 	OpcWorkRequestId *string `presentIn:"header" name:"opc-work-request-id"`
 }

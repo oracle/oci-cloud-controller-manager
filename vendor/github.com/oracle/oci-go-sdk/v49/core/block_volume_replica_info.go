@@ -20,8 +20,7 @@ import (
 // BlockVolumeReplicaInfo Information about the block volume replica in the destination availability domain.
 type BlockVolumeReplicaInfo struct {
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
-	// Avoid entering confidential information.
+	// The display name of the block volume replica
 	DisplayName *string `mandatory:"true" json:"displayName"`
 
 	// The block volume replica's Oracle ID (OCID).

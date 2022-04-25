@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2021, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -16,8 +16,8 @@ package core
 import (
 	"context"
 	"fmt"
-	"github.com/oracle/oci-go-sdk/v31/common"
-	"github.com/oracle/oci-go-sdk/v31/common/auth"
+	"github.com/oracle/oci-go-sdk/v49/common"
+	"github.com/oracle/oci-go-sdk/v49/common/auth"
 	"net/http"
 )
 
@@ -54,6 +54,9 @@ func NewBlockstorageClientWithOboToken(configProvider common.ConfigurationProvid
 }
 
 func newBlockstorageClientFromBaseClient(baseClient common.BaseClient, configProvider common.ConfigurationProvider) (client BlockstorageClient, err error) {
+	common.ConfigCircuitBreakerFromEnvVar(&baseClient)
+	common.ConfigCircuitBreakerFromGlobalVar(&baseClient)
+
 	client = BlockstorageClient{BaseClient: baseClient}
 	client.BasePath = "20160918"
 	err = client.setConfigurationProvider(configProvider)
@@ -85,7 +88,7 @@ func (client *BlockstorageClient) ConfigurationProvider() *common.ConfigurationP
 
 // ChangeBootVolumeBackupCompartment Moves a boot volume backup into a different compartment within the same tenancy.
 // For information about moving resources between compartments,
-// see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/Content/Identity/Tasks/managingcompartments.htm#moveRes).
+// see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/iaas/Content/Identity/Tasks/managingcompartments.htm#moveRes).
 //
 // See also
 //
@@ -120,8 +123,9 @@ func (client BlockstorageClient) ChangeBootVolumeBackupCompartment(ctx context.C
 }
 
 // changeBootVolumeBackupCompartment implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) changeBootVolumeBackupCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/bootVolumeBackups/{bootVolumeBackupId}/actions/changeCompartment")
+func (client BlockstorageClient) changeBootVolumeBackupCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/bootVolumeBackups/{bootVolumeBackupId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +145,7 @@ func (client BlockstorageClient) changeBootVolumeBackupCompartment(ctx context.C
 
 // ChangeBootVolumeCompartment Moves a boot volume into a different compartment within the same tenancy.
 // For information about moving resources between compartments,
-// see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/Content/Identity/Tasks/managingcompartments.htm#moveRes).
+// see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/iaas/Content/Identity/Tasks/managingcompartments.htm#moveRes).
 //
 // See also
 //
@@ -176,8 +180,9 @@ func (client BlockstorageClient) ChangeBootVolumeCompartment(ctx context.Context
 }
 
 // changeBootVolumeCompartment implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) changeBootVolumeCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/bootVolumes/{bootVolumeId}/actions/changeCompartment")
+func (client BlockstorageClient) changeBootVolumeCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/bootVolumes/{bootVolumeId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +202,7 @@ func (client BlockstorageClient) changeBootVolumeCompartment(ctx context.Context
 
 // ChangeVolumeBackupCompartment Moves a volume backup into a different compartment within the same tenancy.
 // For information about moving resources between compartments,
-// see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/Content/Identity/Tasks/managingcompartments.htm#moveRes).
+// see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/iaas/Content/Identity/Tasks/managingcompartments.htm#moveRes).
 //
 // See also
 //
@@ -232,8 +237,9 @@ func (client BlockstorageClient) ChangeVolumeBackupCompartment(ctx context.Conte
 }
 
 // changeVolumeBackupCompartment implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) changeVolumeBackupCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/volumeBackups/{volumeBackupId}/actions/changeCompartment")
+func (client BlockstorageClient) changeVolumeBackupCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/volumeBackups/{volumeBackupId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +259,7 @@ func (client BlockstorageClient) changeVolumeBackupCompartment(ctx context.Conte
 
 // ChangeVolumeCompartment Moves a volume into a different compartment within the same tenancy.
 // For information about moving resources between compartments,
-// see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/Content/Identity/Tasks/managingcompartments.htm#moveRes).
+// see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/iaas/Content/Identity/Tasks/managingcompartments.htm#moveRes).
 //
 // See also
 //
@@ -288,8 +294,9 @@ func (client BlockstorageClient) ChangeVolumeCompartment(ctx context.Context, re
 }
 
 // changeVolumeCompartment implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) changeVolumeCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/volumes/{volumeId}/actions/changeCompartment")
+func (client BlockstorageClient) changeVolumeCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/volumes/{volumeId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -309,7 +316,7 @@ func (client BlockstorageClient) changeVolumeCompartment(ctx context.Context, re
 
 // ChangeVolumeGroupBackupCompartment Moves a volume group backup into a different compartment within the same tenancy.
 // For information about moving resources between compartments,
-// see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/Content/Identity/Tasks/managingcompartments.htm#moveRes).
+// see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/iaas/Content/Identity/Tasks/managingcompartments.htm#moveRes).
 //
 // See also
 //
@@ -344,8 +351,9 @@ func (client BlockstorageClient) ChangeVolumeGroupBackupCompartment(ctx context.
 }
 
 // changeVolumeGroupBackupCompartment implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) changeVolumeGroupBackupCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/volumeGroupBackups/{volumeGroupBackupId}/actions/changeCompartment")
+func (client BlockstorageClient) changeVolumeGroupBackupCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/volumeGroupBackups/{volumeGroupBackupId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -365,7 +373,7 @@ func (client BlockstorageClient) changeVolumeGroupBackupCompartment(ctx context.
 
 // ChangeVolumeGroupCompartment Moves a volume group into a different compartment within the same tenancy.
 // For information about moving resources between compartments,
-// see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/Content/Identity/Tasks/managingcompartments.htm#moveRes).
+// see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/iaas/Content/Identity/Tasks/managingcompartments.htm#moveRes).
 //
 // See also
 //
@@ -400,8 +408,9 @@ func (client BlockstorageClient) ChangeVolumeGroupCompartment(ctx context.Contex
 }
 
 // changeVolumeGroupCompartment implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) changeVolumeGroupCompartment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/volumeGroups/{volumeGroupId}/actions/changeCompartment")
+func (client BlockstorageClient) changeVolumeGroupCompartment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/volumeGroups/{volumeGroupId}/actions/changeCompartment", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -420,7 +429,7 @@ func (client BlockstorageClient) changeVolumeGroupCompartment(ctx context.Contex
 }
 
 // CopyBootVolumeBackup Creates a boot volume backup copy in specified region. For general information about volume backups,
-// see Overview of Boot Volume Backups (https://docs.cloud.oracle.com/Content/Block/Concepts/bootvolumebackups.htm)
+// see Overview of Boot Volume Backups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/bootvolumebackups.htm)
 //
 // See also
 //
@@ -460,8 +469,9 @@ func (client BlockstorageClient) CopyBootVolumeBackup(ctx context.Context, reque
 }
 
 // copyBootVolumeBackup implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) copyBootVolumeBackup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/bootVolumeBackups/{bootVolumeBackupId}/actions/copy")
+func (client BlockstorageClient) copyBootVolumeBackup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/bootVolumeBackups/{bootVolumeBackupId}/actions/copy", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -480,7 +490,7 @@ func (client BlockstorageClient) copyBootVolumeBackup(ctx context.Context, reque
 }
 
 // CopyVolumeBackup Creates a volume backup copy in specified region. For general information about volume backups,
-// see Overview of Block Volume Service Backups (https://docs.cloud.oracle.com/Content/Block/Concepts/blockvolumebackups.htm)
+// see Overview of Block Volume Service Backups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/blockvolumebackups.htm)
 //
 // See also
 //
@@ -520,8 +530,9 @@ func (client BlockstorageClient) CopyVolumeBackup(ctx context.Context, request C
 }
 
 // copyVolumeBackup implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) copyVolumeBackup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/volumeBackups/{volumeBackupId}/actions/copy")
+func (client BlockstorageClient) copyVolumeBackup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/volumeBackups/{volumeBackupId}/actions/copy", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -539,8 +550,69 @@ func (client BlockstorageClient) copyVolumeBackup(ctx context.Context, request c
 	return response, err
 }
 
+// CopyVolumeGroupBackup Creates a volume group backup copy in specified region. For general information about volume group backups,
+// see Overview of Block Volume Service Backups (https://docs.cloud.oracle.com/Content/Block/Concepts/blockvolumebackups.htm)
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/CopyVolumeGroupBackup.go.html to see an example of how to use CopyVolumeGroupBackup API.
+func (client BlockstorageClient) CopyVolumeGroupBackup(ctx context.Context, request CopyVolumeGroupBackupRequest) (response CopyVolumeGroupBackupResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.copyVolumeGroupBackup, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = CopyVolumeGroupBackupResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = CopyVolumeGroupBackupResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(CopyVolumeGroupBackupResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into CopyVolumeGroupBackupResponse")
+	}
+	return
+}
+
+// copyVolumeGroupBackup implements the OCIOperation interface (enables retrying operations)
+func (client BlockstorageClient) copyVolumeGroupBackup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/volumeGroupBackups/{volumeGroupBackupId}/actions/copy", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response CopyVolumeGroupBackupResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // CreateBootVolume Creates a new boot volume in the specified compartment from an existing boot volume or a boot volume backup.
-// For general information about boot volumes, see Boot Volumes (https://docs.cloud.oracle.com/Content/Block/Concepts/bootvolumes.htm).
+// For general information about boot volumes, see Boot Volumes (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/bootvolumes.htm).
 // You may optionally specify a *display name* for the volume, which is simply a friendly name or
 // description. It does not have to be unique, and you can change it. Avoid entering confidential information.
 //
@@ -582,8 +654,9 @@ func (client BlockstorageClient) CreateBootVolume(ctx context.Context, request C
 }
 
 // createBootVolume implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) createBootVolume(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/bootVolumes")
+func (client BlockstorageClient) createBootVolume(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/bootVolumes", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -602,7 +675,7 @@ func (client BlockstorageClient) createBootVolume(ctx context.Context, request c
 }
 
 // CreateBootVolumeBackup Creates a new boot volume backup of the specified boot volume. For general information about boot volume backups,
-// see Overview of Boot Volume Backups (https://docs.cloud.oracle.com/Content/Block/Concepts/bootvolumebackups.htm)
+// see Overview of Boot Volume Backups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/bootvolumebackups.htm)
 // When the request is received, the backup object is in a REQUEST_RECEIVED state.
 // When the data is imaged, it goes into a CREATING state.
 // After the backup is fully uploaded to the cloud, it goes into an AVAILABLE state.
@@ -645,8 +718,9 @@ func (client BlockstorageClient) CreateBootVolumeBackup(ctx context.Context, req
 }
 
 // createBootVolumeBackup implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) createBootVolumeBackup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/bootVolumeBackups")
+func (client BlockstorageClient) createBootVolumeBackup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/bootVolumeBackups", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -667,11 +741,11 @@ func (client BlockstorageClient) createBootVolumeBackup(ctx context.Context, req
 // CreateVolume Creates a new volume in the specified compartment. Volumes can be created in sizes ranging from
 // 50 GB (51200 MB) to 32 TB (33554432 MB), in 1 GB (1024 MB) increments. By default, volumes are 1 TB (1048576 MB).
 // For general information about block volumes, see
-// Overview of Block Volume Service (https://docs.cloud.oracle.com/Content/Block/Concepts/overview.htm).
+// Overview of Block Volume Service (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm).
 // A volume and instance can be in separate compartments but must be in the same availability domain.
 // For information about access control and compartments, see
-// Overview of the IAM Service (https://docs.cloud.oracle.com/Content/Identity/Concepts/overview.htm). For information about
-// availability domains, see Regions and Availability Domains (https://docs.cloud.oracle.com/Content/General/Concepts/regions.htm).
+// Overview of the IAM Service (https://docs.cloud.oracle.com/iaas/Content/Identity/Concepts/overview.htm). For information about
+// availability domains, see Regions and Availability Domains (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/regions.htm).
 // To get a list of availability domains, use the `ListAvailabilityDomains` operation
 // in the Identity and Access Management Service API.
 // You may optionally specify a *display name* for the volume, which is simply a friendly name or
@@ -715,8 +789,9 @@ func (client BlockstorageClient) CreateVolume(ctx context.Context, request Creat
 }
 
 // createVolume implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) createVolume(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/volumes")
+func (client BlockstorageClient) createVolume(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/volumes", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -735,7 +810,7 @@ func (client BlockstorageClient) createVolume(ctx context.Context, request commo
 }
 
 // CreateVolumeBackup Creates a new backup of the specified volume. For general information about volume backups,
-// see Overview of Block Volume Service Backups (https://docs.cloud.oracle.com/Content/Block/Concepts/blockvolumebackups.htm)
+// see Overview of Block Volume Service Backups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/blockvolumebackups.htm)
 // When the request is received, the backup object is in a REQUEST_RECEIVED state.
 // When the data is imaged, it goes into a CREATING state.
 // After the backup is fully uploaded to the cloud, it goes into an AVAILABLE state.
@@ -778,8 +853,9 @@ func (client BlockstorageClient) CreateVolumeBackup(ctx context.Context, request
 }
 
 // createVolumeBackup implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) createVolumeBackup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/volumeBackups")
+func (client BlockstorageClient) createVolumeBackup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/volumeBackups", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -839,8 +915,9 @@ func (client BlockstorageClient) CreateVolumeBackupPolicy(ctx context.Context, r
 }
 
 // createVolumeBackupPolicy implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) createVolumeBackupPolicy(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/volumeBackupPolicies")
+func (client BlockstorageClient) createVolumeBackupPolicy(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/volumeBackupPolicies", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -895,8 +972,9 @@ func (client BlockstorageClient) CreateVolumeBackupPolicyAssignment(ctx context.
 }
 
 // createVolumeBackupPolicyAssignment implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) createVolumeBackupPolicyAssignment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/volumeBackupPolicyAssignments")
+func (client BlockstorageClient) createVolumeBackupPolicyAssignment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/volumeBackupPolicyAssignments", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -916,10 +994,10 @@ func (client BlockstorageClient) createVolumeBackupPolicyAssignment(ctx context.
 
 // CreateVolumeGroup Creates a new volume group in the specified compartment.
 // A volume group is a collection of volumes and may be created from a list of volumes, cloning an existing
-// volume group, or by restoring a volume group backup. A volume group can contain up to 64 volumes.
+// volume group, or by restoring a volume group backup.
 // You may optionally specify a *display name* for the volume group, which is simply a friendly name or
 // description. It does not have to be unique, and you can change it. Avoid entering confidential information.
-// For more information, see Volume Groups (https://docs.cloud.oracle.com/Content/Block/Concepts/volumegroups.htm).
+// For more information, see Volume Groups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/volumegroups.htm).
 //
 // See also
 //
@@ -959,8 +1037,9 @@ func (client BlockstorageClient) CreateVolumeGroup(ctx context.Context, request 
 }
 
 // createVolumeGroup implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) createVolumeGroup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/volumeGroups")
+func (client BlockstorageClient) createVolumeGroup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/volumeGroups", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -979,7 +1058,7 @@ func (client BlockstorageClient) createVolumeGroup(ctx context.Context, request 
 }
 
 // CreateVolumeGroupBackup Creates a new backup volume group of the specified volume group.
-// For more information, see Volume Groups (https://docs.cloud.oracle.com/Content/Block/Concepts/volumegroups.htm).
+// For more information, see Volume Groups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/volumegroups.htm).
 //
 // See also
 //
@@ -1019,8 +1098,9 @@ func (client BlockstorageClient) CreateVolumeGroupBackup(ctx context.Context, re
 }
 
 // createVolumeGroupBackup implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) createVolumeGroupBackup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPost, "/volumeGroupBackups")
+func (client BlockstorageClient) createVolumeGroupBackup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/volumeGroupBackups", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1040,7 +1120,7 @@ func (client BlockstorageClient) createVolumeGroupBackup(ctx context.Context, re
 
 // DeleteBootVolume Deletes the specified boot volume. The volume cannot have an active connection to an instance.
 // To disconnect the boot volume from a connected instance, see
-// Disconnecting From a Boot Volume (https://docs.cloud.oracle.com/Content/Block/Tasks/deletingbootvolume.htm).
+// Disconnecting From a Boot Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Tasks/deletingbootvolume.htm).
 // **Warning:** All data on the boot volume will be permanently lost when the boot volume is deleted.
 //
 // See also
@@ -1076,8 +1156,9 @@ func (client BlockstorageClient) DeleteBootVolume(ctx context.Context, request D
 }
 
 // deleteBootVolume implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) deleteBootVolume(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/bootVolumes/{bootVolumeId}")
+func (client BlockstorageClient) deleteBootVolume(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/bootVolumes/{bootVolumeId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1130,8 +1211,9 @@ func (client BlockstorageClient) DeleteBootVolumeBackup(ctx context.Context, req
 }
 
 // deleteBootVolumeBackup implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) deleteBootVolumeBackup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/bootVolumeBackups/{bootVolumeBackupId}")
+func (client BlockstorageClient) deleteBootVolumeBackup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/bootVolumeBackups/{bootVolumeBackupId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1184,8 +1266,9 @@ func (client BlockstorageClient) DeleteBootVolumeKmsKey(ctx context.Context, req
 }
 
 // deleteBootVolumeKmsKey implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) deleteBootVolumeKmsKey(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/bootVolumes/{bootVolumeId}/kmsKey")
+func (client BlockstorageClient) deleteBootVolumeKmsKey(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/bootVolumes/{bootVolumeId}/kmsKey", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1205,7 +1288,7 @@ func (client BlockstorageClient) deleteBootVolumeKmsKey(ctx context.Context, req
 
 // DeleteVolume Deletes the specified volume. The volume cannot have an active connection to an instance.
 // To disconnect the volume from a connected instance, see
-// Disconnecting From a Volume (https://docs.cloud.oracle.com/Content/Block/Tasks/disconnectingfromavolume.htm).
+// Disconnecting From a Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Tasks/disconnectingfromavolume.htm).
 // **Warning:** All data on the volume will be permanently lost when the volume is deleted.
 //
 // See also
@@ -1241,8 +1324,9 @@ func (client BlockstorageClient) DeleteVolume(ctx context.Context, request Delet
 }
 
 // deleteVolume implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) deleteVolume(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/volumes/{volumeId}")
+func (client BlockstorageClient) deleteVolume(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/volumes/{volumeId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1295,8 +1379,9 @@ func (client BlockstorageClient) DeleteVolumeBackup(ctx context.Context, request
 }
 
 // deleteVolumeBackup implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) deleteVolumeBackup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/volumeBackups/{volumeBackupId}")
+func (client BlockstorageClient) deleteVolumeBackup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/volumeBackups/{volumeBackupId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1352,8 +1437,9 @@ func (client BlockstorageClient) DeleteVolumeBackupPolicy(ctx context.Context, r
 }
 
 // deleteVolumeBackupPolicy implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) deleteVolumeBackupPolicy(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/volumeBackupPolicies/{policyId}")
+func (client BlockstorageClient) deleteVolumeBackupPolicy(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/volumeBackupPolicies/{policyId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1406,8 +1492,9 @@ func (client BlockstorageClient) DeleteVolumeBackupPolicyAssignment(ctx context.
 }
 
 // deleteVolumeBackupPolicyAssignment implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) deleteVolumeBackupPolicyAssignment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/volumeBackupPolicyAssignments/{policyAssignmentId}")
+func (client BlockstorageClient) deleteVolumeBackupPolicyAssignment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/volumeBackupPolicyAssignments/{policyAssignmentId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1426,7 +1513,7 @@ func (client BlockstorageClient) deleteVolumeBackupPolicyAssignment(ctx context.
 }
 
 // DeleteVolumeGroup Deletes the specified volume group. Individual volumes are not deleted, only the volume group is deleted.
-// For more information, see Volume Groups (https://docs.cloud.oracle.com/Content/Block/Concepts/volumegroups.htm).
+// For more information, see Volume Groups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/volumegroups.htm).
 //
 // See also
 //
@@ -1461,8 +1548,9 @@ func (client BlockstorageClient) DeleteVolumeGroup(ctx context.Context, request 
 }
 
 // deleteVolumeGroup implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) deleteVolumeGroup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/volumeGroups/{volumeGroupId}")
+func (client BlockstorageClient) deleteVolumeGroup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/volumeGroups/{volumeGroupId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1480,7 +1568,8 @@ func (client BlockstorageClient) deleteVolumeGroup(ctx context.Context, request 
 	return response, err
 }
 
-// DeleteVolumeGroupBackup Deletes a volume group backup. This operation deletes all the backups in the volume group. For more information, see Volume Groups (https://docs.cloud.oracle.com/Content/Block/Concepts/volumegroups.htm).
+// DeleteVolumeGroupBackup Deletes a volume group backup. This operation deletes all the backups in
+// the volume group. For more information, see Volume Groups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/volumegroups.htm).
 //
 // See also
 //
@@ -1515,8 +1604,9 @@ func (client BlockstorageClient) DeleteVolumeGroupBackup(ctx context.Context, re
 }
 
 // deleteVolumeGroupBackup implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) deleteVolumeGroupBackup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/volumeGroupBackups/{volumeGroupBackupId}")
+func (client BlockstorageClient) deleteVolumeGroupBackup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/volumeGroupBackups/{volumeGroupBackupId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1569,13 +1659,69 @@ func (client BlockstorageClient) DeleteVolumeKmsKey(ctx context.Context, request
 }
 
 // deleteVolumeKmsKey implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) deleteVolumeKmsKey(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/volumes/{volumeId}/kmsKey")
+func (client BlockstorageClient) deleteVolumeKmsKey(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodDelete, "/volumes/{volumeId}/kmsKey", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
 
 	var response DeleteVolumeKmsKeyResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// GetBlockVolumeReplica Gets information for the specified block volume replica.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/GetBlockVolumeReplica.go.html to see an example of how to use GetBlockVolumeReplica API.
+func (client BlockstorageClient) GetBlockVolumeReplica(ctx context.Context, request GetBlockVolumeReplicaRequest) (response GetBlockVolumeReplicaResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.getBlockVolumeReplica, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = GetBlockVolumeReplicaResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = GetBlockVolumeReplicaResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(GetBlockVolumeReplicaResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into GetBlockVolumeReplicaResponse")
+	}
+	return
+}
+
+// getBlockVolumeReplica implements the OCIOperation interface (enables retrying operations)
+func (client BlockstorageClient) getBlockVolumeReplica(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/blockVolumeReplicas/{blockVolumeReplicaId}", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetBlockVolumeReplicaResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)
@@ -1623,8 +1769,9 @@ func (client BlockstorageClient) GetBootVolume(ctx context.Context, request GetB
 }
 
 // getBootVolume implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) getBootVolume(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/bootVolumes/{bootVolumeId}")
+func (client BlockstorageClient) getBootVolume(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/bootVolumes/{bootVolumeId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1677,8 +1824,9 @@ func (client BlockstorageClient) GetBootVolumeBackup(ctx context.Context, reques
 }
 
 // getBootVolumeBackup implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) getBootVolumeBackup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/bootVolumeBackups/{bootVolumeBackupId}")
+func (client BlockstorageClient) getBootVolumeBackup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/bootVolumeBackups/{bootVolumeBackupId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1731,13 +1879,69 @@ func (client BlockstorageClient) GetBootVolumeKmsKey(ctx context.Context, reques
 }
 
 // getBootVolumeKmsKey implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) getBootVolumeKmsKey(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/bootVolumes/{bootVolumeId}/kmsKey")
+func (client BlockstorageClient) getBootVolumeKmsKey(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/bootVolumes/{bootVolumeId}/kmsKey", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
 
 	var response GetBootVolumeKmsKeyResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// GetBootVolumeReplica Gets information for the specified boot volume replica.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/GetBootVolumeReplica.go.html to see an example of how to use GetBootVolumeReplica API.
+func (client BlockstorageClient) GetBootVolumeReplica(ctx context.Context, request GetBootVolumeReplicaRequest) (response GetBootVolumeReplicaResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.getBootVolumeReplica, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = GetBootVolumeReplicaResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = GetBootVolumeReplicaResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(GetBootVolumeReplicaResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into GetBootVolumeReplicaResponse")
+	}
+	return
+}
+
+// getBootVolumeReplica implements the OCIOperation interface (enables retrying operations)
+func (client BlockstorageClient) getBootVolumeReplica(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/bootVolumeReplicas/{bootVolumeReplicaId}", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response GetBootVolumeReplicaResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)
@@ -1785,8 +1989,9 @@ func (client BlockstorageClient) GetVolume(ctx context.Context, request GetVolum
 }
 
 // getVolume implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) getVolume(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumes/{volumeId}")
+func (client BlockstorageClient) getVolume(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumes/{volumeId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1839,8 +2044,9 @@ func (client BlockstorageClient) GetVolumeBackup(ctx context.Context, request Ge
 }
 
 // getVolumeBackup implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) getVolumeBackup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumeBackups/{volumeBackupId}")
+func (client BlockstorageClient) getVolumeBackup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumeBackups/{volumeBackupId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1893,8 +2099,9 @@ func (client BlockstorageClient) GetVolumeBackupPolicy(ctx context.Context, requ
 }
 
 // getVolumeBackupPolicy implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) getVolumeBackupPolicy(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumeBackupPolicies/{policyId}")
+func (client BlockstorageClient) getVolumeBackupPolicy(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumeBackupPolicies/{policyId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -1949,8 +2156,9 @@ func (client BlockstorageClient) GetVolumeBackupPolicyAssetAssignment(ctx contex
 }
 
 // getVolumeBackupPolicyAssetAssignment implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) getVolumeBackupPolicyAssetAssignment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumeBackupPolicyAssignments")
+func (client BlockstorageClient) getVolumeBackupPolicyAssetAssignment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumeBackupPolicyAssignments", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2003,8 +2211,9 @@ func (client BlockstorageClient) GetVolumeBackupPolicyAssignment(ctx context.Con
 }
 
 // getVolumeBackupPolicyAssignment implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) getVolumeBackupPolicyAssignment(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumeBackupPolicyAssignments/{policyAssignmentId}")
+func (client BlockstorageClient) getVolumeBackupPolicyAssignment(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumeBackupPolicyAssignments/{policyAssignmentId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2022,7 +2231,7 @@ func (client BlockstorageClient) getVolumeBackupPolicyAssignment(ctx context.Con
 	return response, err
 }
 
-// GetVolumeGroup Gets information for the specified volume group. For more information, see Volume Groups (https://docs.cloud.oracle.com/Content/Block/Concepts/volumegroups.htm).
+// GetVolumeGroup Gets information for the specified volume group. For more information, see Volume Groups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/volumegroups.htm).
 //
 // See also
 //
@@ -2057,8 +2266,9 @@ func (client BlockstorageClient) GetVolumeGroup(ctx context.Context, request Get
 }
 
 // getVolumeGroup implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) getVolumeGroup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumeGroups/{volumeGroupId}")
+func (client BlockstorageClient) getVolumeGroup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumeGroups/{volumeGroupId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2076,7 +2286,7 @@ func (client BlockstorageClient) getVolumeGroup(ctx context.Context, request com
 	return response, err
 }
 
-// GetVolumeGroupBackup Gets information for the specified volume group backup. For more information, see Volume Groups (https://docs.cloud.oracle.com/Content/Block/Concepts/volumegroups.htm).
+// GetVolumeGroupBackup Gets information for the specified volume group backup. For more information, see Volume Groups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/volumegroups.htm).
 //
 // See also
 //
@@ -2111,8 +2321,9 @@ func (client BlockstorageClient) GetVolumeGroupBackup(ctx context.Context, reque
 }
 
 // getVolumeGroupBackup implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) getVolumeGroupBackup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumeGroupBackups/{volumeGroupBackupId}")
+func (client BlockstorageClient) getVolumeGroupBackup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumeGroupBackups/{volumeGroupBackupId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2165,13 +2376,69 @@ func (client BlockstorageClient) GetVolumeKmsKey(ctx context.Context, request Ge
 }
 
 // getVolumeKmsKey implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) getVolumeKmsKey(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumes/{volumeId}/kmsKey")
+func (client BlockstorageClient) getVolumeKmsKey(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumes/{volumeId}/kmsKey", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
 
 	var response GetVolumeKmsKeyResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ListBlockVolumeReplicas Lists the block volume replicas in the specified compartment and availability domain.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/ListBlockVolumeReplicas.go.html to see an example of how to use ListBlockVolumeReplicas API.
+func (client BlockstorageClient) ListBlockVolumeReplicas(ctx context.Context, request ListBlockVolumeReplicasRequest) (response ListBlockVolumeReplicasResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listBlockVolumeReplicas, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = ListBlockVolumeReplicasResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = ListBlockVolumeReplicasResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListBlockVolumeReplicasResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListBlockVolumeReplicasResponse")
+	}
+	return
+}
+
+// listBlockVolumeReplicas implements the OCIOperation interface (enables retrying operations)
+func (client BlockstorageClient) listBlockVolumeReplicas(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/blockVolumeReplicas", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListBlockVolumeReplicasResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)
@@ -2219,13 +2486,69 @@ func (client BlockstorageClient) ListBootVolumeBackups(ctx context.Context, requ
 }
 
 // listBootVolumeBackups implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) listBootVolumeBackups(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/bootVolumeBackups")
+func (client BlockstorageClient) listBootVolumeBackups(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/bootVolumeBackups", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
 
 	var response ListBootVolumeBackupsResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// ListBootVolumeReplicas Lists the boot volume replicas in the specified compartment and availability domain.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/ListBootVolumeReplicas.go.html to see an example of how to use ListBootVolumeReplicas API.
+func (client BlockstorageClient) ListBootVolumeReplicas(ctx context.Context, request ListBootVolumeReplicasRequest) (response ListBootVolumeReplicasResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+	ociResponse, err = common.Retry(ctx, request, client.listBootVolumeReplicas, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = ListBootVolumeReplicasResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = ListBootVolumeReplicasResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(ListBootVolumeReplicasResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into ListBootVolumeReplicasResponse")
+	}
+	return
+}
+
+// listBootVolumeReplicas implements the OCIOperation interface (enables retrying operations)
+func (client BlockstorageClient) listBootVolumeReplicas(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/bootVolumeReplicas", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response ListBootVolumeReplicasResponse
 	var httpResponse *http.Response
 	httpResponse, err = client.Call(ctx, &httpRequest)
 	defer common.CloseBodyIfValid(httpResponse)
@@ -2273,8 +2596,9 @@ func (client BlockstorageClient) ListBootVolumes(ctx context.Context, request Li
 }
 
 // listBootVolumes implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) listBootVolumes(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/bootVolumes")
+func (client BlockstorageClient) listBootVolumes(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/bootVolumes", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2329,8 +2653,9 @@ func (client BlockstorageClient) ListVolumeBackupPolicies(ctx context.Context, r
 }
 
 // listVolumeBackupPolicies implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) listVolumeBackupPolicies(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumeBackupPolicies")
+func (client BlockstorageClient) listVolumeBackupPolicies(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumeBackupPolicies", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2383,8 +2708,9 @@ func (client BlockstorageClient) ListVolumeBackups(ctx context.Context, request 
 }
 
 // listVolumeBackups implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) listVolumeBackups(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumeBackups")
+func (client BlockstorageClient) listVolumeBackups(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumeBackups", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2403,7 +2729,7 @@ func (client BlockstorageClient) listVolumeBackups(ctx context.Context, request 
 }
 
 // ListVolumeGroupBackups Lists the volume group backups in the specified compartment. You can filter the results by volume group.
-// For more information, see Volume Groups (https://docs.cloud.oracle.com/Content/Block/Concepts/volumegroups.htm).
+// For more information, see Volume Groups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/volumegroups.htm).
 //
 // See also
 //
@@ -2438,8 +2764,9 @@ func (client BlockstorageClient) ListVolumeGroupBackups(ctx context.Context, req
 }
 
 // listVolumeGroupBackups implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) listVolumeGroupBackups(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumeGroupBackups")
+func (client BlockstorageClient) listVolumeGroupBackups(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumeGroupBackups", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2458,7 +2785,7 @@ func (client BlockstorageClient) listVolumeGroupBackups(ctx context.Context, req
 }
 
 // ListVolumeGroups Lists the volume groups in the specified compartment and availability domain.
-// For more information, see Volume Groups (https://docs.cloud.oracle.com/Content/Block/Concepts/volumegroups.htm).
+// For more information, see Volume Groups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/volumegroups.htm).
 //
 // See also
 //
@@ -2493,8 +2820,9 @@ func (client BlockstorageClient) ListVolumeGroups(ctx context.Context, request L
 }
 
 // listVolumeGroups implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) listVolumeGroups(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumeGroups")
+func (client BlockstorageClient) listVolumeGroups(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumeGroups", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2547,8 +2875,9 @@ func (client BlockstorageClient) ListVolumes(ctx context.Context, request ListVo
 }
 
 // listVolumes implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) listVolumes(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumes")
+func (client BlockstorageClient) listVolumes(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodGet, "/volumes", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2601,8 +2930,9 @@ func (client BlockstorageClient) UpdateBootVolume(ctx context.Context, request U
 }
 
 // updateBootVolume implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) updateBootVolume(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/bootVolumes/{bootVolumeId}")
+func (client BlockstorageClient) updateBootVolume(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/bootVolumes/{bootVolumeId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2651,8 +2981,9 @@ func (client BlockstorageClient) UpdateBootVolumeBackup(ctx context.Context, req
 }
 
 // updateBootVolumeBackup implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) updateBootVolumeBackup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/bootVolumeBackups/{bootVolumeBackupId}")
+func (client BlockstorageClient) updateBootVolumeBackup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/bootVolumeBackups/{bootVolumeBackupId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2705,8 +3036,9 @@ func (client BlockstorageClient) UpdateBootVolumeKmsKey(ctx context.Context, req
 }
 
 // updateBootVolumeKmsKey implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) updateBootVolumeKmsKey(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/bootVolumes/{bootVolumeId}/kmsKey")
+func (client BlockstorageClient) updateBootVolumeKmsKey(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/bootVolumes/{bootVolumeId}/kmsKey", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2760,8 +3092,9 @@ func (client BlockstorageClient) UpdateVolume(ctx context.Context, request Updat
 }
 
 // updateVolume implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) updateVolume(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/volumes/{volumeId}")
+func (client BlockstorageClient) updateVolume(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/volumes/{volumeId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2810,8 +3143,9 @@ func (client BlockstorageClient) UpdateVolumeBackup(ctx context.Context, request
 }
 
 // updateVolumeBackup implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) updateVolumeBackup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/volumeBackups/{volumeBackupId}")
+func (client BlockstorageClient) updateVolumeBackup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/volumeBackups/{volumeBackupId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2872,8 +3206,9 @@ func (client BlockstorageClient) UpdateVolumeBackupPolicy(ctx context.Context, r
 }
 
 // updateVolumeBackupPolicy implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) updateVolumeBackupPolicy(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/volumeBackupPolicies/{policyId}")
+func (client BlockstorageClient) updateVolumeBackupPolicy(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/volumeBackupPolicies/{policyId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2895,7 +3230,7 @@ func (client BlockstorageClient) updateVolumeBackupPolicy(ctx context.Context, r
 // to add or remove volumes in a volume group. Specify the full list of volume IDs to include in the
 // volume group. If the volume ID is not specified in the call, it will be removed from the volume group.
 // Avoid entering confidential information.
-// For more information, see Volume Groups (https://docs.cloud.oracle.com/Content/Block/Concepts/volumegroups.htm).
+// For more information, see Volume Groups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/volumegroups.htm).
 //
 // See also
 //
@@ -2930,8 +3265,9 @@ func (client BlockstorageClient) UpdateVolumeGroup(ctx context.Context, request 
 }
 
 // updateVolumeGroup implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) updateVolumeGroup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/volumeGroups/{volumeGroupId}")
+func (client BlockstorageClient) updateVolumeGroup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/volumeGroups/{volumeGroupId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -2949,7 +3285,7 @@ func (client BlockstorageClient) updateVolumeGroup(ctx context.Context, request 
 	return response, err
 }
 
-// UpdateVolumeGroupBackup Updates the display name for the specified volume group backup. For more information, see Volume Groups (https://docs.cloud.oracle.com/Content/Block/Concepts/volumegroups.htm).
+// UpdateVolumeGroupBackup Updates the display name for the specified volume group backup. For more information, see Volume Groups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/volumegroups.htm).
 //
 // See also
 //
@@ -2979,8 +3315,9 @@ func (client BlockstorageClient) UpdateVolumeGroupBackup(ctx context.Context, re
 }
 
 // updateVolumeGroupBackup implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) updateVolumeGroupBackup(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/volumeGroupBackups/{volumeGroupBackupId}")
+func (client BlockstorageClient) updateVolumeGroupBackup(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/volumeGroupBackups/{volumeGroupBackupId}", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}
@@ -3033,8 +3370,9 @@ func (client BlockstorageClient) UpdateVolumeKmsKey(ctx context.Context, request
 }
 
 // updateVolumeKmsKey implements the OCIOperation interface (enables retrying operations)
-func (client BlockstorageClient) updateVolumeKmsKey(ctx context.Context, request common.OCIRequest) (common.OCIResponse, error) {
-	httpRequest, err := request.HTTPRequest(http.MethodPut, "/volumes/{volumeId}/kmsKey")
+func (client BlockstorageClient) updateVolumeKmsKey(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPut, "/volumes/{volumeId}/kmsKey", binaryReqBody, extraHeaders)
 	if err != nil {
 		return nil, err
 	}

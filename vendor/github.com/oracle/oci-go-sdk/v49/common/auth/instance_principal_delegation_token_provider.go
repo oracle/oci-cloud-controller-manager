@@ -6,7 +6,6 @@ package auth
 import (
 	"crypto/rsa"
 	"fmt"
-
 	"github.com/oracle/oci-go-sdk/v49/common"
 )
 

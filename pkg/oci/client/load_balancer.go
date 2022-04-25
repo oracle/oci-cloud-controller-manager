@@ -20,8 +20,8 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	"github.com/oracle/oci-go-sdk/v49/common"
-	"github.com/oracle/oci-go-sdk/v49/loadbalancer"
+	"github.com/oracle/oci-go-sdk/v50/common"
+	"github.com/oracle/oci-go-sdk/v50/loadbalancer"
 	"github.com/pkg/errors"
 )
 
@@ -542,7 +542,6 @@ func (c *loadbalancerClientStruct) listenersToGenericListenerDetails(details map
 			listenerDetailsStruct.ConnectionConfiguration = &GenericConnectionConfiguration{
 				IdleTimeout:                    v.ConnectionConfiguration.IdleTimeout,
 				BackendTcpProxyProtocolVersion: v.ConnectionConfiguration.BackendTcpProxyProtocolVersion,
-				BackendTcpProxyProtocolOptions: stringArrayToBackendTcpProxyProtocolOptionsEnum(v.ConnectionConfiguration.BackendTcpProxyProtocolOptions),
 			}
 		}
 		genericListenerDetails[k] = listenerDetailsStruct
@@ -581,7 +580,6 @@ func (c *loadbalancerClientStruct) genericListenerDetailsToListenerDetails(detai
 			listenerDetailsStruct.ConnectionConfiguration = &loadbalancer.ConnectionConfiguration{
 				IdleTimeout:                    v.ConnectionConfiguration.IdleTimeout,
 				BackendTcpProxyProtocolVersion: v.ConnectionConfiguration.BackendTcpProxyProtocolVersion,
-				BackendTcpProxyProtocolOptions: backendTcpProxyProtocolOptionsStringArrayToEnum(v.ConnectionConfiguration.BackendTcpProxyProtocolOptions),
 			}
 		}
 		listenerDetails[k] = listenerDetailsStruct
@@ -788,22 +786,6 @@ func sslConfigurationToGenericSslConfiguration(details *loadbalancer.SslConfigur
 	}
 }
 
-func backendTcpProxyProtocolOptionsStringArrayToEnum(options []string) []loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum {
-	ccString := make([]loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum, 0)
-	for _, option := range options {
-		ccString = append(ccString, loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum(option))
-	}
-	return ccString
-}
-
-func stringArrayToBackendTcpProxyProtocolOptionsEnum(options []loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum) []string {
-	ccString := make([]string, 0)
-	for _, option := range options {
-		ccString = append(ccString, string(option))
-	}
-	return ccString
-}
-
 func getSessionPersistenceConfiguration(details *GenericSessionPersistenceConfiguration) *loadbalancer.SessionPersistenceConfigurationDetails {
 	if details == nil {
 		return nil
@@ -834,7 +816,6 @@ func getListenerConnectionConfiguration(details *GenericConnectionConfiguration)
 		connectionConfiguration = &loadbalancer.ConnectionConfiguration{
 			IdleTimeout:                    details.IdleTimeout,
 			BackendTcpProxyProtocolVersion: details.BackendTcpProxyProtocolVersion,
-			BackendTcpProxyProtocolOptions: backendTcpProxyProtocolOptionsStringArrayToEnum(details.BackendTcpProxyProtocolOptions),
 		}
 	}
 	return connectionConfiguration

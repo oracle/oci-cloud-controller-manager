@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2021, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -14,17 +14,24 @@
 package core
 
 import (
-	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v49/common"
 )
 
 // Shape A compute instance shape that can be used in LaunchInstance.
-// For more information, see Overview of the Compute Service (https://docs.cloud.oracle.com/Content/Compute/Concepts/computeoverview.htm) and
-// Compute Shapes (https://docs.cloud.oracle.com/Content/Compute/References/computeshapes.htm).
+// For more information, see Overview of the Compute Service (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm) and
+// Compute Shapes (https://docs.cloud.oracle.com/iaas/Content/Compute/References/computeshapes.htm).
 type Shape struct {
 
 	// The name of the shape. You can enumerate all available shapes by calling
 	// ListShapes.
 	Shape *string `mandatory:"true" json:"shape"`
+
+	// For a subcore burstable VM, the supported baseline OCPU utilization for instances that use this shape.
+	BaselineOcpuUtilizations []ShapeBaselineOcpuUtilizationsEnum `mandatory:"false" json:"baselineOcpuUtilizations,omitempty"`
+
+	// For a subcore burstable VM, the minimum total baseline OCPUs required. The total baseline OCPUs is equal to
+	// baselineOcpuUtilization chosen multiplied by the number of OCPUs chosen.
+	MinTotalBaselineOcpusRequired *float32 `mandatory:"false" json:"minTotalBaselineOcpusRequired"`
 
 	// A short description of the shape's processor (CPU).
 	ProcessorDescription *string `mandatory:"false" json:"processorDescription"`
@@ -59,6 +66,9 @@ type Shape struct {
 	// If the shape does not have any local disks, this field is `null`.
 	LocalDiskDescription *string `mandatory:"false" json:"localDiskDescription"`
 
+	// Whether live migration is supported for this shape.
+	IsLiveMigrationSupported *bool `mandatory:"false" json:"isLiveMigrationSupported"`
+
 	OcpuOptions *ShapeOcpuOptions `mandatory:"false" json:"ocpuOptions"`
 
 	MemoryOptions *ShapeMemoryOptions `mandatory:"false" json:"memoryOptions"`
@@ -66,8 +76,35 @@ type Shape struct {
 	NetworkingBandwidthOptions *ShapeNetworkingBandwidthOptions `mandatory:"false" json:"networkingBandwidthOptions"`
 
 	MaxVnicAttachmentOptions *ShapeMaxVnicAttachmentOptions `mandatory:"false" json:"maxVnicAttachmentOptions"`
+
+	PlatformConfigOptions *ShapePlatformConfigOptions `mandatory:"false" json:"platformConfigOptions"`
 }
 
 func (m Shape) String() string {
 	return common.PointerString(m)
+}
+
+// ShapeBaselineOcpuUtilizationsEnum Enum with underlying type: string
+type ShapeBaselineOcpuUtilizationsEnum string
+
+// Set of constants representing the allowable values for ShapeBaselineOcpuUtilizationsEnum
+const (
+	ShapeBaselineOcpuUtilizations8 ShapeBaselineOcpuUtilizationsEnum = "BASELINE_1_8"
+	ShapeBaselineOcpuUtilizations2 ShapeBaselineOcpuUtilizationsEnum = "BASELINE_1_2"
+	ShapeBaselineOcpuUtilizations1 ShapeBaselineOcpuUtilizationsEnum = "BASELINE_1_1"
+)
+
+var mappingShapeBaselineOcpuUtilizations = map[string]ShapeBaselineOcpuUtilizationsEnum{
+	"BASELINE_1_8": ShapeBaselineOcpuUtilizations8,
+	"BASELINE_1_2": ShapeBaselineOcpuUtilizations2,
+	"BASELINE_1_1": ShapeBaselineOcpuUtilizations1,
+}
+
+// GetShapeBaselineOcpuUtilizationsEnumValues Enumerates the set of values for ShapeBaselineOcpuUtilizationsEnum
+func GetShapeBaselineOcpuUtilizationsEnumValues() []ShapeBaselineOcpuUtilizationsEnum {
+	values := make([]ShapeBaselineOcpuUtilizationsEnum, 0)
+	for _, v := range mappingShapeBaselineOcpuUtilizations {
+		values = append(values, v)
+	}
+	return values
 }

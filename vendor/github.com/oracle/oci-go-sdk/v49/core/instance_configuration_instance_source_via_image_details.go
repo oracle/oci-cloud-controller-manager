@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2021, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -15,13 +15,14 @@ package core
 
 import (
 	"encoding/json"
-	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v49/common"
 )
 
 // InstanceConfigurationInstanceSourceViaImageDetails The representation of InstanceConfigurationInstanceSourceViaImageDetails
 type InstanceConfigurationInstanceSourceViaImageDetails struct {
 
-	// The size of the boot volume in GBs. The minimum value is 50 GB and the maximum value is 16384 GB (16TB).
+	// The size of the boot volume in GBs. The minimum value is 50 GB and the maximum
+	// value is 32,768 GB (32 TB).
 	BootVolumeSizeInGBs *int64 `mandatory:"false" json:"bootVolumeSizeInGBs"`
 
 	// The OCID of the image used to boot the instance.

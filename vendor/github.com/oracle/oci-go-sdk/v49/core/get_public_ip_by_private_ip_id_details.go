@@ -20,7 +20,7 @@ import (
 // GetPublicIpByPrivateIpIdDetails Details of the private IP that the public IP is assigned to.
 type GetPublicIpByPrivateIpIdDetails struct {
 
-	// OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the private IP.
+	// OCID of the private IP.
 	PrivateIpId *string `mandatory:"true" json:"privateIpId"`
 }
 

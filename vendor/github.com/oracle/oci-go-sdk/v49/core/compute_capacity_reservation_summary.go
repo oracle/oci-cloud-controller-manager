@@ -33,8 +33,9 @@ type ComputeCapacityReservationSummary struct {
 	// The OCID of the compartment.
 	CompartmentId *string `mandatory:"false" json:"compartmentId"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
+	// A user-friendly name for the capacity reservation. Does not have to be unique, and it's changeable.
 	// Avoid entering confidential information.
+	// Example: `My Reservation`
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a
@@ -52,13 +53,13 @@ type ComputeCapacityReservationSummary struct {
 
 	// The number of instances for which capacity will be held in this
 	// compute capacity reservation. This number is the sum of the values of the `reservedCount` fields
-	// for all of the instance capacity configurations under this reservation.
+	// for all of the instance reservation configurations under this reservation.
 	// The purpose of this field is to calculate the percentage usage of the reservation.
 	ReservedInstanceCount *int64 `mandatory:"false" json:"reservedInstanceCount"`
 
 	// The total number of instances currently consuming space in
 	// this compute capacity reservation. This number is the sum of the values of the `usedCount` fields
-	// for all of the instance capacity configurations under this reservation.
+	// for all of the instance reservation configurations under this reservation.
 	// The purpose of this field is to calculate the percentage usage of the reservation.
 	UsedInstanceCount *int64 `mandatory:"false" json:"usedInstanceCount"`
 

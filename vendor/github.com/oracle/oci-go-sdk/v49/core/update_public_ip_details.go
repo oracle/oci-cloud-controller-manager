@@ -25,8 +25,8 @@ type UpdatePublicIpDetails struct {
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
-	// Avoid entering confidential information.
+	// A user-friendly name. Does not have to be unique, and it's changeable. Avoid
+	// entering confidential information.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
@@ -34,7 +34,7 @@ type UpdatePublicIpDetails struct {
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the private IP to assign the public IP to.
+	// The OCID of the private IP to assign the public IP to.
 	// * If the public IP is already assigned to a different private IP, it will be unassigned
 	// and then reassigned to the specified private IP.
 	// * If you set this field to an empty string, the public IP will be unassigned from the

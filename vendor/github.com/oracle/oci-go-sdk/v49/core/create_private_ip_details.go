@@ -25,8 +25,8 @@ type CreatePrivateIpDetails struct {
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
-	// Avoid entering confidential information.
+	// A user-friendly name. Does not have to be unique, and it's changeable. Avoid
+	// entering confidential information.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
@@ -51,12 +51,12 @@ type CreatePrivateIpDetails struct {
 	// Example: `10.0.3.3`
 	IpAddress *string `mandatory:"false" json:"ipAddress"`
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the VNIC to assign the private IP to. The VNIC and private IP
+	// The OCID of the VNIC to assign the private IP to. The VNIC and private IP
 	// must be in the same subnet.
 	VnicId *string `mandatory:"false" json:"vnicId"`
 
 	// Use this attribute only with the Oracle Cloud VMware Solution.
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the VLAN from which the private IP is to be drawn. The IP address,
+	// The OCID of the VLAN from which the private IP is to be drawn. The IP address,
 	// *if supplied*, must be valid for the given VLAN. See Vlan.
 	VlanId *string `mandatory:"false" json:"vlanId"`
 }

@@ -29,8 +29,7 @@ type AppCatalogListing struct {
 	// The OCID of the listing.
 	ListingId *string `mandatory:"false" json:"listingId"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
-	// Avoid entering confidential information.
+	// Name of the listing.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Date and time the listing was published, in RFC3339 (https://tools.ietf.org/html/rfc3339) format.

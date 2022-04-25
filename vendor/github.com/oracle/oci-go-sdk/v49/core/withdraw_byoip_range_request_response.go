@@ -1,11 +1,11 @@
-// Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2021, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
 package core
 
 import (
-	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v49/common"
 	"net/http"
 )
 
@@ -16,7 +16,7 @@ import (
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/WithdrawByoipRange.go.html to see an example of how to use WithdrawByoipRangeRequest.
 type WithdrawByoipRangeRequest struct {
 
-	// The OCID of the Byoip Range object.
+	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the `ByoipRange` resource containing the BYOIP CIDR block.
 	ByoipRangeId *string `mandatory:"true" contributesTo:"path" name:"byoipRangeId"`
 
 	// Unique identifier for the request.
@@ -33,8 +33,16 @@ func (request WithdrawByoipRangeRequest) String() string {
 }
 
 // HTTPRequest implements the OCIRequest interface
-func (request WithdrawByoipRangeRequest) HTTPRequest(method, path string) (http.Request, error) {
-	return common.MakeDefaultHTTPRequestWithTaggedStruct(method, path, request)
+func (request WithdrawByoipRangeRequest) HTTPRequest(method, path string, binaryRequestBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (http.Request, error) {
+
+	return common.MakeDefaultHTTPRequestWithTaggedStructAndExtraHeaders(method, path, request, extraHeaders)
+}
+
+// BinaryRequestBody implements the OCIRequest interface
+func (request WithdrawByoipRangeRequest) BinaryRequestBody() (*common.OCIReadSeekCloser, bool) {
+
+	return nil, false
+
 }
 
 // RetryPolicy implements the OCIRetryableRequest interface. This retrieves the specified retry policy.

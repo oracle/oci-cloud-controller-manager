@@ -22,10 +22,10 @@ import (
 //   * IPSecConnectionTunnelSharedSecret
 type IpSecConnectionDeviceConfig struct {
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the compartment containing the IPSec connection.
+	// The OCID of the compartment containing the IPSec connection.
 	CompartmentId *string `mandatory:"true" json:"compartmentId"`
 
-	// The IPSec connection's Oracle ID (OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm)).
+	// The IPSec connection's Oracle ID (OCID).
 	Id *string `mandatory:"true" json:"id"`
 
 	// The date and time the IPSec connection was created.

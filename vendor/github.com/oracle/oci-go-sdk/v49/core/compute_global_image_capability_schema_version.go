@@ -27,8 +27,7 @@ type ComputeGlobalImageCapabilitySchemaVersion struct {
 	// The ocid of the compute global image capability schema
 	ComputeGlobalImageCapabilitySchemaId *string `mandatory:"true" json:"computeGlobalImageCapabilitySchemaId"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
-	// Avoid entering confidential information.
+	// A user-friendly name for the compute global image capability schema
 	DisplayName *string `mandatory:"true" json:"displayName"`
 
 	// The map of each capability name to its ImageCapabilityDescriptor.

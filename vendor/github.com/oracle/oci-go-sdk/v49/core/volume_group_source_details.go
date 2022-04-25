@@ -52,10 +52,6 @@ func (m *volumegroupsourcedetails) UnmarshalPolymorphicJSON(data []byte) (interf
 
 	var err error
 	switch m.Type {
-	case "volumeGroupReplicaId":
-		mm := VolumeGroupSourceFromVolumeGroupReplicaDetails{}
-		err = json.Unmarshal(data, &mm)
-		return mm, err
 	case "volumeGroupId":
 		mm := VolumeGroupSourceFromVolumeGroupDetails{}
 		err = json.Unmarshal(data, &mm)

@@ -24,8 +24,8 @@ type BootVolumeReplicaDetails struct {
 	// Example: `Uocm:PHX-AD-1`
 	AvailabilityDomain *string `mandatory:"true" json:"availabilityDomain"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
-	// Avoid entering confidential information.
+	// The display name of the boot volume replica. You may optionally specify a *display name* for
+	// the boot volume replica, otherwise a default is provided.
 	DisplayName *string `mandatory:"false" json:"displayName"`
 }
 

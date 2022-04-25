@@ -23,8 +23,7 @@ type ComputeGlobalImageCapabilitySchema struct {
 	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the compute global image capability schema
 	Id *string `mandatory:"true" json:"id"`
 
-	// A user-friendly name. Does not have to be unique, and it's changeable.
-	// Avoid entering confidential information.
+	// A user-friendly name for the compute global image capability schema
 	DisplayName *string `mandatory:"true" json:"displayName"`
 
 	// The date and time the compute global image capability schema was created, in the format defined by
