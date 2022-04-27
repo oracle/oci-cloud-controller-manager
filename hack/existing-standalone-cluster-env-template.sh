@@ -16,6 +16,9 @@
 # The test suites to run (can replace or add tags)
 export FOCUS="\[cloudprovider\]"
 
+# Scope can be ARM / AMD / BOTH
+export SCOPE="AMD"
+
 # Set path to kubeconfig of existing cluster if it does not exist in default path. Defaults to $HOME/.kube/config.
 # Mandatory
 export CLUSTER_KUBECONFIG=$HOME/.kube/config
@@ -41,7 +44,7 @@ export NSG_OCIDS=""
 
 # VOLUME HANDLE in the format filesystem_ocid:mountTargetIP:export_path
 # make sure volume handle is in the same subnet as your nodes
-export VOLUME_HANDLE=""
+export FSS_VOLUME_HANDLE=""
 # OPTIONAL
 
 # For debugging the tests in existing cluster, do not turn it off by default.

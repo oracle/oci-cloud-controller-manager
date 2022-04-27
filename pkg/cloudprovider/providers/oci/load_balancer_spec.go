@@ -492,11 +492,17 @@ func getBackends(logger *zap.SugaredLogger, nodes []*v1.Node, nodePort int32) []
 			logger.Warnf("Node %q has an empty Internal IP address.", node.Name)
 			continue
 		}
+		instanceID, err := MapProviderIDToInstanceID(node.Spec.ProviderID)
+		if err != nil {
+			logger.Warnf("Node %q has an empty ProviderID.", node.Name)
+			continue
+		}
+
 		backends = append(backends, client.GenericBackend{
 			IpAddress: nodeAddressString,
 			Port:      common.Int(int(nodePort)),
 			Weight:    common.Int(1),
-			TargetId:  &node.Spec.ProviderID,
+			TargetId:  &instanceID,
 		})
 	}
 	return backends
