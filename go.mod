@@ -40,8 +40,8 @@ require (
 	github.com/kubernetes-csi/csi-lib-utils v0.8.1
 	github.com/onsi/ginkgo v1.14.1
 	github.com/onsi/gomega v1.10.2
-	github.com/oracle/oci-go-sdk/v31 v31.0.0
-	github.com/oracle/oci-go-sdk/v49 v49.2.0
+	github.com/oracle/oci-go-sdk/v31 v31.0.0 // indirect
+	github.com/oracle/oci-go-sdk/v49 v49.2.0 // indirect
 	github.com/oracle/oci-go-sdk/v50 v50.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.9.0
