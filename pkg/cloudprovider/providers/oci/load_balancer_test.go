@@ -17,17 +17,17 @@ package oci
 import (
 	"context"
 	"errors"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"reflect"
 	"testing"
 
-	"github.com/oracle/oci-go-sdk/v50/common"
-	"github.com/oracle/oci-go-sdk/v50/core"
-
-	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/oracle/oci-go-sdk/v50/common"
+	"github.com/oracle/oci-go-sdk/v50/core"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 )
 
 func Test_getDefaultLBSubnets(t *testing.T) {
