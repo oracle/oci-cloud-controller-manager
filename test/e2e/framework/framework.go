@@ -57,6 +57,7 @@ var (
 	cmekKMSKey        string //KMS key for CMEK testing
 	nsgOCIDS		  string // Testing CCM NSG feature
 	reservedIP        string // Testing public reserved IP feature
+	architecture      string
 	volumeHandle      string // The FSS mount volume handle
 )
 
