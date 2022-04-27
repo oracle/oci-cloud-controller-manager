@@ -16,11 +16,9 @@ package client
 
 import (
 	"context"
-	"reflect"
 	"testing"
 
 	"github.com/oracle/oci-go-sdk/v50/core"
-	"github.com/oracle/oci-go-sdk/v50/loadbalancer"
 	"k8s.io/client-go/util/flowcontrol"
 )
 
