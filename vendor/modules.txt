@@ -178,7 +178,6 @@ github.com/opencontainers/go-digest
 ## explicit
 github.com/oracle/oci-go-sdk/v50/common
 github.com/oracle/oci-go-sdk/v50/common/auth
-github.com/oracle/oci-go-sdk/v50/containerengine
 github.com/oracle/oci-go-sdk/v50/core
 github.com/oracle/oci-go-sdk/v50/filestorage
 github.com/oracle/oci-go-sdk/v50/identity

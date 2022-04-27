@@ -17,7 +17,6 @@ package e2e
 import (
 	"github.com/onsi/ginkgo"
 	sharedfw "github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
-	oke "github.com/oracle/oci-go-sdk/v50/containerengine"
 )
 
 var setupF *sharedfw.Framework
