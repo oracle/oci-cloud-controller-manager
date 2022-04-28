@@ -229,7 +229,6 @@ var _ = Describe("CSI Volume Performance Level", func() {
 
 			time.Sleep(60 * time.Second) //waiting for pod to up and running
 			pvcJig.CheckVolumePerformanceLevel(f.BlockStorageClient, pvc.Namespace, pvc.Name, csi_util.HigherPerformanceOption)
-			pvcJig.CheckISCSIQueueDepthOnNode(f.Namespace.Name, podName)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			_ = f.DeleteStorageClass(framework.ClassOCIHigh)
 		})
