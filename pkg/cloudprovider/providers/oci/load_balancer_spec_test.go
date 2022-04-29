@@ -17,6 +17,7 @@ package oci
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"reflect"
 	"testing"
 
@@ -27,13 +28,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
-	"github.com/oracle/oci-go-sdk/v31/common"
-	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-go-sdk/v50/common"
 )
 
 var (
 	backendSecret  = "backendsecret"
 	listenerSecret = "listenersecret"
+	testNodeString = "testNodeTargetID"
 )
 
 var (
@@ -94,31 +96,162 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			},
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "100Mbps",
 				Internal: false,
 				Subnets:  []string{"one", "two"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
 					"TCP-80": {
+						Name:                  common.String("TCP-80"),
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
+				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager: newSecurityListManagerNOOP(),
+			},
+		},
+		"defaults-nlb-cluster-policy": {
+			defaultSubnetOne: "one",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			expected: &LBSpec{
+				Name:    "kube-system/testservice/test-uid",
+				Type:    "nlb",
+				Shape:   "flexible",
+				Subnets: []string{"one"},
+				Listeners: map[string]client.GenericListener{
+					"TCP-80": {
+						Name:                  common.String("TCP-80"),
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]client.GenericBackendSetDetails{
+					"TCP-80": {
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
+						},
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("FIVE_TUPLE"),
+					},
+				},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager: newSecurityListManagerNOOP(),
+			},
+		},
+		"defaults-nlb-local-policy": {
+			defaultSubnetOne: "one",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+					ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicyTypeLocal,
+				},
+			},
+			expected: &LBSpec{
+				Name:    "kube-system/testservice/test-uid",
+				Type:    "nlb",
+				Shape:   "flexible",
+				Subnets: []string{"one"},
+				Listeners: map[string]client.GenericListener{
+					"TCP-80": {
+						Name:                  common.String("TCP-80"),
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]client.GenericBackendSetDetails{
+					"TCP-80": {
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
+						},
+						IsPreserveSource: common.Bool(true),
+						Policy:           common.String("FIVE_TUPLE"),
+					},
+				},
+				IsPreserveSourceDestination: common.Bool(true),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -152,31 +285,37 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			},
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "100Mbps",
 				Internal: true,
 				Subnets:  []string{"one"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
 					"TCP-80": {
+						Name:                  common.String("TCP-80"),
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
+				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -211,31 +350,37 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			},
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "100Mbps",
 				Internal: true,
 				Subnets:  []string{"regional-subnet"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
 					"TCP-80": {
+						Name:                  common.String("TCP-80"),
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
+				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -270,31 +415,37 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			},
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "100Mbps",
 				Internal: true,
 				Subnets:  []string{"regional-subnet"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
 					"TCP-80": {
+						Name:                  common.String("TCP-80"),
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
+				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -327,31 +478,37 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			},
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "100Mbps",
 				Internal: true,
 				Subnets:  []string{"annotation-one"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
 					"TCP-80": {
+						Name:                  common.String("TCP-80"),
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
+				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -383,31 +540,37 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			},
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "100Mbps",
 				Internal: false,
 				Subnets:  []string{"one", "two"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
-					"TCP-80": loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
+					"TCP-80": client.GenericListener{
+						Name:                  common.String("TCP-80"),
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
-					"TCP-80": loadbalancer.BackendSetDetails{
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+				BackendSets: map[string]client.GenericBackendSetDetails{
+					"TCP-80": client.GenericBackendSetDetails{
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": portSpec{
 						ListenerPort:      80,
@@ -439,33 +602,39 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			},
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "100Mbps",
 				Internal: false,
 				Subnets:  []string{"regional-subnet"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
-					"TCP-80": loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
+					"TCP-80": client.GenericListener{
+						Name:                  common.String("TCP-80"),
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
-					"TCP-80": loadbalancer.BackendSetDetails{
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+				BackendSets: map[string]client.GenericBackendSetDetails{
+					"TCP-80": client.GenericBackendSetDetails{
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
-					"TCP-80": portSpec{
+					"TCP-80": {
 						ListenerPort:      80,
 						HealthCheckerPort: 10256,
 					},
@@ -486,7 +655,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Spec: v1.ServiceSpec{
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
-						v1.ServicePort{
+						{
 							Protocol: v1.ProtocolTCP,
 							Port:     int32(80),
 						},
@@ -495,31 +664,37 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			},
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "100Mbps",
 				Internal: false,
 				Subnets:  []string{"", "annotation-two"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
-					"TCP-80": loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
+					"TCP-80": client.GenericListener{
+						Name:                  common.String("TCP-80"),
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
-					"TCP-80": loadbalancer.BackendSetDetails{
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+				BackendSets: map[string]client.GenericBackendSetDetails{
+					"TCP-80": client.GenericBackendSetDetails{
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": portSpec{
 						ListenerPort:      80,
@@ -553,31 +728,37 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			},
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "100Mbps",
 				Internal: false,
 				Subnets:  []string{"regional-subnet"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
-					"TCP-80": loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
+					"TCP-80": client.GenericListener{
+						Name:                  common.String("TCP-80"),
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
-					"TCP-80": loadbalancer.BackendSetDetails{
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+				BackendSets: map[string]client.GenericBackendSetDetails{
+					"TCP-80": client.GenericBackendSetDetails{
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": portSpec{
 						ListenerPort:      80,
@@ -611,31 +792,37 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			},
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "100Mbps",
 				Internal: false,
 				Subnets:  []string{"regional-subnet"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
-					"TCP-80": loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
+					"TCP-80": client.GenericListener{
+						Name:                  common.String("TCP-80"),
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
-					"TCP-80": loadbalancer.BackendSetDetails{
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+				BackendSets: map[string]client.GenericBackendSetDetails{
+					"TCP-80": client.GenericBackendSetDetails{
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": portSpec{
 						ListenerPort:      80,
@@ -670,31 +857,37 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			},
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "100Mbps",
 				Internal: false,
 				Subnets:  []string{"annotation-one", "annotation-two"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
-					"TCP-80": loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
+					"TCP-80": client.GenericListener{
+						Name:                  common.String("TCP-80"),
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
-					"TCP-80": loadbalancer.BackendSetDetails{
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+				BackendSets: map[string]client.GenericBackendSetDetails{
+					"TCP-80": client.GenericBackendSetDetails{
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": portSpec{
 						ListenerPort:      80,
@@ -729,31 +922,37 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			},
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "8000Mbps",
 				Internal: false,
 				Subnets:  []string{"one", "two"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
 					"TCP-80": {
+						Name:                  common.String("TCP-80"),
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
+				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -787,34 +986,40 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			},
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "100Mbps",
 				Internal: false,
 				Subnets:  []string{"one", "two"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
 					"TCP-80": {
+						Name:                  common.String("TCP-80"),
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
-						ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
+						ConnectionConfiguration: &client.GenericConnectionConfiguration{
 							IdleTimeout: common.Int64(404),
 						},
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
+				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -852,56 +1057,65 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			},
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "100Mbps",
 				Internal: false,
 				Subnets:  []string{"one", "two"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
 					"TCP-80": {
+						Name:                  common.String("TCP-80"),
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
-						ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
+						ConnectionConfiguration: &client.GenericConnectionConfiguration{
 							IdleTimeout:                    common.Int64(300), // fallback to default timeout for TCP
 							BackendTcpProxyProtocolVersion: common.Int(2),
 						},
 					},
 					"HTTP-443": {
+						Name:                  common.String("HTTP-443"),
 						DefaultBackendSetName: common.String("HTTP-443"),
 						Port:                  common.Int(443),
 						Protocol:              common.String("HTTP"),
-						ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
+						ConnectionConfiguration: &client.GenericConnectionConfiguration{
 							IdleTimeout:                    common.Int64(60), // fallback to default timeout for HTTP
 							BackendTcpProxyProtocolVersion: common.Int(2),
 						},
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
+				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
 					},
 					"HTTP-443": {
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -940,35 +1154,41 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			},
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "100Mbps",
 				Internal: false,
 				Subnets:  []string{"one", "two"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
 					"TCP-80": {
+						Name:                  common.String("TCP-80"),
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
-						ConnectionConfiguration: &loadbalancer.ConnectionConfiguration{
+						ConnectionConfiguration: &client.GenericConnectionConfiguration{
 							IdleTimeout:                    common.Int64(404),
 							BackendTcpProxyProtocolVersion: common.Int(2),
 						},
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
+				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -1004,31 +1224,37 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			},
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "100Mbps",
 				Internal: false,
 				Subnets:  []string{"annotation-one", "annotation-two"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
 					"HTTP-80": {
+						Name:                  common.String("HTTP-80"),
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("HTTP"),
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
+				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -1064,31 +1290,37 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			},
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "100Mbps",
 				Internal: false,
 				Subnets:  []string{"annotation-one", "annotation-two"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
 					"TCP-80": {
+						Name:                  common.String("TCP-80"),
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
+				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -1124,31 +1356,37 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			},
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "100Mbps",
 				Internal: false,
 				Subnets:  []string{"annotation-one", "annotation-two"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
 					"TCP-80": {
+						Name:                  common.String("TCP-80"),
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
+				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -1180,41 +1418,47 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			},
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "100Mbps",
 				Internal: false,
 				Subnets:  []string{"one", "two"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
 					fmt.Sprintf("TCP-443"): {
+						Name:                  common.String("TCP-443"),
 						DefaultBackendSetName: common.String("TCP-443"),
 						Port:                  common.Int(443),
 						Protocol:              common.String("TCP"),
-						SslConfiguration: &loadbalancer.SslConfigurationDetails{
+						SslConfiguration: &client.GenericSslConfigurationDetails{
 							CertificateName:       &listenerSecret,
 							VerifyDepth:           common.Int(0),
 							VerifyPeerCertificate: common.Bool(false),
 						},
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
+				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-443": {
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
-						SslConfiguration: &loadbalancer.SslConfigurationDetails{
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
+						SslConfiguration: &client.GenericSslConfigurationDetails{
 							CertificateName:       &backendSecret,
 							VerifyDepth:           common.Int(0),
 							VerifyPeerCertificate: common.Bool(false),
 						},
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-443": {
 						ListenerPort:      443,
@@ -1260,31 +1504,37 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			},
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "100Mbps",
 				Internal: false,
 				Subnets:  []string{"one", "two"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
 					"TCP-80": {
+						Name:                  common.String("TCP-80"),
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
+				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(1),
 							TimeoutInMillis:  common.Int(1000),
 							IntervalInMillis: common.Int(3000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -1320,33 +1570,39 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			},
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "flexible",
 				FlexMin:  &tenMbps,
 				FlexMax:  &eightyMbps,
 				Internal: false,
 				Subnets:  []string{"one", "two"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
 					"TCP-80": {
+						Name:                  common.String("TCP-80"),
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
+				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -1381,31 +1637,37 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			},
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "8000Mbps",
 				Internal: false,
 				Subnets:  []string{"one", "two"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
 					"TCP-80": {
+						Name:                  common.String("TCP-80"),
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
+				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("IP_HASH"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("IP_HASH"),
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -1439,31 +1701,37 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			},
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "8000Mbps",
 				Internal: false,
 				Subnets:  []string{"one", "two"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
 					"TCP-80": {
+						Name:                  common.String("TCP-80"),
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
+				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -1498,31 +1766,37 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			},
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "8000Mbps",
 				Internal: false,
 				Subnets:  []string{"one", "two"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
 					"TCP-80": {
+						Name:                  common.String("TCP-80"),
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
+				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -1565,31 +1839,37 @@ func TestNewLBSpecSuccess(t *testing.T) {
 
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "100Mbps",
 				Internal: false,
 				Subnets:  []string{"one", "two"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
 					"TCP-80": {
+						Name:                  common.String("TCP-80"),
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
+				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -1671,31 +1951,37 @@ func TestNewLBSpecSingleAD(t *testing.T) {
 			},
 			expected: &LBSpec{
 				Name:     "test-uid",
+				Type:     "lb",
 				Shape:    "100Mbps",
 				Internal: false,
 				Subnets:  []string{"annotation-one"},
-				Listeners: map[string]loadbalancer.ListenerDetails{
+				Listeners: map[string]client.GenericListener{
 					"TCP-80": {
+						Name:                  common.String("TCP-80"),
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
 					},
 				},
-				BackendSets: map[string]loadbalancer.BackendSetDetails{
+				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []loadbalancer.BackendDetails{},
-						HealthChecker: &loadbalancer.HealthCheckerDetails{
-							Protocol:         common.String("HTTP"),
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
 							TimeoutInMillis:  common.Int(3000),
 							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
 						},
-						Policy: common.String("ROUND_ROBIN"),
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				SourceCIDRs: []string{"0.0.0.0/0"},
+				IsPreserveSourceDestination: common.Bool(false),
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -2145,13 +2431,13 @@ func TestCertificates(t *testing.T) {
 
 	testCases := map[string]struct {
 		lbSpec         *LBSpec
-		expectedResult map[string]loadbalancer.CertificateDetails
+		expectedResult map[string]client.GenericCertificate
 		expectError    bool
 	}{
 		"No SSLConfig results in empty certificate details array": {
 			expectError:    false,
 			lbSpec:         &LBSpec{},
-			expectedResult: make(map[string]loadbalancer.CertificateDetails),
+			expectedResult: make(map[string]client.GenericCertificate),
 		},
 		"Return backend SSL secret": {
 			expectError: false,
@@ -2181,7 +2467,7 @@ func TestCertificates(t *testing.T) {
 					},
 				},
 			},
-			expectedResult: map[string]loadbalancer.CertificateDetails{
+			expectedResult: map[string]client.GenericCertificate{
 				backendSecret: {
 					CertificateName:   &backendSecret,
 					CaCertificate:     &backendSecretCaCert,
@@ -2228,7 +2514,7 @@ func TestCertificates(t *testing.T) {
 					},
 				},
 			},
-			expectedResult: map[string]loadbalancer.CertificateDetails{
+			expectedResult: map[string]client.GenericCertificate{
 				backendSecret: {
 					CertificateName:   &backendSecret,
 					CaCertificate:     &backendSecretCaCert,
@@ -2316,12 +2602,12 @@ func Test_getBackends(t *testing.T) {
 	var tests = []struct {
 		name string
 		args args
-		want []loadbalancer.BackendDetails
+		want []client.GenericBackend
 	}{
 		{
 			name: "no nodes",
 			args: args{nodePort: 80},
-			want: []loadbalancer.BackendDetails{},
+			want: []client.GenericBackend{},
 		},
 		{
 			name: "single node with assigned IP",
@@ -2330,7 +2616,9 @@ func Test_getBackends(t *testing.T) {
 					{
 						TypeMeta:   metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{},
-						Spec:       v1.NodeSpec{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
 						Status: v1.NodeStatus{
 							Capacity:    nil,
 							Allocatable: nil,
@@ -2353,8 +2641,8 @@ func Test_getBackends(t *testing.T) {
 				},
 				nodePort: 80,
 			},
-			want: []loadbalancer.BackendDetails{
-				{IpAddress: common.String("0.0.0.0"), Port: common.Int(80), Weight: common.Int(1)},
+			want: []client.GenericBackend{
+				{IpAddress: common.String("0.0.0.0"), Port: common.Int(80), Weight: common.Int(1), TargetId: &testNodeString},
 			},
 		},
 		{
@@ -2364,7 +2652,9 @@ func Test_getBackends(t *testing.T) {
 					{
 						TypeMeta:   metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{},
-						Spec:       v1.NodeSpec{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
 						Status: v1.NodeStatus{
 							Capacity:        nil,
 							Allocatable:     nil,
@@ -2382,7 +2672,7 @@ func Test_getBackends(t *testing.T) {
 				},
 				nodePort: 80,
 			},
-			want: []loadbalancer.BackendDetails{},
+			want: []client.GenericBackend{},
 		},
 		{
 			name: "multiple nodes - all with assigned IP",
@@ -2391,7 +2681,9 @@ func Test_getBackends(t *testing.T) {
 					{
 						TypeMeta:   metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{},
-						Spec:       v1.NodeSpec{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
 						Status: v1.NodeStatus{
 							Capacity:    nil,
 							Allocatable: nil,
@@ -2414,7 +2706,9 @@ func Test_getBackends(t *testing.T) {
 					{
 						TypeMeta:   metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{},
-						Spec:       v1.NodeSpec{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
 						Status: v1.NodeStatus{
 							Capacity:    nil,
 							Allocatable: nil,
@@ -2437,9 +2731,9 @@ func Test_getBackends(t *testing.T) {
 				},
 				nodePort: 80,
 			},
-			want: []loadbalancer.BackendDetails{
-				{IpAddress: common.String("0.0.0.0"), Port: common.Int(80), Weight: common.Int(1)},
-				{IpAddress: common.String("0.0.0.1"), Port: common.Int(80), Weight: common.Int(1)},
+			want: []client.GenericBackend{
+				{IpAddress: common.String("0.0.0.0"), Port: common.Int(80), Weight: common.Int(1), TargetId: &testNodeString},
+				{IpAddress: common.String("0.0.0.1"), Port: common.Int(80), Weight: common.Int(1), TargetId: &testNodeString},
 			},
 		},
 		{
@@ -2449,7 +2743,9 @@ func Test_getBackends(t *testing.T) {
 					{
 						TypeMeta:   metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{},
-						Spec:       v1.NodeSpec{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
 						Status: v1.NodeStatus{
 							Capacity:        nil,
 							Allocatable:     nil,
@@ -2485,7 +2781,7 @@ func Test_getBackends(t *testing.T) {
 				},
 				nodePort: 80,
 			},
-			want: []loadbalancer.BackendDetails{},
+			want: []client.GenericBackend{},
 		},
 		{
 			name: "multiple nodes - one with unassigned IP",
@@ -2494,7 +2790,9 @@ func Test_getBackends(t *testing.T) {
 					{
 						TypeMeta:   metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{},
-						Spec:       v1.NodeSpec{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
 						Status: v1.NodeStatus{
 							Capacity:    nil,
 							Allocatable: nil,
@@ -2517,7 +2815,9 @@ func Test_getBackends(t *testing.T) {
 					{
 						TypeMeta:   metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{},
-						Spec:       v1.NodeSpec{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
 						Status: v1.NodeStatus{
 							Capacity:        nil,
 							Allocatable:     nil,
@@ -2535,7 +2835,9 @@ func Test_getBackends(t *testing.T) {
 					{
 						TypeMeta:   metav1.TypeMeta{},
 						ObjectMeta: metav1.ObjectMeta{},
-						Spec:       v1.NodeSpec{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
 						Status: v1.NodeStatus{
 							Capacity:    nil,
 							Allocatable: nil,
@@ -2558,9 +2860,9 @@ func Test_getBackends(t *testing.T) {
 				},
 				nodePort: 80,
 			},
-			want: []loadbalancer.BackendDetails{
-				{IpAddress: common.String("0.0.0.0"), Port: common.Int(80), Weight: common.Int(1)},
-				{IpAddress: common.String("0.0.0.1"), Port: common.Int(80), Weight: common.Int(1)},
+			want: []client.GenericBackend{
+				{IpAddress: common.String("0.0.0.0"), Port: common.Int(80), Weight: common.Int(1), TargetId: &testNodeString},
+				{IpAddress: common.String("0.0.0.1"), Port: common.Int(80), Weight: common.Int(1), TargetId: &testNodeString},
 			},
 		},
 	}
@@ -2568,7 +2870,7 @@ func Test_getBackends(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := zap.L()
 			if got := getBackends(logger.Sugar(), tt.args.nodes, tt.args.nodePort); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("getBackends() = %v, want %v", got, tt.want)
+				t.Errorf("getBackends() = %+v, want %+v", got, tt.want)
 			}
 		})
 	}
@@ -2640,6 +2942,77 @@ func TestIsInternal(t *testing.T) {
 			isInternal: false,
 			err:        fmt.Errorf("invalid value: yes provided for annotation: %s: strconv.ParseBool: parsing \"yes\": invalid syntax", ServiceAnnotationLoadBalancerInternal),
 		},
+		"no ServiceAnnotationNetworkLoadBalancerInternal annotation": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			isInternal: false,
+			err:        nil,
+		},
+		"ServiceAnnotationNetworkLoadBalancerInternal is true": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:            "nlb",
+						ServiceAnnotationNetworkLoadBalancerInternal: "true",
+					},
+				},
+			},
+			isInternal: true,
+			err:        nil,
+		},
+		"ServiceAnnotationNetworkLoadBalancerInternal is TRUE": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:            "nlb",
+						ServiceAnnotationNetworkLoadBalancerInternal: "TRUE",
+					},
+				},
+			},
+			isInternal: true,
+			err:        nil,
+		},
+		"ServiceAnnotationNetworkLoadBalancerInternal is FALSE": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:            "nlb",
+						ServiceAnnotationNetworkLoadBalancerInternal: "FALSE",
+					},
+				},
+			},
+			isInternal: false,
+			err:        nil,
+		},
+		"ServiceAnnotationNetworkLoadBalancerInternal is false": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:            "nlb",
+						ServiceAnnotationNetworkLoadBalancerInternal: "FALSE",
+					},
+				},
+			},
+			isInternal: false,
+			err:        nil,
+		},
+		"ServiceAnnotationNetworkLoadBalancerInternal is non boolean": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:            "nlb",
+						ServiceAnnotationNetworkLoadBalancerInternal: "yes",
+					},
+				},
+			},
+			isInternal: false,
+			err:        fmt.Errorf("invalid value: yes provided for annotation: %s: strconv.ParseBool: parsing \"yes\": invalid syntax", ServiceAnnotationNetworkLoadBalancerInternal),
+		},
 	}
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
@@ -2668,7 +3041,7 @@ func Test_getNetworkSecurityGroups(t *testing.T) {
 					},
 				},
 			},
-			nsgList: nil,
+			nsgList: []string{},
 			err:     nil,
 		},
 		"no ServiceAnnotationLoadBalancerNetworkSecurityGroups annotation": {
@@ -2677,7 +3050,7 @@ func Test_getNetworkSecurityGroups(t *testing.T) {
 					Annotations: map[string]string{},
 				},
 			},
-			nsgList: nil,
+			nsgList: []string{},
 			err:     nil,
 		},
 		"ServiceAnnotationLoadBalancerNetworkSecurityGroups update annotation": {
@@ -2729,6 +3102,89 @@ func Test_getNetworkSecurityGroups(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
 						ServiceAnnotationLoadBalancerNetworkSecurityGroups: "ocid1,ocid2, ocid1",
+					},
+				},
+			},
+			nsgList: []string{"ocid1", "ocid2"},
+			err:     nil,
+		},
+		"empty ServiceAnnotationNetworkLoadBalancerNetworkSecurityGroups annotation": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                         "nlb",
+						ServiceAnnotationNetworkLoadBalancerNetworkSecurityGroups: "",
+					},
+				},
+			},
+			nsgList: []string{},
+			err:     nil,
+		},
+		"no ServiceAnnotationNetworkLoadBalancerNetworkSecurityGroups annotation": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			nsgList: []string{},
+			err:     nil,
+		},
+		"ServiceAnnotationNetworkLoadBalancerNetworkSecurityGroups update annotation": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                         "nlb",
+						ServiceAnnotationNetworkLoadBalancerNetworkSecurityGroups: "ocid1.networksecuritygroup.oc1.iad.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					},
+				},
+			},
+			nsgList: []string{"ocid1.networksecuritygroup.oc1.iad.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+			err:     nil,
+		},
+		"ServiceAnnotationNetworkLoadBalancerNetworkSecurityGroups Allow maximum NSG OCIDS (Max: 5)": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                         "nlb",
+						ServiceAnnotationNetworkLoadBalancerNetworkSecurityGroups: "ocid1,ocid2,ocid3,ocid4,ocid5",
+					},
+				},
+			},
+			nsgList: []string{"ocid1", "ocid2", "ocid3", "ocid4", "ocid5"},
+			err:     fmt.Errorf("invalid number of Network Security Groups (Max: 5) provided for annotation: oci-network-load-balancer.oraclecloud.com/oci-network-security-groups"),
+		},
+		"ServiceAnnotationNetworkLoadBalancerNetworkSecurityGroups Exceed maximum NSG OCIDS": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                         "nlb",
+						ServiceAnnotationNetworkLoadBalancerNetworkSecurityGroups: "ocid1,ocid2,ocid3,ocid4,ocid5,ocid6",
+					},
+				},
+			},
+			nsgList: nil,
+			err:     fmt.Errorf("invalid number of Network Security Groups (Max: 5) provided for annotation: oci-network-load-balancer.oraclecloud.com/oci-network-security-groups"),
+		},
+		"ServiceAnnotationNetworkLoadBalancerNetworkSecurityGroups Invalid NSG OCIDS": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                         "nlb",
+						ServiceAnnotationNetworkLoadBalancerNetworkSecurityGroups: "ocid1.networksecuritygroup.oc1.iad.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-;,ocid1.networksecuritygroup.oc1.iad.aaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbb",
+					},
+				},
+			},
+			nsgList: []string{"ocid1.networksecuritygroup.oc1.iad.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-;", "ocid1.networksecuritygroup.oc1.iad.aaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbb"},
+			err:     nil,
+		},
+		"ServiceAnnotationNetworkLoadBalancerNetworkSecurityGroups duplicate NSG OCIDS": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                         "nlb",
+						ServiceAnnotationNetworkLoadBalancerNetworkSecurityGroups: "ocid1, ocid2, ocid1",
 					},
 				},
 			},
@@ -2889,6 +3345,150 @@ func Test_getLoadBalancerTags(t *testing.T) {
 			},
 			err: nil,
 		},
+		"no tag annotation for nlb": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			initialTags:   &emptyInitialTags,
+			desiredLBTags: &emptyTags,
+			err:           nil,
+		},
+		"empty ServiceAnnotationLoadBalancerInitialDefinedTagsOverride  NLB annotation": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                              "nlb",
+						ServiceAnnotationNetworkLoadBalancerInitialDefinedTagsOverride: "",
+					},
+				},
+			},
+			initialTags:   &emptyInitialTags,
+			desiredLBTags: &emptyTags,
+			err:           nil,
+		},
+		"empty ServiceAnnotationLoadBalancerInitialFreeformTagsOverride NLB annotation": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                               "nlb",
+						ServiceAnnotationNetworkLoadBalancerInitialFreeformTagsOverride: "",
+					},
+				},
+			},
+			initialTags:   &emptyInitialTags,
+			desiredLBTags: &emptyTags,
+			err:           nil,
+		},
+		"invalid ServiceAnnotationLoadBalancerInitialFreeformTagsOverride NLB annotation value": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                               "nlb",
+						ServiceAnnotationNetworkLoadBalancerInitialFreeformTagsOverride: "a",
+					},
+				},
+			},
+			initialTags:   &emptyInitialTags,
+			desiredLBTags: nil,
+			err:           errors.New("failed to parse free form tags annotation: invalid character 'a' looking for beginning of value"),
+		},
+		"invalid ServiceAnnotationLoadBalancerInitialDefinedTagsOverride NLB annotation value": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                              "nlb",
+						ServiceAnnotationNetworkLoadBalancerInitialDefinedTagsOverride: "a",
+					},
+				},
+			},
+			initialTags:   &emptyInitialTags,
+			desiredLBTags: nil,
+			err:           errors.New("failed to parse defined tags annotation: invalid character 'a' looking for beginning of value"),
+		},
+		"invalid json in resource level freeform tags for nlb": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                               "nlb",
+						ServiceAnnotationNetworkLoadBalancerInitialFreeformTagsOverride: `{'test':'tag'}`,
+					},
+				},
+			},
+			initialTags:   &emptyInitialTags,
+			desiredLBTags: nil,
+			err:           errors.New(`failed to parse free form tags annotation: invalid character '\'' looking for beginning of object key string`),
+		},
+		"should ignore tags if lb tag override annotation is used for nlb": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                        "nlb",
+						ServiceAnnotationLoadBalancerInitialFreeformTagsOverride: `{'test':'tag'}`,
+						ServiceAnnotationLoadBalancerInitialDefinedTagsOverride:  `{"namespace":{"key":"value", "owner":"team"}}`,
+					},
+				},
+			},
+			initialTags:   &emptyInitialTags,
+			desiredLBTags: &emptyTags,
+			err:           nil,
+		},
+		"only resource level freeform tags for nlb": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                               "nlb",
+						ServiceAnnotationNetworkLoadBalancerInitialFreeformTagsOverride: `{"test":"tag"}`,
+					},
+				},
+			},
+			initialTags: &emptyInitialTags,
+			desiredLBTags: &providercfg.TagConfig{
+				FreeformTags: map[string]string{"test": "tag"},
+				// Defined tags are always present as Oracle-Tags are added by default
+			},
+			err: nil,
+		},
+		"only resource level defined tags for nlb": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                              "nlb",
+						ServiceAnnotationNetworkLoadBalancerInitialDefinedTagsOverride: `{"namespace":{"key":"value"}}`,
+					},
+				},
+			},
+			initialTags: &emptyInitialTags,
+			desiredLBTags: &providercfg.TagConfig{
+				DefinedTags: map[string]map[string]interface{}{"namespace": {"key": "value"}},
+			},
+			err: nil,
+		},
+		"resource and cluster level tags, only resource level tags are added for nlb": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                               "nlb",
+						ServiceAnnotationNetworkLoadBalancerInitialFreeformTagsOverride: `{"cluster":"resource", "unique":"tag"}`,
+						ServiceAnnotationNetworkLoadBalancerInitialDefinedTagsOverride:  `{"namespace":{"key":"value", "owner":"team"}}`,
+					},
+				},
+			},
+			initialTags: &providercfg.InitialTags{
+				LoadBalancer: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"cluster": "cluster"},
+					DefinedTags:  map[string]map[string]interface{}{"namespace": {"cluster": "name", "owner": "cluster"}},
+				},
+			},
+			desiredLBTags: &providercfg.TagConfig{
+				FreeformTags: map[string]string{"cluster": "resource", "unique": "tag"},
+				DefinedTags:  map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}},
+			},
+			err: nil,
+		},
 	}
 
 	for name, tc := range testCases {
@@ -2900,6 +3500,430 @@ func Test_getLoadBalancerTags(t *testing.T) {
 			}
 			if !reflect.DeepEqual(tc.desiredLBTags, actualTags) {
 				t.Errorf("Expected LB Tags\n%+v\nbut got\n%+v", tc.desiredLBTags, actualTags)
+			}
+		})
+	}
+}
+
+func Test_getHealthChecker(t *testing.T) {
+	testCases := map[string]struct {
+		service  *v1.Service
+		expected *client.GenericHealthChecker
+		err      error
+	}{
+		"defaults": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+			expected: &client.GenericHealthChecker{
+				Protocol:         "HTTP",
+				Port:             common.Int(10256),
+				UrlPath:          common.String("/healthz"),
+				Retries:          common.Int(3),
+				TimeoutInMillis:  common.Int(3000),
+				IntervalInMillis: common.Int(10000),
+				ReturnCode:       common.Int(http.StatusOK),
+			},
+			err: nil,
+		},
+		"retries timeout intervals annotations for lb": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerHealthCheckTimeout:  "3500",
+						ServiceAnnotationLoadBalancerHealthCheckRetries:  "4",
+						ServiceAnnotationLoadBalancerHealthCheckInterval: "14500",
+					},
+				},
+			},
+			expected: &client.GenericHealthChecker{
+				Protocol:         "HTTP",
+				Port:             common.Int(10256),
+				UrlPath:          common.String("/healthz"),
+				Retries:          common.Int(4),
+				TimeoutInMillis:  common.Int(3500),
+				IntervalInMillis: common.Int(14500),
+				ReturnCode:       common.Int(http.StatusOK),
+			},
+			err: nil,
+		},
+		"defaults-nlb": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			expected: &client.GenericHealthChecker{
+				Protocol:         "HTTP",
+				Port:             common.Int(10256),
+				UrlPath:          common.String("/healthz"),
+				Retries:          common.Int(3),
+				TimeoutInMillis:  common.Int(3000),
+				IntervalInMillis: common.Int(10000),
+				ReturnCode:       common.Int(http.StatusOK),
+			},
+			err: nil,
+		},
+		"retries timeout intervals annotations for nlb": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                       "nlb",
+						ServiceAnnotationNetworkLoadBalancerHealthCheckTimeout:  "3500",
+						ServiceAnnotationNetworkLoadBalancerHealthCheckRetries:  "4",
+						ServiceAnnotationNetworkLoadBalancerHealthCheckInterval: "14500",
+					},
+				},
+			},
+			expected: &client.GenericHealthChecker{
+				Protocol:         "HTTP",
+				Port:             common.Int(10256),
+				UrlPath:          common.String("/healthz"),
+				Retries:          common.Int(4),
+				TimeoutInMillis:  common.Int(3500),
+				IntervalInMillis: common.Int(14500),
+				ReturnCode:       common.Int(http.StatusOK),
+			},
+			err: nil,
+		},
+		"lb wrong interval value - lesser than min": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerHealthCheckInterval: "300",
+					},
+				},
+			},
+			expected: nil,
+			err: fmt.Errorf("invalid value for health check interval, should be between %v and %v", LBHealthCheckIntervalMin, LBHealthCheckIntervalMax),
+		},
+		"lb wrong interval value - greater than max": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerHealthCheckInterval: "3000000",
+					},
+				},
+			},
+			expected: nil,
+			err: fmt.Errorf("invalid value for health check interval, should be between %v and %v", LBHealthCheckIntervalMin, LBHealthCheckIntervalMax),
+		},
+		"nlb wrong interval value - lesser than min": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+						ServiceAnnotationNetworkLoadBalancerHealthCheckInterval: "3000",
+					},
+				},
+			},
+			expected: nil,
+			err: fmt.Errorf("invalid value for health check interval, should be between %v and %v", NLBHealthCheckIntervalMin, NLBHealthCheckIntervalMax),
+		},
+		"nlb wrong interval value - greater than max": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+						ServiceAnnotationNetworkLoadBalancerHealthCheckInterval: "3000000",
+					},
+				},
+			},
+			expected: nil,
+			err: fmt.Errorf("invalid value for health check interval, should be between %v and %v", NLBHealthCheckIntervalMin, NLBHealthCheckIntervalMax),
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			result, err := getHealthChecker(tc.service)
+
+			if tc.err != nil && err == nil {
+				t.Errorf("Error: expected\n%+v\nbut got\n%+v", tc.err, err)
+			}
+			if err != nil && err.Error() != tc.err.Error() {
+				t.Errorf("Error: expected\n%+v\nbut got\n%+v", tc.err, err)
+			}
+			if !reflect.DeepEqual(result, tc.expected) {
+				t.Errorf("Expected \n%+v\nbut got\n%+v", tc.expected, result)
+			}
+		})
+	}
+}
+
+func Test_getListeners(t *testing.T) {
+	var tests = []struct {
+		service *v1.Service
+		name    string
+		want    map[string]client.GenericListener
+	}{
+		{
+			name: "default",
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+
+			want: map[string]client.GenericListener{
+				"TCP-80": {
+					Name:                  common.String("TCP-80"),
+					Port:                  common.Int(80),
+					Protocol:              common.String("TCP"),
+					DefaultBackendSetName: common.String("TCP-80"),
+				},
+			},
+		},
+		{
+			name: "default-nlb",
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+
+			want: map[string]client.GenericListener{
+				"TCP-80": {
+					Name:                  common.String("TCP-80"),
+					Port:                  common.Int(80),
+					Protocol:              common.String("TCP"),
+					DefaultBackendSetName: common.String("TCP-80"),
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := tt.service
+			if got, _ := getListeners(svc, nil); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("getListeners() = %+v, \n want %+v", got, tt.want)
+
+			}
+		})
+	}
+}
+
+func Test_getSecurityListManagementMode(t *testing.T) {
+	testCases := map[string]struct {
+		service  *v1.Service
+		expected string
+	}{
+		"defaults": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+			expected: "",
+		},
+		"lb mode None": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSecurityListManagementMode: "None",
+					},
+				},
+			},
+			expected: "None",
+		},
+		"lb mode all": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSecurityListManagementMode: "All",
+					},
+				},
+			},
+			expected: "All",
+		},
+		"lb mode frontend": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSecurityListManagementMode: "Frontend",
+					},
+				},
+			},
+			expected: "Frontend",
+		},
+		"defaults-nlb": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			expected: "None",
+		},
+		"nlb mode None": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                              "nlb",
+						ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode: "None",
+					},
+				},
+			},
+			expected: "None",
+		},
+		"nlb mode all": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                              "nlb",
+						ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode: "All",
+					},
+				},
+			},
+			expected: "All",
+		},
+		"nlb mode frontend": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                              "nlb",
+						ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode: "Frontend",
+					},
+				},
+			},
+			expected: "Frontend",
+		},
+	}
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			result, err := getSecurityListManagementMode(tc.service)
+			if err != nil {
+				t.Error(err)
+			}
+			if !reflect.DeepEqual(result, tc.expected) {
+				t.Errorf("Expected Security List Mode \n%+v\nbut got\n%+v", tc.expected, result)
+			}
+		})
+	}
+}
+
+func Test_validateService(t *testing.T){
+	testCases := map[string]struct {
+		service  *v1.Service
+		err error
+	}{
+		"defaults": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+			err: nil,
+		},
+		"nlb invalid seclist mgmt mode": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+						ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode: "Neither",
+					},
+				},
+			},
+			err: fmt.Errorf("invalid value: Neither provided for annotation: oci-network-load-balancer.oraclecloud.com/security-list-management-mode"),
+		},
+		"lb with protocol udp": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolUDP,
+							Port:     int32(67),
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+			err: fmt.Errorf("OCI load balancers do not support UDP"),
+		},
+		"nlb udp with seclist mgmt not None": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolUDP,
+							Port:     int32(67),
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+						ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode: "All",
+					},
+				},
+			},
+			err: fmt.Errorf("Security list management mode can only be 'None' for UDP protocol"),
+		},
+		"session affinity not none": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityClientIP,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolUDP,
+							Port:     int32(67),
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+						ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode: "None",
+					},
+				},
+			},
+			err: fmt.Errorf("OCI only supports SessionAffinity \"None\" currently"),
+		},
+	}
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			err := validateService(tc.service)
+			if tc.err != nil && err == nil {
+				t.Errorf("Expected  \n%+v\nbut got\n%+v", tc.err, err)
+			}
+			if err != nil && tc.err == nil {
+				t.Errorf("Error: expected\n%+v\nbut got\n%+v", tc.err, err)
+			}
+			if err != nil && err.Error() != tc.err.Error() {
+				t.Errorf("Expected \n%+v\nbut got\n%+v", tc.err, err)
 			}
 		})
 	}

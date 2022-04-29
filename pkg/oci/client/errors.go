@@ -19,7 +19,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v50/common"
 	"github.com/pkg/errors"
 )
 

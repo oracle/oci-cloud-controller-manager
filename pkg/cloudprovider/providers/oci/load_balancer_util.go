@@ -22,11 +22,14 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/oracle/oci-cloud-controller-manager/pkg/metrics"
+
 	"go.uber.org/zap"
 	api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 
-	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-go-sdk/v50/loadbalancer"
 )
 
 const (
@@ -73,7 +76,7 @@ type BackendSetAction struct {
 	actionType ActionType
 	name       string
 
-	BackendSet loadbalancer.BackendSetDetails
+	BackendSet client.GenericBackendSetDetails
 
 	Ports    portSpec
 	OldPorts *portSpec
@@ -100,7 +103,7 @@ type ListenerAction struct {
 	actionType ActionType
 	name       string
 
-	Listener loadbalancer.ListenerDetails
+	Listener client.GenericListener
 
 	Ports    portSpec
 	OldPorts *portSpec
@@ -148,7 +151,7 @@ func toInt64(i *int64) int64 {
 	return *i
 }
 
-func getHealthCheckerChanges(actual *loadbalancer.HealthChecker, desired *loadbalancer.HealthCheckerDetails) []string {
+func getHealthCheckerChanges(actual *client.GenericHealthChecker, desired *client.GenericHealthChecker) []string {
 
 	var healthCheckerChanges []string
 	// We would let LBCS to set the default HealthChecker if desired is nil
@@ -191,8 +194,8 @@ func getHealthCheckerChanges(actual *loadbalancer.HealthChecker, desired *loadba
 		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:UrlPath", toString(actual.UrlPath), toString(desired.UrlPath)))
 	}
 
-	if toString(actual.Protocol) != toString(desired.Protocol) {
-		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:Protocol", toString(actual.Protocol), toString(desired.Protocol)))
+	if toString(&actual.Protocol) != toString(&desired.Protocol) {
+		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:Protocol", toString(&actual.Protocol), toString(&desired.Protocol)))
 	}
 
 	return healthCheckerChanges
@@ -200,7 +203,7 @@ func getHealthCheckerChanges(actual *loadbalancer.HealthChecker, desired *loadba
 
 // TODO(horwitz): this doesn't check weight which we may want in the future to
 // evenly distribute Local traffic policy load.
-func hasBackendSetChanged(logger *zap.SugaredLogger, actual loadbalancer.BackendSet, desired loadbalancer.BackendSetDetails) bool {
+func hasBackendSetChanged(logger *zap.SugaredLogger, actual client.GenericBackendSetDetails, desired client.GenericBackendSetDetails) bool {
 	logger = logger.With("BackEndSetName", toString(actual.Name))
 	backendSetChanges := getHealthCheckerChanges(actual.HealthChecker, desired.HealthChecker)
 	// Need to update the seclist if service nodeport has changed
@@ -252,49 +255,49 @@ func hasBackendSetChanged(logger *zap.SugaredLogger, actual loadbalancer.Backend
 	return false
 }
 
-func healthCheckerToDetails(hc *loadbalancer.HealthChecker) *loadbalancer.HealthCheckerDetails {
+func healthCheckerToDetails(hc *client.GenericHealthChecker) *client.GenericHealthChecker {
 	if hc == nil {
 		return nil
 	}
-	return &loadbalancer.HealthCheckerDetails{
-		Protocol:          hc.Protocol,
-		IntervalInMillis:  hc.IntervalInMillis,
-		Port:              hc.Port,
-		ResponseBodyRegex: hc.ResponseBodyRegex,
-		Retries:           hc.Retries,
-		ReturnCode:        hc.ReturnCode,
-		TimeoutInMillis:   hc.TimeoutInMillis,
-		UrlPath:           hc.UrlPath,
+	return &client.GenericHealthChecker{
+		Protocol:         hc.Protocol,
+		IntervalInMillis: hc.IntervalInMillis,
+		Port:             hc.Port,
+		//ResponseBodyRegex: hc.ResponseBodyRegex,
+		Retries:         hc.Retries,
+		ReturnCode:      hc.ReturnCode,
+		TimeoutInMillis: hc.TimeoutInMillis,
+		UrlPath:         hc.UrlPath,
 	}
 }
 
-func sslConfigurationToDetails(sc *loadbalancer.SslConfiguration) *loadbalancer.SslConfigurationDetails {
+func sslConfigurationToDetails(sc *client.GenericSslConfigurationDetails) *client.GenericSslConfigurationDetails {
 	if sc == nil {
 		return nil
 	}
-	return &loadbalancer.SslConfigurationDetails{
+	return &client.GenericSslConfigurationDetails{
 		CertificateName:       sc.CertificateName,
 		VerifyDepth:           sc.VerifyDepth,
 		VerifyPeerCertificate: sc.VerifyPeerCertificate,
 	}
 }
 
-func backendsToBackendDetails(bs []loadbalancer.Backend) []loadbalancer.BackendDetails {
-	backends := make([]loadbalancer.BackendDetails, len(bs))
+func backendsToBackendDetails(bs []client.GenericBackend) []client.GenericBackend {
+	backends := make([]client.GenericBackend, len(bs))
 	for i, backend := range bs {
-		backends[i] = loadbalancer.BackendDetails{
+		backends[i] = client.GenericBackend{
 			IpAddress: backend.IpAddress,
 			Port:      backend.Port,
-			Backup:    backend.Backup,
-			Drain:     backend.Drain,
-			Offline:   backend.Offline,
-			Weight:    backend.Weight,
+			//Backup:    backend.Backup,
+			//Drain:     backend.Drain,
+			//Offline:   backend.Offline,
+			Weight: backend.Weight,
 		}
 	}
 	return backends
 }
 
-func portsFromBackendSetDetails(logger *zap.SugaredLogger, name string, bs *loadbalancer.BackendSetDetails) portSpec {
+func portsFromBackendSetDetails(logger *zap.SugaredLogger, name string, bs *client.GenericBackendSetDetails) portSpec {
 	spec := portSpec{}
 	if len(bs.Backends) > 0 {
 		spec.BackendPort = *bs.Backends[0].Port
@@ -309,7 +312,7 @@ func portsFromBackendSetDetails(logger *zap.SugaredLogger, name string, bs *load
 	return spec
 }
 
-func portsFromBackendSet(logger *zap.SugaredLogger, name string, bs *loadbalancer.BackendSet) portSpec {
+func portsFromBackendSet(logger *zap.SugaredLogger, name string, bs *client.GenericBackendSetDetails) portSpec {
 	spec := portSpec{}
 	if len(bs.Backends) > 0 {
 		spec.BackendPort = *bs.Backends[0].Port
@@ -324,7 +327,7 @@ func portsFromBackendSet(logger *zap.SugaredLogger, name string, bs *loadbalance
 	return spec
 }
 
-func getBackendSetChanges(logger *zap.SugaredLogger, actual map[string]loadbalancer.BackendSet, desired map[string]loadbalancer.BackendSetDetails) []Action {
+func getBackendSetChanges(logger *zap.SugaredLogger, actual map[string]client.GenericBackendSetDetails, desired map[string]client.GenericBackendSetDetails) []Action {
 	var backendSetActions []Action
 	// First check to see if any backendsets need to be deleted or updated.
 	for name, actualBackendSet := range actual {
@@ -333,7 +336,7 @@ func getBackendSetChanges(logger *zap.SugaredLogger, actual map[string]loadbalan
 			// No longer exists
 			backendSetActions = append(backendSetActions, &BackendSetAction{
 				name: *actualBackendSet.Name,
-				BackendSet: loadbalancer.BackendSetDetails{
+				BackendSet: client.GenericBackendSetDetails{
 					HealthChecker:                   healthCheckerToDetails(actualBackendSet.HealthChecker),
 					Policy:                          actualBackendSet.Policy,
 					Backends:                        backendsToBackendDetails(actualBackendSet.Backends),
@@ -374,7 +377,7 @@ func getBackendSetChanges(logger *zap.SugaredLogger, actual map[string]loadbalan
 	return backendSetActions
 }
 
-func getSSLConfigurationChanges(actual *loadbalancer.SslConfiguration, desired *loadbalancer.SslConfigurationDetails) []string {
+func getSSLConfigurationChanges(actual *client.GenericSslConfigurationDetails, desired *client.GenericSslConfigurationDetails) []string {
 	var sslConfigurationChanges []string
 	if actual == nil && desired == nil {
 		return sslConfigurationChanges
@@ -400,7 +403,7 @@ func getSSLConfigurationChanges(actual *loadbalancer.SslConfiguration, desired *
 	return sslConfigurationChanges
 }
 
-func hasListenerChanged(logger *zap.SugaredLogger, actual loadbalancer.Listener, desired loadbalancer.ListenerDetails) bool {
+func hasListenerChanged(logger *zap.SugaredLogger, actual client.GenericListener, desired client.GenericListener) bool {
 	logger = logger.With("ListenerName", toString(actual.Name))
 	var listenerChanges []string
 	if toString(actual.DefaultBackendSetName) != toString(desired.DefaultBackendSetName) {
@@ -422,7 +425,7 @@ func hasListenerChanged(logger *zap.SugaredLogger, actual loadbalancer.Listener,
 	return false
 }
 
-func getConnectionConfigurationChanges(actual *loadbalancer.ConnectionConfiguration, desired *loadbalancer.ConnectionConfiguration) []string {
+func getConnectionConfigurationChanges(actual *client.GenericConnectionConfiguration, desired *client.GenericConnectionConfiguration) []string {
 	var connectionConfigurationChanges []string
 	// We would let LBCS to set the default IdleTimeout if desired is nil
 	if desired == nil {
@@ -446,7 +449,7 @@ func getConnectionConfigurationChanges(actual *loadbalancer.ConnectionConfigurat
 	return connectionConfigurationChanges
 }
 
-func getListenerChanges(logger *zap.SugaredLogger, actual map[string]loadbalancer.Listener, desired map[string]loadbalancer.ListenerDetails) []Action {
+func getListenerChanges(logger *zap.SugaredLogger, actual map[string]client.GenericListener, desired map[string]client.GenericListener) []Action {
 	var listenerActions []Action
 
 	// set to keep track of desired listeners that already exist and should not be created
@@ -455,7 +458,7 @@ func getListenerChanges(logger *zap.SugaredLogger, actual map[string]loadbalance
 	//place BackendSet create before Listener Create and Listener delete before BackendSet delete. Also it would help
 	//not to delete and create Listener if customer edit the service and add oci-load-balancer-backend-protocol: "HTTP"
 	// and vice versa. It would help to only update the listener in case of protocol change. Refer OKE-10793 for details.
-	sanitizedDesiredListeners := make(map[string]loadbalancer.ListenerDetails)
+	sanitizedDesiredListeners := make(map[string]client.GenericListener)
 	for name, desiredListener := range desired {
 		sanitizedDesiredListeners[getSanitizedName(name)] = desiredListener
 	}
@@ -465,7 +468,7 @@ func getListenerChanges(logger *zap.SugaredLogger, actual map[string]loadbalance
 		if !ok {
 			// no longer exists
 			listenerActions = append(listenerActions, &ListenerAction{
-				Listener: loadbalancer.ListenerDetails{
+				Listener: client.GenericListener{
 					DefaultBackendSetName: actualListener.DefaultBackendSetName,
 					Port:                  actualListener.Port,
 					Protocol:              actualListener.Protocol,
@@ -501,7 +504,7 @@ func getListenerChanges(logger *zap.SugaredLogger, actual map[string]loadbalance
 	return listenerActions
 }
 
-func hasLoadbalancerShapeChanged(ctx context.Context, spec *LBSpec, lb *loadbalancer.LoadBalancer) bool {
+func hasLoadbalancerShapeChanged(ctx context.Context, spec *LBSpec, lb *client.GenericLoadBalancer) bool {
 	if *lb.ShapeName != spec.Shape {
 		return true
 	}
@@ -557,28 +560,41 @@ func getListenerName(protocol string, port int) string {
 
 // GetLoadBalancerName gets the name of the load balancer based on the service
 func GetLoadBalancerName(service *api.Service) string {
-	prefix := os.Getenv(lbNamePrefixEnvVar)
-	if prefix != "" && !strings.HasSuffix(prefix, "-") {
-		// Add the trailing hyphen if it's missing
-		prefix += "-"
+	lbType := getLoadBalancerType(service)
+	var name string
+	switch lbType {
+	case NLB:
+		{
+			name = fmt.Sprintf("%s/%s/%s", service.Namespace, service.Name, service.UID)
+		}
+	default:
+		{
+			prefix := os.Getenv(lbNamePrefixEnvVar)
+			if prefix != "" && !strings.HasSuffix(prefix, "-") {
+				// Add the trailing hyphen if it's missing
+				prefix += "-"
+			}
+			name = fmt.Sprintf("%s%s", prefix, service.UID)
+		}
 	}
-
-	name := fmt.Sprintf("%s%s", prefix, service.UID)
 	if len(name) > 1024 {
 		// 1024 is the max length for display name
+		// https://docs.oracle.com/en-us/iaas/api/#/en/networkloadbalancer/20200501/datatypes/UpdateNetworkLoadBalancerDetails
 		// https://docs.us-phoenix-1.oraclecloud.com/api/#/en/loadbalancer/20170115/requests/UpdateLoadBalancerDetails
 		name = name[:1024]
 	}
-
 	return name
 }
 
 // validateProtocols validates that OCI supports the protocol of all
 // ServicePorts defined by a service.
-func validateProtocols(servicePorts []api.ServicePort) error {
+func validateProtocols(servicePorts []api.ServicePort, lbType string, secListMgmtMode string) error {
 	for _, servicePort := range servicePorts {
-		if servicePort.Protocol == api.ProtocolUDP {
+		if servicePort.Protocol == api.ProtocolUDP && lbType == LB {
 			return fmt.Errorf("OCI load balancers do not support UDP")
+		}
+		if servicePort.Protocol == api.ProtocolUDP && lbType == NLB && secListMgmtMode != ManagementModeNone {
+			return fmt.Errorf("Security list management mode can only be 'None' for UDP protocol")
 		}
 	}
 	return nil
@@ -650,4 +666,28 @@ func sortAndCombineActions(logger *zap.SugaredLogger, backendSetActions []Action
 		}
 	})
 	return actions
+}
+
+func getMetric(lbtype string, metricType string) string {
+	if lbtype == LB {
+		switch metricType {
+		case Create:
+			return metrics.LBProvision
+		case Update:
+			return metrics.LBUpdate
+		case Delete:
+			return metrics.LBDelete
+		}
+	}
+	if lbtype == NLB {
+		switch metricType {
+		case Create:
+			return metrics.NLBProvision
+		case Update:
+			return metrics.NLBUpdate
+		case Delete:
+			return metrics.NLBDelete
+		}
+	}
+	return ""
 }

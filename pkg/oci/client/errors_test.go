@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v50/common"
 )
 
 type mockServiceError struct {

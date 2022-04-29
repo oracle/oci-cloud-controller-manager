@@ -21,7 +21,7 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util/disk"
-	"github.com/oracle/oci-go-sdk/v31/core"
+	"github.com/oracle/oci-go-sdk/v50/core"
 )
 
 const (
@@ -58,6 +58,8 @@ type VolumeParameters struct {
 	freeformTags map[string]string
 	// defined tags to add for BVs
 	definedTags map[string]map[string]interface{}
+	//volume performance units per gb describes the block volume performance level
+	vpusPerGB int64
 }
 
 // VolumeAttachmentOption holds config for attachments
@@ -72,6 +74,7 @@ func extractVolumeParameters(parameters map[string]string) (VolumeParameters, er
 	p := VolumeParameters{
 		diskEncryptionKey:   "",
 		attachmentParameter: make(map[string]string),
+		vpusPerGB:           10, // default value is 10 -> Balanced
 	}
 	for k, v := range parameters {
 		switch k {
@@ -86,6 +89,7 @@ func extractVolumeParameters(parameters map[string]string) (VolumeParameters, er
 					"for storageclass. supported attachment-types are %s and %s", v, attachmentTypeISCSI, attachmentTypeParavirtualized))
 			}
 			p.attachmentParameter[attachmentType] = attachmentTypeLower
+
 		case initialFreeformTagsOverride:
 			if v == "" {
 				continue
@@ -109,6 +113,13 @@ func extractVolumeParameters(parameters map[string]string) (VolumeParameters, er
 					"for storageclass. please check the parameters block on the storage class")
 			}
 			p.definedTags = definedTags
+
+		case csi_util.VpusPerGB:
+			vpusPerGB, err := csi_util.ExtractBlockVolumePerformanceLevel(v)
+			if err != nil {
+				return p, status.Error(codes.InvalidArgument, err.Error())
+			}
+			p.vpusPerGB = vpusPerGB
 		}
 
 	}
@@ -241,7 +252,8 @@ func (d *ControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolu
 			bvTags = scTags
 		}
 
-		provisionedVolume, err = provision(log, d.client, volumeName, size, *ad.Name, d.config.CompartmentID, "", volumeParams.diskEncryptionKey, timeout, bvTags)
+		provisionedVolume, err = provision(log, d.client, volumeName, size, *ad.Name, d.config.CompartmentID, "",
+			volumeParams.diskEncryptionKey, volumeParams.vpusPerGB, timeout, bvTags)
 		if err != nil {
 			log.With("Ad name", *ad.Name, "Compartment Id", d.config.CompartmentID).Error("New volume creation failed %s", err)
 			errorType = util.GetError(err)
@@ -260,8 +272,7 @@ func (d *ControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolu
 		csiMetricDimension = util.GetMetricDimensionForComponent(errorType, util.CSIStorageType)
 		dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
 		metrics.SendMetricData(d.metricPusher, metrics.PVProvision, time.Since(startTime).Seconds(), dimensionsMap)
-		status.Errorf(codes.DeadlineExceeded, "Create volume failed with time out")
-		return nil, err
+		return nil, status.Errorf(codes.DeadlineExceeded, "Create volume failed with time out %v", err.Error())
 	}
 
 	volumeOCID := volumeName
@@ -285,7 +296,10 @@ func (d *ControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolu
 					},
 				},
 			},
-			VolumeContext: volumeParams.attachmentParameter,
+			VolumeContext: map[string]string{
+				attachmentType:     volumeParams.attachmentParameter[attachmentType],
+				csi_util.VpusPerGB: strconv.FormatInt(volumeParams.vpusPerGB, 10),
+			},
 		},
 	}, nil
 }
@@ -405,6 +419,12 @@ func (d *ControllerDriver) ControllerPublishVolume(ctx context.Context, req *csi
 		return nil, err
 	}
 
+	vpusPerGB, ok := req.VolumeContext[csi_util.VpusPerGB]
+	if !ok || vpusPerGB == "" {
+		log.Warnf("No vpusPerGB found in Volume Context falling back to balanced performance")
+		vpusPerGB = "10"
+	}
+
 	// volume already attached to an instance
 	if err == nil {
 		if volumeAttached.GetLifecycleState() == core.VolumeAttachmentLifecycleStateDetaching {
@@ -440,7 +460,7 @@ func (d *ControllerDriver) ControllerPublishVolume(ctx context.Context, req *csi
 					return nil, status.Errorf(codes.Internal, "Failed to attach volume to the node: %s", err)
 				}
 				log.Info("Volume is already ATTACHED to node.")
-				return generatePublishContext(volumeAttachmentOptions, log, volumeAttached), nil
+				return generatePublishContext(volumeAttachmentOptions, log, volumeAttached, vpusPerGB), nil
 			}
 		}
 	}
@@ -482,17 +502,18 @@ func (d *ControllerDriver) ControllerPublishVolume(ctx context.Context, req *csi
 	csiMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.CSIStorageType)
 	dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
 	metrics.SendMetricData(d.metricPusher, metrics.PVAttach, time.Since(startTime).Seconds(), dimensionsMap)
-	return generatePublishContext(volumeAttachmentOptions, log, volumeAttached), nil
+	return generatePublishContext(volumeAttachmentOptions, log, volumeAttached, vpusPerGB), nil
 
 }
 
-func generatePublishContext(volumeAttachmentOptions VolumeAttachmentOption, log *zap.SugaredLogger, volumeAttached core.VolumeAttachment) *csi.ControllerPublishVolumeResponse {
+func generatePublishContext(volumeAttachmentOptions VolumeAttachmentOption, log *zap.SugaredLogger, volumeAttached core.VolumeAttachment, vpusPerGB string) *csi.ControllerPublishVolumeResponse {
 	if volumeAttachmentOptions.useParavirtualizedAttachment {
 		log.With("volumeAttachedId", *volumeAttached.GetId()).Info("Publishing paravirtualized Volume Completed.")
 		return &csi.ControllerPublishVolumeResponse{
 			PublishContext: map[string]string{
-				attachmentType: attachmentTypeParavirtualized,
-				device:         *volumeAttached.GetDevice(),
+				attachmentType:     attachmentTypeParavirtualized,
+				device:             *volumeAttached.GetDevice(),
+				csi_util.VpusPerGB: vpusPerGB,
 			},
 		}
 	}
@@ -502,15 +523,16 @@ func generatePublishContext(volumeAttachmentOptions VolumeAttachmentOption, log 
 
 	return &csi.ControllerPublishVolumeResponse{
 		PublishContext: map[string]string{
-			attachmentType: attachmentTypeISCSI,
-			disk.ISCSIIQN:  *iSCSIVolumeAttached.Iqn,
-			disk.ISCSIIP:   *iSCSIVolumeAttached.Ipv4,
-			disk.ISCSIPORT: strconv.Itoa(*iSCSIVolumeAttached.Port),
+			attachmentType:     attachmentTypeISCSI,
+			disk.ISCSIIQN:      *iSCSIVolumeAttached.Iqn,
+			disk.ISCSIIP:       *iSCSIVolumeAttached.Ipv4,
+			disk.ISCSIPORT:     strconv.Itoa(*iSCSIVolumeAttached.Port),
+			csi_util.VpusPerGB: vpusPerGB,
 		},
 	}
 }
 
-// ControllerUnpublishVolume deattaches the given volume from the node
+// ControllerUnpublishVolume detaches the given volume from the node
 func (d *ControllerDriver) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
 	startTime := time.Now()
 	log := d.logger.With("volumeID", req.VolumeId)
@@ -714,7 +736,7 @@ func (d *ControllerDriver) ControllerExpandVolume(ctx context.Context, req *csi.
 	if volumeId == "" {
 		return nil, status.Error(codes.InvalidArgument, "UpdateVolume volumeId must be provided")
 	}
-	log := d.logger.With("volumeId", volumeId)
+	log := d.logger.With("volumeID", volumeId)
 	var errorType string
 	var csiMetricDimension string
 
@@ -742,16 +764,16 @@ func (d *ControllerDriver) ControllerExpandVolume(ctx context.Context, req *csi.
 		return nil, status.Errorf(codes.Internal, "failed to check existence of volume %v", err)
 	}
 
+	log = log.With("volumeName", volume.DisplayName)
 	newSizeInGB := csi_util.RoundUpSize(newSize, 1*client.GiB)
 	oldSize := *volume.SizeInGBs
 
 	if newSizeInGB <= oldSize {
-		message := fmt.Sprintf("Volume size cannot be decreased. Please give a size greater than %v", *volume.SizeInGBs)
-		log.Error(message)
-		csiMetricDimension = util.GetMetricDimensionForComponent(util.ErrValidation, util.CSIStorageType)
-		dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
-		metrics.SendMetricData(d.metricPusher, metrics.PVExpand, time.Since(startTime).Seconds(), dimensionsMap)
-		return nil, status.Error(codes.OutOfRange, message)
+		log.Infof("Existing volume size: %v Requested volume size: %v No action needed.", *volume.SizeInGBs, newSizeInGB)
+		return &csi.ControllerExpandVolumeResponse{
+			CapacityBytes:         oldSize,
+			NodeExpansionRequired: true,
+		}, nil
 	}
 
 	updateVolumeDetails := core.UpdateVolumeDetails{
@@ -771,7 +793,7 @@ func (d *ControllerDriver) ControllerExpandVolume(ctx context.Context, req *csi.
 		return nil, status.Error(codes.Internal, message)
 	}
 
-	log.With("volumeID", volumeId).Info("Volume is expanded.")
+	log.Info("Volume is expanded.")
 	csiMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.CSIStorageType)
 	dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
 	metrics.SendMetricData(d.metricPusher, metrics.PVExpand, time.Since(startTime).Seconds(), dimensionsMap)
@@ -782,7 +804,8 @@ func (d *ControllerDriver) ControllerExpandVolume(ctx context.Context, req *csi.
 	}, nil
 }
 
-func provision(log *zap.SugaredLogger, c client.Interface, volName string, volSize int64, availDomainName, compartmentID, backupID, kmsKeyID string, timeout time.Duration, bvTags *config.TagConfig) (core.Volume, error) {
+func provision(log *zap.SugaredLogger, c client.Interface, volName string, volSize int64, availDomainName, compartmentID,
+	backupID, kmsKeyID string, vpusPerGB int64, timeout time.Duration, bvTags *config.TagConfig) (core.Volume, error) {
 
 	ctx := context.Background()
 
@@ -797,6 +820,7 @@ func provision(log *zap.SugaredLogger, c client.Interface, volName string, volSi
 		CompartmentId:      &compartmentID,
 		DisplayName:        &volName,
 		SizeInGBs:          &volSizeGB,
+		VpusPerGB:          &vpusPerGB,
 	}
 
 	if backupID != "" {

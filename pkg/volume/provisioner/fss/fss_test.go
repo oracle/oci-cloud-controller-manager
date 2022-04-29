@@ -19,19 +19,18 @@ import (
 	"testing"
 	"time"
 
+	v12 "k8s.io/api/storage/v1"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-go-sdk/v50/common"
+	"github.com/oracle/oci-go-sdk/v50/core"
+	"github.com/oracle/oci-go-sdk/v50/filestorage"
+	"github.com/oracle/oci-go-sdk/v50/identity"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 	v1 "k8s.io/api/core/v1"
-	v12 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/sig-storage-lib-external-provisioner/v6/controller"
-
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-go-sdk/v31/common"
-	"github.com/oracle/oci-go-sdk/v31/core"
-	"github.com/oracle/oci-go-sdk/v31/filestorage"
-	"github.com/oracle/oci-go-sdk/v31/identity"
-	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
 )
 
 var (
@@ -281,7 +280,7 @@ func (p *MockProvisionerClient) Networking() client.NetworkingInterface {
 }
 
 // Networking mocks client VirtualNetwork implementation.
-func (p *MockProvisionerClient) LoadBalancer() client.LoadBalancerInterface {
+func (p *MockProvisionerClient) LoadBalancer(string) client.GenericLoadBalancerInterface {
 	return &MockLoadBalancerClient{}
 }
 
@@ -316,15 +315,15 @@ func (p *MockProvisionerClient) TenancyOCID() string {
 
 type MockLoadBalancerClient struct{}
 
-func (c *MockLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details loadbalancer.CreateLoadBalancerDetails) (string, error) {
+func (c *MockLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details *client.GenericCreateLoadBalancerDetails) (string, error) {
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) GetLoadBalancer(ctx context.Context, id string) (*loadbalancer.LoadBalancer, error) {
+func (c *MockLoadBalancerClient) GetLoadBalancer(ctx context.Context, id string) (*client.GenericLoadBalancer, error) {
 	return nil, nil
 }
 
-func (c *MockLoadBalancerClient) GetLoadBalancerByName(ctx context.Context, compartmentID, name string) (*loadbalancer.LoadBalancer, error) {
+func (c *MockLoadBalancerClient) GetLoadBalancerByName(ctx context.Context, compartmentID string, name string) (*client.GenericLoadBalancer, error) {
 	return nil, nil
 }
 
@@ -332,19 +331,19 @@ func (c *MockLoadBalancerClient) DeleteLoadBalancer(ctx context.Context, id stri
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) GetCertificateByName(ctx context.Context, lbID, name string) (*loadbalancer.Certificate, error) {
+func (c *MockLoadBalancerClient) GetCertificateByName(ctx context.Context, lbID string, name string) (*client.GenericCertificate, error) {
 	return nil, nil
 }
 
-func (c *MockLoadBalancerClient) CreateCertificate(ctx context.Context, lbID string, cert loadbalancer.CertificateDetails) (string, error) {
+func (c *MockLoadBalancerClient) CreateCertificate(ctx context.Context, lbID string, cert *client.GenericCertificate) (string, error) {
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) CreateBackendSet(ctx context.Context, lbID, name string, details loadbalancer.BackendSetDetails) (string, error) {
+func (c *MockLoadBalancerClient) CreateBackendSet(ctx context.Context, lbID string, name string, details *client.GenericBackendSetDetails) (string, error) {
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) UpdateBackendSet(ctx context.Context, lbID, name string, details loadbalancer.BackendSetDetails) (string, error) {
+func (c *MockLoadBalancerClient) UpdateBackendSet(ctx context.Context, lbID string, name string, details *client.GenericBackendSetDetails) (string, error) {
 	return "", nil
 }
 
@@ -352,11 +351,11 @@ func (c *MockLoadBalancerClient) DeleteBackendSet(ctx context.Context, lbID, nam
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) UpdateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error) {
+func (c *MockLoadBalancerClient) UpdateListener(ctx context.Context, lbID string, name string, details *client.GenericListener) (string, error) {
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) CreateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error) {
+func (c *MockLoadBalancerClient) CreateListener(ctx context.Context, lbID string, name string, details *client.GenericListener) (string, error) {
 	return "", nil
 }
 
@@ -364,15 +363,15 @@ func (c *MockLoadBalancerClient) DeleteListener(ctx context.Context, lbID, name 
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) UpdateLoadBalancerShape(ctx context.Context, lbID string, details loadbalancer.UpdateLoadBalancerShapeDetails) (string, error) {
+func (c *MockLoadBalancerClient) UpdateLoadBalancerShape(context.Context, string, *client.GenericUpdateLoadBalancerShapeDetails) (string, error) {
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) AwaitWorkRequest(ctx context.Context, id string) (*loadbalancer.WorkRequest, error) {
+func (c *MockLoadBalancerClient) AwaitWorkRequest(ctx context.Context, id string) (*client.GenericWorkRequest, error) {
 	return nil, nil
 }
 
-func (c *MockLoadBalancerClient) UpdateNetworkSecurityGroups(ctx context.Context, s string, details loadbalancer.UpdateNetworkSecurityGroupsDetails) (string, error) {
+func (c *MockLoadBalancerClient) UpdateNetworkSecurityGroups(context.Context, string, []string) (string, error) {
 	return "", nil
 }
 

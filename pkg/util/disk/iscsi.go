@@ -78,6 +78,9 @@ type Interface interface {
 	// Logout logs out the iSCSI target.
 	Logout() error
 
+	// updates the queue depth for iSCSI target
+	UpdateQueueDepth() error
+
 	// RemoveFromDB removes the iSCSI target from the database.
 	RemoveFromDB() error
 
@@ -330,6 +333,25 @@ func (c *iSCSIMounter) Logout() error {
 	return nil
 }
 
+func (c *iSCSIMounter) UpdateQueueDepth() error {
+	c.logger.With("IQN", c.disk.IQN, "target", c.disk.Target()).Info("Updating queue depth to 128.")
+
+	_, err := c.iscsiadm(
+		"-m", "node",
+		"-T", c.disk.IQN,
+		"-p", c.disk.Target(),
+		"-o", "update",
+		"-n", "node.session.queue_depth",
+		"-v", "128")
+	if err != nil {
+		return fmt.Errorf("iscsi: error updating queue depth in target: %v", err)
+	}
+
+	c.logger.With("IQN", c.disk.IQN, "target", c.disk.Target()).Info("Updated queue depth.")
+
+	return nil
+}
+
 func (c *iSCSIMounter) RemoveFromDB() error {
 	c.logger.With("IQN", c.disk.IQN, "target", c.disk.Target()).Info("Removing from database.")
 	_, err := c.iscsiadm(
@@ -391,7 +413,6 @@ func (c *iSCSIMounter) Resize(devicePath string, volumePath string) (bool, error
 func resize(devicePath string, volumePath string, sm *mount.SafeFormatAndMount) (bool, error) {
 	return sm.Resize(devicePath, volumePath)
 }
-
 
 func (c *iSCSIMounter) Rescan(devicePath string) error {
 	safeMounter := &mount.SafeFormatAndMount{

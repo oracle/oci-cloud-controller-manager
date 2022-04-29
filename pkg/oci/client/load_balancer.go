@@ -20,38 +20,46 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
+	"github.com/oracle/oci-go-sdk/v50/common"
+	"github.com/oracle/oci-go-sdk/v50/loadbalancer"
 	"github.com/pkg/errors"
 )
 
-const workRequestPollInterval = 5 * time.Second
+const (
+	workRequestPollInterval = 5 * time.Second
+)
 
-// LoadBalancerInterface for consumed LB functionality.
-type LoadBalancerInterface interface {
-	CreateLoadBalancer(ctx context.Context, details loadbalancer.CreateLoadBalancerDetails) (string, error)
-
-	GetLoadBalancer(ctx context.Context, id string) (*loadbalancer.LoadBalancer, error)
-	GetLoadBalancerByName(ctx context.Context, compartmentID, name string) (*loadbalancer.LoadBalancer, error)
-	DeleteLoadBalancer(ctx context.Context, id string) (string, error)
-
-	GetCertificateByName(ctx context.Context, lbID, name string) (*loadbalancer.Certificate, error)
-	CreateCertificate(ctx context.Context, lbID string, cert loadbalancer.CertificateDetails) (string, error)
-
-	CreateBackendSet(ctx context.Context, lbID, name string, details loadbalancer.BackendSetDetails) (string, error)
-	UpdateBackendSet(ctx context.Context, lbID, name string, details loadbalancer.BackendSetDetails) (string, error)
-	DeleteBackendSet(ctx context.Context, lbID, name string) (string, error)
-
-	UpdateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error)
-	CreateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error)
-	DeleteListener(ctx context.Context, lbID, name string) (string, error)
-
-	UpdateLoadBalancerShape(context.Context, string, loadbalancer.UpdateLoadBalancerShapeDetails) (string, error)
-	UpdateNetworkSecurityGroups(context.Context, string, loadbalancer.UpdateNetworkSecurityGroupsDetails) (string, error)
-
-	AwaitWorkRequest(ctx context.Context, id string) (*loadbalancer.WorkRequest, error)
+type loadbalancerClientStruct struct {
+	loadbalancer    loadBalancerClient
+	requestMetadata common.RequestMetadata
+	rateLimiter     RateLimiter
 }
 
-func (c *client) GetLoadBalancer(ctx context.Context, id string) (*loadbalancer.LoadBalancer, error) {
+type GenericLoadBalancerInterface interface {
+	CreateLoadBalancer(ctx context.Context, details *GenericCreateLoadBalancerDetails) (string, error)
+
+	GetLoadBalancer(ctx context.Context, id string) (*GenericLoadBalancer, error)
+	GetLoadBalancerByName(ctx context.Context, compartmentID, name string) (*GenericLoadBalancer, error)
+	DeleteLoadBalancer(ctx context.Context, id string) (string, error)
+
+	GetCertificateByName(ctx context.Context, lbID, name string) (*GenericCertificate, error)
+	CreateCertificate(ctx context.Context, lbID string, cert *GenericCertificate) (string, error)
+
+	CreateBackendSet(ctx context.Context, lbID, name string, details *GenericBackendSetDetails) (string, error)
+	UpdateBackendSet(ctx context.Context, lbID, name string, details *GenericBackendSetDetails) (string, error)
+	DeleteBackendSet(ctx context.Context, lbID, name string) (string, error)
+
+	UpdateListener(ctx context.Context, lbID, name string, details *GenericListener) (string, error)
+	CreateListener(ctx context.Context, lbID, name string, details *GenericListener) (string, error)
+	DeleteListener(ctx context.Context, lbID, name string) (string, error)
+
+	UpdateLoadBalancerShape(context.Context, string, *GenericUpdateLoadBalancerShapeDetails) (string, error)
+	UpdateNetworkSecurityGroups(context.Context, string, []string) (string, error)
+
+	AwaitWorkRequest(ctx context.Context, id string) (*GenericWorkRequest, error)
+}
+
+func (c *loadbalancerClientStruct) GetLoadBalancer(ctx context.Context, id string) (*GenericLoadBalancer, error) {
 	if !c.rateLimiter.Reader.TryAccept() {
 		return nil, RateLimitError(false, "GetLoadBalancer")
 	}
@@ -66,10 +74,10 @@ func (c *client) GetLoadBalancer(ctx context.Context, id string) (*loadbalancer.
 		return nil, errors.WithStack(err)
 	}
 
-	return &resp.LoadBalancer, nil
+	return c.loadbalancerToGenericLoadbalancer(&resp.LoadBalancer), nil
 }
 
-func (c *client) GetLoadBalancerByName(ctx context.Context, compartmentID, name string) (*loadbalancer.LoadBalancer, error) {
+func (c *loadbalancerClientStruct) GetLoadBalancerByName(ctx context.Context, compartmentID, name string) (*GenericLoadBalancer, error) {
 	var page *string
 	for {
 		if !c.rateLimiter.Reader.TryAccept() {
@@ -88,7 +96,7 @@ func (c *client) GetLoadBalancerByName(ctx context.Context, compartmentID, name 
 		}
 		for _, lb := range resp.Items {
 			if *lb.DisplayName == name {
-				return &lb, nil
+				return c.loadbalancerToGenericLoadbalancer(&lb), nil
 			}
 		}
 		if page = resp.OpcNextPage; page == nil {
@@ -99,14 +107,28 @@ func (c *client) GetLoadBalancerByName(ctx context.Context, compartmentID, name 
 	return nil, errors.WithStack(errNotFound)
 }
 
-func (c *client) CreateLoadBalancer(ctx context.Context, details loadbalancer.CreateLoadBalancerDetails) (string, error) {
+func (c *loadbalancerClientStruct) CreateLoadBalancer(ctx context.Context, details *GenericCreateLoadBalancerDetails) (string, error) {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return "", RateLimitError(true, "CreateLoadBalancer")
 	}
 
 	resp, err := c.loadbalancer.CreateLoadBalancer(ctx, loadbalancer.CreateLoadBalancerRequest{
-		CreateLoadBalancerDetails: details,
-		RequestMetadata:           c.requestMetadata,
+		CreateLoadBalancerDetails: loadbalancer.CreateLoadBalancerDetails{
+			CompartmentId:           details.CompartmentId,
+			DisplayName:             details.DisplayName,
+			SubnetIds:               details.SubnetIds,
+			ShapeName:               details.ShapeName,
+			ShapeDetails:            c.genericShapeDetailsToShapeDetails(details.ShapeDetails),
+			ReservedIps:             c.genericReservedIpToReservedIps(details.ReservedIps),
+			Certificates:            c.genericCertificatesToCertificates(details.Certificates),
+			IsPrivate:               details.IsPrivate,
+			NetworkSecurityGroupIds: details.NetworkSecurityGroupIds,
+			Listeners:               c.genericListenerDetailsToListenerDetails(details.Listeners),
+			BackendSets:             c.genericBackendSetDetailsToBackendSets(details.BackendSets),
+			FreeformTags:            details.FreeformTags,
+			DefinedTags:             details.DefinedTags,
+		},
+		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, createVerb, loadBalancerResource)
 
@@ -117,7 +139,7 @@ func (c *client) CreateLoadBalancer(ctx context.Context, details loadbalancer.Cr
 	return *resp.OpcWorkRequestId, nil
 }
 
-func (c *client) DeleteLoadBalancer(ctx context.Context, id string) (string, error) {
+func (c *loadbalancerClientStruct) DeleteLoadBalancer(ctx context.Context, id string) (string, error) {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return "", RateLimitError(true, "DeleteLoadBalancer")
 	}
@@ -135,7 +157,7 @@ func (c *client) DeleteLoadBalancer(ctx context.Context, id string) (string, err
 	return *resp.OpcWorkRequestId, nil
 }
 
-func (c *client) GetCertificateByName(ctx context.Context, lbID, name string) (*loadbalancer.Certificate, error) {
+func (c *loadbalancerClientStruct) GetCertificateByName(ctx context.Context, lbID, name string) (*GenericCertificate, error) {
 	if !c.rateLimiter.Reader.TryAccept() {
 		return nil, RateLimitError(false, "ListCertificates")
 	}
@@ -152,13 +174,13 @@ func (c *client) GetCertificateByName(ctx context.Context, lbID, name string) (*
 
 	for _, cert := range resp.Items {
 		if *cert.CertificateName == name {
-			return &cert, nil
+			return certificateToGenericCertificate(&cert), nil
 		}
 	}
 	return nil, errors.WithStack(errNotFound)
 }
 
-func (c *client) CreateCertificate(ctx context.Context, lbID string, cert loadbalancer.CertificateDetails) (string, error) {
+func (c *loadbalancerClientStruct) CreateCertificate(ctx context.Context, lbID string, cert *GenericCertificate) (string, error) {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return "", RateLimitError(true, "CreateCertificate")
 	}
@@ -183,7 +205,7 @@ func (c *client) CreateCertificate(ctx context.Context, lbID string, cert loadba
 	return *resp.OpcWorkRequestId, nil
 }
 
-func (c *client) GetWorkRequest(ctx context.Context, id string) (*loadbalancer.WorkRequest, error) {
+func (c *loadbalancerClientStruct) GetWorkRequest(ctx context.Context, id string) (*loadbalancer.WorkRequest, error) {
 	if !c.rateLimiter.Reader.TryAccept() {
 		return nil, RateLimitError(false, "GetWorkRequest")
 	}
@@ -201,23 +223,34 @@ func (c *client) GetWorkRequest(ctx context.Context, id string) (*loadbalancer.W
 	return &resp.WorkRequest, nil
 }
 
-func (c *client) CreateBackendSet(ctx context.Context, lbID, name string, details loadbalancer.BackendSetDetails) (string, error) {
+func (c *loadbalancerClientStruct) CreateBackendSet(ctx context.Context, lbID string, name string, details *GenericBackendSetDetails) (string, error) {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return "", RateLimitError(true, "CreateBackendSet")
 	}
-
-	resp, err := c.loadbalancer.CreateBackendSet(ctx, loadbalancer.CreateBackendSetRequest{
+	createBackendSetRequest := loadbalancer.CreateBackendSetRequest{
 		LoadBalancerId: &lbID,
 		CreateBackendSetDetails: loadbalancer.CreateBackendSetDetails{
-			Name:                            &name,
-			Backends:                        details.Backends,
-			HealthChecker:                   details.HealthChecker,
+			Name:     &name,
+			Backends: c.genericBackendDetailsToBackendDetails(details.Backends),
+			HealthChecker: &loadbalancer.HealthCheckerDetails{
+				Protocol:         &details.HealthChecker.Protocol,
+				Port:             details.HealthChecker.Port,
+				UrlPath:          details.HealthChecker.UrlPath,
+				Retries:          details.HealthChecker.Retries,
+				ReturnCode:       details.HealthChecker.ReturnCode,
+				TimeoutInMillis:  details.HealthChecker.TimeoutInMillis,
+				IntervalInMillis: details.HealthChecker.IntervalInMillis,
+			},
 			Policy:                          details.Policy,
-			SessionPersistenceConfiguration: details.SessionPersistenceConfiguration,
-			SslConfiguration:                details.SslConfiguration,
+			SessionPersistenceConfiguration: getSessionPersistenceConfiguration(details.SessionPersistenceConfiguration),
 		},
 		RequestMetadata: c.requestMetadata,
-	})
+	}
+	if details.SslConfiguration != nil {
+		createBackendSetRequest.SslConfiguration = genericSslConfigurationToSslConfiguration(details.SslConfiguration)
+	}
+	resp, err := c.loadbalancer.CreateBackendSet(ctx, createBackendSetRequest)
+
 	incRequestCounter(err, createVerb, backendSetResource)
 
 	if err != nil {
@@ -227,23 +260,36 @@ func (c *client) CreateBackendSet(ctx context.Context, lbID, name string, detail
 	return *resp.OpcWorkRequestId, nil
 }
 
-func (c *client) UpdateBackendSet(ctx context.Context, lbID, name string, details loadbalancer.BackendSetDetails) (string, error) {
+func (c *loadbalancerClientStruct) UpdateBackendSet(ctx context.Context, lbID string, name string, details *GenericBackendSetDetails) (string, error) {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return "", RateLimitError(true, "UpdateBackendSet")
 	}
 
-	resp, err := c.loadbalancer.UpdateBackendSet(ctx, loadbalancer.UpdateBackendSetRequest{
+	updateBackendSetRequest := loadbalancer.UpdateBackendSetRequest{
 		LoadBalancerId: &lbID,
 		BackendSetName: &name,
 		UpdateBackendSetDetails: loadbalancer.UpdateBackendSetDetails{
-			Backends:                        details.Backends,
-			HealthChecker:                   details.HealthChecker,
+			Backends: c.genericBackendDetailsToBackendDetails(details.Backends),
+			HealthChecker: &loadbalancer.HealthCheckerDetails{
+				Protocol:         &details.HealthChecker.Protocol,
+				Port:             details.HealthChecker.Port,
+				UrlPath:          details.HealthChecker.UrlPath,
+				Retries:          details.HealthChecker.Retries,
+				ReturnCode:       details.HealthChecker.ReturnCode,
+				TimeoutInMillis:  details.HealthChecker.TimeoutInMillis,
+				IntervalInMillis: details.HealthChecker.IntervalInMillis,
+			},
 			Policy:                          details.Policy,
-			SessionPersistenceConfiguration: details.SessionPersistenceConfiguration,
-			SslConfiguration:                details.SslConfiguration,
+			SessionPersistenceConfiguration: getSessionPersistenceConfiguration(details.SessionPersistenceConfiguration),
 		},
 		RequestMetadata: c.requestMetadata,
-	})
+	}
+
+	if details.SslConfiguration != nil {
+		updateBackendSetRequest.SslConfiguration = genericSslConfigurationToSslConfiguration(details.SslConfiguration)
+	}
+	resp, err := c.loadbalancer.UpdateBackendSet(ctx, updateBackendSetRequest)
+
 	incRequestCounter(err, updateVerb, backendSetResource)
 
 	if err != nil {
@@ -253,7 +299,7 @@ func (c *client) UpdateBackendSet(ctx context.Context, lbID, name string, detail
 	return *resp.OpcWorkRequestId, nil
 }
 
-func (c *client) DeleteBackendSet(ctx context.Context, lbID, name string) (string, error) {
+func (c *loadbalancerClientStruct) DeleteBackendSet(ctx context.Context, lbID, name string) (string, error) {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return "", RateLimitError(true, "DeleteBackendSet")
 	}
@@ -272,23 +318,28 @@ func (c *client) DeleteBackendSet(ctx context.Context, lbID, name string) (strin
 	return *resp.OpcWorkRequestId, nil
 }
 
-func (c *client) CreateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error) {
+func (c *loadbalancerClientStruct) CreateListener(ctx context.Context, lbID string, name string, details *GenericListener) (string, error) {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return "", RateLimitError(true, "CreateListener")
 	}
 
-	resp, err := c.loadbalancer.CreateListener(ctx, loadbalancer.CreateListenerRequest{
+	createListener := loadbalancer.CreateListenerRequest{
 		LoadBalancerId: &lbID,
 		CreateListenerDetails: loadbalancer.CreateListenerDetails{
 			Name:                    &name,
 			DefaultBackendSetName:   details.DefaultBackendSetName,
 			Port:                    details.Port,
 			Protocol:                details.Protocol,
-			SslConfiguration:        details.SslConfiguration,
-			ConnectionConfiguration: details.ConnectionConfiguration,
+			ConnectionConfiguration: getListenerConnectionConfiguration(details.ConnectionConfiguration),
 		},
 		RequestMetadata: c.requestMetadata,
-	})
+	}
+	if details.SslConfiguration != nil {
+		createListener.SslConfiguration = genericSslConfigurationToSslConfiguration(details.SslConfiguration)
+	}
+
+	resp, err := c.loadbalancer.CreateListener(ctx, createListener)
+
 	incRequestCounter(err, createVerb, listenerResource)
 
 	if err != nil {
@@ -298,23 +349,32 @@ func (c *client) CreateListener(ctx context.Context, lbID, name string, details 
 	return *resp.OpcWorkRequestId, nil
 }
 
-func (c *client) UpdateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error) {
+func (c *loadbalancerClientStruct) UpdateListener(ctx context.Context, lbID string, name string, details *GenericListener) (string, error) {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return "", RateLimitError(true, "UpdateListener")
 	}
 
-	resp, err := c.loadbalancer.UpdateListener(ctx, loadbalancer.UpdateListenerRequest{
+	updateListenerRequest := loadbalancer.UpdateListenerRequest{
 		LoadBalancerId: &lbID,
 		ListenerName:   &name,
 		UpdateListenerDetails: loadbalancer.UpdateListenerDetails{
-			DefaultBackendSetName:   details.DefaultBackendSetName,
-			Port:                    details.Port,
-			Protocol:                details.Protocol,
-			SslConfiguration:        details.SslConfiguration,
-			ConnectionConfiguration: details.ConnectionConfiguration,
+			DefaultBackendSetName: details.DefaultBackendSetName,
+			Port:                  details.Port,
+			Protocol:              details.Protocol,
 		},
 		RequestMetadata: c.requestMetadata,
-	})
+	}
+
+	if details.SslConfiguration != nil {
+		updateListenerRequest.SslConfiguration = genericSslConfigurationToSslConfiguration(details.SslConfiguration)
+	}
+
+	if details.ConnectionConfiguration != nil {
+		updateListenerRequest.ConnectionConfiguration = getListenerConnectionConfiguration(details.ConnectionConfiguration)
+	}
+
+	resp, err := c.loadbalancer.UpdateListener(ctx, updateListenerRequest)
+
 	incRequestCounter(err, updateVerb, listenerResource)
 
 	if err != nil {
@@ -324,10 +384,12 @@ func (c *client) UpdateListener(ctx context.Context, lbID, name string, details 
 	return *resp.OpcWorkRequestId, nil
 }
 
-func (c *client) AwaitWorkRequest(ctx context.Context, id string) (*loadbalancer.WorkRequest, error) {
+func (c *loadbalancerClientStruct) AwaitWorkRequest(ctx context.Context, id string) (*GenericWorkRequest, error) {
 	var wr *loadbalancer.WorkRequest
+	contextWithTimeout, cancel := context.WithTimeout(ctx, defaultSynchronousAPIContextTimeout)
+	defer cancel()
 	err := wait.PollUntil(workRequestPollInterval, func() (done bool, err error) {
-		twr, err := c.GetWorkRequest(ctx, id)
+		twr, err := c.GetWorkRequest(contextWithTimeout, id)
 		if err != nil {
 			if IsRetryable(err) {
 				return false, nil
@@ -343,10 +405,11 @@ func (c *client) AwaitWorkRequest(ctx context.Context, id string) (*loadbalancer
 		}
 		return false, nil
 	}, ctx.Done())
-	return wr, err
+
+	return c.workRequestToGenericWorkRequest(wr), err
 }
 
-func (c *client) DeleteListener(ctx context.Context, lbID, name string) (string, error) {
+func (c *loadbalancerClientStruct) DeleteListener(ctx context.Context, lbID, name string) (string, error) {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return "", RateLimitError(true, "DeleteListener")
 	}
@@ -365,14 +428,17 @@ func (c *client) DeleteListener(ctx context.Context, lbID, name string) (string,
 	return *resp.OpcWorkRequestId, nil
 }
 
-func (c *client) UpdateLoadBalancerShape(ctx context.Context, lbID string, lbShapeDetails loadbalancer.UpdateLoadBalancerShapeDetails) (string, error) {
+func (c *loadbalancerClientStruct) UpdateLoadBalancerShape(ctx context.Context, lbID string, lbShapeDetails *GenericUpdateLoadBalancerShapeDetails) (string, error) {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return "", RateLimitError(true, "UpdateListener")
 	}
 
 	resp, err := c.loadbalancer.UpdateLoadBalancerShape(ctx, loadbalancer.UpdateLoadBalancerShapeRequest{
-		LoadBalancerId:                 &lbID,
-		UpdateLoadBalancerShapeDetails: lbShapeDetails,
+		LoadBalancerId: &lbID,
+		UpdateLoadBalancerShapeDetails: loadbalancer.UpdateLoadBalancerShapeDetails{
+			ShapeName:    lbShapeDetails.ShapeName,
+			ShapeDetails: c.genericShapeDetailsToShapeDetails(lbShapeDetails.ShapeDetails),
+		},
 	})
 	incRequestCounter(err, updateVerb, shapeResource)
 
@@ -383,14 +449,16 @@ func (c *client) UpdateLoadBalancerShape(ctx context.Context, lbID string, lbSha
 	return *resp.OpcWorkRequestId, nil
 }
 
-func (c *client) UpdateNetworkSecurityGroups(ctx context.Context, lbID string, lbNetworkSecurityGroupDetails loadbalancer.UpdateNetworkSecurityGroupsDetails) (string, error) {
+func (c *loadbalancerClientStruct) UpdateNetworkSecurityGroups(ctx context.Context, lbID string, lbNetworkSecurityGroupDetails []string) (string, error) {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return "", RateLimitError(true, "UpdateNetworkSecurityGroups")
 	}
 
 	resp, err := c.loadbalancer.UpdateNetworkSecurityGroups(ctx, loadbalancer.UpdateNetworkSecurityGroupsRequest{
-		LoadBalancerId:                     &lbID,
-		UpdateNetworkSecurityGroupsDetails: lbNetworkSecurityGroupDetails,
+		LoadBalancerId: &lbID,
+		UpdateNetworkSecurityGroupsDetails: loadbalancer.UpdateNetworkSecurityGroupsDetails{
+			NetworkSecurityGroupIds: lbNetworkSecurityGroupDetails,
+		},
 	})
 	incRequestCounter(err, updateVerb, nsgResource)
 
@@ -399,4 +467,356 @@ func (c *client) UpdateNetworkSecurityGroups(ctx context.Context, lbID string, l
 	}
 
 	return *resp.OpcWorkRequestId, nil
+}
+
+func (c *loadbalancerClientStruct) loadbalancerToGenericLoadbalancer(lb *loadbalancer.LoadBalancer) *GenericLoadBalancer {
+	if lb == nil {
+		return nil
+	}
+	lifecycleState := string(lb.LifecycleState)
+	return &GenericLoadBalancer{
+		Id:                      lb.Id,
+		CompartmentId:           lb.CompartmentId,
+		DisplayName:             lb.DisplayName,
+		LifecycleState:          &lifecycleState,
+		ShapeName:               lb.ShapeName,
+		IpAddresses:             c.ipAddressesToGenericIpAddress(lb.IpAddresses),
+		ShapeDetails:            shapeDetailsToGenericShapeDetails(lb.ShapeDetails),
+		IsPrivate:               lb.IsPrivate,
+		SubnetIds:               lb.SubnetIds,
+		NetworkSecurityGroupIds: lb.NetworkSecurityGroupIds,
+		Listeners:               c.listenersToGenericListenerDetails(lb.Listeners),
+		Certificates:            c.certificateToGenericCertificateDetails(lb.Certificates),
+		BackendSets:             c.backendSetsToGenericBackendSetDetails(lb.BackendSets),
+		FreeformTags:            lb.FreeformTags,
+		DefinedTags:             lb.DefinedTags,
+	}
+}
+
+func (c *loadbalancerClientStruct) ipAddressesToGenericIpAddress(ipAddresses []loadbalancer.IpAddress) []GenericIpAddress {
+	genericIPAddresses := make([]GenericIpAddress, 0)
+	for _, address := range ipAddresses {
+		genericIPAddresses = append(genericIPAddresses, GenericIpAddress{
+			IpAddress:  address.IpAddress,
+			IsPublic:   address.IsPublic,
+			ReservedIp: (*GenericReservedIp)(address.ReservedIp),
+		})
+	}
+	return genericIPAddresses
+}
+
+func shapeDetailsToGenericShapeDetails(shapeDetails *loadbalancer.ShapeDetails) *GenericShapeDetails {
+	genericShapeDetails := &GenericShapeDetails{}
+	if shapeDetails == nil {
+		return genericShapeDetails
+	}
+	if shapeDetails.MinimumBandwidthInMbps != nil {
+		genericShapeDetails.MinimumBandwidthInMbps = shapeDetails.MinimumBandwidthInMbps
+	}
+	if shapeDetails.MaximumBandwidthInMbps != nil {
+		genericShapeDetails.MaximumBandwidthInMbps = shapeDetails.MaximumBandwidthInMbps
+	}
+	return genericShapeDetails
+}
+
+func (c *loadbalancerClientStruct) listenersToGenericListenerDetails(details map[string]loadbalancer.Listener) map[string]GenericListener {
+	genericListenerDetails := make(map[string]GenericListener)
+
+	for k, v := range details {
+		listenerDetailsStruct := GenericListener{
+			Name:                  v.Name,
+			DefaultBackendSetName: v.DefaultBackendSetName,
+			Port:                  v.Port,
+			Protocol:              v.Protocol,
+			HostnameNames:         v.HostnameNames,
+			PathRouteSetName:      v.PathRouteSetName,
+			RoutingPolicyName:     v.RoutingPolicyName,
+			RuleSetNames:          v.RuleSetNames,
+		}
+
+		if v.SslConfiguration != nil {
+			listenerDetailsStruct.SslConfiguration = sslConfigurationToGenericSslConfiguration(v.SslConfiguration)
+		}
+
+		if v.ConnectionConfiguration != nil {
+			listenerDetailsStruct.ConnectionConfiguration = &GenericConnectionConfiguration{
+				IdleTimeout:                    v.ConnectionConfiguration.IdleTimeout,
+				BackendTcpProxyProtocolVersion: v.ConnectionConfiguration.BackendTcpProxyProtocolVersion,
+			}
+		}
+		genericListenerDetails[k] = listenerDetailsStruct
+
+	}
+	return genericListenerDetails
+}
+
+func (c *loadbalancerClientStruct) genericListenerDetailsToListenerDetails(details map[string]GenericListener) map[string]loadbalancer.ListenerDetails {
+	listenerDetails := make(map[string]loadbalancer.ListenerDetails)
+
+	for k, v := range details {
+		listenerDetailsStruct := loadbalancer.ListenerDetails{
+			DefaultBackendSetName: v.DefaultBackendSetName,
+			Port:                  v.Port,
+			Protocol:              v.Protocol,
+			HostnameNames:         v.HostnameNames,
+		}
+
+		if v.RuleSetNames != nil {
+			listenerDetailsStruct.RuleSetNames = v.RuleSetNames
+		}
+		if v.RoutingPolicyName != nil {
+			listenerDetailsStruct.RoutingPolicyName = v.RoutingPolicyName
+		}
+
+		if v.PathRouteSetName != nil {
+			listenerDetailsStruct.PathRouteSetName = v.PathRouteSetName
+		}
+
+		if v.SslConfiguration != nil {
+			listenerDetailsStruct.SslConfiguration = genericSslConfigurationToSslConfiguration(v.SslConfiguration)
+		}
+
+		if v.ConnectionConfiguration != nil {
+			listenerDetailsStruct.ConnectionConfiguration = &loadbalancer.ConnectionConfiguration{
+				IdleTimeout:                    v.ConnectionConfiguration.IdleTimeout,
+				BackendTcpProxyProtocolVersion: v.ConnectionConfiguration.BackendTcpProxyProtocolVersion,
+			}
+		}
+		listenerDetails[k] = listenerDetailsStruct
+
+	}
+	return listenerDetails
+}
+
+func (c *loadbalancerClientStruct) certificateToGenericCertificateDetails(certificates map[string]loadbalancer.Certificate) map[string]GenericCertificate {
+	genericCertificateDetails := make(map[string]GenericCertificate)
+
+	for k, v := range certificates {
+		genericCertificateDetails[k] = GenericCertificate{
+			CertificateName:   v.CertificateName,
+			PublicCertificate: v.PublicCertificate,
+			CaCertificate:     v.CaCertificate,
+		}
+	}
+	return genericCertificateDetails
+}
+
+func (c *loadbalancerClientStruct) backendSetsToGenericBackendSetDetails(backendSets map[string]loadbalancer.BackendSet) map[string]GenericBackendSetDetails {
+	genericBackendSetDetails := make(map[string]GenericBackendSetDetails)
+
+	for k, v := range backendSets {
+		backendDetailsStruct := GenericBackendSetDetails{
+			HealthChecker: &GenericHealthChecker{
+				Protocol:         *v.HealthChecker.Protocol,
+				Port:             v.HealthChecker.Port,
+				UrlPath:          v.HealthChecker.UrlPath,
+				Retries:          v.HealthChecker.Retries,
+				ReturnCode:       v.HealthChecker.ReturnCode,
+				TimeoutInMillis:  v.HealthChecker.TimeoutInMillis,
+				IntervalInMillis: v.HealthChecker.IntervalInMillis,
+			},
+			Policy:   v.Policy,
+			Name:     v.Name,
+			Backends: backendDetailsToGenericBackendDetails(v.Backends),
+		}
+
+		if v.SslConfiguration != nil {
+			backendDetailsStruct.SslConfiguration = sslConfigurationToGenericSslConfiguration(v.SslConfiguration)
+		}
+
+		if v.SessionPersistenceConfiguration != nil {
+			backendDetailsStruct.SessionPersistenceConfiguration = getGenericSessionPersistenceConfiguration(v.SessionPersistenceConfiguration)
+		}
+		genericBackendSetDetails[k] = backendDetailsStruct
+	}
+
+	return genericBackendSetDetails
+}
+
+func (c *loadbalancerClientStruct) genericBackendSetDetailsToBackendSets(backendSets map[string]GenericBackendSetDetails) map[string]loadbalancer.BackendSetDetails {
+	backendSetDetails := make(map[string]loadbalancer.BackendSetDetails)
+
+	for k, v := range backendSets {
+		backendSetDetailsStruct := loadbalancer.BackendSetDetails{
+			HealthChecker: &loadbalancer.HealthCheckerDetails{
+				Protocol:         &v.HealthChecker.Protocol,
+				Port:             v.HealthChecker.Port,
+				UrlPath:          v.HealthChecker.UrlPath,
+				Retries:          v.HealthChecker.Retries,
+				ReturnCode:       v.HealthChecker.ReturnCode,
+				TimeoutInMillis:  v.HealthChecker.TimeoutInMillis,
+				IntervalInMillis: v.HealthChecker.IntervalInMillis,
+			},
+			Policy:   v.Policy,
+			Backends: c.genericBackendDetailsToBackendDetails(v.Backends),
+		}
+
+		if v.SslConfiguration != nil {
+			backendSetDetailsStruct.SslConfiguration = genericSslConfigurationToSslConfiguration(v.SslConfiguration)
+		}
+
+		if v.SessionPersistenceConfiguration != nil {
+			backendSetDetailsStruct.SessionPersistenceConfiguration = getSessionPersistenceConfiguration(v.SessionPersistenceConfiguration)
+		}
+		backendSetDetails[k] = backendSetDetailsStruct
+	}
+	return backendSetDetails
+}
+
+func (c *loadbalancerClientStruct) workRequestToGenericWorkRequest(request *loadbalancer.WorkRequest) *GenericWorkRequest {
+	if request == nil {
+		return nil
+	}
+	lifecycleState := string(request.LifecycleState)
+	genericWorkRequest := &GenericWorkRequest{
+		Id:             request.Id,
+		LoadBalancerId: request.LoadBalancerId,
+		LifecycleState: &lifecycleState,
+		CompartmentId:  request.CompartmentId,
+		Message:        request.Message,
+		OperationType:  *request.Type,
+	}
+	return genericWorkRequest
+}
+
+func certificateToGenericCertificate(certificate *loadbalancer.Certificate) *GenericCertificate {
+	if certificate == nil {
+		return nil
+	}
+	genericCertificateDetails := &GenericCertificate{
+		CertificateName:   certificate.CertificateName,
+		PublicCertificate: certificate.PublicCertificate,
+		CaCertificate:     certificate.CaCertificate,
+	}
+	return genericCertificateDetails
+}
+
+func (c *loadbalancerClientStruct) genericCertificatesToCertificates(genericCertificates map[string]GenericCertificate) map[string]loadbalancer.CertificateDetails {
+	certificates := make(map[string]loadbalancer.CertificateDetails)
+
+	for k, cert := range genericCertificates {
+		certStruct := loadbalancer.CertificateDetails{
+			CertificateName:   cert.CertificateName,
+			Passphrase:        cert.Passphrase,
+			PrivateKey:        cert.PrivateKey,
+			PublicCertificate: cert.PublicCertificate,
+			CaCertificate:     cert.CaCertificate,
+		}
+		certificates[k] = certStruct
+	}
+
+	return certificates
+}
+
+func (c *loadbalancerClientStruct) genericShapeDetailsToShapeDetails(details *GenericShapeDetails) *loadbalancer.ShapeDetails {
+	if details == nil {
+		return nil
+	}
+	return &loadbalancer.ShapeDetails{
+		MinimumBandwidthInMbps: details.MinimumBandwidthInMbps,
+		MaximumBandwidthInMbps: details.MaximumBandwidthInMbps,
+	}
+}
+
+func (c *loadbalancerClientStruct) genericReservedIpToReservedIps(genericReservedIps []GenericReservedIp) []loadbalancer.ReservedIp {
+	reservedIps := make([]loadbalancer.ReservedIp, 0)
+	for _, address := range genericReservedIps {
+		reservedIps = append(reservedIps, loadbalancer.ReservedIp{
+			Id: address.Id,
+		})
+	}
+	return reservedIps
+}
+
+func (c *loadbalancerClientStruct) genericBackendDetailsToBackendDetails(details []GenericBackend) []loadbalancer.BackendDetails {
+	backendDetails := make([]loadbalancer.BackendDetails, 0)
+
+	for _, backends := range details {
+		backendDetails = append(backendDetails, loadbalancer.BackendDetails{
+			IpAddress: backends.IpAddress,
+			Port:      backends.Port,
+			Weight:    backends.Weight,
+		})
+	}
+	return backendDetails
+}
+
+func backendDetailsToGenericBackendDetails(details []loadbalancer.Backend) []GenericBackend {
+	genericBackendDetails := make([]GenericBackend, 0)
+
+	for _, backends := range details {
+		genericBackendDetails = append(genericBackendDetails, GenericBackend{
+			IpAddress: backends.IpAddress,
+			Port:      backends.Port,
+			Weight:    backends.Weight,
+		})
+	}
+	return genericBackendDetails
+}
+
+func genericSslConfigurationToSslConfiguration(details *GenericSslConfigurationDetails) *loadbalancer.SslConfigurationDetails {
+	if details == nil {
+		return nil
+	}
+	return &loadbalancer.SslConfigurationDetails{
+		VerifyDepth:                    details.VerifyDepth,
+		VerifyPeerCertificate:          details.VerifyPeerCertificate,
+		TrustedCertificateAuthorityIds: details.TrustedCertificateAuthorityIds,
+		CertificateIds:                 details.CertificateIds,
+		CertificateName:                details.CertificateName,
+		ServerOrderPreference:          loadbalancer.SslConfigurationDetailsServerOrderPreferenceEnum(details.ServerOrderPreference),
+		CipherSuiteName:                details.CipherSuiteName,
+		Protocols:                      details.Protocols,
+	}
+}
+
+func sslConfigurationToGenericSslConfiguration(details *loadbalancer.SslConfiguration) *GenericSslConfigurationDetails {
+	if details == nil {
+		return nil
+	}
+	return &GenericSslConfigurationDetails{
+		VerifyDepth:                    details.VerifyDepth,
+		VerifyPeerCertificate:          details.VerifyPeerCertificate,
+		TrustedCertificateAuthorityIds: details.TrustedCertificateAuthorityIds,
+		CertificateIds:                 details.CertificateIds,
+		CertificateName:                details.CertificateName,
+		ServerOrderPreference:          string(details.ServerOrderPreference),
+		CipherSuiteName:                details.CipherSuiteName,
+		Protocols:                      details.Protocols,
+	}
+}
+
+func getSessionPersistenceConfiguration(details *GenericSessionPersistenceConfiguration) *loadbalancer.SessionPersistenceConfigurationDetails {
+	if details == nil {
+		return nil
+	}
+	return &loadbalancer.SessionPersistenceConfigurationDetails{
+		CookieName:      details.CookieName,
+		DisableFallback: details.DisableFallback,
+	}
+}
+
+func getGenericSessionPersistenceConfiguration(details *loadbalancer.SessionPersistenceConfigurationDetails) *GenericSessionPersistenceConfiguration {
+	if details == nil {
+		return nil
+	}
+
+	return &GenericSessionPersistenceConfiguration{
+		CookieName:      details.CookieName,
+		DisableFallback: details.DisableFallback,
+	}
+}
+
+func getListenerConnectionConfiguration(details *GenericConnectionConfiguration) *loadbalancer.ConnectionConfiguration {
+	var connectionConfiguration *loadbalancer.ConnectionConfiguration
+
+	if details == nil {
+		connectionConfiguration = nil
+	} else {
+		connectionConfiguration = &loadbalancer.ConnectionConfiguration{
+			IdleTimeout:                    details.IdleTimeout,
+			BackendTcpProxyProtocolVersion: details.BackendTcpProxyProtocolVersion,
+		}
+	}
+	return connectionConfiguration
 }

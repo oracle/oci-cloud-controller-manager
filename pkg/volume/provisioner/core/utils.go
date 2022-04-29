@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/oracle/oci-go-sdk/v31/identity"
+	"github.com/oracle/oci-go-sdk/v50/identity"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"

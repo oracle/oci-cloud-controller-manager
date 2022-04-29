@@ -9,8 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/zap"
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	kubeAPI "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -20,7 +22,6 @@ import (
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util/disk"
-
 )
 
 const (
@@ -40,6 +41,12 @@ const (
 
 	// ociVolumeBackupID is the name of the oci volume backup id annotation.
 	ociVolumeBackupID = "volume.beta.kubernetes.io/oci-volume-source"
+
+	// Block Volume Performance Units
+	VpusPerGB = "vpusPerGB"
+	LowCostPerformanceOption  = 0
+	BalancedPerformanceOption = 10
+	HigherPerformanceOption   = 20
 )
 
 //Util interface
@@ -123,20 +130,20 @@ func GetDevicePath(sd *disk.Disk) string {
 func ExtractISCSIInformation(attributes map[string]string) (*disk.Disk, error) {
 	iqn, ok := attributes[disk.ISCSIIQN]
 	if !ok {
-		return nil, fmt.Errorf("Unable to get the IQN from the attribute list")
+		return nil, fmt.Errorf("unable to get the IQN from the attribute list")
 	}
 	ipv4, ok := attributes[disk.ISCSIIP]
 	if !ok {
-		return nil, fmt.Errorf("Unable to get the ipv4 from the attribute list")
+		return nil, fmt.Errorf("unable to get the ipv4 from the attribute list")
 	}
 	port, ok := attributes[disk.ISCSIPORT]
 	if !ok {
-		return nil, fmt.Errorf("Unable to get the port from the attribute list")
+		return nil, fmt.Errorf("unable to get the port from the attribute list")
 	}
 
 	nPort, err := strconv.Atoi(port)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid port number: %s, error: %v", port, err)
+		return nil, fmt.Errorf("invalid port number: %s, error: %v", port, err)
 	}
 
 	return &disk.Disk{
@@ -144,6 +151,20 @@ func ExtractISCSIInformation(attributes map[string]string) (*disk.Disk, error) {
 		IPv4: ipv4,
 		Port: nPort,
 	}, nil
+}
+
+//Extracts the vpusPerGB as int64 from given string input
+func ExtractBlockVolumePerformanceLevel(attribute string) (int64, error) {
+	vpusPerGB, err := strconv.ParseInt(attribute, 10, 64)
+	if err != nil {
+		return 0, status.Errorf(codes.InvalidArgument, "unable to parse performance level value %s as int64", attribute)
+	}
+	if vpusPerGB != LowCostPerformanceOption && vpusPerGB != BalancedPerformanceOption && vpusPerGB != HigherPerformanceOption {
+		return 0, status.Errorf(codes.InvalidArgument, "invalid performance option : %s provided  for "+
+			"storage class. supported performance options are 0 for low cost, 10 for balanced and 20 for higher"+
+			" performance", attribute)
+	}
+	return vpusPerGB, nil
 }
 
 func ExtractISCSIInformationFromMountPath(logger *zap.SugaredLogger, diskPath []string) (*disk.Disk, error) {

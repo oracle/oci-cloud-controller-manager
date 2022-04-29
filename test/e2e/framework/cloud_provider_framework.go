@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	ocicore "github.com/oracle/oci-go-sdk/v31/core"
+	ocicore "github.com/oracle/oci-go-sdk/v50/core"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/cache"
@@ -31,8 +31,8 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci" // register oci cloud provider
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-go-sdk/v31/common"
-	"github.com/oracle/oci-go-sdk/v31/core"
+	"github.com/oracle/oci-go-sdk/v50/common"
+	"github.com/oracle/oci-go-sdk/v50/core"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
@@ -283,7 +283,7 @@ func (f *CloudProviderFramework) AfterEach() {
 
 	for _, volId := range f.VolumeIds {
 		By(fmt.Sprintf("Deleting volumes %q", volId))
-		err := f.ClientSet.CoreV1().PersistentVolumes().Delete(context.Background() ,volId, metav1.DeleteOptions{})
+		err := f.ClientSet.CoreV1().PersistentVolumes().Delete(context.Background(),volId, metav1.DeleteOptions{})
 		if err != nil && !apierrors.IsNotFound(err) {
 			Logf("Failed to delete persistent volume %q: %v", volId, err)
 		}

@@ -41,9 +41,8 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
 	imageutils "k8s.io/kubernetes/test/utils/image"
-
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	cloudprovider "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci"
-	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
 )
 
 const (
@@ -254,7 +253,7 @@ func (j *ServiceTestJig) CreateOnlyLocalNodePortService(namespace, serviceName s
 // ExternalTrafficPolicy set to Local and waits for it to acquire an ingress IP.
 // If createPod is true, it also creates an RC with 1 replica of
 // the standard agnhost container used everywhere in this test.
-func (j *ServiceTestJig) CreateOnlyLocalLoadBalancerService(namespace, serviceName string, timeout time.Duration, createPod bool,
+func (j *ServiceTestJig) CreateOnlyLocalLoadBalancerService(namespace, serviceName string, timeout time.Duration, createPod bool, creationAnnotations map[string]string,
 	tweak func(svc *v1.Service)) *v1.Service {
 	By("creating a service " + namespace + "/" + serviceName + " with type=LoadBalancer and ExternalTrafficPolicy=Local")
 	svc := j.CreateTCPServiceOrFail(namespace, func(svc *v1.Service) {
@@ -265,6 +264,7 @@ func (j *ServiceTestJig) CreateOnlyLocalLoadBalancerService(namespace, serviceNa
 		if tweak != nil {
 			tweak(svc)
 		}
+		svc.ObjectMeta.Annotations = creationAnnotations
 	})
 
 	if createPod {
@@ -846,9 +846,9 @@ func (j *ServiceTestJig) TestHTTPHealthCheckNodePort(host string, port int, requ
 	return nil
 }
 
-func (f *CloudProviderFramework) VerifyHealthCheckConfig(loadBalancerId string, retries, timeout, interval int) error {
+func (f *CloudProviderFramework) VerifyHealthCheckConfig(loadBalancerId string, retries, timeout, interval int, lbtype string) error {
 	for start := time.Now(); time.Since(start) < 5*time.Minute; time.Sleep(5 * time.Second) {
-		loadBalancer, err := f.Client.LoadBalancer().GetLoadBalancer(context.TODO(), loadBalancerId)
+		loadBalancer, err := f.Client.LoadBalancer(lbtype).GetLoadBalancer(context.TODO(), loadBalancerId)
 		if err != nil {
 			return err
 		}
@@ -867,9 +867,9 @@ func (f *CloudProviderFramework) VerifyHealthCheckConfig(loadBalancerId string, 
 
 // WaitForLoadBalancerNSGChange polls for validating the associated NSGs
 // to be the same as the spec
-func (f *CloudProviderFramework) WaitForLoadBalancerNSGChange(lb *loadbalancer.LoadBalancer, nsgIds []string) error {
+func (f *CloudProviderFramework) WaitForLoadBalancerNSGChange(lb *client.GenericLoadBalancer, nsgIds []string, lbtype string) error {
 	condition := func() (bool, error) {
-		updatedLB, err := f.Client.LoadBalancer().GetLoadBalancer(context.TODO(), *lb.Id)
+		updatedLB, err := f.Client.LoadBalancer(lbtype).GetLoadBalancer(context.TODO(), *lb.Id)
 		if err != nil {
 			return false, err
 		}
@@ -886,10 +886,10 @@ func (f *CloudProviderFramework) WaitForLoadBalancerNSGChange(lb *loadbalancer.L
 
 // WaitForLoadBalancerShapeChange polls for the shape of the LB
 // to be the same as the spec
-func (f *CloudProviderFramework) WaitForLoadBalancerShapeChange(lb *loadbalancer.LoadBalancer, shape, fMin, fMax string) error {
+func (f *CloudProviderFramework) WaitForLoadBalancerShapeChange(lb *client.GenericLoadBalancer, shape, fMin, fMax string) error {
 	condition := func() (bool, error) {
 
-		updatedLB, err := f.Client.LoadBalancer().GetLoadBalancer(context.TODO(), *lb.Id)
+		updatedLB, err := f.Client.LoadBalancer("lb").GetLoadBalancer(context.TODO(), *lb.Id)
 		if err != nil {
 			return false, err
 		}
@@ -897,7 +897,8 @@ func (f *CloudProviderFramework) WaitForLoadBalancerShapeChange(lb *loadbalancer
 			return false, nil
 		}
 		// in case of non-flex shapes ShapeDetails will be nil
-		if updatedLB.ShapeDetails == nil {
+		if updatedLB.ShapeDetails.MinimumBandwidthInMbps == nil &&
+			updatedLB.ShapeDetails.MaximumBandwidthInMbps == nil {
 			return true, nil
 		}
 		if strconv.Itoa(*updatedLB.ShapeDetails.MinimumBandwidthInMbps) != fMin ||
@@ -911,7 +912,7 @@ func (f *CloudProviderFramework) WaitForLoadBalancerShapeChange(lb *loadbalancer
 	}
 	return nil
 }
-func testHealthCheckConfig(loadBalancer *loadbalancer.LoadBalancer, retries int, timeout int, interval int) (bool, error) {
+func testHealthCheckConfig(loadBalancer *client.GenericLoadBalancer, retries int, timeout int, interval int) (bool, error) {
 	if loadBalancer != nil && len(loadBalancer.BackendSets) != 0 {
 		for _, backendSet := range loadBalancer.BackendSets {
 			if *backendSet.HealthChecker.Retries != retries {
@@ -931,7 +932,7 @@ func testHealthCheckConfig(loadBalancer *loadbalancer.LoadBalancer, retries int,
 
 func (f *CloudProviderFramework) VerifyLoadBalancerConnectionIdleTimeout(loadBalancerId string, connectionIdleTimeout int) error {
 	for start := time.Now(); time.Since(start) < 5*time.Minute; time.Sleep(2 * time.Second) {
-		loadBalancer, err := f.Client.LoadBalancer().GetLoadBalancer(context.TODO(), loadBalancerId)
+		loadBalancer, err := f.Client.LoadBalancer("lb").GetLoadBalancer(context.TODO(), loadBalancerId)
 		if err != nil {
 			return err
 		}
@@ -948,10 +949,11 @@ func (f *CloudProviderFramework) VerifyLoadBalancerConnectionIdleTimeout(loadBal
 	return gerrors.Errorf("Timeout waiting for Connection Idle Timeout to be as expected.")
 }
 
-func testConnectionIdleTimeout(loadBalancer *loadbalancer.LoadBalancer, connectionIdleTimeout int) (bool, error) {
+func testConnectionIdleTimeout(loadBalancer *client.GenericLoadBalancer, connectionIdleTimeout int) (bool, error) {
 	if loadBalancer != nil && len(loadBalancer.Listeners) != 0 {
 		for _, listener := range loadBalancer.Listeners {
-			if *listener.ConnectionConfiguration.IdleTimeout != int64(connectionIdleTimeout) {
+			if listener.ConnectionConfiguration != nil &&
+				*listener.ConnectionConfiguration.IdleTimeout != int64(connectionIdleTimeout) {
 				return false, nil
 			}
 		}
@@ -1213,9 +1215,9 @@ func EnableAndDisableInternalLB() (enable func(svc *v1.Service), disable func(sv
 	return
 }
 
-func (f *CloudProviderFramework) VerifyLoadBalancerPolicy(loadBalancerId string, loadbalancerPolicy string) error {
+func (f *CloudProviderFramework) VerifyLoadBalancerPolicy(loadBalancerId string, loadbalancerPolicy string, lbtype string) error {
 	pollFunc := func() (done bool, err error) {
-		loadBalancer, err := f.Client.LoadBalancer().GetLoadBalancer(context.TODO(), loadBalancerId)
+		loadBalancer, err := f.Client.LoadBalancer(lbtype).GetLoadBalancer(context.TODO(), loadBalancerId)
 		if err != nil {
 			return false, err
 		}
@@ -1233,7 +1235,7 @@ func (f *CloudProviderFramework) VerifyLoadBalancerPolicy(loadBalancerId string,
 	return wait.PollImmediate(5*time.Second, 5*time.Minute, pollFunc)
 }
 
-func testLoadBalancerPolicy(loadBalancer *loadbalancer.LoadBalancer, loadbalancerPolicy string) (bool, error) {
+func testLoadBalancerPolicy(loadBalancer *client.GenericLoadBalancer, loadbalancerPolicy string) (bool, error) {
 	if loadBalancer == nil || len(loadBalancer.BackendSets) == 0 {
 		return false, gerrors.Errorf("Could not find load balancer policy.")
 	}

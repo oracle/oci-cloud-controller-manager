@@ -18,7 +18,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/oracle/oci-go-sdk/v31/core"
+	"github.com/oracle/oci-go-sdk/v50/core"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
@@ -115,10 +115,10 @@ func (c *client) CreateVolume(ctx context.Context, details core.CreateVolumeDeta
 
 	if err == nil {
 		logger := c.logger.With("AvailabilityDomain", *(details.AvailabilityDomain),
-			"CompartmentId", *(details.CompartmentId), "VolumeName", *(details.DisplayName),
-			"OpcRequestId",*(resp.OpcRequestId))
+			"CompartmentId", *(details.CompartmentId), "volumeName", *(details.DisplayName),
+			"OpcRequestId", *(resp.OpcRequestId))
 		logger.Info("OPC Request ID recorded while creating volume.")
-	} else  {
+	} else {
 		return nil, errors.WithStack(err)
 	}
 	return &resp.Volume, nil
@@ -134,13 +134,13 @@ func (c *client) UpdateVolume(ctx context.Context, volumeId string, details core
 		UpdateVolumeDetails: details,
 		RequestMetadata:     c.requestMetadata,
 	})
-	incRequestCounter(err, createVerb, volumeResource)
+	incRequestCounter(err, updateVerb, volumeResource)
 
 	if err == nil {
-		logger := c.logger.With("VolumeName", *(details.DisplayName),
-			"OpcRequestId",*(resp.OpcRequestId))
+		logger := c.logger.With("volumeName", *(details.DisplayName),
+			"OpcRequestId", *(resp.OpcRequestId))
 		logger.Info("OPC Request ID recorded while updating volume.")
-	} else  {
+	} else {
 		return nil, errors.WithStack(err)
 	}
 	return &resp.Volume, nil
@@ -162,6 +162,7 @@ func (c *client) DeleteVolume(ctx context.Context, id string) error {
 
 	return nil
 }
+
 /*
  * TODO: Expand the API to be generic 'GetVolumes' with the following features as necessary
  * 1. Option to sort by display name or creation timestamp.
@@ -177,10 +178,10 @@ func (c *client) GetVolumesByName(ctx context.Context, volumeName, compartmentID
 		}
 
 		listVolumeResponse, err := c.bs.ListVolumes(ctx,
-			core.ListVolumesRequest {
+			core.ListVolumesRequest{
 				CompartmentId:   &compartmentID,
 				Page:            page,
-				DisplayName:	 &volumeName,
+				DisplayName:     &volumeName,
 				RequestMetadata: c.requestMetadata,
 			})
 
@@ -188,14 +189,14 @@ func (c *client) GetVolumesByName(ctx context.Context, volumeName, compartmentID
 			return nil, errors.WithStack(err)
 		}
 
-		logger := c.logger.With("VolumeName", volumeName, "CompartmentID", compartmentID,
-			"OpcRequestId",*(listVolumeResponse.OpcRequestId))
+		logger := c.logger.With("volumeName", volumeName, "CompartmentID", compartmentID,
+			"OpcRequestId", *(listVolumeResponse.OpcRequestId))
 		logger.Info("OPC Request ID recorded while fetching volumes by name.")
 
 		for _, volume := range listVolumeResponse.Items {
 			volumeState := volume.LifecycleState
 			if volumeState == core.VolumeLifecycleStateAvailable ||
-					volumeState == core.VolumeLifecycleStateProvisioning {
+				volumeState == core.VolumeLifecycleStateProvisioning {
 				volumeList = append(volumeList, volume)
 			}
 		}

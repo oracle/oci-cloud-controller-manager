@@ -21,7 +21,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/block"
-	ocicore "github.com/oracle/oci-go-sdk/v31/core"
+	ocicore "github.com/oracle/oci-go-sdk/v50/core"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"

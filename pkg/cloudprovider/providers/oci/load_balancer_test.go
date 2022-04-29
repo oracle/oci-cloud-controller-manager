@@ -20,15 +20,14 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/oracle/oci-go-sdk/v31/common"
-	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
-
-	"github.com/oracle/oci-go-sdk/v31/core"
-
-	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/oracle/oci-go-sdk/v50/common"
+	"github.com/oracle/oci-go-sdk/v50/core"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 )
 
 func Test_getDefaultLBSubnets(t *testing.T) {
@@ -177,6 +176,83 @@ func TestGetLoadBalancerSubnets(t *testing.T) {
 				},
 			},
 			expected: []string{"regional-subnet"},
+		},
+		"defaults only no annotations nlb": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			expected: []string{"one"},
+		},
+		"internal default subnet overridden with subnet annotation NLB": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:            "nlb",
+						ServiceAnnotationNetworkLoadBalancerInternal: "true",
+						ServiceAnnotationNetworkLoadBalancerSubnet:   "subnet",
+					},
+				},
+			},
+			expected: []string{"subnet"},
+		},
+		"internal no default subnet only subnet annotation nlb": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:            "nlb",
+						ServiceAnnotationNetworkLoadBalancerInternal: "true",
+						ServiceAnnotationNetworkLoadBalancerSubnet:   "subnet",
+					},
+				},
+			},
+			expected: []string{"subnet"},
+		},
+		"override defaults with annotations nlb": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:          "nlb",
+						ServiceAnnotationNetworkLoadBalancerSubnet: "annotation-one",
+					},
+				},
+			},
+			expected: []string{"annotation-one"},
+		},
+		"no default subnet defined override subnets via annotationsnlb": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:          "nlb",
+						ServiceAnnotationNetworkLoadBalancerSubnet: "annotation-one",
+					},
+				},
+			},
+			expected: []string{"annotation-one"},
 		},
 	}
 	cp := &CloudProvider{
@@ -397,7 +473,7 @@ func TestCloudProvider_GetLoadBalancer(t *testing.T) {
 func TestUpdateLoadBalancerNetworkSecurityGroups(t *testing.T) {
 	var tests = map[string]struct {
 		spec         *LBSpec
-		loadbalancer *loadbalancer.LoadBalancer
+		loadbalancer *client.GenericLoadBalancer
 		wantErr      error
 	}{
 		"Update NSG when there's an issue with LB": {
@@ -405,7 +481,7 @@ func TestUpdateLoadBalancerNetworkSecurityGroups(t *testing.T) {
 				Name:                    "test",
 				NetworkSecurityGroupIds: []string{"ocid1"},
 			},
-			loadbalancer: &loadbalancer.LoadBalancer{
+			loadbalancer: &client.GenericLoadBalancer{
 				Id:          common.String(""),
 				DisplayName: common.String("privateLB"),
 			},
@@ -416,18 +492,17 @@ func TestUpdateLoadBalancerNetworkSecurityGroups(t *testing.T) {
 				Name:                    "test",
 				NetworkSecurityGroupIds: []string{"ocid1"},
 			},
-			loadbalancer: &loadbalancer.LoadBalancer{
+			loadbalancer: &client.GenericLoadBalancer{
 				Id:          common.String("ocid1"),
 				DisplayName: common.String("privateLB"),
 			},
 			wantErr: nil,
 		},
 	}
-	cp := &CloudProvider{
-		NodeLister:    &mockNodeLister{},
-		client:        MockOCIClient{},
-		logger:        zap.S(),
-		instanceCache: &mockInstanceCache{},
+	cp := &CloudLoadBalancerProvider{
+		lbClient: &MockLoadBalancerClient{},
+		client:   MockOCIClient{},
+		logger:   zap.S(),
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -442,9 +517,9 @@ func TestUpdateLoadBalancerNetworkSecurityGroups(t *testing.T) {
 
 func TestCloudProvider_EnsureLoadBalancerDeleted(t *testing.T) {
 	tests := []struct {
-		name string
+		name    string
 		service *v1.Service
-		err  string
+		err     string
 		wantErr bool
 	}{
 		{
@@ -455,11 +530,11 @@ func TestCloudProvider_EnsureLoadBalancerDeleted(t *testing.T) {
 					Name:      "testservice",
 					UID:       "test-uid",
 					Annotations: map[string]string{
-						ServiceAnnotaionLoadBalancerSecurityListManagementMode: "None",
+						ServiceAnnotationLoadBalancerSecurityListManagementMode: "None",
 					},
 				},
 			},
-			err:    "",
+			err:     "",
 			wantErr: false,
 		},
 		{
@@ -470,11 +545,11 @@ func TestCloudProvider_EnsureLoadBalancerDeleted(t *testing.T) {
 					Name:      "testservice",
 					UID:       "test-uid-delete-err",
 					Annotations: map[string]string{
-						ServiceAnnotaionLoadBalancerSecurityListManagementMode: "None",
+						ServiceAnnotationLoadBalancerSecurityListManagementMode: "None",
 					},
 				},
 			},
-			err:    "delete load balancer \"test-uid-delete-err\"",
+			err:     "delete load balancer \"test-uid-delete-err\"",
 			wantErr: true,
 		},
 		{
@@ -485,11 +560,11 @@ func TestCloudProvider_EnsureLoadBalancerDeleted(t *testing.T) {
 					Name:      "testservice",
 					UID:       "test-uid",
 					Annotations: map[string]string{
-						ServiceAnnotaionLoadBalancerSecurityListManagementMode: "All",
+						ServiceAnnotationLoadBalancerSecurityListManagementMode: "All",
 					},
 				},
 			},
-			err:    "",
+			err:     "",
 			wantErr: false,
 		},
 		{
@@ -500,11 +575,11 @@ func TestCloudProvider_EnsureLoadBalancerDeleted(t *testing.T) {
 					Name:      "testservice",
 					UID:       "test-uid-node-err",
 					Annotations: map[string]string{
-						ServiceAnnotaionLoadBalancerSecurityListManagementMode: "All",
+						ServiceAnnotationLoadBalancerSecurityListManagementMode: "All",
 					},
 				},
 			},
-			err:    "fetching nodes by internal ips",
+			err:     "fetching nodes by internal ips",
 			wantErr: true,
 		},
 		{
@@ -516,7 +591,7 @@ func TestCloudProvider_EnsureLoadBalancerDeleted(t *testing.T) {
 					UID:       "test-uid",
 				},
 			},
-			err:    "",
+			err:     "",
 			wantErr: false,
 		},
 		{
@@ -528,20 +603,20 @@ func TestCloudProvider_EnsureLoadBalancerDeleted(t *testing.T) {
 					UID:       "test-uid-delete-err",
 				},
 			},
-			err:    "delete load balancer \"test-uid-delete-err\"",
+			err:     "delete load balancer \"test-uid-delete-err\"",
 			wantErr: true,
 		},
 	}
 	cp := &CloudProvider{
-		NodeLister:                 &mockNodeLister{},
-		client:                     MockOCIClient{},
+		NodeLister: &mockNodeLister{},
+		client:     MockOCIClient{},
 		securityListManagerFactory: func(mode string) securityListManager {
-										return MockSecurityListManager{}
-									},
-		config:                     &providercfg.Config{CompartmentID: "testCompartment"},
-		logger:                     zap.S(),
-		instanceCache:              &mockInstanceCache{},
-		metricPusher:               nil,
+			return MockSecurityListManager{}
+		},
+		config:        &providercfg.Config{CompartmentID: "testCompartment"},
+		logger:        zap.S(),
+		instanceCache: &mockInstanceCache{},
+		metricPusher:  nil,
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -19,10 +19,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-go-sdk/v31/core"
 	"go.uber.org/zap"
-
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -37,6 +34,9 @@ import (
 	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-go-sdk/v50/core"
 )
 
 // metadata labeling for placement info
@@ -159,6 +159,12 @@ func (nic *NodeInfoController) processItem(key string) error {
 		return err
 	}
 
+	// if node has required labels already, don't process agin
+	if validateNodeHasRequiredLabels(cacheNode) {
+		logger.With("nodeName", cacheNode.Name).Debugf("The node has the fault domain label and compartmentID annotation already, will not process")
+		return nil
+	}
+
 	instance, err := getInstanceByNode(cacheNode, nic, logger)
 	if err != nil {
 		return err
@@ -188,12 +194,11 @@ func (nic *NodeInfoController) processItem(key string) error {
 }
 
 func getPatchBytes(cacheNode *v1.Node, instance *core.Instance, logger *zap.SugaredLogger) []byte {
-	_, isFaultDomainLabelPresent := cacheNode.ObjectMeta.Labels[FaultDomainLabel]
-	_, isCompartmentIDAnnotationPresent := cacheNode.ObjectMeta.Annotations[CompartmentIDAnnotation]
-	if isFaultDomainLabelPresent && isCompartmentIDAnnotationPresent {
-		logger.Debugf("The node %s has fault domain label and compartmentID annotation already, will not process", cacheNode.Name)
+	if validateNodeHasRequiredLabels(cacheNode) {
 		return nil
 	}
+	_, isFaultDomainLabelPresent := cacheNode.ObjectMeta.Labels[FaultDomainLabel]
+	_, isCompartmentIDAnnotationPresent := cacheNode.ObjectMeta.Annotations[CompartmentIDAnnotation]
 
 	var nodePatchBytes []byte
 	if isFaultDomainLabelPresent {
@@ -240,4 +245,13 @@ func getInstanceByNode(cacheNode *v1.Node, nic *NodeInfoController, logger *zap.
 		return nil, err
 	}
 	return instance, nil
+}
+
+func validateNodeHasRequiredLabels(node *v1.Node) bool {
+	_, isFaultDomainLabelPresent := node.ObjectMeta.Labels[FaultDomainLabel]
+	_, isCompartmentIDAnnotationPresent := node.ObjectMeta.Annotations[CompartmentIDAnnotation]
+	if isFaultDomainLabelPresent && isCompartmentIDAnnotationPresent {
+		return true
+	}
+	return false
 }

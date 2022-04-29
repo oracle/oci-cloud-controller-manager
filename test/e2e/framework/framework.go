@@ -1,17 +1,3 @@
-// Copyright 2020 Oracle and/or its affiliates. All rights reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package framework
 
 import (
@@ -34,7 +20,7 @@ const (
 	// Some pods can take much longer to get ready due to volume attach/detach latency.
 	slowPodStartTimeout = 15 * time.Minute
 
-	JobCompletionTimeout = 5 * time.Minute
+	JobCompletionTimeout       = 5 * time.Minute
 	deploymentAvailableTimeout = 5 * time.Minute
 
 	DefaultClusterKubeconfig = "/tmp/clusterkubeconfig"
@@ -43,9 +29,11 @@ const (
 	ClassOCI          = "oci"
 	ClassOCICSI       = "oci-bv"
 	ClassOCICSIExpand = "oci-bv-expand"
+	ClassOCILowCost   = "oci-bv-low"
+	ClassOCIBalanced  = "oci-bal"
+	ClassOCIHigh      = "oci-bv-high"
+	ClassOCIKMS       = "oci-kms"
 	ClassOCIExt3      = "oci-ext3"
-	ClassOCIMntFss    = "oci-fss-mnt"
-	ClassOCISubnetFss = "oci-fss-subnet"
 	MinVolumeBlock    = "50Gi"
 	MaxVolumeBlock    = "100Gi"
 	VolumeFss         = "1Gi"
@@ -69,6 +57,7 @@ var (
 	cmekKMSKey        string //KMS key for CMEK testing
 	nsgOCIDS		  string // Testing CCM NSG feature
 	reservedIP        string // Testing public reserved IP feature
+	architecture      string
 	volumeHandle      string // The FSS mount volume handle
 )
 
@@ -93,6 +82,7 @@ func init() {
 	flag.StringVar(&cmekKMSKey, "cmek-kms-key", "", "KMS key to be used for CMEK testing")
 	flag.StringVar(&nsgOCIDS, "nsg-ocids", "", "NSG OCIDs to be used to associate to LB")
 	flag.StringVar(&reservedIP, "reserved-ip", "", "Public reservedIP to be used for testing loadbalancer with reservedIP")
+	flag.StringVar(&architecture, "architecture", "", "CPU architecture to be used for testing.")
 }
 
 // Framework is the context of the text execution.
@@ -116,7 +106,9 @@ type Framework struct {
 	CMEKKMSKey    string
 	NsgOCIDS      string
 	ReservedIP    string
-	VolumeHandle  string
+	Architecture  string
+
+	VolumeHandle string
 }
 
 // New creates a new a framework that holds the context of the test
@@ -171,6 +163,8 @@ func (f *Framework) Initialize() {
 	Logf("NSG OCIDS: %s", f.NsgOCIDS)
 	f.ReservedIP = reservedIP
 	Logf("Reserved IP: %s", f.ReservedIP)
+	f.Architecture = architecture
+	Logf("Architecture: %s", f.Architecture)
 	f.Compartment1 = compartment1
 	Logf("OCI compartment1 OCID: %s", f.Compartment1)
 	f.setImages()
@@ -183,6 +177,13 @@ func (f *Framework) setImages() {
 	var BusyBoxImage      = "busybox:latest"
 	var Nginx             = "nginx:stable-alpine"
 	var Centos            = "centos:latest"
+
+	if architecture == "ARM" {
+		Agnhost = "agnhost-arm:2.6"
+		BusyBoxImage = "busybox-arm:latest"
+		Nginx = "nginx-arm:latest"
+		Centos = "centos-arm:latest"
+	}
 
 	if imagePullRepo != "" {
 		agnhost = fmt.Sprintf("%s%s", imagePullRepo, Agnhost)

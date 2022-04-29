@@ -17,7 +17,7 @@ package client
 import (
 	"strconv"
 
-	"github.com/oracle/oci-go-sdk/v31/common"
+	"github.com/oracle/oci-go-sdk/v50/common"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -34,27 +34,29 @@ var (
 type resource string
 
 const (
-	instanceResource           resource = "instance"
-	vnicAttachmentResource     resource = "vnic_attachment"
-	vnicResource               resource = "vnic"
-	subnetResource             resource = "subnet"
-	vcnResource                resource = "vcn"
-	loadBalancerResource       resource = "load_balancer"
-	backendSetResource         resource = "load_balancer_backend_set"
-	listenerResource           resource = "load_balancer_listener"
-	shapeResource              resource = "load_balancer_shape"
-	certificateResource        resource = "load_balancer_certificate"
-	workRequestResource        resource = "load_balancer_work_request"
-	securityListResource       resource = "security_list"
-	volumeResource             resource = "volume"
-	volumeAttachmentResource   resource = "volume_attachment"
-	fileSystemResource         resource = "file_system"
-	mountTargetResource        resource = "mount_target"
-	exportResource             resource = "export"
-	privateIPResource          resource = "private_ip"
-	availabilityDomainResource resource = "availability_domain"
-	nsgResource                resource = "load_balancer_network_security_groups"
-	publicReservedIPResource   resource = "public_reserved_ip"
+	instanceResource            resource = "instance"
+	vnicAttachmentResource      resource = "vnic_attachment"
+	vnicResource                resource = "vnic"
+	subnetResource              resource = "subnet"
+	vcnResource                 resource = "vcn"
+	loadBalancerResource        resource = "load_balancer"
+	networkLoadBalancerResource resource = "network_load_balancer"
+	backendSetResource          resource = "load_balancer_backend_set"
+	listenerResource            resource = "load_balancer_listener"
+	shapeResource               resource = "load_balancer_shape"
+	certificateResource         resource = "load_balancer_certificate"
+	workRequestResource         resource = "load_balancer_work_request"
+	nlbWorkRequestResource      resource = "network_load_balancer_work_request"
+	securityListResource        resource = "security_list"
+	volumeResource              resource = "volume"
+	volumeAttachmentResource    resource = "volume_attachment"
+	fileSystemResource          resource = "file_system"
+	mountTargetResource         resource = "mount_target"
+	exportResource              resource = "export"
+	privateIPResource           resource = "private_ip"
+	availabilityDomainResource  resource = "availability_domain"
+	nsgResource                 resource = "load_balancer_network_security_groups"
+	publicReservedIPResource    resource = "public_reserved_ip"
 )
 
 type verb string

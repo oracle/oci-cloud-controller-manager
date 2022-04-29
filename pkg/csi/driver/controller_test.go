@@ -15,11 +15,11 @@ import (
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-go-sdk/v31/common"
-	"github.com/oracle/oci-go-sdk/v31/core"
-	"github.com/oracle/oci-go-sdk/v31/filestorage"
-	"github.com/oracle/oci-go-sdk/v31/identity"
-	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
+	"github.com/oracle/oci-go-sdk/v50/common"
+	"github.com/oracle/oci-go-sdk/v50/core"
+	"github.com/oracle/oci-go-sdk/v50/filestorage"
+	"github.com/oracle/oci-go-sdk/v50/identity"
+	"github.com/oracle/oci-go-sdk/v50/loadbalancer"
 )
 
 const (
@@ -49,7 +49,7 @@ func (MockOCIClient) Compute() client.ComputeInterface {
 	return &MockComputeClient{}
 }
 
-func (MockOCIClient) LoadBalancer() client.LoadBalancerInterface {
+func (MockOCIClient) LoadBalancer() client.GenericLoadBalancerInterface {
 	return &MockLoadBalancerClient{}
 }
 
@@ -81,27 +81,27 @@ func (c *MockBlockStorageClient) AwaitVolumeAvailableORTimeout(ctx context.Conte
 }
 
 func (c *MockBlockStorageClient) GetVolume(ctx context.Context, id string) (*core.Volume, error) {
-	if id == "invalid_volume_id"{
+	if id == "invalid_volume_id" {
 		return nil, fmt.Errorf("failed to find existence of volume")
-	} else if id == "valid_volume_id"{
+	} else if id == "valid_volume_id" {
 		ad := "zkJl:US-ASHBURN-AD-1"
-		var oldSizeInBytes int64 = int64(csi_util.MaximumVolumeSizeInBytes)
+		var oldSizeInBytes = int64(csi_util.MaximumVolumeSizeInBytes)
 		oldSizeInGB := csi_util.RoundUpSize(oldSizeInBytes, 1*client.GiB)
 		return &core.Volume{
 			Id:                 &id,
 			AvailabilityDomain: &ad,
-			SizeInGBs: &oldSizeInGB,
+			SizeInGBs:          &oldSizeInGB,
 		}, nil
-	} else if id == "valid_volume_id_valid_old_size_fail"{
+	} else if id == "valid_volume_id_valid_old_size_fail" {
 		ad := "zkJl:US-ASHBURN-AD-1"
 		var oldSizeInBytes int64 = 2147483648
 		oldSizeInGB := csi_util.RoundUpSize(oldSizeInBytes, 1*client.GiB)
 		return &core.Volume{
 			Id:                 &id,
 			AvailabilityDomain: &ad,
-			SizeInGBs: &oldSizeInGB,
+			SizeInGBs:          &oldSizeInGB,
 		}, nil
-	} else{
+	} else {
 		return nil, nil
 	}
 }
@@ -190,15 +190,15 @@ func (p *MockProvisionerClient) Networking() client.NetworkingInterface {
 
 type MockLoadBalancerClient struct{}
 
-func (c *MockLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details loadbalancer.CreateLoadBalancerDetails) (string, error) {
+func (c *MockLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details *client.GenericCreateLoadBalancerDetails) (string, error) {
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) GetLoadBalancer(ctx context.Context, id string) (*loadbalancer.LoadBalancer, error) {
+func (c *MockLoadBalancerClient) GetLoadBalancer(ctx context.Context, id string) (*client.GenericLoadBalancer, error) {
 	return nil, nil
 }
 
-func (c *MockLoadBalancerClient) GetLoadBalancerByName(ctx context.Context, compartmentID, name string) (*loadbalancer.LoadBalancer, error) {
+func (c *MockLoadBalancerClient) GetLoadBalancerByName(ctx context.Context, compartmentID string, name string) (*client.GenericLoadBalancer, error) {
 	return nil, nil
 }
 
@@ -206,19 +206,19 @@ func (c *MockLoadBalancerClient) DeleteLoadBalancer(ctx context.Context, id stri
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) GetCertificateByName(ctx context.Context, lbID, name string) (*loadbalancer.Certificate, error) {
+func (c *MockLoadBalancerClient) GetCertificateByName(ctx context.Context, lbID string, name string) (*client.GenericCertificate, error) {
 	return nil, nil
 }
 
-func (c *MockLoadBalancerClient) CreateCertificate(ctx context.Context, lbID string, cert loadbalancer.CertificateDetails) (string, error) {
+func (c *MockLoadBalancerClient) CreateCertificate(ctx context.Context, lbID string, cert *client.GenericCertificate) (string, error) {
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) CreateBackendSet(ctx context.Context, lbID, name string, details loadbalancer.BackendSetDetails) (string, error) {
+func (c *MockLoadBalancerClient) CreateBackendSet(ctx context.Context, lbID string, name string, details *client.GenericBackendSetDetails) (string, error) {
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) UpdateBackendSet(ctx context.Context, lbID, name string, details loadbalancer.BackendSetDetails) (string, error) {
+func (c *MockLoadBalancerClient) UpdateBackendSet(ctx context.Context, lbID string, name string, details *client.GenericBackendSetDetails) (string, error) {
 	return "", nil
 }
 
@@ -226,11 +226,11 @@ func (c *MockLoadBalancerClient) DeleteBackendSet(ctx context.Context, lbID, nam
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) UpdateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error) {
+func (c *MockLoadBalancerClient) UpdateListener(ctx context.Context, lbID string, name string, details *client.GenericListener) (string, error) {
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) CreateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error) {
+func (c *MockLoadBalancerClient) CreateListener(ctx context.Context, lbID string, name string, details *client.GenericListener) (string, error) {
 	return "", nil
 }
 
@@ -238,8 +238,8 @@ func (c *MockLoadBalancerClient) DeleteListener(ctx context.Context, lbID, name 
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) AwaitWorkRequest(ctx context.Context, id string) (*loadbalancer.WorkRequest, error) {
-	return nil, nil
+func (c *MockLoadBalancerClient) UpdateLoadBalancerShape(context.Context, string, *client.GenericUpdateLoadBalancerShapeDetails) (string, error) {
+	return "", nil
 }
 
 func (c *MockLoadBalancerClient) CreateBackend(ctx context.Context, lbID, bsName string, details loadbalancer.BackendDetails) (string, error) {
@@ -250,16 +250,16 @@ func (c *MockLoadBalancerClient) DeleteBackend(ctx context.Context, lbID, bsName
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) UpdateLoadBalancerShape(ctx context.Context, lbID string, details loadbalancer.UpdateLoadBalancerShapeDetails) (string, error) {
-	return "", nil
+func (c *MockLoadBalancerClient) AwaitWorkRequest(ctx context.Context, id string) (*client.GenericWorkRequest, error) {
+	return nil, nil
 }
 
-func (c *MockLoadBalancerClient) UpdateNetworkSecurityGroups(ctx context.Context, s string, details loadbalancer.UpdateNetworkSecurityGroupsDetails) (string, error) {
+func (c *MockLoadBalancerClient) UpdateNetworkSecurityGroups(context.Context, string, []string) (string, error) {
 	return "", nil
 }
 
 // Networking mocks client VirtualNetwork implementation.
-func (p *MockProvisionerClient) LoadBalancer() client.LoadBalancerInterface {
+func (p *MockProvisionerClient) LoadBalancer(string) client.GenericLoadBalancerInterface {
 	return &MockLoadBalancerClient{}
 }
 
@@ -430,7 +430,7 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 				ctx: nil,
 				req: &csi.CreateVolumeRequest{
 					Name: "ut-volume",
-					VolumeCapabilities: []*csi.VolumeCapability{&csi.VolumeCapability{
+					VolumeCapabilities: []*csi.VolumeCapability{{
 						AccessMode: &csi.VolumeCapability_AccessMode{
 							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
 						},
@@ -460,7 +460,7 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 				ctx: nil,
 				req: &csi.CreateVolumeRequest{
 					Name: "ut-volume",
-					VolumeCapabilities: []*csi.VolumeCapability{&csi.VolumeCapability{
+					VolumeCapabilities: []*csi.VolumeCapability{{
 						AccessMode: &csi.VolumeCapability_AccessMode{
 							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY,
 						},
@@ -477,7 +477,7 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 				ctx: nil,
 				req: &csi.CreateVolumeRequest{
 					Name: "ut-volume",
-					VolumeCapabilities: []*csi.VolumeCapability{&csi.VolumeCapability{
+					VolumeCapabilities: []*csi.VolumeCapability{{
 						AccessMode: &csi.VolumeCapability_AccessMode{
 							Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_SINGLE_WRITER,
 						},
@@ -494,7 +494,7 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 				ctx: nil,
 				req: &csi.CreateVolumeRequest{
 					Name: "ut-volume",
-					VolumeCapabilities: []*csi.VolumeCapability{&csi.VolumeCapability{
+					VolumeCapabilities: []*csi.VolumeCapability{{
 						AccessMode: &csi.VolumeCapability_AccessMode{
 							Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
 						},
@@ -516,7 +516,7 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 				req: &csi.CreateVolumeRequest{
 					Name: "ut-volume",
 					VolumeCapabilities: []*csi.VolumeCapability{
-						&csi.VolumeCapability{
+						{
 							AccessMode: &csi.VolumeCapability_AccessMode{
 								Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
 							},
@@ -684,21 +684,6 @@ func TestControllerDriver_ControllerExpandVolume(t *testing.T) {
 			want:    nil,
 			wantErr: errors.New("failed to check existence of volume"),
 		},
-		{
-			name:   "Error for new size not greater than old size in ControllerExpandVolume",
-			fields: fields{},
-			args: args{
-				ctx: nil,
-				req: &csi.ControllerExpandVolumeRequest{
-					VolumeId: "valid_volume_id",
-					CapacityRange: &csi.CapacityRange{
-						RequiredBytes: int64(csi_util.MaximumVolumeSizeInBytes),
-					},
-				},
-			},
-			want:    nil,
-			wantErr: errors.New("Volume size cannot be decreased. Please give a size greater than"),
-		},
 
 		{
 			name:   "Error for update Volume fail for ControllerExpandVolume",
@@ -818,6 +803,7 @@ func TestExtractVolumeParameters(t *testing.T) {
 			volumeParameters: VolumeParameters{
 				diskEncryptionKey:   "",
 				attachmentParameter: make(map[string]string),
+				vpusPerGB:           10,
 			},
 			wantErr: true,
 		},
@@ -826,6 +812,7 @@ func TestExtractVolumeParameters(t *testing.T) {
 			volumeParameters: VolumeParameters{
 				diskEncryptionKey:   "",
 				attachmentParameter: make(map[string]string),
+				vpusPerGB:           10,
 			},
 			wantErr: false,
 		},
@@ -839,6 +826,7 @@ func TestExtractVolumeParameters(t *testing.T) {
 				attachmentParameter: map[string]string{
 					attachmentType: attachmentTypeParavirtualized,
 				},
+				vpusPerGB: 10,
 			},
 			wantErr: false,
 		},
@@ -852,6 +840,7 @@ func TestExtractVolumeParameters(t *testing.T) {
 				attachmentParameter: map[string]string{
 					attachmentType: attachmentTypeISCSI,
 				},
+				vpusPerGB: 10,
 			},
 			wantErr: false,
 		},
@@ -865,6 +854,7 @@ func TestExtractVolumeParameters(t *testing.T) {
 				attachmentParameter: map[string]string{
 					attachmentType: attachmentTypeISCSI,
 				},
+				vpusPerGB: 10,
 			},
 			wantErr: false,
 		},
@@ -878,6 +868,7 @@ func TestExtractVolumeParameters(t *testing.T) {
 				attachmentParameter: map[string]string{
 					attachmentType: attachmentTypeParavirtualized,
 				},
+				vpusPerGB: 10,
 			},
 			wantErr: false,
 		},
@@ -888,6 +879,7 @@ func TestExtractVolumeParameters(t *testing.T) {
 			volumeParameters: VolumeParameters{
 				diskEncryptionKey:   "",
 				attachmentParameter: make(map[string]string),
+				vpusPerGB:           10,
 			},
 			wantErr: true,
 		},
@@ -898,6 +890,7 @@ func TestExtractVolumeParameters(t *testing.T) {
 			volumeParameters: VolumeParameters{
 				diskEncryptionKey:   "",
 				attachmentParameter: make(map[string]string),
+				vpusPerGB:           10,
 			},
 			wantErr: true,
 		},
@@ -909,6 +902,7 @@ func TestExtractVolumeParameters(t *testing.T) {
 				diskEncryptionKey:   "",
 				attachmentParameter: make(map[string]string),
 				freeformTags:        map[string]string{"foo": "bar"},
+				vpusPerGB:           10,
 			},
 			wantErr: false,
 		},
@@ -920,6 +914,7 @@ func TestExtractVolumeParameters(t *testing.T) {
 				diskEncryptionKey:   "",
 				attachmentParameter: make(map[string]string),
 				definedTags:         map[string]map[string]interface{}{"ns": {"foo": "bar"}},
+				vpusPerGB:           10,
 			},
 			wantErr: false,
 		},
@@ -933,8 +928,73 @@ func TestExtractVolumeParameters(t *testing.T) {
 				attachmentParameter: make(map[string]string),
 				freeformTags:        map[string]string{"foo": "bar"},
 				definedTags:         map[string]map[string]interface{}{"ns": {"foo": "bar"}},
+				vpusPerGB:           10,
 			},
 			wantErr: false,
+		},
+		"if low performance level then vpusPerGB should be 0": {
+			storageParameters: map[string]string{
+				csi_util.VpusPerGB: "0",
+			},
+			volumeParameters: VolumeParameters{
+				diskEncryptionKey:   "",
+				attachmentParameter: make(map[string]string),
+				vpusPerGB:           0,
+			},
+			wantErr: false,
+		},
+		"if balanced performance level then vpusPerGB should be 10": {
+			storageParameters: map[string]string{
+				csi_util.VpusPerGB: "10",
+			},
+			volumeParameters: VolumeParameters{
+				diskEncryptionKey:   "",
+				attachmentParameter: make(map[string]string),
+				vpusPerGB:           10,
+			},
+			wantErr: false,
+		},
+		"if high performance level then vpusPerGB should be 20": {
+			storageParameters: map[string]string{
+				csi_util.VpusPerGB: "20",
+			},
+			volumeParameters: VolumeParameters{
+				diskEncryptionKey:   "",
+				attachmentParameter: make(map[string]string),
+				vpusPerGB:           20,
+			},
+			wantErr: false,
+		},
+		"if no parameters for performance level then default should be 10": {
+			storageParameters: map[string]string{},
+			volumeParameters: VolumeParameters{
+				diskEncryptionKey:   "",
+				attachmentParameter: make(map[string]string),
+				vpusPerGB:           10,
+			},
+			wantErr: false,
+		},
+		"if out of range parameter for performance level then return error": {
+			storageParameters: map[string]string{
+				csi_util.VpusPerGB: "40",
+			},
+			volumeParameters: VolumeParameters{
+				diskEncryptionKey:   "",
+				attachmentParameter: make(map[string]string),
+				vpusPerGB:           10,
+			},
+			wantErr: true,
+		},
+		"if invalid parameter for performance level then return error": {
+			storageParameters: map[string]string{
+				csi_util.VpusPerGB: "abc",
+			},
+			volumeParameters: VolumeParameters{
+				diskEncryptionKey:   "",
+				attachmentParameter: make(map[string]string),
+				vpusPerGB:           10,
+			},
+			wantErr: true,
 		},
 	}
 

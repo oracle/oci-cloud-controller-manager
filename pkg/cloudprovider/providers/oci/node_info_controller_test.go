@@ -1,13 +1,14 @@
 package oci
 
 import (
-	"github.com/oracle/oci-go-sdk/v31/common"
 	"reflect"
 	"testing"
 
+	"github.com/oracle/oci-go-sdk/v50/common"
+
 	"go.uber.org/zap"
 
-	"github.com/oracle/oci-go-sdk/v31/core"
+	"github.com/oracle/oci-go-sdk/v50/core"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

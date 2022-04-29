@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	maxVolumesPerNode = 32
+	maxVolumesPerNode               = 32
 	volumeOperationAlreadyExistsFmt = "An operation for the volume: %s already exists."
 )
 
@@ -41,7 +41,7 @@ func (d BlockVolumeNodeDriver) NodeStageVolume(ctx context.Context, req *csi.Nod
 		return nil, status.Error(codes.InvalidArgument, "Volume Capability must be provided")
 	}
 
-	logger := d.logger.With("volumeId", req.VolumeId, "stagingPath", req.StagingTargetPath)
+	logger := d.logger.With("volumeID", req.VolumeId, "stagingPath", req.StagingTargetPath)
 
 	attachment, ok := req.PublishContext[attachmentType]
 
@@ -99,6 +99,24 @@ func (d BlockVolumeNodeDriver) NodeStageVolume(ctx context.Context, req *csi.Nod
 	if err != nil {
 		logger.With(zap.Error(err)).Error("failed to add the iSCSI node record.")
 		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	v, ok := req.PublishContext[csi_util.VpusPerGB]
+	if !ok {
+		logger.Infof("vpusPerGB not found in PublishContext %v, applying default 10 vpusPerGB", req.PublishContext)
+		v = "10"
+	}
+	vpusPerGB, err := csi_util.ExtractBlockVolumePerformanceLevel(v)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if vpusPerGB == csi_util.HigherPerformanceOption {
+		err := mountHandler.UpdateQueueDepth()
+		if err != nil {
+			logger.With(zap.Error(err)).Error("failed to update queue depth in the iSCSI node record.")
+			return nil, status.Error(codes.Internal, err.Error())
+		}
 	}
 
 	err = mountHandler.SetAutomaticLogin()
@@ -168,7 +186,7 @@ func (d BlockVolumeNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.N
 		return nil, status.Error(codes.InvalidArgument, "Staging target path must be provided")
 	}
 
-	logger := d.logger.With("volumeId", req.VolumeId, "stagingPath", req.StagingTargetPath)
+	logger := d.logger.With("volumeID", req.VolumeId, "stagingPath", req.StagingTargetPath)
 
 	if acquired := d.volumeLocks.TryAcquire(req.VolumeId); !acquired {
 		logger.Error("Could not acquire lock for NodeUnstageVolume.")
@@ -270,7 +288,7 @@ func (d BlockVolumeNodeDriver) NodePublishVolume(ctx context.Context, req *csi.N
 		return nil, status.Error(codes.InvalidArgument, "Volume Capability must be provided")
 	}
 
-	logger := d.logger.With("volumeId", req.VolumeId, "targetPath", req.TargetPath)
+	logger := d.logger.With("volumeID", req.VolumeId, "targetPath", req.TargetPath)
 
 	attachment, ok := req.PublishContext[attachmentType]
 	if !ok {
@@ -345,7 +363,7 @@ func (d BlockVolumeNodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi
 		return nil, status.Error(codes.InvalidArgument, "NodeUnpublishVolume: Target Path must be provided")
 	}
 
-	logger := d.logger.With("volumeId", req.VolumeId, "targetPath", req.TargetPath)
+	logger := d.logger.With("volumeID", req.VolumeId, "targetPath", req.TargetPath)
 
 	if acquired := d.volumeLocks.TryAcquire(req.VolumeId); !acquired {
 		logger.Error("Could not acquire lock for NodeUnpublishVolume.")
@@ -474,7 +492,7 @@ func (d BlockVolumeNodeDriver) NodeExpandVolume(ctx context.Context, req *csi.No
 		return nil, status.Error(codes.InvalidArgument, "volume path must be provided")
 	}
 
-	logger := d.logger.With("volumeId", req.VolumeId, "volumePath", req.VolumePath)
+	logger := d.logger.With("volumeID", req.VolumeId, "volumePath", req.VolumePath)
 
 	if acquired := d.volumeLocks.TryAcquire(req.VolumeId); !acquired {
 		logger.Error("Could not acquire lock for NodeExpandVolume.")

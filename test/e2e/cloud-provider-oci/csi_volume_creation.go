@@ -18,6 +18,7 @@ import (
 	"time"
 
 	. "github.com/onsi/ginkgo"
+	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
 	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
 )
 
@@ -75,6 +76,7 @@ var _ = Describe("CSI Volume Creation", func() {
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil)
 
 			pvcJig.CheckVolumeDirectoryOwnership(f.Namespace.Name, pvc)
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 		})
 	})
 })
@@ -103,7 +105,7 @@ var _ = Describe("CSI Volume Expansion iSCSI", func() {
 			pvcJig.CheckFileCorruption(f.Namespace.Name, podName, "/data", "testdata.txt")
 			pvcJig.CheckExpandedVolumeReadWrite(f.Namespace.Name, podName)
 			pvcJig.CheckUsableVolumeSizeInsidePod(f.Namespace.Name, podName)
-
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			_ = f.DeleteStorageClass(framework.ClassOCICSIExpand)
 		})
 	})
@@ -133,8 +135,133 @@ var _ = Describe("CSI Volume Expansion iSCSI", func() {
 			pvcJig.CheckFileCorruption(f.Namespace.Name, podName, "/data", "testdata.txt")
 			pvcJig.CheckExpandedVolumeReadWrite(f.Namespace.Name, podName)
 			pvcJig.CheckUsableVolumeSizeInsidePod(f.Namespace.Name, podName)
-
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			_ = f.DeleteStorageClass(framework.ClassOCICSIExpand)
+		})
+	})
+})
+
+var _ = Describe("CSI Volume Performance Level", func() {
+	f := framework.NewBackupFramework("csi-perf-level")
+	Context("[cloudprovider][storage][csi][perf][iSCSI]", func() {
+		It("Create CSI block volume with Performance Level as Low Cost", func() {
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-perf-iscsi-lowcost")
+
+			scName := f.CreateStorageClassOrFail(framework.ClassOCILowCost, "blockvolume.csi.oraclecloud.com",
+				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI, csi_util.VpusPerGB: "0"},
+				pvcJig.Labels, "WaitForFirstConsumer", true)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil)
+			pvcJig.NewPodForCSI("low-cost-pvc-app", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+
+			time.Sleep(60 * time.Second) //waiting for pod to up and running
+
+			pvcJig.CheckVolumePerformanceLevel(f.BlockStorageClient, pvc.Namespace, pvc.Name, csi_util.LowCostPerformanceOption)
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+			_ = f.DeleteStorageClass(framework.ClassOCILowCost)
+		})
+		It("Create CSI block volume with no Performance Level and verify default", func() {
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-perf-iscsi-default")
+
+			scName := f.CreateStorageClassOrFail(framework.ClassOCICSI, "blockvolume.csi.oraclecloud.com", nil, pvcJig.Labels, "WaitForFirstConsumer", true)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil)
+			pvcJig.NewPodForCSI("default-pvc-app", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+
+			time.Sleep(60 * time.Second) //waiting for pod to up and running
+
+			pvcJig.CheckVolumePerformanceLevel(f.BlockStorageClient, pvc.Namespace, pvc.Name, csi_util.BalancedPerformanceOption)
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+		})
+		It("Create CSI block volume with Performance Level as High", func() {
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-perf-iscsi-high")
+
+			scName := f.CreateStorageClassOrFail(framework.ClassOCIHigh, "blockvolume.csi.oraclecloud.com",
+				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI, csi_util.VpusPerGB: "20"},
+				pvcJig.Labels, "WaitForFirstConsumer", true)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil)
+			podName := pvcJig.NewPodForCSI("high-perf-pvc-app", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+
+			time.Sleep(60 * time.Second) //waiting for pod to up and running
+			pvcJig.CheckVolumePerformanceLevel(f.BlockStorageClient, pvc.Namespace, pvc.Name, csi_util.HigherPerformanceOption)
+			pvcJig.CheckISCSIQueueDepthOnNode(f.Namespace.Name, podName)
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+			_ = f.DeleteStorageClass(framework.ClassOCIHigh)
+		})
+	})
+	Context("[cloudprovider][storage][csi][perf][paravirtualized]", func() {
+		It("Create CSI block volume with Performance Level as Low Cost", func() {
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-perf-paravirtual-lowcost")
+
+			scName := f.CreateStorageClassOrFail(framework.ClassOCILowCost, "blockvolume.csi.oraclecloud.com",
+				map[string]string{framework.AttachmentType: framework.AttachmentTypeParavirtualized, csi_util.VpusPerGB: "0"},
+				pvcJig.Labels, "WaitForFirstConsumer", true)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil)
+			pvcJig.NewPodForCSI("low-cost-pvc-app", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+
+			time.Sleep(60 * time.Second) //waiting for pod to up and running
+
+			pvcJig.CheckVolumePerformanceLevel(f.BlockStorageClient, pvc.Namespace, pvc.Name, csi_util.LowCostPerformanceOption)
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+			_ = f.DeleteStorageClass(framework.ClassOCILowCost)
+		})
+		It("Create CSI block volume with no Performance Level and verify default", func() {
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-perf-paravirtual-balanced")
+
+			scName := f.CreateStorageClassOrFail(framework.ClassOCIBalanced, "blockvolume.csi.oraclecloud.com",
+				map[string]string{framework.AttachmentType: framework.AttachmentTypeParavirtualized, csi_util.VpusPerGB: "10"},
+				pvcJig.Labels, "WaitForFirstConsumer", true)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil)
+			pvcJig.NewPodForCSI("default-pvc-app", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+
+			time.Sleep(60 * time.Second) //waiting for pod to up and running
+
+			pvcJig.CheckVolumePerformanceLevel(f.BlockStorageClient, pvc.Namespace, pvc.Name, csi_util.BalancedPerformanceOption)
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+			_ = f.DeleteStorageClass(framework.ClassOCIBalanced)
+		})
+		It("Create CSI block volume with Performance Level as High", func() {
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-perf-paravirtual-high")
+
+			scName := f.CreateStorageClassOrFail(framework.ClassOCIHigh, "blockvolume.csi.oraclecloud.com",
+				map[string]string{framework.AttachmentType: framework.AttachmentTypeParavirtualized, csi_util.VpusPerGB: "20"},
+				pvcJig.Labels, "WaitForFirstConsumer", true)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil)
+			pvcJig.NewPodForCSI("high-perf-pvc-app", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+
+			time.Sleep(60 * time.Second) //waiting for pod to up and running
+			pvcJig.CheckVolumePerformanceLevel(f.BlockStorageClient, pvc.Namespace, pvc.Name, csi_util.HigherPerformanceOption)
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+			_ = f.DeleteStorageClass(framework.ClassOCIHigh)
+		})
+	})
+
+	Context("[cloudprovider][storage][csi][perf][static]", func() {
+		It("High Performance Static Provisioning CSI", func() {
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-perf-static-high")
+
+			scName := f.CreateStorageClassOrFail(framework.ClassOCIHigh, "blockvolume.csi.oraclecloud.com",
+				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI, csi_util.VpusPerGB: "20"},
+				pvcJig.Labels, "WaitForFirstConsumer", true)
+
+			compartmentId := ""
+			if setupF.Compartment1 != "" {
+				compartmentId = setupF.Compartment1
+			} else if f.CloudProviderConfig.CompartmentID != "" {
+				compartmentId = f.CloudProviderConfig.CompartmentID
+			} else if f.CloudProviderConfig.Auth.CompartmentID != "" {
+				compartmentId = f.CloudProviderConfig.Auth.CompartmentID
+			} else {
+				framework.Failf("Compartment Id undefined.")
+			}
+			pvc, volumeId := pvcJig.CreateAndAwaitStaticPVCOrFailCSI(f.BlockStorageClient, f.Namespace.Name, framework.MinVolumeBlock, csi_util.HigherPerformanceOption, scName, setupF.AdLocation, compartmentId, nil)
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+			podName := pvcJig.NewPodForCSI("app4", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+
+			time.Sleep(60 * time.Second) //waiting for pod to up and running
+
+			pvcJig.CheckVolumeCapacity("50Gi", pvc.Name, f.Namespace.Name)
+			pvcJig.CheckISCSIQueueDepthOnNode(pvc.Namespace, podName)
+			f.VolumeIds = append(f.VolumeIds, volumeId)
+			_ = f.DeleteStorageClass(framework.ClassOCIHigh)
 		})
 	})
 })
@@ -167,7 +294,7 @@ var _ = Describe("CSI Volume Expansion Paravirtualized", func() {
 			pvcJig.CheckFileCorruption(f.Namespace.Name, podName, "/data", "testdata.txt")
 			pvcJig.CheckExpandedVolumeReadWrite(f.Namespace.Name, podName)
 			pvcJig.CheckUsableVolumeSizeInsidePod(f.Namespace.Name, podName)
-
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			_ = f.DeleteStorageClass(framework.ClassOCICSIExpand)
 		})
 	})
@@ -175,7 +302,7 @@ var _ = Describe("CSI Volume Expansion Paravirtualized", func() {
 
 var _ = Describe("CSI Static Volume Creation", func() {
 	f := framework.NewBackupFramework("csi-static")
-	Context("[cloudprovider][storage][csi]", func() {
+	Context("[cloudprovider][storage][csi][static]", func() {
 		It("Static Provisioning CSI", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-provisioner-e2e-tests-pvc-with-static")
 
@@ -192,26 +319,27 @@ var _ = Describe("CSI Static Volume Creation", func() {
 			} else {
 				framework.Failf("Compartment Id undefined.")
 			}
-			pvc := pvcJig.CreateAndAwaitStaticPVCOrFailCSI(f.BlockStorageClient, f.Namespace.Name, framework.MinVolumeBlock, scName, setupF.AdLocation, compartmentId, nil)
+			pvc, volumeId := pvcJig.CreateAndAwaitStaticPVCOrFailCSI(f.BlockStorageClient, f.Namespace.Name, framework.MinVolumeBlock, 10, scName, setupF.AdLocation, compartmentId, nil)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			pvcJig.NewPodForCSI("app4", f.Namespace.Name, pvc.Name, setupF.AdLabel)
 
 			time.Sleep(60 * time.Second) //waiting for pod to up and running
 
 			pvcJig.CheckVolumeCapacity("50Gi", pvc.Name, f.Namespace.Name)
+			f.VolumeIds = append(f.VolumeIds, volumeId)
 		})
 	})
 })
 
 var _ = Describe("CSI CMEK,PV attachment and in-transit encryption test", func() {
 	f := framework.NewDefaultFramework("csi-basic")
-	Context("[cloudprovider][storage][csi]", func() {
+	Context("[cloudprovider][storage][csi][cmek][paravirtualized]", func() {
 		It("Create PVC and POD for CSI with CMEK,PV attachment and in-transit encryption", func() {
 			TestCMEKAttachmentTypeAndEncryptionType(f, framework.AttachmentTypeParavirtualized)
 		})
 	})
 
-	Context("[cloudprovider][storage][csi]", func() {
+	Context("[cloudprovider][storage][csi][cmek][iscsi]", func() {
 		It("Create PVC and POD for CSI with CMEK,ISCSI attachment and in-transit encryption", func() {
 			TestCMEKAttachmentTypeAndEncryptionType(f, framework.AttachmentTypeISCSI)
 		})
@@ -225,10 +353,11 @@ func TestCMEKAttachmentTypeAndEncryptionType(f *framework.CloudProviderFramework
 		framework.KmsKey:         setupF.CMEKKMSKey,
 		framework.AttachmentType: expectedAttachmentType,
 	}
-	scName := f.CreateStorageClassOrFail(framework.SCName, "blockvolume.csi.oraclecloud.com", scParameter, pvcJig.Labels, "WaitForFirstConsumer", false)
+	scName := f.CreateStorageClassOrFail(framework.ClassOCIKMS, "blockvolume.csi.oraclecloud.com", scParameter, pvcJig.Labels, "WaitForFirstConsumer", false)
 	pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil)
 	podName := pvcJig.NewPodForCSI("app1", f.Namespace.Name, pvc.Name, setupF.AdLabel)
 	pvcJig.CheckCMEKKey(f.Client.BlockStorage(), pvc.Name, f.Namespace.Name, setupF.CMEKKMSKey)
 	pvcJig.CheckAttachmentTypeAndEncryptionType(f.Client.Compute(), pvc.Name, f.Namespace.Name, podName, expectedAttachmentType)
 	f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+	_ = f.DeleteStorageClass(framework.ClassOCIKMS)
 }

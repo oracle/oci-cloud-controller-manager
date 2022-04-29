@@ -18,11 +18,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/oracle/oci-go-sdk/v31/common"
-	"github.com/oracle/oci-go-sdk/v31/core"
+	"github.com/oracle/oci-go-sdk/v50/common"
+	"github.com/oracle/oci-go-sdk/v50/core"
 	"go.uber.org/zap"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
@@ -31,13 +31,15 @@ import (
 
 func TestGetNodeIngressRules(t *testing.T) {
 	testCases := []struct {
-		name         string
-		securityList *core.SecurityList
-		lbSubnets    []*core.Subnet
-		actualPorts  *portSpec
-		desiredPorts portSpec
-		services     []*v1.Service
-		expected     []core.IngressSecurityRule
+		name             string
+		securityList     *core.SecurityList
+		lbSubnets        []*core.Subnet
+		actualPorts      *portSpec
+		desiredPorts     portSpec
+		services         []*v1.Service
+		sourceCIDRs      []string
+		isPreserveSource bool
+		expected         []core.IngressSecurityRule
 	}{
 		{
 			name: "new ingress",
@@ -54,7 +56,9 @@ func TestGetNodeIngressRules(t *testing.T) {
 				BackendPort:       80,
 				HealthCheckerPort: k8sports.ProxyHealthzPort,
 			},
-			services: []*v1.Service{},
+			services:         []*v1.Service{},
+			isPreserveSource: false,
+			sourceCIDRs:      []string{"0.0.0.0/0"},
 			expected: []core.IngressSecurityRule{
 				makeIngressSecurityRule("existing", 9000),
 				makeIngressSecurityRule("1", 80),
@@ -81,7 +85,9 @@ func TestGetNodeIngressRules(t *testing.T) {
 				BackendPort:       80,
 				HealthCheckerPort: k8sports.ProxyHealthzPort,
 			},
-			services: []*v1.Service{},
+			services:         []*v1.Service{},
+			isPreserveSource: false,
+			sourceCIDRs:      []string{"0.0.0.0/0"},
 			expected: []core.IngressSecurityRule{
 				makeIngressSecurityRule("existing", 9000),
 				makeIngressSecurityRule("1", 80),
@@ -109,7 +115,9 @@ func TestGetNodeIngressRules(t *testing.T) {
 				BackendPort:       80,
 				HealthCheckerPort: k8sports.ProxyHealthzPort,
 			},
-			services: []*v1.Service{},
+			services:         []*v1.Service{},
+			isPreserveSource: false,
+			sourceCIDRs:      []string{"0.0.0.0/0"},
 			expected: []core.IngressSecurityRule{
 				makeIngressSecurityRule("existing", 9000),
 				makeIngressSecurityRule("1", 80),
@@ -135,7 +143,9 @@ func TestGetNodeIngressRules(t *testing.T) {
 				BackendPort:       80,
 				HealthCheckerPort: k8sports.ProxyHealthzPort,
 			},
-			services: []*v1.Service{},
+			services:         []*v1.Service{},
+			isPreserveSource: false,
+			sourceCIDRs:      []string{"0.0.0.0/0"},
 			expected: []core.IngressSecurityRule{
 				makeIngressSecurityRule("existing", 9000),
 				makeIngressSecurityRule("existing", 9001),
@@ -162,6 +172,8 @@ func TestGetNodeIngressRules(t *testing.T) {
 					},
 				},
 			},
+			isPreserveSource: false,
+			sourceCIDRs:      []string{"0.0.0.0/0"},
 			expected: []core.IngressSecurityRule{
 				makeIngressSecurityRule("0.0.0.0/0", lbNodesHealthCheckPort),
 			},
@@ -188,7 +200,9 @@ func TestGetNodeIngressRules(t *testing.T) {
 				BackendPort:       80,
 				HealthCheckerPort: k8sports.ProxyHealthzPort,
 			},
-			services: []*v1.Service{},
+			services:         []*v1.Service{},
+			isPreserveSource: false,
+			sourceCIDRs:      []string{"0.0.0.0/0"},
 			expected: []core.IngressSecurityRule{
 				makeIngressSecurityRule("existing", 9000),
 				makeIngressSecurityRule("1", k8sports.ProxyHealthzPort),
@@ -219,7 +233,9 @@ func TestGetNodeIngressRules(t *testing.T) {
 				BackendPort:       8081,
 				HealthCheckerPort: k8sports.ProxyHealthzPort + 1,
 			},
-			services: []*v1.Service{},
+			services:         []*v1.Service{},
+			isPreserveSource: false,
+			sourceCIDRs:      []string{"0.0.0.0/0"},
 			expected: []core.IngressSecurityRule{
 				core.IngressSecurityRule{Source: common.String("0.0.0.0/0")},
 				makeIngressSecurityRule("10.0.50.0/24", 8081),
@@ -239,7 +255,343 @@ func TestGetNodeIngressRules(t *testing.T) {
 			}
 		}
 		t.Run(tc.name, func(t *testing.T) {
-			rules := getNodeIngressRules(zap.S(), tc.securityList.IngressSecurityRules, tc.lbSubnets, tc.actualPorts, tc.desiredPorts, serviceLister)
+			rules := getNodeIngressRules(zap.S(), tc.securityList.IngressSecurityRules, tc.lbSubnets, tc.actualPorts, tc.desiredPorts, serviceLister, tc.sourceCIDRs, tc.isPreserveSource)
+			if !reflect.DeepEqual(rules, tc.expected) {
+				t.Errorf("expected rules\n%+v\nbut got\n%+v", tc.expected, rules)
+			}
+		})
+	}
+}
+
+func TestGetNodeIngressRules_NLB(t *testing.T) {
+	testCases := []struct {
+		name             string
+		securityList     *core.SecurityList
+		lbSubnets        []*core.Subnet
+		actualPorts      *portSpec
+		desiredPorts     portSpec
+		services         []*v1.Service
+		sourceCIDRs      []string
+		isPreserveSource bool
+		expected         []core.IngressSecurityRule
+	}{
+		{
+			name: "new ingress",
+			securityList: &core.SecurityList{
+				IngressSecurityRules: []core.IngressSecurityRule{
+					makeIngressSecurityRule("existing", 9000),
+				},
+			},
+			lbSubnets: []*core.Subnet{
+				{CidrBlock: common.String("1")},
+				{CidrBlock: common.String("2")},
+			},
+			desiredPorts: portSpec{
+				BackendPort:       80,
+				HealthCheckerPort: k8sports.ProxyHealthzPort,
+			},
+			services:         []*v1.Service{},
+			isPreserveSource: true,
+			sourceCIDRs:      []string{"0.0.0.0/0"},
+			expected: []core.IngressSecurityRule{
+				makeIngressSecurityRule("existing", 9000),
+				makeIngressSecurityRule("0.0.0.0/0", 80),
+				makeIngressSecurityRule("1", 80),
+				makeIngressSecurityRule("2", 80),
+				makeIngressSecurityRule("1", k8sports.ProxyHealthzPort),
+				makeIngressSecurityRule("2", k8sports.ProxyHealthzPort),
+			},
+		}, {
+			name: "no change",
+			securityList: &core.SecurityList{
+				IngressSecurityRules: []core.IngressSecurityRule{
+					makeIngressSecurityRule("existing", 9000),
+					makeIngressSecurityRule("1", 80),
+					makeIngressSecurityRule("1", k8sports.ProxyHealthzPort),
+					makeIngressSecurityRule("2", 80),
+					makeIngressSecurityRule("2", k8sports.ProxyHealthzPort),
+					makeIngressSecurityRule("0.0.0.0/0", 80),
+				},
+			},
+			lbSubnets: []*core.Subnet{
+				{CidrBlock: common.String("1")},
+				{CidrBlock: common.String("2")},
+			},
+			desiredPorts: portSpec{
+				BackendPort:       80,
+				HealthCheckerPort: k8sports.ProxyHealthzPort,
+			},
+			services:         []*v1.Service{},
+			isPreserveSource: true,
+			sourceCIDRs:      []string{"0.0.0.0/0"},
+			expected: []core.IngressSecurityRule{
+				makeIngressSecurityRule("existing", 9000),
+				makeIngressSecurityRule("1", 80),
+				makeIngressSecurityRule("1", k8sports.ProxyHealthzPort),
+				makeIngressSecurityRule("2", 80),
+				makeIngressSecurityRule("2", k8sports.ProxyHealthzPort),
+				makeIngressSecurityRule("0.0.0.0/0", 80),
+			},
+		}, {
+			name: "change lb subnet",
+			securityList: &core.SecurityList{
+				IngressSecurityRules: []core.IngressSecurityRule{
+					makeIngressSecurityRule("existing", 9000),
+					makeIngressSecurityRule("0.0.0.0/0", 80),
+					makeIngressSecurityRule("1", 80),
+					makeIngressSecurityRule("1", k8sports.ProxyHealthzPort),
+					makeIngressSecurityRule("2", 80),
+					makeIngressSecurityRule("2", k8sports.ProxyHealthzPort),
+					makeIngressSecurityRule("existing", 9001),
+				},
+			},
+			lbSubnets: []*core.Subnet{
+				{CidrBlock: common.String("1")},
+				{CidrBlock: common.String("3")},
+			},
+			desiredPorts: portSpec{
+				BackendPort:       80,
+				HealthCheckerPort: k8sports.ProxyHealthzPort,
+			},
+			services:         []*v1.Service{},
+			isPreserveSource: true,
+			sourceCIDRs:      []string{"0.0.0.0/0"},
+			expected: []core.IngressSecurityRule{
+				makeIngressSecurityRule("existing", 9000),
+				makeIngressSecurityRule("0.0.0.0/0", 80),
+				makeIngressSecurityRule("1", 80),
+				makeIngressSecurityRule("1", k8sports.ProxyHealthzPort),
+				makeIngressSecurityRule("existing", 9001),
+				makeIngressSecurityRule("3", 80),
+				makeIngressSecurityRule("3", k8sports.ProxyHealthzPort),
+			},
+		}, {
+			name: "remove lb subnets",
+			securityList: &core.SecurityList{
+				IngressSecurityRules: []core.IngressSecurityRule{
+					makeIngressSecurityRule("existing", 9000),
+					makeIngressSecurityRule("0.0.0.0/0", 80),
+					makeIngressSecurityRule("1", 80),
+					makeIngressSecurityRule("1", k8sports.ProxyHealthzPort),
+					makeIngressSecurityRule("2", 80),
+					makeIngressSecurityRule("2", k8sports.ProxyHealthzPort),
+					makeIngressSecurityRule("existing", 9001),
+				},
+			},
+			lbSubnets: []*core.Subnet{},
+			desiredPorts: portSpec{
+				BackendPort:       80,
+				HealthCheckerPort: k8sports.ProxyHealthzPort,
+			},
+			services:         []*v1.Service{},
+			isPreserveSource: true,
+			sourceCIDRs:      []string{},
+			expected: []core.IngressSecurityRule{
+				makeIngressSecurityRule("existing", 9000),
+				makeIngressSecurityRule("existing", 9001),
+			},
+		}, {
+			name: "do not delete health check rules that are used by other services",
+			securityList: &core.SecurityList{
+				IngressSecurityRules: []core.IngressSecurityRule{
+					makeIngressSecurityRule("0.0.0.0/0", lbNodesHealthCheckPort),
+					makeIngressSecurityRule("0.0.0.0/0", 80),
+				},
+			},
+			lbSubnets: []*core.Subnet{},
+			desiredPorts: portSpec{
+				BackendPort:       80,
+				HealthCheckerPort: k8sports.ProxyHealthzPort,
+			},
+			services: []*v1.Service{
+				{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-default-health-check-port"},
+					Spec: v1.ServiceSpec{
+						Type:  v1.ServiceTypeLoadBalancer,
+						Ports: []v1.ServicePort{{Port: 443}},
+					},
+				},
+			},
+			isPreserveSource: true,
+			expected: []core.IngressSecurityRule{
+				makeIngressSecurityRule("0.0.0.0/0", lbNodesHealthCheckPort),
+			},
+		}, {
+			name: "update service port",
+			securityList: &core.SecurityList{
+				IngressSecurityRules: []core.IngressSecurityRule{
+					makeIngressSecurityRule("existing", 9000),
+					makeIngressSecurityRule("0.0.0.0/0", 8081),
+					makeIngressSecurityRule("1", 8081),
+					makeIngressSecurityRule("2", 8081),
+					makeIngressSecurityRule("1", k8sports.ProxyHealthzPort),
+					makeIngressSecurityRule("2", k8sports.ProxyHealthzPort),
+				},
+			},
+			lbSubnets: []*core.Subnet{
+				{CidrBlock: common.String("1")},
+				{CidrBlock: common.String("2")},
+			},
+			actualPorts: &portSpec{
+				BackendPort:       8081,
+				HealthCheckerPort: k8sports.ProxyHealthzPort,
+			},
+			desiredPorts: portSpec{
+				BackendPort:       80,
+				HealthCheckerPort: k8sports.ProxyHealthzPort,
+			},
+			services:         []*v1.Service{},
+			isPreserveSource: true,
+			sourceCIDRs:      []string{"0.0.0.0/0"},
+			expected: []core.IngressSecurityRule{
+				makeIngressSecurityRule("existing", 9000),
+				makeIngressSecurityRule("1", k8sports.ProxyHealthzPort),
+				makeIngressSecurityRule("2", k8sports.ProxyHealthzPort),
+				makeIngressSecurityRule("0.0.0.0/0", 80),
+				makeIngressSecurityRule("1", 80),
+				makeIngressSecurityRule("2", 80),
+			},
+		}, {
+			name: "update service health check port",
+			securityList: &core.SecurityList{
+				IngressSecurityRules: []core.IngressSecurityRule{
+					core.IngressSecurityRule{Source: common.String("0.0.0.0/0")},
+					makeIngressSecurityRule("10.0.50.0/24", 8081),
+					makeIngressSecurityRule("10.0.51.0/24", 8081),
+					makeIngressSecurityRule("0.0.0.0/0", 8081),
+					makeIngressSecurityRule("10.0.50.0/24", k8sports.ProxyHealthzPort),
+					makeIngressSecurityRule("10.0.51.0/24", k8sports.ProxyHealthzPort),
+				},
+			},
+			lbSubnets: []*core.Subnet{
+				{CidrBlock: common.String("10.0.50.0/24")},
+				{CidrBlock: common.String("10.0.51.0/24")},
+			},
+			actualPorts: &portSpec{
+				BackendPort:       8081,
+				HealthCheckerPort: k8sports.ProxyHealthzPort,
+			},
+			desiredPorts: portSpec{
+				BackendPort:       8081,
+				HealthCheckerPort: k8sports.ProxyHealthzPort + 1,
+			},
+			services:         []*v1.Service{},
+			isPreserveSource: true,
+			sourceCIDRs:      []string{"0.0.0.0/0"},
+			expected: []core.IngressSecurityRule{
+				core.IngressSecurityRule{Source: common.String("0.0.0.0/0")},
+				makeIngressSecurityRule("10.0.50.0/24", 8081),
+				makeIngressSecurityRule("10.0.51.0/24", 8081),
+				makeIngressSecurityRule("0.0.0.0/0", 8081),
+				makeIngressSecurityRule("10.0.50.0/24", k8sports.ProxyHealthzPort+1),
+				makeIngressSecurityRule("10.0.51.0/24", k8sports.ProxyHealthzPort+1),
+			},
+		}, {
+			name: "new ingress without source IP preservation",
+			securityList: &core.SecurityList{
+				IngressSecurityRules: []core.IngressSecurityRule{
+					makeIngressSecurityRule("existing", 9000),
+				},
+			},
+			lbSubnets: []*core.Subnet{
+				{CidrBlock: common.String("1")},
+				{CidrBlock: common.String("2")},
+			},
+			desiredPorts: portSpec{
+				BackendPort:       80,
+				HealthCheckerPort: k8sports.ProxyHealthzPort,
+			},
+			services:         []*v1.Service{},
+			isPreserveSource: true,
+			sourceCIDRs:      []string{"0.0.0.0/0"},
+			expected: []core.IngressSecurityRule{
+				makeIngressSecurityRule("existing", 9000),
+				makeIngressSecurityRule("0.0.0.0/0", 80),
+				makeIngressSecurityRule("1", 80),
+				makeIngressSecurityRule("2", 80),
+				makeIngressSecurityRule("1", k8sports.ProxyHealthzPort),
+				makeIngressSecurityRule("2", k8sports.ProxyHealthzPort),
+			},
+		}, {
+			name: "update service to not preserve source",
+			securityList: &core.SecurityList{
+				IngressSecurityRules: []core.IngressSecurityRule{
+					core.IngressSecurityRule{Source: common.String("0.0.0.0/0")},
+					makeIngressSecurityRule("10.0.50.0/24", 8081),
+					makeIngressSecurityRule("10.0.51.0/24", 8081),
+					makeIngressSecurityRule("0.0.0.0/0", 8081),
+					makeIngressSecurityRule("10.0.50.0/24", k8sports.ProxyHealthzPort),
+					makeIngressSecurityRule("10.0.51.0/24", k8sports.ProxyHealthzPort),
+				},
+			},
+			lbSubnets: []*core.Subnet{
+				{CidrBlock: common.String("10.0.50.0/24")},
+				{CidrBlock: common.String("10.0.51.0/24")},
+			},
+			actualPorts: &portSpec{
+				BackendPort:       8081,
+				HealthCheckerPort: k8sports.ProxyHealthzPort,
+			},
+			desiredPorts: portSpec{
+				BackendPort:       8081,
+				HealthCheckerPort: k8sports.ProxyHealthzPort + 1,
+			},
+			services:         []*v1.Service{},
+			isPreserveSource: false,
+			sourceCIDRs:      []string{"0.0.0.0/0"},
+			expected: []core.IngressSecurityRule{
+				core.IngressSecurityRule{Source: common.String("0.0.0.0/0")},
+				makeIngressSecurityRule("10.0.50.0/24", 8081),
+				makeIngressSecurityRule("10.0.51.0/24", 8081),
+				makeIngressSecurityRule("10.0.50.0/24", k8sports.ProxyHealthzPort+1),
+				makeIngressSecurityRule("10.0.51.0/24", k8sports.ProxyHealthzPort+1),
+			},
+		}, {
+			name: "update service to preserve source",
+			securityList: &core.SecurityList{
+				IngressSecurityRules: []core.IngressSecurityRule{
+					core.IngressSecurityRule{Source: common.String("0.0.0.0/0")},
+					makeIngressSecurityRule("10.0.50.0/24", 8081),
+					makeIngressSecurityRule("10.0.51.0/24", 8081),
+					makeIngressSecurityRule("10.0.50.0/24", k8sports.ProxyHealthzPort),
+					makeIngressSecurityRule("10.0.51.0/24", k8sports.ProxyHealthzPort),
+				},
+			},
+			lbSubnets: []*core.Subnet{
+				{CidrBlock: common.String("10.0.50.0/24")},
+				{CidrBlock: common.String("10.0.51.0/24")},
+			},
+			actualPorts: &portSpec{
+				BackendPort:       8081,
+				HealthCheckerPort: k8sports.ProxyHealthzPort,
+			},
+			desiredPorts: portSpec{
+				BackendPort:       8081,
+				HealthCheckerPort: k8sports.ProxyHealthzPort + 1,
+			},
+			services:         []*v1.Service{},
+			isPreserveSource: false,
+			sourceCIDRs:      []string{"0.0.0.0/0"},
+			expected: []core.IngressSecurityRule{
+				core.IngressSecurityRule{Source: common.String("0.0.0.0/0")},
+				makeIngressSecurityRule("10.0.50.0/24", 8081),
+				makeIngressSecurityRule("10.0.51.0/24", 8081),
+				makeIngressSecurityRule("10.0.50.0/24", k8sports.ProxyHealthzPort+1),
+				makeIngressSecurityRule("10.0.51.0/24", k8sports.ProxyHealthzPort+1),
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		serviceCache := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+		serviceLister := v1listers.NewServiceLister(serviceCache)
+		for i := range tc.services {
+			if err := serviceCache.Add(tc.services[i]); err != nil {
+				t.Fatalf("%s unexpected service add error: %v", tc.name, err)
+			}
+		}
+		t.Run(tc.name, func(t *testing.T) {
+			rules := getNodeIngressRules(zap.S(), tc.securityList.IngressSecurityRules, tc.lbSubnets, tc.actualPorts, tc.desiredPorts, serviceLister, tc.sourceCIDRs, tc.isPreserveSource)
 			if !reflect.DeepEqual(rules, tc.expected) {
 				t.Errorf("expected rules\n%+v\nbut got\n%+v", tc.expected, rules)
 			}

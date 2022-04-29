@@ -43,7 +43,7 @@ func main() {
 
 	logger := log.Sugar()
 
-	logger.With("version", version, "build", build).Info("oci-volume-provisioner")
+	logger.With("version", version, "build", build, "component", "volume-provisioner").Info("oci-volume-provisioner")
 
 	// Set up signals so we handle the shutdown signal gracefully.
 	stopCh := signals.SetupSignalHandler()

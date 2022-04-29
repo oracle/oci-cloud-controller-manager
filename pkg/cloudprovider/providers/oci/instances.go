@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/oracle/oci-go-sdk/v31/core"
+	"github.com/oracle/oci-go-sdk/v50/core"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"

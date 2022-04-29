@@ -25,22 +25,26 @@ import (
 	"os"
 	"time"
 
+	"github.com/oracle/oci-go-sdk/v50/common"
+	"github.com/oracle/oci-go-sdk/v50/core"
+	"github.com/oracle/oci-go-sdk/v50/filestorage"
+	"github.com/oracle/oci-go-sdk/v50/identity"
+	"github.com/oracle/oci-go-sdk/v50/loadbalancer"
+	"github.com/oracle/oci-go-sdk/v50/networkloadbalancer"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/flowcontrol"
-
-	"github.com/oracle/oci-go-sdk/v31/common"
-	"github.com/oracle/oci-go-sdk/v31/core"
-	"github.com/oracle/oci-go-sdk/v31/filestorage"
-	"github.com/oracle/oci-go-sdk/v31/identity"
-	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
 )
+
+// defaultSynchronousAPIContextTimeout is the time we wait for synchronous APIs
+// to respond before we timeout the request
+const defaultSynchronousAPIContextTimeout = 1 * time.Minute
 
 // Interface of consumed OCI API functionality.
 type Interface interface {
 	Compute() ComputeInterface
-	LoadBalancer() LoadBalancerInterface
+	LoadBalancer(string) GenericLoadBalancerInterface
 	Networking() NetworkingInterface
 	BlockStorage() BlockStorageInterface
 	FSS() FileStorageInterface
@@ -94,6 +98,21 @@ type loadBalancerClient interface {
 	UpdateNetworkSecurityGroups(ctx context.Context, request loadbalancer.UpdateNetworkSecurityGroupsRequest) (response loadbalancer.UpdateNetworkSecurityGroupsResponse, err error)
 }
 
+type networkLoadBalancerClient interface {
+	GetNetworkLoadBalancer(ctx context.Context, request networkloadbalancer.GetNetworkLoadBalancerRequest) (response networkloadbalancer.GetNetworkLoadBalancerResponse, err error)
+	ListNetworkLoadBalancers(ctx context.Context, request networkloadbalancer.ListNetworkLoadBalancersRequest) (response networkloadbalancer.ListNetworkLoadBalancersResponse, err error)
+	CreateNetworkLoadBalancer(ctx context.Context, request networkloadbalancer.CreateNetworkLoadBalancerRequest) (response networkloadbalancer.CreateNetworkLoadBalancerResponse, err error)
+	DeleteNetworkLoadBalancer(ctx context.Context, request networkloadbalancer.DeleteNetworkLoadBalancerRequest) (response networkloadbalancer.DeleteNetworkLoadBalancerResponse, err error)
+	GetWorkRequest(ctx context.Context, request networkloadbalancer.GetWorkRequestRequest) (response networkloadbalancer.GetWorkRequestResponse, err error)
+	CreateBackendSet(ctx context.Context, request networkloadbalancer.CreateBackendSetRequest) (response networkloadbalancer.CreateBackendSetResponse, err error)
+	UpdateBackendSet(ctx context.Context, request networkloadbalancer.UpdateBackendSetRequest) (response networkloadbalancer.UpdateBackendSetResponse, err error)
+	DeleteBackendSet(ctx context.Context, request networkloadbalancer.DeleteBackendSetRequest) (response networkloadbalancer.DeleteBackendSetResponse, err error)
+	CreateListener(ctx context.Context, request networkloadbalancer.CreateListenerRequest) (response networkloadbalancer.CreateListenerResponse, err error)
+	UpdateListener(ctx context.Context, request networkloadbalancer.UpdateListenerRequest) (response networkloadbalancer.UpdateListenerResponse, err error)
+	DeleteListener(ctx context.Context, request networkloadbalancer.DeleteListenerRequest) (response networkloadbalancer.DeleteListenerResponse, err error)
+	UpdateNetworkSecurityGroups(ctx context.Context, request networkloadbalancer.UpdateNetworkSecurityGroupsRequest) (response networkloadbalancer.UpdateNetworkSecurityGroupsResponse, err error)
+}
+
 type filestorageClient interface {
 	CreateFileSystem(ctx context.Context, request filestorage.CreateFileSystemRequest) (response filestorage.CreateFileSystemResponse, err error)
 	GetFileSystem(ctx context.Context, request filestorage.GetFileSystemRequest) (response filestorage.GetFileSystemResponse, err error)
@@ -121,12 +140,13 @@ type identityClient interface {
 }
 
 type client struct {
-	compute      computeClient
-	network      virtualNetworkClient
-	loadbalancer loadBalancerClient
-	filestorage  filestorageClient
-	bs           blockstorageClient
-	identity     identityClient
+	compute             computeClient
+	network             virtualNetworkClient
+	loadbalancer        GenericLoadBalancerInterface
+	networkloadbalancer GenericLoadBalancerInterface
+	filestorage         filestorageClient
+	bs                  blockstorageClient
+	identity            identityClient
 
 	requestMetadata common.RequestMetadata
 	rateLimiter     RateLimiter
@@ -167,6 +187,16 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 		return nil, errors.Wrap(err, "configuring loadbalancer client custom transport")
 	}
 
+	nlb, err := networkloadbalancer.NewNetworkLoadBalancerClientWithConfigurationProvider(cp)
+	if err != nil {
+		return nil, errors.Wrap(err, "NewNetworkLoadBalancerClientWithConfigurationProvider")
+	}
+
+	err = configureCustomTransport(logger, &nlb.BaseClient)
+	if err != nil {
+		return nil, errors.Wrap(err, "configuring networkloadbalancer client custom transport")
+	}
+
 	identity, err := identity.NewIdentityClientWithConfigurationProvider(cp)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewIdentityClientWithConfigurationProvider")
@@ -197,18 +227,32 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 		return nil, errors.Wrap(err, "configuring file storage service client custom transport")
 	}
 
-	c := &client{
-		compute:      &compute,
-		network:      &network,
-		identity:     &identity,
-		loadbalancer: &lb,
-		bs:           &bs,
-		filestorage:  &fss,
+	requestMetadata := common.RequestMetadata{
+		RetryPolicy: newRetryPolicy(),
+	}
 
-		rateLimiter: *opRateLimiter,
-		requestMetadata: common.RequestMetadata{
-			RetryPolicy: newRetryPolicy(),
-		},
+	loadbalancer := loadbalancerClientStruct{
+		loadbalancer:    lb,
+		requestMetadata: requestMetadata,
+		rateLimiter:     *opRateLimiter,
+	}
+	networkloadbalancer := networkLoadbalancer{
+		networkloadbalancer: nlb,
+		requestMetadata:     requestMetadata,
+		rateLimiter:         *opRateLimiter,
+	}
+
+	c := &client{
+		compute:             &compute,
+		network:             &network,
+		identity:            &identity,
+		loadbalancer:        &loadbalancer,
+		networkloadbalancer: &networkloadbalancer,
+		bs:                  &bs,
+		filestorage:         &fss,
+
+		rateLimiter:     *opRateLimiter,
+		requestMetadata: requestMetadata,
 
 		subnetCache: cache.NewTTLStore(subnetCacheKeyFn, time.Duration(24)*time.Hour),
 		logger:      logger,
@@ -217,8 +261,14 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 	return c, nil
 }
 
-func (c *client) LoadBalancer() LoadBalancerInterface {
-	return c
+func (c *client) LoadBalancer(lbType string) GenericLoadBalancerInterface {
+	if lbType == "nlb" {
+		return c.networkloadbalancer
+	}
+	if lbType == "lb" {
+		return c.loadbalancer
+	}
+	return nil
 }
 
 func (c *client) Networking() NetworkingInterface {

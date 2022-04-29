@@ -20,19 +20,18 @@ import (
 	"reflect"
 	"testing"
 
-	"go.uber.org/zap"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-go-sdk/v31/common"
-	"github.com/oracle/oci-go-sdk/v31/core"
-	"github.com/oracle/oci-go-sdk/v31/filestorage"
-	"github.com/oracle/oci-go-sdk/v31/identity"
-	"github.com/oracle/oci-go-sdk/v31/loadbalancer"
+	"github.com/oracle/oci-go-sdk/v50/common"
+	"github.com/oracle/oci-go-sdk/v50/core"
+	"github.com/oracle/oci-go-sdk/v50/filestorage"
+	"github.com/oracle/oci-go-sdk/v50/identity"
+	"go.uber.org/zap"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 var (
@@ -202,11 +201,11 @@ var (
 		},
 	}
 
-	loadBalancers = map[string]*loadbalancer.LoadBalancer{
+	loadBalancers = map[string]*client.GenericLoadBalancer{
 		"privateLB": {
 			Id:          common.String("privateLB"),
 			DisplayName: common.String("privateLB"),
-			IpAddresses: []loadbalancer.IpAddress{
+			IpAddresses: []client.GenericIpAddress{
 				{
 					IpAddress: common.String("10.0.50.5"),
 					IsPublic:  common.Bool(false),
@@ -216,12 +215,12 @@ var (
 		"privateLB-no-IP": {
 			Id:          common.String("privateLB-no-IP"),
 			DisplayName: common.String("privateLB-no-IP"),
-			IpAddresses: []loadbalancer.IpAddress{},
+			IpAddresses: []client.GenericIpAddress{},
 		},
 		"test-uid": {
 			Id:          common.String("test-uid"),
 			DisplayName: common.String("test-uid"),
-			IpAddresses: []loadbalancer.IpAddress{
+			IpAddresses: []client.GenericIpAddress{
 				{
 					IpAddress: common.String("10.0.50.5"),
 					IsPublic:  common.Bool(false),
@@ -231,7 +230,7 @@ var (
 		"test-uid-delete-err": {
 			Id:          common.String("test-uid-delete-err"),
 			DisplayName: common.String("test-uid-delete-err"),
-			IpAddresses: []loadbalancer.IpAddress{
+			IpAddresses: []client.GenericIpAddress{
 				{
 					IpAddress: common.String("10.0.50.5"),
 					IsPublic:  common.Bool(false),
@@ -241,22 +240,22 @@ var (
 		"test-uid-node-err": {
 			Id:          common.String("test-uid-delete-err"),
 			DisplayName: common.String("test-uid-delete-err"),
-			IpAddresses: []loadbalancer.IpAddress{
+			IpAddresses: []client.GenericIpAddress{
 				{
 					IpAddress: common.String("10.0.50.5"),
 					IsPublic:  common.Bool(false),
 				},
 			},
 			SubnetIds: []string{*subnets["one"].Id, *subnets["two"].Id},
-			Listeners: map[string]loadbalancer.Listener{
+			Listeners: map[string]client.GenericListener{
 				"one": {
 					Name:                  common.String("one"),
 					DefaultBackendSetName: common.String("one"),
 					Port:                  common.Int(5665),
 				}},
-			BackendSets: map[string]loadbalancer.BackendSet{
+			BackendSets: map[string]client.GenericBackendSetDetails{
 				"one": {
-					Backends: []loadbalancer.Backend{{
+					Backends: []client.GenericBackend{{
 						Name:      common.String("one"),
 						IpAddress: common.String("10.0.50.5"),
 						Port:      common.Int(5665),
@@ -268,11 +267,11 @@ var (
 
 type MockSecurityListManager struct{}
 
-func (MockSecurityListManager) Update(ctx context.Context, lbSubnets []*core.Subnet, _ []*core.Subnet, sourceCIDRs []string, actualPorts *portSpec, desiredPorts portSpec) error {
+func (MockSecurityListManager) Update(ctx context.Context, lbSubnets []*core.Subnet, _ []*core.Subnet, sourceCIDRs []string, actualPorts *portSpec, desiredPorts portSpec, isPreserveSource bool) error {
 	return nil
 }
 
-func (MockSecurityListManager) Delete(ctx context.Context, lbSubnets []*core.Subnet, backendSubnets []*core.Subnet, ports portSpec) error {
+func (MockSecurityListManager) Delete(ctx context.Context, lbSubnets []*core.Subnet, backendSubnets []*core.Subnet, ports portSpec, sourceCIDRs []string, isPreserveSource bool) error {
 	return nil
 }
 
@@ -284,7 +283,7 @@ func (MockOCIClient) Compute() client.ComputeInterface {
 	return &MockComputeClient{}
 }
 
-func (MockOCIClient) LoadBalancer() client.LoadBalancerInterface {
+func (MockOCIClient) LoadBalancer(string) client.GenericLoadBalancerInterface {
 	return &MockLoadBalancerClient{}
 }
 
@@ -407,15 +406,15 @@ func (c *MockVirtualNetworkClient) GetPublicIpByIpAddress(ctx context.Context, i
 //// MockFileStorageClient mocks FileStorage client implementation.
 type MockLoadBalancerClient struct{}
 
-func (c *MockLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details loadbalancer.CreateLoadBalancerDetails) (string, error) {
+func (c *MockLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details *client.GenericCreateLoadBalancerDetails) (string, error) {
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) GetLoadBalancer(ctx context.Context, id string) (*loadbalancer.LoadBalancer, error) {
+func (c *MockLoadBalancerClient) GetLoadBalancer(ctx context.Context, id string) (*client.GenericLoadBalancer, error) {
 	return nil, nil
 }
 
-func (c *MockLoadBalancerClient) GetLoadBalancerByName(ctx context.Context, compartmentID, name string) (*loadbalancer.LoadBalancer, error) {
+func (c *MockLoadBalancerClient) GetLoadBalancerByName(ctx context.Context, compartmentID string, name string) (*client.GenericLoadBalancer, error) {
 	if lb, ok := loadBalancers[name]; ok {
 		return lb, nil
 	}
@@ -429,19 +428,19 @@ func (c *MockLoadBalancerClient) DeleteLoadBalancer(ctx context.Context, id stri
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) GetCertificateByName(ctx context.Context, lbID, name string) (*loadbalancer.Certificate, error) {
+func (c *MockLoadBalancerClient) GetCertificateByName(ctx context.Context, lbID string, name string) (*client.GenericCertificate, error) {
 	return nil, nil
 }
 
-func (c *MockLoadBalancerClient) CreateCertificate(ctx context.Context, lbID string, cert loadbalancer.CertificateDetails) (string, error) {
+func (c *MockLoadBalancerClient) CreateCertificate(ctx context.Context, lbID string, cert *client.GenericCertificate) (string, error) {
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) CreateBackendSet(ctx context.Context, lbID, name string, details loadbalancer.BackendSetDetails) (string, error) {
+func (c *MockLoadBalancerClient) CreateBackendSet(ctx context.Context, lbID string, name string, details *client.GenericBackendSetDetails) (string, error) {
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) UpdateBackendSet(ctx context.Context, lbID, name string, details loadbalancer.BackendSetDetails) (string, error) {
+func (c *MockLoadBalancerClient) UpdateBackendSet(ctx context.Context, lbID string, name string, details *client.GenericBackendSetDetails) (string, error) {
 	return "", nil
 }
 
@@ -449,11 +448,11 @@ func (c *MockLoadBalancerClient) DeleteBackendSet(ctx context.Context, lbID, nam
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) UpdateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error) {
+func (c *MockLoadBalancerClient) UpdateListener(ctx context.Context, lbID string, name string, details *client.GenericListener) (string, error) {
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) CreateListener(ctx context.Context, lbID, name string, details loadbalancer.ListenerDetails) (string, error) {
+func (c *MockLoadBalancerClient) CreateListener(ctx context.Context, lbID string, name string, details *client.GenericListener) (string, error) {
 	return "", nil
 }
 
@@ -461,15 +460,15 @@ func (c *MockLoadBalancerClient) DeleteListener(ctx context.Context, lbID, name 
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) AwaitWorkRequest(ctx context.Context, id string) (*loadbalancer.WorkRequest, error) {
+func (c *MockLoadBalancerClient) AwaitWorkRequest(ctx context.Context, id string) (*client.GenericWorkRequest, error) {
 	return nil, nil
 }
 
-func (c *MockLoadBalancerClient) UpdateLoadBalancerShape(ctx context.Context, id string, details loadbalancer.UpdateLoadBalancerShapeDetails) (string, error) {
+func (c *MockLoadBalancerClient) UpdateLoadBalancerShape(context.Context, string, *client.GenericUpdateLoadBalancerShapeDetails) (string, error) {
 	return "", nil
 }
 
-func (c *MockLoadBalancerClient) UpdateNetworkSecurityGroups(ctx context.Context, lbId string, details loadbalancer.UpdateNetworkSecurityGroupsDetails) (string, error) {
+func (c *MockLoadBalancerClient) UpdateNetworkSecurityGroups(ctx context.Context, lbId string, nsgIds []string) (string, error) {
 	if lbId == "" {
 		return "", errors.New("provided LB ID is empty")
 	}

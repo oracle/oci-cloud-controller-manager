@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"time"
 
-	fss "github.com/oracle/oci-go-sdk/v31/filestorage"
+	fss "github.com/oracle/oci-go-sdk/v50/filestorage"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/util/wait"
