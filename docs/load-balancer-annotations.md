@@ -3,7 +3,7 @@
 This file defines a list of [Service][4] `type: LoadBalancer` annotations which are
 supported by the `oci-cloud-controller-manager`.
 
-All annotations are prefixed with `service.beta.kubernetes.io/` or `oci.oraclecloud.com/`. For example:
+All annotations are prefixed with `service.beta.kubernetes.io/` or `oci.oraclecloud.com/` or `oci-network-load-balancer.oraclecloud.com/` (for OCI Network Load Balancer specific annotations). For example:
 
 ```yaml
 kind: Service
@@ -11,6 +11,7 @@ apiVersion: v1
 metadata:
   name: nginx-service
   annotations:
+    oci.oraclecloud.com/load-balancer-type: "lb"
     service.beta.kubernetes.io/oci-load-balancer-shape: "400Mbps"
     service.beta.kubernetes.io/oci-load-balancer-subnet1: "ocid..."
     service.beta.kubernetes.io/oci-load-balancer-subnet2: "ocid..."
@@ -57,6 +58,49 @@ Note:
 Note:
 - If an invalid mode is passed in the annotation, then the default (`"All"`) mode is configured.
 - If an annotation is not specified, the mode specified in the cloud provider config file is configured.  
+
+## Network Load Balancer
+
+For example:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: example-nlb
+  annotations:
+    oci-network-load-balancer.oraclecloud.com/security-list-management-mode: "All"
+    oci.oraclecloud.com/load-balancer-type: nlb
+spec:
+  selector:
+    app: example-nlb
+  ports:
+    - port: 8088
+      targetPort: 80
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+```
+
+Note:
+- The only security list management mode allowed when backend protocol is UDP is "None"
+- `externalTrafficPolicy` should be "Local" for preserving source IP
+- We recommend to set the `security-list-management-mode` as "None" and configure NSG / Security rules on your own.
+
+## Network Load Balancer Specific Annotations
+
+| Name                                                                          | Description                                                                                                                                                   | Default
+| -----                                                                         | -----------                                                                                                                                                   | -------                                         
+| `oci-network-load-balancer.oraclecloud.com/internal`                          | Create an [internal network load balancer][1]. Cannot be modified after load balancer creation.                                                               | `false`
+| `oci-network-load-balancer.oraclecloud.com/subnet`                            | The OCID of the required regional or AD specific subnet to attach the network load balancer.	                                                                | Value set for the cluster
+| `oci-network-load-balancer.oraclecloud.com/oci-network-security-groups`       | Specifies Network Security Groups' OCIDs to be associated with the network load balancer.	                                                                    | `""`
+| `oci-network-load-balancer.oraclecloud.com/initial-freeform-tags-override`    | Specifies one or multiple Freeform tags to apply to the OCI Network Load Balancer.                                                                            | `""`
+| `oci-network-load-balancer.oraclecloud.com/initial-defined-tags-override`     | Specifies one or multiple Defined tags to apply to the OCI Network Load Balancer.                                                                             | `""`
+| `oci-network-load-balancer.oraclecloud.com/health-check-retries`              | The number of retries to attempt before a backend server is considered "unhealthy".	                                                                        | `3`
+| `oci-network-load-balancer.oraclecloud.com/health-check-timeout`              | The maximum time, in milliseconds, to wait for a reply to a health check. A health check is successful only if a reply returns within this timeout period.    | `3000 ms`
+| `oci-network-load-balancer.oraclecloud.com/health-check-interval`             | The interval between health checks requests, in milliseconds.		                                                                                            | `3000 ms`
+| `oci-network-load-balancer.oraclecloud.com/backend-policy`                    | The network load balancer policy for the backend set. Valid values: "TWO_TUPLE", "THREE_TUPLE", or "FIVE_TUPLE"		                                        | `"FIVE_TUPLE"`
+| `oci-network-load-balancer.oraclecloud.com/security-list-management-mode`     | Specifies the security list mode ("All", "Frontend","None") to configure how security lists are managed.		                                                | `"None"`
+
 
 [1]: https://kubernetes.io/docs/concepts/services-networking/service/#internal-load-balancer
 [2]: https://docs.us-phoenix-1.oraclecloud.com/Content/Network/Tasks/managingVCNs.htm

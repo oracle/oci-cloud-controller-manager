@@ -6,7 +6,7 @@
 
 ## Create PVC
 
-```bash
+```yaml
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -22,7 +22,7 @@ spec:
 
 ## Create POD
 
-```bash
+```yaml
 apiVersion: v1
 kind: Pod
 metadata:

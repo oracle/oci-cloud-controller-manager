@@ -27,6 +27,7 @@ cloud-provider specific code out of the Kubernetes codebase.
 | \>=v 0.11 | v1.16                       | v1.18                        |
 | \>=v 0.12 | v1.18                       | v1.21                        |
 | \>=v 0.13 | v1.19                       | v1.21                        |
+| v1.19.12  | v1.19                       | v1.21                        |
 
 Note: 
 Versions older than v0.13.0 are no longer supported, new features / bug fixes will be available in v0.13.0 and later. 
