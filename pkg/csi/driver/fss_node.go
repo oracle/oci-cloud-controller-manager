@@ -12,9 +12,11 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	kubeAPI "k8s.io/api/core/v1"
+	"k8s.io/mount-utils"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/util/mount"
+	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util/disk"
 )
 
 const (
@@ -53,22 +55,22 @@ func (d FSSNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVo
 		return nil, status.Errorf(codes.InvalidArgument, "EncryptInTransit must be a boolean value")
 	}
 
-	mounter := mount.New(logger, mountPath)
+	mounter := mount.New(mountPath)
 
 	var options []string
 	if encryptInTransit {
-		isPackageInstalled, err := mount.IsInTransitEncryptionPackageInstalled(mounter)
+		isPackageInstalled, err := csi_util.IsInTransitEncryptionPackageInstalled()
 		if err != nil {
 			logger.With(zap.Error(err)).Error("FSS in-transit encryption Package installation check failed")
 			return nil, status.Error(codes.Internal, "FSS in-transit encryption Package installation check failed")
 		}
 		if !isPackageInstalled {
-			logger.Error("Package %s not installed for in-transit encryption", mount.InTransitEncryptionPackageName)
-			return nil, status.Error(codes.FailedPrecondition, fmt.Sprintf("Package %s not installed for in-transit encryption", mount.InTransitEncryptionPackageName))
+			logger.Error("Package %s not installed for in-transit encryption", csi_util.InTransitEncryptionPackageName)
+			return nil, status.Error(codes.FailedPrecondition, fmt.Sprintf("Package %s not installed for in-transit encryption", csi_util.InTransitEncryptionPackageName))
 		}
 		logger.Debug("In-transit encryption enabled")
 		fsType = "oci-fss"
-		content, err := mount.IsFipsEnabled(mounter)
+		content, err := csi_util.IsFipsEnabled()
 		if err != nil {
 			logger.With(zap.Error(err)).Error("Could not verify if FIPS enabled")
 			return nil, status.Error(codes.Internal, "Could not verify if FIPS enabled")
@@ -174,7 +176,7 @@ func (d FSSNodeDriver) NodePublishVolume(ctx context.Context, req *csi.NodePubli
 
 	var fsType = ""
 
-	mounter := mount.New(logger, mountPath)
+	mounter := mount.New(mountPath)
 
 	targetPath := req.GetTargetPath()
 	readOnly := req.GetReadonly()
@@ -231,7 +233,7 @@ func (d FSSNodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnp
 
 	logger := d.logger.With("volumeID", req.VolumeId, "targetPath", req.TargetPath)
 
-	mounter := mount.New(logger, mountPath)
+	mounter := mount.New(mountPath)
 	targetPath := req.GetTargetPath()
 
 	// Use mount.IsNotMountPoint because mounter.IsLikelyNotMountPoint can't detect bind mounts
@@ -302,7 +304,7 @@ func (d FSSNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnsta
 }
 
 func (d FSSNodeDriver) unmountAndCleanup(logger *zap.SugaredLogger, targetPath string, exportPath string, mountTargetIP string) error {
-	mounter := mount.New(logger, mountPath)
+	mounter := mount.New(mountPath)
 	// Use mount.IsNotMountPoint because mounter.IsLikelyNotMountPoint can't detect bind mounts
 	isNotMountPoint, err := mount.IsNotMountPoint(mounter, targetPath)
 	if err != nil {
@@ -323,7 +325,7 @@ func (d FSSNodeDriver) unmountAndCleanup(logger *zap.SugaredLogger, targetPath s
 		return nil
 	}
 
-	sources, err := mount.FindMount(mounter, targetPath)
+	sources, err := csi_util.FindMount(targetPath)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Find Mount failed for target path")
 		return status.Error(codes.Internal, "Find Mount failed for target path")
@@ -341,7 +343,7 @@ func (d FSSNodeDriver) unmountAndCleanup(logger *zap.SugaredLogger, targetPath s
 	logger.Debugf("Sources mounted at staging target path %v", sources)
 
 	if inTransitEncryption {
-		err = mounter.UnmountWithEncrypt(targetPath)
+		err = disk.UnmountWithEncrypt(logger, targetPath)
 	} else {
 		err = mounter.Unmount(targetPath)
 	}

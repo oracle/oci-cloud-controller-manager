@@ -268,6 +268,7 @@ func (d *ControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolu
 	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
+	log.Info("Waiting for volume to become available.")
 	_, err = d.client.BlockStorage().AwaitVolumeAvailableORTimeout(ctx, *provisionedVolume.Id)
 	if err != nil {
 		log.With("volumeName", volumeName).Error("Create volume failed with time out")

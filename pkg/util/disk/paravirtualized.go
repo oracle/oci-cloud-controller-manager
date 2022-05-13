@@ -16,9 +16,8 @@ package disk
 
 import (
 	"go.uber.org/zap"
+	"k8s.io/mount-utils"
 	"k8s.io/utils/exec"
-
-	"github.com/oracle/oci-cloud-controller-manager/pkg/util/mount"
 )
 
 // iSCSIMounter implements Interface.
@@ -35,7 +34,7 @@ type pvMounter struct {
 func NewFromPVDisk(logger *zap.SugaredLogger) Interface {
 	return &pvMounter{
 		runner:  exec.New(),
-		mounter: mount.New(logger, mountCommand),
+		mounter: mount.New(mountCommand),
 		logger:  logger,
 	}
 }
@@ -70,15 +69,10 @@ func (c *pvMounter) RemoveFromDB() error {
 	return nil
 }
 
-func (c *pvMounter) DeviceOpened(path string) (bool, error) {
-	return c.mounter.DeviceOpened(path)
-}
-
 func (c *pvMounter) FormatAndMount(source string, target string, fstype string, options []string) error {
 	safeMounter := &mount.SafeFormatAndMount{
 		Interface: c.mounter,
-		Runner:    c.runner,
-		Logger:    c.logger,
+		Exec:      c.runner,
 	}
 	return formatAndMount(source, target, fstype, options, safeMounter)
 }
@@ -86,39 +80,20 @@ func (c *pvMounter) FormatAndMount(source string, target string, fstype string, 
 func (c *pvMounter) Mount(source string, target string, fstype string, options []string) error {
 	safeMounter := &mount.SafeFormatAndMount{
 		Interface: c.mounter,
-		Runner:    c.runner,
-		Logger:    c.logger,
+		Exec:      c.runner,
 	}
 	return mnt(source, target, fstype, options, safeMounter)
 }
 
+func (c *pvMounter) DeviceOpened(pathname string) (bool, error) {
+	return deviceOpened(pathname, c.logger)
+}
+
 func (c *pvMounter) UnmountPath(path string) error {
-	return mount.UnmountPath(c.logger, path, c.mounter)
+	return UnmountPath(c.logger, path, c.mounter)
 }
 
 func (c *pvMounter) Resize(devicePath string, volumePath string) (bool, error) {
-	safeMounter := &mount.SafeFormatAndMount{
-		Interface: c.mounter,
-		Runner:    c.runner,
-		Logger:    c.logger,
-	}
-	return resize(devicePath, volumePath, safeMounter)
-}
-
-func (c *pvMounter) Rescan(devicePath string) error {
-	safeMounter := &mount.SafeFormatAndMount{
-		Interface: c.mounter,
-		Runner:    c.runner,
-		Logger:    c.logger,
-	}
-	return rescan(devicePath, safeMounter)
-}
-
-func (c *pvMounter) GetBlockSizeBytes(devicePath string) (int64, error) {
-	safeMounter := &mount.SafeFormatAndMount{
-		Interface: c.mounter,
-		Runner:    c.runner,
-		Logger:    c.logger,
-	}
-	return getBlockSizeBytes(devicePath, safeMounter)
+	resizefs := mount.NewResizeFs(c.runner)
+	return resizefs.Resize(devicePath, volumePath)
 }

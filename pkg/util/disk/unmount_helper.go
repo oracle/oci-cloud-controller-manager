@@ -14,22 +14,27 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package mount
+package disk
 
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"time"
 
 	"go.uber.org/zap"
+	"k8s.io/mount-utils"
 )
 
-const directoryDeletePollInterval = 5 * time.Second
+const (
+	directoryDeletePollInterval = 5 * time.Second
+	EncryptedUmountCommand      = "umount.oci-fss"
+)
 
 // UnmountPath is a common unmount routine that unmounts the given path and
 // deletes the remaining directory if successful.
-func UnmountPath(logger *zap.SugaredLogger, mountPath string, mounter Interface) error {
-	if pathExists, pathErr := PathExists(mountPath); pathErr != nil {
+func UnmountPath(logger *zap.SugaredLogger, mountPath string, mounter mount.Interface) error {
+	if pathExists, pathErr := mount.PathExists(mountPath); pathErr != nil {
 		return fmt.Errorf("Error checking if path exists: %v", pathErr)
 	} else if !pathExists {
 		logger.With("mount path", mountPath).Warn("Unmount skipped because path does not exist.")
@@ -76,14 +81,20 @@ func WaitForDirectoryDeletion(logger *zap.SugaredLogger, mountPath string) error
 	return nil
 }
 
-// PathExists returns true if the specified path exists.
-func PathExists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	} else if os.IsNotExist(err) {
-		return false, nil
-	} else {
-		return false, err
+// Unmount the target that is in-transit encryption enabled
+func UnmountWithEncrypt(logger *zap.SugaredLogger, target string) error {
+	logger.With("target", target).Info("Unmounting.")
+	command := exec.Command(EncryptedUmountCommand, target)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		logger.With(
+			zap.Error(err),
+			"command", EncryptedUmountCommand,
+			"target", target,
+			"output", string(output),
+		).Error("Unmount failed.")
+		return fmt.Errorf("Unmount failed: %v\nUnmounting command: %s\nUnmounting arguments: %s\nOutput: %v\n", err, EncryptedUmountCommand, target, string(output))
 	}
+	logger.Debugf("unmount output: %v", string(output))
+	return nil
 }
