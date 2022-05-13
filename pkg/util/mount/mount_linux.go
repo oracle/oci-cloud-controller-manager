@@ -25,10 +25,10 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
-	"path/filepath"
 
 	"go.uber.org/zap"
 	utilexec "k8s.io/utils/exec"
@@ -40,13 +40,13 @@ const (
 	// Number of fields per line in /proc/mounts as per the fstab man page.
 	expectedNumFieldsPerLine = 6
 	// Location of the mount file to use
-	procMountsPath = "/proc/mounts"
-	FIPS_ENABLED_FILE_PATH = "/host/proc/sys/crypto/fips_enabled"
+	procMountsPath           = "/proc/mounts"
+	FIPS_ENABLED_FILE_PATH   = "/host/proc/sys/crypto/fips_enabled"
 	ENCRYPTED_UMOUNT_COMMAND = "umount.oci-fss"
-	UMOUNT_COMMAND = "umount"
-    FINDMNT_COMMAND = "findmnt"
-    CAT_COMMAND = "cat"
-    RPM_COMMAND = "rpm"
+	UMOUNT_COMMAND           = "umount"
+	FINDMNT_COMMAND          = "findmnt"
+	CAT_COMMAND              = "cat"
+	RPM_COMMAND              = "rpm"
 	// 'fsck' found errors and corrected them
 	fsckErrorsCorrected = 1
 	// 'fsck' found errors but exited without correcting them

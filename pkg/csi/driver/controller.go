@@ -804,6 +804,11 @@ func (d *ControllerDriver) ControllerExpandVolume(ctx context.Context, req *csi.
 	}, nil
 }
 
+// ControllerGetVolume returns ControllerGetVolumeResponse response
+func (d *ControllerDriver) ControllerGetVolume(ctx context.Context, req *csi.ControllerGetVolumeRequest) (*csi.ControllerGetVolumeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "ControllerGetVolume is not supported yet")
+}
+
 func provision(log *zap.SugaredLogger, c client.Interface, volName string, volSize int64, availDomainName, compartmentID,
 	backupID, kmsKeyID string, vpusPerGB int64, timeout time.Duration, bvTags *config.TagConfig) (core.Volume, error) {
 

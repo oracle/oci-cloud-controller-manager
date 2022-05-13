@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	storagev1 "k8s.io/api/storage/v1"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -73,10 +74,12 @@ var _ = Describe("CSI Volume Creation", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-pod-nginx")
 
 			scName := f.CreateStorageClassOrFail(framework.ClassOCICSI, "blockvolume.csi.oraclecloud.com", nil, pvcJig.Labels, "WaitForFirstConsumer", false)
+			f.CreateCSIDriverOrFail("blockvolume.csi.oraclecloud.com", nil, storagev1.FileFSGroupPolicy)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil)
 
 			pvcJig.CheckVolumeDirectoryOwnership(f.Namespace.Name, pvc)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+			_ = f.DeleteCSIDriver("blockvolume.csi.oraclecloud.com")
 		})
 	})
 })

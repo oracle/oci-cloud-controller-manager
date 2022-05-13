@@ -99,19 +99,19 @@ func TestDeepEqualLists(t *testing.T) {
 
 func TestRemoveDuplicatesFromList(t *testing.T) {
 	testCases := map[string]struct {
-		list []string
+		list   []string
 		result []string
-	} {
+	}{
 		"List with Duplicates": {
-			list: []string{"ocid1", "ocid2", "ocid1"},
+			list:   []string{"ocid1", "ocid2", "ocid1"},
 			result: []string{"ocid1", "ocid2"},
 		},
 		"List with irregular order": {
-			list: []string{"a", "c", "b"},
+			list:   []string{"a", "c", "b"},
 			result: []string{"a", "b", "c"},
 		},
 		"List with duplicates and irregular order": {
-			list: []string{"a", "a", "c", "b", "d", "c", "d"},
+			list:   []string{"a", "a", "c", "b", "d", "c", "d"},
 			result: []string{"a", "b", "c", "d"},
 		},
 	}

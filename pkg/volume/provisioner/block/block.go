@@ -296,7 +296,7 @@ func (block *blockProvisioner) Delete(volume *v1.PersistentVolume) error {
 	err := block.client.BlockStorage().DeleteVolume(ctx, id)
 
 	dimensionsMap := make(map[string]string)
-	dimensionsMap[metrics.ResourceOCIDDimension] =id
+	dimensionsMap[metrics.ResourceOCIDDimension] = id
 
 	if client.IsNotFound(err) {
 		logger.With(zap.Error(err)).Info("Volume not found. Presuming already deleted.")
