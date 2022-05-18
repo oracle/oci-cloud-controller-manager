@@ -351,6 +351,46 @@ func (clb *CloudLoadBalancerProvider) createLoadBalancer(ctx context.Context, sp
 
 }
 
+// getNodeFilter extracts the node filter based on load balancer type.
+// if no selector is defined then an all label selector object is returned to match everything.
+func getNodeFilter(svc *v1.Service) (labels.Selector, error) {
+	lbType := getLoadBalancerType(svc)
+
+	var labelSelector string
+
+	switch lbType {
+	case NLB:
+		labelSelector = svc.Annotations[ServiceAnnotationNetworkLoadBalancerNodeFilter]
+	default:
+		labelSelector = svc.Annotations[ServiceAnnotationLoadBalancerNodeFilter]
+	}
+
+	if labelSelector == "" {
+		return labels.Everything(), nil
+	}
+
+	return labels.Parse(labelSelector)
+}
+
+// filterNodes based on the label selector, if present, and returns the set of nodes
+// that should be backends in the load balancer.
+func filterNodes(svc *v1.Service, nodes []*v1.Node) ([]*v1.Node, error) {
+
+	selector, err := getNodeFilter(svc)
+	if err != nil {
+		return nil, err
+	}
+
+	var filteredNodes []*v1.Node
+	for _, n := range nodes {
+		if selector.Matches(labels.Set(n.GetLabels())) {
+			filteredNodes = append(filteredNodes, n)
+		}
+	}
+
+	return filteredNodes, nil
+}
+
 // EnsureLoadBalancer creates a new load balancer or updates the existing one.
 // Returns the status of the balancer (i.e it's public IP address if one exists).
 func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName string, service *v1.Service, nodes []*v1.Node) (*v1.LoadBalancerStatus, error) {
@@ -358,6 +398,13 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 	lbName := GetLoadBalancerName(service)
 	loadBalancerType := getLoadBalancerType(service)
 	logger := cp.logger.With("loadBalancerName", lbName, "serviceName", service.Name, "loadBalancerType", loadBalancerType)
+
+	nodes, err := filterNodes(service, nodes)
+	if err != nil {
+		logger.With(zap.Error(err)).Error("Failed to filter nodes with label selector")
+		return nil, err
+	}
+
 	logger.With("nodes", len(nodes)).Info("Ensuring load balancer")
 
 	dimensionsMap := make(map[string]string)
