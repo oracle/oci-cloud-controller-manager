@@ -164,6 +164,13 @@ details.
 Oracle gratefully acknowledges the contributions to this project that have been made
 by the community.
 
+## Upcoming Releases
+
+| Release               | Expected Release Date |
+|-----------------------|-----------------------|
+| Support for K8s v1.23 | June 2022             |
+| Support for K8s v1.24 | August 2022           |
+
 ## License
 
 Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
