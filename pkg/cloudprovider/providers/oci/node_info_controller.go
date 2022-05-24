@@ -45,7 +45,7 @@ const (
 	FaultDomainLabel        = "oci.oraclecloud.com/fault-domain"
 	CompartmentIDAnnotation = "oci.oraclecloud.com/compartment-id"
 	AvailabilityDomainLabel = "csi-ipv6-full-ad-name"
-	timeout                 = 10 * time.Second
+	timeout                 = 5 * time.Minute
 )
 
 // NodeInfoController helps compute workers in the cluster
