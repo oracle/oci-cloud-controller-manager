@@ -3489,6 +3489,74 @@ func Test_getLoadBalancerTags(t *testing.T) {
 			},
 			err: nil,
 		},
+		"reverse compatibility tags test for nlb 1": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                               "nlb",
+						ServiceAnnotationNetworkLoadBalancerFreeformTags:                `{"cluster":"resource1", "unique":"tag1"}`,
+						ServiceAnnotationNetworkLoadBalancerDefinedTags:                 `{"namespace":{"key":"value1", "owner":"team1"}}`,
+						ServiceAnnotationNetworkLoadBalancerInitialFreeformTagsOverride: `{"cluster":"resource", "unique":"tag"}`,
+						ServiceAnnotationNetworkLoadBalancerInitialDefinedTagsOverride:  `{"namespace":{"key":"value", "owner":"team"}}`,
+					},
+				},
+			},
+			desiredLBTags: &providercfg.TagConfig{
+				FreeformTags: map[string]string{"cluster": "resource", "unique": "tag"},
+				DefinedTags:  map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}},
+			},
+			err: nil,
+		},
+		"reverse compatibility tags test for nlb 2": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                "nlb",
+						ServiceAnnotationNetworkLoadBalancerFreeformTags: `{"cluster":"resource1", "unique":"tag1"}`,
+						ServiceAnnotationNetworkLoadBalancerDefinedTags:  `{"namespace":{"key":"value1", "owner":"team1"}}`,
+					},
+				},
+			},
+			desiredLBTags: &providercfg.TagConfig{
+				FreeformTags: map[string]string{"cluster": "resource1", "unique": "tag1"},
+				DefinedTags:  map[string]map[string]interface{}{"namespace": {"owner": "team1", "key": "value1"}},
+			},
+			err: nil,
+		},
+		"reverse compatibility tags test for nlb 3": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                              "nlb",
+						ServiceAnnotationNetworkLoadBalancerFreeformTags:               `{"cluster":"resource1", "unique":"tag1"}`,
+						ServiceAnnotationNetworkLoadBalancerDefinedTags:                `{"namespace":{"key":"value1", "owner":"team1"}}`,
+						ServiceAnnotationNetworkLoadBalancerInitialDefinedTagsOverride: `{"namespace":{"key":"value", "owner":"team"}}`,
+					},
+				},
+			},
+			desiredLBTags: &providercfg.TagConfig{
+				FreeformTags: map[string]string{"cluster": "resource1", "unique": "tag1"},
+				DefinedTags:  map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}},
+			},
+			err: nil,
+		},
+		"reverse compatibility tags test for nlb 4": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                               "nlb",
+						ServiceAnnotationNetworkLoadBalancerFreeformTags:                `{"cluster":"resource1", "unique":"tag1"}`,
+						ServiceAnnotationNetworkLoadBalancerDefinedTags:                 `{"namespace":{"key":"value1", "owner":"team1"}}`,
+						ServiceAnnotationNetworkLoadBalancerInitialFreeformTagsOverride: `{"cluster":"resource", "unique":"tag"}`,
+					},
+				},
+			},
+			desiredLBTags: &providercfg.TagConfig{
+				FreeformTags: map[string]string{"cluster": "resource", "unique": "tag"},
+				DefinedTags:  map[string]map[string]interface{}{"namespace": {"owner": "team1", "key": "value1"}},
+			},
+			err: nil,
+		},
 	}
 
 	for name, tc := range testCases {
@@ -3599,7 +3667,7 @@ func Test_getHealthChecker(t *testing.T) {
 				},
 			},
 			expected: nil,
-			err: fmt.Errorf("invalid value for health check interval, should be between %v and %v", LBHealthCheckIntervalMin, LBHealthCheckIntervalMax),
+			err:      fmt.Errorf("invalid value for health check interval, should be between %v and %v", LBHealthCheckIntervalMin, LBHealthCheckIntervalMax),
 		},
 		"lb wrong interval value - greater than max": {
 			service: &v1.Service{
@@ -3610,31 +3678,31 @@ func Test_getHealthChecker(t *testing.T) {
 				},
 			},
 			expected: nil,
-			err: fmt.Errorf("invalid value for health check interval, should be between %v and %v", LBHealthCheckIntervalMin, LBHealthCheckIntervalMax),
+			err:      fmt.Errorf("invalid value for health check interval, should be between %v and %v", LBHealthCheckIntervalMin, LBHealthCheckIntervalMax),
 		},
 		"nlb wrong interval value - lesser than min": {
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						ServiceAnnotationLoadBalancerType: "nlb",
+						ServiceAnnotationLoadBalancerType:                       "nlb",
 						ServiceAnnotationNetworkLoadBalancerHealthCheckInterval: "3000",
 					},
 				},
 			},
 			expected: nil,
-			err: fmt.Errorf("invalid value for health check interval, should be between %v and %v", NLBHealthCheckIntervalMin, NLBHealthCheckIntervalMax),
+			err:      fmt.Errorf("invalid value for health check interval, should be between %v and %v", NLBHealthCheckIntervalMin, NLBHealthCheckIntervalMax),
 		},
 		"nlb wrong interval value - greater than max": {
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						ServiceAnnotationLoadBalancerType: "nlb",
+						ServiceAnnotationLoadBalancerType:                       "nlb",
 						ServiceAnnotationNetworkLoadBalancerHealthCheckInterval: "3000000",
 					},
 				},
 			},
 			expected: nil,
-			err: fmt.Errorf("invalid value for health check interval, should be between %v and %v", NLBHealthCheckIntervalMin, NLBHealthCheckIntervalMax),
+			err:      fmt.Errorf("invalid value for health check interval, should be between %v and %v", NLBHealthCheckIntervalMin, NLBHealthCheckIntervalMax),
 		},
 	}
 
@@ -3825,10 +3893,10 @@ func Test_getSecurityListManagementMode(t *testing.T) {
 	}
 }
 
-func Test_validateService(t *testing.T){
+func Test_validateService(t *testing.T) {
 	testCases := map[string]struct {
-		service  *v1.Service
-		err error
+		service *v1.Service
+		err     error
 	}{
 		"defaults": {
 			service: &v1.Service{
@@ -3848,7 +3916,7 @@ func Test_validateService(t *testing.T){
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						ServiceAnnotationLoadBalancerType: "nlb",
+						ServiceAnnotationLoadBalancerType:                              "nlb",
 						ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode: "Neither",
 					},
 				},
@@ -3885,7 +3953,7 @@ func Test_validateService(t *testing.T){
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						ServiceAnnotationLoadBalancerType: "nlb",
+						ServiceAnnotationLoadBalancerType:                              "nlb",
 						ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode: "All",
 					},
 				},
@@ -3905,7 +3973,7 @@ func Test_validateService(t *testing.T){
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
-						ServiceAnnotationLoadBalancerType: "nlb",
+						ServiceAnnotationLoadBalancerType:                              "nlb",
 						ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode: "None",
 					},
 				},

@@ -178,13 +178,23 @@ const (
 	// specifying the security list management mode ("All", "Frontend", "None") that configures how security lists are managed by the CCM
 	ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode = "oci-network-load-balancer.oraclecloud.com/security-list-management-mode"
 
+	// ServiceAnnotationNetworkLoadBalancerDefinedTags is a service annotation for specifying
+	// defined tags on the nlb
+	// DEPRECATED
+	ServiceAnnotationNetworkLoadBalancerDefinedTags = "oci-network-load-balancer.oraclecloud.com/defined-tags"
+
+	// ServiceAnnotationNetworkLoadBalancerFreeformTags is a service annotation for specifying
+	// freeform tags on the nlb
+	// DEPRECATED
+	ServiceAnnotationNetworkLoadBalancerFreeformTags = "oci-network-load-balancer.oraclecloud.com/freeform-tags"
+
 	// ServiceAnnotationNetworkLoadBalancerInitialDefinedTagsOverride is a service annotation for specifying
 	// defined tags on the nlb
-	ServiceAnnotationNetworkLoadBalancerInitialDefinedTagsOverride = "oci-network-load-balancer.oraclecloud.com/defined-tags"
+	ServiceAnnotationNetworkLoadBalancerInitialDefinedTagsOverride = "oci-network-load-balancer.oraclecloud.com/initial-defined-tags-override"
 
 	// ServiceAnnotationNetworkLoadBalancerInitialFreeformTagsOverride is a service annotation for specifying
 	// freeform tags on the nlb
-	ServiceAnnotationNetworkLoadBalancerInitialFreeformTagsOverride = "oci-network-load-balancer.oraclecloud.com/freeform-tags"
+	ServiceAnnotationNetworkLoadBalancerInitialFreeformTagsOverride = "oci-network-load-balancer.oraclecloud.com/initial-freeform-tags-override"
 
 	// ServiceAnnotationNetworkLoadBalancerNodeFilter is a service annotation to select specific nodes as your backend in the NLB
 	// based on label selector.
@@ -1041,6 +1051,14 @@ func getLoadBalancerTags(svc *v1.Service, initialTags *config.InitialTags) (*con
 		{
 			freeformTagsAnnotation, freeformTagsAnnotationExists = svc.Annotations[ServiceAnnotationNetworkLoadBalancerInitialFreeformTagsOverride]
 			definedTagsAnnotation, definedTagsAnnotationExists = svc.Annotations[ServiceAnnotationNetworkLoadBalancerInitialDefinedTagsOverride]
+
+			if !freeformTagsAnnotationExists {
+				freeformTagsAnnotation, freeformTagsAnnotationExists = svc.Annotations[ServiceAnnotationNetworkLoadBalancerFreeformTags]
+			}
+
+			if !definedTagsAnnotationExists {
+				definedTagsAnnotation, definedTagsAnnotationExists = svc.Annotations[ServiceAnnotationNetworkLoadBalancerDefinedTags]
+			}
 		}
 	default:
 		{
