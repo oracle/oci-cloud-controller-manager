@@ -67,6 +67,7 @@ const (
 	lbConnectionIdleTimeoutTCP       = 300
 	lbConnectionIdleTimeoutHTTP      = 60
 	flexible                         = "flexible"
+	lbLifecycleStateActive           = "ACTIVE"
 	lbMaximumNetworkSecurityGroupIds = 5
 	excludeBackendFromLBLabel        = "node.kubernetes.io/exclude-from-external-load-balancers"
 )
@@ -490,6 +491,11 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 			metrics.SendMetricData(cp.metricPusher, getMetric(loadBalancerType, Create), time.Since(startTime).Seconds(), dimensionsMap)
 		}
 		return lbStatus, err
+	}
+
+	if lb.LifecycleState == nil || *lb.LifecycleState != lbLifecycleStateActive {
+		logger.With("lifecycleState", lb.LifecycleState).Infof("LB is not in %s state, will retry EnsureLoadBalancer", lbLifecycleStateActive)
+		return nil, errors.Errorf("rejecting request to update LB which is not in %s state", lbLifecycleStateActive)
 	}
 
 	// Existing load balancers cannot change subnets. This ensures that the spec matches
@@ -1074,6 +1080,9 @@ func loadBalancerToStatus(lb *client.GenericLoadBalancer) (*v1.LoadBalancerStatu
 			continue // should never happen but appears to when EnsureLoadBalancer is called with 0 nodes.
 		}
 		ingress = append(ingress, v1.LoadBalancerIngress{IP: *ip.IpAddress})
+	}
+	if len(ingress) == 0 {
+		return nil, errors.Errorf("ip addresses are not assigned for load balancer %q", *lb.DisplayName)
 	}
 	return &v1.LoadBalancerStatus{Ingress: ingress}, nil
 }

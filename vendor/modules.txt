@@ -9,6 +9,8 @@ github.com/PuerkitoBio/purell
 github.com/PuerkitoBio/urlesc
 # github.com/beorn7/perks v1.0.1
 github.com/beorn7/perks/quantile
+# github.com/bits-and-blooms/bitset v1.2.0
+github.com/bits-and-blooms/bitset
 # github.com/blang/semver v3.5.1+incompatible
 github.com/blang/semver
 # github.com/cespare/xxhash/v2 v2.1.1
@@ -180,6 +182,9 @@ github.com/opencontainers/go-digest
 # github.com/opencontainers/runc v1.0.2
 github.com/opencontainers/runc/libcontainer/apparmor
 github.com/opencontainers/runc/libcontainer/utils
+# github.com/opencontainers/selinux v1.8.2
+github.com/opencontainers/selinux/go-selinux
+github.com/opencontainers/selinux/pkg/pwalk
 # github.com/oracle/oci-go-sdk/v50 v50.1.0
 ## explicit
 github.com/oracle/oci-go-sdk/v50/common
@@ -1091,6 +1096,7 @@ k8s.io/kubernetes/pkg/features
 k8s.io/kubernetes/pkg/fieldpath
 k8s.io/kubernetes/pkg/kubelet/types
 k8s.io/kubernetes/pkg/kubelet/util/format
+k8s.io/kubernetes/pkg/proxy/util
 k8s.io/kubernetes/pkg/scheduler/apis/config
 k8s.io/kubernetes/pkg/scheduler/framework
 k8s.io/kubernetes/pkg/scheduler/internal/parallelize
@@ -1100,9 +1106,21 @@ k8s.io/kubernetes/pkg/util/hash
 k8s.io/kubernetes/pkg/util/labels
 k8s.io/kubernetes/pkg/util/node
 k8s.io/kubernetes/pkg/util/parsers
+k8s.io/kubernetes/pkg/util/selinux
+k8s.io/kubernetes/pkg/util/sysctl
 k8s.io/kubernetes/pkg/util/taints
+k8s.io/kubernetes/pkg/volume
+k8s.io/kubernetes/pkg/volume/util/fs
+k8s.io/kubernetes/pkg/volume/util/fsquota
+k8s.io/kubernetes/pkg/volume/util/fsquota/common
+k8s.io/kubernetes/pkg/volume/util/hostutil
+k8s.io/kubernetes/pkg/volume/util/recyclerclient
+k8s.io/kubernetes/pkg/volume/util/subpath
+k8s.io/kubernetes/pkg/volume/util/types
 k8s.io/kubernetes/test/utils
 k8s.io/kubernetes/test/utils/image
+# k8s.io/mount-utils v0.22.5 => k8s.io/mount-utils v0.22.5
+k8s.io/mount-utils
 # k8s.io/utils v0.0.0-20210819203725-bdf08cb9a70a
 ## explicit
 k8s.io/utils/buffer
@@ -1110,8 +1128,11 @@ k8s.io/utils/exec
 k8s.io/utils/integer
 k8s.io/utils/internal/third_party/forked/golang/golang-lru
 k8s.io/utils/internal/third_party/forked/golang/net
+k8s.io/utils/io
+k8s.io/utils/keymutex
 k8s.io/utils/lru
 k8s.io/utils/net
+k8s.io/utils/nsenter
 k8s.io/utils/path
 k8s.io/utils/pointer
 k8s.io/utils/trace
