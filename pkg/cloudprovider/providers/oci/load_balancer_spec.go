@@ -34,10 +34,10 @@ import (
 )
 
 const (
-	LB  = "lb"
-	NLB = "nlb"
-	LBHealthCheckIntervalMin = 1000
-	LBHealthCheckIntervalMax = 1800000
+	LB                        = "lb"
+	NLB                       = "nlb"
+	LBHealthCheckIntervalMin  = 1000
+	LBHealthCheckIntervalMax  = 1800000
 	NLBHealthCheckIntervalMin = 10000
 	NLBHealthCheckIntervalMax = 1800000
 )
@@ -138,6 +138,10 @@ const (
 
 	// ServiceAnnotationLoadBalancerType is a service annotation for specifying lb type
 	ServiceAnnotationLoadBalancerType = "oci.oraclecloud.com/load-balancer-type"
+
+	// ServiceAnnotationLoadBalancerNodeFilter is a service annotation to select specific nodes as your backend in the LB
+	// based on label selector.
+	ServiceAnnotationLoadBalancerNodeFilter = "oci.oraclecloud.com/node-label-selector"
 )
 
 // NLB specific annotations
@@ -181,6 +185,10 @@ const (
 	// ServiceAnnotationNetworkLoadBalancerInitialFreeformTagsOverride is a service annotation for specifying
 	// freeform tags on the nlb
 	ServiceAnnotationNetworkLoadBalancerInitialFreeformTagsOverride = "oci-network-load-balancer.oraclecloud.com/freeform-tags"
+
+	// ServiceAnnotationNetworkLoadBalancerNodeFilter is a service annotation to select specific nodes as your backend in the NLB
+	// based on label selector.
+	ServiceAnnotationNetworkLoadBalancerNodeFilter = "oci-network-load-balancer.oraclecloud.com/node-label-selector"
 )
 
 // certificateData is a structure containing the data about a K8S secret required

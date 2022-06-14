@@ -30,6 +30,268 @@ import (
 	"github.com/oracle/oci-go-sdk/v50/core"
 )
 
+func newNodeObj(name string, labels map[string]string) *v1.Node {
+	return &v1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   name,
+			Labels: labels,
+		},
+	}
+}
+
+func Test_filterNodes(t *testing.T) {
+	testCases := map[string]struct {
+		nodes    []*v1.Node
+		service  *v1.Service
+		expected []*v1.Node
+	}{
+		"lb - no annotation": {
+			nodes: []*v1.Node{
+				newNodeObj("node1", nil),
+				newNodeObj("node2", nil),
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace:   "kube-system",
+					Name:        "testservice",
+					Annotations: map[string]string{},
+				},
+			},
+			expected: []*v1.Node{
+				newNodeObj("node1", nil),
+				newNodeObj("node2", nil),
+			},
+		},
+		"nlb - no annotation": {
+			nodes: []*v1.Node{
+				newNodeObj("node1", nil),
+				newNodeObj("node2", nil),
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			expected: []*v1.Node{
+				newNodeObj("node1", nil),
+				newNodeObj("node2", nil),
+			},
+		},
+		"lb - empty annotation": {
+			nodes: []*v1.Node{
+				newNodeObj("node1", nil),
+				newNodeObj("node2", nil),
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerNodeFilter: "",
+					},
+				},
+			},
+			expected: []*v1.Node{
+				newNodeObj("node1", nil),
+				newNodeObj("node2", nil),
+			},
+		},
+		"nlb - empty annotation": {
+			nodes: []*v1.Node{
+				newNodeObj("node1", nil),
+				newNodeObj("node2", nil),
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:              "nlb",
+						ServiceAnnotationNetworkLoadBalancerNodeFilter: "",
+					},
+				},
+			},
+			expected: []*v1.Node{
+				newNodeObj("node1", nil),
+				newNodeObj("node2", nil),
+			},
+		},
+		"lb - single selector select all": {
+			nodes: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "bar"}),
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerNodeFilter: "foo=bar",
+					},
+				},
+			},
+			expected: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "bar"}),
+			},
+		},
+		"nlb - single selector select all": {
+			nodes: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "bar"}),
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:              "nlb",
+						ServiceAnnotationNetworkLoadBalancerNodeFilter: "foo=bar",
+					},
+				},
+			},
+			expected: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "bar"}),
+			},
+		},
+		"lb - single selector select some": {
+			nodes: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "baz"}),
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerNodeFilter: "foo=bar",
+					},
+				},
+			},
+			expected: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+			},
+		},
+		"nlb - single selector select some": {
+			nodes: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "baz"}),
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:              "nlb",
+						ServiceAnnotationNetworkLoadBalancerNodeFilter: "foo=bar",
+					},
+				},
+			},
+			expected: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+			},
+		},
+		"lb - multi selector select all": {
+			nodes: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "baz"}),
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerNodeFilter: "foo",
+					},
+				},
+			},
+			expected: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "baz"}),
+			},
+		},
+		"nlb - multi selector select all": {
+			nodes: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "baz"}),
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:              "nlb",
+						ServiceAnnotationNetworkLoadBalancerNodeFilter: "foo",
+					},
+				},
+			},
+			expected: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "baz"}),
+			},
+		},
+		"lb - multi selector select some": {
+			nodes: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "joe"}),
+				newNodeObj("node2", map[string]string{"foo": "baz"}),
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerNodeFilter: "foo in (bar, baz)",
+					},
+				},
+			},
+			expected: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "baz"}),
+			},
+		},
+		"nlb - multi selector select some": {
+			nodes: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "joe"}),
+				newNodeObj("node2", map[string]string{"foo": "baz"}),
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:              "nlb",
+						ServiceAnnotationNetworkLoadBalancerNodeFilter: "foo in (bar, baz)",
+					},
+				},
+			},
+			expected: []*v1.Node{
+				newNodeObj("node1", map[string]string{"foo": "bar"}),
+				newNodeObj("node2", map[string]string{"foo": "baz"}),
+			},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			nodes, err := filterNodes(tc.service, tc.nodes)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if !reflect.DeepEqual(nodes, tc.expected) {
+				t.Errorf("expected: %+v got %+v", tc.expected, nodes)
+			}
+		})
+	}
+}
+
 func Test_getDefaultLBSubnets(t *testing.T) {
 	type args struct {
 		subnet1 string
