@@ -31,15 +31,13 @@ import (
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/informers"
 	informersv1 "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	listersv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
-	"sigs.k8s.io/sig-storage-lib-external-provisioner/v6/controller"
+	"sigs.k8s.io/sig-storage-lib-external-provisioner/v8/controller"
 )
 
 const (
@@ -242,17 +240,6 @@ func Run(logger *zap.SugaredLogger, kubeconfig string, master string, minVolumeS
 		return errors.Wrapf(err, "failed to create Kubernetes client")
 	}
 
-	// The controller needs to know what the server version is because out-of-tree
-	// provisioners aren't officially supported until 1.5
-	var serverVersion *version.Info
-	err = wait.PollUntil(15*time.Second, func() (done bool, err error) {
-		serverVersion, err = clientset.Discovery().ServerVersion()
-		if err != nil {
-			logger.With(zap.Error(err)).Info("failed to get kube-apiserver version, will retry again")
-			return false, nil
-		}
-		return true, nil
-	}, stopCh)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get kube-apiserver version")
 	}
@@ -285,7 +272,6 @@ func Run(logger *zap.SugaredLogger, kubeconfig string, master string, minVolumeS
 		clientset,
 		provisionerType,
 		ociProvisioner,
-		serverVersion.GitVersion,
 		controller.ResyncPeriod(resyncPeriod),
 		controller.ExponentialBackOffOnError(exponentialBackOffOnError),
 		controller.FailedProvisionThreshold(failedRetryThreshold),
