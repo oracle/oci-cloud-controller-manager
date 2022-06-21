@@ -25,7 +25,7 @@ check-env "CLUSTER_KUBECONFIG"    $CLUSTER_KUBECONFIG
 check-env "CLOUD_CONFIG"          $CLOUD_CONFIG
 check-env "ADLOCATION"      $ADLOCATION
 check-env "NSG_OCIDS"       $NSG_OCIDS
-check-env "VOLUME_HANDLE"       $VOLUME_HANDLE
+check-env "FSS_VOLUME_HANDLE"       $FSS_VOLUME_HANDLE
 
 function set_image_pull_repo_and_delete_namespace_flag () {
     if [ -z "$IMAGE_PULL_REPO" ]; then

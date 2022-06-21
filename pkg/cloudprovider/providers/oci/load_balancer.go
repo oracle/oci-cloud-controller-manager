@@ -1081,9 +1081,6 @@ func loadBalancerToStatus(lb *client.GenericLoadBalancer) (*v1.LoadBalancerStatu
 		}
 		ingress = append(ingress, v1.LoadBalancerIngress{IP: *ip.IpAddress})
 	}
-	if len(ingress) == 0 {
-		return nil, errors.Errorf("ip addresses are not assigned for load balancer %q", *lb.DisplayName)
-	}
 	return &v1.LoadBalancerStatus{Ingress: ingress}, nil
 }
 
