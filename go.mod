@@ -38,35 +38,26 @@ require (
 	github.com/container-storage-interface/spec v1.5.0
 	github.com/golang/protobuf v1.5.2
 	github.com/kubernetes-csi/csi-lib-utils v0.8.1
-	github.com/kubernetes-csi/external-attacher v0.0.0-20201106010650-6d1beabd0fad //v3.0.2
-	github.com/kubernetes-csi/external-provisioner v0.0.0-20210409185916-86c2ba950e76 // v2.0.5
-	github.com/kubernetes-csi/external-resizer v1.0.1 // v1.0.1
-	github.com/kubernetes-csi/external-snapshotter/client/v2 v2.2.0-rc3
 	github.com/onsi/ginkgo v1.14.1
 	github.com/onsi/gomega v1.10.2
 	github.com/oracle/oci-go-sdk/v50 v50.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.11.0
-	github.com/spf13/cobra v1.2.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.8.1
 	go.uber.org/zap v1.19.0
 	golang.org/x/net v0.0.0-20211209124913-491a49abca63
-	golang.org/x/sys v0.0.0-20210831042530-f4d43177bf5e
 	google.golang.org/grpc v1.40.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.23.4
 	k8s.io/apimachinery v0.23.4
-	k8s.io/apiserver v0.23.4
 	k8s.io/client-go v0.23.4
 	k8s.io/cloud-provider v0.23.4
 	k8s.io/component-base v0.23.4
 	k8s.io/component-helpers v0.23.4
-	k8s.io/csi-translation-lib v0.23.4
 	k8s.io/klog v1.0.0
 	k8s.io/klog/v2 v2.30.0
-	k8s.io/kubelet v0.23.4
 	k8s.io/kubernetes v1.23.4
 	k8s.io/utils v0.0.0-20211116205334-6203023598ed
 	sigs.k8s.io/sig-storage-lib-external-provisioner/v6 v6.3.0
@@ -110,6 +101,10 @@ require (
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/kubernetes-csi/external-attacher v0.0.0-20201106010650-6d1beabd0fad // indirect; v3.0.2
+	github.com/kubernetes-csi/external-provisioner v0.0.0-20210409185916-86c2ba950e76 // indirect; v2.0.5
+	github.com/kubernetes-csi/external-resizer v1.0.1 // indirect; v1.0.1
+	github.com/kubernetes-csi/external-snapshotter/client/v2 v2.2.0-rc3 // indirect
 	github.com/magiconair/properties v1.8.5 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
@@ -132,6 +127,7 @@ require (
 	github.com/sony/gobreaker v0.4.2-0.20210216022020-dd874f9dd33b // indirect
 	github.com/spf13/afero v1.6.0 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
+	github.com/spf13/cobra v1.2.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.0 // indirect
@@ -153,6 +149,7 @@ require (
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
 	golang.org/x/oauth2 v0.0.0-20210819190943-2bc19b11175f // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
+	golang.org/x/sys v0.0.0-20210831042530-f4d43177bf5e // indirect
 	golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
@@ -164,10 +161,13 @@ require (
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	k8s.io/apiserver v0.23.4 // indirect
 	k8s.io/controller-manager v0.23.4 // indirect
+	k8s.io/csi-translation-lib v0.23.4 // indirect
 	k8s.io/kube-openapi v0.0.0-20211115234752-e816edb12b65 // indirect
 	k8s.io/kube-scheduler v0.0.0 // indirect
 	k8s.io/kubectl v0.0.0 // indirect
+	k8s.io/kubelet v0.23.4 // indirect
 	k8s.io/mount-utils v0.23.4 // indirect
 	oracle.com/oci/httpsigner v0.0.0-20190320175442-e8cb27ebf440 // indirect
 	oracle.com/oci/ociauthz v0.0.0-20200515161105-5b1e37d2dc95 // indirect
