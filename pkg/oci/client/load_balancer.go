@@ -388,13 +388,14 @@ func (c *loadbalancerClientStruct) AwaitWorkRequest(ctx context.Context, id stri
 	var wr *loadbalancer.WorkRequest
 	contextWithTimeout, cancel := context.WithTimeout(ctx, defaultSynchronousAPIContextTimeout)
 	defer cancel()
+	requestId, _ := generateRandUUID()
 	err := wait.PollUntil(workRequestPollInterval, func() (done bool, err error) {
 		twr, err := c.GetWorkRequest(contextWithTimeout, id)
 		if err != nil {
 			if IsRetryable(err) {
 				return false, nil
 			}
-			return true, errors.WithStack(err)
+			return true, errors.Wrapf(errors.WithStack(err), "failed to get workrequest. opc-request-id: %s", requestId)
 		}
 		switch twr.LifecycleState {
 		case loadbalancer.WorkRequestLifecycleStateSucceeded:

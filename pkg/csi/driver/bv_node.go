@@ -12,6 +12,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	kubeAPI "k8s.io/api/core/v1"
+	"k8s.io/kubernetes/pkg/volume"
+	"k8s.io/kubernetes/pkg/volume/util/hostutil"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
@@ -436,7 +438,7 @@ func getDevicePathAndAttachmentType(logger *zap.SugaredLogger, path []string) (s
 // NodeGetCapabilities returns the supported capabilities of the node server
 func (d BlockVolumeNodeDriver) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
 	var nscaps []*csi.NodeServiceCapability
-	nodeCaps := []csi.NodeServiceCapability_RPC_Type{csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME, csi.NodeServiceCapability_RPC_EXPAND_VOLUME}
+	nodeCaps := []csi.NodeServiceCapability_RPC_Type{csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME, csi.NodeServiceCapability_RPC_GET_VOLUME_STATS, csi.NodeServiceCapability_RPC_EXPAND_VOLUME}
 	for _, nodeCap := range nodeCaps {
 		c := &csi.NodeServiceCapability{
 			Type: &csi.NodeServiceCapability_Rpc{
@@ -478,7 +480,53 @@ func (d BlockVolumeNodeDriver) NodeGetInfo(ctx context.Context, req *csi.NodeGet
 
 // NodeGetVolumeStats return the stats of the volume
 func (d BlockVolumeNodeDriver) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "NodeGetVolumeStats is not supported yet")
+	logger := d.logger.With("volumeID", req.VolumeId, "volumePath", req.VolumePath)
+
+	volumeID := req.GetVolumeId()
+	if len(volumeID) == 0 {
+		logger.Errorf("Volume ID not provided")
+		return nil, status.Error(codes.InvalidArgument, "Volume ID not provided")
+	}
+	volumePath := req.GetVolumePath()
+	if len(volumePath) == 0 {
+		logger.Errorf("Volume path not provided")
+		return nil, status.Error(codes.InvalidArgument, "volume path must be provided")
+	}
+
+	hostUtil := hostutil.NewHostUtil()
+	exists, err := hostUtil.PathExists(volumePath)
+	if err != nil {
+		logger.With(zap.Error(err)).Errorf("Failed to find if path exists %s", volumePath)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if !exists {
+		logger.Infof("Path does not exist %s", volumePath)
+		return nil, status.Errorf(codes.NotFound, "path %s does not exist", volumePath)
+	}
+
+	metricsProvider := volume.NewMetricsStatFS(volumePath)
+	metrics, err := metricsProvider.GetMetrics()
+	if err != nil {
+		logger.With(zap.Error(err)).Errorf("failed to get block volume info on path %s: %v", volumePath, err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &csi.NodeGetVolumeStatsResponse{
+		Usage: []*csi.VolumeUsage{
+			{
+				Unit:      csi.VolumeUsage_BYTES,
+				Available: metrics.Available.AsDec().UnscaledBig().Int64(),
+				Total:     metrics.Capacity.AsDec().UnscaledBig().Int64(),
+				Used:      metrics.Used.AsDec().UnscaledBig().Int64(),
+			},
+			{
+				Unit:      csi.VolumeUsage_INODES,
+				Available: metrics.InodesFree.AsDec().UnscaledBig().Int64(),
+				Total:     metrics.Inodes.AsDec().UnscaledBig().Int64(),
+				Used:      metrics.InodesUsed.AsDec().UnscaledBig().Int64(),
+			},
+		},
+	}, nil
 }
 
 //NodeExpandVolume returns the expand of the volume
