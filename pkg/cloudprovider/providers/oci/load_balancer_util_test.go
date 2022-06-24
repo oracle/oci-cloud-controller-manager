@@ -1898,3 +1898,99 @@ func TestHasLoadBalancerNetworkSecurityGroupsChanged(t *testing.T) {
 		})
 	}
 }
+
+func Test_parseFlexibleShapeBandwidth(t *testing.T) {
+	var testCases = []struct {
+		name                string
+		annotation          string
+		inputShape          string
+		expectedOutputShape int
+		errMessage          string
+		wantErr             bool
+	}{
+		{
+			name:                "Valid Flexible Shape Min - Only integer",
+			annotation:          ServiceAnnotationLoadBalancerShapeFlexMin,
+			inputShape:          "100",
+			expectedOutputShape: 100,
+			errMessage:          "",
+			wantErr:             false,
+		},
+		{
+			name:                "Valid Flexible Shape Max - Only integer",
+			annotation:          ServiceAnnotationLoadBalancerShapeFlexMax,
+			inputShape:          "8000",
+			expectedOutputShape: 8000,
+			errMessage:          "",
+			wantErr:             false,
+		},
+		{
+			name:                "Valid Flexible Shape Min - With Unit (Uppercase M)",
+			annotation:          ServiceAnnotationLoadBalancerShapeFlexMin,
+			inputShape:          "100Mbps",
+			expectedOutputShape: 100,
+			errMessage:          "",
+			wantErr:             false,
+		},
+		{
+			name:                "Valid Flexible Shape Max - With Unit (Uppercase M)",
+			annotation:          ServiceAnnotationLoadBalancerShapeFlexMax,
+			inputShape:          "8000Mbps",
+			expectedOutputShape: 8000,
+			errMessage:          "",
+			wantErr:             false,
+		},
+		{
+			name:                "Valid Flexible Shape Min - With Unit (Lowercase m)",
+			annotation:          ServiceAnnotationLoadBalancerShapeFlexMin,
+			inputShape:          "100mbps",
+			expectedOutputShape: 100,
+			errMessage:          "",
+			wantErr:             false,
+		},
+		{
+			name:                "Valid Flexible Shape Max - With Unit (Lowercase m)",
+			annotation:          ServiceAnnotationLoadBalancerShapeFlexMax,
+			inputShape:          "8000mbps",
+			expectedOutputShape: 8000,
+			errMessage:          "",
+			wantErr:             false,
+		},
+		{
+			name:                "Invalid Flexible Shape Min",
+			annotation:          ServiceAnnotationLoadBalancerShapeFlexMin,
+			inputShape:          "100kbps",
+			expectedOutputShape: 0,
+			errMessage:          "invalid format for service.beta.kubernetes.io/oci-load-balancer-shape-flex-min annotation : 100kbps",
+			wantErr:             true,
+		},
+		{
+			name:                "Invalid Flexible Shape Max",
+			annotation:          ServiceAnnotationLoadBalancerShapeFlexMax,
+			inputShape:          "8000kbps",
+			expectedOutputShape: 0,
+			errMessage:          "invalid format for service.beta.kubernetes.io/oci-load-balancer-shape-flex-max annotation : 8000kbps",
+			wantErr:             true,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			parsedShape, err := parseFlexibleShapeBandwidth(tt.inputShape, tt.annotation)
+			if err != nil {
+				if !tt.wantErr {
+					t.Errorf("parseFlexibleShapeBandwidth() error = %v, wantErr = %v", err, tt.wantErr)
+				}
+				if !reflect.DeepEqual(err.Error(), tt.errMessage) {
+					t.Errorf("parseFlexibleShapeBandwidth() got errMessage = %v, want errMessage = %v", err.Error(), tt.errMessage)
+				}
+			}
+			if err == nil && tt.wantErr {
+				t.Errorf("parseFlexibleShapeBandwidth() error = %v, wantErr = %v", err, tt.wantErr)
+			}
+			if err == nil && parsedShape != tt.expectedOutputShape {
+				t.Errorf("parseFlexibleShapeBandwidth() got = %v, want = %v", parsedShape, tt.expectedOutputShape)
+			}
+		})
+	}
+}

@@ -1024,15 +1024,13 @@ func getLBShape(svc *v1.Service) (string, *int, *int, error) {
 		)
 	}
 
-	flexShapeMinMbps, err := strconv.Atoi(flexMinS)
+	flexShapeMinMbps, err := parseFlexibleShapeBandwidth(flexMinS, ServiceAnnotationLoadBalancerShapeFlexMin)
 	if err != nil {
-		return "", nil, nil, errors.Wrap(err,
-			fmt.Sprintf("The annotation %s should contain only integer value", ServiceAnnotationLoadBalancerShapeFlexMin))
+		return "", nil, nil, err
 	}
-	flexShapeMaxMbps, err = strconv.Atoi(flexMaxS)
+	flexShapeMaxMbps, err = parseFlexibleShapeBandwidth(flexMaxS, ServiceAnnotationLoadBalancerShapeFlexMax)
 	if err != nil {
-		return "", nil, nil, errors.Wrap(err,
-			fmt.Sprintf("The annotation %s should contain only integer value", ServiceAnnotationLoadBalancerShapeFlexMax))
+		return "", nil, nil, err
 	}
 	if flexShapeMinMbps < 10 {
 		flexShapeMinMbps = 10
