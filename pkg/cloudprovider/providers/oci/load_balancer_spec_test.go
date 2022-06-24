@@ -2197,29 +2197,6 @@ func TestNewLBSpecFailure(t *testing.T) {
 			},
 			expectedErrMsg: "error parsing service annotation: service.beta.kubernetes.io/oci-load-balancer-shape=flexible requires service.beta.kubernetes.io/oci-load-balancer-shape-flex-min and service.beta.kubernetes.io/oci-load-balancer-shape-flex-max to be set",
 		},
-		"invalid flex shape non int min/max": {
-			defaultSubnetOne: "one",
-			defaultSubnetTwo: "two",
-			service: &v1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "kube-system",
-					Name:      "testservice",
-					UID:       "test-uid",
-					Annotations: map[string]string{
-						ServiceAnnotationLoadBalancerShape:        "flexible",
-						ServiceAnnotationLoadBalancerShapeFlexMin: "10Mbps",
-						ServiceAnnotationLoadBalancerShapeFlexMax: "100Mbps",
-					},
-				},
-				Spec: v1.ServiceSpec{
-					SessionAffinity: v1.ServiceAffinityNone,
-					Ports: []v1.ServicePort{
-						{Protocol: v1.ProtocolTCP},
-					},
-				},
-			},
-			expectedErrMsg: `The annotation service.beta.kubernetes.io/oci-load-balancer-shape-flex-min should contain only integer value: strconv.Atoi: parsing "10Mbps": invalid syntax`,
-		},
 		"invalid loadbalancer policy": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",

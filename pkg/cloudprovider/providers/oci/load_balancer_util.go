@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -61,6 +62,8 @@ const (
 	// Delete the resource.
 	Delete = "delete"
 )
+
+const nonAlphanumericRegexExpression = "[^a-zA-Z0-9]+"
 
 // Action that should take place on the resource.
 type Action interface {
@@ -690,4 +693,19 @@ func getMetric(lbtype string, metricType string) string {
 		}
 	}
 	return ""
+}
+
+func parseFlexibleShapeBandwidth(shape, annotation string) (int, error) {
+	reg, _ := regexp.Compile(nonAlphanumericRegexExpression)
+	processedString := reg.ReplaceAllString(shape, "")
+	if strings.HasSuffix(processedString, "Mbps") {
+		processedString = strings.TrimSuffix(processedString, "Mbps")
+	} else if strings.HasSuffix(processedString, "mbps") {
+		processedString = strings.TrimSuffix(processedString, "mbps")
+	}
+	parsedIntFlexibleShape, err := strconv.Atoi(processedString)
+	if err != nil {
+		return 0, fmt.Errorf("invalid format for %s annotation : %v", annotation, shape)
+	}
+	return parsedIntFlexibleShape, nil
 }
