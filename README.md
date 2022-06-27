@@ -29,6 +29,8 @@ cloud-provider specific code out of the Kubernetes codebase.
 | \>=v 0.13 | v1.19                  | v1.21                  |
 | v1.19.12  | v1.19                  | v1.21                  |
 | v1.22.0   | v1.22                  | -                      |
+| v1.23.0   | v1.23                  | -                      |
+
 
 
 Note: 
@@ -168,7 +170,6 @@ by the community.
 
 | Release               | Expected Release Date |
 |-----------------------|-----------------------|
-| Support for K8s v1.23 | June 2022             |
 | Support for K8s v1.24 | August 2022           |
 
 ## License

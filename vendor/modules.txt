@@ -56,8 +56,6 @@ github.com/felixge/httpsnoop
 # github.com/fsnotify/fsnotify v1.4.9
 ## explicit; go 1.13
 github.com/fsnotify/fsnotify
-# github.com/go-kit/kit v0.10.0
-## explicit; go 1.13
 # github.com/go-logr/logr v1.2.0
 ## explicit; go 1.16
 github.com/go-logr/logr
@@ -98,8 +96,6 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
-# github.com/google/go-querystring v1.0.0
-## explicit
 # github.com/google/gofuzz v1.1.0
 ## explicit; go 1.12
 github.com/google/gofuzz
@@ -113,8 +109,6 @@ github.com/googleapis/gnostic/extensions
 github.com/googleapis/gnostic/jsonschema
 github.com/googleapis/gnostic/openapiv2
 github.com/googleapis/gnostic/openapiv3
-# github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
-## explicit; go 1.14
 # github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 ## explicit
 github.com/grpc-ecosystem/go-grpc-prometheus
@@ -150,14 +144,6 @@ github.com/json-iterator/go
 # github.com/kubernetes-csi/csi-lib-utils v0.8.1
 ## explicit; go 1.12
 github.com/kubernetes-csi/csi-lib-utils/protosanitizer
-# github.com/kubernetes-csi/external-attacher v0.0.0-20201106010650-6d1beabd0fad
-## explicit; go 1.15
-# github.com/kubernetes-csi/external-provisioner v0.0.0-20210409185916-86c2ba950e76
-## explicit; go 1.15
-# github.com/kubernetes-csi/external-resizer v1.0.1
-## explicit; go 1.15
-# github.com/kubernetes-csi/external-snapshotter/client/v2 v2.2.0-rc3
-## explicit; go 1.12
 # github.com/magiconair/properties v1.8.5
 ## explicit; go 1.13
 github.com/magiconair/properties
@@ -281,8 +267,6 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
-# github.com/sirupsen/logrus v1.8.1
-## explicit; go 1.13
 # github.com/sony/gobreaker v0.4.2-0.20210216022020-dd874f9dd33b
 ## explicit; go 1.12
 github.com/sony/gobreaker
@@ -1158,8 +1142,6 @@ k8s.io/controller-manager/pkg/informerfactory
 k8s.io/controller-manager/pkg/leadermigration
 k8s.io/controller-manager/pkg/leadermigration/config
 k8s.io/controller-manager/pkg/leadermigration/options
-# k8s.io/csi-translation-lib v0.23.4 => k8s.io/csi-translation-lib v0.23.4
-## explicit; go 1.16
 # k8s.io/klog v1.0.0
 ## explicit; go 1.12
 k8s.io/klog
@@ -1262,18 +1244,10 @@ k8s.io/utils/nsenter
 k8s.io/utils/path
 k8s.io/utils/pointer
 k8s.io/utils/trace
-# oracle.com/oci/httpsigner v0.0.0-20190320175442-e8cb27ebf440
-## explicit
-# oracle.com/oci/ociauthz v0.0.0-20200515161105-5b1e37d2dc95
-## explicit
-# oracle.com/oci/tagging v0.0.0-20190321202046-20a2e48911da
-## explicit
 # sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.0.27
 ## explicit; go 1.17
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client/pkg/client
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client/proto/client
-# sigs.k8s.io/controller-runtime v0.6.2
-## explicit; go 1.13
 # sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6
 ## explicit; go 1.16
 sigs.k8s.io/json
