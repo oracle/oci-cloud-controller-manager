@@ -14,7 +14,7 @@
 
 ARG CI_IMAGE_REGISTRY
 
-FROM ${CI_IMAGE_REGISTRY}/oci-kube-ci:1.0.6
+FROM golang:1.17.3 as builder
 
 ARG COMPONENT
 

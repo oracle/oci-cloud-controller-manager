@@ -22,7 +22,7 @@ spec:
         node-role.kubernetes.io/master: ""
       containers:
         - name: csi-volume-provisioner
-          image: k8s.gcr.io/sig-storage/csi-provisioner:v2.2.2
+          image: k8s.gcr.io/sig-storage/csi-provisioner:v3.1.0
           args:
             - --csi-address=/var/run/shared-tmpfs/csi.sock
             - --volume-name-prefix=csi
@@ -50,7 +50,7 @@ spec:
             - mountPath: /var/run/shared-tmpfs
               name: shared-tmpfs
         - name: csi-resizer
-          image: k8s.gcr.io/sig-storage/csi-resizer:v1.2.0
+          image: k8s.gcr.io/sig-storage/csi-resizer:v1.4.0
           args:
             - --csi-address=/var/run/shared-tmpfs/csi.sock
             - --leader-election
@@ -63,7 +63,7 @@ spec:
             - --endpoint=unix://var/run/shared-tmpfs/csi.sock
           command:
             - /usr/local/bin/oci-csi-controller-driver
-          image: ghcr.io/oracle/cloud-provider-oci:v1.22.0
+          image: ghcr.io/oracle/cloud-provider-oci:v1.23.0
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: config
