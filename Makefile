@@ -38,7 +38,7 @@ else
     VERSION   ?= ${VERSION}
 endif
 
-RELEASE = v1.22.0
+RELEASE = v1.23.0
 
 GOOS ?= linux
 ARCH ?= amd64
@@ -99,6 +99,11 @@ vendor:
 .PHONY: test
 test:
 	@./hack/test.sh $(SRC_DIRS)
+
+.PHONY: coverage
+coverage: test
+	GO111MODULE=off go tool cover -html=coverage.out -o coverage.html
+	GO111MODULE=off go tool cover -func=coverage.out > coverage.txt
 
 # Run the canary tests - in single run mode.
 .PHONY: canary-run-once
@@ -190,7 +195,7 @@ test-local: build-dirs
 			 -v $(PWD):$(DOCKER_REPO_ROOT) \
 			 -e COMPONENT="$(COMPONENT)" \
 			 -e GOPATH=/go/ \
-			odo-docker-signed-local.artifactory.oci.oraclecorp.com/odx-oke/oke/k8-manager-base:go1.16.1-1.0.9 \
+			odo-docker-signed-local.artifactory.oci.oraclecorp.com/odx-oke/oke/k8-manager-base:go1.17.7-1.0.10 \
 			make coverage image
 
 .PHONY: run-ccm-e2e-tests-local

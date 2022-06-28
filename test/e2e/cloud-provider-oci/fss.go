@@ -44,6 +44,7 @@ var _ = Describe("FSS in-transit encryption test", func() {
 })
 
 func TestEncryptionType(f *framework.CloudProviderFramework) {
+	checkNodeAvailability(f)
 	pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-e2e-test-intransit")
 	pv := pvcJig.CreatePVorFailFSS(f.Namespace.Name, setupF.VolumeHandle, "true")
 	pvc := pvcJig.CreateAndAwaitPVCOrFailFSS(f.Namespace.Name, pv.Name, "50Gi", nil)
@@ -73,9 +74,9 @@ var _ = Describe("Multiple Pods FSS test", func() {
 	})
 })
 
-func checkNodeAvailability(f *framework.CloudProviderFramework){
+func checkNodeAvailability(f *framework.CloudProviderFramework) {
 	pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-e2e-test")
-	nodeList, err := pvcJig.KubeClient.CoreV1().Nodes().List(context.Background(),v12.ListOptions{LabelSelector: "oke.oraclecloud.com/e2e.oci-fss-util"})
+	nodeList, err := pvcJig.KubeClient.CoreV1().Nodes().List(context.Background(), v12.ListOptions{LabelSelector: "oke.oraclecloud.com/e2e.oci-fss-util"})
 	if err != nil {
 		framework.Logf("Error getting applicable nodes: %v", err)
 	}
