@@ -32,6 +32,7 @@ replace (
 	k8s.io/mount-utils => k8s.io/mount-utils v0.24.1
 	k8s.io/pod-security-admission => k8s.io/pod-security-admission v0.24.1
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.24.1
+	sigs.k8s.io/sig-storage-lib-external-provisioner/v8 => sigs.k8s.io/sig-storage-lib-external-provisioner/v8 v8.0.0-20220531195724-a4ce2c1d2e52 // Master Branch to support Migrated leader election to lease API https://github.com/kubernetes-sigs/sig-storage-lib-external-provisioner/commit/a4ce2c1d2e5221e98de41dfd00bdc4b041a40b3f
 )
 
 require (
@@ -65,7 +66,7 @@ require (
 	k8s.io/kubernetes v1.24.1
 	k8s.io/mount-utils v0.24.1
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9
-	sigs.k8s.io/sig-storage-lib-external-provisioner/v6 v6.3.0
+	sigs.k8s.io/sig-storage-lib-external-provisioner/v8 v8.0.0
 )
 
 require (
