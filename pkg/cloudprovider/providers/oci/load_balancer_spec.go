@@ -201,8 +201,6 @@ const (
 	// ServiceAnnotationNetworkLoadBalancerNodeFilter is a service annotation to select specific nodes as your backend in the NLB
 	// based on label selector.
 	ServiceAnnotationNetworkLoadBalancerNodeFilter = "oci-network-load-balancer.oraclecloud.com/node-label-selector"
-
-	ServiceAnnotationNetworkLoadBalancerMixedProtocol = "oci-network-load-balancer.oraclecloud.com/node-label-selector"
 )
 
 // certificateData is a structure containing the data about a K8S secret required
@@ -837,7 +835,6 @@ func getListenersNetworkLoadBalancer(svc *v1.Service) (map[string]client.Generic
 		if !protocolMap[protocol] {
 			return nil, fmt.Errorf("invalid backend protocol %q requested for network load balancer listener", protocol)
 		}
-
 		port := int(servicePort.Port)
 		listenerName := ""
 		backendSetName := ""
