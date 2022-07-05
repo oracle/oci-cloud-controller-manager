@@ -42,6 +42,8 @@ const (
 	NLBHealthCheckIntervalMax = 1800000
 )
 
+const ProtocolTypeMixed = "TCP_AND_UDP"
+
 const (
 	// ServiceAnnotationLoadBalancerInternal is a service annotation for
 	// specifying that a load balancer should be internal.
@@ -199,6 +201,8 @@ const (
 	// ServiceAnnotationNetworkLoadBalancerNodeFilter is a service annotation to select specific nodes as your backend in the NLB
 	// based on label selector.
 	ServiceAnnotationNetworkLoadBalancerNodeFilter = "oci-network-load-balancer.oraclecloud.com/node-label-selector"
+
+	ServiceAnnotationNetworkLoadBalancerMixedProtocol = "oci-network-load-balancer.oraclecloud.com/node-label-selector"
 )
 
 // certificateData is a structure containing the data about a K8S secret required
@@ -487,13 +491,28 @@ func getBackendSetName(protocol string, port int) string {
 
 func getPorts(svc *v1.Service) (map[string]portSpec, error) {
 	ports := make(map[string]portSpec)
+	portsMap := make(map[int][]string)
+	mixedProtocolsPortSet := make(map[int]bool)
 	for _, servicePort := range svc.Spec.Ports {
-		name := getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
+		portsMap[int(servicePort.Port)] = append(portsMap[int(servicePort.Port)], string(servicePort.Protocol))
+	}
+	for _, servicePort := range svc.Spec.Ports {
+		port := int(servicePort.Port)
+		backendSetName := ""
+		if len(portsMap[port]) > 1 {
+			if mixedProtocolsPortSet[port] {
+				continue
+			}
+			backendSetName = getBackendSetName(ProtocolTypeMixed, port)
+			mixedProtocolsPortSet[port] = true
+		} else {
+			backendSetName = getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
+		}
 		healthChecker, err := getHealthChecker(svc)
 		if err != nil {
 			return nil, err
 		}
-		ports[name] = portSpec{
+		ports[backendSetName] = portSpec{
 			BackendPort:       int(servicePort.NodePort),
 			ListenerPort:      int(servicePort.Port),
 			HealthCheckerPort: *healthChecker.Port,
@@ -532,9 +551,23 @@ func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node
 	if err != nil {
 		return nil, err
 	}
+	portsMap := make(map[int][]string)
+	mixedProtocolsPortSet := make(map[int]bool)
 	for _, servicePort := range svc.Spec.Ports {
-		name := getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
+		portsMap[int(servicePort.Port)] = append(portsMap[int(servicePort.Port)], string(servicePort.Protocol))
+	}
+	for _, servicePort := range svc.Spec.Ports {
 		port := int(servicePort.Port)
+		backendSetName := ""
+		if len(portsMap[port]) > 1 {
+			if mixedProtocolsPortSet[port] {
+				continue
+			}
+			backendSetName = getBackendSetName(ProtocolTypeMixed, port)
+			mixedProtocolsPortSet[port] = true
+		} else {
+			backendSetName = getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
+		}
 		var secretName string
 		if sslCfg != nil && len(sslCfg.BackendSetSSLSecretName) != 0 {
 			secretName = sslCfg.BackendSetSSLSecretName
@@ -543,7 +576,7 @@ func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node
 		if err != nil {
 			return nil, err
 		}
-		backendSets[name] = client.GenericBackendSetDetails{
+		backendSets[backendSetName] = client.GenericBackendSetDetails{
 			Policy:           &loadbalancerPolicy,
 			Backends:         getBackends(logger, nodes, servicePort.NodePort),
 			HealthChecker:    healthChecker,
@@ -789,6 +822,11 @@ func getListenersOciLoadBalancer(svc *v1.Service, sslCfg *SSLConfig) (map[string
 
 func getListenersNetworkLoadBalancer(svc *v1.Service) (map[string]client.GenericListener, error) {
 	listeners := make(map[string]client.GenericListener)
+	portsMap := make(map[int][]string)
+	mixedProtocolsPortSet := make(map[int]bool)
+	for _, servicePort := range svc.Spec.Ports {
+		portsMap[int(servicePort.Port)] = append(portsMap[int(servicePort.Port)], string(servicePort.Protocol))
+	}
 	for _, servicePort := range svc.Spec.Ports {
 		protocol := string(servicePort.Protocol)
 
@@ -801,17 +839,31 @@ func getListenersNetworkLoadBalancer(svc *v1.Service) (map[string]client.Generic
 		}
 
 		port := int(servicePort.Port)
-		name := getListenerName(protocol, port)
+		listenerName := ""
+		backendSetName := ""
+		if len(portsMap[port]) > 1 {
+			if mixedProtocolsPortSet[port] {
+				continue
+			}
+			listenerName = getListenerName(ProtocolTypeMixed, port)
+			backendSetName = getBackendSetName(ProtocolTypeMixed, port)
+			protocol = ProtocolTypeMixed
+			mixedProtocolsPortSet[port] = true
+		} else {
+			listenerName = getListenerName(protocol, port)
+			backendSetName = getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
+		}
 
 		listener := client.GenericListener{
-			Name:                  &name,
-			DefaultBackendSetName: common.String(getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))),
+			Name:                  &listenerName,
+			DefaultBackendSetName: common.String(backendSetName),
 			Protocol:              &protocol,
 			Port:                  &port,
 		}
 
-		listeners[name] = listener
+		listeners[listenerName] = listener
 	}
+
 	return listeners, nil
 }
 
