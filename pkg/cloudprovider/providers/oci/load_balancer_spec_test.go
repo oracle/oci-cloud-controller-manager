@@ -3996,3 +3996,196 @@ func Test_validateService(t *testing.T) {
 		})
 	}
 }
+
+func Test_getListenersNetworkLoadBalancer(t *testing.T) {
+	testOneListenerName := "TCP_AND_UDP-67"
+	testOneBackendSetName := "TCP_AND_UDP-67"
+	testOneProtocol := "TCP_AND_UDP"
+	testOnePort := 67
+
+	testTwoListenerNameOne := "TCP-67"
+	testTwoBackendSetNameOne := "TCP-67"
+	testTwoProtocolOne := "TCP"
+	testTwoPortOne := 67
+
+	testTwoListenerNameTwo := "UDP-68"
+	testTwoBackendSetNameTwo := "UDP-68"
+	testTwoProtocolTwo := "UDP"
+	testTwoPortTwo := 68
+
+	testThreeListenerName := "TCP-67"
+	testThreeBackendSetName := "TCP-67"
+	testThreeProtocol := "TCP"
+	testThreePort := 67
+
+	testFourListenerName := "UDP-67"
+	testFourBackendSetName := "UDP-67"
+	testFourProtocol := "UDP"
+	testFourPort := 67
+
+	testCases := map[string]struct {
+		service       *v1.Service
+		wantListeners map[string]client.GenericListener
+		err           error
+	}{
+		"NLB_with_mixed_protocol_on_same_port": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+						},
+						{
+							Protocol: v1.ProtocolUDP,
+							Port:     int32(67),
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			wantListeners: map[string]client.GenericListener{
+				"TCP_AND_UDP-67": {
+					Name:                  &testOneListenerName,
+					DefaultBackendSetName: common.String(testOneBackendSetName),
+					Protocol:              &testOneProtocol,
+					Port:                  &testOnePort,
+				},
+			},
+			err: nil,
+		},
+		"NLB_with_mixed_protocol_on_different_port": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+						},
+						{
+							Protocol: v1.ProtocolUDP,
+							Port:     int32(68),
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			wantListeners: map[string]client.GenericListener{
+				"TCP-67": {
+					Name:                  &testTwoListenerNameOne,
+					DefaultBackendSetName: common.String(testTwoBackendSetNameOne),
+					Protocol:              &testTwoProtocolOne,
+					Port:                  &testTwoPortOne,
+				},
+				"UDP-68": {
+					Name:                  &testTwoListenerNameTwo,
+					DefaultBackendSetName: common.String(testTwoBackendSetNameTwo),
+					Protocol:              &testTwoProtocolTwo,
+					Port:                  &testTwoPortTwo,
+				},
+			},
+			err: nil,
+		},
+		"NLB_with_only_TCP_protocol": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			wantListeners: map[string]client.GenericListener{
+				"TCP-67": {
+					Name:                  &testThreeListenerName,
+					DefaultBackendSetName: common.String(testThreeBackendSetName),
+					Protocol:              &testThreeProtocol,
+					Port:                  &testThreePort,
+				},
+			},
+			err: nil,
+		},
+		"NLB_with_only_UDP_protocol": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolUDP,
+							Port:     int32(67),
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			wantListeners: map[string]client.GenericListener{
+				"UDP-67": {
+					Name:                  &testFourListenerName,
+					DefaultBackendSetName: common.String(testFourBackendSetName),
+					Protocol:              &testFourProtocol,
+					Port:                  &testFourPort,
+				},
+			},
+			err: nil,
+		},
+	}
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			gotListeners, err := getListenersNetworkLoadBalancer(tc.service)
+			if tc.err != nil && err == nil {
+				t.Errorf("Expected  \n%+v\nbut got\n%+v", tc.err, err)
+			}
+			if err != nil && tc.err == nil {
+				t.Errorf("Error: expected\n%+v\nbut got\n%+v", tc.err, err)
+			}
+			if err != nil && err.Error() != tc.err.Error() {
+				t.Errorf("Expected \n%+v\nbut got\n%+v", tc.err, err)
+			}
+			if len(gotListeners) != len(tc.wantListeners) {
+				t.Errorf("Number of excpected listeners \n%+v\nbut got\n%+v", len(tc.wantListeners), len(gotListeners))
+			}
+			if len(gotListeners) != 0 {
+				for name, listener := range tc.wantListeners {
+					gotListener, ok := gotListeners[name]
+					if !ok {
+						t.Errorf("Expected listener with name \n%+v\nbut listener not present", *listener.Name)
+					}
+					if *gotListener.Name != *listener.Name {
+						t.Errorf("Expected listener name \n%+v\nbut got listener name \n%+v", *listener.Name, *gotListener.Name)
+					}
+					if *gotListener.DefaultBackendSetName != *listener.DefaultBackendSetName {
+						t.Errorf("Expected default backend set name \n%+v\nbut got default backend set name \n%+v", *listener.DefaultBackendSetName, *gotListener.DefaultBackendSetName)
+					}
+					if *gotListener.Protocol != *listener.Protocol {
+						t.Errorf("Expected protocol \n%+v\nbut got protocol \n%+v", *listener.Protocol, *gotListener.Protocol)
+					}
+					if *gotListener.Port != *listener.Port {
+						t.Errorf("Expected port number \n%+v\nbut got port number \n%+v", *listener.Port, *gotListener.Port)
+					}
+				}
+			}
+		})
+	}
+}
