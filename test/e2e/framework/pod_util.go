@@ -177,7 +177,7 @@ func (j *PVCTestJig) CheckExpandedVolumeReadWrite(namespace string, podName stri
 }
 
 //CheckUsableVolumeSizeInsidePod checks a pvc expanded pod with a dymincally provisioned volume
-func (j *PVCTestJig) CheckUsableVolumeSizeInsidePod(namespace string, podName string) {
+func (j *PVCTestJig) CheckUsableVolumeSizeInsidePod(namespace string, podName string, capacity string) {
 
 	command := fmt.Sprintf("df -BG | grep '/data'")
 
@@ -187,7 +187,7 @@ func (j *PVCTestJig) CheckUsableVolumeSizeInsidePod(namespace string, podName st
 			Logf("got err: %v, retry until timeout", err)
 			return false, nil
 		}
-		if strings.Fields(strings.TrimSpace(stdout))[1] != "99G" {
+		if strings.Fields(strings.TrimSpace(stdout))[1] != capacity {
 			return false, nil
 		} else {
 			return true, nil
@@ -196,6 +196,20 @@ func (j *PVCTestJig) CheckUsableVolumeSizeInsidePod(namespace string, podName st
 		Failf("Write Test failed in pod '%v' after expanding pvc", podName)
 	}
 
+}
+
+//CheckFilesystemTypeOfVolumeInsidePod Checks the volume is provisioned with FsType as requested
+func (j *PVCTestJig) CheckFilesystemTypeOfVolumeInsidePod(namespace string, podName string, expectedFsType string) {
+	command := fmt.Sprintf("df -Th | grep '/data'")
+	stdout, err := RunHostCmd(namespace, podName, command)
+	if err != nil {
+		Logf("got err: %v, retry until timeout", err)
+	}
+	actualFsType := strings.Fields(strings.TrimSpace(stdout))[1]
+	if actualFsType != expectedFsType {
+		Failf("Filesystem type: %s does not match expected: %s", actualFsType, expectedFsType)
+	}
+	Logf("Filesystem type: %s is as expected", actualFsType)
 }
 
 // CreateAndAwaitNginxPodOrFail returns a pod definition based on the namespace using nginx image

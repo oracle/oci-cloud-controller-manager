@@ -43,7 +43,7 @@ const (
 	ociVolumeBackupID = "volume.beta.kubernetes.io/oci-volume-source"
 
 	// Block Volume Performance Units
-	VpusPerGB = "vpusPerGB"
+	VpusPerGB                 = "vpusPerGB"
 	LowCostPerformanceOption  = 0
 	BalancedPerformanceOption = 10
 	HigherPerformanceOption   = 20
@@ -249,11 +249,11 @@ func FormatBytes(inputBytes int64) string {
 
 func ValidateFsType(logger *zap.SugaredLogger, fsType string) string {
 	defaultFsType := "ext4"
-	if fsType == "ext4" || fsType == "ext3" {
+	if fsType == "ext4" || fsType == "ext3" || fsType == "xfs" {
 		return fsType
 	} else if fsType != "" {
 		//TODO: Remove this code when we support other than ext4 || ext3.
-		logger.With("fsType", fsType).Warn("Supporting only 'ext4' as fsType.")
+		logger.With("fsType", fsType).Warn("Supporting only 'ext4/ext3/xfs' as fsType.")
 		return defaultFsType
 	} else {
 		//No fsType provided returning ext4

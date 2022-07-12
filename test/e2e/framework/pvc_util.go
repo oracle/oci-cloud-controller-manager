@@ -47,6 +47,7 @@ const (
 	AttachmentTypeISCSI           = "iscsi"
 	AttachmentTypeParavirtualized = "paravirtualized"
 	AttachmentType                = "attachment-type"
+	FstypeKey                     = "csi.storage.k8s.io/fstype"
 )
 
 // PVCTestJig is a jig to help create PVC tests.

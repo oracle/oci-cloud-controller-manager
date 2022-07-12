@@ -34,6 +34,7 @@ const (
 	ClassOCIHigh      = "oci-bv-high"
 	ClassOCIKMS       = "oci-kms"
 	ClassOCIExt3      = "oci-ext3"
+	ClassOCIXfs       = "oci-xfs"
 	MinVolumeBlock    = "50Gi"
 	MaxVolumeBlock    = "100Gi"
 	VolumeFss         = "1Gi"

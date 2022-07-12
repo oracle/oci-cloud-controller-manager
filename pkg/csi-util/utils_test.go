@@ -75,6 +75,14 @@ func Test_validateFsType(t *testing.T) {
 			want: "ext3",
 		},
 		{
+			name: "Return xfs",
+			args: args{
+				logger: zap.S(),
+				fsType: "xfs",
+			},
+			want: "xfs",
+		},
+		{
 			name: "Return default ext4 for empty string",
 			args: args{
 				logger: zap.S(),

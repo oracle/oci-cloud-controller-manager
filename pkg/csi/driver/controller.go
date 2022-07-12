@@ -26,9 +26,10 @@ import (
 
 const (
 	// Prefix to apply to the name of a created volume. This should be the same as the option '--volume-name-prefix' of csi-provisioner.
-	pvcPrefix = "csi"
-	csiDriver = "csi"
-
+	pvcPrefix                     = "csi"
+	csiDriver                     = "csi"
+	fsTypeKey                     = "csi.storage.k8s.io/fstype"
+	fsTypeKeyDeprecated           = "fstype"
 	timeout                       = time.Minute * 3
 	kmsKey                        = "kms-key-id"
 	attachmentType                = "attachment-type"
@@ -70,7 +71,7 @@ type VolumeAttachmentOption struct {
 	enableInTransitEncryption bool
 }
 
-func extractVolumeParameters(parameters map[string]string) (VolumeParameters, error) {
+func extractVolumeParameters(log *zap.SugaredLogger, parameters map[string]string) (VolumeParameters, error) {
 	p := VolumeParameters{
 		diskEncryptionKey:   "",
 		attachmentParameter: make(map[string]string),
@@ -78,6 +79,8 @@ func extractVolumeParameters(parameters map[string]string) (VolumeParameters, er
 	}
 	for k, v := range parameters {
 		switch k {
+		case fsTypeKeyDeprecated:
+			log.Warnf("%s is deprecated, please use %s instead", fsTypeKeyDeprecated, fsTypeKey)
 		case kmsKey:
 			if v != "" {
 				p.diskEncryptionKey = v
@@ -206,7 +209,7 @@ func (d *ControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolu
 		return nil, fmt.Errorf("duplicate volume %q exists", volumeName)
 	}
 
-	volumeParams, err := extractVolumeParameters(req.GetParameters())
+	volumeParams, err := extractVolumeParameters(log, req.GetParameters())
 	if err != nil {
 		log.Error("Failed to parse storageclass parameters %s", err)
 		csiMetricDimension = util.GetMetricDimensionForComponent(util.ErrValidation, util.CSIStorageType)
@@ -296,6 +299,7 @@ func (d *ControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolu
 					},
 				},
 			},
+
 			VolumeContext: map[string]string{
 				attachmentType:     volumeParams.attachmentParameter[attachmentType],
 				csi_util.VpusPerGB: strconv.FormatInt(volumeParams.vpusPerGB, 10),
