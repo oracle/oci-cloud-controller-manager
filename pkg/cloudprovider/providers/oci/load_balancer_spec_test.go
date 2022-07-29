@@ -124,9 +124,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -186,9 +186,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("FIVE_TUPLE"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -249,9 +249,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("FIVE_TUPLE"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(true),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(true),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -313,9 +313,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -378,9 +378,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -443,9 +443,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -506,9 +506,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -568,9 +568,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": portSpec{
 						ListenerPort:      80,
@@ -630,9 +630,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -692,9 +692,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": portSpec{
 						ListenerPort:      80,
@@ -756,9 +756,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": portSpec{
 						ListenerPort:      80,
@@ -820,9 +820,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": portSpec{
 						ListenerPort:      80,
@@ -885,9 +885,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": portSpec{
 						ListenerPort:      80,
@@ -950,9 +950,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -1017,9 +1017,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -1113,9 +1113,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -1186,9 +1186,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -1252,9 +1252,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -1318,9 +1318,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -1384,9 +1384,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -1456,9 +1456,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						},
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-443": {
 						ListenerPort:      443,
@@ -1532,9 +1532,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -1600,9 +1600,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -1665,9 +1665,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("IP_HASH"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -1729,9 +1729,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -1794,9 +1794,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -1867,9 +1867,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -1979,9 +1979,9 @@ func TestNewLBSpecSingleAD(t *testing.T) {
 						Policy:           common.String("ROUND_ROBIN"),
 					},
 				},
-				IsPreserveSourceDestination: common.Bool(false),
-				NetworkSecurityGroupIds:     []string{},
-				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
 				Ports: map[string]portSpec{
 					"TCP-80": {
 						ListenerPort:      80,
@@ -4186,6 +4186,168 @@ func Test_getListenersNetworkLoadBalancer(t *testing.T) {
 					}
 				}
 			}
+		})
+	}
+}
+
+func Test_getPreserveSourceDestination(t *testing.T) {
+	testCases := map[string]struct {
+		service      *v1.Service
+		expectedBool bool
+		err          error
+	}{
+		"oci LB default": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+			expectedBool: false,
+			err:          nil,
+		},
+		"oci LB, externalTrafficPolicy Local": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity:       v1.ServiceAffinityNone,
+					ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicyTypeLocal,
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+			expectedBool: false,
+			err:          nil,
+		},
+		"oci NLB default": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			expectedBool: false,
+			err:          nil,
+		},
+		"oci NLB, externalTrafficPolicy Local": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity:       v1.ServiceAffinityNone,
+					ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicyTypeLocal,
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			expectedBool: true,
+			err:          nil,
+		},
+		"oci NLB, externalTrafficPolicy Local, disabled by annotation": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity:       v1.ServiceAffinityNone,
+					ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicyTypeLocal,
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                    "nlb",
+						ServiceAnnotationNetworkLoadBalancerIsPreserveSource: "false",
+					},
+				},
+			},
+			expectedBool: false,
+			err:          nil,
+		},
+		"oci NLB, externalTrafficPolicy Local, enabled via annotation": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity:       v1.ServiceAffinityNone,
+					ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicyTypeLocal,
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                    "nlb",
+						ServiceAnnotationNetworkLoadBalancerIsPreserveSource: "true",
+					},
+				},
+			},
+			expectedBool: true,
+			err:          nil,
+		},
+		"oci NLB, externalTrafficPolicy Local, bad annotation value": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity:       v1.ServiceAffinityNone,
+					ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicyTypeLocal,
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                    "nlb",
+						ServiceAnnotationNetworkLoadBalancerIsPreserveSource: "disable",
+					},
+				},
+			},
+			expectedBool: false,
+			err:          fmt.Errorf("failed to to parse oci-network-load-balancer.oraclecloud.com/is-preserve-source annotation value - disable"),
+		},
+		"oci NLB, externalTrafficPolicy Cluster, enabled via annotation": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity:       v1.ServiceAffinityNone,
+					ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicyTypeCluster,
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                    "nlb",
+						ServiceAnnotationNetworkLoadBalancerIsPreserveSource: "true",
+					},
+				},
+			},
+			expectedBool: false,
+			err:          fmt.Errorf("oci-network-load-balancer.oraclecloud.com/is-preserve-source annotation cannot be set when externalTrafficPolicy is set to Cluster"),
+		},
+		"oci NLB, externalTrafficPolicy Cluster, disabled via annotation": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity:       v1.ServiceAffinityNone,
+					ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicyTypeCluster,
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                    "nlb",
+						ServiceAnnotationNetworkLoadBalancerIsPreserveSource: "false",
+					},
+				},
+			},
+			expectedBool: false,
+			err:          fmt.Errorf("oci-network-load-balancer.oraclecloud.com/is-preserve-source annotation cannot be set when externalTrafficPolicy is set to Cluster"),
+		},
+	}
+	for name, tc := range testCases {
+		logger := zap.L()
+		t.Run(name, func(t *testing.T) {
+			enable, err := getPreserveSource(logger.Sugar(), tc.service)
+			if tc.err != nil && err == nil {
+				t.Errorf("Expected  \n%+v\nbut got\n%+v", tc.err, err)
+			}
+			if err != nil && tc.err == nil {
+				t.Errorf("Error: expected\n%+v\nbut got\n%+v", tc.err, err)
+			}
+			if err != nil && err.Error() != tc.err.Error() {
+				t.Errorf("Expected \n%+v\nbut got\n%+v", tc.err, err)
+			}
+			if enable != tc.expectedBool {
+				t.Errorf("Expected  \n%+v\nbut got\n%+v", tc.expectedBool, enable)
+			}
+
 		})
 	}
 }

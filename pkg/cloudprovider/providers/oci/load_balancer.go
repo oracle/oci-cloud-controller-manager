@@ -339,7 +339,7 @@ func (clb *CloudLoadBalancerProvider) createLoadBalancer(ctx context.Context, sp
 	if status != nil && len(status.Ingress) > 0 {
 		// If the LB is successfully provisioned then open lb/node subnet seclists egress/ingress.
 		for _, ports := range spec.Ports {
-			if err = spec.securityListManager.Update(ctx, lbSubnets, nodeSubnets, spec.SourceCIDRs, nil, ports, *spec.IsPreserveSourceDestination); err != nil {
+			if err = spec.securityListManager.Update(ctx, lbSubnets, nodeSubnets, spec.SourceCIDRs, nil, ports, *spec.IsPreserveSource); err != nil {
 				return nil, "", err
 			}
 		}
@@ -701,7 +701,7 @@ func (clb *CloudLoadBalancerProvider) updateLoadBalancer(ctx context.Context, lb
 		// We try to update the seclist this way to prevent replication
 		// of seclist reconciliation logic
 		for _, ports := range spec.Ports {
-			if err = spec.securityListManager.Update(ctx, lbSubnets, nodeSubnets, spec.SourceCIDRs, nil, ports, *spec.IsPreserveSourceDestination); err != nil {
+			if err = spec.securityListManager.Update(ctx, lbSubnets, nodeSubnets, spec.SourceCIDRs, nil, ports, *spec.IsPreserveSource); err != nil {
 				return err
 			}
 		}
@@ -756,7 +756,7 @@ func (clb *CloudLoadBalancerProvider) updateBackendSet(ctx context.Context, lbID
 
 	switch action.Type() {
 	case Create:
-		err = secListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, nil, ports, *spec.IsPreserveSourceDestination)
+		err = secListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, nil, ports, *spec.IsPreserveSource)
 		if err != nil {
 			return err
 		}
@@ -765,12 +765,12 @@ func (clb *CloudLoadBalancerProvider) updateBackendSet(ctx context.Context, lbID
 	case Update:
 		// For NLB, due to source IP preservation we need to ensure ingress rules from sourceCIDRs are added to
 		// the backends subnet's seclist as well
-		if err = secListManager.Update(ctx, lbSubnets, nodeSubnets, spec.SourceCIDRs, action.OldPorts, ports, *spec.IsPreserveSourceDestination); err != nil {
+		if err = secListManager.Update(ctx, lbSubnets, nodeSubnets, spec.SourceCIDRs, action.OldPorts, ports, *spec.IsPreserveSource); err != nil {
 			return err
 		}
 		workRequestID, err = clb.lbClient.UpdateBackendSet(ctx, lbID, action.Name(), &bs)
 	case Delete:
-		err = secListManager.Delete(ctx, lbSubnets, nodeSubnets, ports, sourceCIDRs, *spec.IsPreserveSourceDestination)
+		err = secListManager.Delete(ctx, lbSubnets, nodeSubnets, ports, sourceCIDRs, *spec.IsPreserveSource)
 		if err != nil {
 			return err
 		}
@@ -808,21 +808,21 @@ func (clb *CloudLoadBalancerProvider) updateListener(ctx context.Context, lbID s
 
 	switch action.Type() {
 	case Create:
-		err = secListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, nil, ports, *spec.IsPreserveSourceDestination)
+		err = secListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, nil, ports, *spec.IsPreserveSource)
 		if err != nil {
 			return err
 		}
 
 		workRequestID, err = clb.lbClient.CreateListener(ctx, lbID, action.Name(), &listener)
 	case Update:
-		err = secListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, nil, ports, *spec.IsPreserveSourceDestination)
+		err = secListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, nil, ports, *spec.IsPreserveSource)
 		if err != nil {
 			return err
 		}
 
 		workRequestID, err = clb.lbClient.UpdateListener(ctx, lbID, action.Name(), &listener)
 	case Delete:
-		err = secListManager.Delete(ctx, lbSubnets, nodeSubnets, ports, sourceCIDRs, *spec.IsPreserveSourceDestination)
+		err = secListManager.Delete(ctx, lbSubnets, nodeSubnets, ports, sourceCIDRs, *spec.IsPreserveSource)
 		if err != nil {
 			return err
 		}
@@ -989,7 +989,11 @@ func (cp *CloudProvider) cleanupSecListForLoadBalancerDelete(lb *client.GenericL
 	securityListManager := cp.securityListManagerFactory(
 		secListManagerMode)
 
-	isPreserveSource := getPreserveSourceDestination(service)
+	isPreserveSource, err := getPreserveSource(logger, service)
+	if err != nil {
+		logger.With(zap.Error(err)).Error("failed to determine value for is-preserve-source")
+		return errors.Wrap(err, "failed to determine value for is-preserve-source")
+	}
 
 	for listenerName, listener := range lb.Listeners {
 		backendSetName := *listener.DefaultBackendSetName

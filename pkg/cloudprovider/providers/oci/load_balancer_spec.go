@@ -202,6 +202,10 @@ const (
 	// ServiceAnnotationNetworkLoadBalancerNodeFilter is a service annotation to select specific nodes as your backend in the NLB
 	// based on label selector.
 	ServiceAnnotationNetworkLoadBalancerNodeFilter = "oci-network-load-balancer.oraclecloud.com/node-label-selector"
+
+	// ServiceAnnotationNetworkLoadBalancerIsPreserveSource is a service annotation to enable/disable preserving source information
+	// on the NLB traffic. Default value when no annotation is given is to enable this for NLBs with externalTrafficPolicy=Local.
+	ServiceAnnotationNetworkLoadBalancerIsPreserveSource = "oci-network-load-balancer.oraclecloud.com/is-preserve-source"
 )
 
 // certificateData is a structure containing the data about a K8S secret required
@@ -267,24 +271,24 @@ func NewSSLConfig(secretListenerString string, secretBackendSetString string, se
 // LBSpec holds the data required to build a OCI load balancer from a
 // kubernetes service.
 type LBSpec struct {
-	Type                        string
-	Name                        string
-	Shape                       string
-	FlexMin                     *int
-	FlexMax                     *int
-	Subnets                     []string
-	Internal                    bool
-	Listeners                   map[string]client.GenericListener
-	BackendSets                 map[string]client.GenericBackendSetDetails
-	LoadBalancerIP              string
-	IsPreserveSourceDestination *bool
-	Ports                       map[string]portSpec
-	SourceCIDRs                 []string
-	SSLConfig                   *SSLConfig
-	securityListManager         securityListManager
-	NetworkSecurityGroupIds     []string
-	FreeformTags                map[string]string
-	DefinedTags                 map[string]map[string]interface{}
+	Type                    string
+	Name                    string
+	Shape                   string
+	FlexMin                 *int
+	FlexMax                 *int
+	Subnets                 []string
+	Internal                bool
+	Listeners               map[string]client.GenericListener
+	BackendSets             map[string]client.GenericBackendSetDetails
+	LoadBalancerIP          string
+	IsPreserveSource        *bool
+	Ports                   map[string]portSpec
+	SourceCIDRs             []string
+	SSLConfig               *SSLConfig
+	securityListManager     securityListManager
+	NetworkSecurityGroupIds []string
+	FreeformTags            map[string]string
+	DefinedTags             map[string]map[string]interface{}
 
 	service *v1.Service
 	nodes   []*v1.Node
@@ -316,9 +320,12 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sub
 		return nil, err
 	}
 
-	isPreserveSourceDestination := getPreserveSourceDestination(svc)
+	isPreserveSource, err := getPreserveSource(logger, svc)
+	if err != nil {
+		return nil, err
+	}
 
-	backendSets, err := getBackendSets(logger, svc, nodes, sslConfig, isPreserveSourceDestination)
+	backendSets, err := getBackendSets(logger, svc, nodes, sslConfig, isPreserveSource)
 	if err != nil {
 		return nil, err
 	}
@@ -351,26 +358,26 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sub
 	lbType := getLoadBalancerType(svc)
 
 	return &LBSpec{
-		Type:                        lbType,
-		Name:                        GetLoadBalancerName(svc),
-		Shape:                       shape,
-		FlexMin:                     flexShapeMinMbps,
-		FlexMax:                     flexShapeMaxMbps,
-		Internal:                    internal,
-		Subnets:                     subnets,
-		Listeners:                   listeners,
-		BackendSets:                 backendSets,
-		LoadBalancerIP:              loadbalancerIP,
-		IsPreserveSourceDestination: &isPreserveSourceDestination,
-		Ports:                       ports,
-		SSLConfig:                   sslConfig,
-		SourceCIDRs:                 sourceCIDRs,
-		NetworkSecurityGroupIds:     networkSecurityGroupIds,
-		service:                     svc,
-		nodes:                       nodes,
-		securityListManager:         secListFactory(secListManagerMode),
-		FreeformTags:                lbTags.FreeformTags,
-		DefinedTags:                 lbTags.DefinedTags,
+		Type:                    lbType,
+		Name:                    GetLoadBalancerName(svc),
+		Shape:                   shape,
+		FlexMin:                 flexShapeMinMbps,
+		FlexMax:                 flexShapeMaxMbps,
+		Internal:                internal,
+		Subnets:                 subnets,
+		Listeners:               listeners,
+		BackendSets:             backendSets,
+		LoadBalancerIP:          loadbalancerIP,
+		IsPreserveSource:        &isPreserveSource,
+		Ports:                   ports,
+		SSLConfig:               sslConfig,
+		SourceCIDRs:             sourceCIDRs,
+		NetworkSecurityGroupIds: networkSecurityGroupIds,
+		service:                 svc,
+		nodes:                   nodes,
+		securityListManager:     secListFactory(secListManagerMode),
+		FreeformTags:            lbTags.FreeformTags,
+		DefinedTags:             lbTags.DefinedTags,
 	}, nil
 }
 
@@ -459,15 +466,40 @@ func validateService(svc *v1.Service) error {
 	return nil
 }
 
-func getPreserveSourceDestination(svc *v1.Service) bool {
+func getPreserveSource(logger *zap.SugaredLogger, svc *v1.Service) (bool, error) {
 	if svc.Annotations[ServiceAnnotationLoadBalancerType] != NLB {
-		return false
+		return false, nil
+	}
+	// fail the request if externalTrafficPolicy is set to Cluster and is-preserve-source annotation is set
+	if svc.Spec.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeCluster {
+		_, ok := svc.Annotations[ServiceAnnotationNetworkLoadBalancerIsPreserveSource]
+		if ok {
+			logger.Error("error : externalTrafficPolicy is set to Cluster and the %s annotation is set", ServiceAnnotationNetworkLoadBalancerIsPreserveSource)
+			return false, fmt.Errorf("%s annotation cannot be set when externalTrafficPolicy is set to Cluster", ServiceAnnotationNetworkLoadBalancerIsPreserveSource)
+		}
 	}
 
-	if svc.Spec.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeLocal {
-		return true
+	enablePreservation, err := getPreserveSourceAnnotation(logger, svc)
+	if err != nil {
+		return false, err
 	}
-	return false
+	if svc.Spec.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeLocal && enablePreservation {
+		return true, nil
+	}
+	return false, nil
+}
+
+func getPreserveSourceAnnotation(logger *zap.SugaredLogger, svc *v1.Service) (bool, error) {
+	if annotationString, ok := svc.Annotations[ServiceAnnotationNetworkLoadBalancerIsPreserveSource]; ok {
+		enable, err := strconv.ParseBool(annotationString)
+		if err != nil {
+			logger.Error("failed to to parse %s annotation value - %s", ServiceAnnotationNetworkLoadBalancerIsPreserveSource, annotationString)
+			return false, fmt.Errorf("failed to to parse %s annotation value - %s", ServiceAnnotationNetworkLoadBalancerIsPreserveSource, annotationString)
+		}
+		return enable, nil
+	}
+	// default behavior is to enable source destination preservation
+	return true, nil
 }
 
 func getLoadBalancerSourceRanges(service *v1.Service) ([]string, error) {
@@ -544,7 +576,7 @@ func getBackends(logger *zap.SugaredLogger, nodes []*v1.Node, nodePort int32) []
 	return backends
 }
 
-func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sslCfg *SSLConfig, isPreserveSourceDestination bool) (map[string]client.GenericBackendSetDetails, error) {
+func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sslCfg *SSLConfig, isPreserveSource bool) (map[string]client.GenericBackendSetDetails, error) {
 	backendSets := make(map[string]client.GenericBackendSetDetails)
 	loadbalancerPolicy, err := getLoadBalancerPolicy(svc)
 	if err != nil {
@@ -579,7 +611,7 @@ func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node
 			Policy:           &loadbalancerPolicy,
 			Backends:         getBackends(logger, nodes, servicePort.NodePort),
 			HealthChecker:    healthChecker,
-			IsPreserveSource: &isPreserveSourceDestination,
+			IsPreserveSource: &isPreserveSource,
 			SslConfiguration: getSSLConfiguration(sslCfg, secretName, port),
 		}
 	}
