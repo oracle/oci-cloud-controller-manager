@@ -788,7 +788,7 @@ k8s.io/component-base/metrics/legacyregistry
 k8s.io/component-base/featuregate
 k8s.io/component-base/config
 k8s.io/component-base/config/v1alpha1
-# k8s.io/klog v1.0.0 => github.com/mrunalpagnis/klog v0.0.0-00000000000000-ec66c0a95a3fe542357d0366ad25f152cce66b8b
+# k8s.io/klog v1.0.0 => github.com/mrunalpagnis/klog v0.0.0-20200312095140-ec66c0a95a3f
 k8s.io/klog
 # k8s.io/kube-controller-manager v0.0.0 => k8s.io/kube-controller-manager v0.16.4
 k8s.io/kube-controller-manager/config/v1alpha1
