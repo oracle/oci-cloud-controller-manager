@@ -148,6 +148,7 @@ github.com/go-acme/lego v2.5.0+incompatible/go.mod h1:yzMNe9CasVUhkquNvti5nAtPmG
 github.com/go-bindata/go-bindata v3.1.1+incompatible/go.mod h1:xK8Dsgwmeed+BBsSy2XTopBn/8uK2HWuGSnA11C3Joo=
 github.com/go-kit/kit v0.8.0/go.mod h1:xBxKIO96dXMWWy0MnWVtmwkA9/13aqxPnvrjFYMA2as=
 github.com/go-logfmt/logfmt v0.3.0/go.mod h1:Qt1PoO58o5twSAckw1HlFXLmHsOX5/0LbT9GBnD5lWE=
+github.com/go-logr/logr v0.1.0/go.mod h1:ixOQHD9gLJUVQQ2ZOR7zLEifBX6tGkNJF4QyIY7sIas=
 github.com/go-openapi/analysis v0.0.0-20180825180245-b006789cd277/go.mod h1:k70tL6pCuVxPJOHXQ+wIac1FUrvNkHolPie/cLEU6hI=
 github.com/go-openapi/analysis v0.17.0/go.mod h1:IowGgpVeD0vNm45So8nr+IcQ3pxVtpRoBWb8PVZO0ik=
 github.com/go-openapi/analysis v0.18.0/go.mod h1:IowGgpVeD0vNm45So8nr+IcQ3pxVtpRoBWb8PVZO0ik=
@@ -352,8 +353,14 @@ github.com/modern-go/reflect2 v1.0.1/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3Rllmb
 github.com/mohae/deepcopy v0.0.0-20170603005431-491d3605edfb/go.mod h1:TaXosZuwdSHYgviHp1DAtfrULt5eUgsSMsZf+YrPgl8=
 github.com/morikuni/aec v0.0.0-20170113033406-39771216ff4c/go.mod h1:BbKIizmSmc5MMPqRYbxO4ZU0S0+P200+tUnFx7PXmsc=
 github.com/mrunalp/fileutils v0.0.0-20160930181131-4ee1cc9a8058/go.mod h1:x8F1gnqOkIEiO4rqoeEEEqQbo7HjGMTvyoq3gej4iT0=
+github.com/mrunalpagnis/klog v0.0.0-00000000000000-ec66c0a95a3f h1:PdGb3ZcsHsMc2iZ2Ji3HP6WQOeyze7X6Ycp6BuYaUvE=
+github.com/mrunalpagnis/klog v0.0.0-00000000000000-ec66c0a95a3f/go.mod h1:lm75HINITa92pbELK1Tw2zdOZn3Nj3DpxgKNedT3arM=
 github.com/mrunalpagnis/klog v0.0.0-00000000000000-ec66c0a95a3fe542357d0366ad25f152cce66b8b h1:ApQlhqTV7mOBY1n+dlfTiLeoc0YDkwyOSa6clk7AsuE=
 github.com/mrunalpagnis/klog v0.0.0-00000000000000-ec66c0a95a3fe542357d0366ad25f152cce66b8b/go.mod h1:lm75HINITa92pbELK1Tw2zdOZn3Nj3DpxgKNedT3arM=
+github.com/mrunalpagnis/klog v0.0.0-20200312095140-ec66c0a95a3f h1:OQHBwZbwoip4Wn/HeK2ZMZc/v35es0ODBn4rV3oj8f4=
+github.com/mrunalpagnis/klog v0.0.0-20200312095140-ec66c0a95a3f/go.mod h1:lm75HINITa92pbELK1Tw2zdOZn3Nj3DpxgKNedT3arM=
+github.com/mrunalpagnis/klog v0.0.0-20200312152100-ec66c0a95a3f h1:TUFAv/pxgM0u7OEgno6ZQmiB9xCCVTjoV0GbPdXoM4U=
+github.com/mrunalpagnis/klog v0.0.0-20200312152100-ec66c0a95a3f/go.mod h1:lm75HINITa92pbELK1Tw2zdOZn3Nj3DpxgKNedT3arM=
 github.com/munnerz/goautoneg v0.0.0-20120707110453-a547fc61f48d h1:7PxY7LVfSZm7PEeBTyK1rj1gABdCO2mbri6GKO1cMDs=
 github.com/munnerz/goautoneg v0.0.0-20120707110453-a547fc61f48d/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/munnerz/goautoneg v0.0.0-20190414153302-2ae31c8b6b30 h1:10VrZWOtDSvWhgViCi2J6VUp4p/B3pOA/efiMH3KjjI=
@@ -733,6 +740,11 @@ k8s.io/csi-translation-lib v0.17.0/go.mod h1:HEF7MEz7pOLJCnxabi45IPkhSsE/KmxPQks
 k8s.io/gengo v0.0.0-20190128074634-0689ccc1d7d6/go.mod h1:ezvh/TsK7cY6rbqRK0oQQ8IAqLxYwwyPxAX1Pzy0ii0=
 k8s.io/gengo v0.0.0-20190822140433-26a664648505/go.mod h1:ezvh/TsK7cY6rbqRK0oQQ8IAqLxYwwyPxAX1Pzy0ii0=
 k8s.io/heapster v1.2.0-beta.1/go.mod h1:h1uhptVXMwC8xtZBYsPXKVi8fpdlYkTs6k949KozGrM=
+k8s.io/klog v0.0.0-20181102134211-b9b56d5dfc92/go.mod h1:Gq+BEi5rUBO/HRz0bTSXDUcqjScdoY3a9IHpCEIOOfk=
+k8s.io/klog v0.3.0/go.mod h1:Gq+BEi5rUBO/HRz0bTSXDUcqjScdoY3a9IHpCEIOOfk=
+k8s.io/klog v0.4.0/go.mod h1:4Bi6QPql/J/LkTDqv7R/cd3hPo4k2DG6Ptcz060Ez5I=
+k8s.io/klog v1.0.0 h1:Pt+yjF5aB1xDSVbau4VsWe+dQNzA0qv1LlXdC2dF6Q8=
+k8s.io/klog v1.0.0/go.mod h1:4Bi6QPql/J/LkTDqv7R/cd3hPo4k2DG6Ptcz060Ez5I=
 k8s.io/kube-aggregator v0.16.4/go.mod h1:QN0sEFj0q/oSnqrQmF5AkXiGjLaAImieDv8RXynyNw4=
 k8s.io/kube-controller-manager v0.16.4 h1:Y7PMSmSE2GiYM4I0dDwcdqFytiltKqt4QUz0oDgC9P8=
 k8s.io/kube-controller-manager v0.16.4/go.mod h1:B2Jj1VM2EQRCurLTeICqB8P1jy+zvMnEbQIP/uZ8gcY=

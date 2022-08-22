@@ -1,0 +1,108 @@
+
+Dependencies:
+-----------------------
+
+github.com/
+  NYTimes/gziphandler v1.0.1
+  PuerkitoBio/purell v1.1.1
+  PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578
+  beorn7/perks v1.0.0
+  blang/semver v3.5.0+incompatible
+  container-storage-interface/spec v1.2.0
+  coreos/etcd v3.3.17+incompatible
+  coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
+  coreos/pkg v0.0.0-20180928190104-399ea9e2e55f
+  davecgh/go-spew v1.1.1
+  docker/distribution v2.7.1+incompatible
+  docker/engine v0.0.0-20181106193140-f5749085e9cb
+  emicklei/go-restful v2.9.5+incompatible
+  evanphx/json-patch v4.5.0+incompatible
+  fsnotify/fsnotify v1.4.9
+  go-openapi/jsonpointer v0.19.2
+  go-openapi/jsonreference v0.19.2
+  go-openapi/spec v0.19.2
+  go-openapi/swag v0.19.2
+  gogo/protobuf v1.2.2-0.20190723190241-65acae22fc9d
+  golang/groupcache v0.0.0-20190129154638-5b532d6fd5ef
+  golang/protobuf v1.4.2
+  google/go-cmp v0.4.0
+  google/gofuzz v1.0.0
+  google/uuid v1.1.1
+  googleapis/gnostic v0.2.0
+  grpc-ecosystem/go-grpc-prometheus v1.2.0
+  hashicorp/golang-lru v0.5.1
+  hashicorp/hcl v1.0.0
+  imdario/mergo v0.3.5
+  json-iterator/go v1.1.9
+  kubernetes-csi/csi-lib-utils v0.7.1
+  magiconair/properties v1.8.1
+  mailru/easyjson v0.0.0-20190614124828-94de47d64c63
+  matttproud/golang_protobuf_extensions v1.0.1
+  miekg/dns v1.1.4
+  mitchellh/mapstructure v1.1.2
+  modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
+  modern-go/reflect2 v1.0.1
+  mrunalpagnis/klog v0.0.0-20200312095140-ec66c0a95a3f
+  munnerz/goautoneg v0.0.0-20190414153302-2ae31c8b6b30
+  nxadm/tail v1.4.4
+  onsi/ginkgo v1.14.0
+  onsi/gomega v1.10.1
+  opencontainers/go-digest v1.0.0-rc1
+  oracle/oci-go-sdk/v31 v31.0.0
+  pborman/uuid v1.2.0
+  pelletier/go-toml v1.2.0
+  pkg/errors v0.9.1
+  pmezard/go-difflib v1.0.0
+  prometheus/client_golang v0.9.4
+  prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4
+  prometheus/common v0.4.1
+  prometheus/procfs v0.0.2
+  spf13/afero v1.2.2
+  spf13/cast v1.3.0
+  spf13/cobra v1.0.0
+  spf13/jwalterweatherman v1.1.0
+  spf13/pflag v1.0.5
+  spf13/viper v1.6.3
+  stretchr/testify v1.6.1
+  subosito/gotenv v1.2.0
+go.uber.org/
+  atomic v1.7.0
+  multierr v1.6.0
+  zap v1.16.0
+golang.org/
+  x/crypto v0.0.0-20200622213623-75b288015ac9
+  x/net v0.0.0-20200707034311-ab3426394381
+  x/oauth2 v0.0.0-20190604053449-0f29369cfe45
+  x/sys v0.0.0-20200519105757-fe76b779f299
+  x/text v0.3.2
+  x/time v0.0.0-20190308202827-9d24e82272b4
+  x/xerrors v0.0.0-20191204190536-9bdfabe68543
+google.golang.org/
+  genproto v0.0.0-20191220175831-5c49e3ecc1c1
+  grpc v1.26.0
+  protobuf v1.23.0
+gopkg.in/
+  inf.v0 v0.9.1
+  ini.v1 v1.51.0
+  natefinch/lumberjack.v2 v2.0.0
+  square/go-jose.v2 v2.3.1
+  tomb.v1 v1.0.0-20141024135613-dd632973f1e7
+  yaml.v2 v2.3.0
+  yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
+k8s.io/
+  api v0.16.4
+  apiextensions-apiserver v0.16.4
+  apimachinery v0.16.4
+  apiserver v0.16.4
+  client-go v0.16.4
+  cloud-provider v0.16.4
+  component-base v0.17.0
+  kube-controller-manager v0.16.4
+  kube-openapi v0.0.0-20190816220812-743ec37842bf
+  kubectl v0.16.4
+  kubernetes v1.16.0
+  utils v0.0.0-20200124190032-861946025e34
+sigs.k8s.io/
+  sig-storage-lib-external-provisioner v4.1.0+incompatible
+  structured-merge-diff v1.0.1
+  yaml v1.1.0
