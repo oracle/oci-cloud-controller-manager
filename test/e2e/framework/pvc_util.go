@@ -47,6 +47,7 @@ const (
 	AttachmentTypeISCSI           = "iscsi"
 	AttachmentTypeParavirtualized = "paravirtualized"
 	AttachmentType                = "attachment-type"
+	FstypeKey                     = "csi.storage.k8s.io/fstype"
 )
 
 // PVCTestJig is a jig to help create PVC tests.
@@ -1049,7 +1050,7 @@ func (j *PVCTestJig) CheckDataPersistenceWithDeployment(pvcName string, ns strin
 		taintIsMaster := false
 		if node.Spec.Unschedulable == false {
 			for _, taint := range node.Spec.Taints {
-				taintIsMaster = taint.Key == "node-role.kubernetes.io/master"
+				taintIsMaster = (taint.Key == "node-role.kubernetes.io/master" || taint.Key == "node-role.kubernetes.io/control-plane")
 			}
 			if !taintIsMaster {
 				schedulableNodeFound = true

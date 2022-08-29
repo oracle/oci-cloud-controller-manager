@@ -593,7 +593,7 @@ func (d BlockVolumeNodeDriver) NodeExpandVolume(ctx context.Context, req *csi.No
 		return nil, status.Error(codes.InvalidArgument, "unknown attachment type. supported attachment types are iscsi and paravirtualized")
 	}
 
-	if err := mountHandler.Rescan(devicePath); err != nil {
+	if err := csi_util.Rescan(logger, devicePath); err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to rescan volume %q (%q):  %v", volumeID, devicePath, err)
 	}
 	logger.With("devicePath", devicePath).Debug("Rescan completed")
@@ -602,7 +602,7 @@ func (d BlockVolumeNodeDriver) NodeExpandVolume(ctx context.Context, req *csi.No
 		return nil, status.Errorf(codes.Internal, "Failed to resize volume %q (%q):  %v", volumeID, devicePath, err)
 	}
 
-	allocatedSizeBytes, err := mountHandler.GetBlockSizeBytes(devicePath)
+	allocatedSizeBytes, err := csi_util.GetBlockSizeBytes(logger, devicePath)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("Failed to get size of block volume at path %s: %v", devicePath, err))
 	}

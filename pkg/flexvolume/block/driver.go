@@ -348,7 +348,6 @@ func (d OCIFlexvolumeDriver) Detach(logger *zap.SugaredLogger, pvOrVolumeName, n
 	compartmentID, err := util.LookupNodeCompartment(d.K, nodeName)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			// https://jira.oci.oraclecorp.com/browse/OKE-14168 : Volume detachment is deferred
 			logger.Info("Node is not found, volume is likely already detached.")
 			fvdMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.FVDStorageType)
 			dimensionsMap[metrics.ComponentDimension] = fvdMetricDimension

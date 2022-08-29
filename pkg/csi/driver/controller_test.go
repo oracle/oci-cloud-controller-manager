@@ -1000,7 +1000,7 @@ func TestExtractVolumeParameters(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			volumeParameters, err := extractVolumeParameters(tt.storageParameters)
+			volumeParameters, err := extractVolumeParameters(zap.S(), tt.storageParameters)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("extractVolumeParameters() error = %v, wantErr %v", err, tt.wantErr)
 				return

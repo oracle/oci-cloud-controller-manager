@@ -42,6 +42,8 @@ const (
 	NLBHealthCheckIntervalMax = 1800000
 )
 
+const ProtocolTypeMixed = "TCP_AND_UDP"
+
 const (
 	// ServiceAnnotationLoadBalancerInternal is a service annotation for
 	// specifying that a load balancer should be internal.
@@ -199,6 +201,10 @@ const (
 	// ServiceAnnotationNetworkLoadBalancerNodeFilter is a service annotation to select specific nodes as your backend in the NLB
 	// based on label selector.
 	ServiceAnnotationNetworkLoadBalancerNodeFilter = "oci-network-load-balancer.oraclecloud.com/node-label-selector"
+
+	// ServiceAnnotationNetworkLoadBalancerIsPreserveSource is a service annotation to enable/disable preserving source information
+	// on the NLB traffic. Default value when no annotation is given is to enable this for NLBs with externalTrafficPolicy=Local.
+	ServiceAnnotationNetworkLoadBalancerIsPreserveSource = "oci-network-load-balancer.oraclecloud.com/is-preserve-source"
 )
 
 // certificateData is a structure containing the data about a K8S secret required
@@ -264,24 +270,24 @@ func NewSSLConfig(secretListenerString string, secretBackendSetString string, se
 // LBSpec holds the data required to build a OCI load balancer from a
 // kubernetes service.
 type LBSpec struct {
-	Type                        string
-	Name                        string
-	Shape                       string
-	FlexMin                     *int
-	FlexMax                     *int
-	Subnets                     []string
-	Internal                    bool
-	Listeners                   map[string]client.GenericListener
-	BackendSets                 map[string]client.GenericBackendSetDetails
-	LoadBalancerIP              string
-	IsPreserveSourceDestination *bool
-	Ports                       map[string]portSpec
-	SourceCIDRs                 []string
-	SSLConfig                   *SSLConfig
-	securityListManager         securityListManager
-	NetworkSecurityGroupIds     []string
-	FreeformTags                map[string]string
-	DefinedTags                 map[string]map[string]interface{}
+	Type                    string
+	Name                    string
+	Shape                   string
+	FlexMin                 *int
+	FlexMax                 *int
+	Subnets                 []string
+	Internal                bool
+	Listeners               map[string]client.GenericListener
+	BackendSets             map[string]client.GenericBackendSetDetails
+	LoadBalancerIP          string
+	IsPreserveSource        *bool
+	Ports                   map[string]portSpec
+	SourceCIDRs             []string
+	SSLConfig               *SSLConfig
+	securityListManager     securityListManager
+	NetworkSecurityGroupIds []string
+	FreeformTags            map[string]string
+	DefinedTags             map[string]map[string]interface{}
 
 	service *v1.Service
 	nodes   []*v1.Node
@@ -313,9 +319,12 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sub
 		return nil, err
 	}
 
-	isPreserveSourceDestination := getPreserveSourceDestination(svc)
+	isPreserveSource, err := getPreserveSource(logger, svc)
+	if err != nil {
+		return nil, err
+	}
 
-	backendSets, err := getBackendSets(logger, svc, nodes, sslConfig, isPreserveSourceDestination)
+	backendSets, err := getBackendSets(logger, svc, nodes, sslConfig, isPreserveSource)
 	if err != nil {
 		return nil, err
 	}
@@ -348,26 +357,26 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sub
 	lbType := getLoadBalancerType(svc)
 
 	return &LBSpec{
-		Type:                        lbType,
-		Name:                        GetLoadBalancerName(svc),
-		Shape:                       shape,
-		FlexMin:                     flexShapeMinMbps,
-		FlexMax:                     flexShapeMaxMbps,
-		Internal:                    internal,
-		Subnets:                     subnets,
-		Listeners:                   listeners,
-		BackendSets:                 backendSets,
-		LoadBalancerIP:              loadbalancerIP,
-		IsPreserveSourceDestination: &isPreserveSourceDestination,
-		Ports:                       ports,
-		SSLConfig:                   sslConfig,
-		SourceCIDRs:                 sourceCIDRs,
-		NetworkSecurityGroupIds:     networkSecurityGroupIds,
-		service:                     svc,
-		nodes:                       nodes,
-		securityListManager:         secListFactory(secListManagerMode),
-		FreeformTags:                lbTags.FreeformTags,
-		DefinedTags:                 lbTags.DefinedTags,
+		Type:                    lbType,
+		Name:                    GetLoadBalancerName(svc),
+		Shape:                   shape,
+		FlexMin:                 flexShapeMinMbps,
+		FlexMax:                 flexShapeMaxMbps,
+		Internal:                internal,
+		Subnets:                 subnets,
+		Listeners:               listeners,
+		BackendSets:             backendSets,
+		LoadBalancerIP:          loadbalancerIP,
+		IsPreserveSource:        &isPreserveSource,
+		Ports:                   ports,
+		SSLConfig:               sslConfig,
+		SourceCIDRs:             sourceCIDRs,
+		NetworkSecurityGroupIds: networkSecurityGroupIds,
+		service:                 svc,
+		nodes:                   nodes,
+		securityListManager:     secListFactory(secListManagerMode),
+		FreeformTags:            lbTags.FreeformTags,
+		DefinedTags:             lbTags.DefinedTags,
 	}, nil
 }
 
@@ -456,15 +465,40 @@ func validateService(svc *v1.Service) error {
 	return nil
 }
 
-func getPreserveSourceDestination(svc *v1.Service) bool {
+func getPreserveSource(logger *zap.SugaredLogger, svc *v1.Service) (bool, error) {
 	if svc.Annotations[ServiceAnnotationLoadBalancerType] != NLB {
-		return false
+		return false, nil
+	}
+	// fail the request if externalTrafficPolicy is set to Cluster and is-preserve-source annotation is set
+	if svc.Spec.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeCluster {
+		_, ok := svc.Annotations[ServiceAnnotationNetworkLoadBalancerIsPreserveSource]
+		if ok {
+			logger.Error("error : externalTrafficPolicy is set to Cluster and the %s annotation is set", ServiceAnnotationNetworkLoadBalancerIsPreserveSource)
+			return false, fmt.Errorf("%s annotation cannot be set when externalTrafficPolicy is set to Cluster", ServiceAnnotationNetworkLoadBalancerIsPreserveSource)
+		}
 	}
 
-	if svc.Spec.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeLocal {
-		return true
+	enablePreservation, err := getPreserveSourceAnnotation(logger, svc)
+	if err != nil {
+		return false, err
 	}
-	return false
+	if svc.Spec.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeLocal && enablePreservation {
+		return true, nil
+	}
+	return false, nil
+}
+
+func getPreserveSourceAnnotation(logger *zap.SugaredLogger, svc *v1.Service) (bool, error) {
+	if annotationString, ok := svc.Annotations[ServiceAnnotationNetworkLoadBalancerIsPreserveSource]; ok {
+		enable, err := strconv.ParseBool(annotationString)
+		if err != nil {
+			logger.Error("failed to to parse %s annotation value - %s", ServiceAnnotationNetworkLoadBalancerIsPreserveSource, annotationString)
+			return false, fmt.Errorf("failed to to parse %s annotation value - %s", ServiceAnnotationNetworkLoadBalancerIsPreserveSource, annotationString)
+		}
+		return enable, nil
+	}
+	// default behavior is to enable source destination preservation
+	return true, nil
 }
 
 func getLoadBalancerSourceRanges(service *v1.Service) ([]string, error) {
@@ -487,13 +521,28 @@ func getBackendSetName(protocol string, port int) string {
 
 func getPorts(svc *v1.Service) (map[string]portSpec, error) {
 	ports := make(map[string]portSpec)
+	portsMap := make(map[int][]string)
+	mixedProtocolsPortSet := make(map[int]bool)
 	for _, servicePort := range svc.Spec.Ports {
-		name := getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
+		portsMap[int(servicePort.Port)] = append(portsMap[int(servicePort.Port)], string(servicePort.Protocol))
+	}
+	for _, servicePort := range svc.Spec.Ports {
+		port := int(servicePort.Port)
+		backendSetName := ""
+		if len(portsMap[port]) > 1 {
+			if mixedProtocolsPortSet[port] {
+				continue
+			}
+			backendSetName = getBackendSetName(ProtocolTypeMixed, port)
+			mixedProtocolsPortSet[port] = true
+		} else {
+			backendSetName = getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
+		}
 		healthChecker, err := getHealthChecker(svc)
 		if err != nil {
 			return nil, err
 		}
-		ports[name] = portSpec{
+		ports[backendSetName] = portSpec{
 			BackendPort:       int(servicePort.NodePort),
 			ListenerPort:      int(servicePort.Port),
 			HealthCheckerPort: *healthChecker.Port,
@@ -526,15 +575,29 @@ func getBackends(logger *zap.SugaredLogger, nodes []*v1.Node, nodePort int32) []
 	return backends
 }
 
-func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sslCfg *SSLConfig, isPreserveSourceDestination bool) (map[string]client.GenericBackendSetDetails, error) {
+func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sslCfg *SSLConfig, isPreserveSource bool) (map[string]client.GenericBackendSetDetails, error) {
 	backendSets := make(map[string]client.GenericBackendSetDetails)
 	loadbalancerPolicy, err := getLoadBalancerPolicy(svc)
 	if err != nil {
 		return nil, err
 	}
+	portsMap := make(map[int][]string)
+	mixedProtocolsPortSet := make(map[int]bool)
 	for _, servicePort := range svc.Spec.Ports {
-		name := getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
+		portsMap[int(servicePort.Port)] = append(portsMap[int(servicePort.Port)], string(servicePort.Protocol))
+	}
+	for _, servicePort := range svc.Spec.Ports {
 		port := int(servicePort.Port)
+		backendSetName := ""
+		if len(portsMap[port]) > 1 {
+			if mixedProtocolsPortSet[port] {
+				continue
+			}
+			backendSetName = getBackendSetName(ProtocolTypeMixed, port)
+			mixedProtocolsPortSet[port] = true
+		} else {
+			backendSetName = getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
+		}
 		var secretName string
 		if sslCfg != nil && len(sslCfg.BackendSetSSLSecretName) != 0 {
 			secretName = sslCfg.BackendSetSSLSecretName
@@ -543,11 +606,11 @@ func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node
 		if err != nil {
 			return nil, err
 		}
-		backendSets[name] = client.GenericBackendSetDetails{
+		backendSets[backendSetName] = client.GenericBackendSetDetails{
 			Policy:           &loadbalancerPolicy,
 			Backends:         getBackends(logger, nodes, servicePort.NodePort),
 			HealthChecker:    healthChecker,
-			IsPreserveSource: &isPreserveSourceDestination,
+			IsPreserveSource: &isPreserveSource,
 			SslConfiguration: getSSLConfiguration(sslCfg, secretName, port),
 		}
 	}
@@ -789,6 +852,11 @@ func getListenersOciLoadBalancer(svc *v1.Service, sslCfg *SSLConfig) (map[string
 
 func getListenersNetworkLoadBalancer(svc *v1.Service) (map[string]client.GenericListener, error) {
 	listeners := make(map[string]client.GenericListener)
+	portsMap := make(map[int][]string)
+	mixedProtocolsPortSet := make(map[int]bool)
+	for _, servicePort := range svc.Spec.Ports {
+		portsMap[int(servicePort.Port)] = append(portsMap[int(servicePort.Port)], string(servicePort.Protocol))
+	}
 	for _, servicePort := range svc.Spec.Ports {
 		protocol := string(servicePort.Protocol)
 
@@ -799,19 +867,32 @@ func getListenersNetworkLoadBalancer(svc *v1.Service) (map[string]client.Generic
 		if !protocolMap[protocol] {
 			return nil, fmt.Errorf("invalid backend protocol %q requested for network load balancer listener", protocol)
 		}
-
 		port := int(servicePort.Port)
-		name := getListenerName(protocol, port)
+		listenerName := ""
+		backendSetName := ""
+		if len(portsMap[port]) > 1 {
+			if mixedProtocolsPortSet[port] {
+				continue
+			}
+			listenerName = getListenerName(ProtocolTypeMixed, port)
+			backendSetName = getBackendSetName(ProtocolTypeMixed, port)
+			protocol = ProtocolTypeMixed
+			mixedProtocolsPortSet[port] = true
+		} else {
+			listenerName = getListenerName(protocol, port)
+			backendSetName = getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
+		}
 
 		listener := client.GenericListener{
-			Name:                  &name,
-			DefaultBackendSetName: common.String(getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))),
+			Name:                  &listenerName,
+			DefaultBackendSetName: common.String(backendSetName),
 			Protocol:              &protocol,
 			Port:                  &port,
 		}
 
-		listeners[name] = listener
+		listeners[listenerName] = listener
 	}
+
 	return listeners, nil
 }
 

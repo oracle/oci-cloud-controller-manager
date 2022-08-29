@@ -26,9 +26,10 @@ import (
 
 const (
 	// Prefix to apply to the name of a created volume. This should be the same as the option '--volume-name-prefix' of csi-provisioner.
-	pvcPrefix = "csi"
-	csiDriver = "csi"
-
+	pvcPrefix                     = "csi"
+	csiDriver                     = "csi"
+	fsTypeKey                     = "csi.storage.k8s.io/fstype"
+	fsTypeKeyDeprecated           = "fstype"
 	timeout                       = time.Minute * 3
 	kmsKey                        = "kms-key-id"
 	attachmentType                = "attachment-type"
@@ -70,7 +71,7 @@ type VolumeAttachmentOption struct {
 	enableInTransitEncryption bool
 }
 
-func extractVolumeParameters(parameters map[string]string) (VolumeParameters, error) {
+func extractVolumeParameters(log *zap.SugaredLogger, parameters map[string]string) (VolumeParameters, error) {
 	p := VolumeParameters{
 		diskEncryptionKey:   "",
 		attachmentParameter: make(map[string]string),
@@ -78,6 +79,8 @@ func extractVolumeParameters(parameters map[string]string) (VolumeParameters, er
 	}
 	for k, v := range parameters {
 		switch k {
+		case fsTypeKeyDeprecated:
+			log.Warnf("%s is deprecated, please use %s instead", fsTypeKeyDeprecated, fsTypeKey)
 		case kmsKey:
 			if v != "" {
 				p.diskEncryptionKey = v
@@ -206,7 +209,7 @@ func (d *ControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolu
 		return nil, fmt.Errorf("duplicate volume %q exists", volumeName)
 	}
 
-	volumeParams, err := extractVolumeParameters(req.GetParameters())
+	volumeParams, err := extractVolumeParameters(log, req.GetParameters())
 	if err != nil {
 		log.Error("Failed to parse storageclass parameters %s", err)
 		csiMetricDimension = util.GetMetricDimensionForComponent(util.ErrValidation, util.CSIStorageType)
@@ -265,6 +268,7 @@ func (d *ControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolu
 	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
+	log.Info("Waiting for volume to become available.")
 	_, err = d.client.BlockStorage().AwaitVolumeAvailableORTimeout(ctx, *provisionedVolume.Id)
 	if err != nil {
 		log.With("volumeName", volumeName).Error("Create volume failed with time out")
@@ -296,6 +300,7 @@ func (d *ControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolu
 					},
 				},
 			},
+
 			VolumeContext: map[string]string{
 				attachmentType:     volumeParams.attachmentParameter[attachmentType],
 				csi_util.VpusPerGB: strconv.FormatInt(volumeParams.vpusPerGB, 10),
@@ -550,7 +555,6 @@ func (d *ControllerDriver) ControllerUnpublishVolume(ctx context.Context, req *c
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			log.Infof("Node with nodeID %s is not found, volume is likely already detached", req.NodeId)
-			// https://jira.oci.oraclecorp.com/browse/OKE-13873 : Cleanup of dangling volumeAttachments is deferred.
 			csiMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.CSIStorageType)
 			dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
 			metrics.SendMetricData(d.metricPusher, metrics.PVDetach, time.Since(startTime).Seconds(), dimensionsMap)

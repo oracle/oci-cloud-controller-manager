@@ -166,7 +166,7 @@ Ex:
 apiVersion: storage.k8s.io/v1
 kind: CSIDriver
 metadata:
-name: blockvolume.csi.oraclecloud.com
+  name: blockvolume.csi.oraclecloud.com
 spec:
   fsGroupPolicy: File
 ```

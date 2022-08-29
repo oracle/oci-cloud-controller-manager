@@ -38,7 +38,7 @@ var _ = Describe("Service [Slow]", func() {
 	f := sharedfw.NewDefaultFramework(baseName)
 
 	basicTestArray := []struct {
-		lbType     string
+		lbType              string
 		CreationAnnotations map[string]string
 	}{
 		{
@@ -48,7 +48,7 @@ var _ = Describe("Service [Slow]", func() {
 		{
 			"nlb",
 			map[string]string{
-				cloudprovider.ServiceAnnotationLoadBalancerType: "nlb",
+				cloudprovider.ServiceAnnotationLoadBalancerType:                              "nlb",
 				cloudprovider.ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode: "All",
 			},
 		},
@@ -57,7 +57,7 @@ var _ = Describe("Service [Slow]", func() {
 		It("should be possible to create and mutate a Service type:LoadBalancer (change nodeport) [Canary]", func() {
 			for _, test := range basicTestArray {
 				By("Running test for: " + test.lbType)
-				serviceName := "basic-"+ test.lbType +"-test"
+				serviceName := "basic-" + test.lbType + "-test"
 				ns := f.Namespace.Name
 
 				jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
@@ -212,7 +212,7 @@ var _ = Describe("ESIPP [Slow]", func() {
 		cs = f.ClientSet
 	})
 	esippTestsArray := []struct {
-		lbType     string
+		lbType              string
 		CreationAnnotations map[string]string
 	}{
 		{
@@ -222,7 +222,7 @@ var _ = Describe("ESIPP [Slow]", func() {
 		{
 			"nlb",
 			map[string]string{
-				cloudprovider.ServiceAnnotationLoadBalancerType: "nlb",
+				cloudprovider.ServiceAnnotationLoadBalancerType:                              "nlb",
 				cloudprovider.ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode: "All",
 			},
 		},
@@ -232,7 +232,7 @@ var _ = Describe("ESIPP [Slow]", func() {
 			for _, test := range esippTestsArray {
 				By("Running test for: " + test.lbType)
 				namespace := f.Namespace.Name
-				serviceName := "external-local-"+test.lbType
+				serviceName := "external-local-" + test.lbType
 				jig := sharedfw.NewServiceTestJig(cs, serviceName)
 				nodes := jig.GetNodes(sharedfw.MaxNodesForEndpointsTests)
 
@@ -293,11 +293,11 @@ var _ = Describe("ESIPP [Slow]", func() {
 			for _, test := range esippTestsArray {
 				By("Running test for: " + test.lbType)
 				namespace := f.Namespace.Name
-				serviceName := "external-local-"+ test.lbType
+				serviceName := "external-local-" + test.lbType
 				jig := sharedfw.NewServiceTestJig(cs, serviceName)
 				nodes := jig.GetNodes(sharedfw.MaxNodesForEndpointsTests)
 
-				svc := jig.CreateOnlyLocalLoadBalancerService(namespace, serviceName, loadBalancerCreateTimeout, true, test.CreationAnnotations,nil)
+				svc := jig.CreateOnlyLocalLoadBalancerService(namespace, serviceName, loadBalancerCreateTimeout, true, test.CreationAnnotations, nil)
 				serviceLBNames = append(serviceLBNames, cloudprovider.GetLoadBalancerName(svc))
 				defer func() {
 					jig.ChangeServiceType(svc.Namespace, svc.Name, v1.ServiceTypeClusterIP, loadBalancerCreateTimeout)
@@ -676,6 +676,112 @@ var _ = Describe("End to end enabled TLS - different certificates", func() {
 	})
 })
 
+var _ = Describe("Configure preservation of source IP in NLB", func() {
+
+	baseName := "preserve-source"
+	f := sharedfw.NewDefaultFramework(baseName)
+
+	Context("[cloudprovider][ccm][lb]", func() {
+		preserveSourceTestArray := []struct {
+			lbType           string
+			configuration    string
+			annotations      map[string]string
+			isPreserveSource bool
+		}{
+			{
+				"nlb",
+				"preserve-ip-true",
+				map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerType:                    "nlb",
+					cloudprovider.ServiceAnnotationNetworkLoadBalancerIsPreserveSource: "true",
+				},
+				true,
+			},
+			{
+				"nlb",
+				"preserve-ip-false",
+				map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerType:                    "nlb",
+					cloudprovider.ServiceAnnotationNetworkLoadBalancerIsPreserveSource: "false",
+				},
+				false,
+			},
+		}
+		It("should be possible configure preservation of source IP in NLB", func() {
+			for _, test := range preserveSourceTestArray {
+				By("Running test for: " + test.configuration)
+				serviceName := "e2e-" + test.configuration
+				ns := f.Namespace.Name
+
+				jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
+
+				loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
+				if nodes := sharedfw.GetReadySchedulableNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
+					loadBalancerCreateTimeout = sharedfw.LoadBalancerCreateTimeoutLarge
+				}
+
+				requestedIP := ""
+
+				tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
+					s.Spec.Type = v1.ServiceTypeLoadBalancer
+					s.Spec.LoadBalancerIP = requestedIP
+					s.Spec.Ports = []v1.ServicePort{{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
+						{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
+					s.ObjectMeta.Annotations = test.annotations
+					s.Spec.ExternalTrafficPolicy = v1.ServiceExternalTrafficPolicyTypeLocal
+				})
+
+				svcPort := int(tcpService.Spec.Ports[0].Port)
+
+				By("creating a pod to be part of the TCP service " + serviceName)
+				jig.RunOrFail(ns, nil)
+
+				By("waiting for the TCP service to have a load balancer")
+				// Wait for the load balancer to be created asynchronously
+				tcpService = jig.WaitForLoadBalancerOrFail(ns, tcpService.Name, loadBalancerCreateTimeout)
+				jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
+				tcpIngressIP := sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0])
+				sharedfw.Logf("TCP load balancer: %s", tcpIngressIP)
+
+				lbName := cloudprovider.GetLoadBalancerName(tcpService)
+				sharedfw.Logf("LB Name is %s", lbName)
+				ctx := context.TODO()
+				compartmentId := ""
+				if setupF.Compartment1 != "" {
+					compartmentId = setupF.Compartment1
+				} else if f.CloudProviderConfig.CompartmentID != "" {
+					compartmentId = f.CloudProviderConfig.CompartmentID
+				} else if f.CloudProviderConfig.Auth.CompartmentID != "" {
+					compartmentId = f.CloudProviderConfig.Auth.CompartmentID
+				} else {
+					sharedfw.Failf("Compartment Id undefined.")
+				}
+				loadBalancer, err := f.Client.LoadBalancer(test.lbType).GetLoadBalancerByName(ctx, compartmentId, lbName)
+				sharedfw.ExpectNoError(err)
+
+				By("Validate isPreserveSource in the backend set is as expected")
+				isPreserve := *loadBalancer.BackendSets["TCP-80"].IsPreserveSource
+				Expect(isPreserve == test.isPreserveSource).To(BeTrue())
+
+				isPreserve = *loadBalancer.BackendSets["TCP-443"].IsPreserveSource
+				Expect(isPreserve == test.isPreserveSource).To(BeTrue())
+
+				By("changing TCP service to type=ClusterIP")
+				tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+					s.Spec.Type = v1.ServiceTypeClusterIP
+					s.Spec.Ports[0].NodePort = 0
+					s.Spec.Ports[1].NodePort = 0
+				})
+
+				// Wait for the load balancer to be destroyed asynchronously
+				tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
+				jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
+			}
+		})
+	})
+})
+
 var _ = Describe("LB Properties", func() {
 	baseName := "lb-properties"
 	f := sharedfw.NewDefaultFramework(baseName)
@@ -683,12 +789,12 @@ var _ = Describe("LB Properties", func() {
 	Context("[cloudprovider][ccm][lb]", func() {
 
 		healthCheckTestArray := []struct {
-			lbType     string
+			lbType              string
 			CreationAnnotations map[string]string
-			UpdatedAnnotations map[string]string
-			RemovedAnnotations map[string]string
-			CreateInterval int
-			UpdateInterval int
+			UpdatedAnnotations  map[string]string
+			RemovedAnnotations  map[string]string
+			CreateInterval      int
+			UpdateInterval      int
 		}{
 			{
 				"lb",
@@ -712,13 +818,13 @@ var _ = Describe("LB Properties", func() {
 					cloudprovider.ServiceAnnotationNetworkLoadBalancerHealthCheckRetries:  "1",
 					cloudprovider.ServiceAnnotationNetworkLoadBalancerHealthCheckTimeout:  "1000",
 					cloudprovider.ServiceAnnotationNetworkLoadBalancerHealthCheckInterval: "10000",
-					cloudprovider.ServiceAnnotationLoadBalancerType:                "nlb",
+					cloudprovider.ServiceAnnotationLoadBalancerType:                       "nlb",
 				},
 				map[string]string{
 					cloudprovider.ServiceAnnotationNetworkLoadBalancerHealthCheckRetries:  "2",
 					cloudprovider.ServiceAnnotationNetworkLoadBalancerHealthCheckTimeout:  "2000",
 					cloudprovider.ServiceAnnotationNetworkLoadBalancerHealthCheckInterval: "15000",
-					cloudprovider.ServiceAnnotationLoadBalancerType:                "nlb",
+					cloudprovider.ServiceAnnotationLoadBalancerType:                       "nlb",
 				},
 				map[string]string{
 					cloudprovider.ServiceAnnotationLoadBalancerType: "nlb",
@@ -730,7 +836,7 @@ var _ = Describe("LB Properties", func() {
 		It("should be possible to create Service type:LoadBalancer and mutate health-check config", func() {
 			for _, test := range healthCheckTestArray {
 				By("Running test for: " + test.lbType)
-				serviceName := "e2e-"+ test.lbType +"-healthcheck-config"
+				serviceName := "e2e-" + test.lbType + "-healthcheck-config"
 				ns := f.Namespace.Name
 
 				jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
@@ -1041,24 +1147,24 @@ var _ = Describe("LB Properties", func() {
 
 		})
 
-		nsgTestArray := []struct{
-			lbtype string
-			Annotations map[string]string
+		nsgTestArray := []struct {
+			lbtype        string
+			Annotations   map[string]string
 			nsgAnnotation string
 		}{
 			{
 				"lb",
 				map[string]string{
-					cloudprovider.ServiceAnnotationLoadBalancerInternal:              "true",
-					cloudprovider.ServiceAnnotationLoadBalancerShape:                 "10Mbps",
+					cloudprovider.ServiceAnnotationLoadBalancerInternal: "true",
+					cloudprovider.ServiceAnnotationLoadBalancerShape:    "10Mbps",
 				},
 				cloudprovider.ServiceAnnotationLoadBalancerNetworkSecurityGroups,
 			},
 			{
 				"nlb",
 				map[string]string{
-					cloudprovider.ServiceAnnotationLoadBalancerInternal:              "true",
-					cloudprovider.ServiceAnnotationLoadBalancerType:                  "nlb",
+					cloudprovider.ServiceAnnotationLoadBalancerInternal: "true",
+					cloudprovider.ServiceAnnotationLoadBalancerType:     "nlb",
 				},
 				cloudprovider.ServiceAnnotationNetworkLoadBalancerNetworkSecurityGroups,
 			},
@@ -1066,8 +1172,8 @@ var _ = Describe("LB Properties", func() {
 		// Test NSG feature
 		It("should be possible to create/update/delete Service type:LoadBalancer with NSGs config", func() {
 			for _, test := range nsgTestArray {
-				By("Running test for: "+ test.lbtype)
-				serviceName := "e2e-"+test.lbtype+"-nsg"
+				By("Running test for: " + test.lbtype)
+				serviceName := "e2e-" + test.lbtype + "-nsg"
 				ns := f.Namespace.Name
 
 				jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
@@ -1170,10 +1276,10 @@ var _ = Describe("LB Properties", func() {
 		})
 
 		lbPolicyTestArray := []struct {
-			lbType     string
+			lbType              string
 			CreationAnnotations map[string]string
-			UpdatedAnnotations map[string]string
-			PolicyAnnotation string
+			UpdatedAnnotations  map[string]string
+			PolicyAnnotation    string
 		}{
 			{
 				"lb",
@@ -1189,12 +1295,12 @@ var _ = Describe("LB Properties", func() {
 			{
 				"nlb",
 				map[string]string{
-					cloudprovider.ServiceAnnotationLoadBalancerType: "nlb",
+					cloudprovider.ServiceAnnotationLoadBalancerType:                 "nlb",
 					cloudprovider.ServiceAnnotationNetworkLoadBalancerBackendPolicy: cloudprovider.NetworkLoadBalancingPolicyTwoTuple,
 				},
 				map[string]string{
-				cloudprovider.ServiceAnnotationLoadBalancerType: "nlb",
-				cloudprovider.ServiceAnnotationNetworkLoadBalancerBackendPolicy: cloudprovider.NetworkLoadBalancingPolicyThreeTuple,
+					cloudprovider.ServiceAnnotationLoadBalancerType:                 "nlb",
+					cloudprovider.ServiceAnnotationNetworkLoadBalancerBackendPolicy: cloudprovider.NetworkLoadBalancingPolicyThreeTuple,
 				},
 				cloudprovider.ServiceAnnotationNetworkLoadBalancerBackendPolicy,
 			},
@@ -1206,7 +1312,7 @@ var _ = Describe("LB Properties", func() {
 			for _, test := range lbPolicyTestArray {
 				By("Running test for: " + test.lbType)
 
-				serviceName := "e2e-"+ test.lbType +"-policy"
+				serviceName := "e2e-" + test.lbType + "-policy"
 				ns := f.Namespace.Name
 
 				jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
@@ -1281,8 +1387,8 @@ var _ = Describe("LB Properties", func() {
 			}
 		})
 
-		reservedIpTestArray := []struct{
-			lbtype string
+		reservedIpTestArray := []struct {
+			lbtype              string
 			CreationAnnotations map[string]string
 		}{
 			{
@@ -1301,8 +1407,8 @@ var _ = Describe("LB Properties", func() {
 		//Test Reserved IP feature
 		It("should be possible to create Service type:LoadbBalancer with public reservedIP", func() {
 			for _, test := range reservedIpTestArray {
-				By("Running test for: "+ test.lbtype)
-				serviceName := "e2e-"+ test.lbtype +"-reserved-ip"
+				By("Running test for: " + test.lbtype)
+				serviceName := "e2e-" + test.lbtype + "-reserved-ip"
 				ns := f.Namespace.Name
 
 				jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
@@ -1381,10 +1487,10 @@ func CreateHealthCheckScript(healthCheckNodePort int, ips []string, path string,
 		port := strconv.Itoa(healthCheckNodePort)
 		ipPort := net.JoinHostPort(privateIP, port)
 		//command to get health status of the pod on the node
-		script += "healthCheckPassed=$(curl -s http://"+ ipPort + path + " | grep -i localEndpoints* | cut -d ':' -f2);"
-		if n == nodeIndex{
+		script += "healthCheckPassed=$(curl -s http://" + ipPort + path + " | grep -i localEndpoints* | cut -d ':' -f2);"
+		if n == nodeIndex {
 			script += "if ((\"$healthCheckPassed\"==\"0\")); then exit 1; fi;"
-		}else{
+		} else {
 			script += "if ((\"$healthCheckPassed\"==\"1\")); then exit 1; fi;"
 		}
 	}

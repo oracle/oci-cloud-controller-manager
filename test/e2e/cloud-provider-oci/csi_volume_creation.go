@@ -84,6 +84,106 @@ var _ = Describe("CSI Volume Creation", func() {
 	})
 })
 
+var _ = Describe("CSI Volume Creation with different fstypes", func() {
+	f := framework.NewDefaultFramework("csi-fstypes")
+	Context("[cloudprovider][storage][csi][fstypes][iSCSI]", func() {
+		It("Create PVC with fstype as XFS", func() {
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-provisioner-e2e-tests-fstype-xfs")
+
+			scName := f.CreateStorageClassOrFail(framework.ClassOCIXfs, "blockvolume.csi.oraclecloud.com", map[string]string{framework.FstypeKey: "xfs"}, pvcJig.Labels, "WaitForFirstConsumer", true)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MaxVolumeBlock, scName, nil)
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+			podName := pvcJig.NewPodForCSI("app-xfs", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+
+			time.Sleep(60 * time.Second) //waiting for pod to up and running
+
+			pvcJig.CheckFilesystemTypeOfVolumeInsidePod(f.Namespace.Name, podName, "xfs")
+			_ = f.DeleteStorageClass(framework.ClassOCIXfs)
+		})
+		It("Create PVC with fstype as EXT3", func() {
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-provisioner-e2e-tests-fstype-ext3")
+
+			scName := f.CreateStorageClassOrFail(framework.ClassOCIExt3, "blockvolume.csi.oraclecloud.com", map[string]string{framework.FstypeKey: "ext3"}, pvcJig.Labels, "WaitForFirstConsumer", true)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MaxVolumeBlock, scName, nil)
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+			podName := pvcJig.NewPodForCSI("app-ext3", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+
+			time.Sleep(60 * time.Second) //waiting for pod to up and running
+
+			pvcJig.CheckFilesystemTypeOfVolumeInsidePod(f.Namespace.Name, podName, "ext3")
+			_ = f.DeleteStorageClass(framework.ClassOCIExt3)
+		})
+	})
+	Context("[cloudprovider][storage][csi][fstypes][paravirtualized]", func() {
+		It("Create PVC with fstype as XFS with paravirtualized attachment type", func() {
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-provisioner-e2e-tests-fstype-xfs")
+
+			scName := f.CreateStorageClassOrFail(framework.ClassOCIXfs, "blockvolume.csi.oraclecloud.com", map[string]string{framework.FstypeKey: "xfs", framework.KmsKey: setupF.CMEKKMSKey, framework.AttachmentType: framework.AttachmentTypeParavirtualized}, pvcJig.Labels, "WaitForFirstConsumer", true)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MaxVolumeBlock, scName, nil)
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+			podName := pvcJig.NewPodForCSI("app-xfs", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+			pvcJig.CheckCMEKKey(f.Client.BlockStorage(), pvc.Name, f.Namespace.Name, setupF.CMEKKMSKey)
+			pvcJig.CheckAttachmentTypeAndEncryptionType(f.Client.Compute(), pvc.Name, f.Namespace.Name, podName, framework.AttachmentTypeParavirtualized)
+			time.Sleep(60 * time.Second) //waiting for pod to up and running
+
+			pvcJig.CheckFilesystemTypeOfVolumeInsidePod(f.Namespace.Name, podName, "xfs")
+			_ = f.DeleteStorageClass(framework.ClassOCIXfs)
+		})
+	})
+	Context("[cloudprovider][storage][csi][expand][fstypes][iSCSI]", func() {
+		It("Expand PVC VolumeSize from 50Gi to 100Gi and asserts size, file existence and file corruptions for iSCSI volumes with xfs filesystem type", func() {
+			var size = "100Gi"
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-pvc-expand-to-100gi-iscsi-xfs")
+
+			scName := f.CreateStorageClassOrFail(framework.ClassOCIXfs, "blockvolume.csi.oraclecloud.com",
+				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI, framework.FstypeKey: "xfs"},
+				pvcJig.Labels, "WaitForFirstConsumer", true)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil)
+			podName := pvcJig.NewPodForCSI("expanded-pvc-app", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+
+			time.Sleep(60 * time.Second) //waiting for pod to up and running
+
+			expandedPvc := pvcJig.UpdateAndAwaitPVCOrFailCSI(pvc, pvc.Namespace, size, nil)
+
+			time.Sleep(120 * time.Second) //waiting for expanded pvc to be functional
+
+			pvcJig.CheckFilesystemTypeOfVolumeInsidePod(f.Namespace.Name, podName, "xfs")
+			pvcJig.CheckVolumeCapacity("100Gi", expandedPvc.Name, f.Namespace.Name)
+			pvcJig.CheckFileExists(f.Namespace.Name, podName, "/data", "testdata.txt")
+			pvcJig.CheckFileCorruption(f.Namespace.Name, podName, "/data", "testdata.txt")
+			pvcJig.CheckExpandedVolumeReadWrite(f.Namespace.Name, podName)
+			pvcJig.CheckUsableVolumeSizeInsidePod(f.Namespace.Name, podName, "100G")
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+			_ = f.DeleteStorageClass(framework.ClassOCIXfs)
+		})
+		It("Expand PVC VolumeSize from 50Gi to 100Gi and asserts size, file existence and file corruptions for iSCSI volumes with ext3 filesystem type", func() {
+			var size = "100Gi"
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-pvc-expand-to-100gi-iscsi-ext3")
+
+			scName := f.CreateStorageClassOrFail(framework.ClassOCIExt3, "blockvolume.csi.oraclecloud.com",
+				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI, framework.FstypeKey: "ext3"},
+				pvcJig.Labels, "WaitForFirstConsumer", true)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil)
+			podName := pvcJig.NewPodForCSI("expanded-pvc-app", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+
+			time.Sleep(60 * time.Second) //waiting for pod to up and running
+
+			expandedPvc := pvcJig.UpdateAndAwaitPVCOrFailCSI(pvc, pvc.Namespace, size, nil)
+
+			time.Sleep(120 * time.Second) //waiting for expanded pvc to be functional
+
+			pvcJig.CheckFilesystemTypeOfVolumeInsidePod(f.Namespace.Name, podName, "ext3")
+			pvcJig.CheckVolumeCapacity("100Gi", expandedPvc.Name, f.Namespace.Name)
+			pvcJig.CheckFileExists(f.Namespace.Name, podName, "/data", "testdata.txt")
+			pvcJig.CheckFileCorruption(f.Namespace.Name, podName, "/data", "testdata.txt")
+			pvcJig.CheckExpandedVolumeReadWrite(f.Namespace.Name, podName)
+			pvcJig.CheckUsableVolumeSizeInsidePod(f.Namespace.Name, podName, "99G")
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+			_ = f.DeleteStorageClass(framework.ClassOCIExt3)
+		})
+	})
+})
+
 var _ = Describe("CSI Volume Expansion iSCSI", func() {
 	f := framework.NewDefaultFramework("csi-expansion")
 	Context("[cloudprovider][storage][csi][expand][iSCSI]", func() {
@@ -107,9 +207,8 @@ var _ = Describe("CSI Volume Expansion iSCSI", func() {
 			pvcJig.CheckFileExists(f.Namespace.Name, podName, "/data", "testdata.txt")
 			pvcJig.CheckFileCorruption(f.Namespace.Name, podName, "/data", "testdata.txt")
 			pvcJig.CheckExpandedVolumeReadWrite(f.Namespace.Name, podName)
-			pvcJig.CheckUsableVolumeSizeInsidePod(f.Namespace.Name, podName)
+			pvcJig.CheckUsableVolumeSizeInsidePod(f.Namespace.Name, podName, "99G")
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
-			_ = f.DeleteStorageClass(framework.ClassOCICSIExpand)
 		})
 	})
 })
@@ -137,7 +236,7 @@ var _ = Describe("CSI Volume Expansion iSCSI", func() {
 			pvcJig.CheckFileExists(f.Namespace.Name, podName, "/data", "testdata.txt")
 			pvcJig.CheckFileCorruption(f.Namespace.Name, podName, "/data", "testdata.txt")
 			pvcJig.CheckExpandedVolumeReadWrite(f.Namespace.Name, podName)
-			pvcJig.CheckUsableVolumeSizeInsidePod(f.Namespace.Name, podName)
+			pvcJig.CheckUsableVolumeSizeInsidePod(f.Namespace.Name, podName, "99G")
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			_ = f.DeleteStorageClass(framework.ClassOCICSIExpand)
 		})
@@ -297,7 +396,7 @@ var _ = Describe("CSI Volume Expansion Paravirtualized", func() {
 			pvcJig.CheckFileExists(f.Namespace.Name, podName, "/data", "testdata.txt")
 			pvcJig.CheckFileCorruption(f.Namespace.Name, podName, "/data", "testdata.txt")
 			pvcJig.CheckExpandedVolumeReadWrite(f.Namespace.Name, podName)
-			pvcJig.CheckUsableVolumeSizeInsidePod(f.Namespace.Name, podName)
+			pvcJig.CheckUsableVolumeSizeInsidePod(f.Namespace.Name, podName, "99G")
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			_ = f.DeleteStorageClass(framework.ClassOCICSIExpand)
 		})

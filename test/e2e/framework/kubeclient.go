@@ -653,7 +653,7 @@ func podToleratesNodeTaints(pod *v1.Pod, nodeInfo *scheduler.NodeInfo, filter fu
 
 	_, matchingFlag := v1helper.FindMatchingUntoleratedTaint(taints, pod.Spec.Tolerations, filter)
 
-	if matchingFlag {
+	if !matchingFlag {
 		return true, nil
 	}
 	return false, nil
