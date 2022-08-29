@@ -555,7 +555,6 @@ func (d *ControllerDriver) ControllerUnpublishVolume(ctx context.Context, req *c
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			log.Infof("Node with nodeID %s is not found, volume is likely already detached", req.NodeId)
-			// https://jira.oci.oraclecorp.com/browse/OKE-13873 : Cleanup of dangling volumeAttachments is deferred.
 			csiMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.CSIStorageType)
 			dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
 			metrics.SendMetricData(d.metricPusher, metrics.PVDetach, time.Since(startTime).Seconds(), dimensionsMap)

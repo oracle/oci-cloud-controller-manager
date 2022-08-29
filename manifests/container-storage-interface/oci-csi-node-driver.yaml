@@ -144,7 +144,7 @@ spec:
           args:
             - --csi-address=/csi/csi.sock
             - --kubelet-registration-path=/var/lib/kubelet/plugins/blockvolume.csi.oraclecloud.com/csi.sock
-          image: k8s.gcr.io/sig-storage/csi-node-driver-registrar:v2.5.0
+          image: k8s.gcr.io/sig-storage/csi-node-driver-registrar:v2.5.1
           securityContext:
             privileged: true
           lifecycle:

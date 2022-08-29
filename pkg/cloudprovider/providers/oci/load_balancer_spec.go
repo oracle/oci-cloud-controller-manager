@@ -42,7 +42,6 @@ const (
 	NLBHealthCheckIntervalMax = 1800000
 )
 
-// TODO : Read this value from the oci-go-sdk project - JIRA : OKE-21772
 const ProtocolTypeMixed = "TCP_AND_UDP"
 
 const (

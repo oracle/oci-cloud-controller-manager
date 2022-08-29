@@ -19,10 +19,10 @@ spec:
         role: csi-oci
     spec:
       nodeSelector:
-        node-role.kubernetes.io/master: ""
+        node-role.kubernetes.io/control-plane: ""
       containers:
         - name: csi-volume-provisioner
-          image: k8s.gcr.io/sig-storage/csi-provisioner:v3.1.0
+          image: k8s.gcr.io/sig-storage/csi-provisioner:v3.2.1
           args:
             - --csi-address=/var/run/shared-tmpfs/csi.sock
             - --volume-name-prefix=csi
@@ -37,7 +37,7 @@ spec:
             - mountPath: /var/run/shared-tmpfs
               name: shared-tmpfs
         - name: csi-attacher
-          image: k8s.gcr.io/sig-storage/csi-attacher:v3.4.0
+          image: k8s.gcr.io/sig-storage/csi-attacher:v3.5.0
           args:
             - --csi-address=/var/run/shared-tmpfs/csi.sock
             - --timeout=120s
@@ -50,7 +50,7 @@ spec:
             - mountPath: /var/run/shared-tmpfs
               name: shared-tmpfs
         - name: csi-resizer
-          image: k8s.gcr.io/sig-storage/csi-resizer:v1.4.0
+          image: k8s.gcr.io/sig-storage/csi-resizer:v1.5.0
           args:
             - --csi-address=/var/run/shared-tmpfs/csi.sock
             - --leader-election
