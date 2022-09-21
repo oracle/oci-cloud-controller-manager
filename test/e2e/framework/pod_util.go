@@ -88,6 +88,29 @@ func (j *PVCTestJig) CheckFileExists(namespace string, podName string, dir strin
 	}
 }
 
+func (j *PVCTestJig) CheckMountOptions(namespace string, podName string, expectedPath string, expectedOptions []string) {
+	By("check if NFS mount options are applied")
+	command := fmt.Sprintf("mount -t nfs")
+	if pollErr := wait.PollImmediate(K8sResourcePoll, DefaultTimeout, func() (bool, error) {
+		stdout, err := RunHostCmd(namespace, podName, command)
+		if err != nil {
+			Logf("got err: %v, retry until timeout", err)
+			return false, nil
+		}
+		if stdout == "" || !strings.Contains(stdout, expectedPath) {
+			return false, errors.Errorf("NFS Mount not found for path %s. Mounted as %s", expectedPath, stdout)
+		}
+		for _, option := range expectedOptions {
+			if !strings.Contains(stdout, option) {
+				return false, errors.Errorf("NFS Mount Options check failed. Mounted as %s", stdout)
+			}
+		}
+		return true, nil
+	}); pollErr != nil {
+		Failf("NFS mount with Mount Options failed in pod '%v'", podName)
+	}
+}
+
 func (j *PVCTestJig) CheckFileCorruption(namespace string, podName string, dir string, fileName string) {
 	By("check if the file is corrupt")
 	md5hash := "e59ff97941044f85df5297e1c302d260"
