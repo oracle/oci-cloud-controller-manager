@@ -34,6 +34,7 @@ COPY --from=0 /go/src/github.com/oracle/oci-cloud-controller-manager/image/* /us
 
 RUN yum install -y util-linux \
   && yum install -y e2fsprogs \
+  && yum install -y xfsprogs \
   && yum clean all
 
 COPY --from=0 /go/src/github.com/oracle/oci-cloud-controller-manager/dist/* /usr/local/bin/

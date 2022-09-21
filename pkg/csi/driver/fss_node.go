@@ -46,9 +46,14 @@ func (d FSSNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVo
 	var fsType = ""
 
 	accessType := req.VolumeCapability.GetMount()
-
-	if accessType != nil && accessType.FsType != "" {
-		fsType = accessType.FsType
+	var options []string
+	if accessType != nil {
+		if accessType.MountFlags != nil {
+			options = accessType.MountFlags
+		}
+		if accessType.FsType != "" {
+			fsType = accessType.FsType
+		}
 	}
 	encryptInTransit, err := isInTransitEncryptionEnabled(req.VolumeContext)
 	if err != nil {
@@ -57,7 +62,6 @@ func (d FSSNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVo
 
 	mounter := mount.New(mountPath)
 
-	var options []string
 	if encryptInTransit {
 		isPackageInstalled, err := csi_util.IsInTransitEncryptionPackageInstalled()
 		if err != nil {

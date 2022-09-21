@@ -377,13 +377,22 @@ func (j *PVCTestJig) pvAddPersistentVolumeSource(pv *v1.PersistentVolume,
 	return pv
 }
 
+func (j *PVCTestJig) pvAddMountOptions(pv *v1.PersistentVolume,
+	mountOptions []string) *v1.PersistentVolume {
+	if pv != nil {
+		pv.Spec.MountOptions = append(pv.Spec.MountOptions, mountOptions...)
+	}
+	return pv
+}
+
 // newPVTemplateFSS returns the default template for this jig, but
 // does not actually create the PV.  The default PV has the same name
 // as the jig
-func (j *PVCTestJig) newPVTemplateFSS(namespace, volumeHandle, enableIntransitEncrypt string) *v1.PersistentVolume {
+func (j *PVCTestJig) newPVTemplateFSS(namespace, volumeHandle, enableIntransitEncrypt string, mountOptions []string) *v1.PersistentVolume {
 	pv := j.CreatePVTemplate(namespace, "fss.csi.oraclecloud.com", "", "Retain")
 	pv = j.pvAddVolumeMode(pv, v1.PersistentVolumeFilesystem)
 	pv = j.pvAddAccessMode(pv, "ReadWriteMany")
+	pv = j.pvAddMountOptions(pv, mountOptions)
 	pv = j.pvAddPersistentVolumeSource(pv, v1.PersistentVolumeSource{
 		CSI: &v1.CSIPersistentVolumeSource{
 			Driver:       driver.FSSDriverName,
@@ -435,8 +444,8 @@ func (j *PVCTestJig) newPVTemplateCSIHighPerf(namespace string, scName string, o
 // CreatePVForFSSorFail creates a new claim based on the jig's
 // defaults. Callers can provide a function to tweak the claim object
 // before it is created.
-func (j *PVCTestJig) CreatePVorFailFSS(namespace, volumeHandle, encryptInTransit string) *v1.PersistentVolume {
-	pv := j.newPVTemplateFSS(namespace, volumeHandle, encryptInTransit)
+func (j *PVCTestJig) CreatePVorFailFSS(namespace, volumeHandle, encryptInTransit string, mountOptions []string) *v1.PersistentVolume {
+	pv := j.newPVTemplateFSS(namespace, volumeHandle, encryptInTransit, mountOptions)
 
 	result, err := j.KubeClient.CoreV1().PersistentVolumes().Create(context.Background(), pv, metav1.CreateOptions{})
 	if err != nil {
@@ -979,7 +988,7 @@ func (j *PVCTestJig) CheckEncryptionType(namespace, podName string) {
 	}
 }
 
-func (j *PVCTestJig) CheckSinglePodReadWrite(namespace string, pvcName string, checkEncryption bool) {
+func (j *PVCTestJig) CheckSinglePodReadWrite(namespace string, pvcName string, checkEncryption bool, expectedMountOptions []string) {
 
 	By("Creating Pod that can create and write to the file")
 	uid := uuid.NewUUID()
@@ -994,6 +1003,9 @@ func (j *PVCTestJig) CheckSinglePodReadWrite(namespace string, pvcName string, c
 
 	By("check if the file exists")
 	j.CheckFileExists(namespace, podName, "/data", fileName)
+
+	By("Check Mount Options")
+	j.CheckMountOptions(namespace, podName, "/data", expectedMountOptions)
 
 	By("Creating Pod that can read contents of existing file")
 	j.NewPodForCSIFSSRead(string(uid), namespace, pvcName, fileName, checkEncryption)
