@@ -30,7 +30,7 @@ import (
 	sets "k8s.io/apimachinery/pkg/util/sets"
 	informersv1 "k8s.io/client-go/informers/core/v1"
 	listersv1 "k8s.io/client-go/listers/core/v1"
-	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
+	helper "k8s.io/cloud-provider/service/helpers"
 )
 
 const (
@@ -679,7 +679,7 @@ func healthCheckPortInUse(serviceLister listersv1.ServiceLister, port int32) (bo
 	}
 	for _, service := range serviceList {
 		if service.Spec.Type == api.ServiceTypeLoadBalancer {
-			healthCheckPath, _ := apiservice.GetServiceHealthCheckPathPort(service)
+			healthCheckPath, _ := helper.GetServiceHealthCheckPathPort(service)
 			if healthCheckPath == "" {
 				// We have found another service using the default port.
 				return true, nil
