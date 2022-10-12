@@ -169,9 +169,11 @@ by the community.
 
 ## Upcoming Releases
 
-| Release               | Expected Release Date |
-|-----------------------|-----------------------|
-| Support for K8s v1.24 | August 2022           |
+| Release                | Expected Release Date |
+|------------------------|-----------------------|
+| OKE sync for K8s v1.22 | October 2022          |
+| OKE sync for K8s v1.23 | October 2022          |
+| NPN Controller         | November 2022         |
 
 ## License
 
