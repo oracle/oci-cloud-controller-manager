@@ -187,7 +187,7 @@ func (block *blockProvisioner) Provision(options controller.ProvisionOptions, ad
 	//make sure this method is idempotent by checking existence of volume with same name.
 	volumes, err := block.client.BlockStorage().GetVolumesByName(ctx, string(options.PVC.UID), block.compartmentID)
 	if err != nil {
-		logger.Error("Failed to find existence of volume %s", err)
+		logger.With(zap.Error(err)).Error("Failed to find existence of volume")
 		errorType = util.GetError(err)
 		fvdMetricDimension = util.GetMetricDimensionForComponent(errorType, util.FVDStorageType)
 		dimensionsMap[metrics.ComponentDimension] = fvdMetricDimension
@@ -216,7 +216,7 @@ func (block *blockProvisioner) Provision(options controller.ProvisionOptions, ad
 		logger.Info("Creating new volume!")
 		volume, err = block.client.BlockStorage().CreateVolume(ctx, volumeDetails)
 		if err != nil {
-			logger.With("Compartment Id", block.compartmentID).Error("Failed to create volume %s", err)
+			logger.With("Compartment Id", block.compartmentID).With(zap.Error(err)).Error("Failed to create volume")
 			errorType = util.GetError(err)
 			fvdMetricDimension = util.GetMetricDimensionForComponent(errorType, util.FVDStorageType)
 			dimensionsMap[metrics.ComponentDimension] = fvdMetricDimension

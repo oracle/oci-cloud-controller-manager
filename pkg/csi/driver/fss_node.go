@@ -69,7 +69,7 @@ func (d FSSNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVo
 			return nil, status.Error(codes.Internal, "FSS in-transit encryption Package installation check failed")
 		}
 		if !isPackageInstalled {
-			logger.Error("Package %s not installed for in-transit encryption", csi_util.InTransitEncryptionPackageName)
+			logger.Errorf("Package %s not installed for in-transit encryption", csi_util.InTransitEncryptionPackageName)
 			return nil, status.Error(codes.FailedPrecondition, fmt.Sprintf("Package %s not installed for in-transit encryption", csi_util.InTransitEncryptionPackageName))
 		}
 		logger.Debug("In-transit encryption enabled")
