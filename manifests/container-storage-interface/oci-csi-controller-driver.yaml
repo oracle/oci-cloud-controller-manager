@@ -36,6 +36,22 @@ spec:
               readOnly: true
             - mountPath: /var/run/shared-tmpfs
               name: shared-tmpfs
+        - name: csi-fss-volume-provisioner
+          image: quay.io/k8scsi/csi-provisioner:v1.6.0
+          args:
+            - --csi-address=/var/run/shared-tmpfs/csi-fss.sock
+            - --volume-name-prefix=csi-fss
+            - --feature-gates=Topology=true
+            - --timeout=120s
+            - --enable-leader-election=true
+            - --leader-election-type=leases
+            - --leader-election-namespace=kube-system
+          volumeMounts:
+            - name: config
+              mountPath: /etc/oci/
+              readOnly: true
+            - mountPath: /var/run/shared-tmpfs
+              name: shared-tmpfs
         - name: csi-attacher
           image: k8s.gcr.io/sig-storage/csi-attacher:v3.5.0
           args:
@@ -64,6 +80,23 @@ spec:
           command:
             - /usr/local/bin/oci-csi-controller-driver
           image: ghcr.io/oracle/cloud-provider-oci:v1.24.0
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: config
+              mountPath: /etc/oci/
+              readOnly: true
+            - name: kubernetes
+              mountPath: /etc/kubernetes
+              readOnly: true
+            - mountPath: /var/run/shared-tmpfs
+              name: shared-tmpfs
+        - name: oci-csi-fss-controller-driver
+          args:
+            - --v=2
+            - --endpoint=unix://var/run/shared-tmpfs/csi-fss.sock
+          command:
+            - /usr/local/bin/oci-csi-fss-controller-driver
+          image: iad.ocir.io/oracle/cloud-provider-oci:latest
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: config

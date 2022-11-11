@@ -17,7 +17,6 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/v50/common"
 	"github.com/oracle/oci-go-sdk/v50/core"
-	"github.com/oracle/oci-go-sdk/v50/filestorage"
 	"github.com/oracle/oci-go-sdk/v50/identity"
 	"github.com/oracle/oci-go-sdk/v50/loadbalancer"
 )
@@ -69,11 +68,20 @@ func (MockOCIClient) Identity() client.IdentityInterface {
 	return &MockIdentityClient{}
 }
 
-type MockBlockStorageClient struct {
-}
+type MockBlockStorageClient struct{}
 
 type MockProvisionerClient struct {
 	Storage *MockBlockStorageClient
+}
+
+type MockContainerEngineClient struct{}
+
+func (m MockContainerEngineClient) GetVirtualNode(ctx context.Context, vnId, vnpId string) (*containerengine.VirtualNode, error) {
+	return nil, nil
+}
+
+func (p *MockProvisionerClient) ContainerEngine() client.ContainerEngineInterface {
+	return &MockContainerEngineClient{}
 }
 
 func (c *MockBlockStorageClient) AwaitVolumeAvailableORTimeout(ctx context.Context, id string) (*core.Volume, error) {
@@ -150,9 +158,12 @@ func (p *MockProvisionerClient) BlockStorage() client.BlockStorageInterface {
 type MockVirtualNetworkClient struct {
 }
 
-// GetPrivateIP mocks the VirtualNetwork GetPrivateIP implementation
-func (c *MockVirtualNetworkClient) GetPrivateIP(ctx context.Context, id string) (*core.PrivateIp, error) {
-	return nil, nil
+// GetPrivateIp mocks the VirtualNetwork GetPrivateIp implementation
+func (c *MockVirtualNetworkClient) GetPrivateIp(ctx context.Context, id string) (*core.PrivateIp, error) {
+	privateIpAddress := "10.0.20.1"
+	return &core.PrivateIp{
+		IpAddress: &privateIpAddress,
+	}, nil
 }
 
 func (c *MockVirtualNetworkClient) GetSubnet(ctx context.Context, id string) (*core.Subnet, error) {
@@ -333,65 +344,11 @@ func (p *MockProvisionerClient) Identity() client.IdentityInterface {
 	return &MockIdentityClient{}
 }
 
-type MockFileStorageClient struct{}
-
-// CreateFileSystem mocks the FileStorage CreateFileSystem implementation.
-func (c *MockFileStorageClient) CreateFileSystem(ctx context.Context, details filestorage.CreateFileSystemDetails) (*filestorage.FileSystem, error) {
-	return nil, nil
-}
-
-// GetFileSystem mocks the FileStorage GetFileSystem implementation.
-func (c *MockFileStorageClient) GetFileSystem(ctx context.Context, id string) (*filestorage.FileSystem, error) {
-	return nil, nil
-}
-
-func (c *MockFileStorageClient) AwaitFileSystemActive(ctx context.Context, logger *zap.SugaredLogger, id string) (*filestorage.FileSystem, error) {
-	return nil, nil
-}
-
-func (c *MockFileStorageClient) GetFileSystemSummaryByDisplayName(ctx context.Context, compartmentID, ad, displayName string) (*filestorage.FileSystemSummary, error) {
-	return nil, nil
-}
-
-// DeleteFileSystem mocks the FileStorage DeleteFileSystem implementation
-func (c *MockFileStorageClient) DeleteFileSystem(ctx context.Context, id string) error {
-	return nil
-}
-
-// CreateExport mocks the FileStorage CreateExport implementation
-func (c *MockFileStorageClient) CreateExport(ctx context.Context, details filestorage.CreateExportDetails) (*filestorage.Export, error) {
-	return nil, nil
-}
-
-// GetExport mocks the FileStorage CreateExport implementation.
-func (c *MockFileStorageClient) GetExport(ctx context.Context, request filestorage.GetExportRequest) (response filestorage.GetExportResponse, err error) {
-	return filestorage.GetExportResponse{}, nil
-}
-func (c *MockFileStorageClient) AwaitExportActive(ctx context.Context, logger *zap.SugaredLogger, id string) (*filestorage.Export, error) {
-	return nil, nil
-}
-
-func (c *MockFileStorageClient) FindExport(ctx context.Context, compartmentID, fsID, exportSetID string) (*filestorage.ExportSummary, error) {
-	return nil, nil
-}
-
-// DeleteExport mocks the FileStorage DeleteExport implementation
-func (c *MockFileStorageClient) DeleteExport(ctx context.Context, id string) error {
-	return nil
-}
-
-// GetMountTarget mocks the FileStorage GetMountTarget implementation
-func (c *MockFileStorageClient) AwaitMountTargetActive(ctx context.Context, logger *zap.SugaredLogger, id string) (*filestorage.MountTarget, error) {
-	return nil, nil
-}
-
-// FSS mocks client FileStorage implementation
-func (p *MockProvisionerClient) FSS() client.FileStorageInterface {
-	return &MockFileStorageClient{}
-}
-
-func NewClientProvisioner(pcData client.Interface, storage *MockBlockStorageClient) client.Interface {
-	return &MockProvisionerClient{Storage: storage}
+func NewClientProvisioner(pcData client.Interface, storageBlock *MockBlockStorageClient, storageFile *MockFileStorageClient) client.Interface {
+	if storageFile == nil {
+		return &MockProvisionerClient{Storage: storageBlock}
+	}
+	return &MockFSSProvisionerClient{Storage: storageFile}
 }
 
 func TestControllerDriver_CreateVolume(t *testing.T) {
@@ -538,13 +495,13 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &ControllerDriver{
+			d := &BlockVolumeControllerDriver{ControllerDriver{
 				KubeClient: nil,
 				logger:     zap.S(),
 				config:     &providercfg.Config{CompartmentID: ""},
-				client:     NewClientProvisioner(nil, &MockBlockStorageClient{}),
+				client:     NewClientProvisioner(nil, &MockBlockStorageClient{}, nil),
 				util:       &csi_util.Util{},
-			}
+			}}
 			got, err := d.CreateVolume(tt.args.ctx, tt.args.req)
 			if tt.wantErr == nil && err != nil {
 				t.Errorf("got error %q, want none", err)
@@ -601,13 +558,13 @@ func TestControllerDriver_DeleteVolume(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &ControllerDriver{
+			d := &BlockVolumeControllerDriver{ControllerDriver{
 				KubeClient: nil,
 				logger:     zap.S(),
 				config:     &providercfg.Config{CompartmentID: ""},
-				client:     NewClientProvisioner(nil, &MockBlockStorageClient{}),
+				client:     NewClientProvisioner(nil, &MockBlockStorageClient{}, nil),
 				util:       &csi_util.Util{},
-			}
+			}}
 			got, err := d.DeleteVolume(tt.args.ctx, tt.args.req)
 			if tt.wantErr == nil && err != nil {
 				t.Errorf("got error %q, want none", err)
@@ -616,7 +573,7 @@ func TestControllerDriver_DeleteVolume(t *testing.T) {
 				t.Errorf("want error %q to include %q", err, tt.wantErr)
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ControllerDriver.CreateVolume() = %v, want %v", got, tt.want)
+				t.Errorf("ControllerDriver.DeleteVolume() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -703,13 +660,13 @@ func TestControllerDriver_ControllerExpandVolume(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &ControllerDriver{
+			d := &BlockVolumeControllerDriver{ControllerDriver{
 				KubeClient: nil,
 				logger:     zap.S(),
 				config:     &providercfg.Config{CompartmentID: ""},
-				client:     NewClientProvisioner(nil, &MockBlockStorageClient{}),
+				client:     NewClientProvisioner(nil, &MockBlockStorageClient{}, nil),
 				util:       &csi_util.Util{},
-			}
+			}}
 			got, err := d.ControllerExpandVolume(tt.args.ctx, tt.args.req)
 			if tt.wantErr == nil && err != nil {
 				t.Errorf("got error %q, want none", err)

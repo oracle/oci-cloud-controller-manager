@@ -131,7 +131,7 @@ func extractVolumeParameters(log *zap.SugaredLogger, parameters map[string]strin
 
 // CreateVolume creates a new volume from the given request. The function is
 // idempotent.
-func (d *ControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
+func (d *BlockVolumeControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	startTime := time.Now()
 	log := d.logger.With("volumeName", req.Name)
 	var errorType string
@@ -310,7 +310,7 @@ func (d *ControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolu
 }
 
 // DeleteVolume deletes the given volume. The function is idempotent.
-func (d *ControllerDriver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
+func (d *BlockVolumeControllerDriver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	startTime := time.Now()
 	log := d.logger.With("volumeID", req.VolumeId)
 	var errorType string
@@ -330,7 +330,7 @@ func (d *ControllerDriver) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 	defer cancel()
 
 	err := d.client.BlockStorage().DeleteVolume(ctx, req.VolumeId)
-	if err != nil && !apierrors.IsNotFound(err) {
+	if err != nil && !client.IsNotFound(err) {
 		log.With(zap.Error(err)).Error("Failed to delete volume.")
 		errorType = util.GetError(err)
 		csiMetricDimension = util.GetMetricDimensionForComponent(errorType, util.CSIStorageType)
@@ -347,7 +347,7 @@ func (d *ControllerDriver) DeleteVolume(ctx context.Context, req *csi.DeleteVolu
 }
 
 // ControllerPublishVolume attaches the given volume to the node
-func (d *ControllerDriver) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
+func (d *BlockVolumeControllerDriver) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
 	startTime := time.Now()
 	var errorType string
 	var csiMetricDimension string
@@ -538,7 +538,7 @@ func generatePublishContext(volumeAttachmentOptions VolumeAttachmentOption, log 
 }
 
 // ControllerUnpublishVolume detaches the given volume from the node
-func (d *ControllerDriver) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
+func (d *BlockVolumeControllerDriver) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
 	startTime := time.Now()
 	log := d.logger.With("volumeID", req.VolumeId)
 	var errorType string
@@ -613,7 +613,7 @@ func (d *ControllerDriver) ControllerUnpublishVolume(ctx context.Context, req *c
 
 // ValidateVolumeCapabilities checks whether the volume capabilities requested
 // are supported.
-func (d *ControllerDriver) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
+func (d *BlockVolumeControllerDriver) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
 
 	log := d.logger.With("volumeID", req.VolumeId)
 
@@ -650,17 +650,17 @@ func (d *ControllerDriver) ValidateVolumeCapabilities(ctx context.Context, req *
 }
 
 // ListVolumes returns a list of all requested volumes
-func (d *ControllerDriver) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
+func (d *BlockVolumeControllerDriver) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
 // GetCapacity returns the capacity of the storage pool
-func (d *ControllerDriver) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (*csi.GetCapacityResponse, error) {
+func (d *BlockVolumeControllerDriver) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (*csi.GetCapacityResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
 // ControllerGetCapabilities returns the capabilities of the controller service.
-func (d *ControllerDriver) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
+func (d *BlockVolumeControllerDriver) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
 	newCap := func(cap csi.ControllerServiceCapability_RPC_Type) *csi.ControllerServiceCapability {
 		return &csi.ControllerServiceCapability{
 			Type: &csi.ControllerServiceCapability_Rpc{
@@ -689,7 +689,7 @@ func (d *ControllerDriver) ControllerGetCapabilities(ctx context.Context, req *c
 
 // validateCapabilities validates the requested capabilities. It returns false
 // if it doesn't satisfy the currently supported modes of OCI Block Volume
-func (d *ControllerDriver) validateCapabilities(caps []*csi.VolumeCapability) bool {
+func (d *BlockVolumeControllerDriver) validateCapabilities(caps []*csi.VolumeCapability) bool {
 	vcaps := []*csi.VolumeCapability_AccessMode{supportedAccessMode}
 
 	hasSupport := func(mode csi.VolumeCapability_AccessMode_Mode) bool {
@@ -719,22 +719,22 @@ func (d *ControllerDriver) validateCapabilities(caps []*csi.VolumeCapability) bo
 
 // CreateSnapshot will be called by the CO to create a new snapshot from a
 // source volume on behalf of a user.
-func (d *ControllerDriver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
+func (d *BlockVolumeControllerDriver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "CreateSnapshot is not supported yet")
 }
 
 // DeleteSnapshot will be called by the CO to delete a snapshot.
-func (d *ControllerDriver) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
+func (d *BlockVolumeControllerDriver) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "DeleteSnapshot is not supported yet")
 }
 
 // ListSnapshots returns all the matched snapshots
-func (d *ControllerDriver) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
+func (d *BlockVolumeControllerDriver) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "ListSnapshots is not supported yet")
 }
 
 // ControllerExpandVolume returns ControllerExpandVolume request
-func (d *ControllerDriver) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
+func (d *BlockVolumeControllerDriver) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
 	startTime := time.Now()
 	volumeId := req.GetVolumeId()
 	if volumeId == "" {
@@ -809,7 +809,7 @@ func (d *ControllerDriver) ControllerExpandVolume(ctx context.Context, req *csi.
 }
 
 // ControllerGetVolume returns ControllerGetVolumeResponse response
-func (d *ControllerDriver) ControllerGetVolume(ctx context.Context, req *csi.ControllerGetVolumeRequest) (*csi.ControllerGetVolumeResponse, error) {
+func (d *BlockVolumeControllerDriver) ControllerGetVolume(ctx context.Context, req *csi.ControllerGetVolumeRequest) (*csi.ControllerGetVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "ControllerGetVolume is not supported yet")
 }
 
