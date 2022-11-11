@@ -3,7 +3,6 @@ package driver
 import (
 	"context"
 	"fmt"
-	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -34,7 +33,8 @@ func (d FSSNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVo
 		return nil, status.Error(codes.InvalidArgument, "Staging path must be provided")
 	}
 
-	mountTargetIP, exportPath := validateVolumeId(req.VolumeId)
+	volumeHandler := csi_util.ValidateFssId(req.VolumeId)
+	_, mountTargetIP, exportPath := volumeHandler.FilesystemOcid, volumeHandler.MountTargetIPAddress, volumeHandler.FsExportPath
 
 	if mountTargetIP == "" || exportPath == "" {
 		return nil, status.Error(codes.InvalidArgument, "Invalid Volume ID provided")
@@ -145,20 +145,6 @@ func isMountPoint(mounter mount.Interface, path string) (bool, error) {
 		return false, err
 	}
 	return !ok, nil
-}
-
-func validateVolumeId(id string) (string, string) {
-	volumeHandler := strings.Split(id, ":")
-	const numOfParamsFromVolumeHandle = 3
-	const mountTargetIPAddress = 1
-	const fsExportPath = 2
-	if len(volumeHandler) == numOfParamsFromVolumeHandle {
-		if net.ParseIP(volumeHandler[mountTargetIPAddress]) != nil {
-			return volumeHandler[mountTargetIPAddress], volumeHandler[fsExportPath]
-		}
-		return "", ""
-	}
-	return "", ""
 }
 
 // NodePublishVolume mounts the volume to the target path
@@ -276,7 +262,8 @@ func (d FSSNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnsta
 		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
 	}
 
-	mountTargetIP, exportPath := validateVolumeId(req.VolumeId)
+	volumeHandler := csi_util.ValidateFssId(req.VolumeId)
+	_, mountTargetIP, exportPath := volumeHandler.FilesystemOcid, volumeHandler.MountTargetIPAddress, volumeHandler.FsExportPath
 
 	if mountTargetIP == "" || exportPath == "" {
 		return nil, status.Error(codes.InvalidArgument, "Invalid Volume ID provided")

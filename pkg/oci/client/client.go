@@ -16,21 +16,17 @@ package client
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
-	"io/ioutil"
-	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"time"
 
-	"github.com/oracle/oci-go-sdk/v50/common"
-	"github.com/oracle/oci-go-sdk/v50/core"
-	"github.com/oracle/oci-go-sdk/v50/filestorage"
-	"github.com/oracle/oci-go-sdk/v50/identity"
-	"github.com/oracle/oci-go-sdk/v50/loadbalancer"
-	"github.com/oracle/oci-go-sdk/v50/networkloadbalancer"
+	"github.com/oracle/oci-go-sdk/v65/common"
+	"github.com/oracle/oci-go-sdk/v65/containerengine"
+	"github.com/oracle/oci-go-sdk/v65/core"
+	"github.com/oracle/oci-go-sdk/v65/filestorage"
+	"github.com/oracle/oci-go-sdk/v65/identity"
+	"github.com/oracle/oci-go-sdk/v65/loadbalancer"
+	"github.com/oracle/oci-go-sdk/v65/networkloadbalancer"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"k8s.io/client-go/tools/cache"
@@ -49,6 +45,7 @@ type Interface interface {
 	BlockStorage() BlockStorageInterface
 	FSS() FileStorageInterface
 	Identity() IdentityInterface
+	ContainerEngine() ContainerEngineInterface
 }
 
 // RateLimiter reader and writer.
@@ -61,6 +58,7 @@ type computeClient interface {
 	GetInstance(ctx context.Context, request core.GetInstanceRequest) (response core.GetInstanceResponse, err error)
 	ListInstances(ctx context.Context, request core.ListInstancesRequest) (response core.ListInstancesResponse, err error)
 	ListVnicAttachments(ctx context.Context, request core.ListVnicAttachmentsRequest) (response core.ListVnicAttachmentsResponse, err error)
+	AttachVnic(ctx context.Context, request core.AttachVnicRequest) (response core.AttachVnicResponse, err error)
 
 	GetVolumeAttachment(ctx context.Context, request core.GetVolumeAttachmentRequest) (response core.GetVolumeAttachmentResponse, err error)
 	ListVolumeAttachments(ctx context.Context, request core.ListVolumeAttachmentsRequest) (response core.ListVolumeAttachmentsResponse, err error)
@@ -77,6 +75,8 @@ type virtualNetworkClient interface {
 	UpdateSecurityList(ctx context.Context, request core.UpdateSecurityListRequest) (response core.UpdateSecurityListResponse, err error)
 
 	GetPrivateIp(ctx context.Context, request core.GetPrivateIpRequest) (response core.GetPrivateIpResponse, err error)
+	ListPrivateIps(ctx context.Context, request core.ListPrivateIpsRequest) (response core.ListPrivateIpsResponse, err error)
+	CreatePrivateIp(ctx context.Context, request core.CreatePrivateIpRequest) (response core.CreatePrivateIpResponse, err error)
 	GetPublicIpByIpAddress(ctx context.Context, request core.GetPublicIpByIpAddressRequest) (response core.GetPublicIpByIpAddressResponse, err error)
 }
 
@@ -125,6 +125,9 @@ type filestorageClient interface {
 	DeleteExport(ctx context.Context, request filestorage.DeleteExportRequest) (response filestorage.DeleteExportResponse, err error)
 
 	GetMountTarget(ctx context.Context, request filestorage.GetMountTargetRequest) (response filestorage.GetMountTargetResponse, err error)
+	CreateMountTarget(ctx context.Context, request filestorage.CreateMountTargetRequest) (response filestorage.CreateMountTargetResponse, err error)
+	DeleteMountTarget(ctx context.Context, request filestorage.DeleteMountTargetRequest) (response filestorage.DeleteMountTargetResponse, err error)
+	ListMountTargets(ctx context.Context, request filestorage.ListMountTargetsRequest) (response filestorage.ListMountTargetsResponse, err error)
 }
 
 type blockstorageClient interface {
@@ -137,6 +140,10 @@ type blockstorageClient interface {
 
 type identityClient interface {
 	ListAvailabilityDomains(ctx context.Context, request identity.ListAvailabilityDomainsRequest) (identity.ListAvailabilityDomainsResponse, error)
+}
+
+type containerEngineClient interface {
+	GetVirtualNode(ctx context.Context, request containerengine.GetVirtualNodeRequest) (response containerengine.GetVirtualNodeResponse, err error)
 }
 
 type client struct {

@@ -86,6 +86,35 @@ func (c *MockBlockStorageClient) DeleteVolume(ctx context.Context, id string) er
 // MockFileStorageClient mocks FileStorage client implementation.
 type MockFileStorageClient struct{}
 
+func (c *MockFileStorageClient) GetFileSystemSummaryByDisplayName(ctx context.Context, compartmentID, ad, displayName string) (bool, []filestorage.FileSystemSummary, error) {
+	filesystemSummaries := make([]filestorage.FileSystemSummary, 0)
+
+	filesystemSummaries = append(filesystemSummaries, filestorage.FileSystemSummary{
+		Id:             &fileSystemID,
+		DisplayName:    &displayName,
+		LifecycleState: filestorage.FileSystemSummaryLifecycleStateActive,
+	})
+	return true, filesystemSummaries, nil
+}
+
+func (c *MockFileStorageClient) FindExport(ctx context.Context, fsID, path, exportSetID string) (*filestorage.ExportSummary, error) {
+	return &filestorage.ExportSummary{
+		Id:             &exportID,
+		ExportSetId:    &exportSetID,
+		FileSystemId:   &fsID,
+		Path:           &path,
+		LifecycleState: filestorage.ExportSummaryLifecycleStateActive,
+	}, nil
+}
+
+func (c *MockFileStorageClient) GetMountTarget(ctx context.Context, id string) (*filestorage.MountTarget, error) {
+	return nil, nil
+}
+
+func (c *MockFileStorageClient) GetMountTargetSummaryByDisplayName(ctx context.Context, compartmentID, ad, mountTargetName string) (bool, []filestorage.MountTargetSummary, error) {
+	return false, nil, nil
+}
+
 // CreateFileSystem mocks the FileStorage CreateFileSystem implementation.
 func (c *MockFileStorageClient) CreateFileSystem(ctx context.Context, details filestorage.CreateFileSystemDetails) (*filestorage.FileSystem, error) {
 	return &filestorage.FileSystem{Id: &fileSystemID}, nil
@@ -103,14 +132,6 @@ func (c *MockFileStorageClient) AwaitFileSystemActive(ctx context.Context, logge
 	return &filestorage.FileSystem{
 		Id:             &id,
 		LifecycleState: filestorage.FileSystemLifecycleStateActive,
-	}, nil
-}
-
-func (c *MockFileStorageClient) GetFileSystemSummaryByDisplayName(ctx context.Context, compartmentID, ad, displayName string) (*filestorage.FileSystemSummary, error) {
-	return &filestorage.FileSystemSummary{
-		Id:             &fileSystemID,
-		DisplayName:    &displayName,
-		LifecycleState: filestorage.FileSystemSummaryLifecycleStateActive,
 	}, nil
 }
 
@@ -146,17 +167,18 @@ func (c *MockFileStorageClient) AwaitExportActive(ctx context.Context, logger *z
 	}, nil
 }
 
-func (c *MockFileStorageClient) FindExport(ctx context.Context, compartmentID, fsID, exportSetID string) (*filestorage.ExportSummary, error) {
-	return &filestorage.ExportSummary{
-		Id:             &exportID,
-		ExportSetId:    &exportSetID,
-		FileSystemId:   &fsID,
-		LifecycleState: filestorage.ExportSummaryLifecycleStateActive,
-	}, nil
-}
-
 // DeleteExport mocks the FileStorage DeleteExport implementation
 func (c *MockFileStorageClient) DeleteExport(ctx context.Context, id string) error {
+	return nil
+}
+
+// CreateMountTarget mocks the FileStorage CreateMountTarget implementation
+func (c *MockFileStorageClient) CreateMountTarget(ctx context.Context, details filestorage.CreateMountTargetDetails) (*filestorage.MountTarget, error) {
+	return nil, nil
+}
+
+// DeleteMountTarget mocks the FileStorage DeleteMountTarget implementation
+func (c *MockFileStorageClient) DeleteMountTarget(ctx context.Context, id string) error {
 	return nil
 }
 

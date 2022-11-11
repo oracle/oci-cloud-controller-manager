@@ -3,6 +3,7 @@ package csi_util
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"strconv"
@@ -65,6 +66,12 @@ var (
 	DiskByPathPatternPV    = `/dev/disk/by-path/pci-\d+:\d+:\d+\.\d+-scsi-\d+:\d+:\d+:\d+$`
 	DiskByPathPatternISCSI = `/dev/disk/by-path/ip-[\w\.]+:\d+-iscsi-[\w\.\-:]+-lun-1$`
 )
+
+type FSSVolumeHandler struct {
+	FilesystemOcid       string
+	MountTargetIPAddress string
+	FsExportPath         string
+}
 
 func (u *Util) LookupNodeID(k kubernetes.Interface, nodeName string) (string, error) {
 	n, err := k.CoreV1().Nodes().Get(context.Background(), nodeName, metav1.GetOptions{})
@@ -447,4 +454,23 @@ func GetBlockSizeBytes(logger *zap.SugaredLogger, devicePath string) (int64, err
 		return -1, fmt.Errorf("failed to parse size %s into an int64 size", strOut)
 	}
 	return gotSizeBytes, nil
+}
+
+func ValidateFssId(id string) *FSSVolumeHandler {
+	volumeHandler := &FSSVolumeHandler{"", "", ""}
+	if id == "" {
+		return volumeHandler
+	}
+	volumeHandlerSlice := strings.Split(id, ":")
+	const numOfParamsFromVolumeHandle = 3
+	if len(volumeHandlerSlice) == numOfParamsFromVolumeHandle {
+		if net.ParseIP(volumeHandlerSlice[1]) != nil {
+			volumeHandler.FilesystemOcid = volumeHandlerSlice[0]
+			volumeHandler.MountTargetIPAddress = volumeHandlerSlice[1]
+			volumeHandler.FsExportPath = volumeHandlerSlice[2]
+			return volumeHandler
+		}
+		return volumeHandler
+	}
+	return volumeHandler
 }

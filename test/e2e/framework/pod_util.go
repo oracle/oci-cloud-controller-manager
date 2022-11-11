@@ -50,7 +50,7 @@ func (j *PVCTestJig) CheckVolumeMount(namespace string, pvcParam *v1.PersistentV
 	j.CheckFileExists(namespace, podName, "/usr/share/nginx/html", "out.txt")
 
 	By("Wait for pod with dynamically provisioned volume to be deleted")
-	j.DeleteAndAwaitNginxPodOrFail(namespace, podName)
+	j.DeleteAndAwaitPodOrFail(namespace, podName)
 
 	command = "while true; do sleep 5; done"
 	By("Recreating a pod with the same dynamically provisioned volume and waiting for it to be running")
@@ -60,8 +60,8 @@ func (j *PVCTestJig) CheckVolumeMount(namespace string, pvcParam *v1.PersistentV
 	j.CheckFileExists(namespace, podName, "/usr/share/nginx/html", "out.txt")
 }
 
-// DeleteAndAwaitNginxPodOrFail deletes the pod definition based on the namespace and waits for pod to disappear
-func (j *PVCTestJig) DeleteAndAwaitNginxPodOrFail(ns string, podName string) {
+// DeleteAndAwaitPodOrFail deletes the pod definition based on the namespace and waits for pod to disappear
+func (j *PVCTestJig) DeleteAndAwaitPodOrFail(ns string, podName string) {
 	err := j.KubeClient.CoreV1().Pods(ns).Delete(context.Background(), podName, metav1.DeleteOptions{})
 	if err != nil {
 		Failf("Pod %q Delete API error: %v", podName, err)
@@ -145,7 +145,7 @@ func (j *PVCTestJig) CheckVolumeReadWrite(namespace string, pvcParam *v1.Persist
 	podName := j.CreateAndAwaitNginxPodOrFail(pvc.Namespace, pvc, command)
 
 	By("Delete the pod to which volume is already attached")
-	j.DeleteAndAwaitNginxPodOrFail(pvc.Namespace, podName)
+	j.DeleteAndAwaitPodOrFail(pvc.Namespace, podName)
 
 	By("checking the created volume is readable and retains data")
 	j.CreateAndAwaitNginxPodOrFail(pvc.Namespace, pvc, "grep 'hello world' /mnt/test/data")

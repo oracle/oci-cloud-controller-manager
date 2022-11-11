@@ -16,7 +16,14 @@ package csioptions
 
 import (
 	"flag"
+	"go.uber.org/zap"
+	"strings"
 	"time"
+)
+
+const (
+	fssAddressSuffix            = "-fss.sock"
+	fssVolumeNameAppendedPrefix = "-fss"
 )
 
 //CSIOptions structure which contains flag values
@@ -25,7 +32,10 @@ type CSIOptions struct {
 	Kubeconfig              string
 	CsiAddress              string
 	Endpoint                string
+	FssCsiAddress           string
+    FssEndpoint             string
 	VolumeNamePrefix        string
+	FssVolumeNamePrefix     string
 	VolumeNameUUIDLength    int
 	ShowVersion             bool
 	RetryIntervalStart      time.Duration
@@ -52,9 +62,12 @@ func NewCSIOptions() *CSIOptions {
 	csioptions := CSIOptions{
 		Master:                  *flag.String("master", "", "kube master"),
 		Kubeconfig:              *flag.String("kubeconfig", "", "cluster kube config"),
-		CsiAddress:              *flag.String("csi-address", "/run/csi/socket", "Address of the CSI driver socket."),
-		Endpoint:                *flag.String("csi-endpoint", "unix://tmp/csi.sock", "CSI endpoint"),
+		CsiAddress:              *flag.String("csi-address", "/run/csi/socket", "Address of the CSI BV driver socket."),
+		Endpoint:                *flag.String("csi-endpoint", "unix://tmp/csi.sock", "CSI BV endpoint"),
+		FssCsiAddress:           *flag.String("fss-csi-address", "/run/fss/socket", "Address of the CSI FSS driver socket."),
+		FssEndpoint:             *flag.String("fss-csi-endpoint", "unix://tmp/csi-fss.sock", "CSI FSS endpoint"),
 		VolumeNamePrefix:        *flag.String("csi-volume-name-prefix", "pvc", "Prefix to apply to the name of a created volume."),
+		FssVolumeNamePrefix:     *flag.String("fss-csi-volume-name-prefix", "pvc", "Prefix to apply to the name of a volume created for FSS."),
 		VolumeNameUUIDLength:    *flag.Int("csi-volume-name-uuid-length", -1, "Truncates generated UUID of a created volume to this length. Defaults behavior is to NOT truncate."),
 		ShowVersion:             *flag.Bool("csi-version", false, "Show version."),
 		RetryIntervalStart:      *flag.Duration("csi-retry-interval-start", time.Second, "Initial retry interval of failed provisioning or deletion. It doubles with each failure, up to retry-interval-max."),

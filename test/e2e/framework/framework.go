@@ -26,18 +26,20 @@ const (
 	DefaultClusterKubeconfig = "/tmp/clusterkubeconfig"
 	DefaultCloudConfig       = "/tmp/cloudconfig"
 
-	ClassOCI          = "oci"
-	ClassOCICSI       = "oci-bv"
-	ClassOCICSIExpand = "oci-bv-expand"
-	ClassOCILowCost   = "oci-bv-low"
-	ClassOCIBalanced  = "oci-bal"
-	ClassOCIHigh      = "oci-bv-high"
-	ClassOCIKMS       = "oci-kms"
-	ClassOCIExt3      = "oci-ext3"
-	ClassOCIXfs       = "oci-xfs"
-	MinVolumeBlock    = "50Gi"
-	MaxVolumeBlock    = "100Gi"
-	VolumeFss         = "1Gi"
+	ClassOCI           = "oci"
+	ClassOCICSI        = "oci-bv"
+	ClassOCICSIExpand  = "oci-bv-expand"
+	ClassOCILowCost    = "oci-bv-low"
+	ClassOCIBalanced   = "oci-bal"
+	ClassOCIHigh       = "oci-bv-high"
+	ClassOCIKMS        = "oci-kms"
+	ClassOCIExt3       = "oci-ext3"
+	ClassOCIXfs        = "oci-xfs"
+	ClassFssDynamic    = "oci-file-storage-test"
+	FssProvisionerType = "fss.csi.oraclecloud.com"
+	MinVolumeBlock     = "50Gi"
+	MaxVolumeBlock     = "100Gi"
+	VolumeFss          = "1Gi"
 )
 
 var (
@@ -50,6 +52,8 @@ var (
 	ccmSeclistID      string // The ocid of the loadbalancer subnet seclist. Optional.
 	k8sSeclistID      string // The ocid of the k8s worker subnet seclist. Optional.
 	mntTargetOCID     string // Mount Target ID is specified to identify the mount target to be attached to the volumes. Optional.
+	mntTargetSubnetOCID          string // mntTargetSubnetOCID is required for testing MT creation in FSS dynamic
+	mntTargetCompartmentOCID     string // mntTargetCompartmentOCID is required for testing MT cross compartment creation in FSS dynamic
 	nginx             string // Image for nginx
 	agnhost           string // Image for agnhost
 	busyBoxImage      string // Image for busyBoxImage
@@ -76,7 +80,9 @@ func init() {
 	flag.StringVar(&k8sSeclistID, "k8s-seclist-id", "", "The ocid of the k8s worker subnet seclist. Enables additional seclist rule tests. If specified the 'ccm-seclist-id parameter' is also required.")
 	flag.BoolVar(&deleteNamespace, "delete-namespace", true, "If true tests will delete namespace after completion. It is only designed to make debugging easier, DO NOT turn it off by default.")
 
-	flag.StringVar(&mntTargetOCID, "mnt-target-id", "", "Mount Target ID is specified to identify the mount target to be attached to the volumes")
+	flag.StringVar(&mntTargetOCID, "mnt-target-id", "", "Mount Target ID is required for creating storage class for FSS dynamic testing")
+	flag.StringVar(&mntTargetSubnetOCID, "mnt-target-subnet-id", "", "Mount Target Subnet is required for creating storage class for FSS dynamic testing")
+	flag.StringVar(&mntTargetCompartmentOCID, "mnt-target-compartment-id", "", "Mount Target Compartment is required for creating storage class for FSS dynamic testing with cross compartment")
 	flag.StringVar(&volumeHandle, "volume-handle", "", "FSS volume handle used to mount the File System")
 
 	flag.StringVar(&imagePullRepo, "image-pull-repo", "", "Repo to pull images from. Will pull public images if not specified.")
@@ -103,11 +109,13 @@ type Framework struct {
 
 	CloudConfigPath string
 
-	MntTargetOcid string
-	CMEKKMSKey    string
-	NsgOCIDS      string
-	ReservedIP    string
-	Architecture  string
+	MntTargetOcid            string
+	MntTargetSubnetOcid      string
+	MntTargetCompartmentOcid string
+	CMEKKMSKey               string
+	NsgOCIDS                 string
+	ReservedIP               string
+	Architecture             string
 
 	VolumeHandle string
 }
@@ -120,12 +128,14 @@ func New() *Framework {
 }
 
 // NewWithConfig creates a new Framework instance and configures the instance as per the configuration options in the given config.
-func NewWithConfig() *Framework {
+func NewWithConfig(config *FrameworkConfig) *Framework {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	f := &Framework{
 		AdLocation:    adlocation,
 		MntTargetOcid: mntTargetOCID,
+		MntTargetSubnetOcid:      mntTargetSubnetOCID,
+		MntTargetCompartmentOcid: mntTargetCompartmentOCID,
 		CMEKKMSKey:    cmekKMSKey,
 		NsgOCIDS:	   nsgOCIDS,
 		ReservedIP:    reservedIP,
@@ -156,6 +166,10 @@ func (f *Framework) Initialize() {
 	Logf("OCI AdLabel: %s", f.AdLabel)
 	f.MntTargetOcid = mntTargetOCID
 	Logf("OCI Mount Target OCID: %s", f.MntTargetOcid)
+	f.MntTargetSubnetOcid = mntTargetSubnetOCID
+	Logf("OCI Mount Target Subnet OCID: %s", f.MntTargetSubnetOcid)
+	f.MntTargetCompartmentOcid = mntTargetCompartmentOCID
+	Logf("OCI Mount Target Compartment OCID: %s", f.MntTargetCompartmentOcid)
 	f.VolumeHandle = volumeHandle
 	Logf("FSS Volume Handle is : %s", f.VolumeHandle)
 	f.CMEKKMSKey = cmekKMSKey

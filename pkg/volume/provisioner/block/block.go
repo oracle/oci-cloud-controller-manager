@@ -318,6 +318,5 @@ func (block *blockProvisioner) Delete(volume *v1.PersistentVolume) error {
 		dimensionsMap[metrics.ComponentDimension] = fvdMetricDimension
 		metrics.SendMetricData(block.metricPusher, metrics.PVDelete, time.Since(startTime).Seconds(), dimensionsMap)
 	}
-
 	return errors.Wrap(err, "failed to delete volume from OCI")
 }

@@ -21,20 +21,31 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	bvCsiDriver = "BV"
+)
+
 //StartControllerDriver main function to start CSI Controller Driver
-func StartControllerDriver(csioptions csioptions.CSIOptions) {
+func StartControllerDriver(csioptions csioptions.CSIOptions, csiDriver driver.CSIDriver) {
 
 	logger := logging.Logger().Sugar()
 	logger.Sync()
 
-	drv, err := driver.NewControllerDriver(logger.Named("BV").With(zap.String("component", "csi-controller")), csioptions.Endpoint, csioptions.Kubeconfig, csioptions.Master,
-		true, driver.BlockVolumeDriverName, driver.BlockVolumeDriverVersion)
-	if err != nil {
-		logger.With(zap.Error(err)).Fatal("Failed to create controller driver.")
+	logger = logger.Named(string(csiDriver)).With(zap.String("component", "csi-controller"))
+	var drv *driver.Driver
+	var err error
+	if csiDriver == bvCsiDriver {
+		controllerDriverConfig := &driver.ControllerDriverConfig{CsiEndpoint: csioptions.Endpoint, CsiKubeConfig: csioptions.Kubeconfig, CsiMaster: csioptions.Master, EnableControllerServer: true, DriverName: driver.BlockVolumeDriverName, DriverVersion: driver.BlockVolumeDriverVersion}
+		drv, err = driver.NewControllerDriver(logger, *controllerDriverConfig)
+	} else {
+		controllerDriverConfig := &driver.ControllerDriverConfig{CsiEndpoint: csioptions.FssEndpoint, CsiKubeConfig: csioptions.Kubeconfig, CsiMaster: csioptions.Master, EnableControllerServer: true, DriverName: driver.FSSDriverName, DriverVersion: driver.FSSDriverVersion}
+		drv, err = driver.NewControllerDriver(logger, *controllerDriverConfig)
 	}
-
+	if err != nil {
+		logger.With(zap.Error(err)).Fatal("Failed to create %s controller driver.", csiDriver)
+	}
 	if err := drv.Run(); err != nil {
-		logger.With(zap.Error(err)).Fatal("Failed to run the CSI driver.")
+		logger.With(zap.Error(err)).Fatal("Failed to run the CSI driver for %s.", csiDriver)
 	}
 
 	logger.Info("CSI driver exited")

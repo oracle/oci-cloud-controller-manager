@@ -26,6 +26,21 @@ const (
 	// PVExpand is the OCI metric suffix for PV Expand
 	PVExpand = "PV_EXPAND"
 
+	// FSSProvision is the OCI metric suffix for FSS provision
+	FSSProvision = "FSS_PROVISION"
+	// FSSDelete is the OCI metric suffix for FSS delete
+	FSSDelete = "FSS_DELETE"
+
+	// MTProvision is the OCI metric suffix for Mount Target provision
+	MTProvision = "MT_PROVISION"
+	// MTDelete is the OCI metric suffix for Mount Target delete
+	MTDelete = "MT_DELETE"
+
+	// ExportProvision is the OCI metric suffix for Export provision
+	ExportProvision = "EXP_PROVISION"
+	// ExportDelete is the OCI metric suffix for Export delete
+	ExportDelete = "EXP_DELETE"
+
 	ResourceOCIDDimension     = "resourceOCID"
 	ComponentDimension        = "component"
 	BackendSetsCountDimension = "backendSetsCount"
