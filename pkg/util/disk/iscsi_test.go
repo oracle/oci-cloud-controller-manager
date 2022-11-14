@@ -21,49 +21,6 @@ import (
 	"k8s.io/mount-utils"
 )
 
-type mockMounter struct {
-}
-
-func (ml *mockMounter) canSafelySkipMountPointCheck() bool {
-	return false;
-}
-
-func (ml *mockMounter) Mount(source string, target string, fstype string, options []string) error {
-	return nil
-}
-
-func (ml *mockMounter) MountSensitive(source string, target string, fstype string, options []string, sensitiveOptions []string) error {
-	return nil
-}
-
-func (ml *mockMounter) MountSensitiveWithoutSystemd(source string, target string, fstype string, options []string, sensitiveOptions []string) error {
-	return nil
-}
-
-func (ml *mockMounter) MountSensitiveWithoutSystemdWithMountFlags(source string, target string, fstype string, options []string, sensitiveOptions []string, mountFlags []string) error {
-	return nil
-}
-
-func (ml *mockMounter) Unmount(target string) error {
-	return nil
-}
-
-func (ml *mockMounter) IsLikelyNotMountPoint(file string) (bool, error) {
-	return true, nil
-}
-
-func (ml *mockMounter) IsMountPoint(file string) (bool, error) {
-	return true, nil
-}
-
-func (ml *mockMounter) GetMountRefs(pathname string) ([]string, error) {
-	return []string{}, nil
-}
-
-func (ml *mockMounter) List() ([]mount.MountPoint, error) {
-	return nil, nil
-}
-
 func TestGetMountPointForPath(t *testing.T) {
 	testCases := []struct {
 		name     string
