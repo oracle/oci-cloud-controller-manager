@@ -34,6 +34,7 @@ func StartControllerDriver(csioptions csioptions.CSIOptions, csiDriver driver.CS
 	logger = logger.Named(string(csiDriver)).With(zap.String("component", "csi-controller"))
 	var drv *driver.Driver
 	var err error
+
 	if csiDriver == bvCsiDriver {
 		controllerDriverConfig := &driver.ControllerDriverConfig{CsiEndpoint: csioptions.Endpoint, CsiKubeConfig: csioptions.Kubeconfig, CsiMaster: csioptions.Master, EnableControllerServer: true, DriverName: driver.BlockVolumeDriverName, DriverVersion: driver.BlockVolumeDriverVersion}
 		drv, err = driver.NewControllerDriver(logger, *controllerDriverConfig)

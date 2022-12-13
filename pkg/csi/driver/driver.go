@@ -61,7 +61,6 @@ type Driver struct {
 	ready                  bool
 	logger                 *zap.SugaredLogger
 	enableControllerServer bool
-	metricPusher           *metrics.MetricPusher
 }
 
 // ControllerDriver implements CSI Controller interfaces
@@ -112,13 +111,16 @@ type ControllerDriverConfig struct {
 	DriverVersion          string
 }
 
-func newControllerDriver(kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger, config *providercfg.Config, c client.Interface) ControllerDriver {
+type MetricPusherGetter func(logger *zap.SugaredLogger) (*metrics.MetricPusher, error)
+
+func newControllerDriver(kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger, config *providercfg.Config, c client.Interface, metricPusher *metrics.MetricPusher) ControllerDriver {
 	return ControllerDriver{
-		KubeClient: kubeClientSet,
-		logger:     logger,
-		util:       &csi_util.Util{Logger: logger},
-		config:     config,
-		client:     c,
+		KubeClient:   kubeClientSet,
+		logger:       logger,
+		util:         &csi_util.Util{Logger: logger},
+		config:       config,
+		client:       c,
+		metricPusher: metricPusher,
 	}
 }
 
@@ -133,13 +135,38 @@ func newNodeDriver(nodeID string, kubeClientSet kubernetes.Interface, logger *za
 }
 
 func GetControllerDriver(name string, kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger, config *providercfg.Config, c client.Interface) csi.ControllerServer {
+	metricPusher, err := getMetricPusher(newMetricPusher, logger)
+	if err != nil {
+		logger.With("error", err).Error("Metrics collection could not be enabled")
+		// disable metric collection
+		metricPusher = nil
+	}
 	if name == BlockVolumeDriverName {
-		return &BlockVolumeControllerDriver{ControllerDriver: newControllerDriver(kubeClientSet, logger, config, c)}
+		return &BlockVolumeControllerDriver{ControllerDriver: newControllerDriver(kubeClientSet, logger, config, c, metricPusher)}
 	}
 	if name == FSSDriverName {
-		return &FSSControllerDriver{ControllerDriver: newControllerDriver(kubeClientSet, logger, config, c)}
+		return &FSSControllerDriver{ControllerDriver: newControllerDriver(kubeClientSet, logger, config, c, metricPusher)}
 	}
 	return nil
+}
+
+func newMetricPusher(logger *zap.SugaredLogger) (*metrics.MetricPusher, error) {
+	metricPusher, err := metrics.NewMetricPusher(logger)
+	return metricPusher, err
+}
+
+func getMetricPusher(metricPusherGetter MetricPusherGetter, logger *zap.SugaredLogger) (*metrics.MetricPusher, error) {
+	metricPusher, err := metricPusherGetter(logger)
+	if err != nil {
+		logger.With("error", err).Error("Failed to get metric pusher")
+		return nil, err
+	}
+	if metricPusher == nil {
+		logger.Info("Failed to get metric pusher. Got nil object")
+		return nil, fmt.Errorf("failed to get metric pusher")
+	}
+	logger.Info("Metrics collection has been enabled")
+	return metricPusher, nil
 }
 
 func GetNodeDriver(name string, nodeID string, kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger) csi.NodeServer {
@@ -264,19 +291,6 @@ func (d *Driver) Run() error {
 		csi.RegisterControllerServer(d.srv, d.GetControllerDriver())
 	} else {
 		csi.RegisterNodeServer(d.srv, d.GetNodeDriver())
-	}
-
-	metricPusher, err := metrics.NewMetricPusher(d.logger)
-	if err != nil {
-		d.logger.With("error", err).Error("Metrics collection could not be enabled")
-		// disable metric collection
-		metricPusher = nil
-	}
-	if metricPusher != nil {
-		d.logger.Info("Metrics collection has been enabled")
-		d.metricPusher = metricPusher
-	} else {
-		d.logger.Info("Metrics collection is not enabled")
 	}
 
 	d.logger.Info("CSI Driver has started.")
