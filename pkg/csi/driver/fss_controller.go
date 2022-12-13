@@ -226,8 +226,10 @@ func (d *FSSControllerDriver) getOrCreateFileSystem(ctx context.Context, storage
 func (d *FSSControllerDriver) getOrCreateMountTarget(ctx context.Context, storageClassParameters StorageClassParameters, volumeName string, log *zap.SugaredLogger, dimensionsMap map[string]string, startTime time.Time) (*zap.SugaredLogger, string, string, string, *csi.CreateVolumeResponse, error, bool) {
 	// Mount Target creation
 	provisionedMountTarget := &fss.MountTarget{}
+	isExistingMountTargetUsed := false
 
 	if storageClassParameters.mountTargetOcid != "" {
+		isExistingMountTargetUsed = true
 		provisionedMountTarget = &fss.MountTarget{Id: &storageClassParameters.mountTargetOcid}
 	} else {
 		log.Info("searching for existing Mount Target")
@@ -262,6 +264,7 @@ func (d *FSSControllerDriver) getOrCreateMountTarget(ctx context.Context, storag
 		if len(mountTargets) > 0 {
 			//Mount Target already exists so checking state of the mount target and returning the same.
 			log.Info("Mount Target is already created!")
+			isExistingMountTargetUsed = true
 			//Assigning existing mount target
 			provisionedMountTarget = &fss.MountTarget{
 				Id: mountTargets[0].Id,
@@ -289,18 +292,22 @@ func (d *FSSControllerDriver) getOrCreateMountTarget(ctx context.Context, storag
 	activeMountTarget, err := d.client.FSS().AwaitMountTargetActive(ctx, log, *provisionedMountTarget.Id)
 	if err != nil {
 		log.With(zap.Error(err)).Error("await mount target to be available failed with time out")
-		csiMetricDimension := util.GetMetricDimensionForComponent(util.GetError(err), util.CSIStorageType)
-		dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
-		metrics.SendMetricData(d.metricPusher, metrics.MTProvision, time.Since(startTime).Seconds(), dimensionsMap)
+		if !isExistingMountTargetUsed {
+			csiMetricDimension := util.GetMetricDimensionForComponent(util.GetError(err), util.CSIStorageType)
+			dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
+			metrics.SendMetricData(d.metricPusher, metrics.MTProvision, time.Since(startTime).Seconds(), dimensionsMap)
+		}
 		return log, "", "", "", nil, status.Errorf(codes.DeadlineExceeded, "await mount target to be available failed with time out, error: %s", err.Error()), true
 	}
 	activeMountTargetName := *activeMountTarget.DisplayName
 	log = log.With("mountTargetName", activeMountTargetName)
 	if activeMountTarget.PrivateIpIds == nil || len(activeMountTarget.PrivateIpIds) == 0 {
 		log.Error("IP not assigned to mount target")
-		csiMetricDimension := util.GetMetricDimensionForComponent(util.ErrValidation, util.CSIStorageType)
-		dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
-		metrics.SendMetricData(d.metricPusher, metrics.MTProvision, time.Since(startTime).Seconds(), dimensionsMap)
+		if !isExistingMountTargetUsed {
+			csiMetricDimension := util.GetMetricDimensionForComponent(util.ErrValidation, util.CSIStorageType)
+			dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
+			metrics.SendMetricData(d.metricPusher, metrics.MTProvision, time.Since(startTime).Seconds(), dimensionsMap)
+		}
 		return log, "", "", "", nil, status.Errorf(codes.Internal, "IP not assigned to mount target"), true
 	}
 	mountTargetIpId := activeMountTarget.PrivateIpIds[0]
@@ -308,27 +315,33 @@ func (d *FSSControllerDriver) getOrCreateMountTarget(ctx context.Context, storag
 	privateIpObject, err := d.client.Networking().GetPrivateIp(ctx, mountTargetIpId)
 	if err != nil {
 		log.With(zap.Error(err)).Error("Failed to fetch Mount Target Private IP from IP ID: %s", mountTargetIpId)
-		csiMetricDimension := util.GetMetricDimensionForComponent(util.GetError(err), util.CSIStorageType)
-		dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
-		metrics.SendMetricData(d.metricPusher, metrics.MTProvision, time.Since(startTime).Seconds(), dimensionsMap)
+		if !isExistingMountTargetUsed {
+			csiMetricDimension := util.GetMetricDimensionForComponent(util.GetError(err), util.CSIStorageType)
+			dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
+			metrics.SendMetricData(d.metricPusher, metrics.MTProvision, time.Since(startTime).Seconds(), dimensionsMap)
+		}
 		return log, "", "", "", nil, status.Errorf(codes.Internal, "Failed to fetch Mount Target Private IP from IP ID: %s, error: %s", mountTargetIpId, err.Error()), true
 	}
 	mountTargetIp := *privateIpObject.IpAddress
 	log = log.With("mountTargetValidatedIp", mountTargetIp)
 	if activeMountTarget.ExportSetId == nil || *activeMountTarget.ExportSetId == "" {
 		log.Error("ExportSetId not assigned to mount target")
-		csiMetricDimension := util.GetMetricDimensionForComponent(util.ErrValidation, util.CSIStorageType)
-		dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
-		metrics.SendMetricData(d.metricPusher, metrics.MTProvision, time.Since(startTime).Seconds(), dimensionsMap)
+		if !isExistingMountTargetUsed {
+			csiMetricDimension := util.GetMetricDimensionForComponent(util.ErrValidation, util.CSIStorageType)
+			dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
+			metrics.SendMetricData(d.metricPusher, metrics.MTProvision, time.Since(startTime).Seconds(), dimensionsMap)
+		}
 		return log, "", "", "", nil, status.Errorf(codes.Internal, "ExportSetId not assigned to mount target"), true
 	}
 	exportSetId := *activeMountTarget.ExportSetId
 	log.Infof("Mount Target is Active with exportSetId %s", exportSetId)
 
-	csiMetricDimension := util.GetMetricDimensionForComponent(util.Success, util.CSIStorageType)
-	dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
-	dimensionsMap[metrics.ResourceOCIDDimension] = mountTargetOCID
-	metrics.SendMetricData(d.metricPusher, metrics.MTProvision, time.Since(startTime).Seconds(), dimensionsMap)
+	if !isExistingMountTargetUsed {
+		csiMetricDimension := util.GetMetricDimensionForComponent(util.Success, util.CSIStorageType)
+		dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
+		dimensionsMap[metrics.ResourceOCIDDimension] = mountTargetOCID
+		metrics.SendMetricData(d.metricPusher, metrics.MTProvision, time.Since(startTime).Seconds(), dimensionsMap)
+	}
 	return log, mountTargetOCID, mountTargetIp, exportSetId, nil, nil, false
 }
 
