@@ -16,6 +16,7 @@ package client
 
 import (
 	"context"
+	"go.uber.org/zap"
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -418,13 +419,21 @@ func (c *loadbalancerClientStruct) UpdateListener(ctx context.Context, lbID stri
 
 func (c *loadbalancerClientStruct) AwaitWorkRequest(ctx context.Context, id string) (*GenericWorkRequest, error) {
 	var wr *loadbalancer.WorkRequest
-	contextWithTimeout, cancel := context.WithTimeout(ctx, defaultSynchronousAPIContextTimeout)
+	contextWithTimeout, cancel := context.WithTimeout(ctx, defaultSynchronousAPIPollContextTimeout)
 	defer cancel()
 	requestId, _ := generateRandUUID()
+	logger := zap.L().Sugar()
+	logger = logger.With("opc-workrequest-id", id,
+		"request-id", requestId,
+		"loadBalancerType", "lb",
+	)
 	err := wait.PollUntil(workRequestPollInterval, func() (done bool, err error) {
-		twr, err := c.GetWorkRequest(contextWithTimeout, id)
+		childContextWithTimeout, cancel := context.WithTimeout(contextWithTimeout, defaultSynchronousAPIContextTimeout)
+		defer cancel()
+		twr, err := c.GetWorkRequest(childContextWithTimeout, id)
 		if err != nil {
 			if IsRetryable(err) {
+				logger.Info("LB GetWorkRequest retryable error:" + err.Error())
 				return false, nil
 			}
 			return true, errors.Wrapf(errors.WithStack(err), "failed to get workrequest. opc-request-id: %s", requestId)
@@ -437,7 +446,7 @@ func (c *loadbalancerClientStruct) AwaitWorkRequest(ctx context.Context, id stri
 			return false, errors.Errorf("WorkRequest %q failed: %s", id, *twr.Message)
 		}
 		return false, nil
-	}, ctx.Done())
+	}, contextWithTimeout.Done())
 
 	return c.workRequestToGenericWorkRequest(wr), err
 }

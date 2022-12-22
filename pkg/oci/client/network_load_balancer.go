@@ -17,6 +17,8 @@ package client
 import (
 	"context"
 
+	"go.uber.org/zap"
+
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/oracle/oci-go-sdk/v65/common"
@@ -309,12 +311,19 @@ func (c *networkLoadbalancer) UpdateListener(ctx context.Context, lbID string, n
 
 func (c *networkLoadbalancer) AwaitWorkRequest(ctx context.Context, id string) (*GenericWorkRequest, error) {
 	var wr *networkloadbalancer.WorkRequest
-	contextWithTimeout, cancel := context.WithTimeout(ctx, defaultSynchronousAPIContextTimeout)
+	contextWithTimeout, cancel := context.WithTimeout(ctx, defaultSynchronousAPIPollContextTimeout)
 	defer cancel()
+	logger := zap.L().Sugar()
+	logger = logger.With("opc-workrequest-id", id,
+		"loadBalancerType", "nlb",
+	)
 	err := wait.PollUntil(workRequestPollInterval, func() (done bool, err error) {
-		twr, err := c.GetWorkRequest(contextWithTimeout, id)
+		childContextWithTimeout, cancel := context.WithTimeout(contextWithTimeout, defaultSynchronousAPIContextTimeout)
+		defer cancel()
+		twr, err := c.GetWorkRequest(childContextWithTimeout, id)
 		if err != nil {
 			if IsRetryable(err) {
+				logger.Info("NLB GetWorkRequest retryable error:" + err.Error())
 				return false, nil
 			}
 			return true, errors.WithStack(err)
@@ -327,7 +336,7 @@ func (c *networkLoadbalancer) AwaitWorkRequest(ctx context.Context, id string) (
 			return false, errors.Errorf("WorkRequest %q failed. PercentComplete: %f", id, *twr.PercentComplete)
 		}
 		return false, nil
-	}, ctx.Done())
+	}, contextWithTimeout.Done())
 
 	return c.workRequestToGenericWorkRequest(wr), err
 }
