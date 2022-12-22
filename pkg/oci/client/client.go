@@ -35,7 +35,8 @@ import (
 
 // defaultSynchronousAPIContextTimeout is the time we wait for synchronous APIs
 // to respond before we timeout the request
-const defaultSynchronousAPIContextTimeout = 1 * time.Minute
+const defaultSynchronousAPIContextTimeout = 10 * time.Second
+const defaultSynchronousAPIPollContextTimeout = 10 * time.Minute
 
 // Interface of consumed OCI API functionality.
 type Interface interface {

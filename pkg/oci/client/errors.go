@@ -15,6 +15,7 @@
 package client
 
 import (
+	"context"
 	"math"
 	"net/http"
 	"time"
@@ -57,7 +58,9 @@ func IsRetryable(err error) bool {
 	if err == nil {
 		return false
 	}
-
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
 	err = errors.Cause(err)
 	serviceErr, ok := common.IsServiceError(err)
 	if !ok {
