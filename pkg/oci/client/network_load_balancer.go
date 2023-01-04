@@ -16,7 +16,6 @@ package client
 
 import (
 	"context"
-
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/oracle/oci-go-sdk/v50/common"
@@ -150,6 +149,39 @@ func (c *networkLoadbalancer) GetWorkRequest(ctx context.Context, id string) (*n
 	}
 
 	return &resp.WorkRequest, nil
+}
+
+// ListWorkRequests lists all the workrequests present in the network loadbalancer compartment filtered by nlbId
+// Returns a list of GenericWorkRequests present in given compartmentId filtered by nlbId
+func (c *networkLoadbalancer) ListWorkRequests(ctx context.Context, compartmentId, nlbId string) ([]*GenericWorkRequest, error) {
+	var genericWorkRequests []*GenericWorkRequest
+	var page *string
+	for {
+		if !c.rateLimiter.Reader.TryAccept() {
+			return nil, RateLimitError(false, "ListWorkRequest")
+		}
+		resp, err := c.networkloadbalancer.ListWorkRequests(ctx, networkloadbalancer.ListWorkRequestsRequest{
+			CompartmentId:   &compartmentId,
+			Page:            page,
+			Limit:           common.Int(ListWorkRequestLimit),
+			RequestMetadata: c.requestMetadata,
+		})
+		incRequestCounter(err, listVerb, workRequestResource)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		for _, wr := range resp.Items {
+			for _, r := range wr.Resources {
+				if r.Identifier != nil && *r.Identifier == nlbId {
+					genericWorkRequests = append(genericWorkRequests, c.workRequestToGenericWorkRequest((*networkloadbalancer.WorkRequest)(&wr)))
+				}
+			}
+		}
+		if page = resp.OpcNextPage; page == nil {
+			break
+		}
+	}
+	return genericWorkRequests, nil
 }
 
 func (c *networkLoadbalancer) CreateBackendSet(ctx context.Context, lbID string, name string, details *GenericBackendSetDetails) (string, error) {

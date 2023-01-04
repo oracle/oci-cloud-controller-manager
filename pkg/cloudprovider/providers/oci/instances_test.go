@@ -403,8 +403,12 @@ func (c *MockVirtualNetworkClient) GetPublicIpByIpAddress(ctx context.Context, i
 	return nil, nil
 }
 
-//// MockFileStorageClient mocks FileStorage client implementation.
+// MockLoadBalancerClient mocks LoadBalancer client implementation.
 type MockLoadBalancerClient struct{}
+
+func (c *MockLoadBalancerClient) ListWorkRequests(ctx context.Context, compartmentId, lbId string) ([]*client.GenericWorkRequest, error) {
+	return nil, nil
+}
 
 func (c *MockLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details *client.GenericCreateLoadBalancerDetails) (string, error) {
 	return "", nil
