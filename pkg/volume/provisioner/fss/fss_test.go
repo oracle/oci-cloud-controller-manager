@@ -337,6 +337,10 @@ func (p *MockProvisionerClient) TenancyOCID() string {
 
 type MockLoadBalancerClient struct{}
 
+func (c *MockLoadBalancerClient) ListWorkRequests(ctx context.Context, compartmentId, lbId string) ([]*client.GenericWorkRequest, error) {
+	return nil, nil
+}
+
 func (c *MockLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details *client.GenericCreateLoadBalancerDetails) (string, error) {
 	return "", nil
 }

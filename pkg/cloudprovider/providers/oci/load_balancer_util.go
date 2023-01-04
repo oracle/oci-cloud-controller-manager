@@ -61,6 +61,8 @@ const (
 	Update = "update"
 	// Delete the resource.
 	Delete = "delete"
+	// List the resource
+	List = "list"
 )
 
 const nonAlphanumericRegexExpression = "[^a-zA-Z0-9]+"

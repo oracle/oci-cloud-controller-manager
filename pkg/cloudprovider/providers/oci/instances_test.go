@@ -20,18 +20,21 @@ import (
 	"reflect"
 	"testing"
 
+	"go.uber.org/zap"
+	v1 "k8s.io/api/core/v1"
+	v1discovery "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	v1discoverylisters "k8s.io/client-go/listers/discovery/v1"
 
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-go-sdk/v50/common"
-	"github.com/oracle/oci-go-sdk/v50/core"
-	"github.com/oracle/oci-go-sdk/v50/filestorage"
-	"github.com/oracle/oci-go-sdk/v50/identity"
-	"go.uber.org/zap"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
+	"github.com/oracle/oci-go-sdk/v65/common"
+	"github.com/oracle/oci-go-sdk/v65/containerengine"
+	"github.com/oracle/oci-go-sdk/v65/core"
+	"github.com/oracle/oci-go-sdk/v65/filestorage"
+	"github.com/oracle/oci-go-sdk/v65/identity"
 )
 
 var (
@@ -403,8 +406,12 @@ func (c *MockVirtualNetworkClient) GetPublicIpByIpAddress(ctx context.Context, i
 	return nil, nil
 }
 
-//// MockFileStorageClient mocks FileStorage client implementation.
+// MockLoadBalancerClient mocks LoadBalancer client implementation.
 type MockLoadBalancerClient struct{}
+
+func (c *MockLoadBalancerClient) ListWorkRequests(ctx context.Context, compartmentId, lbId string) ([]*client.GenericWorkRequest, error) {
+	return nil, nil
+}
 
 func (c *MockLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details *client.GenericCreateLoadBalancerDetails) (string, error) {
 	return "", nil

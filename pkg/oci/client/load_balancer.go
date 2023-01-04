@@ -27,6 +27,7 @@ import (
 
 const (
 	workRequestPollInterval = 5 * time.Second
+	ListWorkRequestLimit    = 100
 )
 
 type loadbalancerClientStruct struct {
@@ -57,6 +58,7 @@ type GenericLoadBalancerInterface interface {
 	UpdateNetworkSecurityGroups(context.Context, string, []string) (string, error)
 
 	AwaitWorkRequest(ctx context.Context, id string) (*GenericWorkRequest, error)
+	ListWorkRequests(ctx context.Context, compartmentId, lbId string) ([]*GenericWorkRequest, error)
 }
 
 func (c *loadbalancerClientStruct) GetLoadBalancer(ctx context.Context, id string) (*GenericLoadBalancer, error) {
@@ -221,6 +223,36 @@ func (c *loadbalancerClientStruct) GetWorkRequest(ctx context.Context, id string
 	}
 
 	return &resp.WorkRequest, nil
+}
+
+// ListWorkRequests lists all the workrequests for given lbId
+// Returns a list of GenericWorkRequests for given lbId
+func (c *loadbalancerClientStruct) ListWorkRequests(ctx context.Context, compartmentId, lbId string) ([]*GenericWorkRequest, error) {
+	var genericWorkRequests []*GenericWorkRequest
+	var page *string
+	for {
+		if !c.rateLimiter.Reader.TryAccept() {
+			return nil, RateLimitError(false, "ListWorkRequest")
+		}
+		resp, err := c.loadbalancer.ListWorkRequests(ctx, loadbalancer.ListWorkRequestsRequest{
+			LoadBalancerId:  &lbId,
+			Page:            page,
+			Limit:           common.Int64(ListWorkRequestLimit),
+			RequestMetadata: c.requestMetadata,
+		})
+		incRequestCounter(err, listVerb, workRequestResource)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		for _, wr := range resp.Items {
+			genericWorkRequests = append(genericWorkRequests, c.workRequestToGenericWorkRequest(&wr))
+		}
+		if page = resp.OpcNextPage; page == nil {
+			break
+		}
+	}
+	return genericWorkRequests, nil
 }
 
 func (c *loadbalancerClientStruct) CreateBackendSet(ctx context.Context, lbID string, name string, details *GenericBackendSetDetails) (string, error) {
