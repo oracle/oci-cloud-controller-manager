@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2023, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -9,6 +9,8 @@
 // documentation for the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
 // Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
 // Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
+// The required permissions are documented in the
+// Details for the Core Services (https://docs.cloud.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
 //
 
 package core
@@ -26,6 +28,10 @@ import (
 // specify. If you don't provide the parameter, the default values for the `shape` are used.
 // Each shape only supports certain configurable values. If the values that you provide are not valid for the
 // specified `shape`, an error is returned.
+// For more information about shielded instances, see
+// Shielded Instances (https://docs.cloud.oracle.com/iaas/Content/Compute/References/shielded-instances.htm).
+// For more information about BIOS settings for bare metal instances, see
+// BIOS Settings for Bare Metal Instances (https://docs.cloud.oracle.com/iaas/Content/Compute/References/bios-settings.htm).
 type LaunchInstancePlatformConfig interface {
 
 	// Whether Secure Boot is enabled on the instance.
@@ -36,6 +42,9 @@ type LaunchInstancePlatformConfig interface {
 
 	// Whether the Measured Boot feature is enabled on the instance.
 	GetIsMeasuredBootEnabled() *bool
+
+	// Whether the instance is a confidential instance. If this value is `true`, the instance is a confidential instance. The default value is `false`.
+	GetIsMemoryEncryptionEnabled() *bool
 }
 
 type launchinstanceplatformconfig struct {
@@ -43,6 +52,7 @@ type launchinstanceplatformconfig struct {
 	IsSecureBootEnabled            *bool  `mandatory:"false" json:"isSecureBootEnabled"`
 	IsTrustedPlatformModuleEnabled *bool  `mandatory:"false" json:"isTrustedPlatformModuleEnabled"`
 	IsMeasuredBootEnabled          *bool  `mandatory:"false" json:"isMeasuredBootEnabled"`
+	IsMemoryEncryptionEnabled      *bool  `mandatory:"false" json:"isMemoryEncryptionEnabled"`
 	Type                           string `json:"type"`
 }
 
@@ -60,6 +70,7 @@ func (m *launchinstanceplatformconfig) UnmarshalJSON(data []byte) error {
 	m.IsSecureBootEnabled = s.Model.IsSecureBootEnabled
 	m.IsTrustedPlatformModuleEnabled = s.Model.IsTrustedPlatformModuleEnabled
 	m.IsMeasuredBootEnabled = s.Model.IsMeasuredBootEnabled
+	m.IsMemoryEncryptionEnabled = s.Model.IsMemoryEncryptionEnabled
 	m.Type = s.Model.Type
 
 	return err
@@ -74,8 +85,16 @@ func (m *launchinstanceplatformconfig) UnmarshalPolymorphicJSON(data []byte) (in
 
 	var err error
 	switch m.Type {
+	case "AMD_ROME_BM_GPU":
+		mm := AmdRomeBmGpuLaunchInstancePlatformConfig{}
+		err = json.Unmarshal(data, &mm)
+		return mm, err
 	case "AMD_ROME_BM":
 		mm := AmdRomeBmLaunchInstancePlatformConfig{}
+		err = json.Unmarshal(data, &mm)
+		return mm, err
+	case "INTEL_ICELAKE_BM":
+		mm := IntelIcelakeBmLaunchInstancePlatformConfig{}
 		err = json.Unmarshal(data, &mm)
 		return mm, err
 	case "AMD_VM":
@@ -94,7 +113,12 @@ func (m *launchinstanceplatformconfig) UnmarshalPolymorphicJSON(data []byte) (in
 		mm := AmdMilanBmLaunchInstancePlatformConfig{}
 		err = json.Unmarshal(data, &mm)
 		return mm, err
+	case "AMD_MILAN_BM_GPU":
+		mm := AmdMilanBmGpuLaunchInstancePlatformConfig{}
+		err = json.Unmarshal(data, &mm)
+		return mm, err
 	default:
+		common.Logf("Recieved unsupported enum value for LaunchInstancePlatformConfig: %s.", m.Type)
 		return *m, nil
 	}
 }
@@ -112,6 +136,11 @@ func (m launchinstanceplatformconfig) GetIsTrustedPlatformModuleEnabled() *bool 
 //GetIsMeasuredBootEnabled returns IsMeasuredBootEnabled
 func (m launchinstanceplatformconfig) GetIsMeasuredBootEnabled() *bool {
 	return m.IsMeasuredBootEnabled
+}
+
+//GetIsMemoryEncryptionEnabled returns IsMemoryEncryptionEnabled
+func (m launchinstanceplatformconfig) GetIsMemoryEncryptionEnabled() *bool {
+	return m.IsMemoryEncryptionEnabled
 }
 
 func (m launchinstanceplatformconfig) String() string {
@@ -136,7 +165,10 @@ type LaunchInstancePlatformConfigTypeEnum string
 // Set of constants representing the allowable values for LaunchInstancePlatformConfigTypeEnum
 const (
 	LaunchInstancePlatformConfigTypeAmdMilanBm     LaunchInstancePlatformConfigTypeEnum = "AMD_MILAN_BM"
+	LaunchInstancePlatformConfigTypeAmdMilanBmGpu  LaunchInstancePlatformConfigTypeEnum = "AMD_MILAN_BM_GPU"
 	LaunchInstancePlatformConfigTypeAmdRomeBm      LaunchInstancePlatformConfigTypeEnum = "AMD_ROME_BM"
+	LaunchInstancePlatformConfigTypeAmdRomeBmGpu   LaunchInstancePlatformConfigTypeEnum = "AMD_ROME_BM_GPU"
+	LaunchInstancePlatformConfigTypeIntelIcelakeBm LaunchInstancePlatformConfigTypeEnum = "INTEL_ICELAKE_BM"
 	LaunchInstancePlatformConfigTypeIntelSkylakeBm LaunchInstancePlatformConfigTypeEnum = "INTEL_SKYLAKE_BM"
 	LaunchInstancePlatformConfigTypeAmdVm          LaunchInstancePlatformConfigTypeEnum = "AMD_VM"
 	LaunchInstancePlatformConfigTypeIntelVm        LaunchInstancePlatformConfigTypeEnum = "INTEL_VM"
@@ -144,7 +176,10 @@ const (
 
 var mappingLaunchInstancePlatformConfigTypeEnum = map[string]LaunchInstancePlatformConfigTypeEnum{
 	"AMD_MILAN_BM":     LaunchInstancePlatformConfigTypeAmdMilanBm,
+	"AMD_MILAN_BM_GPU": LaunchInstancePlatformConfigTypeAmdMilanBmGpu,
 	"AMD_ROME_BM":      LaunchInstancePlatformConfigTypeAmdRomeBm,
+	"AMD_ROME_BM_GPU":  LaunchInstancePlatformConfigTypeAmdRomeBmGpu,
+	"INTEL_ICELAKE_BM": LaunchInstancePlatformConfigTypeIntelIcelakeBm,
 	"INTEL_SKYLAKE_BM": LaunchInstancePlatformConfigTypeIntelSkylakeBm,
 	"AMD_VM":           LaunchInstancePlatformConfigTypeAmdVm,
 	"INTEL_VM":         LaunchInstancePlatformConfigTypeIntelVm,
@@ -152,7 +187,10 @@ var mappingLaunchInstancePlatformConfigTypeEnum = map[string]LaunchInstancePlatf
 
 var mappingLaunchInstancePlatformConfigTypeEnumLowerCase = map[string]LaunchInstancePlatformConfigTypeEnum{
 	"amd_milan_bm":     LaunchInstancePlatformConfigTypeAmdMilanBm,
+	"amd_milan_bm_gpu": LaunchInstancePlatformConfigTypeAmdMilanBmGpu,
 	"amd_rome_bm":      LaunchInstancePlatformConfigTypeAmdRomeBm,
+	"amd_rome_bm_gpu":  LaunchInstancePlatformConfigTypeAmdRomeBmGpu,
+	"intel_icelake_bm": LaunchInstancePlatformConfigTypeIntelIcelakeBm,
 	"intel_skylake_bm": LaunchInstancePlatformConfigTypeIntelSkylakeBm,
 	"amd_vm":           LaunchInstancePlatformConfigTypeAmdVm,
 	"intel_vm":         LaunchInstancePlatformConfigTypeIntelVm,
@@ -171,7 +209,10 @@ func GetLaunchInstancePlatformConfigTypeEnumValues() []LaunchInstancePlatformCon
 func GetLaunchInstancePlatformConfigTypeEnumStringValues() []string {
 	return []string{
 		"AMD_MILAN_BM",
+		"AMD_MILAN_BM_GPU",
 		"AMD_ROME_BM",
+		"AMD_ROME_BM_GPU",
+		"INTEL_ICELAKE_BM",
 		"INTEL_SKYLAKE_BM",
 		"AMD_VM",
 		"INTEL_VM",

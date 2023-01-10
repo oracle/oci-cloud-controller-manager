@@ -14,7 +14,7 @@
 
 ARG CI_IMAGE_REGISTRY
 
-FROM golang:1.18.5 as builder
+FROM golang:1.19.6 as builder
 
 ARG COMPONENT
 

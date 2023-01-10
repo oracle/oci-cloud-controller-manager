@@ -33,11 +33,22 @@ $ export RELEASE=?
 ```bash
 $ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-csi-node-rbac.yaml
 ```
+
+The CSI Volume Snapshot-Restore feature requires additional CRDs
+
+```bash
+$ kubectl apply -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/master/client/config/crd/snapshot.storage.k8s.io_volumesnapshotclasses.yaml
+$ kubectl apply -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/master/client/config/crd/snapshot.storage.k8s.io_volumesnapshotcontents.yaml
+$ kubectl apply -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/master/client/config/crd/snapshot.storage.k8s.io_volumesnapshots.yaml
+```
+
 Deploy the csi-controller-driver:
-It is provided as a deployment and it has three containers - 
-    1. csi-provisioner [external-provisioner][4]
-    2. csi-attacher [external-attacher][5]
-    3. oci-csi-controller-driver
+It is provided as a deployment and it has five containers -
+1. csi-provisioner [external-provisioner][4]
+2. csi-attacher [external-attacher][5]
+3. snapshot-controller [snapshot-controller][8]
+4. csi-snapshotter [external-snapshotter][9]
+5. oci-csi-controller-driver
 
 ```bash
 $ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-csi-controller-driver.yaml
@@ -45,8 +56,8 @@ $ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releas
 
 Deploy the node-driver:
 It is provided as a daemon set and it has two containers - 
-    1. node-driver-registrar [node-driver-registrar][6]
-    2. oci-csi-node-driver
+1. node-driver-registrar [node-driver-registrar][6]
+2. oci-csi-node-driver
 
 ```bash
 $ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releases/download/${RELEASE}/oci-csi-node-driver.yaml
@@ -179,3 +190,5 @@ spec:
 [5]: https://kubernetes-csi.github.io/docs/external-attacher.html
 [6]: https://kubernetes-csi.github.io/docs/node-driver-registrar.html
 [7]: https://kubernetes-csi.github.io/docs/support-fsgroup.html#csi-volume-fsgroup-policy
+[8]: https://kubernetes-csi.github.io/docs/snapshot-controller.html
+[9]: https://kubernetes-csi.github.io/docs/external-snapshotter.html

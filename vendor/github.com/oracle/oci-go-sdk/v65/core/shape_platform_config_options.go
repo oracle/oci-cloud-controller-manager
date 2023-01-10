@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2023, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -9,6 +9,8 @@
 // documentation for the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
 // Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
 // Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
+// The required permissions are documented in the
+// Details for the Core Services (https://docs.cloud.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
 //
 
 package core
@@ -32,6 +34,18 @@ type ShapePlatformConfigOptions struct {
 	TrustedPlatformModuleOptions *ShapeTrustedPlatformModuleOptions `mandatory:"false" json:"trustedPlatformModuleOptions"`
 
 	NumaNodesPerSocketPlatformOptions *ShapeNumaNodesPerSocketPlatformOptions `mandatory:"false" json:"numaNodesPerSocketPlatformOptions"`
+
+	MemoryEncryptionOptions *ShapeMemoryEncryptionOptions `mandatory:"false" json:"memoryEncryptionOptions"`
+
+	SymmetricMultiThreadingOptions *ShapeSymmetricMultiThreadingEnabledPlatformOptions `mandatory:"false" json:"symmetricMultiThreadingOptions"`
+
+	AccessControlServiceOptions *ShapeAccessControlServiceEnabledPlatformOptions `mandatory:"false" json:"accessControlServiceOptions"`
+
+	VirtualInstructionsOptions *ShapeVirtualInstructionsEnabledPlatformOptions `mandatory:"false" json:"virtualInstructionsOptions"`
+
+	InputOutputMemoryManagementUnitOptions *ShapeInputOutputMemoryManagementUnitEnabledPlatformOptions `mandatory:"false" json:"inputOutputMemoryManagementUnitOptions"`
+
+	PercentageOfCoresEnabledOptions *PercentageOfCoresEnabledOptions `mandatory:"false" json:"percentageOfCoresEnabledOptions"`
 }
 
 func (m ShapePlatformConfigOptions) String() string {
@@ -59,7 +73,10 @@ type ShapePlatformConfigOptionsTypeEnum string
 // Set of constants representing the allowable values for ShapePlatformConfigOptionsTypeEnum
 const (
 	ShapePlatformConfigOptionsTypeAmdMilanBm     ShapePlatformConfigOptionsTypeEnum = "AMD_MILAN_BM"
+	ShapePlatformConfigOptionsTypeAmdMilanBmGpu  ShapePlatformConfigOptionsTypeEnum = "AMD_MILAN_BM_GPU"
 	ShapePlatformConfigOptionsTypeAmdRomeBm      ShapePlatformConfigOptionsTypeEnum = "AMD_ROME_BM"
+	ShapePlatformConfigOptionsTypeAmdRomeBmGpu   ShapePlatformConfigOptionsTypeEnum = "AMD_ROME_BM_GPU"
+	ShapePlatformConfigOptionsTypeIntelIcelakeBm ShapePlatformConfigOptionsTypeEnum = "INTEL_ICELAKE_BM"
 	ShapePlatformConfigOptionsTypeIntelSkylakeBm ShapePlatformConfigOptionsTypeEnum = "INTEL_SKYLAKE_BM"
 	ShapePlatformConfigOptionsTypeAmdVm          ShapePlatformConfigOptionsTypeEnum = "AMD_VM"
 	ShapePlatformConfigOptionsTypeIntelVm        ShapePlatformConfigOptionsTypeEnum = "INTEL_VM"
@@ -67,7 +84,10 @@ const (
 
 var mappingShapePlatformConfigOptionsTypeEnum = map[string]ShapePlatformConfigOptionsTypeEnum{
 	"AMD_MILAN_BM":     ShapePlatformConfigOptionsTypeAmdMilanBm,
+	"AMD_MILAN_BM_GPU": ShapePlatformConfigOptionsTypeAmdMilanBmGpu,
 	"AMD_ROME_BM":      ShapePlatformConfigOptionsTypeAmdRomeBm,
+	"AMD_ROME_BM_GPU":  ShapePlatformConfigOptionsTypeAmdRomeBmGpu,
+	"INTEL_ICELAKE_BM": ShapePlatformConfigOptionsTypeIntelIcelakeBm,
 	"INTEL_SKYLAKE_BM": ShapePlatformConfigOptionsTypeIntelSkylakeBm,
 	"AMD_VM":           ShapePlatformConfigOptionsTypeAmdVm,
 	"INTEL_VM":         ShapePlatformConfigOptionsTypeIntelVm,
@@ -75,7 +95,10 @@ var mappingShapePlatformConfigOptionsTypeEnum = map[string]ShapePlatformConfigOp
 
 var mappingShapePlatformConfigOptionsTypeEnumLowerCase = map[string]ShapePlatformConfigOptionsTypeEnum{
 	"amd_milan_bm":     ShapePlatformConfigOptionsTypeAmdMilanBm,
+	"amd_milan_bm_gpu": ShapePlatformConfigOptionsTypeAmdMilanBmGpu,
 	"amd_rome_bm":      ShapePlatformConfigOptionsTypeAmdRomeBm,
+	"amd_rome_bm_gpu":  ShapePlatformConfigOptionsTypeAmdRomeBmGpu,
+	"intel_icelake_bm": ShapePlatformConfigOptionsTypeIntelIcelakeBm,
 	"intel_skylake_bm": ShapePlatformConfigOptionsTypeIntelSkylakeBm,
 	"amd_vm":           ShapePlatformConfigOptionsTypeAmdVm,
 	"intel_vm":         ShapePlatformConfigOptionsTypeIntelVm,
@@ -94,7 +117,10 @@ func GetShapePlatformConfigOptionsTypeEnumValues() []ShapePlatformConfigOptionsT
 func GetShapePlatformConfigOptionsTypeEnumStringValues() []string {
 	return []string{
 		"AMD_MILAN_BM",
+		"AMD_MILAN_BM_GPU",
 		"AMD_ROME_BM",
+		"AMD_ROME_BM_GPU",
+		"INTEL_ICELAKE_BM",
 		"INTEL_SKYLAKE_BM",
 		"AMD_VM",
 		"INTEL_VM",

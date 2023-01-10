@@ -15,8 +15,6 @@
 package client
 
 import (
-	"crypto/rand"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -102,16 +100,4 @@ func NewRateLimiter(logger *zap.SugaredLogger, config *providercfg.RateLimiterCo
 		config.RateLimitBucketWrite)
 
 	return rateLimiter
-}
-
-// source: oci-go-sdk common/http.go
-func generateRandUUID() (string, error) {
-	b := make([]byte, 16)
-	_, err := rand.Read(b)
-	if err != nil {
-		return "", err
-	}
-	uuid := fmt.Sprintf("%x%x%x%x%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
-
-	return uuid, nil
 }

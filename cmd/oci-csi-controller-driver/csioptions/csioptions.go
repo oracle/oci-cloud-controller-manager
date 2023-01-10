@@ -23,8 +23,9 @@ import (
 )
 
 const (
-	fssAddressSuffix            = "-fss.sock"
-	fssVolumeNameAppendedPrefix = "-fss"
+	fssAddressSuffix               = "-fss.sock"
+	fssVolumeNameAppendedPrefix    = "-fss"
+	CrossNamespaceVolumeDataSource = "CrossNamespaceVolumeDataSource"
 )
 
 // CSIOptions structure which contains flag values
@@ -106,4 +107,13 @@ func GetFssAddress(csiAddress, defaultAddress string) string {
 // GetFssVolumeNamePrefix returns the fssVolumeNamePrefix based on csiVolumeNamePrefix
 func GetFssVolumeNamePrefix(csiVolumeNamePrefix string) string {
 	return csiVolumeNamePrefix + fssVolumeNameAppendedPrefix
+}
+
+// UpdateFeatureGates add CrossNamespaceVolumeDataSource (default value false) to featureGate if not present
+func UpdateFeatureGates(featureGate map[string]bool) map[string]bool {
+	//If key does not exist
+	if featureGate != nil && !featureGate[CrossNamespaceVolumeDataSource] {
+		featureGate[CrossNamespaceVolumeDataSource] = false
+	}
+	return featureGate
 }

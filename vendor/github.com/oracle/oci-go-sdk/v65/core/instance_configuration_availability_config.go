@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2023, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -9,6 +9,8 @@
 // documentation for the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
 // Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
 // Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
+// The required permissions are documented in the
+// Details for the Core Services (https://docs.cloud.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
 //
 
 package core
@@ -21,6 +23,11 @@ import (
 
 // InstanceConfigurationAvailabilityConfig Options for defining the availabiity of a VM instance after a maintenance event that impacts the underlying hardware.
 type InstanceConfigurationAvailabilityConfig struct {
+
+	// Whether to live migrate supported VM instances to a healthy physical VM host without
+	// disrupting running instances during infrastructure maintenance events. If null, Oracle
+	// chooses the best option for migrating the VM during infrastructure maintenance events.
+	IsLiveMigrationPreferred *bool `mandatory:"false" json:"isLiveMigrationPreferred"`
 
 	// The lifecycle state for an instance when it is recovered after infrastructure maintenance.
 	// * `RESTORE_INSTANCE` - The instance is restored to the lifecycle state it was in before the maintenance event.
