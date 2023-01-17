@@ -145,8 +145,8 @@ func (d *BlockVolumeControllerDriver) CreateVolume(ctx context.Context, req *csi
 		return nil, status.Error(codes.InvalidArgument, "VolumeCapabilities must be provided in CreateVolumeRequest")
 	}
 
-	if !d.validateCapabilities(req.VolumeCapabilities) {
-		return nil, status.Error(codes.InvalidArgument, "invalid volume capabilities requested. Only SINGLE_NODE_WRITER is supported ('accessModes.ReadWriteOnce' on Kubernetes)")
+	if err := d.validateCapabilities(req.VolumeCapabilities); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	size, err := csi_util.ExtractStorage(req.CapacityRange)
@@ -687,9 +687,9 @@ func (d *BlockVolumeControllerDriver) ControllerGetCapabilities(ctx context.Cont
 	return resp, nil
 }
 
-// validateCapabilities validates the requested capabilities. It returns false
+// validateCapabilities validates the requested capabilities. It returns an error
 // if it doesn't satisfy the currently supported modes of OCI Block Volume
-func (d *BlockVolumeControllerDriver) validateCapabilities(caps []*csi.VolumeCapability) bool {
+func (d *BlockVolumeControllerDriver) validateCapabilities(caps []*csi.VolumeCapability) error {
 	vcaps := []*csi.VolumeCapability_AccessMode{supportedAccessMode}
 
 	hasSupport := func(mode csi.VolumeCapability_AccessMode_Mode) bool {
@@ -701,20 +701,22 @@ func (d *BlockVolumeControllerDriver) validateCapabilities(caps []*csi.VolumeCap
 		return false
 	}
 
-	supported := false
 	for _, cap := range caps {
+		if blk := cap.GetBlock(); blk != nil {
+			d.logger.Error("volumeMode is set to Block which is not supported.")
+			return fmt.Errorf("driver does not support Block volumeMode. Please use Filesystem mode")
+		}
 		if hasSupport(cap.AccessMode.Mode) {
-			supported = true
+			continue
 		} else {
 			// we need to make sure all capabilities are supported. Revert back
 			// in case we have a cap that is supported, but is invalidated now
 			d.logger.Errorf("The VolumeCapability isn't supported: %s", cap.AccessMode)
-			supported = false
-			break
+			return fmt.Errorf("invalid volume capabilities requested. Only SINGLE_NODE_WRITER is supported ('accessModes.ReadWriteOnce' on Kubernetes)")
 		}
 	}
 
-	return supported
+	return nil
 }
 
 // CreateSnapshot will be called by the CO to create a new snapshot from a

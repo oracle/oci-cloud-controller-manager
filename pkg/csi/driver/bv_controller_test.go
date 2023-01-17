@@ -404,7 +404,7 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 				},
 			},
 			want:    nil,
-			wantErr: errors.New("invalid volume capabilities requested"),
+			wantErr: errors.New("invalid volume capabilities requested. Only SINGLE_NODE_WRITER is supported ('accessModes.ReadWriteOnce' on Kubernetes)"),
 		},
 		{
 			name:   "Error for no VolumeCapabilities provided in CreateVolumeRequest",
@@ -434,7 +434,7 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 				},
 			},
 			want:    nil,
-			wantErr: errors.New("invalid volume capabilities requested"),
+			wantErr: errors.New("invalid volume capabilities requested. Only SINGLE_NODE_WRITER is supported ('accessModes.ReadWriteOnce' on Kubernetes)"),
 		},
 		{
 			name:   "Error for unsupported VolumeCapabilities: MULTI_NODE_SINGLE_WRITER provided in CreateVolumeRequest",
@@ -451,7 +451,7 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 				},
 			},
 			want:    nil,
-			wantErr: errors.New("invalid volume capabilities requested"),
+			wantErr: errors.New("invalid volume capabilities requested. Only SINGLE_NODE_WRITER is supported ('accessModes.ReadWriteOnce' on Kubernetes)"),
 		},
 		{
 			name:   "Error for exceeding capacity range",
@@ -500,6 +500,23 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 			},
 			want:    nil,
 			wantErr: errors.New("required in PreferredTopologies or allowedTopologies"),
+		},
+		{
+			name:   "Error for unsupported volumeMode Block",
+			fields: fields{},
+			args: args{
+				ctx: nil,
+				req: &csi.CreateVolumeRequest{
+					Name: "ut-volume",
+					VolumeCapabilities: []*csi.VolumeCapability{{
+						AccessType: &csi.VolumeCapability_Block{
+							Block: &csi.VolumeCapability_BlockVolume{},
+						},
+					}},
+				},
+			},
+			want:    nil,
+			wantErr: errors.New("driver does not support Block volumeMode. Please use Filesystem mode"),
 		},
 	}
 	for _, tt := range tests {
