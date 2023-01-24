@@ -319,9 +319,9 @@ func (j *PVCTestJig) CreateAndAwaitPVCOrFailStaticFSS(namespace, volumeName, vol
 // its dependant resources. Callers can provide a function to tweak the
 // PVC object before it is created.
 func (j *PVCTestJig) CreateAndAwaitPVCOrFailCSI(namespace, volumeSize, scName string,
-	tweak func(pvc *v1.PersistentVolumeClaim), volumeMode v1.PersistentVolumeMode, accessMode v1.PersistentVolumeAccessMode) *v1.PersistentVolumeClaim {
+	tweak func(pvc *v1.PersistentVolumeClaim), volumeMode v1.PersistentVolumeMode, accessMode v1.PersistentVolumeAccessMode, expectedPVCPhase v1.PersistentVolumeClaimPhase) *v1.PersistentVolumeClaim {
 	pvc := j.CreatePVCorFailCSI(namespace, volumeSize, scName, tweak, volumeMode, accessMode)
-	return j.CheckAndAwaitPVCOrFail(pvc, namespace, v1.ClaimPending)
+	return j.CheckAndAwaitPVCOrFail(pvc, namespace, expectedPVCPhase)
 }
 
 // CreateAndAwaitPVCOrFailDynamicFSS creates a new PVC based on the
@@ -348,7 +348,7 @@ func (j *PVCTestJig) UpdateAndAwaitPVCOrFailCSI(pvc *v1.PersistentVolumeClaim, n
 // jig's defaults, waits for it to become ready, and then sanity checks it and
 // its dependant resources. Callers can provide a function to tweak the
 // PVC object before it is created.
-func (j *PVCTestJig) CreateAndAwaitStaticPVCOrFailCSI(bs ocicore.BlockstorageClient, namespace string, volumeSize string, vpusPerGB int64, scName string, adLabel string, compartmentId string, tweak func(pvc *v1.PersistentVolumeClaim), volumeMode v1.PersistentVolumeMode, accessMode v1.PersistentVolumeAccessMode) (*v1.PersistentVolumeClaim, string) {
+func (j *PVCTestJig) CreateAndAwaitStaticPVCOrFailCSI(bs ocicore.BlockstorageClient, namespace string, volumeSize string, vpusPerGB int64, scName string, adLabel string, compartmentId string, tweak func(pvc *v1.PersistentVolumeClaim), volumeMode v1.PersistentVolumeMode, accessMode v1.PersistentVolumeAccessMode, expectedPVCPhase v1.PersistentVolumeClaimPhase) (*v1.PersistentVolumeClaim, string) {
 
 	volumeOcid := j.CreateVolume(bs, adLabel, compartmentId, "test-volume", vpusPerGB)
 
@@ -367,7 +367,7 @@ func (j *PVCTestJig) CreateAndAwaitStaticPVCOrFailCSI(bs ocicore.BlockstorageCli
 		return true
 	})
 
-	return j.CreateAndAwaitPVCOrFailCSI(namespace, volumeSize, scName, tweak, volumeMode, accessMode), *volumeOcid
+	return j.CreateAndAwaitPVCOrFailCSI(namespace, volumeSize, scName, tweak, volumeMode, accessMode, expectedPVCPhase), *volumeOcid
 }
 
 func (j *PVCTestJig) CreatePVTemplate(namespace, annotation, storageClassName string,
