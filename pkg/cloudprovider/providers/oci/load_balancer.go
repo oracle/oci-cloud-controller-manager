@@ -30,9 +30,9 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/metrics"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
-	"github.com/oracle/oci-go-sdk/v50/core"
-	"github.com/oracle/oci-go-sdk/v50/loadbalancer"
-	"github.com/oracle/oci-go-sdk/v50/networkloadbalancer"
+	"github.com/oracle/oci-go-sdk/v65/core"
+	"github.com/oracle/oci-go-sdk/v65/loadbalancer"
+	"github.com/oracle/oci-go-sdk/v65/networkloadbalancer"
 	"github.com/pkg/errors"
 )
 

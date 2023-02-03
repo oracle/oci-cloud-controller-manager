@@ -20,8 +20,8 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	"github.com/oracle/oci-go-sdk/v50/common"
-	"github.com/oracle/oci-go-sdk/v50/loadbalancer"
+	"github.com/oracle/oci-go-sdk/v65/common"
+	"github.com/oracle/oci-go-sdk/v65/loadbalancer"
 	"github.com/pkg/errors"
 )
 

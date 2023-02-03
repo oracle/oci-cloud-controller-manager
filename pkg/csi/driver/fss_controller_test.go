@@ -12,7 +12,7 @@ import (
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-go-sdk/v50/filestorage"
+	"github.com/oracle/oci-go-sdk/v65/filestorage"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"k8s.io/client-go/kubernetes"

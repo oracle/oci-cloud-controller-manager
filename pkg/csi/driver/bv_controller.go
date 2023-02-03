@@ -21,7 +21,7 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util/disk"
-	"github.com/oracle/oci-go-sdk/v50/core"
+	"github.com/oracle/oci-go-sdk/v65/core"
 )
 
 const (
@@ -860,8 +860,8 @@ func provision(log *zap.SugaredLogger, c client.Interface, volName string, volSi
 	return *newVolume, nil
 }
 
-//We would derive whether the customer wants in-transit encryption or not based on if the node is launched using
-//in-transit encryption enabled or not.
+// We would derive whether the customer wants in-transit encryption or not based on if the node is launched using
+// in-transit encryption enabled or not.
 func getAttachmentOptions(ctx context.Context, client client.ComputeInterface, attachmentType, instanceID string) (VolumeAttachmentOption, error) {
 	volumeAttachmentOption := VolumeAttachmentOption{}
 	if attachmentType == attachmentTypeParavirtualized {

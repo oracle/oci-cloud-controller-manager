@@ -12,7 +12,7 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/metrics"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
-	fss "github.com/oracle/oci-go-sdk/v50/filestorage"
+	fss "github.com/oracle/oci-go-sdk/v65/filestorage"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

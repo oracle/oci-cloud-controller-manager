@@ -36,7 +36,7 @@ import (
 	"k8s.io/klog"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-go-sdk/v50/core"
+	"github.com/oracle/oci-go-sdk/v65/core"
 )
 
 // metadata labeling for placement info
@@ -119,14 +119,14 @@ func (nic *NodeInfoController) Run(stopCh <-chan struct{}) {
 	wait.Until(nic.runWorker, time.Second, stopCh)
 }
 
-//A function to run the worker which will process items in the queue
+// A function to run the worker which will process items in the queue
 func (nic *NodeInfoController) runWorker() {
 	for nic.processNextItem() {
 
 	}
 }
 
-//Used to sequentially process the keys present in the queue
+// Used to sequentially process the keys present in the queue
 func (nic *NodeInfoController) processNextItem() bool {
 
 	key, quit := nic.queue.Get()
@@ -147,8 +147,8 @@ func (nic *NodeInfoController) processNextItem() bool {
 	return true
 }
 
-//A function which is responsible for adding the fault domain label and CompartmentID annotation to the node if it
-//is not already present. Also cache the instance information
+// A function which is responsible for adding the fault domain label and CompartmentID annotation to the node if it
+// is not already present. Also cache the instance information
 func (nic *NodeInfoController) processItem(key string) error {
 
 	logger := nic.logger.With("node", key)

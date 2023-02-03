@@ -18,7 +18,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/oracle/oci-go-sdk/v50/core"
+	"github.com/oracle/oci-go-sdk/v65/core"
 	"k8s.io/client-go/util/flowcontrol"
 )
 
