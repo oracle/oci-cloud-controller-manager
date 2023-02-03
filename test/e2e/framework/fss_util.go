@@ -2,7 +2,8 @@ package framework
 
 import (
 	"context"
-	"github.com/oracle/oci-go-sdk/v65/filestorage"
+
+	"github.com/oracle/oci-go-sdk/v50/filestorage"
 	client "k8s.io/apimachinery/pkg/api/errors"
 )
 

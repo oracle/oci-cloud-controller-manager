@@ -16,15 +16,17 @@ package main
 
 import (
 	"flag"
+	"time"
+
 	csicontrollerdriver "github.com/oracle/oci-cloud-controller-manager/cmd/oci-csi-controller-driver/csi-controller-driver"
 	"github.com/oracle/oci-cloud-controller-manager/cmd/oci-csi-controller-driver/csioptions"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/csi/driver"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/logging"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util/signals"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
-	"time"
 )
 
 func main() {
@@ -51,6 +53,7 @@ func main() {
 		return
 	}
 	logger.With("endpoint", csiOptions.Endpoint).Infof("Starting controller driver go routine.")
-	go csicontrollerdriver.StartControllerDriver(csiOptions)
+	go csicontrollerdriver.StartControllerDriver(csiOptions, driver.BV)
+	go csicontrollerdriver.StartControllerDriver(csiOptions, driver.FSS) //TODO: Need to check with Mrunal to be it here
 	<-stopCh
 }

@@ -74,15 +74,15 @@ type MockProvisionerClient struct {
 	Storage *MockBlockStorageClient
 }
 
-type MockContainerEngineClient struct{}
+// type MockContainerEngineClient struct{}
 
-func (m MockContainerEngineClient) GetVirtualNode(ctx context.Context, vnId, vnpId string) (*containerengine.VirtualNode, error) {
-	return nil, nil
-}
+// func (m MockContainerEngineClient) GetVirtualNode(ctx context.Context, vnId, vnpId string) (*containerengine.VirtualNode, error) {
+// 	return nil, nil
+// }
 
-func (p *MockProvisionerClient) ContainerEngine() client.ContainerEngineInterface {
-	return &MockContainerEngineClient{}
-}
+// func (p *MockProvisionerClient) ContainerEngine() client.ContainerEngineInterface {
+// 	return &MockContainerEngineClient{}
+// }
 
 func (c *MockBlockStorageClient) AwaitVolumeAvailableORTimeout(ctx context.Context, id string) (*core.Volume, error) {
 	return &core.Volume{}, nil
@@ -159,7 +159,7 @@ type MockVirtualNetworkClient struct {
 }
 
 // GetPrivateIp mocks the VirtualNetwork GetPrivateIp implementation
-func (c *MockVirtualNetworkClient) GetPrivateIp(ctx context.Context, id string) (*core.PrivateIp, error) {
+func (c *MockVirtualNetworkClient) GetPrivateIP(ctx context.Context, id string) (*core.PrivateIp, error) {
 	privateIpAddress := "10.0.20.1"
 	return &core.PrivateIp{
 		IpAddress: &privateIpAddress,

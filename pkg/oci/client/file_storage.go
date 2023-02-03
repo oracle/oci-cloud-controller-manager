@@ -106,7 +106,7 @@ func (c *client) AwaitFileSystemActive(ctx context.Context, logger *zap.SugaredL
 		case fss.FileSystemLifecycleStateActive:
 			logger.Infof("FileSystem is in lifecycle state %q", state)
 			return true, nil
-		case fss.FileSystemLifecycleStateDeleting, fss.FileSystemLifecycleStateDeleted, fss.FileSystemLifecycleStateFailed:
+		case fss.FileSystemLifecycleStateDeleting, fss.FileSystemLifecycleStateDeleted, fss.FileSystemLifecycleStateFailed: // will fix this error in next commit by upgrading sdk version to 65
 			return false, errors.Errorf("file system %q is in lifecycle state %q", *fs.Id, state)
 		default:
 			logger.Debugf("FileSystem is in lifecycle state %q", state)

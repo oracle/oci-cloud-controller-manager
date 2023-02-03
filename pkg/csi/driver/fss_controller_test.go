@@ -2,19 +2,20 @@ package driver
 
 import (
 	"context"
+	"reflect"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-go-sdk/v65/filestorage"
+	"github.com/oracle/oci-go-sdk/v50/filestorage"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"k8s.io/client-go/kubernetes"
-	"reflect"
-	"strings"
-	"testing"
-	"time"
 )
 
 type MockFileStorageClient struct{}
@@ -173,9 +174,9 @@ type MockFSSProvisionerClient struct {
 	Storage *MockFileStorageClient
 }
 
-func (m MockFSSProvisionerClient) ContainerEngine() client.ContainerEngineInterface {
-	return &MockContainerEngineClient{}
-}
+// func (m MockFSSProvisionerClient) ContainerEngine() client.ContainerEngineInterface {
+// 	return &MockContainerEngineClient{}
+// }
 
 func (m MockFSSProvisionerClient) Compute() client.ComputeInterface {
 	return &MockComputeClient{}
