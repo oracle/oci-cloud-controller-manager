@@ -29,6 +29,7 @@ const (
 
 	ClassOCI           = "oci"
 	ClassOCICSI        = "oci-bv"
+	ClassCustom        = "oci-bv-custom"
 	ClassOCICSIExpand  = "oci-bv-expand"
 	ClassOCILowCost    = "oci-bv-low"
 	ClassOCIBalanced   = "oci-bal"
