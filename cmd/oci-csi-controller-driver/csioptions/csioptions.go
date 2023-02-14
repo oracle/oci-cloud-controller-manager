@@ -33,10 +33,10 @@ type CSIOptions struct {
 	Kubeconfig              string
 	CsiAddress              string
 	Endpoint                string
-	FssCsiAddress             string
-	FssEndpoint               string
-	VolumeNamePrefix          string
-	FssVolumeNamePrefix       string
+	FssCsiAddress           string
+	FssEndpoint             string
+	VolumeNamePrefix        string
+	FssVolumeNamePrefix     string
 	VolumeNameUUIDLength    int
 	ShowVersion             bool
 	RetryIntervalStart      time.Duration
@@ -91,7 +91,6 @@ func NewCSIOptions() *CSIOptions {
 	return &csioptions
 }
 
-// GetFssAddress TODO : Remove this function once the value of fss-address and fss-endpoint is passed from management-plane
 // GetFssAddress returns the fssAddress based on csiAddress
 func GetFssAddress(csiAddress, defaultAddress string) string {
 	logger := zap.L().Sugar()
@@ -104,7 +103,6 @@ func GetFssAddress(csiAddress, defaultAddress string) string {
 	return fssAddress
 }
 
-// GetFssVolumeNamePrefix TODO : Remove this function once the value of fss-csi-volume-name-prefix is passed from management-plane
 // GetFssVolumeNamePrefix returns the fssVolumeNamePrefix based on csiVolumeNamePrefix
 func GetFssVolumeNamePrefix(csiVolumeNamePrefix string) string {
 	return csiVolumeNamePrefix + fssVolumeNameAppendedPrefix

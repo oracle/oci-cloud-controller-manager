@@ -32,6 +32,7 @@ import (
 func main() {
 	csiOptions := csioptions.CSIOptions{}
 	flag.StringVar(&csiOptions.Endpoint, "endpoint", "unix://tmp/csi.sock", "CSI endpoint")
+	flag.StringVar(&csiOptions.FssEndpoint, "fss-csi-endpoint", "unix://tmp/csi-fss.sock", "CSI FSS endpoint")
 	flag.StringVar(&csiOptions.Master, "master", "", "kube master")
 	flag.StringVar(&csiOptions.Kubeconfig, "kubeconfig", "", "cluster kubeconfig")
 	flag.Parse()
