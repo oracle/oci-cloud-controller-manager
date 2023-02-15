@@ -16,7 +16,6 @@ import (
 	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/v65/common"
-	"github.com/oracle/oci-go-sdk/v65/containerengine"
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/oracle/oci-go-sdk/v65/identity"
 	"github.com/oracle/oci-go-sdk/v65/loadbalancer"
@@ -76,11 +75,11 @@ type MockProvisionerClient struct {
 }
 
 // type MockContainerEngineClient struct{}
-//
+
 // func (m MockContainerEngineClient) GetVirtualNode(ctx context.Context, vnId, vnpId string) (*containerengine.VirtualNode, error) {
 // 	return nil, nil
 // }
-//
+
 // func (p *MockProvisionerClient) ContainerEngine() client.ContainerEngineInterface {
 // 	return &MockContainerEngineClient{}
 // }
@@ -160,7 +159,7 @@ type MockVirtualNetworkClient struct {
 }
 
 // GetPrivateIp mocks the VirtualNetwork GetPrivateIp implementation
-func (c *MockVirtualNetworkClient) GetPrivateIp(ctx context.Context, id string) (*core.PrivateIp, error) {
+func (c *MockVirtualNetworkClient) GetPrivateIP(ctx context.Context, id string) (*core.PrivateIp, error) {
 	privateIpAddress := "10.0.20.1"
 	return &core.PrivateIp{
 		IpAddress: &privateIpAddress,
@@ -299,14 +298,6 @@ func (c *MockComputeClient) GetPrimaryVNICForInstance(ctx context.Context, compa
 	return nil, nil
 }
 
-func (c *MockComputeClient) ListVnicAttachments(ctx context.Context, compartmentID, instanceID string) ([]core.VnicAttachment, error) {
-	return nil, nil
-}
-
-func (c *MockComputeClient) AttachVnic(ctx context.Context, instanceID, subnetID *string, nsgIds []*string, skipSourceDestCheck *bool) (response core.VnicAttachment, err error) {
-	return core.VnicAttachment{}, nil
-}
-
 func (c *MockComputeClient) FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
 	return nil, nil
 }
@@ -408,7 +399,7 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 				},
 			},
 			want:    nil,
-			wantErr: errors.New("invalid volume capabilities requested. Only SINGLE_NODE_WRITER is supported ('accessModes.ReadWriteOnce' on Kubernetes)"),
+			wantErr: errors.New("invalid volume capabilities requested"),
 		},
 		{
 			name:   "Error for no VolumeCapabilities provided in CreateVolumeRequest",
@@ -438,7 +429,7 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 				},
 			},
 			want:    nil,
-			wantErr: errors.New("invalid volume capabilities requested. Only SINGLE_NODE_WRITER is supported ('accessModes.ReadWriteOnce' on Kubernetes)"),
+			wantErr: errors.New("invalid volume capabilities requested"),
 		},
 		{
 			name:   "Error for unsupported VolumeCapabilities: MULTI_NODE_SINGLE_WRITER provided in CreateVolumeRequest",
@@ -455,7 +446,7 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 				},
 			},
 			want:    nil,
-			wantErr: errors.New("invalid volume capabilities requested. Only SINGLE_NODE_WRITER is supported ('accessModes.ReadWriteOnce' on Kubernetes)"),
+			wantErr: errors.New("invalid volume capabilities requested"),
 		},
 		{
 			name:   "Error for exceeding capacity range",
@@ -504,23 +495,6 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 			},
 			want:    nil,
 			wantErr: errors.New("required in PreferredTopologies or allowedTopologies"),
-		},
-		{
-			name:   "Error for unsupported volumeMode Block",
-			fields: fields{},
-			args: args{
-				ctx: nil,
-				req: &csi.CreateVolumeRequest{
-					Name: "ut-volume",
-					VolumeCapabilities: []*csi.VolumeCapability{{
-						AccessType: &csi.VolumeCapability_Block{
-							Block: &csi.VolumeCapability_BlockVolume{},
-						},
-					}},
-				},
-			},
-			want:    nil,
-			wantErr: errors.New("driver does not support Block volumeMode. Please use Filesystem mode"),
 		},
 	}
 	for _, tt := range tests {

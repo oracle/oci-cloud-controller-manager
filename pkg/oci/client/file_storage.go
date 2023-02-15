@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"time"
 
-	fss "github.com/oracle/oci-go-sdk/v50/filestorage"
+	fss "github.com/oracle/oci-go-sdk/v65/filestorage"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -106,7 +106,7 @@ func (c *client) AwaitFileSystemActive(ctx context.Context, logger *zap.SugaredL
 		case fss.FileSystemLifecycleStateActive:
 			logger.Infof("FileSystem is in lifecycle state %q", state)
 			return true, nil
-		case fss.FileSystemLifecycleStateDeleting, fss.FileSystemLifecycleStateDeleted, fss.FileSystemLifecycleStateFailed:
+		case fss.FileSystemLifecycleStateDeleting, fss.FileSystemLifecycleStateDeleted: // had fss.FileSystemLifecycleStateFailed: not declared in oci-go-sdk v65
 			return false, errors.Errorf("file system %q is in lifecycle state %q", *fs.Id, state)
 		default:
 			logger.Debugf("FileSystem is in lifecycle state %q", state)

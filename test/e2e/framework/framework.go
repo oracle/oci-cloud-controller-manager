@@ -3,10 +3,11 @@ package framework
 import (
 	"flag"
 	"fmt"
-	imageutils "k8s.io/kubernetes/test/utils/image"
 	"math/rand"
 	"strings"
 	"time"
+
+	imageutils "k8s.io/kubernetes/test/utils/image"
 )
 
 const (
@@ -44,27 +45,27 @@ const (
 )
 
 var (
-	compartment1      string
-	adlocation        string
-	clusterkubeconfig string // path to kubeconfig file
-	deleteNamespace   bool   // whether or not to delete test namespaces
-	cloudConfigFile   string // path to cloud provider config file
-	nodePortTest      bool   // whether or not to test the connectivity of node ports.
-	ccmSeclistID      string // The ocid of the loadbalancer subnet seclist. Optional.
-	k8sSeclistID      string // The ocid of the k8s worker subnet seclist. Optional.
-	mntTargetOCID     string // Mount Target ID is specified to identify the mount target to be attached to the volumes. Optional.
-	mntTargetSubnetOCID          string // mntTargetSubnetOCID is required for testing MT creation in FSS dynamic
-	mntTargetCompartmentOCID     string // mntTargetCompartmentOCID is required for testing MT cross compartment creation in FSS dynamic
-	nginx             string // Image for nginx
-	agnhost           string // Image for agnhost
-	busyBoxImage      string // Image for busyBoxImage
-	centos            string // Image for centos
-	imagePullRepo     string // Repo to pull images from. Will pull public images if not specified.
-	cmekKMSKey        string //KMS key for CMEK testing
-	nsgOCIDS		  string // Testing CCM NSG feature
-	reservedIP        string // Testing public reserved IP feature
-	architecture      string
-	volumeHandle      string // The FSS mount volume handle
+	compartment1             string
+	adlocation               string
+	clusterkubeconfig        string // path to kubeconfig file
+	deleteNamespace          bool   // whether or not to delete test namespaces
+	cloudConfigFile          string // path to cloud provider config file
+	nodePortTest             bool   // whether or not to test the connectivity of node ports.
+	ccmSeclistID             string // The ocid of the loadbalancer subnet seclist. Optional.
+	k8sSeclistID             string // The ocid of the k8s worker subnet seclist. Optional.
+	mntTargetOCID            string // Mount Target ID is specified to identify the mount target to be attached to the volumes. Optional.
+	mntTargetSubnetOCID      string // mntTargetSubnetOCID is required for testing MT creation in FSS dynamic
+	mntTargetCompartmentOCID string // mntTargetCompartmentOCID is required for testing MT cross compartment creation in FSS dynamic
+	nginx                    string // Image for nginx
+	agnhost                  string // Image for agnhost
+	busyBoxImage             string // Image for busyBoxImage
+	centos                   string // Image for centos
+	imagePullRepo            string // Repo to pull images from. Will pull public images if not specified.
+	cmekKMSKey               string //KMS key for CMEK testing
+	nsgOCIDS                 string // Testing CCM NSG feature
+	reservedIP               string // Testing public reserved IP feature
+	architecture             string
+	volumeHandle             string // The FSS mount volume handle
 )
 
 func init() {
@@ -129,18 +130,18 @@ func New() *Framework {
 }
 
 // NewWithConfig creates a new Framework instance and configures the instance as per the configuration options in the given config.
-func NewWithConfig(config *FrameworkConfig) *Framework {
+func NewWithConfig() *Framework {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	f := &Framework{
-		AdLocation:    adlocation,
-		MntTargetOcid: mntTargetOCID,
+		AdLocation:               adlocation,
+		MntTargetOcid:            mntTargetOCID,
 		MntTargetSubnetOcid:      mntTargetSubnetOCID,
 		MntTargetCompartmentOcid: mntTargetCompartmentOCID,
-		CMEKKMSKey:    cmekKMSKey,
-		NsgOCIDS:	   nsgOCIDS,
-		ReservedIP:    reservedIP,
-		VolumeHandle:  volumeHandle,
+		CMEKKMSKey:               cmekKMSKey,
+		NsgOCIDS:                 nsgOCIDS,
+		ReservedIP:               reservedIP,
+		VolumeHandle:             volumeHandle,
 	}
 
 	f.CloudConfigPath = cloudConfigFile
@@ -189,10 +190,10 @@ func (f *Framework) Initialize() {
 }
 
 func (f *Framework) setImages() {
-	var Agnhost           = "agnhost:2.6"
-	var BusyBoxImage      = "busybox:latest"
-	var Nginx             = "nginx:stable-alpine"
-	var Centos            = "centos:latest"
+	var Agnhost = "agnhost:2.6"
+	var BusyBoxImage = "busybox:latest"
+	var Nginx = "nginx:stable-alpine"
+	var Centos = "centos:latest"
 
 	if architecture == "ARM" {
 		Agnhost = "agnhost-arm:2.6"

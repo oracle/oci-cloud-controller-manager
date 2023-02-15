@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
@@ -14,7 +16,6 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"time"
 )
 
 var (
@@ -312,7 +313,7 @@ func (d *FSSControllerDriver) getOrCreateMountTarget(ctx context.Context, storag
 	}
 	mountTargetIpId := activeMountTarget.PrivateIpIds[0]
 	log.Infof("getting private IP of mount target from mountTargetIpId %s", mountTargetIpId)
-	privateIpObject, err := d.client.Networking().GetPrivateIp(ctx, mountTargetIpId)
+	privateIpObject, err := d.client.Networking().GetPrivateIP(ctx, mountTargetIpId)
 	if err != nil {
 		log.With(zap.Error(err)).Error("Failed to fetch Mount Target Private IP from IP ID: %s", mountTargetIpId)
 		if !isExistingMountTargetUsed {
@@ -817,7 +818,7 @@ func (d *FSSControllerDriver) ValidateVolumeCapabilities(ctx context.Context, re
 	if mountTarget != nil && mountTarget.PrivateIpIds != nil {
 		mountTargetIpId := mountTarget.PrivateIpIds[0]
 		log = log.With("mountTargetIpId", mountTargetIpId)
-		privateIpObject, err := d.client.Networking().GetPrivateIp(ctx, mountTargetIpId)
+		privateIpObject, err := d.client.Networking().GetPrivateIP(ctx, mountTargetIpId)
 		if err != nil {
 			log.With(zap.Error(err)).Errorf("Failed to fetch Mount Target Private IP from IP ID: %s", mountTargetIpId)
 			return nil, status.Errorf(codes.NotFound, "Failed to fetch Mount Target Private IP from IP ID: %s, error: %s", mountTargetIpId, err.Error())

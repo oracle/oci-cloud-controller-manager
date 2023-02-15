@@ -2,6 +2,11 @@ package driver
 
 import (
 	"context"
+	"reflect"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
@@ -11,10 +16,6 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"k8s.io/client-go/kubernetes"
-	"reflect"
-	"strings"
-	"testing"
-	"time"
 )
 
 type MockFileStorageClient struct{}
@@ -171,10 +172,6 @@ func (p *MockProvisionerClient) FSS() client.FileStorageInterface {
 
 type MockFSSProvisionerClient struct {
 	Storage *MockFileStorageClient
-}
-
-func (m MockFSSProvisionerClient) ContainerEngine() client.ContainerEngineInterface {
-	return &MockContainerEngineClient{}
 }
 
 func (m MockFSSProvisionerClient) Compute() client.ComputeInterface {

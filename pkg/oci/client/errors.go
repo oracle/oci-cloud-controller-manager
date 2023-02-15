@@ -20,7 +20,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/oracle/oci-go-sdk/v50/common"
+	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/pkg/errors"
 )
 
@@ -53,7 +53,7 @@ func IsNotFound(err error) bool {
 	return ok && serviceErr.GetHTTPStatusCode() == http.StatusNotFound
 }
 
-//IsRetryable returns true if the given error is retriable.
+// IsRetryable returns true if the given error is retriable.
 func IsRetryable(err error) bool {
 	if err == nil {
 		return false

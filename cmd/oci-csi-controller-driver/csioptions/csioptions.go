@@ -16,9 +16,10 @@ package csioptions
 
 import (
 	"flag"
-	"go.uber.org/zap"
 	"strings"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 const (
@@ -26,14 +27,14 @@ const (
 	fssVolumeNameAppendedPrefix = "-fss"
 )
 
-//CSIOptions structure which contains flag values
+// CSIOptions structure which contains flag values
 type CSIOptions struct {
 	Master                  string
 	Kubeconfig              string
 	CsiAddress              string
 	Endpoint                string
 	FssCsiAddress           string
-    FssEndpoint             string
+	FssEndpoint             string
 	VolumeNamePrefix        string
 	FssVolumeNamePrefix     string
 	VolumeNameUUIDLength    int
@@ -57,7 +58,7 @@ type CSIOptions struct {
 	EnableResizer           bool
 }
 
-//NewCSIOptions initializes the flag
+// NewCSIOptions initializes the flag
 func NewCSIOptions() *CSIOptions {
 	csioptions := CSIOptions{
 		Master:                  *flag.String("master", "", "kube master"),
@@ -88,4 +89,21 @@ func NewCSIOptions() *CSIOptions {
 		EnableResizer:           *flag.Bool("csi-bv-expansion-enabled", false, "Enables go routine csi-resizer."),
 	}
 	return &csioptions
+}
+
+// GetFssAddress returns the fssAddress based on csiAddress
+func GetFssAddress(csiAddress, defaultAddress string) string {
+	logger := zap.L().Sugar()
+	address := strings.Split(csiAddress, ".sock")
+	if len(address) != 2 || !strings.HasSuffix(csiAddress, ".sock") {
+		logger.Errorf("failed to parse csi-address : %s. Defaulting to : %s", csiAddress, defaultAddress)
+		return defaultAddress
+	}
+	fssAddress := address[0] + fssAddressSuffix
+	return fssAddress
+}
+
+// GetFssVolumeNamePrefix returns the fssVolumeNamePrefix based on csiVolumeNamePrefix
+func GetFssVolumeNamePrefix(csiVolumeNamePrefix string) string {
+	return csiVolumeNamePrefix + fssVolumeNameAppendedPrefix
 }
