@@ -37,14 +37,13 @@ spec:
             - mountPath: /var/run/shared-tmpfs
               name: shared-tmpfs
         - name: csi-fss-volume-provisioner
-          image: quay.io/k8scsi/csi-provisioner:v1.6.0
+          image: k8s.gcr.io/sig-storage/csi-provisioner:v3.2.1
           args:
             - --csi-address=/var/run/shared-tmpfs/csi-fss.sock
             - --volume-name-prefix=csi-fss
             - --feature-gates=Topology=true
             - --timeout=120s
-            - --enable-leader-election=true
-            - --leader-election-type=leases
+            - --leader-election
             - --leader-election-namespace=kube-system
           volumeMounts:
             - name: config
