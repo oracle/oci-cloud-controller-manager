@@ -74,16 +74,6 @@ type MockProvisionerClient struct {
 	Storage *MockBlockStorageClient
 }
 
-// type MockContainerEngineClient struct{}
-
-// func (m MockContainerEngineClient) GetVirtualNode(ctx context.Context, vnId, vnpId string) (*containerengine.VirtualNode, error) {
-// 	return nil, nil
-// }
-
-// func (p *MockProvisionerClient) ContainerEngine() client.ContainerEngineInterface {
-// 	return &MockContainerEngineClient{}
-// }
-
 func (c *MockBlockStorageClient) AwaitVolumeAvailableORTimeout(ctx context.Context, id string) (*core.Volume, error) {
 	return &core.Volume{}, nil
 }
