@@ -66,3 +66,7 @@ export FSS_VOLUME_HANDLE=""
 # By default, public images are used. But if your Cluster's environment cannot access above public images then below option can be used to specify an accessible repo.
 # Optional
 # export IMAGE_PULL_REPO="accessiblerepo.com/repo/path/"
+
+export MNT_TARGET_ID=""
+export MNT_TARGET_SUBNET_ID=""
+export MNT_TARGET_COMPARTMENT_ID=""
