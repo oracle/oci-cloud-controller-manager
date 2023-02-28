@@ -15,9 +15,10 @@
 package config
 
 import (
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 	"io"
 	"os"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 
 	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/common/auth"
@@ -122,7 +123,7 @@ type TagConfig struct {
 	DefinedTags  map[string]map[string]interface{} `yaml:"defined"`
 }
 
-// InitialTags initialTags are optional tags to apply to all LBs, BVs, File systems, Mount Targets and Exports provisioned in the cluster
+// InitialTags are optional tags to apply to all LBs, BVs, File systems, Mount Targets and Exports provisioned in the cluster
 type InitialTags struct {
 	LoadBalancer *TagConfig `yaml:"loadBalancer"`
 	BlockVolume  *TagConfig `yaml:"blockVolume"`

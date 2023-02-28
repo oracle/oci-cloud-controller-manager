@@ -55,6 +55,6 @@ func main() {
 	}
 	logger.With("endpoint", csiOptions.Endpoint).Infof("Starting controller driver go routine.")
 	go csicontrollerdriver.StartControllerDriver(csiOptions, driver.BV)
-	go csicontrollerdriver.StartControllerDriver(csiOptions, driver.FSS) //TODO: Need to check with Mrunal to be it here
+	go csicontrollerdriver.StartControllerDriver(csiOptions, driver.FSS)
 	<-stopCh
 }

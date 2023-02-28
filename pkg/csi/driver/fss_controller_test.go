@@ -174,10 +174,6 @@ type MockFSSProvisionerClient struct {
 	Storage *MockFileStorageClient
 }
 
-// func (m MockFSSProvisionerClient) ContainerEngine() client.ContainerEngineInterface {
-// 	return &MockContainerEngineClient{}
-// }
-
 func (m MockFSSProvisionerClient) Compute() client.ComputeInterface {
 	return &MockComputeClient{}
 }
