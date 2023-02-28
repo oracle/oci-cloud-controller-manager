@@ -3,6 +3,9 @@ package util
 import (
 	"errors"
 	"testing"
+
+	errors2 "github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 func TestGetMetricDimensionForComponent(t *testing.T) {
@@ -68,6 +71,10 @@ func TestGetError(t *testing.T) {
 		"LimitError": {
 			err:           errors.New("Service error:LimitExceeded. error bar. http status code: 400. foo "),
 			expectedError: ErrLimitExceeded,
+		},
+		"ContextTimeoutError": {
+			err:           errors2.Wrap(errors2.Wrap(errors2.WithStack(wait.ErrWaitTimeout), "Bar"), "Foo"),
+			expectedError: ErrCtxTimeout,
 		},
 		"ValidationError": {
 			err:           errors.New("foo bar error"),

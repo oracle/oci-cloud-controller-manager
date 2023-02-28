@@ -26,6 +26,9 @@ check-env "CLOUD_CONFIG"          $CLOUD_CONFIG
 check-env "ADLOCATION"      $ADLOCATION
 check-env "NSG_OCIDS"       $NSG_OCIDS
 check-env "FSS_VOLUME_HANDLE"       $FSS_VOLUME_HANDLE
+check-env "MNT_TARGET_ID"             $MNT_TARGET_ID
+check-env "MNT_TARGET_SUBNET_ID"      $MNT_TARGET_SUBNET_ID
+check-env "MNT_TARGET_COMPARTMENT_ID" $MNT_TARGET_COMPARTMENT_ID
 
 function set_image_pull_repo_and_delete_namespace_flag () {
     if [ -z "$IMAGE_PULL_REPO" ]; then
@@ -44,6 +47,9 @@ function run_e2e_tests_existing_cluster() {
         --delete-namespace=${DELETE_NAMESPACE} \
         --image-pull-repo=${IMAGE_PULL_REPO} \
         --cmek-kms-key=${CMEK_KMS_KEY} \
+        --mnt-target-id=${MNT_TARGET_ID} \
+        --mnt-target-subnet-id=${MNT_TARGET_SUBNET_ID} \
+        --mnt-target-compartment-id=${MNT_TARGET_COMPARTMENT_ID} \
         --nsg-ocids=${NSG_OCIDS} \
         --reserved-ip=${RESERVED_IP} \
         --architecture=${ARCHITECTURE} \
@@ -85,6 +91,9 @@ function set_focus () {
 
 echo "CLUSTER_KUBECONFIG is ${CLUSTER_KUBECONFIG}"
 echo "CLOUD_CONFIG is ${CLOUD_CONFIG}"
+echo "MNT_TARGET_ID is ${MNT_TARGET_ID}"
+echo "MNT_TARGET_SUBNET_ID is ${MNT_TARGET_SUBNET_ID}"
+echo "MNT_TARGET_COMPARTMENT_ID is ${MNT_TARGET_COMPARTMENT_ID}"
 
 function run_tests () {
     set_image_pull_repo_and_delete_namespace_flag

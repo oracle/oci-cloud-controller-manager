@@ -42,9 +42,16 @@ const (
 	configFilePath = "/etc/oci/config.yaml"
 )
 
+type CSIDriver string
+
+const (
+	BV  CSIDriver = "BV"
+	FSS CSIDriver = "FSS"
+)
+
 //Driver implements only Identity interface and embed Controller and Node interface.
 type Driver struct {
-	*ControllerDriver
+	controllerDriver       csi.ControllerServer
 	nodeDriver             csi.NodeServer
 	name                   string
 	version                string
@@ -66,6 +73,16 @@ type ControllerDriver struct {
 	metricPusher *metrics.MetricPusher
 }
 
+// BlockVolumeControllerDriver extends ControllerDriver
+type BlockVolumeControllerDriver struct {
+	ControllerDriver
+}
+
+// FSSControllerDriver extends ControllerDriver
+type FSSControllerDriver struct {
+	ControllerDriver
+}
+
 // NodeDriver implements CSI Node interfaces
 type NodeDriver struct {
 	nodeID      string
@@ -85,6 +102,28 @@ type FSSNodeDriver struct {
 	NodeDriver
 }
 
+type ControllerDriverConfig struct {
+	CsiEndpoint            string
+	CsiKubeConfig          string
+	CsiMaster              string
+	EnableControllerServer bool
+	DriverName             string
+	DriverVersion          string
+}
+
+type MetricPusherGetter func(logger *zap.SugaredLogger) (*metrics.MetricPusher, error)
+
+func newControllerDriver(kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger, config *providercfg.Config, c client.Interface, metricPusher *metrics.MetricPusher) ControllerDriver {
+	return ControllerDriver{
+		KubeClient:   kubeClientSet,
+		logger:       logger,
+		util:         &csi_util.Util{Logger: logger},
+		config:       config,
+		client:       c,
+		metricPusher: metricPusher,
+	}
+}
+
 func newNodeDriver(nodeID string, kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger) NodeDriver {
 	return NodeDriver{
 		nodeID:      nodeID,
@@ -93,6 +132,41 @@ func newNodeDriver(nodeID string, kubeClientSet kubernetes.Interface, logger *za
 		util:        &csi_util.Util{Logger: logger},
 		volumeLocks: csi_util.NewVolumeLocks(),
 	}
+}
+
+func GetControllerDriver(name string, kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger, config *providercfg.Config, c client.Interface) csi.ControllerServer {
+	metricPusher, err := getMetricPusher(newMetricPusher, logger)
+	if err != nil {
+		logger.With("error", err).Error("Metrics collection could not be enabled")
+		// disable metric collection
+		metricPusher = nil
+	}
+	if name == BlockVolumeDriverName {
+		return &BlockVolumeControllerDriver{ControllerDriver: newControllerDriver(kubeClientSet, logger, config, c, metricPusher)}
+	}
+	if name == FSSDriverName {
+		return &FSSControllerDriver{ControllerDriver: newControllerDriver(kubeClientSet, logger, config, c, metricPusher)}
+	}
+	return nil
+}
+
+func newMetricPusher(logger *zap.SugaredLogger) (*metrics.MetricPusher, error) {
+	metricPusher, err := metrics.NewMetricPusher(logger)
+	return metricPusher, err
+}
+
+func getMetricPusher(metricPusherGetter MetricPusherGetter, logger *zap.SugaredLogger) (*metrics.MetricPusher, error) {
+	metricPusher, err := metricPusherGetter(logger)
+	if err != nil {
+		logger.With("error", err).Error("Failed to get metric pusher")
+		return nil, err
+	}
+	if metricPusher == nil {
+		logger.Info("Failed to get metric pusher. Got nil object")
+		return nil, fmt.Errorf("failed to get metric pusher")
+	}
+	logger.Info("Metrics collection has been enabled")
+	return metricPusher, nil
 }
 
 func GetNodeDriver(name string, nodeID string, kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger) csi.NodeServer {
@@ -113,7 +187,7 @@ func NewNodeDriver(logger *zap.SugaredLogger, nodeOptions nodedriveroptions.Node
 	kubeClientSet := csi_util.GetKubeClient(logger, nodeOptions.Master, nodeOptions.Kubeconfig)
 
 	return &Driver{
-		ControllerDriver:       nil,
+		controllerDriver:       nil,
 		nodeDriver:             GetNodeDriver(nodeOptions.DriverName, nodeOptions.NodeID, kubeClientSet, logger),
 		endpoint:               nodeOptions.Endpoint,
 		logger:                 logger,
@@ -124,34 +198,36 @@ func NewNodeDriver(logger *zap.SugaredLogger, nodeOptions nodedriveroptions.Node
 
 }
 
-// NewControllerDriver creates a new CSI driver for OCI blockvolume
-func NewControllerDriver(logger *zap.SugaredLogger, endpoint, kubeconfig, master string, enableControllerServer bool, name, version string) (*Driver, error) {
-	logger.With("endpoint", endpoint, "kubeconfig", kubeconfig, "master",
-		master).Info("Creating a new CSI Controller driver.")
+// NewControllerDriver creates a new CSI driver
+func NewControllerDriver(logger *zap.SugaredLogger, driverConfig ControllerDriverConfig) (*Driver, error) {
+	logger.With("endpoint", driverConfig.CsiEndpoint, "kubeconfig", driverConfig.CsiKubeConfig, "master",
+		driverConfig.CsiMaster).Info("Creating a new CSI Controller driver.")
 
-	kubeClientSet := csi_util.GetKubeClient(logger, master, kubeconfig)
+	kubeClientSet := csi_util.GetKubeClient(logger, driverConfig.CsiMaster, driverConfig.CsiKubeConfig)
 
 	cfg := getConfig(logger)
 
 	c := getClient(logger)
 
-	drv := ControllerDriver{
-		KubeClient: kubeClientSet,
-		logger:     logger,
-		util:       &csi_util.Util{Logger: logger},
-		config:     cfg,
-		client:     c,
-	}
-
 	return &Driver{
-		ControllerDriver:       &drv,
+		controllerDriver:       GetControllerDriver(driverConfig.DriverName, kubeClientSet, logger, cfg, c),
 		nodeDriver:             nil,
-		endpoint:               endpoint,
+		endpoint:               driverConfig.CsiEndpoint,
 		logger:                 logger,
-		enableControllerServer: enableControllerServer,
-		name:                   name,
-		version:                version,
+		enableControllerServer: driverConfig.EnableControllerServer,
+		name:                   driverConfig.DriverName,
+		version:                driverConfig.DriverVersion,
 	}, nil
+}
+
+func (d *Driver) GetControllerDriver() csi.ControllerServer {
+	if d.name == BlockVolumeDriverName {
+		return d.controllerDriver.(*BlockVolumeControllerDriver)
+	}
+	if d.name == FSSDriverName {
+		return d.controllerDriver.(*FSSControllerDriver)
+	}
+	return nil
 }
 
 func (d *Driver) GetNodeDriver() csi.NodeServer {
@@ -212,22 +288,9 @@ func (d *Driver) Run() error {
 	d.srv = grpc.NewServer(grpc.UnaryInterceptor(errHandler))
 	csi.RegisterIdentityServer(d.srv, d)
 	if d.enableControllerServer {
-		csi.RegisterControllerServer(d.srv, d)
+		csi.RegisterControllerServer(d.srv, d.GetControllerDriver())
 	} else {
 		csi.RegisterNodeServer(d.srv, d.GetNodeDriver())
-	}
-
-	metricPusher, err := metrics.NewMetricPusher(d.logger)
-	if err != nil {
-		d.logger.With("error", err).Error("Metrics collection could not be enabled")
-		// disable metric collection
-		metricPusher = nil
-	}
-	if metricPusher != nil {
-		d.logger.Info("Metrics collection has been enabled")
-		d.metricPusher = metricPusher
-	} else {
-		d.logger.Info("Metrics collection is not enabled")
 	}
 
 	d.logger.Info("CSI Driver has started.")

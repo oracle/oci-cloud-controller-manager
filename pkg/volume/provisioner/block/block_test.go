@@ -21,10 +21,10 @@ import (
 	"time"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-go-sdk/v50/common"
-	"github.com/oracle/oci-go-sdk/v50/core"
-	"github.com/oracle/oci-go-sdk/v50/filestorage"
-	"github.com/oracle/oci-go-sdk/v50/identity"
+	"github.com/oracle/oci-go-sdk/v65/common"
+	"github.com/oracle/oci-go-sdk/v65/core"
+	"github.com/oracle/oci-go-sdk/v65/filestorage"
+	"github.com/oracle/oci-go-sdk/v65/identity"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/api/storage/v1"
@@ -86,6 +86,24 @@ func (c *MockBlockStorageClient) DeleteVolume(ctx context.Context, id string) er
 // MockFileStorageClient mocks FileStorage client implementation.
 type MockFileStorageClient struct{}
 
+func (c *MockFileStorageClient) GetMountTarget(ctx context.Context, id string) (*filestorage.MountTarget, error) {
+	return nil, nil
+}
+
+func (c *MockFileStorageClient) GetMountTargetSummaryByDisplayName(ctx context.Context, compartmentID, ad, mountTargetName string) (bool, []filestorage.MountTargetSummary, error) {
+	return false, nil, nil
+}
+
+// CreateMountTarget mocks the FileStorage CreateMountTarget implementation
+func (c *MockFileStorageClient) CreateMountTarget(ctx context.Context, details filestorage.CreateMountTargetDetails) (*filestorage.MountTarget, error) {
+	return nil, nil
+}
+
+// DeleteMountTarget mocks the FileStorage DeleteMountTarget implementation
+func (c *MockFileStorageClient) DeleteMountTarget(ctx context.Context, id string) error {
+	return nil
+}
+
 // CreateFileSystem mocks the FileStorage CreateFileSystem implementation.
 func (c *MockFileStorageClient) CreateFileSystem(ctx context.Context, details filestorage.CreateFileSystemDetails) (*filestorage.FileSystem, error) {
 	return &filestorage.FileSystem{Id: &fileSystemID}, nil
@@ -106,12 +124,16 @@ func (c *MockFileStorageClient) AwaitFileSystemActive(ctx context.Context, logge
 	}, nil
 }
 
-func (c *MockFileStorageClient) GetFileSystemSummaryByDisplayName(ctx context.Context, compartmentID, ad, displayName string) (*filestorage.FileSystemSummary, error) {
-	return &filestorage.FileSystemSummary{
+func (c *MockFileStorageClient) GetFileSystemSummaryByDisplayName(ctx context.Context, compartmentID, ad, displayName string) (bool, []filestorage.FileSystemSummary, error) {
+	filesystemSummaries := make([]filestorage.FileSystemSummary, 0)
+
+	filesystemSummaries = append(filesystemSummaries, filestorage.FileSystemSummary{
 		Id:             &fileSystemID,
 		DisplayName:    &displayName,
 		LifecycleState: filestorage.FileSystemSummaryLifecycleStateActive,
-	}, nil
+	})
+
+	return true, filesystemSummaries, nil
 }
 
 // DeleteFileSystem mocks the FileStorage DeleteFileSystem implementation
@@ -146,10 +168,11 @@ func (c *MockFileStorageClient) AwaitExportActive(ctx context.Context, logger *z
 	}, nil
 }
 
-func (c *MockFileStorageClient) FindExport(ctx context.Context, compartmentID, fsID, exportSetID string) (*filestorage.ExportSummary, error) {
+func (c *MockFileStorageClient) FindExport(ctx context.Context, fsID, path, exportSetID string) (*filestorage.ExportSummary, error) {
 	return &filestorage.ExportSummary{
 		Id:             &exportID,
 		ExportSetId:    &exportSetID,
+		Path:           &path,
 		FileSystemId:   &fsID,
 		LifecycleState: filestorage.ExportSummaryLifecycleStateActive,
 	}, nil
@@ -314,6 +337,10 @@ func (p *MockProvisionerClient) TenancyOCID() string {
 }
 
 type MockLoadBalancerClient struct{}
+
+func (c *MockLoadBalancerClient) ListWorkRequests(ctx context.Context, compartmentId, lbId string) ([]*client.GenericWorkRequest, error) {
+	return nil, nil
+}
 
 func (c *MockLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details *client.GenericCreateLoadBalancerDetails) (string, error) {
 	return "", nil

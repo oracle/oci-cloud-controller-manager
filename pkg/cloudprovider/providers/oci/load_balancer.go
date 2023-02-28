@@ -30,7 +30,9 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/metrics"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
-	"github.com/oracle/oci-go-sdk/v50/core"
+	"github.com/oracle/oci-go-sdk/v65/core"
+	"github.com/oracle/oci-go-sdk/v65/loadbalancer"
+	"github.com/oracle/oci-go-sdk/v65/networkloadbalancer"
 	"github.com/pkg/errors"
 )
 
@@ -394,13 +396,13 @@ func filterNodes(svc *v1.Service, nodes []*v1.Node) ([]*v1.Node, error) {
 
 // EnsureLoadBalancer creates a new load balancer or updates the existing one.
 // Returns the status of the balancer (i.e it's public IP address if one exists).
-func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName string, service *v1.Service, nodes []*v1.Node) (*v1.LoadBalancerStatus, error) {
+func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName string, service *v1.Service, clusterNodes []*v1.Node) (*v1.LoadBalancerStatus, error) {
 	startTime := time.Now()
 	lbName := GetLoadBalancerName(service)
 	loadBalancerType := getLoadBalancerType(service)
 	logger := cp.logger.With("loadBalancerName", lbName, "serviceName", service.Name, "loadBalancerType", loadBalancerType)
 
-	nodes, err := filterNodes(service, nodes)
+	nodes, err := filterNodes(service, clusterNodes)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to filter nodes with label selector")
 		return nil, err
@@ -436,6 +438,39 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 
 	logger = logger.With("loadBalancerID", lbOCID, "loadBalancerType", getLoadBalancerType(service))
 	dimensionsMap[metrics.ResourceOCIDDimension] = lbOCID
+
+	// This code block checks if we have pending work requests before processing the LoadBalancer further
+	// Will error out if any in-progress work request are present for the LB
+	if lb != nil && lb.Id != nil {
+		listWorkRequestTime := time.Now()
+		lbInProgressWorkRequests, err := lbProvider.lbClient.ListWorkRequests(ctx, *lb.CompartmentId, *lb.Id)
+		logger.With("loadBalancerID", *lb.Id).Infof("time (in seconds) to list work-requests for LB %f", time.Since(listWorkRequestTime).Seconds())
+		if err != nil {
+			logger.With(zap.Error(err)).Error("Failed to list work-requests in-progress")
+			errorType = util.GetError(err)
+			lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
+			dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
+			dimensionsMap[metrics.ResourceOCIDDimension] = lbName
+			metrics.SendMetricData(cp.metricPusher, getMetric(loadBalancerType, List), time.Since(startTime).Seconds(), dimensionsMap)
+			return nil, err
+		}
+
+		for _, wr := range lbInProgressWorkRequests {
+			lbType := getLoadBalancerType(service)
+			switch lbType {
+			case NLB:
+				if wr.Status == string(networkloadbalancer.OperationStatusInProgress) || wr.Status == string(networkloadbalancer.OperationStatusAccepted) {
+					logger.With("loadBalancerID", *lb.Id).Infof("current in-progress work requests for Network Load Balancer %s", *wr.Id)
+					return nil, errors.New("Network Load Balancer has work requests in progress, will wait and retry")
+				}
+			default:
+				if *wr.LifecycleState == string(loadbalancer.WorkRequestLifecycleStateInProgress) || *wr.LifecycleState == string(loadbalancer.WorkRequestLifecycleStateAccepted) {
+					logger.With("loadBalancerID", *lb.Id).Infof("current in-progress work requests for Load Balancer %s", *wr.Id)
+					return nil, errors.New("Load Balancer has work requests in progress, will wait and retry")
+				}
+			}
+		}
+	}
 
 	var sslConfig *SSLConfig
 	if requiresCertificate(service) {
@@ -518,15 +553,25 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		}
 	}
 
-	if len(nodes) == 0 {
-		allNodesNotReady, err := cp.checkAllBackendNodesNotReady()
+	// Service controller provided empty nodes list
+	// TODO: Revisit this condition when clusters with mixed node pools are introduced, possibly add len(virtualPods) == 0 check
+	if len(clusterNodes) == 0 {
+		// List all nodes in the cluster
+		nodeList, err := cp.NodeLister.List(labels.Everything())
 		if err != nil {
-			logger.With(zap.Error(err)).Error("Failed to check if all backend nodes are not ready")
+			logger.With(zap.Error(err)).Error("Failed to check if all backend nodes are not ready, error listing nodes")
 			return nil, err
 		}
-		if allNodesNotReady {
+
+		if len(nodeList) == 0 {
+			logger.Info("Cluster has zero nodes, continue reconciling")
+		} else if allNodesNotReady := cp.checkAllBackendNodesNotReady(nodeList); allNodesNotReady {
 			logger.Info("Not removing backends since all nodes are Not Ready")
 			return loadBalancerToStatus(lb)
+		} else {
+			err = errors.Errorf("backend node status is inconsistent, will retry")
+			logger.With(zap.Error(err)).Error("Not removing backends since backend node status is inconsistent with what was observed by service controller")
+			return nil, err
 		}
 	}
 
@@ -1088,14 +1133,7 @@ func loadBalancerToStatus(lb *client.GenericLoadBalancer) (*v1.LoadBalancerStatu
 	return &v1.LoadBalancerStatus{Ingress: ingress}, nil
 }
 
-func (cp *CloudProvider) checkAllBackendNodesNotReady() (bool, error) {
-	nodeList, err := cp.NodeLister.List(labels.Everything())
-	if err != nil {
-		return false, err
-	}
-	if len(nodeList) == 0 {
-		return false, nil
-	}
+func (cp *CloudProvider) checkAllBackendNodesNotReady(nodeList []*v1.Node) bool {
 	for _, node := range nodeList {
 		if _, hasExcludeBalancerLabel := node.Labels[excludeBackendFromLBLabel]; hasExcludeBalancerLabel {
 			continue
@@ -1103,11 +1141,11 @@ func (cp *CloudProvider) checkAllBackendNodesNotReady() (bool, error) {
 		for _, cond := range node.Status.Conditions {
 			if cond.Type == v1.NodeReady {
 				if cond.Status == v1.ConditionTrue {
-					return false, nil
+					return false
 				}
 				break
 			}
 		}
 	}
-	return true, nil
+	return true
 }

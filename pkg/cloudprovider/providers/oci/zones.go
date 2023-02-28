@@ -18,11 +18,11 @@ import (
 	"context"
 	"strings"
 
-	"github.com/oracle/oci-go-sdk/v50/core"
+	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/pkg/errors"
 
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/cloud-provider"
+	cloudprovider "k8s.io/cloud-provider"
 )
 
 var _ cloudprovider.Zones = &CloudProvider{}

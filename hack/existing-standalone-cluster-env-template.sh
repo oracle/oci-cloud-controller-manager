@@ -58,6 +58,9 @@ export NSG_OCIDS=""
 # https://docs.oracle.com/en-us/iaas/Content/File/Tasks/securitylistsfilestorage.htm
 # Mandatory
 export FSS_VOLUME_HANDLE=""
+export MNT_TARGET_ID=""
+export MNT_TARGET_SUBNET_ID=""
+export MNT_TARGET_COMPARTMENT_ID=""
 
 # For debugging the tests in existing cluster, do not turn it off by default.
 # Optional

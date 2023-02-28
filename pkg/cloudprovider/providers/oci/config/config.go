@@ -15,12 +15,13 @@
 package config
 
 import (
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 	"io"
 	"os"
 
-	"github.com/oracle/oci-go-sdk/v50/common"
-	"github.com/oracle/oci-go-sdk/v50/common/auth"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
+
+	"github.com/oracle/oci-go-sdk/v65/common"
+	"github.com/oracle/oci-go-sdk/v65/common/auth"
 	"github.com/pkg/errors"
 
 	"go.uber.org/zap"
@@ -122,10 +123,11 @@ type TagConfig struct {
 	DefinedTags  map[string]map[string]interface{} `yaml:"defined"`
 }
 
-// initialTags are optional tags to apply to all LBs and BVs provisioned in the cluster
+// InitialTags are optional tags to apply to all LBs, BVs, File systems, Mount Targets and Exports provisioned in the cluster
 type InitialTags struct {
 	LoadBalancer *TagConfig `yaml:"loadBalancer"`
 	BlockVolume  *TagConfig `yaml:"blockVolume"`
+	FSS          *TagConfig `yaml:"fss"`
 }
 
 // Config holds the OCI cloud-provider config passed to Kubernetes components
