@@ -16,6 +16,7 @@ package framework
 
 import (
 	"context"
+	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,7 +27,7 @@ import (
 // as the jig
 func (f *CloudProviderFramework) newStorageClassTemplate(name string, provisionerType string,
 	parameters map[string]string, testLabels map[string]string, volumeBindingMode *storagev1.VolumeBindingMode,
-	allowVolumeExpansion bool) *storagev1.StorageClass {
+	allowVolumeExpansion bool, pvReclaimPolicy *v1.PersistentVolumeReclaimPolicy, mountOptions []string) *storagev1.StorageClass {
 	return &storagev1.StorageClass{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "StorageClass",
@@ -40,6 +41,8 @@ func (f *CloudProviderFramework) newStorageClassTemplate(name string, provisione
 		Parameters:           parameters,
 		VolumeBindingMode:    volumeBindingMode,
 		AllowVolumeExpansion: &allowVolumeExpansion,
+		ReclaimPolicy:        pvReclaimPolicy,
+		MountOptions:         mountOptions,
 	}
 }
 
@@ -54,12 +57,20 @@ func (f *CloudProviderFramework) DeleteStorageClass(name string) error {
 
 // CreateStorageClassOrFail creates a new storage class based on the jig's defaults.
 func (f *CloudProviderFramework) CreateStorageClassOrFail(name string, provisionerType string,
-	parameters map[string]string, testLabels map[string]string, bindingMode string, allowVolumeExpansion bool) string {
+	parameters map[string]string, testLabels map[string]string, bindingMode string, allowVolumeExpansion bool, reclaimPolicy string, mountOptions []string) string {
 	volumeBindingMode := storagev1.VolumeBindingImmediate
 	if bindingMode == "WaitForFirstConsumer" {
 		volumeBindingMode = storagev1.VolumeBindingWaitForFirstConsumer
 	}
-	classTemp := f.newStorageClassTemplate(name, provisionerType, parameters, testLabels, &volumeBindingMode, allowVolumeExpansion)
+	pvReclaimPolicy := v1.PersistentVolumeReclaimDelete
+	if reclaimPolicy == "Retain" {
+		pvReclaimPolicy = v1.PersistentVolumeReclaimRetain
+	}
+	if mountOptions == nil {
+		mountOptions = []string{}
+	}
+
+	classTemp := f.newStorageClassTemplate(name, provisionerType, parameters, testLabels, &volumeBindingMode, allowVolumeExpansion, &pvReclaimPolicy, mountOptions)
 
 	class, err := f.ClientSet.StorageV1().StorageClasses().Create(context.Background(), classTemp, metav1.CreateOptions{})
 	if err != nil {

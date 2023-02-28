@@ -27,7 +27,7 @@ var _ = Describe("Block Volume Creation", func() {
 		It("Should be possible to create a persistent volume claim for a block storage (PVC)", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "volume-provisioner-e2e-tests-pvc")
 
-			scName := f.CreateStorageClassOrFail(framework.ClassOCI, core.ProvisionerNameDefault, nil, pvcJig.Labels, "", false)
+			scName := f.CreateStorageClassOrFail(framework.ClassOCI, core.ProvisionerNameDefault, nil, pvcJig.Labels, "", false, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFail(f.Namespace.Name, framework.MinVolumeBlock, scName, setupF.AdLabel, nil)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 		})
@@ -35,7 +35,8 @@ var _ = Describe("Block Volume Creation", func() {
 		It("Should be possible to create a persistent volume claim (PVC) for a block storage of Ext3 file system ", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "volume-provisioner-e2e-tests-pvc")
 
-			scName := f.CreateStorageClassOrFail(framework.ClassOCIExt3, core.ProvisionerNameDefault, map[string]string{block.FSType: "ext3"}, pvcJig.Labels, "", false)
+			scName := f.CreateStorageClassOrFail(framework.ClassOCIExt3, core.ProvisionerNameDefault, map[string]string{block.FSType: "ext3"}, pvcJig.Labels, "", false, "Delete", nil)
+			f.StorageClasses = append(f.StorageClasses, scName)
 			pvc := pvcJig.CreateAndAwaitPVCOrFail(f.Namespace.Name, framework.MinVolumeBlock, scName, setupF.AdLabel, nil)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			_ = f.DeleteStorageClass(framework.ClassOCIExt3)
@@ -44,7 +45,7 @@ var _ = Describe("Block Volume Creation", func() {
 		It("Should be possible to create a persistent volume claim (PVC) for a block storage with no AD specified ", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "volume-provisioner-e2e-tests-pvc")
 
-			scName := f.CreateStorageClassOrFail(framework.ClassOCI, core.ProvisionerNameDefault, nil, pvcJig.Labels, "", false)
+			scName := f.CreateStorageClassOrFail(framework.ClassOCI, core.ProvisionerNameDefault, nil, pvcJig.Labels, "", false, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFail(f.Namespace.Name, framework.MinVolumeBlock, scName, "", nil)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 		})

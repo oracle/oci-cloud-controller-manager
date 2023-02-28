@@ -21,8 +21,8 @@ import (
 	"sort"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-go-sdk/v50/common"
-	"github.com/oracle/oci-go-sdk/v50/core"
+	"github.com/oracle/oci-go-sdk/v65/common"
+	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	api "k8s.io/api/core/v1"
@@ -30,7 +30,7 @@ import (
 	sets "k8s.io/apimachinery/pkg/util/sets"
 	informersv1 "k8s.io/client-go/informers/core/v1"
 	listersv1 "k8s.io/client-go/listers/core/v1"
-	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
+	helper "k8s.io/cloud-provider/service/helpers"
 )
 
 const (
@@ -214,10 +214,13 @@ type defaultSecurityListManager struct {
 // Update the security list rules associated with the listener and backends.
 //
 // Ingress rules added:
-// 		from source cidrs to lb subnets on the listener port
-// 		from LB subnets to backend subnets on the backend port
+//
+//	from source cidrs to lb subnets on the listener port
+//	from LB subnets to backend subnets on the backend port
+//
 // Egress rules added:
-// 		from LB subnets to backend subnets on the backend port
+//
+//	from LB subnets to backend subnets on the backend port
 func (s *defaultSecurityListManager) Update(ctx context.Context, lbSubnets []*core.Subnet, backendSubnets []*core.Subnet, sourceCIDRs []string, actualPorts *portSpec, desiredPorts portSpec, isPreserveSource bool) error {
 	if err := s.updateLoadBalancerRules(ctx, lbSubnets, backendSubnets, sourceCIDRs, actualPorts, desiredPorts); err != nil {
 		return err
@@ -252,7 +255,8 @@ type frontendSecurityListManager struct {
 // Update the ingress security list rules associated with the listener.
 //
 // Ingress rules added:
-// 		from source cidrs to lb subnets on the listener port
+//
+//	from source cidrs to lb subnets on the listener port
 func (s *frontendSecurityListManager) Update(ctx context.Context, lbSubnets []*core.Subnet, _ []*core.Subnet, sourceCIDRs []string, actualPorts *portSpec, desiredPorts portSpec, isPreserveSource bool) error {
 	noSubnets := []*core.Subnet{}
 	return s.updateLoadBalancerRules(ctx, lbSubnets, noSubnets, sourceCIDRs, actualPorts, desiredPorts)
@@ -679,7 +683,7 @@ func healthCheckPortInUse(serviceLister listersv1.ServiceLister, port int32) (bo
 	}
 	for _, service := range serviceList {
 		if service.Spec.Type == api.ServiceTypeLoadBalancer {
-			healthCheckPath, _ := apiservice.GetServiceHealthCheckPathPort(service)
+			healthCheckPath, _ := helper.GetServiceHealthCheckPathPort(service)
 			if healthCheckPath == "" {
 				// We have found another service using the default port.
 				return true, nil

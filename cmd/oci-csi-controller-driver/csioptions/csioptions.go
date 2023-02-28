@@ -16,16 +16,27 @@ package csioptions
 
 import (
 	"flag"
+	"strings"
 	"time"
+
+	"go.uber.org/zap"
 )
 
-//CSIOptions structure which contains flag values
+const (
+	fssAddressSuffix            = "-fss.sock"
+	fssVolumeNameAppendedPrefix = "-fss"
+)
+
+// CSIOptions structure which contains flag values
 type CSIOptions struct {
 	Master                  string
 	Kubeconfig              string
 	CsiAddress              string
 	Endpoint                string
+	FssCsiAddress           string
+	FssEndpoint             string
 	VolumeNamePrefix        string
+	FssVolumeNamePrefix     string
 	VolumeNameUUIDLength    int
 	ShowVersion             bool
 	RetryIntervalStart      time.Duration
@@ -47,14 +58,17 @@ type CSIOptions struct {
 	EnableResizer           bool
 }
 
-//NewCSIOptions initializes the flag
+// NewCSIOptions initializes the flag
 func NewCSIOptions() *CSIOptions {
 	csioptions := CSIOptions{
 		Master:                  *flag.String("master", "", "kube master"),
 		Kubeconfig:              *flag.String("kubeconfig", "", "cluster kube config"),
-		CsiAddress:              *flag.String("csi-address", "/run/csi/socket", "Address of the CSI driver socket."),
-		Endpoint:                *flag.String("csi-endpoint", "unix://tmp/csi.sock", "CSI endpoint"),
+		CsiAddress:              *flag.String("csi-address", "/run/csi/socket", "Address of the CSI BV driver socket."),
+		Endpoint:                *flag.String("csi-endpoint", "unix://tmp/csi.sock", "CSI BV endpoint"),
+		FssCsiAddress:           *flag.String("fss-csi-address", "/run/fss/socket", "Address of the CSI FSS driver socket."),
+		FssEndpoint:             *flag.String("fss-csi-endpoint", "unix://tmp/csi-fss.sock", "CSI FSS endpoint"),
 		VolumeNamePrefix:        *flag.String("csi-volume-name-prefix", "pvc", "Prefix to apply to the name of a created volume."),
+		FssVolumeNamePrefix:     *flag.String("fss-csi-volume-name-prefix", "pvc", "Prefix to apply to the name of a volume created for FSS."),
 		VolumeNameUUIDLength:    *flag.Int("csi-volume-name-uuid-length", -1, "Truncates generated UUID of a created volume to this length. Defaults behavior is to NOT truncate."),
 		ShowVersion:             *flag.Bool("csi-version", false, "Show version."),
 		RetryIntervalStart:      *flag.Duration("csi-retry-interval-start", time.Second, "Initial retry interval of failed provisioning or deletion. It doubles with each failure, up to retry-interval-max."),
@@ -75,4 +89,21 @@ func NewCSIOptions() *CSIOptions {
 		EnableResizer:           *flag.Bool("csi-bv-expansion-enabled", false, "Enables go routine csi-resizer."),
 	}
 	return &csioptions
+}
+
+// GetFssAddress returns the fssAddress based on csiAddress
+func GetFssAddress(csiAddress, defaultAddress string) string {
+	logger := zap.L().Sugar()
+	address := strings.Split(csiAddress, ".sock")
+	if len(address) != 2 || !strings.HasSuffix(csiAddress, ".sock") {
+		logger.Errorf("failed to parse csi-address : %s. Defaulting to : %s", csiAddress, defaultAddress)
+		return defaultAddress
+	}
+	fssAddress := address[0] + fssAddressSuffix
+	return fssAddress
+}
+
+// GetFssVolumeNamePrefix returns the fssVolumeNamePrefix based on csiVolumeNamePrefix
+func GetFssVolumeNamePrefix(csiVolumeNamePrefix string) string {
+	return csiVolumeNamePrefix + fssVolumeNameAppendedPrefix
 }

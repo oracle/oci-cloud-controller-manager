@@ -21,42 +21,6 @@ import (
 	"k8s.io/mount-utils"
 )
 
-type mockMounter struct {
-	mps []mount.MountPoint
-}
-
-func (ml *mockMounter) Mount(source string, target string, fstype string, options []string) error {
-	return nil
-}
-
-func (ml *mockMounter) MountSensitive(source string, target string, fstype string, options []string, sensitiveOptions []string) error {
-	return nil
-}
-
-func (ml *mockMounter) MountSensitiveWithoutSystemd(source string, target string, fstype string, options []string, sensitiveOptions []string) error {
-	return nil
-}
-
-func (ml *mockMounter) MountSensitiveWithoutSystemdWithMountFlags(source string, target string, fstype string, options []string, sensitiveOptions []string, mountFlags []string) error {
-	return nil
-}
-
-func (ml *mockMounter) Unmount(target string) error {
-	return nil
-}
-
-func (ml *mockMounter) IsLikelyNotMountPoint(file string) (bool, error) {
-	return true, nil
-}
-
-func (ml *mockMounter) GetMountRefs(pathname string) ([]string, error) {
-	return []string{}, nil
-}
-
-func (ml *mockMounter) List() ([]mount.MountPoint, error) {
-	return ml.mps, nil
-}
-
 func TestGetMountPointForPath(t *testing.T) {
 	testCases := []struct {
 		name     string
@@ -93,10 +57,9 @@ func TestGetMountPointForPath(t *testing.T) {
 		},
 	}
 
-	mock := &mockMounter{}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			mock.mps = tt.mps
+			mock := mount.NewFakeMounter(tt.mps)
 			result, err := getMountPointForPath(mock, tt.path)
 			if err != tt.err {
 				t.Fatalf("getMountPointForPath(mockLister, %q) => error: %v; expected %v", tt.path, err, tt.err)

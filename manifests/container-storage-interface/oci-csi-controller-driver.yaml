@@ -36,8 +36,23 @@ spec:
               readOnly: true
             - mountPath: /var/run/shared-tmpfs
               name: shared-tmpfs
+        - name: csi-fss-volume-provisioner
+          image: k8s.gcr.io/sig-storage/csi-provisioner:v3.2.1
+          args:
+            - --csi-address=/var/run/shared-tmpfs/csi-fss.sock
+            - --volume-name-prefix=csi-fss
+            - --feature-gates=Topology=true
+            - --timeout=120s
+            - --leader-election
+            - --leader-election-namespace=kube-system
+          volumeMounts:
+            - name: config
+              mountPath: /etc/oci/
+              readOnly: true
+            - mountPath: /var/run/shared-tmpfs
+              name: shared-tmpfs
         - name: csi-attacher
-          image: k8s.gcr.io/sig-storage/csi-attacher:v3.5.0
+          image: k8s.gcr.io/sig-storage/csi-attacher:v4.2.0
           args:
             - --csi-address=/var/run/shared-tmpfs/csi.sock
             - --timeout=120s
@@ -50,7 +65,7 @@ spec:
             - mountPath: /var/run/shared-tmpfs
               name: shared-tmpfs
         - name: csi-resizer
-          image: k8s.gcr.io/sig-storage/csi-resizer:v1.5.0
+          image: k8s.gcr.io/sig-storage/csi-resizer:v1.7.0
           args:
             - --csi-address=/var/run/shared-tmpfs/csi.sock
             - --leader-election
@@ -61,9 +76,10 @@ spec:
         - name: oci-csi-controller-driver
           args:
             - --endpoint=unix://var/run/shared-tmpfs/csi.sock
+            - --fss-csi-endpoint=unix://var/run/shared-tmpfs/csi-fss.sock
           command:
             - /usr/local/bin/oci-csi-controller-driver
-          image: ghcr.io/oracle/cloud-provider-oci:v1.24.0
+          image: ghcr.io/oracle/cloud-provider-oci:latest
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: config

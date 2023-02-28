@@ -209,7 +209,7 @@ func (d BlockVolumeNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.N
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	attachmentType, devicePath, err := getDevicePathAndAttachmentType(d.logger, diskPath)
+	attachmentType, devicePath, err := getDevicePathAndAttachmentType(diskPath)
 	if err != nil {
 		logger.With(zap.Error(err)).With("diskPath", diskPath).Error("unable to determine the attachment type")
 		return nil, status.Error(codes.Internal, err.Error())
@@ -385,7 +385,7 @@ func (d BlockVolumeNodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	attachmentType, _, err := getDevicePathAndAttachmentType(d.logger, diskPath)
+	attachmentType, _, err := getDevicePathAndAttachmentType(diskPath)
 	if err != nil {
 		logger.With(zap.Error(err)).With("diskPath", diskPath).Error("unable to determine the attachment type")
 		return nil, status.Error(codes.Internal, err.Error())
@@ -418,7 +418,7 @@ func (d BlockVolumeNodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 
-func getDevicePathAndAttachmentType(logger *zap.SugaredLogger, path []string) (string, string, error) {
+func getDevicePathAndAttachmentType(path []string) (string, string, error) {
 	for _, diskByPath := range path {
 		matched, _ := regexp.MatchString(csi_util.DiskByPathPatternPV, diskByPath)
 		if matched {
@@ -568,7 +568,7 @@ func (d BlockVolumeNodeDriver) NodeExpandVolume(ctx context.Context, req *csi.No
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	attachmentType, devicePath, err := getDevicePathAndAttachmentType(d.logger, diskPath)
+	attachmentType, devicePath, err := getDevicePathAndAttachmentType(diskPath)
 	if err != nil {
 		logger.With(zap.Error(err)).With("diskPath", diskPath).Error("unable to determine the attachment type")
 		return nil, status.Error(codes.Internal, err.Error())

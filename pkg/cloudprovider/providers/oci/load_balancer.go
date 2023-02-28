@@ -30,7 +30,9 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/metrics"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
-	"github.com/oracle/oci-go-sdk/v50/core"
+	"github.com/oracle/oci-go-sdk/v65/core"
+	"github.com/oracle/oci-go-sdk/v65/loadbalancer"
+	"github.com/oracle/oci-go-sdk/v65/networkloadbalancer"
 	"github.com/pkg/errors"
 )
 
@@ -436,6 +438,39 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 
 	logger = logger.With("loadBalancerID", lbOCID, "loadBalancerType", getLoadBalancerType(service))
 	dimensionsMap[metrics.ResourceOCIDDimension] = lbOCID
+
+	// This code block checks if we have pending work requests before processing the LoadBalancer further
+	// Will error out if any in-progress work request are present for the LB
+	if lb != nil && lb.Id != nil {
+		listWorkRequestTime := time.Now()
+		lbInProgressWorkRequests, err := lbProvider.lbClient.ListWorkRequests(ctx, *lb.CompartmentId, *lb.Id)
+		logger.With("loadBalancerID", *lb.Id).Infof("time (in seconds) to list work-requests for LB %f", time.Since(listWorkRequestTime).Seconds())
+		if err != nil {
+			logger.With(zap.Error(err)).Error("Failed to list work-requests in-progress")
+			errorType = util.GetError(err)
+			lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
+			dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
+			dimensionsMap[metrics.ResourceOCIDDimension] = lbName
+			metrics.SendMetricData(cp.metricPusher, getMetric(loadBalancerType, List), time.Since(startTime).Seconds(), dimensionsMap)
+			return nil, err
+		}
+
+		for _, wr := range lbInProgressWorkRequests {
+			lbType := getLoadBalancerType(service)
+			switch lbType {
+			case NLB:
+				if wr.Status == string(networkloadbalancer.OperationStatusInProgress) || wr.Status == string(networkloadbalancer.OperationStatusAccepted) {
+					logger.With("loadBalancerID", *lb.Id).Infof("current in-progress work requests for Network Load Balancer %s", *wr.Id)
+					return nil, errors.New("Network Load Balancer has work requests in progress, will wait and retry")
+				}
+			default:
+				if *wr.LifecycleState == string(loadbalancer.WorkRequestLifecycleStateInProgress) || *wr.LifecycleState == string(loadbalancer.WorkRequestLifecycleStateAccepted) {
+					logger.With("loadBalancerID", *lb.Id).Infof("current in-progress work requests for Load Balancer %s", *wr.Id)
+					return nil, errors.New("Load Balancer has work requests in progress, will wait and retry")
+				}
+			}
+		}
+	}
 
 	var sslConfig *SSLConfig
 	if requiresCertificate(service) {
@@ -843,7 +878,7 @@ func (clb *CloudLoadBalancerProvider) updateListener(ctx context.Context, lbID s
 	return nil
 }
 
-// UpdateLoadBalancer : TODO find out where this is called
+// UpdateLoadBalancer updates an existing loadbalancer
 func (cp *CloudProvider) UpdateLoadBalancer(ctx context.Context, clusterName string, service *v1.Service, nodes []*v1.Node) error {
 	name := cp.GetLoadBalancerName(ctx, clusterName, service)
 	cp.logger.With("loadBalancerName", name, "loadBalancerType", getLoadBalancerType(service)).Info("Updating load balancer")

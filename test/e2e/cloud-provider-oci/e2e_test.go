@@ -15,9 +15,8 @@
 package e2e
 
 import (
-	"github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework/ginkgowrapper"
 	"k8s.io/component-base/logs"
 	"testing"
 )
@@ -26,6 +25,6 @@ func TestE2E(t *testing.T) {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	RegisterFailHandler(ginkgowrapper.Fail)
-	ginkgo.RunSpecs(t, "Cloud Provider OCI E2E suite")
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Cloud Provider OCI E2E suite")
 }

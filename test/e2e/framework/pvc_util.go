@@ -39,7 +39,7 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/csi/driver"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
-	ocicore "github.com/oracle/oci-go-sdk/v50/core"
+	ocicore "github.com/oracle/oci-go-sdk/v65/core"
 )
 
 const (
@@ -112,6 +112,14 @@ func (j *PVCTestJig) pvcAddAccessMode(pvc *v1.PersistentVolumeClaim,
 	return pvc
 }
 
+func (j *PVCTestJig) pvcAddVolumeMode(pvc *v1.PersistentVolumeClaim,
+	volumeMode v1.PersistentVolumeMode) *v1.PersistentVolumeClaim {
+	if pvc != nil {
+		pvc.Spec.VolumeMode = &volumeMode
+	}
+	return pvc
+}
+
 func (j *PVCTestJig) pvcAddStorageClassName(pvc *v1.PersistentVolumeClaim,
 	storageClassName string) *v1.PersistentVolumeClaim {
 	if pvc != nil {
@@ -160,21 +168,32 @@ func (j *PVCTestJig) newPVCTemplate(namespace, volumeSize, scName, adLabel strin
 // newPVCTemplateCSI returns the default template for this jig, but
 // does not actually create the PVC.  The default PVC has the same name
 // as the jig
-func (j *PVCTestJig) newPVCTemplateCSI(namespace string, volumeSize string, scName string) *v1.PersistentVolumeClaim {
+func (j *PVCTestJig) newPVCTemplateCSI(namespace string, volumeSize string, scName string, volumeMode v1.PersistentVolumeMode, accessMode v1.PersistentVolumeAccessMode) *v1.PersistentVolumeClaim {
 	pvc := j.CreatePVCTemplate(namespace, volumeSize)
-	pvc = j.pvcAddAccessMode(pvc, v1.ReadWriteOnce)
+	pvc = j.pvcAddAccessMode(pvc, accessMode)
 	pvc = j.pvcAddStorageClassName(pvc, scName)
+	pvc = j.pvcAddVolumeMode(pvc, volumeMode)
 	return pvc
 }
 
-// newPVCTemplateFSS returns the default template for this jig, but
+// newPVCTemplateStaticFSS returns the default template for this jig, but
 // does not actually create the PVC.  The default PVC has the same name
 // as the jig
-func (j *PVCTestJig) newPVCTemplateFSS(namespace, volumeSize, volumeName string) *v1.PersistentVolumeClaim {
+func (j *PVCTestJig) newPVCTemplateStaticFSS(namespace, volumeSize, volumeName string) *v1.PersistentVolumeClaim {
 	pvc := j.CreatePVCTemplate(namespace, volumeSize)
 	pvc = j.pvcAddAccessMode(pvc, v1.ReadWriteMany)
 	pvc = j.pvcAddStorageClassName(pvc, "")
 	pvc = j.pvcAddVolumeName(pvc, volumeName)
+	return pvc
+}
+
+// newPVCTemplateDynamicFSS returns the default template for this jig, but
+// does not actually create the PVC.  The default PVC has the same name
+// as the jig
+func (j *PVCTestJig) newPVCTemplateDynamicFSS(namespace, volumeSize, scName string) *v1.PersistentVolumeClaim {
+	pvc := j.CreatePVCTemplate(namespace, volumeSize)
+	pvc = j.pvcAddAccessMode(pvc, v1.ReadWriteMany)
+	pvc = j.pvcAddStorageClassName(pvc, scName)
 	return pvc
 }
 
@@ -226,16 +245,25 @@ func (j *PVCTestJig) CreatePVCorFail(namespace string, volumeSize string, scName
 // defaults. Callers can provide a function to tweak the claim object
 // before it is created.
 func (j *PVCTestJig) CreatePVCorFailCSI(namespace string, volumeSize string, scName string,
-	tweak func(pvc *v1.PersistentVolumeClaim)) *v1.PersistentVolumeClaim {
-	pvc := j.newPVCTemplateCSI(namespace, volumeSize, scName)
+	tweak func(pvc *v1.PersistentVolumeClaim), volumeMode v1.PersistentVolumeMode, accessMode v1.PersistentVolumeAccessMode) *v1.PersistentVolumeClaim {
+	pvc := j.newPVCTemplateCSI(namespace, volumeSize, scName, volumeMode, accessMode)
 	return j.CheckPVCorFail(pvc, tweak, namespace, volumeSize)
 }
 
-// CreatePVCorFailFSS creates a new claim based on the jig's
+// CreatePVCorFailStaticFSS creates a new claim based on the jig's
 // defaults. Callers can provide a function to tweak the claim object
 // before it is created.
-func (j *PVCTestJig) CreatePVCorFailFSS(namespace, volumeName, volumeSize string, tweak func(pvc *v1.PersistentVolumeClaim)) *v1.PersistentVolumeClaim {
-	pvc := j.newPVCTemplateFSS(namespace, volumeSize, volumeName)
+func (j *PVCTestJig) CreatePVCorFailStaticFSS(namespace, volumeName, volumeSize string, tweak func(pvc *v1.PersistentVolumeClaim)) *v1.PersistentVolumeClaim {
+	pvc := j.newPVCTemplateStaticFSS(namespace, volumeSize, volumeName)
+	return j.CheckPVCorFail(pvc, tweak, namespace, volumeSize)
+}
+
+// CreatePVCorFailDynamicFSS creates a new claim based on the jig's
+// defaults. Callers can provide a function to tweak the claim object
+// before it is created.
+func (j *PVCTestJig) CreatePVCorFailDynamicFSS(namespace, volumeSize string, scName string,
+	tweak func(pvc *v1.PersistentVolumeClaim)) *v1.PersistentVolumeClaim {
+	pvc := j.newPVCTemplateDynamicFSS(namespace, volumeSize, scName)
 	return j.CheckPVCorFail(pvc, tweak, namespace, volumeSize)
 }
 
@@ -277,12 +305,12 @@ func (j *PVCTestJig) CreateAndAwaitPVCOrFail(namespace, volumeSize, scName, adLa
 	return j.CheckAndAwaitPVCOrFail(pvc, namespace, v1.ClaimBound)
 }
 
-// CreateAndAwaitPVCOrFailFSS creates a new PVC based on the
+// CreateAndAwaitPVCOrFailStaticFSS creates a new PVC based on the
 // jig's defaults, waits for it to become ready, and then sanity checks it and
 // its dependant resources. Callers can provide a function to tweak the
 // PVC object before it is created.
-func (j *PVCTestJig) CreateAndAwaitPVCOrFailFSS(namespace, volumeName, volumeSize string, tweak func(pvc *v1.PersistentVolumeClaim)) *v1.PersistentVolumeClaim {
-	pvc := j.CreatePVCorFailFSS(namespace, volumeName, volumeSize, tweak)
+func (j *PVCTestJig) CreateAndAwaitPVCOrFailStaticFSS(namespace, volumeName, volumeSize string, tweak func(pvc *v1.PersistentVolumeClaim)) *v1.PersistentVolumeClaim {
+	pvc := j.CreatePVCorFailStaticFSS(namespace, volumeName, volumeSize, tweak)
 	return j.CheckAndAwaitPVCOrFail(pvc, namespace, v1.ClaimBound)
 }
 
@@ -291,9 +319,19 @@ func (j *PVCTestJig) CreateAndAwaitPVCOrFailFSS(namespace, volumeName, volumeSiz
 // its dependant resources. Callers can provide a function to tweak the
 // PVC object before it is created.
 func (j *PVCTestJig) CreateAndAwaitPVCOrFailCSI(namespace, volumeSize, scName string,
-	tweak func(pvc *v1.PersistentVolumeClaim)) *v1.PersistentVolumeClaim {
-	pvc := j.CreatePVCorFailCSI(namespace, volumeSize, scName, tweak)
-	return j.CheckAndAwaitPVCOrFail(pvc, namespace, v1.ClaimPending)
+	tweak func(pvc *v1.PersistentVolumeClaim), volumeMode v1.PersistentVolumeMode, accessMode v1.PersistentVolumeAccessMode, expectedPVCPhase v1.PersistentVolumeClaimPhase) *v1.PersistentVolumeClaim {
+	pvc := j.CreatePVCorFailCSI(namespace, volumeSize, scName, tweak, volumeMode, accessMode)
+	return j.CheckAndAwaitPVCOrFail(pvc, namespace, expectedPVCPhase)
+}
+
+// CreateAndAwaitPVCOrFailDynamicFSS creates a new PVC based on the
+// jig's defaults, waits for it to become ready, and then sanity checks it and
+// its dependant resources. Callers can provide a function to tweak the
+// PVC object before it is created.
+func (j *PVCTestJig) CreateAndAwaitPVCOrFailDynamicFSS(namespace, volumeSize, scName string,
+	phase v1.PersistentVolumeClaimPhase, tweak func(pvc *v1.PersistentVolumeClaim)) *v1.PersistentVolumeClaim {
+	pvc := j.CreatePVCorFailDynamicFSS(namespace, volumeSize, scName, tweak)
+	return j.CheckAndAwaitPVCOrFail(pvc, namespace, phase)
 }
 
 // UpdatedAndAwaitPVCOrFailCSI updates a  PVC based on the
@@ -310,7 +348,7 @@ func (j *PVCTestJig) UpdateAndAwaitPVCOrFailCSI(pvc *v1.PersistentVolumeClaim, n
 // jig's defaults, waits for it to become ready, and then sanity checks it and
 // its dependant resources. Callers can provide a function to tweak the
 // PVC object before it is created.
-func (j *PVCTestJig) CreateAndAwaitStaticPVCOrFailCSI(bs ocicore.BlockstorageClient, namespace string, volumeSize string, vpusPerGB int64, scName string, adLabel string, compartmentId string, tweak func(pvc *v1.PersistentVolumeClaim)) (*v1.PersistentVolumeClaim, string) {
+func (j *PVCTestJig) CreateAndAwaitStaticPVCOrFailCSI(bs ocicore.BlockstorageClient, namespace string, volumeSize string, vpusPerGB int64, scName string, adLabel string, compartmentId string, tweak func(pvc *v1.PersistentVolumeClaim), volumeMode v1.PersistentVolumeMode, accessMode v1.PersistentVolumeAccessMode, expectedPVCPhase v1.PersistentVolumeClaimPhase) (*v1.PersistentVolumeClaim, string) {
 
 	volumeOcid := j.CreateVolume(bs, adLabel, compartmentId, "test-volume", vpusPerGB)
 
@@ -329,7 +367,7 @@ func (j *PVCTestJig) CreateAndAwaitStaticPVCOrFailCSI(bs ocicore.BlockstorageCli
 		return true
 	})
 
-	return j.CreateAndAwaitPVCOrFailCSI(namespace, volumeSize, scName, tweak), *volumeOcid
+	return j.CreateAndAwaitPVCOrFailCSI(namespace, volumeSize, scName, tweak, volumeMode, accessMode, expectedPVCPhase), *volumeOcid
 }
 
 func (j *PVCTestJig) CreatePVTemplate(namespace, annotation, storageClassName string,
@@ -377,13 +415,22 @@ func (j *PVCTestJig) pvAddPersistentVolumeSource(pv *v1.PersistentVolume,
 	return pv
 }
 
+func (j *PVCTestJig) pvAddMountOptions(pv *v1.PersistentVolume,
+	mountOptions []string) *v1.PersistentVolume {
+	if pv != nil {
+		pv.Spec.MountOptions = append(pv.Spec.MountOptions, mountOptions...)
+	}
+	return pv
+}
+
 // newPVTemplateFSS returns the default template for this jig, but
 // does not actually create the PV.  The default PV has the same name
 // as the jig
-func (j *PVCTestJig) newPVTemplateFSS(namespace, volumeHandle, enableIntransitEncrypt string) *v1.PersistentVolume {
+func (j *PVCTestJig) newPVTemplateFSS(namespace, volumeHandle, enableIntransitEncrypt string, mountOptions []string) *v1.PersistentVolume {
 	pv := j.CreatePVTemplate(namespace, "fss.csi.oraclecloud.com", "", "Retain")
 	pv = j.pvAddVolumeMode(pv, v1.PersistentVolumeFilesystem)
 	pv = j.pvAddAccessMode(pv, "ReadWriteMany")
+	pv = j.pvAddMountOptions(pv, mountOptions)
 	pv = j.pvAddPersistentVolumeSource(pv, v1.PersistentVolumeSource{
 		CSI: &v1.CSIPersistentVolumeSource{
 			Driver:       driver.FSSDriverName,
@@ -435,8 +482,8 @@ func (j *PVCTestJig) newPVTemplateCSIHighPerf(namespace string, scName string, o
 // CreatePVForFSSorFail creates a new claim based on the jig's
 // defaults. Callers can provide a function to tweak the claim object
 // before it is created.
-func (j *PVCTestJig) CreatePVorFailFSS(namespace, volumeHandle, encryptInTransit string) *v1.PersistentVolume {
-	pv := j.newPVTemplateFSS(namespace, volumeHandle, encryptInTransit)
+func (j *PVCTestJig) CreatePVorFailFSS(namespace, volumeHandle, encryptInTransit string, mountOptions []string) *v1.PersistentVolume {
+	pv := j.newPVTemplateFSS(namespace, volumeHandle, encryptInTransit, mountOptions)
 
 	result, err := j.KubeClient.CoreV1().PersistentVolumes().Create(context.Background(), pv, metav1.CreateOptions{})
 	if err != nil {
@@ -544,6 +591,56 @@ func (j *PVCTestJig) NewPodForCSI(name string, namespace string, claimName strin
 	if err != nil {
 		Failf("Pod %q is not Running: %v", pod.Name, err)
 	}
+	zap.S().With(pod.Namespace).With(pod.Name).Info("CSI POD is created.")
+	return pod.Name
+}
+
+func (j *PVCTestJig) NewPodForCSIWithoutWait(name string, namespace string, claimName string, adLabel string) string {
+	By("Creating a pod with the claiming PVC created by CSI")
+
+	pod, err := j.KubeClient.CoreV1().Pods(namespace).Create(context.Background(), &v1.Pod{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Pod",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: j.Name,
+			Namespace:    namespace,
+		},
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
+				{
+					Name:    name,
+					Image:   centos,
+					Command: []string{"/bin/sh"},
+					Args:    []string{"-c", "echo 'Hello World' > /data/testdata.txt; while true; do echo $(date -u) >> /data/out.txt; sleep 5; done"},
+					VolumeMounts: []v1.VolumeMount{
+						{
+							Name:      "persistent-storage",
+							MountPath: "/data",
+						},
+					},
+				},
+			},
+			Volumes: []v1.Volume{
+				{
+					Name: "persistent-storage",
+					VolumeSource: v1.VolumeSource{
+						PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+							ClaimName: claimName,
+						},
+					},
+				},
+			},
+			NodeSelector: map[string]string{
+				plugin.LabelZoneFailureDomain: adLabel,
+			},
+		},
+	}, metav1.CreateOptions{})
+	if err != nil {
+		Failf("Pod %q Create API error: %v", pod.Name, err)
+	}
+
 	zap.S().With(pod.Namespace).With(pod.Name).Info("CSI POD is created.")
 	return pod.Name
 }
@@ -979,7 +1076,7 @@ func (j *PVCTestJig) CheckEncryptionType(namespace, podName string) {
 	}
 }
 
-func (j *PVCTestJig) CheckSinglePodReadWrite(namespace string, pvcName string, checkEncryption bool) {
+func (j *PVCTestJig) CheckSinglePodReadWrite(namespace string, pvcName string, checkEncryption bool, expectedMountOptions []string) {
 
 	By("Creating Pod that can create and write to the file")
 	uid := uuid.NewUUID()
@@ -995,8 +1092,12 @@ func (j *PVCTestJig) CheckSinglePodReadWrite(namespace string, pvcName string, c
 	By("check if the file exists")
 	j.CheckFileExists(namespace, podName, "/data", fileName)
 
+	By("Check Mount Options")
+	j.CheckMountOptions(namespace, podName, "/data", expectedMountOptions)
+
 	By("Creating Pod that can read contents of existing file")
 	j.NewPodForCSIFSSRead(string(uid), namespace, pvcName, fileName, checkEncryption)
+
 }
 
 func (j *PVCTestJig) CheckMultiplePodReadWrite(namespace string, pvcName string, checkEncryption bool) {
@@ -1171,4 +1272,58 @@ func (j *PVCTestJig) CheckISCSIQueueDepthOnNode(namespace, podName string) {
 	Expect(err).NotTo(HaveOccurred())
 
 	Expect(strings.TrimSpace(output)).To(Equal("node.session.queue_depth = 128"))
+}
+
+// WaitTimeoutForPVNotFound waits default amount of time for the specified Persistent Volume to be terminated.
+// If the PV Get api returns IsNotFound then the wait stops and nil is returned. If the Get api returns
+// an error other than "not found" then that error is returned and the wait stops.
+func (j *PVCTestJig) WaitTimeoutForPVNotFound(pvName string, timeout time.Duration) error {
+	return wait.PollImmediate(Poll, timeout, j.pvNotFound(pvName))
+}
+
+func (j *PVCTestJig) GetPVCByName(pvcName, namespace string) v1.PersistentVolumeClaim {
+	pvc, _ := j.KubeClient.CoreV1().PersistentVolumeClaims(namespace).Get(context.Background(), pvcName, metav1.GetOptions{})
+	return *pvc
+}
+
+func (j *PVCTestJig) CheckPVExists(pvName string) bool {
+	_, err := j.KubeClient.CoreV1().PersistentVolumes().Get(context.Background(), pvName, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return false
+	}
+	if err != nil {
+		return false
+	}
+	return true
+}
+
+func (j *PVCTestJig) pvNotFound(pvName string) wait.ConditionFunc {
+	return func() (bool, error) {
+		_, err := j.KubeClient.CoreV1().PersistentVolumes().Get(context.Background(), pvName, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			return true, nil // done
+		}
+		if err != nil {
+			return true, err // stop wait with error
+		}
+		return false, nil
+	}
+}
+
+// WaitTimeoutForPVCBound waits default amount of time for the specified Persistent Volume Claim to be bound.
+func (j *PVCTestJig) WaitTimeoutForPVCBound(pvcName, namespace string, timeout time.Duration) error {
+	return wait.PollImmediate(Poll, timeout, j.pvcBound(pvcName, namespace))
+}
+
+func (j *PVCTestJig) pvcBound(pvcName, namespace string) wait.ConditionFunc {
+	return func() (bool, error) {
+		pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(namespace).Get(context.Background(), pvcName, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		if pvc.Status.Phase == v1.ClaimBound {
+			return true, nil
+		}
+		return false, nil
+	}
 }

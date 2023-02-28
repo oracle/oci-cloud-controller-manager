@@ -17,7 +17,7 @@ package client
 import (
 	"strconv"
 
-	"github.com/oracle/oci-go-sdk/v50/common"
+	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

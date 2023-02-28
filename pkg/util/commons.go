@@ -10,6 +10,7 @@ import (
 
 	metricErrors "github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -23,6 +24,7 @@ const (
 	Err5XX           = "5XX"
 	ErrValidation    = "VALIDATION_ERROR"
 	ErrLimitExceeded = "LIMIT_EXCEEDED"
+	ErrCtxTimeout    = "CTX_TIMEOUT"
 	Success          = "SUCCESS"
 
 	// Components generating errors
@@ -58,13 +60,18 @@ func GetError(err error) string {
 		return ""
 	}
 
+	// ErrWaitTimeout is the same var in use by wait.PollUntil in AwaitWorkRequest client method
+	if errors.Is(err, wait.ErrWaitTimeout) {
+		return ErrCtxTimeout
+	}
+
 	re := regexp.MustCompile(`http status code:\s*(\d+)`)
 	if match := re.FindStringSubmatch(cause); match != nil {
 		if status, er := strconv.Atoi(match[1]); er == nil {
 			if status >= 500 {
 				return Err5XX
 			} else if status >= 400 {
-				if strings.Contains(err.Error(), "Service error:LimitExceeded") {
+				if strings.Contains(cause, "Service error:LimitExceeded") {
 					return ErrLimitExceeded
 				}
 				if status == 429 {

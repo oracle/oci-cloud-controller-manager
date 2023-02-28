@@ -16,20 +16,23 @@ package main
 
 import (
 	"flag"
+	"time"
+
 	csicontrollerdriver "github.com/oracle/oci-cloud-controller-manager/cmd/oci-csi-controller-driver/csi-controller-driver"
 	"github.com/oracle/oci-cloud-controller-manager/cmd/oci-csi-controller-driver/csioptions"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/csi/driver"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/logging"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util/signals"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
-	"time"
 )
 
 func main() {
 	csiOptions := csioptions.CSIOptions{}
 	flag.StringVar(&csiOptions.Endpoint, "endpoint", "unix://tmp/csi.sock", "CSI endpoint")
+	flag.StringVar(&csiOptions.FssEndpoint, "fss-csi-endpoint", "unix://tmp/csi-fss.sock", "CSI FSS endpoint")
 	flag.StringVar(&csiOptions.Master, "master", "", "kube master")
 	flag.StringVar(&csiOptions.Kubeconfig, "kubeconfig", "", "cluster kubeconfig")
 	flag.Parse()
@@ -51,6 +54,7 @@ func main() {
 		return
 	}
 	logger.With("endpoint", csiOptions.Endpoint).Infof("Starting controller driver go routine.")
-	go csicontrollerdriver.StartControllerDriver(csiOptions)
+	go csicontrollerdriver.StartControllerDriver(csiOptions, driver.BV)
+	go csicontrollerdriver.StartControllerDriver(csiOptions, driver.FSS)
 	<-stopCh
 }

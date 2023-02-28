@@ -18,7 +18,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/oracle/oci-go-sdk/v50/core"
+	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
@@ -75,7 +75,7 @@ func (c *client) GetVolume(ctx context.Context, id string) (*core.Volume, error)
 
 }
 
-//AwaitVolumeAvailableORTimeout takes context as timeout
+// AwaitVolumeAvailableORTimeout takes context as timeout
 func (c *client) AwaitVolumeAvailableORTimeout(ctx context.Context, id string) (*core.Volume, error) {
 	var vol *core.Volume
 	if err := wait.PollImmediateUntil(volumePollInterval, func() (bool, error) {

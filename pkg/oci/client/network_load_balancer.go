@@ -17,10 +17,12 @@ package client
 import (
 	"context"
 
+	"go.uber.org/zap"
+
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	"github.com/oracle/oci-go-sdk/v50/common"
-	"github.com/oracle/oci-go-sdk/v50/networkloadbalancer"
+	"github.com/oracle/oci-go-sdk/v65/common"
+	"github.com/oracle/oci-go-sdk/v65/networkloadbalancer"
 	"github.com/pkg/errors"
 )
 
@@ -152,6 +154,39 @@ func (c *networkLoadbalancer) GetWorkRequest(ctx context.Context, id string) (*n
 	return &resp.WorkRequest, nil
 }
 
+// ListWorkRequests lists all the workrequests present in the network loadbalancer compartment filtered by nlbId
+// Returns a list of GenericWorkRequests present in given compartmentId filtered by nlbId
+func (c *networkLoadbalancer) ListWorkRequests(ctx context.Context, compartmentId, nlbId string) ([]*GenericWorkRequest, error) {
+	var genericWorkRequests []*GenericWorkRequest
+	var page *string
+	for {
+		if !c.rateLimiter.Reader.TryAccept() {
+			return nil, RateLimitError(false, "ListWorkRequest")
+		}
+		resp, err := c.networkloadbalancer.ListWorkRequests(ctx, networkloadbalancer.ListWorkRequestsRequest{
+			CompartmentId:   &compartmentId,
+			Page:            page,
+			Limit:           common.Int(ListWorkRequestLimit),
+			RequestMetadata: c.requestMetadata,
+		})
+		incRequestCounter(err, listVerb, workRequestResource)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		for _, wr := range resp.Items {
+			for _, r := range wr.Resources {
+				if r.Identifier != nil && *r.Identifier == nlbId {
+					genericWorkRequests = append(genericWorkRequests, c.workRequestToGenericWorkRequest((*networkloadbalancer.WorkRequest)(&wr)))
+				}
+			}
+		}
+		if page = resp.OpcNextPage; page == nil {
+			break
+		}
+	}
+	return genericWorkRequests, nil
+}
+
 func (c *networkLoadbalancer) CreateBackendSet(ctx context.Context, lbID string, name string, details *GenericBackendSetDetails) (string, error) {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return "", RateLimitError(true, "CreateBackendSet")
@@ -276,12 +311,19 @@ func (c *networkLoadbalancer) UpdateListener(ctx context.Context, lbID string, n
 
 func (c *networkLoadbalancer) AwaitWorkRequest(ctx context.Context, id string) (*GenericWorkRequest, error) {
 	var wr *networkloadbalancer.WorkRequest
-	contextWithTimeout, cancel := context.WithTimeout(ctx, defaultSynchronousAPIContextTimeout)
+	contextWithTimeout, cancel := context.WithTimeout(ctx, defaultSynchronousAPIPollContextTimeout)
 	defer cancel()
+	logger := zap.L().Sugar()
+	logger = logger.With("opc-workrequest-id", id,
+		"loadBalancerType", "nlb",
+	)
 	err := wait.PollUntil(workRequestPollInterval, func() (done bool, err error) {
-		twr, err := c.GetWorkRequest(contextWithTimeout, id)
+		childContextWithTimeout, cancel := context.WithTimeout(contextWithTimeout, defaultSynchronousAPIContextTimeout)
+		defer cancel()
+		twr, err := c.GetWorkRequest(childContextWithTimeout, id)
 		if err != nil {
 			if IsRetryable(err) {
+				logger.Info("NLB GetWorkRequest retryable error:" + err.Error())
 				return false, nil
 			}
 			return true, errors.WithStack(err)
@@ -294,7 +336,7 @@ func (c *networkLoadbalancer) AwaitWorkRequest(ctx context.Context, id string) (
 			return false, errors.Errorf("WorkRequest %q failed. PercentComplete: %f", id, *twr.PercentComplete)
 		}
 		return false, nil
-	}, ctx.Done())
+	}, contextWithTimeout.Done())
 
 	return c.workRequestToGenericWorkRequest(wr), err
 }
