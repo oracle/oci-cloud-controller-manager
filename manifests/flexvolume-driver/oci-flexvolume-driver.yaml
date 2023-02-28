@@ -40,7 +40,7 @@ spec:
             secretName: oci-flexvolume-driver
       containers:
         - name: oci-flexvolume-driver
-          image: ghcr.io/yashwantgohokar/cloud-provider-oci:v1.25.0
+          image: ghcr.io/oracle/cloud-provider-oci:latest
           command: ["/usr/local/bin/install.py", "-c", "/tmp/config.yaml"]
           securityContext:
             privileged: true
