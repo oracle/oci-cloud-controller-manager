@@ -91,7 +91,7 @@ build: build-dirs
 .PHONY: manifests
 manifests: build-dirs
 	@mkdir -p ${RELEASE}
-	@cp -a manifests/**/*.yaml ${RELEASE}
+	@rsync -av --exclude=manifests/**/storage-class.yaml manifests/**/*.yaml ${RELEASE}
 	@cp -a manifests/container-storage-interface/storage-class.yaml ${RELEASE}/storage-class.yaml
 	@cat manifests/volume-provisioner/storage-class.yaml >> ${RELEASE}/storage-class.yaml
 	@sed $(SED_INPLACE)                         \
