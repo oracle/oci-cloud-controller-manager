@@ -9,10 +9,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions: write-all
     steps:
 
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -30,3 +31,18 @@ jobs:
 
       - name: Push Image
         run: OSS_REGISTRY="ghcr.io/oracle" VERSION="${{ github.ref_name }}" make docker-push-all
+
+      - name: Make manifests
+        run: RELEASE=${{ github.ref_name }} make manifests
+
+      - name: Get current release
+        id: get_release
+        uses: bruceadams/get-release@v1.3.2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      
+      - name: upload manifests
+        uses: shogo82148/actions-upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
+          asset_path: ${{ github.ref_name }}/*.yaml    

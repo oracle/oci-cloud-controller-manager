@@ -21,7 +21,7 @@ else
 endif
 
 ifeq "$(OSS_REGISTRY)" ""
-    OSS_REGISTRY   ?= iad.ocir.io/oracle
+    OSS_REGISTRY   ?= ghcr.io/oracle
 else
     OSS_REGISTRY   ?= ${OSS_REGISTRY}
 endif
@@ -38,7 +38,11 @@ else
     VERSION   ?= ${VERSION}
 endif
 
-RELEASE = v1.25.0
+ifeq "$(RELEASE)" ""
+	RELEASE = latest
+else
+	RELEASE ?= ${RELEASE}
+endif		
 
 GOOS ?= linux
 ARCH ?= amd64
@@ -87,9 +91,11 @@ build: build-dirs
 .PHONY: manifests
 manifests: build-dirs
 	@mkdir -p ${RELEASE}
-	@cp -a manifests/**/*.yaml ${RELEASE}
+	@rsync -av --exclude=manifests/**/storage-class.yaml manifests/**/*.yaml ${RELEASE}
+	@cp -a manifests/container-storage-interface/storage-class.yaml ${RELEASE}/storage-class.yaml
+	@cat manifests/volume-provisioner/storage-class.yaml >> ${RELEASE}/storage-class.yaml
 	@sed $(SED_INPLACE)                         \
-	  's#${IMAGE}:${VERSION}#${IMAGE}:${RELEASE}#g' \
+	  's#${IMAGE}:.*#${IMAGE}:${RELEASE}#g' \
 	  ${RELEASE}/*.yaml
 
 .PHONY: vendor
@@ -201,4 +207,3 @@ test-local: build-dirs
 .PHONY: run-ccm-e2e-tests-local
 run-ccm-e2e-tests-local:
 	./hack/run_e2e_test.sh
-
