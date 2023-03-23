@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2023, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 
 package common
@@ -70,6 +70,8 @@ const (
 	RegionMXQueretaro1 Region = "mx-queretaro-1"
 	//RegionEUMadrid1 region Madrid
 	RegionEUMadrid1 Region = "eu-madrid-1"
+	//RegionUSChicago1 region Chicago
+	RegionUSChicago1 Region = "us-chicago-1"
 	//RegionUSLangley1 region Langley
 	RegionUSLangley1 Region = "us-langley-1"
 	//RegionUSLuke1 region Luke
@@ -92,6 +94,22 @@ const (
 	RegionMEDccMuscat1 Region = "me-dcc-muscat-1"
 	//RegionAPDccCanberra1 region Canberra
 	RegionAPDccCanberra1 Region = "ap-dcc-canberra-1"
+	//RegionEUDccMilan1 region Milan
+	RegionEUDccMilan1 Region = "eu-dcc-milan-1"
+	//RegionEUDccMilan2 region Milan
+	RegionEUDccMilan2 Region = "eu-dcc-milan-2"
+	//RegionEUDccDublin2 region Dublin
+	RegionEUDccDublin2 Region = "eu-dcc-dublin-2"
+	//RegionEUDccRating2 region Rating
+	RegionEUDccRating2 Region = "eu-dcc-rating-2"
+	//RegionEUDccRating1 region Rating
+	RegionEUDccRating1 Region = "eu-dcc-rating-1"
+	//RegionEUDccDublin1 region Dublin
+	RegionEUDccDublin1 Region = "eu-dcc-dublin-1"
+	//RegionEUMadrid2 region Madrid
+	RegionEUMadrid2 Region = "eu-madrid-2"
+	//RegionEUJovanovac1 region Jovanovac
+	RegionEUJovanovac1 Region = "eu-jovanovac-1"
 )
 
 var shortNameRegion = map[string]Region{
@@ -128,6 +146,7 @@ var shortNameRegion = map[string]Region{
 	"cdg": RegionEUParis1,
 	"qro": RegionMXQueretaro1,
 	"mad": RegionEUMadrid1,
+	"ord": RegionUSChicago1,
 	"lfi": RegionUSLangley1,
 	"luf": RegionUSLuke1,
 	"ric": RegionUSGovAshburn1,
@@ -139,6 +158,14 @@ var shortNameRegion = map[string]Region{
 	"ukb": RegionAPIbaraki1,
 	"mct": RegionMEDccMuscat1,
 	"wga": RegionAPDccCanberra1,
+	"bgy": RegionEUDccMilan1,
+	"mxp": RegionEUDccMilan2,
+	"snn": RegionEUDccDublin2,
+	"dtm": RegionEUDccRating2,
+	"dus": RegionEUDccRating1,
+	"ork": RegionEUDccDublin1,
+	"vll": RegionEUMadrid2,
+	"beg": RegionEUJovanovac1,
 }
 
 var realm = map[string]string{
@@ -149,6 +176,9 @@ var realm = map[string]string{
 	"oc8":  "oraclecloud8.com",
 	"oc9":  "oraclecloud9.com",
 	"oc10": "oraclecloud10.com",
+	"oc14": "oraclecloud14.com",
+	"oc19": "oraclecloud.eu",
+	"oc20": "oraclecloud20.com",
 }
 
 var regionRealm = map[Region]string{
@@ -185,6 +215,7 @@ var regionRealm = map[Region]string{
 	RegionEUParis1:        "oc1",
 	RegionMXQueretaro1:    "oc1",
 	RegionEUMadrid1:       "oc1",
+	RegionUSChicago1:      "oc1",
 
 	RegionUSLangley1: "oc2",
 	RegionUSLuke1:    "oc2",
@@ -202,4 +233,15 @@ var regionRealm = map[Region]string{
 	RegionMEDccMuscat1: "oc9",
 
 	RegionAPDccCanberra1: "oc10",
+
+	RegionEUDccMilan1:  "oc14",
+	RegionEUDccMilan2:  "oc14",
+	RegionEUDccDublin2: "oc14",
+	RegionEUDccRating2: "oc14",
+	RegionEUDccRating1: "oc14",
+	RegionEUDccDublin1: "oc14",
+
+	RegionEUMadrid2: "oc19",
+
+	RegionEUJovanovac1: "oc20",
 }

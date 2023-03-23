@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2023, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -9,6 +9,8 @@
 // documentation for the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
 // Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
 // Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
+// The required permissions are documented in the
+// Details for the Core Services (https://docs.cloud.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
 //
 
 package core
@@ -75,11 +77,22 @@ type UpdateInstanceDetails struct {
 	// The new shape must be compatible with the image that was used to launch the instance. You
 	// can enumerate all available shapes and determine image compatibility by calling
 	// ListShapes.
+	// To determine whether capacity is available for a specific shape before you change the shape of an instance,
+	// use the CreateComputeCapacityReport
+	// operation.
 	// If the instance is running when you change the shape, the instance is rebooted.
 	// Example: `VM.Standard2.1`
 	Shape *string `mandatory:"false" json:"shape"`
 
 	ShapeConfig *UpdateInstanceShapeConfigDetails `mandatory:"false" json:"shapeConfig"`
+
+	// The parameter acts as a fail-safe to prevent unwanted downtime when updating a running instance.
+	// The default is ALLOW_DOWNTIME.
+	// * `ALLOW_DOWNTIME` - Compute might reboot the instance while updating the instance if a reboot is required.
+	// * `AVOID_DOWNTIME` - If the instance is in running state, Compute tries to update the instance without rebooting
+	//                   it. If the instance requires a reboot to be updated, an error is returned and the instance
+	//                   is not updated. If the instance is stopped, it is updated and remains in the stopped state.
+	UpdateOperationConstraint UpdateInstanceDetailsUpdateOperationConstraintEnum `mandatory:"false" json:"updateOperationConstraint,omitempty"`
 
 	InstanceOptions *InstanceOptions `mandatory:"false" json:"instanceOptions"`
 
@@ -98,12 +111,17 @@ type UpdateInstanceDetails struct {
 
 	AvailabilityConfig *UpdateInstanceAvailabilityConfigDetails `mandatory:"false" json:"availabilityConfig"`
 
-	// The date and time the instance is expected to be stopped and restarted, in the format defined by
-	// RFC3339 (https://tools.ietf.org/html/rfc3339).
+	// For a VM instance, resets the scheduled time that the instance will be reboot migrated for
+	// infrastructure maintenance, in the format defined by RFC3339 (https://tools.ietf.org/html/rfc3339).
 	// If the instance hasn't been rebooted after this date, Oracle reboots the instance within 24 hours of the time
 	// and date that maintenance is due.
-	// Regardless of how the instance is stopped, this flag is reset to empty as soon as the instance reaches
+	// To get the maximum possible date that a maintenance reboot can be extended,
+	// use GetInstanceMaintenanceReboot.
+	// Regardless of how the instance is stopped, this flag is reset to empty as soon as the instance reaches the
 	// Stopped state.
+	// To reboot migrate a bare metal instance, use the InstanceAction operation.
+	// For more information, see
+	// Infrastructure Maintenance (https://docs.cloud.oracle.com/iaas/Content/Compute/References/infrastructure-maintenance.htm).
 	// Example: `2018-05-25T21:10:29.600Z`
 	TimeMaintenanceRebootDue *common.SDKTime `mandatory:"false" json:"timeMaintenanceRebootDue"`
 }
@@ -118,8 +136,53 @@ func (m UpdateInstanceDetails) String() string {
 func (m UpdateInstanceDetails) ValidateEnumValue() (bool, error) {
 	errMessage := []string{}
 
+	if _, ok := GetMappingUpdateInstanceDetailsUpdateOperationConstraintEnum(string(m.UpdateOperationConstraint)); !ok && m.UpdateOperationConstraint != "" {
+		errMessage = append(errMessage, fmt.Sprintf("unsupported enum value for UpdateOperationConstraint: %s. Supported values are: %s.", m.UpdateOperationConstraint, strings.Join(GetUpdateInstanceDetailsUpdateOperationConstraintEnumStringValues(), ",")))
+	}
 	if len(errMessage) > 0 {
 		return true, fmt.Errorf(strings.Join(errMessage, "\n"))
 	}
 	return false, nil
+}
+
+// UpdateInstanceDetailsUpdateOperationConstraintEnum Enum with underlying type: string
+type UpdateInstanceDetailsUpdateOperationConstraintEnum string
+
+// Set of constants representing the allowable values for UpdateInstanceDetailsUpdateOperationConstraintEnum
+const (
+	UpdateInstanceDetailsUpdateOperationConstraintAllowDowntime UpdateInstanceDetailsUpdateOperationConstraintEnum = "ALLOW_DOWNTIME"
+	UpdateInstanceDetailsUpdateOperationConstraintAvoidDowntime UpdateInstanceDetailsUpdateOperationConstraintEnum = "AVOID_DOWNTIME"
+)
+
+var mappingUpdateInstanceDetailsUpdateOperationConstraintEnum = map[string]UpdateInstanceDetailsUpdateOperationConstraintEnum{
+	"ALLOW_DOWNTIME": UpdateInstanceDetailsUpdateOperationConstraintAllowDowntime,
+	"AVOID_DOWNTIME": UpdateInstanceDetailsUpdateOperationConstraintAvoidDowntime,
+}
+
+var mappingUpdateInstanceDetailsUpdateOperationConstraintEnumLowerCase = map[string]UpdateInstanceDetailsUpdateOperationConstraintEnum{
+	"allow_downtime": UpdateInstanceDetailsUpdateOperationConstraintAllowDowntime,
+	"avoid_downtime": UpdateInstanceDetailsUpdateOperationConstraintAvoidDowntime,
+}
+
+// GetUpdateInstanceDetailsUpdateOperationConstraintEnumValues Enumerates the set of values for UpdateInstanceDetailsUpdateOperationConstraintEnum
+func GetUpdateInstanceDetailsUpdateOperationConstraintEnumValues() []UpdateInstanceDetailsUpdateOperationConstraintEnum {
+	values := make([]UpdateInstanceDetailsUpdateOperationConstraintEnum, 0)
+	for _, v := range mappingUpdateInstanceDetailsUpdateOperationConstraintEnum {
+		values = append(values, v)
+	}
+	return values
+}
+
+// GetUpdateInstanceDetailsUpdateOperationConstraintEnumStringValues Enumerates the set of values in String for UpdateInstanceDetailsUpdateOperationConstraintEnum
+func GetUpdateInstanceDetailsUpdateOperationConstraintEnumStringValues() []string {
+	return []string{
+		"ALLOW_DOWNTIME",
+		"AVOID_DOWNTIME",
+	}
+}
+
+// GetMappingUpdateInstanceDetailsUpdateOperationConstraintEnum performs case Insensitive comparison on enum value and return the desired enum
+func GetMappingUpdateInstanceDetailsUpdateOperationConstraintEnum(val string) (UpdateInstanceDetailsUpdateOperationConstraintEnum, bool) {
+	enum, ok := mappingUpdateInstanceDetailsUpdateOperationConstraintEnumLowerCase[strings.ToLower(val)]
+	return enum, ok
 }

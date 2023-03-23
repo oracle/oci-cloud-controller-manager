@@ -18,6 +18,7 @@ spec:
         tier: control-plane
     spec:
       serviceAccountName: oci-flexvolume-driver
+      hostNetwork: true
       nodeSelector:
         node-role.kubernetes.io/control-plane: ""
       tolerations:
@@ -40,7 +41,7 @@ spec:
             secretName: oci-flexvolume-driver
       containers:
         - name: oci-flexvolume-driver
-          image: ghcr.io/oracle/cloud-provider-oci:v1.24.1
+          image: ghcr.io/oracle/cloud-provider-oci:v1.24.2
           command: ["/usr/local/bin/install.py", "-c", "/tmp/config.yaml"]
           securityContext:
             privileged: true
@@ -76,7 +77,7 @@ spec:
             type: DirectoryOrCreate
       containers:
         - name: oci-flexvolume-driver
-          image: ghcr.io/oracle/cloud-provider-oci:v1.24.0
+          image: ghcr.io/oracle/cloud-provider-oci:v1.24.2
           command: ["/usr/local/bin/install.py"]
           securityContext:
             privileged: true

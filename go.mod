@@ -39,6 +39,7 @@ require (
 	github.com/container-storage-interface/spec v1.6.0
 	github.com/golang/protobuf v1.5.2
 	github.com/kubernetes-csi/csi-lib-utils v0.11.0
+	github.com/kubernetes-csi/external-snapshotter/client/v6 v6.0.1
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.17.0
 	github.com/pkg/errors v0.9.1
@@ -48,7 +49,7 @@ require (
 	github.com/spf13/viper v1.8.1
 	go.uber.org/zap v1.19.1
 	golang.org/x/net v0.0.0-20220403103023-749bd193bc2b
-	golang.org/x/sys v0.0.0-20220406163625-3f8b81556e12 // indirect
+	golang.org/x/sys v0.6.0 // indirect
 	google.golang.org/grpc v1.45.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -59,6 +60,7 @@ require (
 	k8s.io/cloud-provider v0.24.1
 	k8s.io/component-base v0.24.1
 	k8s.io/component-helpers v0.24.1
+	k8s.io/controller-manager v0.24.1 // indirect
 	k8s.io/klog v1.0.0
 	k8s.io/klog/v2 v2.60.1
 	k8s.io/kubelet v0.24.1 // indirect
@@ -68,7 +70,11 @@ require (
 	sigs.k8s.io/sig-storage-lib-external-provisioner/v8 v8.0.0
 )
 
-require github.com/oracle/oci-go-sdk/v65 v65.22.0
+require (
+	github.com/oracle/oci-go-sdk/v65 v65.40.1
+	google.golang.org/protobuf v1.28.0
+	k8s.io/apiextensions-apiserver v0.24.1
+)
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
@@ -154,12 +160,10 @@ require (
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20220405205423-9d709892a2bf // indirect
-	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/controller-manager v0.24.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20220401212409-b28bf2818661 // indirect
 	k8s.io/kube-scheduler v0.0.0 // indirect
 	k8s.io/kubectl v0.0.0 // indirect

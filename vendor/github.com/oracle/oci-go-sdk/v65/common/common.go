@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2023, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 
 package common
@@ -9,13 +9,13 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 )
 
-//Region type for regions
+// Region type for regions
 type Region string
 
 const (
@@ -39,6 +39,9 @@ const (
 	realmKeyPropertyName             = "realmKey"             // e.g. "oc1"
 	realmDomainComponentPropertyName = "realmDomainComponent" // e.g. "oraclecloud.com"
 	regionKeyPropertyName            = "regionKey"            // e.g. "SYD"
+
+	// OciRealmSpecificServiceEndpointTemplateEnabledEnvVar is the environment variable name to enable the realm specific service endpoint template.
+	OciRealmSpecificServiceEndpointTemplateEnabledEnvVar = "OCI_REALM_SPECIFIC_SERVICE_ENDPOINT_TEMPLATE_ENABLED"
 )
 
 // External region metadata info flag, used to control adding these metadata region info only once.
@@ -46,6 +49,9 @@ var readCfgFile, readEnvVar, visitIMDS bool = true, true, false
 
 // getRegionInfoFromInstanceMetadataService gets the region information
 var getRegionInfoFromInstanceMetadataService = getRegionInfoFromInstanceMetadataServiceProd
+
+// OciRealmSpecificServiceEndpointTemplateEnabled is the flag to enable the realm specific service endpoint template. This one has higher priority than the environment variable.
+var OciRealmSpecificServiceEndpointTemplateEnabled *bool = nil
 
 // Endpoint returns a endpoint for a service
 func (region Region) Endpoint(service string) string {
@@ -80,12 +86,22 @@ func (region Region) EndpointForTemplate(service string, serviceEndpointTemplate
 	return endpoint
 }
 
-// EndpointForTemplateDottedRegion returns a endpoint for a service based on template, only unknown region name can fall back to "oc1", but not short code region name.
+// EndpointForTemplateDottedRegion returns a endpoint for a service based on the service name and EndpointTemplateForRegionWithDot template. If a service name is missing it is obtained from serviceEndpointTemplate and endpoint is constructed usingEndpointTemplateForRegionWithDot template.
 func (region Region) EndpointForTemplateDottedRegion(service string, serviceEndpointTemplate string, endpointServiceName string) (string, error) {
+	if !strings.Contains(string(region), ".") {
+		var endpoint = ""
+		if serviceEndpointTemplate != "" {
+			endpoint = region.EndpointForTemplate(service, serviceEndpointTemplate)
+			return endpoint, nil
+		}
+		endpoint = region.EndpointForTemplate(service, "")
+		return endpoint, nil
+	}
+
 	if endpointServiceName != "" {
 		endpoint := strings.Replace(EndpointTemplateForRegionWithDot, "{endpoint_service_name}", endpointServiceName, 1)
 		endpoint = strings.Replace(endpoint, "{region}", string(region), 1)
-		Debugf("Constructing endpoint from service name %s and region %s", endpointServiceName, region)
+		Debugf("Constructing endpoint from service name %s and region %s. Endpoint: %s", endpointServiceName, region, endpoint)
 		return endpoint, nil
 	}
 	if serviceEndpointTemplate != "" {
@@ -96,6 +112,7 @@ func (region Region) EndpointForTemplateDottedRegion(service string, serviceEndp
 			if len(res) > 1 {
 				endpoint = strings.Replace(EndpointTemplateForRegionWithDot, "{endpoint_service_name}", res[0], 1)
 				endpoint = strings.Replace(endpoint, "{region}", string(region), 1)
+				Debugf("Constructing endpoint from service endpoint template %s and region %s. Endpoint: %s", serviceEndpointTemplate, region, endpoint)
 			} else {
 				return endpoint, fmt.Errorf("Endpoint service name not present in endpoint template")
 			}
@@ -129,7 +146,7 @@ func (region Region) RealmID() (string, error) {
 	return "", fmt.Errorf("cannot find realm for region : %s", region)
 }
 
-//StringToRegion convert a string to Region type
+// StringToRegion convert a string to Region type
 func StringToRegion(stringRegion string) (r Region) {
 	regionStr := strings.ToLower(stringRegion)
 	// check if short region name provided
@@ -227,7 +244,7 @@ func setRegionMetadataFromCfgFile(region *string) bool {
 	// Mark readCfgFile Flag as false since it has already been visited.
 	readCfgFile = false
 	homeFolder := getHomeFolder()
-	configFile := path.Join(homeFolder, regionMetadataCfgDirName, regionMetadataCfgFileName)
+	configFile := filepath.Join(homeFolder, regionMetadataCfgDirName, regionMetadataCfgFileName)
 	if jsonArr, ok := readAndParseConfigFile(&configFile); ok {
 		added := false
 		for _, jsonItem := range jsonArr {
@@ -376,4 +393,19 @@ func getRegionInfoFromInstanceMetadataServiceProd() ([]byte, error) {
 	}
 
 	return content, nil
+}
+
+// TemplateParamForPerRealmEndpoint is a template parameter for per-realm endpoint.
+type TemplateParamForPerRealmEndpoint struct {
+	Template    string
+	EndsWithDot bool
+}
+
+// SetMissingTemplateParams function will parse the {} template in client host and replace with empty string.
+func SetMissingTemplateParams(client *BaseClient) {
+	templateRegex := regexp.MustCompile(`{.*?}`)
+	templates := templateRegex.FindAllString(client.Host, -1)
+	for _, template := range templates {
+		client.Host = strings.Replace(client.Host, template, "", -1)
+	}
 }

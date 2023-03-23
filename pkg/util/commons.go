@@ -33,6 +33,8 @@ const (
 	// storage types
 	CSIStorageType = "CSI"
 	FVDStorageType = "FVD"
+	// Snapshots
+	CSIBVSnapshot = "BSNAP"
 )
 
 // LookupNodeCompartment returns the compartment OCID for the given nodeName.

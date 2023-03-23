@@ -203,6 +203,10 @@ func getHealthCheckerChanges(actual *client.GenericHealthChecker, desired *clien
 		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:Protocol", toString(&actual.Protocol), toString(&desired.Protocol)))
 	}
 
+	if toBool(actual.IsForcePlainText) != toBool(desired.IsForcePlainText) {
+		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:IsForcePlainText", toBool(actual.IsForcePlainText), toBool(desired.IsForcePlainText)))
+	}
+
 	return healthCheckerChanges
 }
 
@@ -222,6 +226,10 @@ func hasBackendSetChanged(logger *zap.SugaredLogger, actual client.GenericBacken
 
 	if toString(actual.Policy) != toString(desired.Policy) {
 		backendSetChanges = append(backendSetChanges, fmt.Sprintf(changeFmtStr, "BackEndSet:Policy", toString(actual.Policy), toString(desired.Policy)))
+	}
+
+	if toBool(actual.IsPreserveSource) != toBool(desired.IsPreserveSource) {
+		backendSetChanges = append(backendSetChanges, fmt.Sprintf(changeFmtStr, "BackEndSet:IsPreserveSource", toBool(actual.IsPreserveSource), toBool(desired.IsPreserveSource)))
 	}
 
 	nameFormat := "%s:%d"
@@ -266,6 +274,7 @@ func healthCheckerToDetails(hc *client.GenericHealthChecker) *client.GenericHeal
 	}
 	return &client.GenericHealthChecker{
 		Protocol:         hc.Protocol,
+		IsForcePlainText: hc.IsForcePlainText,
 		IntervalInMillis: hc.IntervalInMillis,
 		Port:             hc.Port,
 		//ResponseBodyRegex: hc.ResponseBodyRegex,
@@ -669,6 +678,15 @@ func sortAndCombineActions(logger *zap.SugaredLogger, backendSetActions []Action
 			logger.Errorf("Unknown action type received: %+v", a1)
 			return true
 		}
+	})
+
+	sort.SliceStable(actions, func(i, j int) bool {
+		a1 := actions[i]
+		a2 := actions[j]
+		if a1.Type() != a2.Type() {
+			return a1.Type() == Delete
+		}
+		return false
 	})
 	return actions
 }

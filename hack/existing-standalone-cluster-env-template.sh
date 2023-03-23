@@ -58,9 +58,6 @@ export NSG_OCIDS=""
 # https://docs.oracle.com/en-us/iaas/Content/File/Tasks/securitylistsfilestorage.htm
 # Mandatory
 export FSS_VOLUME_HANDLE=""
-export MNT_TARGET_ID=""
-export MNT_TARGET_SUBNET_ID=""
-export MNT_TARGET_COMPARTMENT_ID=""
 
 # For debugging the tests in existing cluster, do not turn it off by default.
 # Optional
@@ -69,3 +66,9 @@ export MNT_TARGET_COMPARTMENT_ID=""
 # By default, public images are used. But if your Cluster's environment cannot access above public images then below option can be used to specify an accessible repo.
 # Optional
 # export IMAGE_PULL_REPO="accessiblerepo.com/repo/path/"
+
+export MNT_TARGET_ID=""
+export MNT_TARGET_SUBNET_ID=""
+export MNT_TARGET_COMPARTMENT_ID=""
+
+export STATIC_SNAPSHOT_COMPARTMENT_ID=""

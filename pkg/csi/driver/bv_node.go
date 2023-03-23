@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strconv"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"go.uber.org/zap"
@@ -23,6 +24,7 @@ import (
 const (
 	maxVolumesPerNode               = 32
 	volumeOperationAlreadyExistsFmt = "An operation for the volume: %s already exists."
+	FSTypeXfs                       = "xfs"
 )
 
 // NodeStageVolume mounts the volume to a staging path on the node.
@@ -162,6 +164,15 @@ func (d BlockVolumeNodeDriver) NodeStageVolume(ctx context.Context, req *csi.Nod
 		if err := os.MkdirAll(req.StagingTargetPath, 0750); err != nil {
 			logger.With(zap.Error(err)).Error("Failed to create StagingTargetPath directory")
 			return nil, status.Error(codes.Internal, "Failed to create StagingTargetPath directory")
+		}
+	}
+
+	//XFS does not allow mounting two volumes with same UUID,
+	//this block is needed for mounting a volume and a volume
+	//restored from it's snapshot on the same node
+	if fsType == FSTypeXfs {
+		if !hasMountOption(options, "nouuid") {
+			options = append(options, "nouuid")
 		}
 	}
 
@@ -344,6 +355,15 @@ func (d BlockVolumeNodeDriver) NodePublishVolume(ctx context.Context, req *csi.N
 
 	fsType := csi_util.ValidateFsType(logger, mnt.FsType)
 
+	//XFS does not allow mounting two volumes with same UUID,
+	//this block is needed for mounting a volume and a volume
+	//restored from it's snapshot on the same node
+	if fsType == FSTypeXfs {
+		if !hasMountOption(options, "nouuid") {
+			options = append(options, "nouuid")
+		}
+	}
+
 	err := mountHandler.Mount(req.StagingTargetPath, req.TargetPath, fsType, options)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("failed to format and mount.")
@@ -351,6 +371,72 @@ func (d BlockVolumeNodeDriver) NodePublishVolume(ctx context.Context, req *csi.N
 	}
 
 	logger.With("attachmentType", attachment).Info("Publish volume to the Node is Completed.")
+
+	if req.PublishContext[needResize] != "" {
+		needsResize, err := strconv.ParseBool(req.PublishContext[needResize])
+		if err != nil {
+			logger.With(zap.Error(err)).Error("failed to determine if resize is required")
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+
+		if needsResize {
+			logger.Info("Starting to expand volume restored from snapshot")
+
+			requestedSize, err := strconv.ParseInt(req.PublishContext[newSize], 10, 64)
+			if err != nil {
+				logger.With(zap.Error(err)).Error("failed to get new requested size of volume")
+				return nil, status.Errorf(codes.OutOfRange, "failed to get new requested size of volume: %v", err)
+			}
+			requestedSizeGB := csi_util.RoundUpSize(requestedSize, 1*client.GiB)
+
+			var devicePath string
+
+			switch attachment {
+			case attachmentTypeISCSI:
+				scsiInfo, err := csi_util.ExtractISCSIInformation(req.PublishContext)
+				if err != nil {
+					logger.With(zap.Error(err)).Error("Failed to get SCSI info from publish context.")
+					return nil, status.Error(codes.InvalidArgument, "PublishContext is invalid.")
+				}
+
+				// Get the device path using the publish context
+				devicePath = csi_util.GetDevicePath(scsiInfo)
+			case attachmentTypeParavirtualized:
+				devicePath, ok = req.PublishContext[device]
+				if !ok {
+					logger.Error("Unable to get the device from the attribute list")
+					return nil, status.Error(codes.InvalidArgument, "Unable to get the device from the attribute list")
+				}
+			default:
+				logger.Error("unknown attachment type. supported attachment types are iscsi and paravirtualized")
+				return nil, status.Error(codes.InvalidArgument, "unknown attachment type. supported attachment types are iscsi and paravirtualized")
+			}
+
+			logger.With("devicePath", devicePath).Infof("Extracted device path")
+
+			if err := csi_util.Rescan(logger, devicePath); err != nil {
+				return nil, status.Errorf(codes.Internal, "Failed to rescan volume %q (%q):  %v", req.VolumeId, devicePath, err)
+			}
+			logger.With("devicePath", devicePath).Debug("Rescan completed")
+
+			if _, err := mountHandler.Resize(devicePath, req.TargetPath); err != nil {
+				return nil, status.Errorf(codes.Internal, "Failed to resize volume %q (%q):  %v", req.VolumeId, devicePath, err)
+			}
+
+			allocatedSizeBytes, err := csi_util.GetBlockSizeBytes(logger, devicePath)
+			if err != nil {
+				return nil, status.Error(codes.Internal, fmt.Sprintf("Failed to get size of block volume at path %s: %v", devicePath, err))
+			}
+
+			allocatedSizeGB := csi_util.RoundUpSize(allocatedSizeBytes, 1*client.GiB)
+
+			if allocatedSizeGB < requestedSizeGB {
+				return nil, status.Error(codes.Internal, fmt.Sprintf("Expand volume after restore from snapshot failed, requested size in GB %d but resize allocated only %d", requestedSizeGB, allocatedSizeGB))
+			}
+
+			logger.Info("Volume successfully expanded after restore from snapshot")
+		}
+	}
 
 	return &csi.NodePublishVolumeResponse{}, nil
 }
@@ -529,7 +615,7 @@ func (d BlockVolumeNodeDriver) NodeGetVolumeStats(ctx context.Context, req *csi.
 	}, nil
 }
 
-//NodeExpandVolume returns the expand of the volume
+// NodeExpandVolume returns the expand of the volume
 func (d BlockVolumeNodeDriver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
@@ -616,4 +702,16 @@ func (d BlockVolumeNodeDriver) NodeExpandVolume(ctx context.Context, req *csi.No
 	return &csi.NodeExpandVolumeResponse{
 		CapacityBytes: allocatedSizeBytes,
 	}, nil
+}
+
+// hasMountOption returns a boolean indicating whether the given
+// slice already contains a mount option. This is used to prevent
+// passing duplicate option to the mount command.
+func hasMountOption(options []string, opt string) bool {
+	for _, o := range options {
+		if o == opt {
+			return true
+		}
+	}
+	return false
 }
