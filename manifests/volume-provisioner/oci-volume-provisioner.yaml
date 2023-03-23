@@ -16,13 +16,26 @@ spec:
         tier: control-plane
     spec:
       serviceAccountName: oci-volume-provisioner
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+        - key: node.cloudprovider.kubernetes.io/uninitialized
+          value: "true"
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+      hostNetwork: true
       volumes:
         - name: config
           secret:
             secretName: oci-volume-provisioner
       containers:
         - name: oci-volume-provisioner
-          image: ghcr.io/oracle/cloud-provider-oci:latest
+          image: ghcr.io/oracle/cloud-provider-oci:v1.25.1
           command: ["/usr/local/bin/oci-volume-provisioner"]
           env:
             - name: NODE_NAME

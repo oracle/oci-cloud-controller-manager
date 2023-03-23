@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2023, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -9,6 +9,8 @@
 // documentation for the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
 // Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
 // Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
+// The required permissions are documented in the
+// Details for the Core Services (https://docs.cloud.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
 //
 
 package core
@@ -49,7 +51,7 @@ type CreateVolumeDetails struct {
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
-	// The OCID of the Key Management key to assign as the master encryption key
+	// The OCID of the Vault service key to assign as the master encryption key
 	// for the volume.
 	KmsKeyId *string `mandatory:"false" json:"kmsKeyId"`
 
@@ -61,6 +63,7 @@ type CreateVolumeDetails struct {
 	//   * `10`: Represents Balanced option.
 	//   * `20`: Represents Higher Performance option.
 	//   * `30`-`120`: Represents the Ultra High Performance option.
+	// For performance autotune enabled volumes, it would be the Default(Minimum) VPUs/GB.
 	VpusPerGB *int64 `mandatory:"false" json:"vpusPerGB"`
 
 	// The size of the volume in GBs.
@@ -77,12 +80,16 @@ type CreateVolumeDetails struct {
 	// backup for the volume.
 	VolumeBackupId *string `mandatory:"false" json:"volumeBackupId"`
 
-	// Specifies whether the auto-tune performance is enabled for this volume.
+	// Specifies whether the auto-tune performance is enabled for this volume. This field is deprecated.
+	// Use the `DetachedVolumeAutotunePolicy` instead to enable the volume for detached autotune.
 	IsAutoTuneEnabled *bool `mandatory:"false" json:"isAutoTuneEnabled"`
 
 	// The list of block volume replicas to be enabled for this volume
 	// in the specified destination availability domains.
 	BlockVolumeReplicas []BlockVolumeReplicaDetails `mandatory:"false" json:"blockVolumeReplicas"`
+
+	// The list of autotune policies to be enabled for this volume.
+	AutotunePolicies []AutotunePolicy `mandatory:"false" json:"autotunePolicies"`
 }
 
 func (m CreateVolumeDetails) String() string {
@@ -117,6 +124,7 @@ func (m *CreateVolumeDetails) UnmarshalJSON(data []byte) (e error) {
 		VolumeBackupId      *string                           `json:"volumeBackupId"`
 		IsAutoTuneEnabled   *bool                             `json:"isAutoTuneEnabled"`
 		BlockVolumeReplicas []BlockVolumeReplicaDetails       `json:"blockVolumeReplicas"`
+		AutotunePolicies    []autotunepolicy                  `json:"autotunePolicies"`
 		CompartmentId       *string                           `json:"compartmentId"`
 	}{}
 
@@ -160,6 +168,19 @@ func (m *CreateVolumeDetails) UnmarshalJSON(data []byte) (e error) {
 	m.BlockVolumeReplicas = make([]BlockVolumeReplicaDetails, len(model.BlockVolumeReplicas))
 	for i, n := range model.BlockVolumeReplicas {
 		m.BlockVolumeReplicas[i] = n
+	}
+
+	m.AutotunePolicies = make([]AutotunePolicy, len(model.AutotunePolicies))
+	for i, n := range model.AutotunePolicies {
+		nn, e = n.UnmarshalPolymorphicJSON(n.JsonData)
+		if e != nil {
+			return e
+		}
+		if nn != nil {
+			m.AutotunePolicies[i] = nn.(AutotunePolicy)
+		} else {
+			m.AutotunePolicies[i] = nil
+		}
 	}
 
 	m.CompartmentId = model.CompartmentId
