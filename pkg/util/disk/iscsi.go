@@ -23,7 +23,6 @@ import (
 	"strconv"
 
 	"go.uber.org/zap"
-	"k8s.io/kubernetes/pkg/volume/util/hostutil"
 	"k8s.io/mount-utils"
 	"k8s.io/utils/exec"
 )
@@ -89,6 +88,8 @@ type Interface interface {
 	UnmountPath(path string) error
 
 	Resize(devicePath string, volumePath string) (bool, error)
+
+	GetDiskFormat(devicePath string) (string, error)
 }
 
 // iSCSIMounter implements Interface.
@@ -103,7 +104,7 @@ type iSCSIMounter struct {
 	logger       *zap.SugaredLogger
 }
 
-//Disk interface
+// Disk interface
 type Disk struct {
 	IQN  string
 	IPv4 string
@@ -137,7 +138,7 @@ func New(logger *zap.SugaredLogger, iqn, ipv4 string, port int) Interface {
 	return newWithMounter(logger, mount.New(mountCommand), iqn, ipv4, port)
 }
 
-//NewFromISCSIDisk creates a new iSCSI handler from ISCSIDisk.
+// NewFromISCSIDisk creates a new iSCSI handler from ISCSIDisk.
 func NewFromISCSIDisk(logger *zap.SugaredLogger, sd *Disk) Interface {
 	return &iSCSIMounter{
 		disk: sd,
@@ -372,6 +373,10 @@ func formatAndMount(source string, target string, fstype string, options []strin
 	return sm.FormatAndMount(source, target, fstype, options)
 }
 
+func (c *iSCSIMounter) GetDiskFormat(disk string) (string, error) {
+	return getDiskFormat(c.runner, disk, c.logger)
+}
+
 func (c *iSCSIMounter) Mount(source string, target string, fstype string, options []string) error {
 	safeMounter := &mount.SafeFormatAndMount{
 		Interface: c.mounter,
@@ -386,20 +391,6 @@ func mnt(source string, target string, fstype string, options []string, sm *moun
 
 func (c *iSCSIMounter) DeviceOpened(pathname string) (bool, error) {
 	return deviceOpened(pathname, c.logger)
-}
-
-func deviceOpened(pathname string, logger *zap.SugaredLogger) (bool, error) {
-	hostUtil := hostutil.NewHostUtil()
-	exists, err := hostUtil.PathExists(pathname)
-	if err != nil {
-		logger.With(zap.Error(err)).Errorf("Failed to find is path exists %s", pathname)
-		return false, err
-	}
-	if !exists {
-		logger.Infof("Path does not exist %s", pathname)
-		return false, nil
-	}
-	return hostUtil.DeviceOpened(pathname)
 }
 
 func (c *iSCSIMounter) UnmountPath(path string) error {

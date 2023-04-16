@@ -22,7 +22,8 @@ import (
 	"strings"
 )
 
-// AmdMilanBmGpuLaunchInstancePlatformConfig The platform configuration used when launching a bare metal instance with a GPU shape on the AMD Milan platform.
+// AmdMilanBmGpuLaunchInstancePlatformConfig The platform configuration used when launching a bare metal GPU instance with the following shape: BM.GPU.GM4.8 (also
+// named BM.GPU.A100-v2.8) (the AMD Milan platform).
 type AmdMilanBmGpuLaunchInstancePlatformConfig struct {
 
 	// Whether Secure Boot is enabled on the instance.
@@ -56,26 +57,29 @@ type AmdMilanBmGpuLaunchInstancePlatformConfig struct {
 	// Whether the input-output memory management unit is enabled.
 	IsInputOutputMemoryManagementUnitEnabled *bool `mandatory:"false" json:"isInputOutputMemoryManagementUnitEnabled"`
 
+	// Instance Platform Configuration Configuration Map for flexible setting input.
+	ConfigMap map[string]string `mandatory:"false" json:"configMap"`
+
 	// The number of NUMA nodes per socket (NPS).
 	NumaNodesPerSocket AmdMilanBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketEnum `mandatory:"false" json:"numaNodesPerSocket,omitempty"`
 }
 
-//GetIsSecureBootEnabled returns IsSecureBootEnabled
+// GetIsSecureBootEnabled returns IsSecureBootEnabled
 func (m AmdMilanBmGpuLaunchInstancePlatformConfig) GetIsSecureBootEnabled() *bool {
 	return m.IsSecureBootEnabled
 }
 
-//GetIsTrustedPlatformModuleEnabled returns IsTrustedPlatformModuleEnabled
+// GetIsTrustedPlatformModuleEnabled returns IsTrustedPlatformModuleEnabled
 func (m AmdMilanBmGpuLaunchInstancePlatformConfig) GetIsTrustedPlatformModuleEnabled() *bool {
 	return m.IsTrustedPlatformModuleEnabled
 }
 
-//GetIsMeasuredBootEnabled returns IsMeasuredBootEnabled
+// GetIsMeasuredBootEnabled returns IsMeasuredBootEnabled
 func (m AmdMilanBmGpuLaunchInstancePlatformConfig) GetIsMeasuredBootEnabled() *bool {
 	return m.IsMeasuredBootEnabled
 }
 
-//GetIsMemoryEncryptionEnabled returns IsMemoryEncryptionEnabled
+// GetIsMemoryEncryptionEnabled returns IsMemoryEncryptionEnabled
 func (m AmdMilanBmGpuLaunchInstancePlatformConfig) GetIsMemoryEncryptionEnabled() *bool {
 	return m.IsMemoryEncryptionEnabled
 }

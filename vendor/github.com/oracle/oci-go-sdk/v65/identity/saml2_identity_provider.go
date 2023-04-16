@@ -4,7 +4,7 @@
 
 // Identity and Access Management Service API
 //
-// APIs for managing users, groups, compartments, policies, and identity domains.
+// Use the Identity and Access Management Service API to manage users, groups, identity domains, compartments, policies, tagging, and limits. For information about managing users, groups, compartments, and policies, see Identity and Access Management (without identity domains) (https://docs.cloud.oracle.com/iaas/Content/Identity/Concepts/overview.htm). For information about tagging and service limits, see Tagging (https://docs.cloud.oracle.com/iaas/Content/Tagging/Concepts/taggingoverview.htm) and Service Limits (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/servicelimits.htm). For information about creating, modifying, and deleting identity domains, see Identity and Access Management (with identity domains) (https://docs.cloud.oracle.com/iaas/Content/Identity/home.htm).
 //
 
 package identity
@@ -88,52 +88,52 @@ type Saml2IdentityProvider struct {
 	LifecycleState IdentityProviderLifecycleStateEnum `mandatory:"true" json:"lifecycleState"`
 }
 
-//GetId returns Id
+// GetId returns Id
 func (m Saml2IdentityProvider) GetId() *string {
 	return m.Id
 }
 
-//GetCompartmentId returns CompartmentId
+// GetCompartmentId returns CompartmentId
 func (m Saml2IdentityProvider) GetCompartmentId() *string {
 	return m.CompartmentId
 }
 
-//GetName returns Name
+// GetName returns Name
 func (m Saml2IdentityProvider) GetName() *string {
 	return m.Name
 }
 
-//GetDescription returns Description
+// GetDescription returns Description
 func (m Saml2IdentityProvider) GetDescription() *string {
 	return m.Description
 }
 
-//GetProductType returns ProductType
+// GetProductType returns ProductType
 func (m Saml2IdentityProvider) GetProductType() *string {
 	return m.ProductType
 }
 
-//GetTimeCreated returns TimeCreated
+// GetTimeCreated returns TimeCreated
 func (m Saml2IdentityProvider) GetTimeCreated() *common.SDKTime {
 	return m.TimeCreated
 }
 
-//GetLifecycleState returns LifecycleState
+// GetLifecycleState returns LifecycleState
 func (m Saml2IdentityProvider) GetLifecycleState() IdentityProviderLifecycleStateEnum {
 	return m.LifecycleState
 }
 
-//GetInactiveStatus returns InactiveStatus
+// GetInactiveStatus returns InactiveStatus
 func (m Saml2IdentityProvider) GetInactiveStatus() *int64 {
 	return m.InactiveStatus
 }
 
-//GetFreeformTags returns FreeformTags
+// GetFreeformTags returns FreeformTags
 func (m Saml2IdentityProvider) GetFreeformTags() map[string]string {
 	return m.FreeformTags
 }
 
-//GetDefinedTags returns DefinedTags
+// GetDefinedTags returns DefinedTags
 func (m Saml2IdentityProvider) GetDefinedTags() map[string]map[string]interface{} {
 	return m.DefinedTags
 }

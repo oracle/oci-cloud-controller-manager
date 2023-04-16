@@ -16,8 +16,9 @@ package e2e
 
 import (
 	"fmt"
-	v1 "k8s.io/api/core/v1"
 	"time"
+
+	v1 "k8s.io/api/core/v1"
 
 	. "github.com/onsi/ginkgo"
 	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"

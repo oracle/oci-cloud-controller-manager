@@ -30,7 +30,7 @@ import (
 	"k8s.io/kubernetes/pkg/volume"
 	"k8s.io/kubernetes/pkg/volume/util/hostutil"
 
-	"github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
+	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util/disk"
 )
@@ -188,6 +188,17 @@ func (d BlockVolumeNodeDriver) NodeStageVolume(ctx context.Context, req *csi.Nod
 		if !hasMountOption(options, "nouuid") {
 			options = append(options, "nouuid")
 		}
+	}
+
+	existingFs, err := mountHandler.GetDiskFormat(devicePath)
+	if err != nil {
+		logger.With("devicePath", devicePath, zap.Error(err)).Error("GetDiskFormatFailed")
+	}
+
+	if existingFs != "" && existingFs != fsType {
+		returnError := fmt.Sprintf("FS Type mismatch detected. The existing fs type on the volume: %q doesn't match the requested fs type: %q. Please change fs type in PV to match the existing fs type.", existingFs, fsType)
+		logger.Error(returnError)
+		return nil, status.Error(codes.Internal, returnError)
 	}
 
 	logger.With("devicePath", devicePath,
@@ -394,7 +405,7 @@ func (d BlockVolumeNodeDriver) NodePublishVolume(ctx context.Context, req *csi.N
 		}
 
 		if needsResize {
-			logger.Info("Starting to expand volume restored from snapshot")
+			logger.Info("Starting to expand volume to requested size")
 
 			requestedSize, err := strconv.ParseInt(req.PublishContext[newSize], 10, 64)
 			if err != nil {
