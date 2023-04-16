@@ -6,6 +6,7 @@ SPDX:Apache-2.0
 ---------------------------------- Copyright -----------------------------------
 Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
 Copyright 2014 The Kubernetes Authors.
+Copyright 2016 The Kubernetes Authors.
 Copyright 2017 Oracle and/or its affiliates. All rights reserved.
 Copyright 2017 The Kubernetes Authors.
 Copyright 2018 Oracle and/or its affiliates. All rights reserved.
@@ -13,6 +14,7 @@ Copyright 2019 Oracle and/or its affiliates. All rights reserved.
 Copyright 2020 Oracle and/or its affiliates. All rights reserved.
 Copyright 2021 Oracle and/or its affiliates. All rights reserved.
 Copyright 2022 Oracle and/or its affiliates. All rights reserved.
+Copyright 2023 Oracle and/or its affiliates. All rights reserved.
 
 -------------------------- Fourth Party Dependencies ---------------------------
 
@@ -581,20 +583,6 @@ Copyright 2021 The Kubernetes Authors.
 --------------------------------- (separator) ----------------------------------
 
 == Dependency
-github.com/kubernetes-csi/external-resizer
-
-== License Type
-SPDX:Apache-2.0
-
-== Copyright
-Copyright 2018 The Kubernetes Authors.
-Copyright 2019 The Kubernetes Authors.
-Copyright 2020 The Kubernetes Authors.
-Copyright 2022 The Kubernetes Authors.
-
---------------------------------- (separator) ----------------------------------
-
-== Dependency
 github.com/kubernetes-csi/external-snapshotter/client/v6
 
 == License Type
@@ -605,20 +593,6 @@ Copyright 2018 The Kubernetes Authors.
 Copyright 2019 The Kubernetes Authors.
 Copyright 2020 The Kubernetes Authors.
 Copyright 2022 The Kubernetes Authors.
-
---------------------------------- (separator) ----------------------------------
-
-== Dependency
-github.com/kubernetes-csi/external-snapshotter/v6
-
-== License Type
-SPDX:Apache-2.0
-
-== Copyright
-Copyright 2018 The Kubernetes Authors.
-Copyright 2019 The Kubernetes Authors.
-Copyright 2020 The Kubernetes Authors.
-Copyright 2021 The Kubernetes Authors.
 
 --------------------------------- (separator) ----------------------------------
 
@@ -1750,6 +1724,7 @@ Copyright 2017 The Go Authors. All rights reserved.
 Copyright 2018 The Go Authors. All rights reserved.
 Copyright 2019 The Go Authors. All rights reserved.
 Copyright 2020 The Go Authors. All rights reserved.
+Copyright 2022 The Go Authors. All rights reserved.
 
 == Patents
 Additional IP Rights Grant (Patents)
@@ -2001,6 +1976,7 @@ Copyright 2016 The Go Authors. All rights reserved.
 Copyright 2017 The Go Authors. All rights reserved.
 Copyright 2018 The Go Authors. All rights reserved.
 Copyright 2019 The Go Authors. All rights reserved.
+Copyright 2021 The Go Authors. All rights reserved.
 
 == Patents
 Additional IP Rights Grant (Patents)
@@ -3596,4 +3572,4 @@ the Mozilla Public License, v. 2.0.
 
 === ATTRIBUTION-HELPER-GENERATED:
 === Attribution helper version: {Major:0 Minor:11 GitVersion: GitCommit: GitTreeState:dirty BuildDate:1970-01-01T00:00:00Z GoVersion:go1.19.3 Compiler:gc Platform:darwin/arm64}
-=== License file based on go.mod with md5 sum:  3c73334856a41ee447dc3a4d568b052a
+=== License file based on go.mod with md5 sum:  52aaa5c4cd897ee28d069e2081161b92

@@ -38,6 +38,7 @@ const (
 const (
 	volumePollInterval       = 5 * time.Second
 	volumeBackupPollInterval = 5 * time.Second
+	volumeClonePollInterval  = 10 * time.Second
 	// OCIVolumeID is the name of the oci volume id.
 	OCIVolumeID = "ociVolumeID"
 	// OCIVolumeBackupID is the name of the oci volume backup id annotation.
@@ -51,6 +52,7 @@ const (
 // by the volume provisioner.
 type BlockStorageInterface interface {
 	AwaitVolumeAvailableORTimeout(ctx context.Context, id string) (*core.Volume, error)
+	AwaitVolumeCloneAvailableOrTimeout(ctx context.Context, id string) (*core.Volume, error)
 	CreateVolume(ctx context.Context, details core.CreateVolumeDetails) (*core.Volume, error)
 	DeleteVolume(ctx context.Context, id string) error
 	GetVolume(ctx context.Context, id string) (*core.Volume, error)
@@ -155,6 +157,37 @@ func (c *client) AwaitVolumeBackupAvailableOrTimeout(ctx context.Context, id str
 	}
 
 	return volBackup, nil
+}
+
+func (c *client) AwaitVolumeCloneAvailableOrTimeout(ctx context.Context, id string) (*core.Volume, error) {
+	var volClone *core.Volume
+	if err := wait.PollImmediateUntil(volumeClonePollInterval, func() (bool, error) {
+		var err error
+		volClone, err = c.GetVolume(ctx, id)
+		if err != nil {
+			if !IsRetryable(err) {
+				return false, err
+			}
+			return false, nil
+		}
+
+		switch state := volClone.LifecycleState; state {
+		case core.VolumeLifecycleStateAvailable:
+			if *volClone.IsHydrated == true {
+				return true, nil
+			}
+			return false, nil
+		case core.VolumeLifecycleStateFaulty,
+			core.VolumeLifecycleStateTerminated,
+			core.VolumeLifecycleStateTerminating:
+			return false, errors.Errorf("Clone volume did not become available and hydrated (lifecycleState=%q) (hydrationStatus=%v)", state, *volClone.IsHydrated)
+		}
+		return false, nil
+	}, ctx.Done()); err != nil {
+		return nil, err
+	}
+
+	return volClone, nil
 }
 
 func (c *client) CreateVolume(ctx context.Context, details core.CreateVolumeDetails) (*core.Volume, error) {

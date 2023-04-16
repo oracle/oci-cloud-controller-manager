@@ -37,6 +37,7 @@ const (
 
 	JobCompletionTimeout       = 5 * time.Minute
 	deploymentAvailableTimeout = 5 * time.Minute
+	CloneAvailableTimeout      = 10 * time.Minute
 
 	DefaultClusterKubeconfig = "/tmp/clusterkubeconfig"
 	DefaultCloudConfig       = "/tmp/cloudconfig"

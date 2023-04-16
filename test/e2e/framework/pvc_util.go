@@ -51,6 +51,7 @@ const (
 	FstypeKey                        = "csi.storage.k8s.io/fstype"
 	DataSourceVolumeSnapshotKind     = "VolumeSnapshot"
 	DataSourceVolumeSnapshotAPIGroup = "snapshot.storage.k8s.io"
+	DataSourceVolumePVCKind          = "PersistentVolumeClaim"
 )
 
 // PVCTestJig is a jig to help create PVC tests.
@@ -145,6 +146,16 @@ func (j *PVCTestJig) pvcAddDataSource(pvc *v1.PersistentVolumeClaim,
 	return pvc
 }
 
+func (j *PVCTestJig) pvcAddPvcDataSource(pvc *v1.PersistentVolumeClaim, sourcePvcName string) *v1.PersistentVolumeClaim {
+	if pvc != nil {
+		pvc.Spec.DataSource = &v1.TypedLocalObjectReference{
+			Name: sourcePvcName,
+			Kind: DataSourceVolumePVCKind,
+		}
+	}
+	return pvc
+}
+
 func (j *PVCTestJig) pvcAddVolumeName(pvc *v1.PersistentVolumeClaim, volumeName string) *v1.PersistentVolumeClaim {
 	if pvc != nil {
 		pvc.Spec.VolumeName = volumeName
@@ -225,6 +236,15 @@ func (j *PVCTestJig) newPVCTemplateSnapshotSource(namespace, volumeSize, scName 
 	return pvc
 }
 
+func (j *PVCTestJig) newPVCTemplatePVCSource(namespace, volumeSize, scName string, volumeMode v1.PersistentVolumeMode, accessMode v1.PersistentVolumeAccessMode, sourcePvc string) *v1.PersistentVolumeClaim {
+	pvc := j.CreatePVCTemplate(namespace, volumeSize)
+	pvc = j.pvcAddAccessMode(pvc, accessMode)
+	pvc = j.pvcAddStorageClassName(pvc, scName)
+	pvc = j.pvcAddVolumeMode(pvc, volumeMode)
+	pvc = j.pvcAddPvcDataSource(pvc, sourcePvc)
+	return pvc
+}
+
 func (j *PVCTestJig) CheckPVCorFail(pvc *v1.PersistentVolumeClaim, tweak func(pvc *v1.PersistentVolumeClaim),
 	namespace, volumeSize string) *v1.PersistentVolumeClaim {
 	if tweak != nil {
@@ -275,6 +295,12 @@ func (j *PVCTestJig) CreatePVCorFail(namespace string, volumeSize string, scName
 func (j *PVCTestJig) CreatePVCorFailCSI(namespace string, volumeSize string, scName string,
 	tweak func(pvc *v1.PersistentVolumeClaim), volumeMode v1.PersistentVolumeMode, accessMode v1.PersistentVolumeAccessMode) *v1.PersistentVolumeClaim {
 	pvc := j.newPVCTemplateCSI(namespace, volumeSize, scName, volumeMode, accessMode)
+	return j.CheckPVCorFail(pvc, tweak, namespace, volumeSize)
+}
+
+func (j *PVCTestJig) CreateClonePVCorFailCSI(namespace, volumeSize, scName, sourcePvc string,
+	tweak func(pvc *v1.PersistentVolumeClaim), volumeMode v1.PersistentVolumeMode, accessMode v1.PersistentVolumeAccessMode) *v1.PersistentVolumeClaim {
+	pvc := j.newPVCTemplatePVCSource(namespace, volumeSize, scName, volumeMode, accessMode, sourcePvc)
 	return j.CheckPVCorFail(pvc, tweak, namespace, volumeSize)
 }
 
@@ -358,6 +384,12 @@ func (j *PVCTestJig) CreateAndAwaitPVCOrFailStaticFSS(namespace, volumeName, vol
 func (j *PVCTestJig) CreateAndAwaitPVCOrFailCSI(namespace, volumeSize, scName string,
 	tweak func(pvc *v1.PersistentVolumeClaim), volumeMode v1.PersistentVolumeMode, accessMode v1.PersistentVolumeAccessMode, expectedPVCPhase v1.PersistentVolumeClaimPhase) *v1.PersistentVolumeClaim {
 	pvc := j.CreatePVCorFailCSI(namespace, volumeSize, scName, tweak, volumeMode, accessMode)
+	return j.CheckAndAwaitPVCOrFail(pvc, namespace, expectedPVCPhase)
+}
+
+func (j *PVCTestJig) CreateAndAwaitClonePVCOrFailCSI(namespace, volumeSize, scName, sourcePvc string,
+	tweak func(pvc *v1.PersistentVolumeClaim), volumeMode v1.PersistentVolumeMode, accessMode v1.PersistentVolumeAccessMode, expectedPVCPhase v1.PersistentVolumeClaimPhase) *v1.PersistentVolumeClaim {
+	pvc := j.CreateClonePVCorFailCSI(namespace, volumeSize, scName, sourcePvc, tweak, volumeMode, accessMode)
 	return j.CheckAndAwaitPVCOrFail(pvc, namespace, expectedPVCPhase)
 }
 
@@ -618,6 +650,59 @@ func (j *PVCTestJig) NewPodForCSI(name string, namespace string, claimName strin
 					Image:   centos,
 					Command: []string{"/bin/sh"},
 					Args:    []string{"-c", "echo 'Hello World' > /data/testdata.txt; while true; do echo $(date -u) >> /data/out.txt; sleep 5; done"},
+					VolumeMounts: []v1.VolumeMount{
+						{
+							Name:      "persistent-storage",
+							MountPath: "/data",
+						},
+					},
+				},
+			},
+			Volumes: []v1.Volume{
+				{
+					Name: "persistent-storage",
+					VolumeSource: v1.VolumeSource{
+						PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+							ClaimName: claimName,
+						},
+					},
+				},
+			},
+			NodeSelector: map[string]string{
+				plugin.LabelZoneFailureDomain: adLabel,
+			},
+		},
+	}, metav1.CreateOptions{})
+	if err != nil {
+		Failf("Pod %q Create API error: %v", pod.Name, err)
+	}
+
+	// Waiting for pod to be running
+	err = j.waitTimeoutForPodRunningInNamespace(pod.Name, namespace, slowPodStartTimeout)
+	if err != nil {
+		Failf("Pod %q is not Running: %v", pod.Name, err)
+	}
+	zap.S().With(pod.Namespace).With(pod.Name).Info("CSI POD is created.")
+	return pod.Name
+}
+
+func (j *PVCTestJig) NewPodForCSIClone(name string, namespace string, claimName string, adLabel string) string {
+	By("Creating a pod with the claiming PVC created by CSI")
+
+	pod, err := j.KubeClient.CoreV1().Pods(namespace).Create(context.Background(), &v1.Pod{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Pod",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: j.Name,
+			Namespace:    namespace,
+		},
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
+				{
+					Name:  name,
+					Image: nginx,
 					VolumeMounts: []v1.VolumeMount{
 						{
 							Name:      "persistent-storage",
@@ -1333,6 +1418,34 @@ func (j *PVCTestJig) CheckISCSIQueueDepthOnNode(namespace, podName string) {
 	Expect(strings.TrimSpace(output)).To(Equal("node.session.queue_depth = 128"))
 }
 
+func (j *PVCTestJig) DeleteAndAwaitPVC(namespace, pvcName string) error {
+	err := j.KubeClient.CoreV1().PersistentVolumeClaims(namespace).Delete(context.Background(), pvcName, metav1.DeleteOptions{})
+	if err != nil {
+		Failf("Error deleting PVC %s: %v", pvcName, err)
+	}
+
+	return wait.PollImmediate(Poll, 5*time.Minute, j.pvcDeleted(namespace, pvcName))
+}
+
+func (j *PVCTestJig) DeleteAndAwaitPod(namespace, podName string) error {
+	err := j.KubeClient.CoreV1().Pods(namespace).Delete(context.Background(), podName, metav1.DeleteOptions{})
+	if err != nil {
+		Failf("Error deleting Pod %s: %v", podName, err)
+	}
+
+	return wait.PollImmediate(Poll, 5*time.Minute, func() (done bool, err error) {
+		_, err = j.KubeClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
+
+		if apierrors.IsNotFound(err) {
+			return true, nil
+		}
+		if err != nil {
+			return true, err
+		}
+		return false, nil
+	})
+}
+
 // WaitTimeoutForPVNotFound waits default amount of time for the specified Persistent Volume to be terminated.
 // If the PV Get api returns IsNotFound then the wait stops and nil is returned. If the Get api returns
 // an error other than "not found" then that error is returned and the wait stops.
@@ -1358,10 +1471,24 @@ func (j *PVCTestJig) CheckPVExists(pvName string) bool {
 
 func (j *PVCTestJig) ChangePVReclaimPolicy(pvName string, newReclaimPolicy string) error {
 	Logf("Changing ReclaimPolicy for PV  %s  to %s.", pvName, newReclaimPolicy)
-	 pvPatchBytes := []byte(fmt.Sprintf("{\"spec\": {\"persistentVolumeReclaimPolicy\": \"%s\"}}",newReclaimPolicy))
-	pv, err := j.KubeClient.CoreV1().PersistentVolumes().Patch(context.Background(), pvName,types.StrategicMergePatchType, pvPatchBytes,  metav1.PatchOptions{})
+	pvPatchBytes := []byte(fmt.Sprintf("{\"spec\": {\"persistentVolumeReclaimPolicy\": \"%s\"}}", newReclaimPolicy))
+	pv, err := j.KubeClient.CoreV1().PersistentVolumes().Patch(context.Background(), pvName, types.StrategicMergePatchType, pvPatchBytes, metav1.PatchOptions{})
 	Logf("ReclaimPolicy for PV %s Updated to %s.", pvName, pv.Spec.PersistentVolumeReclaimPolicy)
 	return err
+}
+
+func (j *PVCTestJig) pvcDeleted(namespace, pvcName string) wait.ConditionFunc {
+	return func() (bool, error) {
+		_, err := j.KubeClient.CoreV1().PersistentVolumeClaims(namespace).Get(context.Background(), pvcName, metav1.GetOptions{})
+
+		if apierrors.IsNotFound(err) {
+			return true, nil // done
+		}
+		if err != nil {
+			return true, err // stop wait with error
+		}
+		return false, nil
+	}
 }
 
 func (j *PVCTestJig) pvNotFound(pvName string) wait.ConditionFunc {

@@ -24,6 +24,7 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/client-go/kubernetes"
 
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
@@ -62,7 +63,7 @@ func (MockOCIClient) Compute() client.ComputeInterface {
 	return &MockComputeClient{}
 }
 
-func (MockOCIClient) LoadBalancer() client.GenericLoadBalancerInterface {
+func (MockOCIClient) LoadBalancer(logger *zap.SugaredLogger, lbType string, tenancy string, token *authv1.TokenRequest) client.GenericLoadBalancerInterface {
 	return &MockLoadBalancerClient{}
 }
 
@@ -83,6 +84,11 @@ func (MockOCIClient) Identity() client.IdentityInterface {
 }
 
 type MockBlockStorageClient struct{}
+
+// AwaitVolumeCloneAvailableOrTimeout implements client.BlockStorageInterface.
+func (c *MockBlockStorageClient) AwaitVolumeCloneAvailableOrTimeout(ctx context.Context, id string) (*core.Volume, error) {
+	return &core.Volume{}, nil
+}
 
 func (c *MockBlockStorageClient) AwaitVolumeBackupAvailableOrTimeout(ctx context.Context, id string) (*core.VolumeBackup, error) {
 	return &core.VolumeBackup{}, nil
@@ -303,7 +309,7 @@ func (c *MockLoadBalancerClient) UpdateNetworkSecurityGroups(context.Context, st
 }
 
 // Networking mocks client VirtualNetwork implementation.
-func (p *MockProvisionerClient) LoadBalancer(string) client.GenericLoadBalancerInterface {
+func (p *MockProvisionerClient) LoadBalancer(*zap.SugaredLogger, string, string, *authv1.TokenRequest) client.GenericLoadBalancerInterface {
 	return &MockLoadBalancerClient{}
 }
 

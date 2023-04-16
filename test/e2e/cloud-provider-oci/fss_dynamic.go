@@ -463,7 +463,7 @@ var _ = Describe("Dynamic FSS test with mount options", func() {
 		It("Basic Dynamic FSS test with mount options", func() {
 			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetOcid": setupF.MntTargetOcid}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
-			mountOptions := []string{"hard"} // TODO : Add other mount options once OKE-22216 is Done.
+			mountOptions := []string{"hard"}
 			scName := f.CreateStorageClassOrFail(framework.ClassFssDynamic, framework.FssProvisionerType, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", mountOptions)
 			f.StorageClasses = append(f.StorageClasses, scName)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailDynamicFSS(f.Namespace.Name, "50Gi", scName, v1.ClaimPending, nil)

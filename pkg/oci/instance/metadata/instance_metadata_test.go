@@ -52,21 +52,6 @@ func TestGetMetadata(t *testing.T) {
 		handlerFunc http.HandlerFunc
 	}{
 		{
-			name:     "metadata v1 response returned successfully",
-			endpoint: "opc/v1/instance",
-			expected: Result{
-				metadata: &InstanceMetadata{
-					CompartmentID:       "ocid1.compartment.oc1..abc",
-					Region:              "phx",
-					CanonicalRegionName: "us-phoenix-1",
-				},
-				err: "",
-			},
-			handlerFunc: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				fmt.Fprint(w, exampleResponse)
-			}),
-		},
-		{
 			name:     "metadata v2 response returned successfully",
 			endpoint: "opc/v2/instance",
 			expected: Result{
@@ -82,36 +67,15 @@ func TestGetMetadata(t *testing.T) {
 			}),
 		},
 		{
-			name:     "metadata v1 and v2 response returned error",
+			name:     "metadata v2 response returned error",
 			endpoint: "opc/v2/instance",
 			expected: Result{
 				metadata: nil,
-				err:      fmt.Sprintf("metadata endpoint v1 returned status %d; expected 200 OK", 404),
+				err:      fmt.Sprintf("metadata endpoint v2 returned status %d; expected 200 OK", 404),
 			},
 			handlerFunc: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if strings.Contains(r.URL.Path, "opc/v2") {
 					w.WriteHeader(404)
-				} else if strings.Contains(r.URL.Path, "opc/v1") {
-					w.WriteHeader(404)
-				}
-			}),
-		},
-		{
-			name:     "metadata v2 response returned error but v1 success",
-			endpoint: "opc/v2/instance",
-			expected: Result{
-				metadata: &InstanceMetadata{
-					CompartmentID:       "ocid1.compartment.oc1..abc",
-					Region:              "phx",
-					CanonicalRegionName: "us-phoenix-1",
-				},
-				err: "",
-			},
-			handlerFunc: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if strings.Contains(r.URL.Path, "opc/v2") {
-					w.WriteHeader(404)
-				} else if strings.Contains(r.URL.Path, "opc/v1") {
-					fmt.Fprint(w, exampleResponse)
 				}
 			}),
 		},
