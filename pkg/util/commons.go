@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/oracle/oci-go-sdk/v65/common"
 	metricErrors "github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -40,6 +41,7 @@ const (
 	ErrLimitExceeded = "LIMIT_EXCEEDED"
 	ErrCtxTimeout    = "CTX_TIMEOUT"
 	Success          = "SUCCESS"
+	BackupCreating   = "CREATING"
 
 	// Components generating errors
 	// Load Balancer
@@ -47,8 +49,6 @@ const (
 	// storage types
 	CSIStorageType = "CSI"
 	FVDStorageType = "FVD"
-	// Snapshots
-	CSIBVSnapshot = "BSNAP"
 )
 
 // LookupNodeCompartment returns the compartment OCID for the given nodeName.
@@ -81,13 +81,13 @@ func GetError(err error) string {
 		return ErrCtxTimeout
 	}
 
-	re := regexp.MustCompile(`http status code:\s*(\d+)`)
+	re := regexp.MustCompile(`(?i)http status code:\s*(\d+)`)
 	if match := re.FindStringSubmatch(cause); match != nil {
 		if status, er := strconv.Atoi(match[1]); er == nil {
 			if status >= 500 {
 				return Err5XX
 			} else if status >= 400 {
-				if strings.Contains(cause, "Service error:LimitExceeded") {
+				if strings.Contains(cause, "LimitExceeded") {
 					return ErrLimitExceeded
 				}
 				if status == 429 {
@@ -105,4 +105,17 @@ func GetMetricDimensionForComponent(err string, component string) string {
 		return ""
 	}
 	return fmt.Sprintf("%s_%s", component, err)
+}
+
+func GetHttpStatusCode(err error) int {
+	statusCode := 200
+	err = metricErrors.Cause(err)
+	if err != nil {
+		if serviceErr, ok := err.(common.ServiceError); ok {
+			statusCode = serviceErr.GetHTTPStatusCode()
+		} else {
+			statusCode = 555 // ¯\_(ツ)_/¯
+		}
+	}
+	return statusCode
 }

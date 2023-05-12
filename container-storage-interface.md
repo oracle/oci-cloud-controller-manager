@@ -130,7 +130,7 @@ $ kubectl describe pvc/oci-bv-claim
 
 # Troubleshoot
 
-### FsGroup policy not propagated from pod security context
+## FsGroup policy not propagated from pod security context
 
 If your fsGroup is not being applied on the files in your volume.
 
@@ -182,6 +182,21 @@ spec:
   fsGroupPolicy: File
 ```
 `File` - Indicates that the CSI volume driver supports volume ownership and permission change via fsGroup, and Kubernetes may use fsGroup to change permissions and ownership of the volume to match user requested fsGroup in the pod's SecurityPolicy regardless of fstype or access mode.
+
+## Calico-node pods fail readiness health checks when oci-fss-utils is installed on node
+
+If you are using Calico CNI, the following error is thrown by the Calico daemonset pods that are scheduled on the node which has oci-fss-utils package installed:
+```
+Readiness probe failed: 2023-10-12 08:51:08.172 [INFO][346] confd/health.go 180: Number of node(s) with BGP peering established = 0 calico/node is not ready: BIRD is not ready: BGP not established with 10.0.0.5,10.0.76.88,10.0.66.239
+```
+
+### Solution:
+
+Add the following env setting to the calico-node container in the calico-node daemonset manifest.
+```yaml
+- name: IP_AUTODETECTION_METHOD
+  value: 'skip-interface=v-eth.*'
+```
 
 [1]: https://docs.us-phoenix-1.oraclecloud.com/Content/Block/Concepts/overview.htm
 [2]: https://kubernetes.io/blog/2019/01/15/container-storage-interface-ga/

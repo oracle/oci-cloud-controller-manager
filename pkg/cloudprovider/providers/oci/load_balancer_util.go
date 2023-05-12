@@ -471,7 +471,7 @@ func getListenerChanges(logger *zap.SugaredLogger, actual map[string]client.Gene
 	//sanitizedDesiredListeners convert the listener name HTTP-xxxx to TCP-xxx such that in sortAndCombineAction can
 	//place BackendSet create before Listener Create and Listener delete before BackendSet delete. Also it would help
 	//not to delete and create Listener if customer edit the service and add oci-load-balancer-backend-protocol: "HTTP"
-	// and vice versa. It would help to only update the listener in case of protocol change. Refer OKE-10793 for details.
+	// and vice versa. It would help to only update the listener in case of protocol change.
 	sanitizedDesiredListeners := make(map[string]client.GenericListener)
 	for name, desiredListener := range desired {
 		sanitizedDesiredListeners[getSanitizedName(name)] = desiredListener

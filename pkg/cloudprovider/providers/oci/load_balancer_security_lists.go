@@ -612,7 +612,7 @@ func getLoadBalancerEgressRules(
 			"destination", *rule.Destination,
 			"destinationPortRangeMin", *rule.TcpOptions.DestinationPortRange.Min,
 			"destinationPortRangeMax", *rule.TcpOptions.DestinationPortRange.Max,
-		).Debug("Deleting load balancer egress security rule")
+		).Debug("Adding load balancer egress security rule")
 		egressRules = append(egressRules, rule)
 	}
 

@@ -36,8 +36,9 @@ const (
 )
 
 const (
-	volumePollInterval = 5 * time.Second
+	volumePollInterval       = 5 * time.Second
 	volumeBackupPollInterval = 5 * time.Second
+	volumeClonePollInterval  = 10 * time.Second
 	// OCIVolumeID is the name of the oci volume id.
 	OCIVolumeID = "ociVolumeID"
 	// OCIVolumeBackupID is the name of the oci volume backup id annotation.
@@ -51,6 +52,7 @@ const (
 // by the volume provisioner.
 type BlockStorageInterface interface {
 	AwaitVolumeAvailableORTimeout(ctx context.Context, id string) (*core.Volume, error)
+	AwaitVolumeCloneAvailableOrTimeout(ctx context.Context, id string) (*core.Volume, error)
 	CreateVolume(ctx context.Context, details core.CreateVolumeDetails) (*core.Volume, error)
 	DeleteVolume(ctx context.Context, id string) error
 	GetVolume(ctx context.Context, id string) (*core.Volume, error)
@@ -99,7 +101,7 @@ func (c *client) GetVolumeBackup(ctx context.Context, id string) (*core.VolumeBa
 	return &resp.VolumeBackup, nil
 }
 
-//AwaitVolumeAvailableORTimeout takes context as timeout
+// AwaitVolumeAvailableORTimeout takes context as timeout
 func (c *client) AwaitVolumeAvailableORTimeout(ctx context.Context, id string) (*core.Volume, error) {
 	var vol *core.Volume
 	if err := wait.PollImmediateUntil(volumePollInterval, func() (bool, error) {
@@ -128,7 +130,7 @@ func (c *client) AwaitVolumeAvailableORTimeout(ctx context.Context, id string) (
 	return vol, nil
 }
 
-//AwaitVolumeBackupAvailableOrTimeout takes context as timeout
+// AwaitVolumeBackupAvailableOrTimeout takes context as timeout
 func (c *client) AwaitVolumeBackupAvailableOrTimeout(ctx context.Context, id string) (*core.VolumeBackup, error) {
 	var volBackup *core.VolumeBackup
 	if err := wait.PollImmediateUntil(volumeBackupPollInterval, func() (bool, error) {
@@ -155,6 +157,37 @@ func (c *client) AwaitVolumeBackupAvailableOrTimeout(ctx context.Context, id str
 	}
 
 	return volBackup, nil
+}
+
+func (c *client) AwaitVolumeCloneAvailableOrTimeout(ctx context.Context, id string) (*core.Volume, error) {
+	var volClone *core.Volume
+	if err := wait.PollImmediateUntil(volumeClonePollInterval, func() (bool, error) {
+		var err error
+		volClone, err = c.GetVolume(ctx, id)
+		if err != nil {
+			if !IsRetryable(err) {
+				return false, err
+			}
+			return false, nil
+		}
+
+		switch state := volClone.LifecycleState; state {
+		case core.VolumeLifecycleStateAvailable:
+			if *volClone.IsHydrated == true {
+				return true, nil
+			}
+			return false, nil
+		case core.VolumeLifecycleStateFaulty,
+			core.VolumeLifecycleStateTerminated,
+			core.VolumeLifecycleStateTerminating:
+			return false, errors.Errorf("Clone volume did not become available and hydrated (lifecycleState=%q) (hydrationStatus=%v)", state, *volClone.IsHydrated)
+		}
+		return false, nil
+	}, ctx.Done()); err != nil {
+		return nil, err
+	}
+
+	return volClone, nil
 }
 
 func (c *client) CreateVolume(ctx context.Context, details core.CreateVolumeDetails) (*core.Volume, error) {
@@ -238,7 +271,7 @@ func (c *client) DeleteVolumeBackup(ctx context.Context, id string) error {
 	}
 
 	_, err := c.bs.DeleteVolumeBackup(ctx, core.DeleteVolumeBackupRequest{
-		VolumeBackupId:        &id,
+		VolumeBackupId:  &id,
 		RequestMetadata: c.requestMetadata})
 	incRequestCounter(err, deleteVerb, snapshotResource)
 
@@ -306,10 +339,10 @@ func (c *client) GetVolumeBackupsByName(ctx context.Context, snapshotName, compa
 		}
 
 		listVolumeBackupsResponse, err := c.bs.ListVolumeBackups(ctx,
-			core.ListVolumeBackupsRequest {
+			core.ListVolumeBackupsRequest{
 				CompartmentId:   &compartmentID,
 				Page:            page,
-				DisplayName:	 &snapshotName,
+				DisplayName:     &snapshotName,
 				RequestMetadata: c.requestMetadata,
 			})
 
@@ -318,7 +351,7 @@ func (c *client) GetVolumeBackupsByName(ctx context.Context, snapshotName, compa
 		}
 
 		logger := c.logger.With("snapshotName", snapshotName, "CompartmentID", compartmentID,
-			"OpcRequestId",*(listVolumeBackupsResponse.OpcRequestId))
+			"OpcRequestId", *(listVolumeBackupsResponse.OpcRequestId))
 		logger.Info("OPC Request ID recorded while fetching volume backups by name.")
 
 		for _, volumeBackup := range listVolumeBackupsResponse.Items {
