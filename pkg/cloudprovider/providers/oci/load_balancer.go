@@ -396,13 +396,13 @@ func filterNodes(svc *v1.Service, nodes []*v1.Node) ([]*v1.Node, error) {
 
 // EnsureLoadBalancer creates a new load balancer or updates the existing one.
 // Returns the status of the balancer (i.e it's public IP address if one exists).
-func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName string, service *v1.Service, nodes []*v1.Node) (*v1.LoadBalancerStatus, error) {
+func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName string, service *v1.Service, clusterNodes []*v1.Node) (*v1.LoadBalancerStatus, error) {
 	startTime := time.Now()
 	lbName := GetLoadBalancerName(service)
 	loadBalancerType := getLoadBalancerType(service)
 	logger := cp.logger.With("loadBalancerName", lbName, "serviceName", service.Name, "loadBalancerType", loadBalancerType)
 
-	nodes, err := filterNodes(service, nodes)
+	nodes, err := filterNodes(service, clusterNodes)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to filter nodes with label selector")
 		return nil, err
@@ -497,7 +497,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		return nil, err
 	}
 
-	spec, err := NewLBSpec(logger, service, nodes, subnets, sslConfig, cp.securityListManagerFactory, cp.config.Tags)
+	spec, err := NewLBSpec(logger, service, nodes, subnets, sslConfig, cp.securityListManagerFactory, cp.config.Tags, lb)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to derive LBSpec")
 		errorType = util.GetError(err)
@@ -553,15 +553,25 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		}
 	}
 
+	// Service controller provided empty nodes list
+	// TODO: Revisit this condition when clusters with mixed node pools are introduced, possibly add len(virtualPods) == 0 check
 	if len(nodes) == 0 {
-		allNodesNotReady, err := cp.checkAllBackendNodesNotReady()
+		// List all nodes in the cluster
+		nodeList, err := cp.NodeLister.List(labels.Everything())
 		if err != nil {
-			logger.With(zap.Error(err)).Error("Failed to check if all backend nodes are not ready")
+			logger.With(zap.Error(err)).Error("Failed to check if all backend nodes are not ready, error listing nodes")
 			return nil, err
 		}
-		if allNodesNotReady {
+
+		if len(nodeList) == 0 {
+			logger.Info("Cluster has zero nodes, continue reconciling")
+		} else if allNodesNotReady := cp.checkAllBackendNodesNotReady(nodeList); allNodesNotReady {
 			logger.Info("Not removing backends since all nodes are Not Ready")
 			return loadBalancerToStatus(lb)
+		} else {
+			err = errors.Errorf("backend node status is inconsistent, will retry")
+			logger.With(zap.Error(err)).Error("Not removing backends since backend node status is inconsistent with what was observed by service controller")
+			return nil, err
 		}
 	}
 
@@ -1123,14 +1133,7 @@ func loadBalancerToStatus(lb *client.GenericLoadBalancer) (*v1.LoadBalancerStatu
 	return &v1.LoadBalancerStatus{Ingress: ingress}, nil
 }
 
-func (cp *CloudProvider) checkAllBackendNodesNotReady() (bool, error) {
-	nodeList, err := cp.NodeLister.List(labels.Everything())
-	if err != nil {
-		return false, err
-	}
-	if len(nodeList) == 0 {
-		return false, nil
-	}
+func (cp *CloudProvider) checkAllBackendNodesNotReady(nodeList []*v1.Node) bool {
 	for _, node := range nodeList {
 		if _, hasExcludeBalancerLabel := node.Labels[excludeBackendFromLBLabel]; hasExcludeBalancerLabel {
 			continue
@@ -1138,11 +1141,11 @@ func (cp *CloudProvider) checkAllBackendNodesNotReady() (bool, error) {
 		for _, cond := range node.Status.Conditions {
 			if cond.Type == v1.NodeReady {
 				if cond.Status == v1.ConditionTrue {
-					return false, nil
+					return false
 				}
 				break
 			}
 		}
 	}
-	return true, nil
+	return true
 }

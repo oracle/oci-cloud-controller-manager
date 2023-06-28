@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2023, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -13,7 +13,7 @@ import (
 
 // InstanceActionRequest wrapper for the InstanceAction operation
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/InstanceAction.go.html to see an example of how to use InstanceActionRequest.
 type InstanceActionRequest struct {
@@ -35,6 +35,9 @@ type InstanceActionRequest struct {
 	// parameter to the value of the etag from a previous GET or POST response for that resource. The resource
 	// will be updated or deleted only if the etag you provide matches the resource's current etag value.
 	IfMatch *string `mandatory:"false" contributesTo:"header" name:"if-match"`
+
+	// Instance Power Action details
+	InstancePowerActionDetails `contributesTo:"body"`
 
 	// Unique Oracle-assigned identifier for the request.
 	// If you need to contact Oracle about a particular request, please provide the request ID.
@@ -123,6 +126,7 @@ const (
 	InstanceActionActionSoftstop                InstanceActionActionEnum = "SOFTSTOP"
 	InstanceActionActionSenddiagnosticinterrupt InstanceActionActionEnum = "SENDDIAGNOSTICINTERRUPT"
 	InstanceActionActionDiagnosticreboot        InstanceActionActionEnum = "DIAGNOSTICREBOOT"
+	InstanceActionActionRebootmigrate           InstanceActionActionEnum = "REBOOTMIGRATE"
 )
 
 var mappingInstanceActionActionEnum = map[string]InstanceActionActionEnum{
@@ -133,6 +137,7 @@ var mappingInstanceActionActionEnum = map[string]InstanceActionActionEnum{
 	"SOFTSTOP":                InstanceActionActionSoftstop,
 	"SENDDIAGNOSTICINTERRUPT": InstanceActionActionSenddiagnosticinterrupt,
 	"DIAGNOSTICREBOOT":        InstanceActionActionDiagnosticreboot,
+	"REBOOTMIGRATE":           InstanceActionActionRebootmigrate,
 }
 
 var mappingInstanceActionActionEnumLowerCase = map[string]InstanceActionActionEnum{
@@ -143,6 +148,7 @@ var mappingInstanceActionActionEnumLowerCase = map[string]InstanceActionActionEn
 	"softstop":                InstanceActionActionSoftstop,
 	"senddiagnosticinterrupt": InstanceActionActionSenddiagnosticinterrupt,
 	"diagnosticreboot":        InstanceActionActionDiagnosticreboot,
+	"rebootmigrate":           InstanceActionActionRebootmigrate,
 }
 
 // GetInstanceActionActionEnumValues Enumerates the set of values for InstanceActionActionEnum
@@ -164,6 +170,7 @@ func GetInstanceActionActionEnumStringValues() []string {
 		"SOFTSTOP",
 		"SENDDIAGNOSTICINTERRUPT",
 		"DIAGNOSTICREBOOT",
+		"REBOOTMIGRATE",
 	}
 }
 

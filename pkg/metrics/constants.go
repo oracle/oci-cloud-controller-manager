@@ -1,3 +1,17 @@
+// Copyright 2020 Oracle and/or its affiliates. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package metrics
 
 const (
@@ -22,7 +36,7 @@ const (
 	// PVDetach is the OCI metric suffix for PV detach
 	PVDetach = "PV_DETACH"
 	// PVDelete is the OCI metric suffix for PV delete
-	PVDelete= "PV_DELETE"
+	PVDelete = "PV_DELETE"
 	// PVExpand is the OCI metric suffix for PV Expand
 	PVExpand = "PV_EXPAND"
 
@@ -40,6 +54,13 @@ const (
 	ExportProvision = "EXP_PROVISION"
 	// ExportDelete is the OCI metric suffix for Export delete
 	ExportDelete = "EXP_DELETE"
+
+	// BlockSnapshotProvision is the OCI metric suffix for Block Volume Snapshot Provision
+	BlockSnapshotProvision = "BSNAP_PROVISION"
+	// BlockSnapshotDelete is the OCI metric suffix for Block Volume Snapshot Delete
+	BlockSnapshotDelete = "BSNAP_DELETE"
+	// BlockSnapshotRestore is the OCI metric suffix for Block Volume Snapshot Restore
+	BlockSnapshotRestore = "BSNAP_RESTORE"
 
 	ResourceOCIDDimension     = "resourceOCID"
 	ComponentDimension        = "component"

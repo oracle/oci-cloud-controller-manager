@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2023, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -9,6 +9,8 @@
 // documentation for the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
 // Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
 // Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
+// The required permissions are documented in the
+// Details for the Core Services (https://docs.cloud.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
 //
 
 package core
@@ -22,8 +24,8 @@ import (
 // UpdateVolumeKmsKeyDetails The representation of UpdateVolumeKmsKeyDetails
 type UpdateVolumeKmsKeyDetails struct {
 
-	// The OCID of the new Key Management key to assign to protect the specified volume.
-	// This key has to be a valid Key Management key, and policies must exist to allow the user and the Block Volume service to access this key.
+	// The OCID of the new Vault service key to assign to protect the specified volume.
+	// This key has to be a valid Vault service key, and policies must exist to allow the user and the Block Volume service to access this key.
 	// If you specify the same OCID as the previous key's OCID, the Block Volume service will use it to regenerate a volume encryption key.
 	KmsKeyId *string `mandatory:"false" json:"kmsKeyId"`
 }

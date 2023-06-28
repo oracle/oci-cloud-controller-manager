@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2023, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -9,6 +9,8 @@
 // documentation for the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
 // Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
 // Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
+// The required permissions are documented in the
+// Details for the Core Services (https://docs.cloud.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
 //
 
 package core
@@ -21,7 +23,7 @@ import (
 	"net/http"
 )
 
-//ComputeManagementClient a client for ComputeManagement
+// ComputeManagementClient a client for ComputeManagement
 type ComputeManagementClient struct {
 	common.BaseClient
 	config *common.ConfigurationProvider
@@ -43,7 +45,8 @@ func NewComputeManagementClientWithConfigurationProvider(configProvider common.C
 
 // NewComputeManagementClientWithOboToken Creates a new default ComputeManagement client with the given configuration provider.
 // The obotoken will be added to default headers and signed; the configuration provider will be used for the signer
-//  as well as reading the region
+//
+//	as well as reading the region
 func NewComputeManagementClientWithOboToken(configProvider common.ConfigurationProvider, oboToken string) (client ComputeManagementClient, err error) {
 	baseClient, err := common.NewClientWithOboToken(configProvider, oboToken)
 	if err != nil {
@@ -423,6 +426,9 @@ func (client ComputeManagementClient) changeInstancePoolCompartment(ctx context.
 
 // CreateClusterNetwork Creates a cluster network. For more information about cluster networks, see
 // Managing Cluster Networks (https://docs.cloud.oracle.com/iaas/Content/Compute/Tasks/managingclusternetworks.htm).
+// To determine whether capacity is available for a specific shape before you create a cluster network,
+// use the CreateComputeCapacityReport
+// operation.
 //
 // See also
 //
@@ -547,7 +553,10 @@ func (client ComputeManagementClient) createInstanceConfiguration(ctx context.Co
 	return response, err
 }
 
-// CreateInstancePool Create an instance pool.
+// CreateInstancePool Creates an instance pool.
+// To determine whether capacity is available for a specific shape before you create an instance pool,
+// use the CreateComputeCapacityReport
+// operation.
 //
 // See also
 //
@@ -1075,12 +1084,15 @@ func (client ComputeManagementClient) getInstancePoolLoadBalancerAttachment(ctx 
 	return response, err
 }
 
-// LaunchInstanceConfiguration Launches an instance from an instance configuration.
+// LaunchInstanceConfiguration Creates an instance from an instance configuration.
 // If the instance configuration does not include all of the parameters that are
-// required to launch an instance, such as the availability domain and subnet ID, you must
-// provide these parameters when you launch an instance from the instance configuration.
+// required to create an instance, such as the availability domain and subnet ID, you must
+// provide these parameters when you create an instance from the instance configuration.
 // For more information, see the InstanceConfiguration
 // resource.
+// To determine whether capacity is available for a specific shape before you create an instance,
+// use the CreateComputeCapacityReport
+// operation.
 //
 // See also
 //
@@ -1548,6 +1560,71 @@ func (client ComputeManagementClient) softresetInstancePool(ctx context.Context,
 	if err != nil {
 		apiReferenceLink := "https://docs.oracle.com/iaas/api/#/en/iaas/20160918/InstancePool/SoftresetInstancePool"
 		err = common.PostProcessServiceError(err, "ComputeManagement", "SoftresetInstancePool", apiReferenceLink)
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// SoftstopInstancePool Performs the softstop (ACPI shutdown and power on) action on the specified instance pool,
+// which performs the action on all the instances in the pool.
+// Softstop gracefully reboots the instances by sending a shutdown command to the operating systems.
+// After waiting 15 minutes for the OS to shutdown, the instances are powered off and then powered back on.
+//
+// See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/SoftstopInstancePool.go.html to see an example of how to use SoftstopInstancePool API.
+func (client ComputeManagementClient) SoftstopInstancePool(ctx context.Context, request SoftstopInstancePoolRequest) (response SoftstopInstancePoolResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.NoRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.softstopInstancePool, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = SoftstopInstancePoolResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = SoftstopInstancePoolResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(SoftstopInstancePoolResponse); ok {
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into SoftstopInstancePoolResponse")
+	}
+	return
+}
+
+// softstopInstancePool implements the OCIOperation interface (enables retrying operations)
+func (client ComputeManagementClient) softstopInstancePool(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/instancePools/{instancePoolId}/actions/softstop", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response SoftstopInstancePoolResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		apiReferenceLink := "https://docs.oracle.com/iaas/api/#/en/iaas/20160918/InstancePool/SoftstopInstancePool"
+		err = common.PostProcessServiceError(err, "ComputeManagement", "SoftstopInstancePool", apiReferenceLink)
 		return response, err
 	}
 

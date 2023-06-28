@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2023, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -9,6 +9,8 @@
 // documentation for the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
 // Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
 // Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
+// The required permissions are documented in the
+// Details for the Core Services (https://docs.cloud.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
 //
 
 package core
@@ -58,6 +60,9 @@ type RouteRule struct {
 
 	// An optional description of your choice for the rule.
 	Description *string `mandatory:"false" json:"description"`
+
+	// A route rule can be STATIC if manually added to the route table, LOCAL if added by OCI to the route table.
+	RouteType RouteRuleRouteTypeEnum `mandatory:"false" json:"routeType,omitempty"`
 }
 
 func (m RouteRule) String() string {
@@ -72,6 +77,9 @@ func (m RouteRule) ValidateEnumValue() (bool, error) {
 
 	if _, ok := GetMappingRouteRuleDestinationTypeEnum(string(m.DestinationType)); !ok && m.DestinationType != "" {
 		errMessage = append(errMessage, fmt.Sprintf("unsupported enum value for DestinationType: %s. Supported values are: %s.", m.DestinationType, strings.Join(GetRouteRuleDestinationTypeEnumStringValues(), ",")))
+	}
+	if _, ok := GetMappingRouteRuleRouteTypeEnum(string(m.RouteType)); !ok && m.RouteType != "" {
+		errMessage = append(errMessage, fmt.Sprintf("unsupported enum value for RouteType: %s. Supported values are: %s.", m.RouteType, strings.Join(GetRouteRuleRouteTypeEnumStringValues(), ",")))
 	}
 	if len(errMessage) > 0 {
 		return true, fmt.Errorf(strings.Join(errMessage, "\n"))
@@ -118,5 +126,47 @@ func GetRouteRuleDestinationTypeEnumStringValues() []string {
 // GetMappingRouteRuleDestinationTypeEnum performs case Insensitive comparison on enum value and return the desired enum
 func GetMappingRouteRuleDestinationTypeEnum(val string) (RouteRuleDestinationTypeEnum, bool) {
 	enum, ok := mappingRouteRuleDestinationTypeEnumLowerCase[strings.ToLower(val)]
+	return enum, ok
+}
+
+// RouteRuleRouteTypeEnum Enum with underlying type: string
+type RouteRuleRouteTypeEnum string
+
+// Set of constants representing the allowable values for RouteRuleRouteTypeEnum
+const (
+	RouteRuleRouteTypeStatic RouteRuleRouteTypeEnum = "STATIC"
+	RouteRuleRouteTypeLocal  RouteRuleRouteTypeEnum = "LOCAL"
+)
+
+var mappingRouteRuleRouteTypeEnum = map[string]RouteRuleRouteTypeEnum{
+	"STATIC": RouteRuleRouteTypeStatic,
+	"LOCAL":  RouteRuleRouteTypeLocal,
+}
+
+var mappingRouteRuleRouteTypeEnumLowerCase = map[string]RouteRuleRouteTypeEnum{
+	"static": RouteRuleRouteTypeStatic,
+	"local":  RouteRuleRouteTypeLocal,
+}
+
+// GetRouteRuleRouteTypeEnumValues Enumerates the set of values for RouteRuleRouteTypeEnum
+func GetRouteRuleRouteTypeEnumValues() []RouteRuleRouteTypeEnum {
+	values := make([]RouteRuleRouteTypeEnum, 0)
+	for _, v := range mappingRouteRuleRouteTypeEnum {
+		values = append(values, v)
+	}
+	return values
+}
+
+// GetRouteRuleRouteTypeEnumStringValues Enumerates the set of values in String for RouteRuleRouteTypeEnum
+func GetRouteRuleRouteTypeEnumStringValues() []string {
+	return []string{
+		"STATIC",
+		"LOCAL",
+	}
+}
+
+// GetMappingRouteRuleRouteTypeEnum performs case Insensitive comparison on enum value and return the desired enum
+func GetMappingRouteRuleRouteTypeEnum(val string) (RouteRuleRouteTypeEnum, bool) {
+	enum, ok := mappingRouteRuleRouteTypeEnumLowerCase[strings.ToLower(val)]
 	return enum, ok
 }

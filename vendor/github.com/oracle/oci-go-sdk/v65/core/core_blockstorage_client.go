@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2023, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -9,6 +9,8 @@
 // documentation for the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
 // Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
 // Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
+// The required permissions are documented in the
+// Details for the Core Services (https://docs.cloud.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
 //
 
 package core
@@ -21,7 +23,7 @@ import (
 	"net/http"
 )
 
-//BlockstorageClient a client for Blockstorage
+// BlockstorageClient a client for Blockstorage
 type BlockstorageClient struct {
 	common.BaseClient
 	config *common.ConfigurationProvider
@@ -43,7 +45,8 @@ func NewBlockstorageClientWithConfigurationProvider(configProvider common.Config
 
 // NewBlockstorageClientWithOboToken Creates a new default Blockstorage client with the given configuration provider.
 // The obotoken will be added to default headers and signed; the configuration provider will be used for the signer
-//  as well as reading the region
+//
+//	as well as reading the region
 func NewBlockstorageClientWithOboToken(configProvider common.ConfigurationProvider, oboToken string) (client BlockstorageClient, err error) {
 	baseClient, err := common.NewClientWithOboToken(configProvider, oboToken)
 	if err != nil {
@@ -572,7 +575,7 @@ func (client BlockstorageClient) copyVolumeBackup(ctx context.Context, request c
 }
 
 // CopyVolumeGroupBackup Creates a volume group backup copy in specified region. For general information about volume group backups,
-// see Overview of Block Volume Service Backups (https://docs.cloud.oracle.com/Content/Block/Concepts/blockvolumebackups.htm)
+// see Overview of Block Volume Backups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/blockvolumebackups.htm).
 //
 // See also
 //
@@ -1274,7 +1277,7 @@ func (client BlockstorageClient) deleteBootVolumeBackup(ctx context.Context, req
 	return response, err
 }
 
-// DeleteBootVolumeKmsKey Removes the specified boot volume's assigned Key Management encryption key.
+// DeleteBootVolumeKmsKey Removes the specified boot volume's assigned Vault Service encryption key.
 //
 // See also
 //
@@ -1681,7 +1684,7 @@ func (client BlockstorageClient) deleteVolumeGroupBackup(ctx context.Context, re
 	return response, err
 }
 
-// DeleteVolumeKmsKey Removes the specified volume's assigned Key Management encryption key.
+// DeleteVolumeKmsKey Removes the specified volume's assigned Vault service encryption key.
 //
 // See also
 //
@@ -1909,7 +1912,7 @@ func (client BlockstorageClient) getBootVolumeBackup(ctx context.Context, reques
 	return response, err
 }
 
-// GetBootVolumeKmsKey Gets the Key Management encryption key assigned to the specified boot volume.
+// GetBootVolumeKmsKey Gets the Vault service encryption key assigned to the specified boot volume.
 //
 // See also
 //
@@ -2481,7 +2484,7 @@ func (client BlockstorageClient) getVolumeGroupReplica(ctx context.Context, requ
 	return response, err
 }
 
-// GetVolumeKmsKey Gets the Key Management encryption key assigned to the specified volume.
+// GetVolumeKmsKey Gets the Vault service encryption key assigned to the specified volume.
 //
 // See also
 //
@@ -3223,7 +3226,7 @@ func (client BlockstorageClient) updateBootVolumeBackup(ctx context.Context, req
 	return response, err
 }
 
-// UpdateBootVolumeKmsKey Updates the specified volume with a new Key Management master encryption key.
+// UpdateBootVolumeKmsKey Updates the specified volume with a new Vault service master encryption key.
 //
 // See also
 //

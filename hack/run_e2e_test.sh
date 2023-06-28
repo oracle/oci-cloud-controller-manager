@@ -53,7 +53,8 @@ function run_e2e_tests_existing_cluster() {
         --nsg-ocids=${NSG_OCIDS} \
         --reserved-ip=${RESERVED_IP} \
         --architecture=${ARCHITECTURE} \
-        --volume-handle=${FSS_VOLUME_HANDLE}
+        --volume-handle=${FSS_VOLUME_HANDLE} \
+        --static-snapshot-compartment-id=${STATIC_SNAPSHOT_COMPARTMENT_ID}
     retval=$?
     return $retval
 }

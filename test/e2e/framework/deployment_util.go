@@ -1,3 +1,17 @@
+// Copyright 2021 Oracle and/or its affiliates. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package framework
 
 import (
@@ -10,7 +24,7 @@ import (
 	"time"
 )
 
-func (j *PVCTestJig) createDeploymentOnNodeAndWait(command string, pvcName string, ns string, name string, replicas int32, nodeSelectorLabels map[string]string) string{
+func (j *PVCTestJig) createDeploymentOnNodeAndWait(command string, pvcName string, ns string, name string, replicas int32, nodeSelectorLabels map[string]string) string {
 
 	deployment, err := j.KubeClient.AppsV1().Deployments(ns).Create(context.Background(), &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -55,13 +69,12 @@ func (j *PVCTestJig) createDeploymentOnNodeAndWait(command string, pvcName strin
 						},
 					},
 					NodeSelector: nodeSelectorLabels,
-
 				},
 			},
 		},
 	}, metav1.CreateOptions{})
 
-	if err != nil{
+	if err != nil {
 		Failf("Error creating deployment %v: %v", name, err)
 	}
 
@@ -76,7 +89,7 @@ func (j *PVCTestJig) createDeploymentOnNodeAndWait(command string, pvcName strin
 }
 
 // waitTimeoutForDeploymentCompleted waits default amount of time (deploymentCompletionTimeout) for the specified deployment to complete
-//Returns an error if timeout occurs first, or pod goes in to failed state.
+// Returns an error if timeout occurs first, or pod goes in to failed state.
 func (j *PVCTestJig) waitTimeoutForDeploymentAvailable(deploymentName string, namespace string, timeout time.Duration, replicas int32) error {
 	return wait.PollImmediate(Poll, timeout, j.deploymentAvailable(deploymentName, namespace, replicas))
 }
