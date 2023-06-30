@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2023, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -9,6 +9,8 @@
 // documentation for the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
 // Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
 // Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
+// The required permissions are documented in the
+// Details for the Core Services (https://docs.cloud.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
 //
 
 package core
@@ -21,7 +23,7 @@ import (
 	"net/http"
 )
 
-//VirtualNetworkClient a client for VirtualNetwork
+// VirtualNetworkClient a client for VirtualNetwork
 type VirtualNetworkClient struct {
 	common.BaseClient
 	config *common.ConfigurationProvider
@@ -43,7 +45,8 @@ func NewVirtualNetworkClientWithConfigurationProvider(configProvider common.Conf
 
 // NewVirtualNetworkClientWithOboToken Creates a new default VirtualNetwork client with the given configuration provider.
 // The obotoken will be added to default headers and signed; the configuration provider will be used for the signer
-//  as well as reading the region
+//
+//	as well as reading the region
 func NewVirtualNetworkClientWithOboToken(configProvider common.ConfigurationProvider, oboToken string) (client VirtualNetworkClient, err error) {
 	baseClient, err := common.NewClientWithOboToken(configProvider, oboToken)
 	if err != nil {
@@ -5777,9 +5780,11 @@ func (client VirtualNetworkClient) deleteSubnet(ctx context.Context, request com
 	return response, err
 }
 
-// DeleteVcn Deletes the specified VCN. The VCN must be empty and have no attached gateways. This is an asynchronous
-// operation. The VCN's `lifecycleState` will change to TERMINATING temporarily until the VCN is completely
-// removed.
+// DeleteVcn Deletes the specified VCN. The VCN must be completely empty and have no attached gateways. This is an asynchronous
+// operation.
+// A deleted VCN's `lifecycleState` changes to TERMINATING and then TERMINATED temporarily until the VCN is completely
+// removed. A completely removed VCN does not appear in the results of a `ListVcns` operation and can't be used in a
+// `GetVcn` operation.
 //
 // See also
 //

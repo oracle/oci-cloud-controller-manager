@@ -22,7 +22,7 @@ const (
 	// PVDetach is the OCI metric suffix for PV detach
 	PVDetach = "PV_DETACH"
 	// PVDelete is the OCI metric suffix for PV delete
-	PVDelete= "PV_DELETE"
+	PVDelete = "PV_DELETE"
 	// PVExpand is the OCI metric suffix for PV Expand
 	PVExpand = "PV_EXPAND"
 
@@ -40,6 +40,13 @@ const (
 	ExportProvision = "EXP_PROVISION"
 	// ExportDelete is the OCI metric suffix for Export delete
 	ExportDelete = "EXP_DELETE"
+
+	// BlockSnapshotProvision is the OCI metric suffix for Block Volume Snapshot Provision
+	BlockSnapshotProvision = "BSNAP_PROVISION"
+	// BlockSnapshotDelete is the OCI metric suffix for Block Volume Snapshot Delete
+	BlockSnapshotDelete = "BSNAP_DELETE"
+	// BlockSnapshotRestore is the OCI metric suffix for Block Volume Snapshot Restore
+	BlockSnapshotRestore = "BSNAP_RESTORE"
 
 	ResourceOCIDDimension     = "resourceOCID"
 	ComponentDimension        = "component"

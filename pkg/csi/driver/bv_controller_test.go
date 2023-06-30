@@ -70,6 +70,31 @@ func (MockOCIClient) Identity() client.IdentityInterface {
 
 type MockBlockStorageClient struct{}
 
+func (c *MockBlockStorageClient) AwaitVolumeBackupAvailableOrTimeout(ctx context.Context, id string) (*core.VolumeBackup, error) {
+	return &core.VolumeBackup{}, nil
+}
+
+func (c *MockBlockStorageClient) CreateVolumeBackup(ctx context.Context, details core.CreateVolumeBackupDetails) (*core.VolumeBackup, error) {
+	id := "oc1.volumebackup1.xxxx"
+	return &core.VolumeBackup{
+		Id: &id,
+	}, nil
+}
+
+func (c *MockBlockStorageClient) DeleteVolumeBackup(ctx context.Context, id string) error {
+	return nil
+}
+
+func (c *MockBlockStorageClient) GetVolumeBackup(ctx context.Context, id string) (*core.VolumeBackup, error) {
+	return &core.VolumeBackup{
+		Id: &id,
+	}, nil
+}
+
+func (c *MockBlockStorageClient) GetVolumeBackupsByName(ctx context.Context, snapshotName, compartmentID string) ([]core.VolumeBackup, error) {
+	return []core.VolumeBackup{}, nil
+}
+
 type MockProvisionerClient struct {
 	Storage *MockBlockStorageClient
 }
@@ -975,6 +1000,214 @@ func TestExtractVolumeParameters(t *testing.T) {
 			}
 			if !reflect.DeepEqual(volumeParameters, tt.volumeParameters) {
 				t.Errorf("extractStorage() = %+v, want %+v", volumeParameters, tt.volumeParameters)
+			}
+		})
+	}
+}
+
+func TestExtractSnapshotParameters(t *testing.T) {
+	tests := map[string]struct {
+		inputParameters    map[string]string
+		snapshotParameters SnapshotParameters
+		wantErr            bool
+	}{
+		"Wrong Backup Type": {
+			inputParameters: map[string]string{
+				backupType: "foo",
+			},
+			snapshotParameters: SnapshotParameters{
+				backupType: core.CreateVolumeBackupDetailsTypeIncremental,
+			},
+			wantErr: true,
+		},
+		"Incremental Backup Type": {
+			inputParameters: map[string]string{
+				backupType: "Incremental",
+			},
+			snapshotParameters: SnapshotParameters{
+				backupType: core.CreateVolumeBackupDetailsTypeIncremental,
+			},
+			wantErr: false,
+		},
+		"Full Backup Type": {
+			inputParameters: map[string]string{
+				backupType: "Full",
+			},
+			snapshotParameters: SnapshotParameters{
+				backupType: core.CreateVolumeBackupDetailsTypeFull,
+			},
+			wantErr: false,
+		},
+		"Invalid defined tags": {
+			inputParameters: map[string]string{
+				backupDefinedTags: "foo",
+			},
+			snapshotParameters: SnapshotParameters{
+				backupType: core.CreateVolumeBackupDetailsTypeIncremental,
+			},
+			wantErr: true,
+		},
+		"Invalid freeform tags": {
+			inputParameters: map[string]string{
+				backupFreeformTags: "foo",
+			},
+			snapshotParameters: SnapshotParameters{
+				backupType: core.CreateVolumeBackupDetailsTypeIncremental,
+			},
+			wantErr: true,
+		},
+		"With freeform tags": {
+			inputParameters: map[string]string{
+				backupFreeformTags: `{"foo":"bar"}`,
+			},
+			snapshotParameters: SnapshotParameters{
+				backupType:   core.CreateVolumeBackupDetailsTypeIncremental,
+				freeformTags: map[string]string{"foo": "bar"},
+			},
+			wantErr: false,
+		},
+		"With defined tags": {
+			inputParameters: map[string]string{
+				backupDefinedTags: `{"ns":{"foo":"bar"}}`,
+			},
+			snapshotParameters: SnapshotParameters{
+				backupType:  core.CreateVolumeBackupDetailsTypeIncremental,
+				definedTags: map[string]map[string]interface{}{"ns": {"foo": "bar"}},
+			},
+			wantErr: false,
+		},
+		"With freeform+defined tags": {
+			inputParameters: map[string]string{
+				backupFreeformTags: `{"foo":"bar"}`,
+				backupDefinedTags:  `{"ns":{"foo":"bar"}}`,
+			},
+			snapshotParameters: SnapshotParameters{
+				backupType:   core.CreateVolumeBackupDetailsTypeIncremental,
+				freeformTags: map[string]string{"foo": "bar"},
+				definedTags:  map[string]map[string]interface{}{"ns": {"foo": "bar"}},
+			},
+			wantErr: false,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			snapshotParameters, err := extractSnapshotParameters(tt.inputParameters)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("extractSnapshotParameters() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(snapshotParameters, tt.snapshotParameters) {
+				t.Errorf("extractSnapshotParameters() = %+v, want %+v", snapshotParameters, tt.snapshotParameters)
+			}
+		})
+	}
+}
+
+func TestCreateSnapshot(t *testing.T) {
+	type args struct {
+		ctx context.Context
+		req *csi.CreateSnapshotRequest
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *csi.CreateSnapshotResponse
+		wantErr error
+	}{
+		{
+			name: "Error for name not provided for creating snapshot",
+			args: args{
+				ctx: nil,
+				req: &csi.CreateSnapshotRequest{Name: ""},
+			},
+			want:    nil,
+			wantErr: errors.New("Volume snapshot name must be provided"),
+		},
+		{
+			name: "Error for volume snapshot source ID not provided for creating snapshot",
+			args: args{
+				ctx: nil,
+				req: &csi.CreateSnapshotRequest{
+					Name:           "demo",
+					SourceVolumeId: "",
+				},
+			},
+			want:    nil,
+			wantErr: errors.New("Volume snapshot source ID must be provided"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := &BlockVolumeControllerDriver{ControllerDriver{
+				KubeClient: nil,
+				logger:     zap.S(),
+				config:     &providercfg.Config{CompartmentID: ""},
+				client:     NewClientProvisioner(nil, &MockBlockStorageClient{}, nil),
+				util:       &csi_util.Util{},
+			}}
+			got, err := d.CreateSnapshot(tt.args.ctx, tt.args.req)
+			if tt.wantErr == nil && err != nil {
+				t.Errorf("got error %q, want none", err)
+			}
+			if tt.wantErr != nil && !strings.Contains(err.Error(), tt.wantErr.Error()) {
+				t.Errorf("want error %q to include %q", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ControllerDriver.CreateSnapshot() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestControllerDriver_DeleteSnapshot(t *testing.T) {
+	type args struct {
+		ctx context.Context
+		req *csi.DeleteSnapshotRequest
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *csi.DeleteSnapshotResponse
+		wantErr error
+	}{
+		{
+			name: "Error for snapshot OCID missing in delete block volume",
+			args: args{
+				ctx: nil,
+				req: &csi.DeleteSnapshotRequest{},
+			},
+			want:    nil,
+			wantErr: errors.New("SnapshotId must be provided"),
+		},
+		{
+			name: "Delete volume and get empty response",
+			args: args{
+				ctx: context.Background(),
+				req: &csi.DeleteSnapshotRequest{SnapshotId: "oc1.volumebackup1.xxxx"},
+			},
+			want:    &csi.DeleteSnapshotResponse{},
+			wantErr: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := &BlockVolumeControllerDriver{ControllerDriver{
+				KubeClient: nil,
+				logger:     zap.S(),
+				config:     &providercfg.Config{CompartmentID: ""},
+				client:     NewClientProvisioner(nil, &MockBlockStorageClient{}, nil),
+				util:       &csi_util.Util{},
+			}}
+			got, err := d.DeleteSnapshot(tt.args.ctx, tt.args.req)
+			if tt.wantErr == nil && err != nil {
+				t.Errorf("got error %q, want none", err)
+			}
+			if tt.wantErr != nil && !strings.Contains(err.Error(), tt.wantErr.Error()) {
+				t.Errorf("want error %q to include %q", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ControllerDriver.DeleteVolume() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -497,7 +497,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		return nil, err
 	}
 
-	spec, err := NewLBSpec(logger, service, nodes, subnets, sslConfig, cp.securityListManagerFactory, cp.config.Tags)
+	spec, err := NewLBSpec(logger, service, nodes, subnets, sslConfig, cp.securityListManagerFactory, cp.config.Tags, lb)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to derive LBSpec")
 		errorType = util.GetError(err)
@@ -888,7 +888,7 @@ func (clb *CloudLoadBalancerProvider) updateListener(ctx context.Context, lbID s
 	return nil
 }
 
-// UpdateLoadBalancer : TODO find out where this is called
+// UpdateLoadBalancer updates an existing loadbalancer
 func (cp *CloudProvider) UpdateLoadBalancer(ctx context.Context, clusterName string, service *v1.Service, nodes []*v1.Node) error {
 	name := cp.GetLoadBalancerName(ctx, clusterName, service)
 	cp.logger.With("loadBalancerName", name, "loadBalancerType", getLoadBalancerType(service)).Info("Updating load balancer")

@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2023, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 
 package common
@@ -9,9 +9,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 )
 
 // AuthenticationType for auth
@@ -45,6 +46,23 @@ type ConfigurationProvider interface {
 	Region() (string, error)
 	// AuthType() is used for specify the needed auth type, like UserPrincipal, InstancePrincipal, etc.
 	AuthType() (AuthConfig, error)
+}
+
+var fileMutex = sync.Mutex{}
+var fileCache = make(map[string][]byte)
+
+func readFile(filename string) ([]byte, error) {
+	fileMutex.Lock()
+	defer fileMutex.Unlock()
+	val, ok := fileCache[filename]
+	if ok {
+		return val, nil
+	}
+	val, err := ioutil.ReadFile(filename)
+	if err == nil {
+		fileCache[filename] = val
+	}
+	return val, err
 }
 
 // IsConfigurationProviderValid Tests all parts of the configuration provider do not return an error, this method will
@@ -161,7 +179,7 @@ func (p environmentConfigurationProvider) PrivateRSAKey() (key *rsa.PrivateKey, 
 	}
 
 	expandedPath := expandPath(value)
-	pemFileContent, err := ioutil.ReadFile(expandedPath)
+	pemFileContent, err := readFile(expandedPath)
 	if err != nil {
 		Debugln("Can not read PrivateKey location from environment variable: " + environmentVariable)
 		return
@@ -252,6 +270,9 @@ type fileConfigurationProvider struct {
 
 	//ConfigFileInfo
 	FileInfo *configFileInfo
+
+	//Mutex to protect the config file
+	configMux sync.Mutex
 }
 
 type fileConfigurationProviderError struct {
@@ -272,7 +293,8 @@ func ConfigurationProviderFromFile(configFilePath, privateKeyPassword string) (C
 	return fileConfigurationProvider{
 		ConfigPath:         configFilePath,
 		PrivateKeyPassword: privateKeyPassword,
-		Profile:            "DEFAULT"}, nil
+		Profile:            "DEFAULT",
+		configMux:          sync.Mutex{}}, nil
 }
 
 // ConfigurationProviderFromFileWithProfile creates a configuration provider from a configuration file
@@ -285,7 +307,8 @@ func ConfigurationProviderFromFileWithProfile(configFilePath, profile, privateKe
 	return fileConfigurationProvider{
 		ConfigPath:         configFilePath,
 		PrivateKeyPassword: privateKeyPassword,
-		Profile:            profile}, nil
+		Profile:            profile,
+		configMux:          sync.Mutex{}}, nil
 }
 
 type configFileInfo struct {
@@ -380,19 +403,19 @@ func parseConfigAtLine(start int, content []string) (info *configFileInfo, err e
 
 // cleans and expands the path if it contains a tilde , returns the expanded path or the input path as is if not expansion
 // was performed
-func expandPath(filepath string) (expandedPath string) {
-	cleanedPath := path.Clean(filepath)
+func expandPath(filename string) (expandedPath string) {
+	cleanedPath := filepath.Clean(filename)
 	expandedPath = cleanedPath
 	if strings.HasPrefix(cleanedPath, "~") {
 		rest := cleanedPath[2:]
-		expandedPath = path.Join(getHomeFolder(), rest)
+		expandedPath = filepath.Join(getHomeFolder(), rest)
 	}
 	return
 }
 
 func openConfigFile(configFilePath string) (data []byte, err error) {
 	expandedPath := expandPath(configFilePath)
-	data, err = ioutil.ReadFile(expandedPath)
+	data, err = readFile(expandedPath)
 	if err != nil {
 		err = fmt.Errorf("can not read config file: %s due to: %s", configFilePath, err.Error())
 	}
@@ -405,6 +428,8 @@ func (p fileConfigurationProvider) String() string {
 }
 
 func (p fileConfigurationProvider) readAndParseConfigFile() (info *configFileInfo, err error) {
+	p.configMux.Lock()
+	defer p.configMux.Unlock()
 	if p.FileInfo != nil {
 		return p.FileInfo, nil
 	}
@@ -522,7 +547,7 @@ func (p fileConfigurationProvider) PrivateRSAKey() (key *rsa.PrivateKey, err err
 	}
 
 	expandedPath := expandPath(filePath)
-	pemFileContent, err := ioutil.ReadFile(expandedPath)
+	pemFileContent, err := readFile(expandedPath)
 	if err != nil {
 		err = fileConfigurationProviderError{err: fmt.Errorf("can not read PrivateKey  from configuration file due to: %s", err.Error())}
 		return
@@ -585,7 +610,7 @@ func (p fileConfigurationProvider) AuthType() (AuthConfig, error) {
 
 func getTokenContent(filePath string) (string, error) {
 	expandedPath := expandPath(filePath)
-	tokenFileContent, err := ioutil.ReadFile(expandedPath)
+	tokenFileContent, err := readFile(expandedPath)
 	if err != nil {
 		err = fileConfigurationProviderError{err: fmt.Errorf("can not read token content from configuration file due to: %s", err.Error())}
 		return "", err
@@ -620,6 +645,7 @@ func (c composingConfigurationProvider) TenancyOCID() (string, error) {
 		if err == nil {
 			return val, nil
 		}
+		Debugf("did not find a proper configuration for tenancy, err: %v", err)
 	}
 	return "", fmt.Errorf("did not find a proper configuration for tenancy")
 }
@@ -630,6 +656,7 @@ func (c composingConfigurationProvider) UserOCID() (string, error) {
 		if err == nil {
 			return val, nil
 		}
+		Debugf("did not find a proper configuration for keyFingerprint, err: %v", err)
 	}
 	return "", fmt.Errorf("did not find a proper configuration for user")
 }

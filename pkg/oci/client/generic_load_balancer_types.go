@@ -19,6 +19,7 @@ type GenericSessionPersistenceConfiguration struct {
 
 type GenericHealthChecker struct {
 	Protocol          string
+	IsForcePlainText  *bool
 	Port              *int
 	UrlPath           *string
 	Retries           *int

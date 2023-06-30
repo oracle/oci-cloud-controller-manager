@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2023, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 
 // Package common provides supporting functions and structs used by service packages
@@ -7,6 +7,8 @@ package common
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -18,6 +20,7 @@ import (
 	"os"
 	"os/user"
 	"path"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
@@ -100,6 +103,9 @@ const (
 	//circuitBreakerNumberOfHistoryResponseEnv is the number of recorded history responses
 	circuitBreakerNumberOfHistoryResponseEnv = "OCI_SDK_CIRCUITBREAKER_NUM_HISTORY_RESPONSE"
 
+	// ociDefaultCertsPath is the env var for the path to the SSL cert file
+	ociDefaultCertsPath = "OCI_DEFAULT_CERTS_PATH"
+
 	//maxAttemptsForRefreshableRetry is the number of retry when 401 happened on a refreshable auth type
 	maxAttemptsForRefreshableRetry = 3
 )
@@ -115,8 +121,9 @@ type HTTPRequestDispatcher interface {
 
 // CustomClientConfiguration contains configurations set at client level, currently it only includes RetryPolicy
 type CustomClientConfiguration struct {
-	RetryPolicy    *RetryPolicy
-	CircuitBreaker *OciCircuitBreaker
+	RetryPolicy                                 *RetryPolicy
+	CircuitBreaker                              *OciCircuitBreaker
+	RealmSpecificServiceEndpointTemplateEnabled *bool
 }
 
 // BaseClient struct implements all basic operations to call oci web services.
@@ -206,29 +213,36 @@ func newBaseClient(signer HTTPRequestSigner, dispatcher HTTPRequestDispatcher) B
 
 func defaultHTTPDispatcher() http.Client {
 	var httpClient http.Client
-
+	var tp = http.DefaultTransport.(*http.Transport)
 	if isExpectHeaderDisabled := IsEnvVarFalse(UsingExpectHeaderEnvVar); !isExpectHeaderDisabled {
-		var tp http.RoundTripper = &http.Transport{
-			Proxy: http.ProxyFromEnvironment,
-			DialContext: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-				DualStack: true,
-			}).DialContext,
-			ForceAttemptHTTP2:     true,
-			MaxIdleConns:          100,
-			IdleConnTimeout:       90 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 3 * time.Second,
+		tp.Proxy = http.ProxyFromEnvironment
+		tp.DialContext = (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+			DualStack: true,
+		}).DialContext
+		tp.ForceAttemptHTTP2 = true
+		tp.MaxIdleConns = 100
+		tp.IdleConnTimeout = 90 * time.Second
+		tp.TLSHandshakeTimeout = 10 * time.Second
+		tp.ExpectContinueTimeout = 3 * time.Second
+	}
+	if certFile, ok := os.LookupEnv(ociDefaultCertsPath); ok {
+		pool := x509.NewCertPool()
+		pemCert := readCertPem(certFile)
+		cert, err := x509.ParseCertificate(pemCert)
+		if err != nil {
+			Logf("unable to parse content to cert fallback to pem format from env var value: %s", certFile)
+			pool.AppendCertsFromPEM(pemCert)
+		} else {
+			Logf("using custom cert parsed from env var value: %s", certFile)
+			pool.AddCert(cert)
 		}
-		httpClient = http.Client{
-			Transport: tp,
-			Timeout:   defaultTimeout,
-		}
-	} else {
-		httpClient = http.Client{
-			Timeout: defaultTimeout,
-		}
+		tp.TLSClientConfig = &tls.Config{RootCAs: pool}
+	}
+	httpClient = http.Client{
+		Timeout:   defaultTimeout,
+		Transport: tp,
 	}
 	return httpClient
 }
@@ -239,7 +253,7 @@ func defaultBaseClient(provider KeyProvider) BaseClient {
 	return newBaseClient(signer, &dispatcher)
 }
 
-//DefaultBaseClientWithSigner creates a default base client with a given signer
+// DefaultBaseClientWithSigner creates a default base client with a given signer
 func DefaultBaseClientWithSigner(signer HTTPRequestSigner) BaseClient {
 	dispatcher := defaultHTTPDispatcher()
 	return newBaseClient(signer, &dispatcher)
@@ -311,7 +325,7 @@ func getHomeFolder() string {
 func DefaultConfigProvider() ConfigurationProvider {
 	defaultConfigFile := getDefaultConfigFilePath()
 	homeFolder := getHomeFolder()
-	secondaryConfigFile := path.Join(homeFolder, secondaryConfigDirName, defaultConfigFileName)
+	secondaryConfigFile := filepath.Join(homeFolder, secondaryConfigDirName, defaultConfigFileName)
 
 	defaultFileProvider, _ := ConfigurationProviderFromFile(defaultConfigFile, "")
 	secondaryFileProvider, _ := ConfigurationProviderFromFile(secondaryConfigFile, "")
@@ -324,7 +338,7 @@ func DefaultConfigProvider() ConfigurationProvider {
 
 func getDefaultConfigFilePath() string {
 	homeFolder := getHomeFolder()
-	defaultConfigFile := path.Join(homeFolder, defaultConfigDirName, defaultConfigFileName)
+	defaultConfigFile := filepath.Join(homeFolder, defaultConfigDirName, defaultConfigFileName)
 	if _, err := os.Stat(defaultConfigFile); err == nil {
 		return defaultConfigFile
 	}
@@ -370,7 +384,7 @@ func setRawPath(u *url.URL) error {
 func CustomProfileConfigProvider(customConfigPath string, profile string) ConfigurationProvider {
 	homeFolder := getHomeFolder()
 	if customConfigPath == "" {
-		customConfigPath = path.Join(homeFolder, defaultConfigDirName, defaultConfigFileName)
+		customConfigPath = filepath.Join(homeFolder, defaultConfigDirName, defaultConfigFileName)
 	}
 	customFileProvider, _ := ConfigurationProviderFromFileWithProfile(customConfigPath, profile, "")
 	defaultFileProvider, _ := ConfigurationProviderFromFileWithProfile(customConfigPath, "DEFAULT", "")
@@ -524,7 +538,7 @@ func (rsc *OCIReadSeekCloser) Seek(offset int64, whence int) (int64, error) {
 		return rsc.rc.(io.Seeker).Seek(offset, whence)
 	}
 	// once the binary request body is wrapped with ioutil.NopCloser:
-	if reflect.TypeOf(rsc.rc) == reflect.TypeOf(ioutil.NopCloser(nil)) {
+	if rsc.isNopCloser() {
 		unwrappedInterface := reflect.ValueOf(rsc.rc).Field(0).Interface()
 		if _, ok := unwrappedInterface.(io.Seeker); ok {
 			return unwrappedInterface.(io.Seeker).Seek(offset, whence)
@@ -562,10 +576,18 @@ func (rsc *OCIReadSeekCloser) Seekable() bool {
 		return true
 	}
 	// once the binary request body is wrapped with ioutil.NopCloser:
-	if reflect.TypeOf(rsc.rc) == reflect.TypeOf(ioutil.NopCloser(nil)) {
+	if rsc.isNopCloser() {
 		if _, ok := reflect.ValueOf(rsc.rc).Field(0).Interface().(io.Seeker); ok {
 			return true
 		}
+	}
+	return false
+}
+
+// Helper function to judge if this struct is a nopCloser or nopCloserWriterTo
+func (rsc *OCIReadSeekCloser) isNopCloser() bool {
+	if reflect.TypeOf(rsc.rc) == reflect.TypeOf(ioutil.NopCloser(nil)) || reflect.TypeOf(rsc.rc) == reflect.TypeOf(ioutil.NopCloser(bytes.NewReader(nil))) {
+		return true
 	}
 	return false
 }
@@ -579,7 +601,7 @@ type OCIResponse interface {
 // OCIOperation is the generalization of a request-response cycle undergone by an OCI service.
 type OCIOperation func(context.Context, OCIRequest, *OCIReadSeekCloser, map[string]string) (OCIResponse, error)
 
-//ClientCallDetails a set of settings used by the a single Call operation of the http Client
+// ClientCallDetails a set of settings used by the a single Call operation of the http Client
 type ClientCallDetails struct {
 	Signer HTTPRequestSigner
 }
@@ -685,9 +707,18 @@ func (client BaseClient) httpDo(request *http.Request) (response *http.Response,
 	return response, err
 }
 
-//CloseBodyIfValid closes the body of an http response if the response and the body are valid
+// CloseBodyIfValid closes the body of an http response if the response and the body are valid
 func CloseBodyIfValid(httpResponse *http.Response) {
 	if httpResponse != nil && httpResponse.Body != nil {
 		httpResponse.Body.Close()
 	}
+}
+
+// IsOciRealmSpecificServiceEndpointTemplateEnabled returns true if the client is configured to use realm specific service endpoint template
+// it will first check the client configuration, if not set, it will check the environment variable
+func (client BaseClient) IsOciRealmSpecificServiceEndpointTemplateEnabled() bool {
+	if client.Configuration.RealmSpecificServiceEndpointTemplateEnabled != nil {
+		return *client.Configuration.RealmSpecificServiceEndpointTemplateEnabled
+	}
+	return IsEnvVarTrue(OciRealmSpecificServiceEndpointTemplateEnabledEnvVar)
 }

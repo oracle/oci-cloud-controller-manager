@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2023, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -50,6 +50,9 @@ type SnapshotSummary struct {
 	// - If the snapshot is replicated from a file system.
 	// Example: `2020-08-25T21:10:29.600Z`
 	SnapshotTime *common.SDKTime `mandatory:"false" json:"snapshotTime"`
+
+	// The time when this snapshot will be deleted.
+	ExpirationTime *common.SDKTime `mandatory:"false" json:"expirationTime"`
 
 	// An OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) identifying the parent from which this snapshot was cloned.
 	// If this snapshot was not cloned, then the `provenanceId` is the same as the snapshot `id` value.
