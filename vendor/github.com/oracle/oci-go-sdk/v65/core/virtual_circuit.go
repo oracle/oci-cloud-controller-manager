@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2023, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -9,6 +9,8 @@
 // documentation for the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
 // Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
 // Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
+// The required permissions are documented in the
+// Details for the Core Services (https://docs.cloud.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
 //
 
 package core
@@ -67,10 +69,10 @@ type VirtualCircuit struct {
 	// By default, routing information is shared for all routes in the same market.
 	RoutingPolicy []VirtualCircuitRoutingPolicyEnum `mandatory:"false" json:"routingPolicy,omitempty"`
 
-	// Set to ENABLED to activate the  bgp session of virtual circuit, DISABLED to deactivate.
+	// Set to `ENABLED` (the default) to activate the BGP session of the virtual circuit, set to `DISABLED` to deactivate the virtual circuit.
 	BgpAdminState VirtualCircuitBgpAdminStateEnum `mandatory:"false" json:"bgpAdminState,omitempty"`
 
-	// Set to true to enable BFD for ipv4 Bgp Peering, false to disable. If not set, default is false
+	// Set to `true` to enable BFD for IPv4 BGP peering, or set to `false` to disable BFD. If this is not set, the default is `false`.
 	IsBfdEnabled *bool `mandatory:"false" json:"isBfdEnabled"`
 
 	// Deprecated. Instead use `customerAsn`.

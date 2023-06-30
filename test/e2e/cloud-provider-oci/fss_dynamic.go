@@ -285,6 +285,10 @@ var _ = Describe("Dynamic FSS deletion test", func() {
 			if pvExists != true {
 				framework.Failf("Persistent volume was deleted")
 			}
+			err = pvcJig.ChangePVReclaimPolicy(volumeName, "Delete")
+			if err != nil {
+				framework.Failf("Fail to change PV ReclaimPolicy to delete, which will lead to resource leak : %s", err.Error())
+			}
 			f.VolumeIds = append(f.VolumeIds, volumeName)
 		})
 		It("Test export is deleted in cluster compartment when export path is not set", func() {
