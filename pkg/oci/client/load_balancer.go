@@ -133,6 +133,7 @@ func (c *loadbalancerClientStruct) CreateLoadBalancer(ctx context.Context, detai
 			DefinedTags:             details.DefinedTags,
 		},
 		RequestMetadata: c.requestMetadata,
+		OpcRetryToken:   details.DisplayName,
 	})
 	incRequestCounter(err, createVerb, loadBalancerResource)
 
