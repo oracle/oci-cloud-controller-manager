@@ -104,6 +104,7 @@ func (c *networkLoadbalancer) CreateLoadBalancer(ctx context.Context, details *G
 			DefinedTags:                 details.DefinedTags,
 		},
 		RequestMetadata: c.requestMetadata,
+		OpcRetryToken:   details.DisplayName,
 	})
 	incRequestCounter(err, createVerb, networkLoadBalancerResource)
 
