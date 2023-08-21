@@ -59,10 +59,11 @@ const (
 	ociVolumeBackupID = "volume.beta.kubernetes.io/oci-volume-source"
 
 	// Block Volume Performance Units
-	VpusPerGB                 = "vpusPerGB"
-	LowCostPerformanceOption  = 0
-	BalancedPerformanceOption = 10
-	HigherPerformanceOption   = 20
+	VpusPerGB                     = "vpusPerGB"
+	LowCostPerformanceOption      = 0
+	BalancedPerformanceOption     = 10
+	HigherPerformanceOption       = 20
+	MaxUltraHighPerformanceOption = 120
 
 	InTransitEncryptionPackageName = "oci-fss-utils"
 	FIPS_ENABLED_FILE_PATH         = "/host/proc/sys/crypto/fips_enabled"
@@ -78,7 +79,7 @@ type Util struct {
 
 var (
 	DiskByPathPatternPV    = `/dev/disk/by-path/pci-\w{4}:\w{2}:\w{2}\.\d+-scsi-\d+:\d+:\d+:\d+$`
-	DiskByPathPatternISCSI = `/dev/disk/by-path/ip-[\w\.]+:\d+-iscsi-[\w\.\-:]+-lun-1$`
+	DiskByPathPatternISCSI = `/dev/disk/by-path/ip-[\w\.]+:\d+-iscsi-[\w\.\-:]+-lun-\d+$`
 )
 
 type FSSVolumeHandler struct {
@@ -187,10 +188,9 @@ func ExtractBlockVolumePerformanceLevel(attribute string) (int64, error) {
 	if err != nil {
 		return 0, status.Errorf(codes.InvalidArgument, "unable to parse performance level value %s as int64", attribute)
 	}
-	if vpusPerGB != LowCostPerformanceOption && vpusPerGB != BalancedPerformanceOption && vpusPerGB != HigherPerformanceOption {
+	if vpusPerGB < LowCostPerformanceOption || vpusPerGB > MaxUltraHighPerformanceOption {
 		return 0, status.Errorf(codes.InvalidArgument, "invalid performance option : %s provided  for "+
-			"storage class. supported performance options are 0 for low cost, 10 for balanced and 20 for higher"+
-			" performance", attribute)
+			"storage class. Supported values for performance options are between %d and %d", attribute, LowCostPerformanceOption, MaxUltraHighPerformanceOption)
 	}
 	return vpusPerGB, nil
 }
@@ -414,43 +414,6 @@ func FindMount(target string) ([]string, error) {
 
 	sources := strings.Fields(string(output))
 	return sources, nil
-}
-
-func Rescan(logger *zap.SugaredLogger, devicePath string) error {
-
-	lsblkargs := []string{"-n", "-o", "NAME", devicePath}
-	lsblkcmd := exec.Command("lsblk", lsblkargs...)
-	lsblkoutput, err := lsblkcmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("Failed to find device name associated with devicePath %s", devicePath)
-	}
-	deviceName := strings.TrimSpace(string(lsblkoutput))
-	if strings.HasPrefix(deviceName, "/dev/") {
-		deviceName = strings.TrimPrefix(deviceName, "/dev/")
-	}
-	logger.With("deviceName", deviceName).Info("Rescanning")
-
-	// run command dd iflag=direct if=/dev/<device_name> of=/dev/null count=1
-	// https://docs.oracle.com/en-us/iaas/Content/Block/Tasks/rescanningdisk.htm#Rescanni
-	devicePathFileArg := fmt.Sprintf("if=%s", devicePath)
-	args := []string{"iflag=direct", devicePathFileArg, "of=/dev/null", "count=1"}
-	cmd := exec.Command("dd", args...)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("command failed: %v\narguments: %s\nOutput: %v\n", err, "dd", string(output))
-	}
-	logger.With("command", "dd", "output", string(output)).Debug("dd output")
-	// run command echo 1 | tee /sys/class/block/%s/device/rescan
-	// https://docs.oracle.com/en-us/iaas/Content/Block/Tasks/rescanningdisk.htm#Rescanni
-	cmdStr := fmt.Sprintf("echo 1 | tee /sys/class/block/%s/device/rescan", deviceName)
-	cmd = exec.Command("bash", "-c", cmdStr)
-	output, err = cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("command failed: %v\narguments: %s\nOutput: %v\n", err, cmdStr, string(output))
-	}
-	logger.With("command", cmdStr, "output", string(output)).Debug("rescan output")
-
-	return nil
 }
 
 func GetBlockSizeBytes(logger *zap.SugaredLogger, devicePath string) (int64, error) {

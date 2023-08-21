@@ -15,14 +15,20 @@
 package disk
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
+	cmdexec "os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
+	"time"
 
+	"github.com/oracle/oci-go-sdk/v65/core"
 	"go.uber.org/zap"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/mount-utils"
 	"k8s.io/utils/exec"
 )
@@ -38,7 +44,14 @@ const (
 	// ISCSIIP is the map key to get or save iSCSI IP
 	ISCSIIP = "iscsi_ip"
 	// ISCSIPORT is the map key to get or save iSCSI Port
-	ISCSIPORT = "iscsi_port"
+	ISCSIPORT         = "iscsi_port"
+	loginPollInterval = 5 * time.Second
+	pathPollInterval  = 10 * time.Second
+	pathPollTimeout   = 3 * time.Minute
+	waitForPathDelay  = 1 * time.Second
+
+	LIST_PATHS_COMMAND  = "ls -f /dev/disk/by-path"
+	DISK_BY_PATH_FOLDER = "/dev/disk/by-path/"
 )
 
 // ErrMountPointNotFound is returned when a given path does not appear to be
@@ -48,10 +61,10 @@ var ErrMountPointNotFound = errors.New("mount point not found")
 // diskByPathPattern is the regex for extracting the iSCSI connection details
 // from /dev/disk/by-path/<disk>.
 var diskByPathPattern = regexp.MustCompile(
-	`/dev/disk/by-path/ip-(?P<IPv4>[\w\.]+):(?P<Port>\d+)-iscsi-(?P<IQN>[\w\.\-:]+)-lun-1`,
+	`/dev/disk/by-path/ip-(?P<IPv4>[\w\.]+):(?P<Port>\d+)-iscsi-(?P<IQN>[\w\.\-:]+)-lun-\d+`,
 )
 
-// Interface mounts iSCSI voumes.
+// Interface mounts iSCSI volumes.
 type Interface interface {
 	// AddToDB adds the iSCSI node record for the target.
 	AddToDB() error
@@ -87,9 +100,15 @@ type Interface interface {
 	// deletes the remaining directory if successful.
 	UnmountPath(path string) error
 
+	Rescan(devicePath string) error
+
 	Resize(devicePath string, volumePath string) (bool, error)
 
+	WaitForVolumeLoginOrTimeout(ctx context.Context, multipathDevices []core.MultipathDevice) error
+
 	GetDiskFormat(devicePath string) (string, error)
+
+	WaitForPathToExist(path string, maxRetries int) bool
 }
 
 // iSCSIMounter implements Interface.
@@ -217,6 +236,9 @@ func GetDiskPathFromMountPath(logger *zap.SugaredLogger, mountPath string) ([]st
 	mountPoint, err := getMountPointForPath(mounter, mountPath)
 	if err != nil {
 		return nil, err
+	}
+	if strings.HasPrefix(mountPoint.Device, "/dev/mapper") {
+		return []string{mountPoint.Device}, nil
 	}
 	diskByPaths, err := diskByPathsForMountPoint(mountPoint)
 	if err != nil {
@@ -361,6 +383,11 @@ func (c *iSCSIMounter) RemoveFromDB() error {
 	return nil
 }
 
+func (c *iSCSIMounter) WaitForVolumeLoginOrTimeout(ctx context.Context, multipathDevices []core.MultipathDevice) error {
+	c.logger.Info("Attachment type ISCSI. WaitForVolumeLoginOrTimeout() not needed for iscsi attachment")
+	return nil
+}
+
 func (c *iSCSIMounter) FormatAndMount(source string, target string, fstype string, options []string) error {
 	safeMounter := &mount.SafeFormatAndMount{
 		Interface: c.mounter,
@@ -390,6 +417,15 @@ func mnt(source string, target string, fstype string, options []string, sm *moun
 }
 
 func (c *iSCSIMounter) DeviceOpened(pathname string) (bool, error) {
+	var err error
+	pathname, err = GetIscsiDevicePath(c.disk)
+	if err != nil {
+		if strings.Contains(err.Error(), "No such file or directory") {
+			return false, nil
+		} else {
+			return false, err
+		}
+	}
 	return deviceOpened(pathname, c.logger)
 }
 
@@ -397,9 +433,17 @@ func (c *iSCSIMounter) UnmountPath(path string) error {
 	return UnmountPath(c.logger, path, c.mounter)
 }
 
+func (c *iSCSIMounter) Rescan(devicePath string) error {
+	return Rescan(c.logger, devicePath)
+}
+
 func (c *iSCSIMounter) Resize(devicePath string, volumePath string) (bool, error) {
 	resizefs := mount.NewResizeFs(c.runner)
 	return resizefs.Resize(devicePath, volumePath)
+}
+
+func (c *iSCSIMounter) WaitForPathToExist(path string, maxRetries int) bool {
+	return true
 }
 
 // getMountPointForPath returns the mount.MountPoint for a given path. If the
@@ -440,4 +484,104 @@ func diskByPathsForMountPoint(mountPoint mount.MountPoint) ([]string, error) {
 		return nil, errors.New("disk by path link not found")
 	}
 	return diskByPaths, nil
+}
+
+func GetIscsiDevicePath(disk *Disk) (string, error) {
+	// run command ls -l /dev/disk/by-path
+	cmdStr := fmt.Sprintf("ls -f /dev/disk/by-path/ip-%s:%d-iscsi-%s-lun-*", disk.IPv4, disk.Port, disk.IQN)
+	cmd := cmdexec.Command("bash", "-c", cmdStr)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("command failed: %v\ncommand: %s\nOutput: %s\n", err, LIST_PATHS_COMMAND, string(output))
+	}
+	for _, line := range strings.Split(string(output), "\n") {
+		re := regexp.MustCompile(fmt.Sprintf(`(ip-%s:%d-iscsi-%s-lun-\d+)`, disk.IPv4, disk.Port, disk.IQN))
+		match := re.FindStringSubmatch(line)
+		if len(match) > 0 {
+			fileName := match[1]
+			devicePath := DISK_BY_PATH_FOLDER + fileName
+			return devicePath, nil
+		}
+	}
+	return "", fmt.Errorf("cannot find device path")
+}
+
+func WaitForDevicePathToExist(ctx context.Context, disk *Disk, logger *zap.SugaredLogger) (string, error) {
+	logger.With("disk", disk).Info("Waiting for iscsi device path to exist")
+
+	ctxt, cancel := context.WithTimeout(ctx, pathPollTimeout)
+	defer cancel()
+
+	var iscsiDevicePath string
+
+	if err := wait.PollImmediateUntil(pathPollInterval, func() (done bool, err error) {
+		devicePath, err := GetIscsiDevicePath(disk)
+		if err != nil {
+			if !strings.Contains(err.Error(), "No such file or directory") {
+				return false, err
+			}
+			return false, nil
+		} else {
+			iscsiDevicePath = devicePath
+			return true, nil
+		}
+	}, ctxt.Done()); err != nil {
+		return "", err
+	}
+
+	return iscsiDevicePath, nil
+}
+
+func Rescan(logger *zap.SugaredLogger, devicePath string) error {
+	lsblkargs := []string{"-n", "-o", "NAME", devicePath}
+	lsblkcmd := cmdexec.Command("lsblk", lsblkargs...)
+	lsblkoutput, err := lsblkcmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("Failed to find device name associated with devicePath %s", devicePath)
+	}
+	deviceName := strings.TrimSpace(string(lsblkoutput))
+	if strings.HasPrefix(deviceName, "/dev/") {
+		deviceName = strings.TrimPrefix(deviceName, "/dev/")
+	}
+	logger.With("deviceName", deviceName).Info("Rescanning")
+
+	// run command dd iflag=direct if=/dev/<device_name> of=/dev/null count=1
+	// https://docs.oracle.com/en-us/iaas/Content/Block/Tasks/rescanningdisk.htm#Rescanni
+	devicePathFileArg := fmt.Sprintf("if=%s", devicePath)
+	args := []string{"iflag=direct", devicePathFileArg, "of=/dev/null", "count=1"}
+	cmd := cmdexec.Command("dd", args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("command failed: %v\narguments: %s\nOutput: %v\n", err, "dd", string(output))
+	}
+	logger.With("command", "dd", "output", string(output)).Debug("dd output")
+	// run command echo 1 | tee /sys/class/block/%s/device/rescan
+	// https://docs.oracle.com/en-us/iaas/Content/Block/Tasks/rescanningdisk.htm#Rescanni
+	cmdStr := fmt.Sprintf("echo 1 | tee /sys/class/block/%s/device/rescan", deviceName)
+	cmd = cmdexec.Command("bash", "-c", cmdStr)
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("command failed: %v\narguments: %s\nOutput: %v\n", err, cmdStr, string(output))
+	}
+	logger.With("command", cmdStr, "output", string(output)).Debug("rescan output")
+
+	return nil
+}
+
+func GetScsiInfo(mountDevice string) (*Disk, error) {
+	m := diskByPathPattern.FindStringSubmatch(mountDevice)
+	if len(m) != 4 {
+		return nil, fmt.Errorf("mount device path %q did not match pattern; got %v", mountDevice, m)
+	}
+
+	port, err := strconv.Atoi(m[2])
+	if err != nil {
+		return nil, fmt.Errorf("invalid port: %v", err)
+	}
+
+	return &Disk{
+		IQN:  m[3],
+		IPv4: m[1],
+		Port: port,
+	}, nil
 }

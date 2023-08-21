@@ -70,6 +70,7 @@ type CloudProviderFramework struct {
 	namespacesToDelete    []*v1.Namespace // Some tests have more than one.
 
 	BlockStorageClient ocicore.BlockstorageClient
+	ComputeClient      ocicore.ComputeClient
 	IsBackup           bool
 	BackupIDs          []string
 	StorageClasses     []string
@@ -281,6 +282,7 @@ func (f *CloudProviderFramework) BeforeEach() {
 
 	if f.IsBackup {
 		f.BlockStorageClient = f.createStorageClient()
+		f.ComputeClient = f.createComputeClient()
 	}
 }
 
@@ -375,6 +377,22 @@ func (f *CloudProviderFramework) createStorageClient() ocicore.BlockstorageClien
 	}
 
 	return blockStorageClient
+}
+
+func (f *CloudProviderFramework) createComputeClient() ocicore.ComputeClient {
+	By("Creating an OCI compute client")
+
+	provider, err := providercfg.NewConfigurationProvider(f.CloudProviderConfig)
+	if err != nil {
+		Failf("Unable to create configuration provider %v", err)
+	}
+
+	computeClient, err := ocicore.NewComputeClientWithConfigurationProvider(provider)
+	if err != nil {
+		Failf("Unable to load compute client %v", err)
+	}
+
+	return computeClient
 }
 
 func instanceCacheKeyFn(obj interface{}) (string, error) {

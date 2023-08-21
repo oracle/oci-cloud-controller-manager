@@ -62,6 +62,8 @@ const (
 	newBackupAvailableTimeout     = 45 * time.Second
 	needResize                    = "needResize"
 	newSize                       = "newSize"
+	multipathEnabled              = "multipathEnabled"
+	multipathDevices              = "multipathDevices"
 	//device is the consistent device path that would be used for paravirtualized attachment
 	device = "device"
 )
@@ -239,7 +241,18 @@ func (d *BlockVolumeControllerDriver) CreateVolume(ctx context.Context, req *csi
 	volumeName := req.Name
 
 	dimensionsMap := make(map[string]string)
+
+	volumeParams, err := extractVolumeParameters(log, req.GetParameters())
+	if err != nil {
+		log.With(zap.Error(err)).Error("Failed to parse storageclass parameters.")
+		metricDimension = util.GetMetricDimensionForComponent(util.ErrValidation, util.CSIStorageType)
+		dimensionsMap[metrics.ComponentDimension] = metricDimension
+		metrics.SendMetricData(d.metricPusher, metrics.PVProvision, time.Since(startTime).Seconds(), dimensionsMap)
+		return nil, status.Errorf(codes.InvalidArgument, "failed to parse storageclass parameters %v", err)
+	}
+
 	dimensionsMap[metrics.ResourceOCIDDimension] = volumeName
+	dimensionsMap[metrics.VolumeVpusPerGBDimension] = strconv.Itoa(int(volumeParams.vpusPerGB))
 
 	srcSnapshotId := ""
 	srcVolumeId := ""
@@ -368,15 +381,6 @@ func (d *BlockVolumeControllerDriver) CreateVolume(ctx context.Context, req *csi
 		dimensionsMap[metrics.ComponentDimension] = metricDimension
 		metrics.SendMetricData(d.metricPusher, metric, time.Since(startTime).Seconds(), dimensionsMap)
 		return nil, fmt.Errorf("duplicate volume %q exists", volumeName)
-	}
-
-	volumeParams, err := extractVolumeParameters(log, req.GetParameters())
-	if err != nil {
-		log.With(zap.Error(err)).Error("Failed to parse storageclass parameters.")
-		metricDimension = util.GetMetricDimensionForComponent(util.ErrValidation, metricType)
-		dimensionsMap[metrics.ComponentDimension] = metricDimension
-		metrics.SendMetricData(d.metricPusher, metric, time.Since(startTime).Seconds(), dimensionsMap)
-		return nil, status.Errorf(codes.InvalidArgument, "failed to parse storageclass parameters %v", err)
 	}
 
 	provisionedVolume := core.Volume{}
@@ -641,7 +645,16 @@ func (d *BlockVolumeControllerDriver) ControllerPublishVolume(ctx context.Contex
 			//Checking if Volume state is already Attached or Attachment (from above condition) is completed
 			if volumeAttached.GetLifecycleState() == core.VolumeAttachmentLifecycleStateAttached {
 				log.With("instanceID", id).Info("Volume is already ATTACHED to the Node.")
-				return generatePublishContext(volumeAttachmentOptions, log, volumeAttached, vpusPerGB, req.VolumeContext[needResize], req.VolumeContext[newSize]), nil
+				resp, err := generatePublishContext(volumeAttachmentOptions, log, volumeAttached, vpusPerGB, req.VolumeContext[needResize], req.VolumeContext[newSize])
+				if err != nil {
+					log.With(zap.Error(err)).Error("Failed to generate publish context")
+					errorType = util.GetError(err)
+					csiMetricDimension = util.GetMetricDimensionForComponent(errorType, util.CSIStorageType)
+					dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
+					metrics.SendMetricData(d.metricPusher, metrics.PVAttach, time.Since(startTime).Seconds(), dimensionsMap)
+					return nil, status.Errorf(codes.Internal, "Failed to generate publish context: %s", err)
+				}
+				return resp, nil
 			}
 		}
 	}
@@ -686,11 +699,25 @@ func (d *BlockVolumeControllerDriver) ControllerPublishVolume(ctx context.Contex
 	csiMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.CSIStorageType)
 	dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
 	metrics.SendMetricData(d.metricPusher, metrics.PVAttach, time.Since(startTime).Seconds(), dimensionsMap)
-	return generatePublishContext(volumeAttachmentOptions, log, volumeAttached, vpusPerGB, req.VolumeContext[needResize], req.VolumeContext[newSize]), nil
-
+	resp, err := generatePublishContext(volumeAttachmentOptions, log, volumeAttached, vpusPerGB, req.VolumeContext[needResize], req.VolumeContext[newSize])
+	if err != nil {
+		log.With(zap.Error(err)).Error("Failed to generate publish context")
+		errorType = util.GetError(err)
+		csiMetricDimension = util.GetMetricDimensionForComponent(errorType, util.CSIStorageType)
+		dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
+		metrics.SendMetricData(d.metricPusher, metrics.PVAttach, time.Since(startTime).Seconds(), dimensionsMap)
+		return nil, status.Errorf(codes.Internal, "Failed to generate publish context: %s", err)
+	}
+	return resp, nil
 }
 
-func generatePublishContext(volumeAttachmentOptions VolumeAttachmentOption, log *zap.SugaredLogger, volumeAttached core.VolumeAttachment, vpusPerGB string, needsResize string, expectedSize string) *csi.ControllerPublishVolumeResponse {
+func generatePublishContext(volumeAttachmentOptions VolumeAttachmentOption, log *zap.SugaredLogger, volumeAttached core.VolumeAttachment, vpusPerGB string, needsResize string, expectedSize string) (*csi.ControllerPublishVolumeResponse, error) {
+	multipath := "false"
+
+	if volumeAttached.GetIsMultipath() != nil {
+		multipath = strconv.FormatBool(*volumeAttached.GetIsMultipath())
+	}
+
 	if volumeAttachmentOptions.useParavirtualizedAttachment {
 		log.With("volumeAttachedId", *volumeAttached.GetId()).Info("Publishing paravirtualized Volume Completed.")
 		return &csi.ControllerPublishVolumeResponse{
@@ -700,24 +727,36 @@ func generatePublishContext(volumeAttachmentOptions VolumeAttachmentOption, log 
 				csi_util.VpusPerGB: vpusPerGB,
 				needResize:         needsResize,
 				newSize:            expectedSize,
+				multipathEnabled:   multipath,
 			},
-		}
+		}, nil
 	}
 	iSCSIVolumeAttached := volumeAttached.(core.IScsiVolumeAttachment)
+	multiPathDevicesJson := []byte{}
+	if len(iSCSIVolumeAttached.MultipathDevices) > 0 {
+		var err error
+		multiPathDevicesJson, err = json.Marshal(iSCSIVolumeAttached.MultipathDevices)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	log.With("volumeAttachedId", *volumeAttached.GetId()).Info("Publishing iSCSI Volume Completed.")
 
 	return &csi.ControllerPublishVolumeResponse{
 		PublishContext: map[string]string{
 			attachmentType:     attachmentTypeISCSI,
+			device:             *volumeAttached.GetDevice(),
 			disk.ISCSIIQN:      *iSCSIVolumeAttached.Iqn,
 			disk.ISCSIIP:       *iSCSIVolumeAttached.Ipv4,
 			disk.ISCSIPORT:     strconv.Itoa(*iSCSIVolumeAttached.Port),
 			csi_util.VpusPerGB: vpusPerGB,
 			needResize:         needsResize,
 			newSize:            expectedSize,
+			multipathEnabled:   multipath,
+			multipathDevices:   string(multiPathDevicesJson),
 		},
-	}
+	}, nil
 }
 
 // ControllerUnpublishVolume detaches the given volume from the node
@@ -795,6 +834,18 @@ func (d *BlockVolumeControllerDriver) ControllerUnpublishVolume(ctx context.Cont
 		dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
 		metrics.SendMetricData(d.metricPusher, metrics.PVDetach, time.Since(startTime).Seconds(), dimensionsMap)
 		return nil, status.Errorf(codes.Unknown, "timed out waiting for volume to be detached %s", err)
+	}
+
+	multipath := false
+
+	if attachedVolume.GetIsMultipath() != nil {
+		multipath = *attachedVolume.GetIsMultipath()
+	}
+
+	// sleeping to ensure block volume plugin logs out of iscsi connections on nodes before delete
+	if multipath {
+		log.Info("Waiting for 90 seconds to ensure block volume plugin logs out of iscsi connections on nodes")
+		time.Sleep(90 * time.Second)
 	}
 
 	log.Info("Un-publishing Volume Completed")
