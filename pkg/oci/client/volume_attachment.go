@@ -128,10 +128,17 @@ func (c *client) AttachVolume(ctx context.Context, instanceID, volumeID string) 
 	if !c.rateLimiter.Writer.TryAccept() {
 		return nil, RateLimitError(false, "")
 	}
+
+	device, err := c.getDevicePath(ctx, instanceID)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
 	resp, err := c.compute.AttachVolume(ctx, core.AttachVolumeRequest{
 		AttachVolumeDetails: core.AttachIScsiVolumeDetails{
 			InstanceId: &instanceID,
 			VolumeId:   &volumeID,
+			Device:     device,
 		},
 		RequestMetadata: c.requestMetadata,
 	})
@@ -150,12 +157,8 @@ func (c *client) AttachVolume(ctx context.Context, instanceID, volumeID string) 
 	return resp.VolumeAttachment, nil
 }
 
-func (c *client) AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool) (core.VolumeAttachment, error) {
-	if !c.rateLimiter.Writer.TryAccept() {
-		return nil, RateLimitError(false, "")
-	}
-	//in case of paraviryalized attachment, the only unique way to identity the disk as device is if we use consistent
-	//device path https://docs.cloud.oracle.com/en-us/iaas/Content/Block/References/consistentdevicepaths.htm. here we
+func (c *client) getDevicePath(ctx context.Context, instanceID string) (*string, error) {
+	//https://docs.cloud.oracle.com/en-us/iaas/Content/Block/References/consistentdevicepaths.htm. here we
 	//are getting first available consistent device using ListInstanceDevices using that device in time of attachment
 	limit := 1
 	isAvailable := true
@@ -169,7 +172,7 @@ func (c *client) AttachParavirtualizedVolume(ctx context.Context, instanceID, vo
 
 	if listInstanceDevicesResp.OpcRequestId != nil {
 		c.logger.With("service", "compute", "verb", listVerb, "resource", instanceResource).
-			With("volumeID", volumeID, "instanceID", instanceID, "OpcRequestId", *(listInstanceDevicesResp.OpcRequestId)).
+			With("instanceID", instanceID, "OpcRequestId", *(listInstanceDevicesResp.OpcRequestId)).
 			With("statusCode", util.GetHttpStatusCode(err)).
 			Info("OPC Request ID recorded for ListInstanceDevices call.")
 	}
@@ -179,6 +182,19 @@ func (c *client) AttachParavirtualizedVolume(ctx context.Context, instanceID, vo
 	}
 
 	device := listInstanceDevicesResp.Items[0].Name
+
+	return device, nil
+}
+
+func (c *client) AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool) (core.VolumeAttachment, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return nil, RateLimitError(false, "")
+	}
+
+	device, err := c.getDevicePath(ctx, instanceID)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
 
 	resp, err := c.compute.AttachVolume(ctx, core.AttachVolumeRequest{
 		AttachVolumeDetails: core.AttachParavirtualizedVolumeDetails{
@@ -192,7 +208,7 @@ func (c *client) AttachParavirtualizedVolume(ctx context.Context, instanceID, vo
 
 	incRequestCounter(err, createVerb, volumeAttachmentResource)
 
-	if listInstanceDevicesResp.OpcRequestId != nil {
+	if resp.OpcRequestId != nil {
 		c.logger.With("service", "compute", "verb", createVerb, "resource", instanceResource).
 			With("volumeID", volumeID, "instanceID", instanceID, "OpcRequestId", *(resp.OpcRequestId)).
 			With("statusCode", util.GetHttpStatusCode(err)).

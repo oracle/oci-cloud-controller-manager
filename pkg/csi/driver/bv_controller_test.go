@@ -278,12 +278,25 @@ func (c *MockBlockStorageClient) GetVolume(ctx context.Context, id string) (*cor
 		}, nil
 	} else if id == "valid_volume_id_valid_old_size_fail" {
 		ad := "zkJl:US-ASHBURN-AD-1"
+		vpuspergb := int64(10)
 		var oldSizeInBytes int64 = 2147483648
 		oldSizeInGB := csi_util.RoundUpSize(oldSizeInBytes, 1*client.GiB)
 		return &core.Volume{
 			Id:                 &id,
 			AvailabilityDomain: &ad,
 			SizeInGBs:          &oldSizeInGB,
+			VpusPerGB:          &vpuspergb,
+		}, nil
+	} else if id == "uhp_volume_id" {
+		ad := "zkJl:US-ASHBURN-AD-1"
+		vpuspergb := int64(40)
+		var oldSizeInBytes int64 = 2147483648
+		oldSizeInGB := csi_util.RoundUpSize(oldSizeInBytes, 1*client.GiB)
+		return &core.Volume{
+			Id:                 &id,
+			AvailabilityDomain: &ad,
+			SizeInGBs:          &oldSizeInGB,
+			VpusPerGB:          &vpuspergb,
 		}, nil
 	} else {
 		return volumes[id], nil
@@ -1222,6 +1235,24 @@ func TestControllerDriver_ControllerExpandVolume(t *testing.T) {
 			want:    nil,
 			wantErr: errors.New("Update volume failed"),
 		},
+		{
+			name:   "Uhp volume expand success in ControllerExpandVolume",
+			fields: fields{},
+			args: args{
+				ctx: nil,
+				req: &csi.ControllerExpandVolumeRequest{
+					VolumeId: "uhp_volume_id",
+					CapacityRange: &csi.CapacityRange{
+						RequiredBytes: int64(csi_util.MaximumVolumeSizeInBytes),
+					},
+				},
+			},
+			want: &csi.ControllerExpandVolumeResponse{
+				CapacityBytes:         int64(csi_util.MaximumVolumeSizeInBytes),
+				NodeExpansionRequired: true,
+			},
+			wantErr: nil,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1236,7 +1267,9 @@ func TestControllerDriver_ControllerExpandVolume(t *testing.T) {
 			if tt.wantErr == nil && err != nil {
 				t.Errorf("got error %q, want none", err)
 			}
-			if tt.wantErr != nil && !strings.Contains(err.Error(), tt.wantErr.Error()) {
+			if tt.wantErr != nil && err == nil {
+				t.Errorf("want error %q, got none", tt.wantErr)
+			} else if tt.wantErr != nil && !strings.Contains(err.Error(), tt.wantErr.Error()) {
 				t.Errorf("want error %q to include %q", err, tt.wantErr)
 			}
 			if !reflect.DeepEqual(got, tt.want) {
@@ -1503,9 +1536,9 @@ func TestExtractVolumeParameters(t *testing.T) {
 			volumeParameters: VolumeParameters{
 				diskEncryptionKey:   "",
 				attachmentParameter: make(map[string]string),
-				vpusPerGB:           10,
+				vpusPerGB:           40,
 			},
-			wantErr: true,
+			wantErr: false,
 		},
 		"if invalid parameter for performance level then return error": {
 			storageParameters: map[string]string{

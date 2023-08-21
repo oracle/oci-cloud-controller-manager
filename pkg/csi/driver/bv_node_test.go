@@ -14,7 +14,9 @@
 
 package driver
 
-import "testing"
+import (
+	"testing"
+)
 
 func Test_getDevicePathAndAttachmentType(t *testing.T) {
 	type args struct {
@@ -53,6 +55,13 @@ func Test_getDevicePathAndAttachmentType(t *testing.T) {
 			args{path: []string{"/dev/disk/by-path/ip-169.254.2.19:3260-iscsi-iqn.2015-12.com.oracleiaas:d0ee92cb-5220-423e-b029-07ae2b2ff08f-lun-1"}},
 			"iscsi",
 			"/dev/disk/by-path/ip-169.254.2.19:3260-iscsi-iqn.2015-12.com.oracleiaas:d0ee92cb-5220-423e-b029-07ae2b2ff08f-lun-1",
+			false,
+		},
+		{
+			"Testing UHP volume multidevice path",
+			args{path: []string{"/dev/mapper/mpathd"}},
+			"iscsi",
+			"/dev/mapper/mpathd",
 			false,
 		},
 	}

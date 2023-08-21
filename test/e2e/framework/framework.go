@@ -49,6 +49,7 @@ const (
 	ClassOCILowCost    = "oci-bv-low"
 	ClassOCIBalanced   = "oci-bal"
 	ClassOCIHigh       = "oci-bv-high"
+	ClassOCIUHP        = "oci-uhp"
 	ClassOCIKMS        = "oci-kms"
 	ClassOCIExt3       = "oci-ext3"
 	ClassOCIXfs        = "oci-xfs"
@@ -59,7 +60,8 @@ const (
 	MaxVolumeBlock     = "100Gi"
 	VolumeFss          = "1Gi"
 
-	VSClassDefault = "oci-snapclass"
+	VSClassDefault    = "oci-snapclass"
+	NodeHostnameLabel = "kubernetes.io/hostname"
 )
 
 var (
@@ -86,6 +88,7 @@ var (
 	architecture                  string
 	volumeHandle                  string // The FSS mount volume handle
 	staticSnapshotCompartmentOCID string // Compartment ID for cross compartment snapshot test
+	createUhpNodepool             bool   // Creates UHP nodepool instead of normal nodepool
 )
 
 func init() {
@@ -115,6 +118,7 @@ func init() {
 	flag.StringVar(&architecture, "architecture", "", "CPU architecture to be used for testing.")
 
 	flag.StringVar(&staticSnapshotCompartmentOCID, "static-snapshot-compartment-id", "", "Compartment ID for cross compartment snapshot test")
+	flag.BoolVar(&createUhpNodepool, "create-uhp-nodepool", false, "Run UHP E2Es as well")
 }
 
 // Framework is the context of the text execution.
@@ -147,6 +151,7 @@ type Framework struct {
 
 	// Compartment ID for cross compartment snapshot test
 	StaticSnapshotCompartmentOcid string
+	CreateUhpNodepool             bool
 }
 
 // New creates a new a framework that holds the context of the test
@@ -170,6 +175,7 @@ func NewWithConfig() *Framework {
 		ReservedIP:                    reservedIP,
 		VolumeHandle:                  volumeHandle,
 		StaticSnapshotCompartmentOcid: staticSnapshotCompartmentOCID,
+		CreateUhpNodepool:             createUhpNodepool,
 	}
 
 	f.CloudConfigPath = cloudConfigFile
@@ -204,6 +210,8 @@ func (f *Framework) Initialize() {
 	Logf("FSS Volume Handle is : %s", f.VolumeHandle)
 	f.StaticSnapshotCompartmentOcid = staticSnapshotCompartmentOCID
 	Logf("Static Snapshot Compartment OCID: %s", f.StaticSnapshotCompartmentOcid)
+	f.CreateUhpNodepool = createUhpNodepool
+	Logf("Create Uhp Nodepool: %v", f.CreateUhpNodepool)
 	f.CMEKKMSKey = cmekKMSKey
 	Logf("CMEK KMS Key: %s", f.CMEKKMSKey)
 	f.NsgOCIDS = nsgOCIDS
@@ -245,4 +253,18 @@ func (f *Framework) setImages() {
 		nginx = Nginx
 		centos = Centos
 	}
+}
+
+func (f *CloudProviderFramework) GetCompartmentId(setupF Framework) string {
+	compartmentId := ""
+	if setupF.Compartment1 != "" {
+		compartmentId = setupF.Compartment1
+	} else if f.CloudProviderConfig.CompartmentID != "" {
+		compartmentId = f.CloudProviderConfig.CompartmentID
+	} else if f.CloudProviderConfig.Auth.CompartmentID != "" {
+		compartmentId = f.CloudProviderConfig.Auth.CompartmentID
+	} else {
+		Failf("Compartment Id undefined.")
+	}
+	return compartmentId
 }
