@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
 	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
 )
 
@@ -369,6 +371,245 @@ var _ = Describe("CSI Volume Performance Level", func() {
 	})
 })
 
+var _ = Describe("CSI Ultra High Performance Volumes", func() {
+	f := framework.NewBackupFramework("csi-uhp")
+	Context("[cloudprovider][storage][csi][uhp]", func() {
+		It("Create ISCSI CSI block volume with UHP Performance Level", func() {
+			compartmentId := f.GetCompartmentId(*setupF)
+			if compartmentId == "" {
+				framework.Failf("Compartment Id undefined.")
+			}
+
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-iscsi-uhp")
+
+			scName := f.CreateStorageClassOrFail(framework.ClassOCIUHP, "blockvolume.csi.oraclecloud.com",
+				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI, csi_util.VpusPerGB: "30"},
+				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
+			pvcJig.NewPodForCSI("uhp-pvc-app", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+
+			ctx := context.Background()
+			pvcJig.VerifyMultipathEnabled(ctx, f.ComputeClient, pvc.Name, f.Namespace.Name, compartmentId)
+
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+			_ = f.DeleteStorageClass(framework.ClassOCIUHP)
+		})
+		It("Create Paravirtualized CSI block volume with UHP Performance Level", func() {
+			compartmentId := f.GetCompartmentId(*setupF)
+			if compartmentId == "" {
+				framework.Failf("Compartment Id undefined.")
+			}
+
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-paravirtualized-uhp")
+
+			scName := f.CreateStorageClassOrFail(framework.ClassOCIUHP, "blockvolume.csi.oraclecloud.com",
+				map[string]string{framework.AttachmentType: framework.AttachmentTypeParavirtualized, csi_util.VpusPerGB: "30"},
+				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
+			pvcJig.NewPodForCSI("uhp-pvc-app", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+
+			ctx := context.Background()
+			pvcJig.VerifyMultipathEnabled(ctx, f.ComputeClient, pvc.Name, f.Namespace.Name, compartmentId)
+
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+			_ = f.DeleteStorageClass(framework.ClassOCIUHP)
+		})
+		It("Create CSI block volume with UHP Performance Level and xfs file system", func() {
+			compartmentId := f.GetCompartmentId(*setupF)
+			if compartmentId == "" {
+				framework.Failf("Compartment Id undefined.")
+			}
+
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-uhp-xfs")
+
+			scName := f.CreateStorageClassOrFail(framework.ClassOCIUHP, "blockvolume.csi.oraclecloud.com",
+				map[string]string{framework.AttachmentType: framework.AttachmentTypeParavirtualized, csi_util.VpusPerGB: "30", framework.FstypeKey: "xfs"},
+				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
+			pvcJig.NewPodForCSI("uhp-pvc-app", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+
+			ctx := context.Background()
+			pvcJig.VerifyMultipathEnabled(ctx, f.ComputeClient, pvc.Name, f.Namespace.Name, compartmentId)
+
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+			_ = f.DeleteStorageClass(framework.ClassOCIUHP)
+		})
+		It("Static Provisioning CSI UHP", func() {
+			compartmentId := f.GetCompartmentId(*setupF)
+			if compartmentId == "" {
+				framework.Failf("Compartment Id undefined.")
+			}
+
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-provisioner-e2e-tests-pvc-with-static-uhp")
+
+			scName := f.CreateStorageClassOrFail(framework.ClassOCIUHP, "blockvolume.csi.oraclecloud.com",
+				map[string]string{framework.AttachmentType: framework.AttachmentTypeParavirtualized, csi_util.VpusPerGB: "30"},
+				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
+
+			pvc, volumeId := pvcJig.CreateAndAwaitStaticPVCOrFailCSI(f.BlockStorageClient, f.Namespace.Name, framework.MinVolumeBlock, 30, scName, setupF.AdLocation, compartmentId, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+			pvcJig.NewPodForCSI("app4", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+
+			ctx := context.Background()
+			pvcJig.VerifyMultipathEnabled(ctx, f.ComputeClient, pvc.Name, f.Namespace.Name, compartmentId)
+
+			pvcJig.CheckVolumeCapacity("50Gi", pvc.Name, f.Namespace.Name)
+			f.VolumeIds = append(f.VolumeIds, volumeId)
+		})
+		It("Basic Pod Delete UHP", func() {
+			compartmentId := f.GetCompartmentId(*setupF)
+			if compartmentId == "" {
+				framework.Failf("Compartment Id undefined.")
+			}
+
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-iscsi-uhp")
+
+			scName := f.CreateStorageClassOrFail(framework.ClassOCIUHP, "blockvolume.csi.oraclecloud.com",
+				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI, csi_util.VpusPerGB: "30"},
+				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
+			podName := pvcJig.NewPodForCSI("uhp-pvc-app", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+
+			ctx := context.Background()
+			pvcJig.VerifyMultipathEnabled(ctx, f.ComputeClient, pvc.Name, f.Namespace.Name, compartmentId)
+
+			volumeName := pvcJig.GetVolumeNameFromPVC(pvc.Name, f.Namespace.Name)
+			framework.Logf("Pod name : %s", podName)
+			framework.Logf("Persistent volume name : %s", volumeName)
+
+			pvcJig.DeleteAndAwaitPodOrFail(f.Namespace.Name, podName)
+			err := pvcJig.DeletePersistentVolumeClaim(f.Namespace.Name, pvc.Name)
+			if err != nil {
+				framework.Failf("Failed to delete persistent volume claim: %s", err.Error())
+			}
+			err = pvcJig.WaitTimeoutForPVNotFound(volumeName, 10*time.Minute)
+			if err != nil {
+				framework.Failf("Persistent volume did not terminate : %s", err.Error())
+			}
+
+			_ = f.DeleteStorageClass(framework.ClassOCIUHP)
+		})
+		It("Create UHP PVC and POD for CSI with CMEK and in-transit encryption", func() {
+			compartmentId := f.GetCompartmentId(*setupF)
+			if compartmentId == "" {
+				framework.Failf("Compartment Id undefined.")
+			}
+
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-cmek-iscsi-in-transit-e2e-tests-uhp")
+			scParameter := map[string]string{
+				framework.KmsKey:         setupF.CMEKKMSKey,
+				framework.AttachmentType: framework.AttachmentTypeISCSI,
+				csi_util.VpusPerGB:       "30",
+			}
+			scName := f.CreateStorageClassOrFail(framework.ClassOCIKMS, "blockvolume.csi.oraclecloud.com", scParameter, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
+			podName := pvcJig.NewPodForCSI("app1", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+
+			ctx := context.Background()
+			pvcJig.VerifyMultipathEnabled(ctx, f.ComputeClient, pvc.Name, f.Namespace.Name, compartmentId)
+			pvcJig.CheckCMEKKey(f.Client.BlockStorage(), pvc.Name, f.Namespace.Name, setupF.CMEKKMSKey)
+			pvcJig.CheckAttachmentTypeAndEncryptionType(f.Client.Compute(), pvc.Name, f.Namespace.Name, podName, framework.AttachmentTypeISCSI)
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+			_ = f.DeleteStorageClass(framework.ClassOCIKMS)
+		})
+		It("Create UHP and lower performance block volumes on same node", func() {
+			sc1params := map[string]string{
+				framework.AttachmentType: framework.AttachmentTypeISCSI,
+				csi_util.VpusPerGB:       "30",
+			}
+			sc2params := map[string]string{
+				framework.AttachmentType: framework.AttachmentTypeISCSI,
+			}
+			testTwoPVCSetup(f, sc1params, sc2params)
+		})
+		It("Expand PVC VolumeSize from 50Gi to 100Gi and asserts size, file existence and file corruptions for iSCSI UHP volume", func() {
+			var size = "100Gi"
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-pvc-expand-to-100gi-iscsi-uhp")
+
+			scName := f.CreateStorageClassOrFail(framework.ClassOCIUHP, "blockvolume.csi.oraclecloud.com",
+				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI, csi_util.VpusPerGB: "30"},
+				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
+			podName := pvcJig.NewPodForCSI("expanded-uhp-pvc-app", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+
+			time.Sleep(60 * time.Second) //waiting for pod to up and running
+
+			expandedPvc := pvcJig.UpdateAndAwaitPVCOrFailCSI(pvc, pvc.Namespace, size, nil)
+
+			time.Sleep(120 * time.Second) //waiting for expanded pvc to be functional
+
+			pvcJig.CheckVolumeCapacity("100Gi", expandedPvc.Name, f.Namespace.Name)
+			pvcJig.CheckFileExists(f.Namespace.Name, podName, "/data", "testdata.txt")
+			pvcJig.CheckFileCorruption(f.Namespace.Name, podName, "/data", "testdata.txt")
+			pvcJig.CheckExpandedVolumeReadWrite(f.Namespace.Name, podName)
+			pvcJig.CheckUsableVolumeSizeInsidePod(f.Namespace.Name, podName, "99G")
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+			_ = f.DeleteStorageClass(framework.ClassOCIUHP)
+		})
+		It("Expand PVC VolumeSize from 50Gi to 100Gi and asserts size, file existence and file corruptions for Paravirtualized UHP volume", func() {
+			var size = "100Gi"
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-pvc-expand-to-100gi-iscsi-uhp")
+
+			scName := f.CreateStorageClassOrFail(framework.ClassOCIUHP, "blockvolume.csi.oraclecloud.com",
+				map[string]string{framework.AttachmentType: framework.AttachmentTypeParavirtualized, csi_util.VpusPerGB: "30"},
+				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
+			podName := pvcJig.NewPodForCSI("expanded-uhp-pvc-app", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+
+			time.Sleep(60 * time.Second) //waiting for pod to up and running
+
+			expandedPvc := pvcJig.UpdateAndAwaitPVCOrFailCSI(pvc, pvc.Namespace, size, nil)
+
+			time.Sleep(120 * time.Second) //waiting for expanded pvc to be functional
+
+			pvcJig.CheckVolumeCapacity("100Gi", expandedPvc.Name, f.Namespace.Name)
+			pvcJig.CheckFileExists(f.Namespace.Name, podName, "/data", "testdata.txt")
+			pvcJig.CheckFileCorruption(f.Namespace.Name, podName, "/data", "testdata.txt")
+			pvcJig.CheckExpandedVolumeReadWrite(f.Namespace.Name, podName)
+			pvcJig.CheckUsableVolumeSizeInsidePod(f.Namespace.Name, podName, "99G")
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+			_ = f.DeleteStorageClass(framework.ClassOCIUHP)
+		})
+	})
+})
+
+var _ = Describe("CSI UHP Volumes addition e2es", func() {
+	f := framework.NewBackupFramework("csi-uhp-additional")
+	Context("[uhp]", func() {
+		It("Create UHP paravirtual volume and lower performance ISCSI block volumes on same node", func() {
+			sc1params := map[string]string{
+				framework.AttachmentType: framework.AttachmentTypeParavirtualized,
+				csi_util.VpusPerGB:       "30",
+			}
+			sc2params := map[string]string{
+				framework.AttachmentType: framework.AttachmentTypeISCSI,
+			}
+			testTwoPVCSetup(f, sc1params, sc2params)
+		})
+		It("Create UHP ISCSI volume and lower performance paravirtualized block volumes on same node", func() {
+			sc1params := map[string]string{
+				framework.AttachmentType: framework.AttachmentTypeISCSI,
+				csi_util.VpusPerGB:       "30",
+			}
+			sc2params := map[string]string{
+				framework.AttachmentType: framework.AttachmentTypeParavirtualized,
+			}
+			testTwoPVCSetup(f, sc1params, sc2params)
+		})
+		It("Create two UHP ISCSI block volumes on same node", func() {
+			sc1params := map[string]string{
+				framework.AttachmentType: framework.AttachmentTypeISCSI,
+				csi_util.VpusPerGB:       "30",
+			}
+			sc2params := map[string]string{
+				framework.AttachmentType: framework.AttachmentTypeISCSI,
+				csi_util.VpusPerGB:       "30",
+			}
+			testTwoPVCSetup(f, sc1params, sc2params)
+		})
+	})
+})
+
 var _ = Describe("CSI Volume Expansion Paravirtualized", func() {
 	f := framework.NewDefaultFramework("csi-expansion")
 	Context("[cloudprovider][storage][csi][expand][paravirtualized]", func() {
@@ -519,3 +760,39 @@ var _ = Describe("CSI Volume Creation - Immediate Volume Binding", func() {
 		})
 	})
 })
+
+func testTwoPVCSetup(f *framework.CloudProviderFramework, storageclass1params map[string]string, storageclass2params map[string]string) {
+	compartmentId := f.GetCompartmentId(*setupF)
+	if compartmentId == "" {
+		framework.Failf("Compartment Id undefined.")
+	}
+
+	pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-two-pvc-setup")
+
+	sc1Name := f.CreateStorageClassOrFail("storage-class-one", "blockvolume.csi.oraclecloud.com",
+		storageclass1params,
+		pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
+	pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, sc1Name, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
+	podName := pvcJig.NewPodForCSI("pvc-one-app", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+
+	ctx := context.Background()
+	pvcJig.VerifyMultipathEnabled(ctx, f.ComputeClient, pvc.Name, f.Namespace.Name, compartmentId)
+
+	nodeHostname := pvcJig.GetNodeHostnameFromPod(podName, f.Namespace.Name)
+
+	nodeLabels := map[string]string{
+		plugin.LabelZoneFailureDomain: setupF.AdLabel,
+		framework.NodeHostnameLabel:   nodeHostname,
+	}
+
+	lowPerfScName := f.CreateStorageClassOrFail("storage-class-two", "blockvolume.csi.oraclecloud.com",
+		storageclass2params,
+		pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
+	pvcTwo := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, lowPerfScName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
+	pvcJig.NewPodWithLabels("pvc-two-app", f.Namespace.Name, pvcTwo.Name, nodeLabels)
+
+	f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+	f.VolumeIds = append(f.VolumeIds, pvcTwo.Spec.VolumeName)
+	_ = f.DeleteStorageClass("storage-class-one")
+	_ = f.DeleteStorageClass("storage-class-two")
+}
