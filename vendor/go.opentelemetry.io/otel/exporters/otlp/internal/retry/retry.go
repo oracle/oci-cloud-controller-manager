@@ -15,6 +15,9 @@
 // Package retry provides request retry functionality that can perform
 // configurable exponential backoff for transient errors and honor any
 // explicit throttle responses received.
+//
+// Deprecated: package retry exists for historical compatibility, it should not
+// be used.
 package retry // import "go.opentelemetry.io/otel/exporters/otlp/internal/retry"
 
 import (
@@ -76,21 +79,21 @@ func (c Config) RequestFunc(evaluate EvaluateFunc) RequestFunc {
 		}
 	}
 
-	// Do not use NewExponentialBackOff since it calls Reset and the code here
-	// must call Reset after changing the InitialInterval (this saves an
-	// unnecessary call to Now).
-	b := &backoff.ExponentialBackOff{
-		InitialInterval:     c.InitialInterval,
-		RandomizationFactor: backoff.DefaultRandomizationFactor,
-		Multiplier:          backoff.DefaultMultiplier,
-		MaxInterval:         c.MaxInterval,
-		MaxElapsedTime:      c.MaxElapsedTime,
-		Stop:                backoff.Stop,
-		Clock:               backoff.SystemClock,
-	}
-	b.Reset()
-
 	return func(ctx context.Context, fn func(context.Context) error) error {
+		// Do not use NewExponentialBackOff since it calls Reset and the code here
+		// must call Reset after changing the InitialInterval (this saves an
+		// unnecessary call to Now).
+		b := &backoff.ExponentialBackOff{
+			InitialInterval:     c.InitialInterval,
+			RandomizationFactor: backoff.DefaultRandomizationFactor,
+			Multiplier:          backoff.DefaultMultiplier,
+			MaxInterval:         c.MaxInterval,
+			MaxElapsedTime:      c.MaxElapsedTime,
+			Stop:                backoff.Stop,
+			Clock:               backoff.SystemClock,
+		}
+		b.Reset()
+
 		for {
 			err := fn(ctx)
 			if err == nil {
@@ -119,8 +122,8 @@ func (c Config) RequestFunc(evaluate EvaluateFunc) RequestFunc {
 				delay = throttle
 			}
 
-			if err := waitFunc(ctx, delay); err != nil {
-				return err
+			if ctxErr := waitFunc(ctx, delay); ctxErr != nil {
+				return fmt.Errorf("%w: %s", ctxErr, err)
 			}
 		}
 	}
@@ -129,6 +132,9 @@ func (c Config) RequestFunc(evaluate EvaluateFunc) RequestFunc {
 // Allow override for testing.
 var waitFunc = wait
 
+// wait takes the caller's context, and the amount of time to wait.  It will
+// return nil if the timer fires before or at the same time as the context's
+// deadline.  This indicates that the call can be retried.
 func wait(ctx context.Context, delay time.Duration) error {
 	timer := time.NewTimer(delay)
 	defer timer.Stop()
