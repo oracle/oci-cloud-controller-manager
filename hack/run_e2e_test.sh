@@ -21,11 +21,12 @@ function check-env () {
     fi
 }
 
-check-env "CLUSTER_KUBECONFIG"    $CLUSTER_KUBECONFIG
-check-env "CLOUD_CONFIG"          $CLOUD_CONFIG
-check-env "ADLOCATION"      $ADLOCATION
-check-env "NSG_OCIDS"       $NSG_OCIDS
-check-env "FSS_VOLUME_HANDLE"       $FSS_VOLUME_HANDLE
+check-env "CLUSTER_KUBECONFIG"        $CLUSTER_KUBECONFIG
+check-env "CLOUD_CONFIG"              $CLOUD_CONFIG
+check-env "ADLOCATION"                $ADLOCATION
+check-env "NSG_OCIDS"                 $NSG_OCIDS
+check-env "BACKEND_NSG_OCIDS"         $BACKEND_NSG_OCIDS
+check-env "FSS_VOLUME_HANDLE"         $FSS_VOLUME_HANDLE
 check-env "MNT_TARGET_ID"             $MNT_TARGET_ID
 check-env "MNT_TARGET_SUBNET_ID"      $MNT_TARGET_SUBNET_ID
 check-env "MNT_TARGET_COMPARTMENT_ID" $MNT_TARGET_COMPARTMENT_ID
@@ -51,6 +52,7 @@ function run_e2e_tests_existing_cluster() {
         --mnt-target-subnet-id=${MNT_TARGET_SUBNET_ID} \
         --mnt-target-compartment-id=${MNT_TARGET_COMPARTMENT_ID} \
         --nsg-ocids=${NSG_OCIDS} \
+        --backend-nsg-ocids=${BACKEND_NSG_OCIDS} \
         --reserved-ip=${RESERVED_IP} \
         --architecture=${ARCHITECTURE} \
         --volume-handle=${FSS_VOLUME_HANDLE} \

@@ -552,7 +552,7 @@ func (d *BlockVolumeControllerDriver) ControllerPublishVolume(ctx context.Contex
 		metrics.SendMetricData(d.metricPusher, metrics.PVAttach, time.Since(startTime).Seconds(), dimensionsMap)
 		return nil, status.Errorf(codes.InvalidArgument, "failed to get ProviderID by nodeName. error : %s", err)
 	}
-	id = client.MapProviderIDToInstanceID(id)
+	id = client.MapProviderIDToResourceID(id)
 
 	//if the attachmentType is missing, default is iscsi
 	attachType, ok := req.VolumeContext[attachmentType]

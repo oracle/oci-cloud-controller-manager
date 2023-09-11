@@ -228,7 +228,7 @@ func (d OCIFlexvolumeDriver) Attach(logger *zap.SugaredLogger, opts flexvolume.O
 	}
 
 	// Handle possible oci:// prefix.
-	id, err = ociprovider.MapProviderIDToInstanceID(id)
+	id, err = ociprovider.MapProviderIDToResourceID(id)
 	if err != nil {
 		errorType = util.GetError(err)
 		fvdMetricDimension = util.GetMetricDimensionForComponent(errorType, util.FVDStorageType)

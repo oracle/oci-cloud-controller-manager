@@ -51,8 +51,8 @@ func (lbl *loadBalancerLocks) Release(lbname string) {
 	lbl.locks.Delete(lbname)
 }
 
-// MapProviderIDToInstanceID parses the provider id and returns the instance ocid.
-func MapProviderIDToInstanceID(providerID string) (string, error) {
+// MapProviderIDToResourceID parses the provider id and returns the instance ocid.
+func MapProviderIDToResourceID(providerID string) (string, error) {
 	if providerID == "" {
 		return providerID, errors.New("provider ID is empty")
 	}
