@@ -21,7 +21,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/logging"
 	"github.com/spf13/pflag"
 	"go.uber.org/zap"

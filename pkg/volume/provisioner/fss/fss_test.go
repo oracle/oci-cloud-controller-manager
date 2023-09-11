@@ -244,7 +244,7 @@ func (c *MockComputeClient) FindVolumeAttachment(ctx context.Context, compartmen
 	return nil, nil
 }
 
-func (MockComputeClient) AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool) (core.VolumeAttachment, error) {
+func (c *MockComputeClient) AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool) (core.VolumeAttachment, error) {
 	return nil, nil
 }
 
@@ -270,12 +270,28 @@ func (c *MockComputeClient) FindActiveVolumeAttachment(ctx context.Context, comp
 type MockVirtualNetworkClient struct {
 }
 
+func (c *MockVirtualNetworkClient) CreateNetworkSecurityGroup(ctx context.Context, compartmentId, vcnId, displayName, lbId string) (*core.NetworkSecurityGroup, error) {
+	return nil, nil
+}
+
+func (c *MockVirtualNetworkClient) UpdateNetworkSecurityGroup(ctx context.Context, id, etag string, freeformTags map[string]string) (*core.NetworkSecurityGroup, error) {
+	return nil, nil
+}
+
+func (c *MockVirtualNetworkClient) GetNetworkSecurityGroup(ctx context.Context, id string) (*core.NetworkSecurityGroup, *string, error) {
+	return nil, nil, nil
+}
+
+func (c *MockVirtualNetworkClient) DeleteNetworkSecurityGroup(ctx context.Context, id, etag string) (*string, error) {
+	return nil, nil
+}
+
 func (c *MockVirtualNetworkClient) IsRegionalSubnet(ctx context.Context, id string) (bool, error) {
 	return false, nil
 }
 
-// GetPrivateIP mocks the VirtualNetwork GetPrivateIP implementation
-func (c *MockVirtualNetworkClient) GetPrivateIP(ctx context.Context, id string) (*core.PrivateIp, error) {
+// GetPrivateIp mocks the VirtualNetwork GetPrivateIp implementation
+func (c *MockVirtualNetworkClient) GetPrivateIp(ctx context.Context, id string) (*core.PrivateIp, error) {
 	return &core.PrivateIp{IpAddress: &privateIP}, nil
 }
 
@@ -430,6 +446,22 @@ func (c *MockLoadBalancerClient) AwaitWorkRequest(ctx context.Context, id string
 
 func (c *MockLoadBalancerClient) UpdateNetworkSecurityGroups(context.Context, string, []string) (string, error) {
 	return "", nil
+}
+
+func (c *MockVirtualNetworkClient) AddNetworkSecurityGroupSecurityRules(ctx context.Context, id string, details core.AddNetworkSecurityGroupSecurityRulesDetails) (*core.AddNetworkSecurityGroupSecurityRulesResponse, error) {
+	return nil, nil
+}
+
+func (c *MockVirtualNetworkClient) RemoveNetworkSecurityGroupSecurityRules(ctx context.Context, id string, details core.RemoveNetworkSecurityGroupSecurityRulesDetails) (*core.RemoveNetworkSecurityGroupSecurityRulesResponse, error) {
+	return nil, nil
+}
+
+func (c *MockVirtualNetworkClient) ListNetworkSecurityGroupSecurityRules(ctx context.Context, id string, direction core.ListNetworkSecurityGroupSecurityRulesDirectionEnum) ([]core.SecurityRule, error) {
+	return nil, nil
+}
+
+func (c *MockVirtualNetworkClient) UpdateNetworkSecurityGroupSecurityRules(ctx context.Context, id string, details core.UpdateNetworkSecurityGroupSecurityRulesDetails) (*core.UpdateNetworkSecurityGroupSecurityRulesResponse, error) {
+	return nil, nil
 }
 
 // NewClientProvisioner creates an OCI client from the given configuration.

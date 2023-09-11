@@ -347,7 +347,7 @@ func (d *FSSControllerDriver) getOrCreateMountTarget(ctx context.Context, storag
 	}
 	mountTargetIpId := activeMountTarget.PrivateIpIds[0]
 	log.Infof("getting private IP of mount target from mountTargetIpId %s", mountTargetIpId)
-	privateIpObject, err := d.client.Networking().GetPrivateIP(ctx, mountTargetIpId)
+	privateIpObject, err := d.client.Networking().GetPrivateIp(ctx, mountTargetIpId)
 	if err != nil {
 		log.With("service", "vcn", "verb", "get", "resource", "privateIp", "statusCode", util.GetHttpStatusCode(err)).
 			With(zap.Error(err)).Error("Failed to fetch Mount Target Private IP from IP ID: %s", mountTargetIpId)
@@ -870,7 +870,7 @@ func (d *FSSControllerDriver) ValidateVolumeCapabilities(ctx context.Context, re
 	if mountTarget != nil && mountTarget.PrivateIpIds != nil {
 		mountTargetIpId := mountTarget.PrivateIpIds[0]
 		log = log.With("mountTargetIpId", mountTargetIpId)
-		privateIpObject, err := d.client.Networking().GetPrivateIP(ctx, mountTargetIpId)
+		privateIpObject, err := d.client.Networking().GetPrivateIp(ctx, mountTargetIpId)
 		if err != nil {
 			log.With("service", "vcn", "verb", "get", "resource", "privateIp", "statusCode", util.GetHttpStatusCode(err)).
 				With(zap.Error(err)).Errorf("Failed to fetch Mount Target Private IP from IP ID: %s", mountTargetIpId)

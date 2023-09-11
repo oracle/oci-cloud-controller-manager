@@ -50,6 +50,9 @@ export CMEK_KMS_KEY=""
 # Mandatory
 export NSG_OCIDS=","
 
+# NSG Network security group created in cluster's VCN for backend management, this NSG will have to be attached to the nodes manually for tests to pass
+export BACKEND_NSG_OCIDS=""
+
 # FSS VOLUME HANDLE in the format filesystem_ocid:mountTargetIP:export_path
 # Make sure fss volume handle is in the same subnet as your nodes
 # Create a file system, file export path and mount target in your VCN by following
