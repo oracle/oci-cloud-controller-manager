@@ -18,7 +18,7 @@ import (
 	"testing"
 )
 
-func TestMapProviderIDToInstanceID(t *testing.T) {
+func TestMapProviderIDToResourceID(t *testing.T) {
 	testCases := map[string]struct {
 		providerID string
 		instanceID string
@@ -43,7 +43,7 @@ func TestMapProviderIDToInstanceID(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			result, err := MapProviderIDToInstanceID(tc.providerID)
+			result, err := MapProviderIDToResourceID(tc.providerID)
 			if result != tc.instanceID {
 				t.Errorf("Expected instance id %q, but got %q", tc.instanceID, result)
 			}

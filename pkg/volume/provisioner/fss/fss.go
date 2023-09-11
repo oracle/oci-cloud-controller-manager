@@ -188,7 +188,7 @@ func (fsp *filesystemProvisioner) Provision(options controller.ProvisionOptions,
 	{
 		id := target.PrivateIpIds[rand.Int()%len(target.PrivateIpIds)]
 		logger = logger.With("privateIPID", id)
-		privateIP, err := fsp.client.Networking().GetPrivateIP(ctx, id)
+		privateIP, err := fsp.client.Networking().GetPrivateIp(ctx, id)
 		if err != nil {
 			logger.With(zap.Error(err)).Error("Failed to retrieve IP address for mount target")
 			return nil, err

@@ -63,6 +63,8 @@ const (
 	Delete = "delete"
 	// List the resource
 	List = "list"
+	// Get the resource
+	Get = "get"
 )
 
 const nonAlphanumericRegexExpression = "[^a-zA-Z0-9]+"
@@ -154,6 +156,16 @@ func toInt64(i *int64) int64 {
 		return 0
 	}
 	return *i
+}
+
+// contains is a utility method to check if a string is part of a slice
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }
 
 func getHealthCheckerChanges(actual *client.GenericHealthChecker, desired *client.GenericHealthChecker) []string {
@@ -600,6 +612,18 @@ func GetLoadBalancerName(service *api.Service) string {
 	return name
 }
 
+// generateNsgName gets the name of the NSG based on the service
+func generateNsgName(service *api.Service) string {
+	var name string
+	name = fmt.Sprintf("%s/%s/%s/nsg", service.Namespace, service.Name, service.UID)
+	if len(name) > 255 {
+		// 255 is the max length for display name
+		//https://docs.oracle.com/en-us/iaas/api/#/en/iaas/20160918/NetworkSecurityGroup/
+		name = name[:255]
+	}
+	return name
+}
+
 // validateProtocols validates that OCI supports the protocol of all
 // ServicePorts defined by a service.
 func validateProtocols(servicePorts []api.ServicePort, lbType string, secListMgmtMode string) error {
@@ -691,8 +715,8 @@ func sortAndCombineActions(logger *zap.SugaredLogger, backendSetActions []Action
 	return actions
 }
 
-func getMetric(lbtype string, metricType string) string {
-	if lbtype == LB {
+func getMetric(resourceType string, metricType string) string {
+	if resourceType == LB {
 		switch metricType {
 		case Create:
 			return metrics.LBProvision
@@ -702,7 +726,7 @@ func getMetric(lbtype string, metricType string) string {
 			return metrics.LBDelete
 		}
 	}
-	if lbtype == NLB {
+	if resourceType == NLB {
 		switch metricType {
 		case Create:
 			return metrics.NLBProvision
@@ -710,6 +734,17 @@ func getMetric(lbtype string, metricType string) string {
 			return metrics.NLBUpdate
 		case Delete:
 			return metrics.NLBDelete
+		}
+	}
+
+	if resourceType == NSG {
+		switch metricType {
+		case Create:
+			return metrics.NSGProvision
+		case Update:
+			return metrics.NSGUpdate
+		case Delete:
+			return metrics.NSGDelete
 		}
 	}
 	return ""

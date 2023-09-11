@@ -993,6 +993,21 @@ func TestCloudProvider_EnsureLoadBalancerDeleted(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "Security List Management mode 'NSG' - no err",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSecurityRuleManagementMode: "NSG",
+					},
+				},
+			},
+			err:     "",
+			wantErr: false,
+		},
+		{
 			name: "no management mode provided in annotation - no err",
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{

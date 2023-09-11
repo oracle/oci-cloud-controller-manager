@@ -204,3 +204,35 @@ func (c *mockVirtualNetworkClient) GetPrivateIp(ctx context.Context, request cor
 func (c *mockVirtualNetworkClient) GetPublicIpByIpAddress(ctx context.Context, request core.GetPublicIpByIpAddressRequest) (response core.GetPublicIpByIpAddressResponse, err error) {
 	return core.GetPublicIpByIpAddressResponse{}, nil
 }
+
+func (c *mockVirtualNetworkClient) GetNetworkSecurityGroup(ctx context.Context, request core.GetNetworkSecurityGroupRequest) (response core.GetNetworkSecurityGroupResponse, err error) {
+	return core.GetNetworkSecurityGroupResponse{}, nil
+}
+
+func (c *mockVirtualNetworkClient) CreateNetworkSecurityGroup(ctx context.Context, request core.CreateNetworkSecurityGroupRequest) (response core.CreateNetworkSecurityGroupResponse, err error) {
+	return core.CreateNetworkSecurityGroupResponse{}, nil
+}
+
+func (c *mockVirtualNetworkClient) UpdateNetworkSecurityGroup(ctx context.Context, request core.UpdateNetworkSecurityGroupRequest) (response core.UpdateNetworkSecurityGroupResponse, err error) {
+	return core.UpdateNetworkSecurityGroupResponse{}, nil
+}
+
+func (c *mockVirtualNetworkClient) DeleteNetworkSecurityGroup(ctx context.Context, request core.DeleteNetworkSecurityGroupRequest) (response core.DeleteNetworkSecurityGroupResponse, err error) {
+	return core.DeleteNetworkSecurityGroupResponse{}, nil
+}
+
+func (c *mockVirtualNetworkClient) AddNetworkSecurityGroupSecurityRules(ctx context.Context, request core.AddNetworkSecurityGroupSecurityRulesRequest) (response core.AddNetworkSecurityGroupSecurityRulesResponse, err error) {
+	return core.AddNetworkSecurityGroupSecurityRulesResponse{}, nil
+}
+
+func (c *mockVirtualNetworkClient) RemoveNetworkSecurityGroupSecurityRules(ctx context.Context, request core.RemoveNetworkSecurityGroupSecurityRulesRequest) (response core.RemoveNetworkSecurityGroupSecurityRulesResponse, err error) {
+	return core.RemoveNetworkSecurityGroupSecurityRulesResponse{}, nil
+}
+
+func (c *mockVirtualNetworkClient) ListNetworkSecurityGroupSecurityRules(ctx context.Context, request core.ListNetworkSecurityGroupSecurityRulesRequest) (response core.ListNetworkSecurityGroupSecurityRulesResponse, err error) {
+	return core.ListNetworkSecurityGroupSecurityRulesResponse{}, nil
+}
+
+func (c *mockVirtualNetworkClient) UpdateNetworkSecurityGroupSecurityRules(ctx context.Context, request core.UpdateNetworkSecurityGroupSecurityRulesRequest) (response core.UpdateNetworkSecurityGroupSecurityRulesResponse, err error) {
+	return core.UpdateNetworkSecurityGroupSecurityRulesResponse{}, nil
+}
