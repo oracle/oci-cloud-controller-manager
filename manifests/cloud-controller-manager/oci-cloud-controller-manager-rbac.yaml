@@ -34,6 +34,7 @@ rules:
   - list
   - watch
   - patch
+  - get
 
 - apiGroups:
   - ""
@@ -130,6 +131,9 @@ rules:
   - serviceaccounts
   verbs:
   - create
+  - list
+  - get
+  - watch
 - apiGroups:
   - ""
   resources:

@@ -16,8 +16,6 @@
 
 # A small script to run the CCM ginkgo 'Canary' e2e tests, and, generate the
 # defined canary test response file.
-#
-# https://confluence.oci.oraclecorp.com/display/BRISTOL/OKE+Canary+Test+Image+Contract
 
 # Functions *******************************************************************
 #

@@ -4,7 +4,7 @@
 
 // Identity and Access Management Service API
 //
-// APIs for managing users, groups, compartments, policies, and identity domains.
+// Use the Identity and Access Management Service API to manage users, groups, identity domains, compartments, policies, tagging, and limits. For information about managing users, groups, compartments, and policies, see Identity and Access Management (without identity domains) (https://docs.cloud.oracle.com/iaas/Content/Identity/Concepts/overview.htm). For information about tagging and service limits, see Tagging (https://docs.cloud.oracle.com/iaas/Content/Tagging/Concepts/taggingoverview.htm) and Service Limits (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/servicelimits.htm). For information about creating, modifying, and deleting identity domains, see Identity and Access Management (with identity domains) (https://docs.cloud.oracle.com/iaas/Content/Identity/home.htm).
 //
 
 package identity
@@ -20,9 +20,10 @@ import (
 // Overview of IAM (https://docs.cloud.oracle.com/Content/Identity/getstarted/identity-domains.htm). If you're new to policies, see
 // Get Started with Policies (https://docs.cloud.oracle.com/Content/Identity/policiesgs/get-started-with-policies.htm).
 // The word "policy" is used by people in different ways:
-//   * An individual statement written in the policy language
-//   * A collection of statements in a single, named "policy" document (which has an Oracle Cloud ID (OCID) assigned to it)
-//   * The overall body of policies your organization uses to control access to resources
+//   - An individual statement written in the policy language
+//   - A collection of statements in a single, named "policy" document (which has an Oracle Cloud ID (OCID) assigned to it)
+//   - The overall body of policies your organization uses to control access to resources
+//
 // To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized,
 // talk to an administrator.
 // **Warning:** Oracle recommends that you avoid using any confidential information when you supply string values

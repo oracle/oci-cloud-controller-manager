@@ -68,7 +68,7 @@ const (
 	FIPS_ENABLED_FILE_PATH         = "/host/proc/sys/crypto/fips_enabled"
 	FINDMNT_COMMAND                = "findmnt"
 	CAT_COMMAND                    = "cat"
-	RPM_COMMAND                    = "rpm"
+	RPM_COMMAND                    = "rpm-host"
 )
 
 // Util interface
@@ -386,9 +386,8 @@ func IsFipsEnabled() (string, error) {
 
 	return string(output), nil
 }
-
 func IsInTransitEncryptionPackageInstalled() (bool, error) {
-	args := []string{"-q", "-a", "--root=/host"}
+	args := []string{"-q", InTransitEncryptionPackageName}
 	command := exec.Command(RPM_COMMAND, args...)
 	output, err := command.CombinedOutput()
 	if err != nil {
@@ -396,8 +395,8 @@ func IsInTransitEncryptionPackageInstalled() (bool, error) {
 	}
 
 	if len(output) > 0 {
-		list := string(output)
-		if strings.Contains(list, InTransitEncryptionPackageName) {
+		rpmSearchOutput := string(output)
+		if strings.Contains(rpmSearchOutput, InTransitEncryptionPackageName) && !strings.Contains(rpmSearchOutput, "not installed") {
 			return true, nil
 		}
 		return false, nil

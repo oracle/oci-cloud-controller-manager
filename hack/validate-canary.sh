@@ -16,8 +16,6 @@
 
 
 # A small script to validate the CCM 'Canary' test image works as expected. 
-#
-# https://confluence.oci.oraclecorp.com/display/BRISTOL/OKE+Canary+Test+Image+Contract
 
 
 # Helper Functions ************************************************************

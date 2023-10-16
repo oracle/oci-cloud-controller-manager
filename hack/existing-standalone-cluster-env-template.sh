@@ -48,7 +48,7 @@ export CMEK_KMS_KEY=""
 # CCM E2E tests require two NSGs to run successfully. Please create two NSGs in the cluster's VCN and set NSG_OCIDS
 # NSG_OCIDS example ocid1.networksecuritygroup.relm.region.aa...aa,ocid1.networksecuritygroup.relm.region.aa...aa
 # Mandatory
-export NSG_OCIDS=""
+export NSG_OCIDS=","
 
 # FSS VOLUME HANDLE in the format filesystem_ocid:mountTargetIP:export_path
 # Make sure fss volume handle is in the same subnet as your nodes
