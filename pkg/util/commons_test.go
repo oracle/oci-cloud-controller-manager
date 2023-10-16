@@ -74,16 +74,32 @@ func TestGetError(t *testing.T) {
 			err:           errors.New("Service error:InvalidParameter. error foo. http status code: 429. foo"),
 			expectedError: Err429,
 		},
+		"429_UpperCase": {
+			err:           errors.New("Service error:InvalidParameter. error foo. Http Status Code: 429. foo"),
+			expectedError: Err429,
+		},
 		"4xx": {
 			err:           errors.New("Service error:InvalidParameter. error foo. http status code: 400. foo"),
+			expectedError: Err4XX,
+		},
+		"4xx_UpperCase": {
+			err:           errors.New("Service error:InvalidParameter. error foo. Http Status Code: 400. foo"),
 			expectedError: Err4XX,
 		},
 		"5xx": {
 			err:           errors.New("Service error:InternalError. error bar. http status code: 500. bar"),
 			expectedError: Err5XX,
 		},
-		"LimitError": {
+		"5xx_UpperCase": {
+			err:           errors.New("Service error:InternalError. error bar. Http Status Code: 500. bar"),
+			expectedError: Err5XX,
+		},
+		"LimitError_AsServiceError": {
 			err:           errors.New("Service error:LimitExceeded. error bar. http status code: 400. foo "),
+			expectedError: ErrLimitExceeded,
+		},
+		"LimitError_AsErrorCode": {
+			err:           errors.New("Http Status Code: 400. Error Code: LimitExceeded. Opc request id: "),
 			expectedError: ErrLimitExceeded,
 		},
 		"ContextTimeoutError": {
