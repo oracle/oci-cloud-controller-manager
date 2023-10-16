@@ -30,7 +30,7 @@ type pvMounter struct {
 	logger       *zap.SugaredLogger
 }
 
-//NewFromPVDisk creates a new PV handler from PVDisk.
+// NewFromPVDisk creates a new PV handler from PVDisk.
 func NewFromPVDisk(logger *zap.SugaredLogger) Interface {
 	return &pvMounter{
 		runner:  exec.New(),
@@ -96,4 +96,8 @@ func (c *pvMounter) UnmountPath(path string) error {
 func (c *pvMounter) Resize(devicePath string, volumePath string) (bool, error) {
 	resizefs := mount.NewResizeFs(c.runner)
 	return resizefs.Resize(devicePath, volumePath)
+}
+
+func (c *pvMounter) GetDiskFormat(disk string) (string, error) {
+	return getDiskFormat(c.runner, disk, c.logger)
 }

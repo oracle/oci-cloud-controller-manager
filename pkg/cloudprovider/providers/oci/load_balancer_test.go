@@ -17,12 +17,17 @@ package oci
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
+	"time"
 
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/informers"
+	testclient "k8s.io/client-go/kubernetes/fake"
 
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
@@ -732,6 +737,127 @@ func TestCloudProvider_GetLoadBalancer(t *testing.T) {
 	}
 }
 
+func TestCloudProvider_getLoadBalancerProvider(t *testing.T) {
+
+	kc := NewSimpleClientset(
+		&v1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "sa", Namespace: "ns",
+			},
+		})
+
+	factory := informers.NewSharedInformerFactoryWithOptions(kc, time.Second, informers.WithNamespace("ns"))
+	serviceAccountInformer := factory.Core().V1().ServiceAccounts()
+	go serviceAccountInformer.Informer().Run(wait.NeverStop)
+
+	time.Sleep(time.Second)
+
+	cp := &CloudProvider{
+		client:               MockOCIClient{},
+		kubeclient:           kc,
+		ServiceAccountLister: serviceAccountInformer.Lister(),
+		config:               &providercfg.Config{CompartmentID: "testCompartment"},
+		logger:               zap.S(),
+	}
+
+	tests := map[string]struct {
+		service    *v1.Service
+		wantErr    bool
+		wantLbType string
+		cp         *CloudProvider
+	}{
+		"Get Load Balancer Provider type LB with Workload Identity RP": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "testservice-lb",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationServiceAccountName: `sa`,
+					},
+				},
+			},
+			wantErr:    false,
+			wantLbType: "*oci.MockLoadBalancerClient",
+			cp:         cp,
+		},
+		"Get Load Balancer Provider type NLB with Workload Identity RP": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "testservice-nlb",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:   "nlb",
+						ServiceAnnotationServiceAccountName: `sa`,
+					},
+				},
+			},
+			wantErr:    false,
+			wantLbType: "*oci.MockNetworkLoadBalancerClient",
+			cp:         cp,
+		},
+		"Fail to Get Load Balancer Provider type LB with Workload Identity RP when SA does not exist": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "testservice-get-sa-error",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationServiceAccountName: `sa-does-not-exist`,
+					},
+				},
+			},
+			wantErr: true,
+			cp:      cp,
+		},
+		"Get Load Balancer Provider type LB": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "testservice-lb-2",
+					UID:       "test-uid",
+				},
+			},
+			wantErr:    false,
+			wantLbType: "*oci.MockLoadBalancerClient",
+			cp:         cp,
+		},
+		"Get Load Balancer Provider type NLB": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "testservice-nlb-2",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			wantErr:    false,
+			wantLbType: "*oci.MockNetworkLoadBalancerClient",
+			cp:         cp,
+		},
+	}
+
+	t.Parallel()
+	for name, tt := range tests {
+		name, tt := name, tt
+		t.Run(name, func(t *testing.T) {
+			got, _ := tt.cp.getLoadBalancerProvider(context.Background(), tt.service)
+
+			if !tt.wantErr {
+				if reflect.DeepEqual(got, CloudLoadBalancerProvider{}) {
+					t.Errorf("GetLoadBalancerProvider() didn't expect an empty provider")
+				}
+				if fmt.Sprintf("%T", got.lbClient) != tt.wantLbType {
+					t.Errorf("GetLoadBalancerProvider() got LB of type = %T, want %T", got.lbClient, tt.wantLbType)
+				}
+			}
+		})
+	}
+}
+
 func TestUpdateLoadBalancerNetworkSecurityGroups(t *testing.T) {
 	var tests = map[string]struct {
 		spec         *LBSpec
@@ -901,6 +1027,13 @@ func TestCloudProvider_EnsureLoadBalancerDeleted(t *testing.T) {
 		logger:        zap.S(),
 		instanceCache: &mockInstanceCache{},
 		metricPusher:  nil,
+		kubeclient: testclient.NewSimpleClientset(
+			&v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "testservice", Namespace: "kube-system",
+				},
+			}),
+		lbLocks: NewLoadBalancerLocks(),
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

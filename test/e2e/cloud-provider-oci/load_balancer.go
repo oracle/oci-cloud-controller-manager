@@ -25,6 +25,8 @@ import (
 	. "github.com/onsi/gomega"
 	cloudprovider "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci"
 	sharedfw "github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
+
+	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -757,7 +759,7 @@ var _ = Describe("Configure preservation of source IP in NLB", func() {
 				} else {
 					sharedfw.Failf("Compartment Id undefined.")
 				}
-				loadBalancer, err := f.Client.LoadBalancer(test.lbType).GetLoadBalancerByName(ctx, compartmentId, lbName)
+				loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), test.lbType, "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
 				sharedfw.ExpectNoError(err)
 
 				By("Validate isPreserveSource in the backend set is as expected")
@@ -883,7 +885,7 @@ var _ = Describe("LB Properties", func() {
 				} else {
 					sharedfw.Failf("Compartment Id undefined.")
 				}
-				loadBalancer, err := f.Client.LoadBalancer(test.lbType).GetLoadBalancerByName(ctx, compartmentId, lbName)
+				loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), test.lbType, "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
 				sharedfw.ExpectNoError(err)
 				err = f.VerifyHealthCheckConfig(*loadBalancer.Id, 1, 1000, test.CreateInterval, test.lbType)
 				sharedfw.ExpectNoError(err)
@@ -1033,7 +1035,7 @@ var _ = Describe("LB Properties", func() {
 				lbName := cloudprovider.GetLoadBalancerName(tcpService)
 				ctx := context.TODO()
 
-				loadBalancer, err := f.Client.LoadBalancer("lb").GetLoadBalancerByName(ctx, compartmentId, lbName)
+				loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), "lb", "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
 				sharedfw.ExpectNoError(err)
 				sharedfw.Logf("Actual Load Balancer Shape: %s, Expected shape: %s", *loadBalancer.ShapeName, lbShapeTest.initialShape)
 				Expect(strings.Compare(*loadBalancer.ShapeName, lbShapeTest.initialShape) == 0).To(BeTrue())
@@ -1118,7 +1120,7 @@ var _ = Describe("LB Properties", func() {
 			} else {
 				sharedfw.Failf("Compartment Id undefined.")
 			}
-			loadBalancer, err := f.Client.LoadBalancer("lb").GetLoadBalancerByName(ctx, compartmentId, lbName)
+			loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), "lb", "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
 			sharedfw.ExpectNoError(err)
 			err = f.VerifyLoadBalancerConnectionIdleTimeout(*loadBalancer.Id, 500)
 			sharedfw.ExpectNoError(err)
@@ -1245,7 +1247,7 @@ var _ = Describe("LB Properties", func() {
 					sharedfw.Failf("Compartment Id undefined.")
 				}
 
-				loadBalancer, err := f.Client.LoadBalancer(test.lbtype).GetLoadBalancerByName(ctx, compartmentId, lbName)
+				loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), test.lbtype, "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
 				sharedfw.ExpectNoError(err)
 				By("waiting upto 5m0s to verify whether LB has been created with provided initial NSGs through config")
 				err = f.WaitForLoadBalancerNSGChange(loadBalancer, []string{nsgIds}, test.lbtype)
@@ -1360,7 +1362,7 @@ var _ = Describe("LB Properties", func() {
 					sharedfw.Failf("Compartment Id undefined.")
 				}
 
-				loadBalancer, err := f.Client.LoadBalancer(test.lbType).GetLoadBalancerByName(ctx, compartmentId, lbName)
+				loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), test.lbType, "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
 				sharedfw.ExpectNoError(err)
 
 				err = f.VerifyLoadBalancerPolicy(*loadBalancer.Id, test.CreationAnnotations[test.PolicyAnnotation], test.lbType)
@@ -1456,7 +1458,7 @@ var _ = Describe("LB Properties", func() {
 					sharedfw.Failf("Compartment Id undefined.")
 				}
 
-				loadBalancer, err := f.Client.LoadBalancer(test.lbtype).GetLoadBalancerByName(ctx, compartmentId, lbName)
+				loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), test.lbtype, "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
 				sharedfw.ExpectNoError(err)
 				By("waiting upto 5m0s to verify whether LB has been created with public reservedIP")
 

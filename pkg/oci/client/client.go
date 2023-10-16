@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/oracle/oci-go-sdk/v65/common"
+	"github.com/oracle/oci-go-sdk/v65/common/auth"
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/oracle/oci-go-sdk/v65/filestorage"
 	"github.com/oracle/oci-go-sdk/v65/identity"
@@ -33,6 +34,7 @@ import (
 	"github.com/oracle/oci-go-sdk/v65/networkloadbalancer"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/flowcontrol"
 )
@@ -45,7 +47,7 @@ const defaultSynchronousAPIPollContextTimeout = 10 * time.Minute
 // Interface of consumed OCI API functionality.
 type Interface interface {
 	Compute() ComputeInterface
-	LoadBalancer(string) GenericLoadBalancerInterface
+	LoadBalancer(*zap.SugaredLogger, string, string, *authv1.TokenRequest) GenericLoadBalancerInterface
 	Networking() NetworkingInterface
 	BlockStorage() BlockStorageInterface
 	FSS() FileStorageInterface
@@ -272,13 +274,69 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 	return c, nil
 }
 
-func (c *client) LoadBalancer(lbType string) GenericLoadBalancerInterface {
-	if lbType == "nlb" {
-		return c.networkloadbalancer
+// LoadBalancer constructs an OCI LB/NLB API client using workload identity token if service account provided
+// or else returns the default cluster level client
+func (c *client) LoadBalancer(logger *zap.SugaredLogger, lbType string, targetTenancyID string, tokenRequest *authv1.TokenRequest) (genericLoadBalancer GenericLoadBalancerInterface) {
+
+	// tokenRequest is nil if Workload Identity LB/NLB client is not requested
+	if tokenRequest == nil {
+		if lbType == "nlb" {
+			return c.networkloadbalancer
+		}
+		if lbType == "lb" {
+			return c.loadbalancer
+		}
+		logger.Error("Failed to get Client since load-balancer-type is neither lb or nlb!")
+		return nil
 	}
+
+	// If tokenRequest is present then the requested LB/NLB client is WRIS / Workload Identity RP based
+	tokenProvider := auth.NewSuppliedServiceAccountTokenProvider(tokenRequest.Status.Token)
+	configProvider, err := auth.OkeWorkloadIdentityConfigurationProviderWithServiceAccountTokenProvider(tokenProvider)
+	if err != nil {
+		logger.Error("Failed to get oke workload identity configuration provider! " + err.Error())
+		return nil
+	}
+
 	if lbType == "lb" {
-		return c.loadbalancer
+		lb, err := loadbalancer.NewLoadBalancerClientWithConfigurationProvider(configProvider)
+		if err != nil {
+			logger.Error("Failed to get new LB client with oke workload identity configuration provider! Error:" + err.Error())
+			return nil
+		}
+
+		err = configureCustomTransport(logger, &lb.BaseClient)
+		if err != nil {
+			logger.Error("Failed configure custom transport for LB Client! Error:" + err.Error())
+			return nil
+		}
+
+		return &loadbalancerClientStruct{
+			loadbalancer:    lb,
+			requestMetadata: c.requestMetadata,
+			rateLimiter:     c.rateLimiter,
+		}
 	}
+	if lbType == "nlb" {
+		nlb, err := networkloadbalancer.NewNetworkLoadBalancerClientWithConfigurationProvider(configProvider)
+		if err != nil {
+			logger.Error("Failed to get new NLB client with oke workload identity configuration provider! Error:" + err.Error())
+			return nil
+		}
+
+		err = configureCustomTransport(logger, &nlb.BaseClient)
+		if err != nil {
+			logger.Error("Failed configure custom transport for NLB Client! Error:" + err.Error())
+			return nil
+		}
+
+		return &networkLoadbalancer{
+			networkloadbalancer: nlb,
+			requestMetadata:     c.requestMetadata,
+			rateLimiter:         c.rateLimiter,
+		}
+	}
+	logger.Error("Failed to get Client since load-balancer-type is neither lb or nlb!")
 	return nil
 }
 

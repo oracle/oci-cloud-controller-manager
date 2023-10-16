@@ -29,6 +29,7 @@ import (
 	"github.com/oracle/oci-go-sdk/v65/filestorage"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -192,7 +193,7 @@ func (m MockFSSProvisionerClient) Compute() client.ComputeInterface {
 	return &MockComputeClient{}
 }
 
-func (m MockFSSProvisionerClient) LoadBalancer(s string) client.GenericLoadBalancerInterface {
+func (m MockFSSProvisionerClient) LoadBalancer(*zap.SugaredLogger, string, string, *authv1.TokenRequest) client.GenericLoadBalancerInterface {
 	return &MockLoadBalancerClient{}
 }
 

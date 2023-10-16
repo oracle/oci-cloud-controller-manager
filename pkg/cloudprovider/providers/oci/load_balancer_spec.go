@@ -145,6 +145,10 @@ const (
 	// ServiceAnnotationLoadBalancerNodeFilter is a service annotation to select specific nodes as your backend in the LB
 	// based on label selector.
 	ServiceAnnotationLoadBalancerNodeFilter = "oci.oraclecloud.com/node-label-selector"
+
+	// ServiceAnnotationServiceAccountName is a service annotation to select Service Account to be used to
+	// exchange for Workload Identity Token which can then be used for LB/NLB Client to communicate to OCI LB/NLB API.
+	ServiceAnnotationServiceAccountName = "oci.oraclecloud.com/workload-service-account"
 )
 
 // NLB specific annotations

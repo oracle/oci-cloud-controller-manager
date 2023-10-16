@@ -26,6 +26,9 @@ type NetworkLoadBalancerClient struct {
 // NewNetworkLoadBalancerClientWithConfigurationProvider Creates a new default NetworkLoadBalancer client with the given configuration provider.
 // the configuration provider will be used for the default signer as well as reading the region
 func NewNetworkLoadBalancerClientWithConfigurationProvider(configProvider common.ConfigurationProvider) (client NetworkLoadBalancerClient, err error) {
+	if enabled := common.CheckForEnabledServices("networkloadbalancer"); !enabled {
+		return client, fmt.Errorf("the Alloy configuration disabled this service, this behavior is controlled by OciSdkEnabledServicesMap variables. Please check if your local alloy_config file configured the service you're targeting or contact the cloud provider on the availability of this service")
+	}
 	provider, err := auth.GetGenericConfigurationProvider(configProvider)
 	if err != nil {
 		return client, err
@@ -77,7 +80,7 @@ func (client *NetworkLoadBalancerClient) setConfigurationProvider(configProvider
 	region, _ := configProvider.Region()
 	client.SetRegion(region)
 	if client.Host == "" {
-		return fmt.Errorf("Invalid region or Host. Endpoint cannot be constructed without endpointServiceName or serviceEndpointTemplate for a dotted region")
+		return fmt.Errorf("invalid region or Host. Endpoint cannot be constructed without endpointServiceName or serviceEndpointTemplate for a dotted region")
 	}
 	client.config = &configProvider
 	return nil
@@ -91,7 +94,7 @@ func (client *NetworkLoadBalancerClient) ConfigurationProvider() *common.Configu
 // ChangeNetworkLoadBalancerCompartment Moves a network load balancer into a different compartment within the same tenancy. For information about moving resources
 // between compartments, see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/iaas/Content/Identity/Tasks/managingcompartments.htm#moveRes).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/ChangeNetworkLoadBalancerCompartment.go.html to see an example of how to use ChangeNetworkLoadBalancerCompartment API.
 func (client NetworkLoadBalancerClient) ChangeNetworkLoadBalancerCompartment(ctx context.Context, request ChangeNetworkLoadBalancerCompartmentRequest) (response ChangeNetworkLoadBalancerCompartmentResponse, err error) {
@@ -153,7 +156,7 @@ func (client NetworkLoadBalancerClient) changeNetworkLoadBalancerCompartment(ctx
 
 // CreateBackend Adds a backend server to a backend set.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/CreateBackend.go.html to see an example of how to use CreateBackend API.
 func (client NetworkLoadBalancerClient) CreateBackend(ctx context.Context, request CreateBackendRequest) (response CreateBackendResponse, err error) {
@@ -215,7 +218,7 @@ func (client NetworkLoadBalancerClient) createBackend(ctx context.Context, reque
 
 // CreateBackendSet Adds a backend set to a network load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/CreateBackendSet.go.html to see an example of how to use CreateBackendSet API.
 func (client NetworkLoadBalancerClient) CreateBackendSet(ctx context.Context, request CreateBackendSetRequest) (response CreateBackendSetResponse, err error) {
@@ -277,7 +280,7 @@ func (client NetworkLoadBalancerClient) createBackendSet(ctx context.Context, re
 
 // CreateListener Adds a listener to a network load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/CreateListener.go.html to see an example of how to use CreateListener API.
 func (client NetworkLoadBalancerClient) CreateListener(ctx context.Context, request CreateListenerRequest) (response CreateListenerResponse, err error) {
@@ -339,7 +342,7 @@ func (client NetworkLoadBalancerClient) createListener(ctx context.Context, requ
 
 // CreateNetworkLoadBalancer Creates a network load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/CreateNetworkLoadBalancer.go.html to see an example of how to use CreateNetworkLoadBalancer API.
 func (client NetworkLoadBalancerClient) CreateNetworkLoadBalancer(ctx context.Context, request CreateNetworkLoadBalancerRequest) (response CreateNetworkLoadBalancerResponse, err error) {
@@ -401,7 +404,7 @@ func (client NetworkLoadBalancerClient) createNetworkLoadBalancer(ctx context.Co
 
 // DeleteBackend Removes a backend server from a given network load balancer and backend set.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/DeleteBackend.go.html to see an example of how to use DeleteBackend API.
 func (client NetworkLoadBalancerClient) DeleteBackend(ctx context.Context, request DeleteBackendRequest) (response DeleteBackendResponse, err error) {
@@ -459,7 +462,7 @@ func (client NetworkLoadBalancerClient) deleteBackend(ctx context.Context, reque
 // DeleteBackendSet Deletes the specified backend set. Note that deleting a backend set removes its backend servers from the network load balancer.
 // Before you can delete a backend set, you must remove it from any active listeners.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/DeleteBackendSet.go.html to see an example of how to use DeleteBackendSet API.
 func (client NetworkLoadBalancerClient) DeleteBackendSet(ctx context.Context, request DeleteBackendSetRequest) (response DeleteBackendSetResponse, err error) {
@@ -516,7 +519,7 @@ func (client NetworkLoadBalancerClient) deleteBackendSet(ctx context.Context, re
 
 // DeleteListener Deletes a listener from a network load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/DeleteListener.go.html to see an example of how to use DeleteListener API.
 func (client NetworkLoadBalancerClient) DeleteListener(ctx context.Context, request DeleteListenerRequest) (response DeleteListenerResponse, err error) {
@@ -573,7 +576,7 @@ func (client NetworkLoadBalancerClient) deleteListener(ctx context.Context, requ
 
 // DeleteNetworkLoadBalancer Deletes a network load balancer resource by identifier.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/DeleteNetworkLoadBalancer.go.html to see an example of how to use DeleteNetworkLoadBalancer API.
 func (client NetworkLoadBalancerClient) DeleteNetworkLoadBalancer(ctx context.Context, request DeleteNetworkLoadBalancerRequest) (response DeleteNetworkLoadBalancerResponse, err error) {
@@ -630,7 +633,7 @@ func (client NetworkLoadBalancerClient) deleteNetworkLoadBalancer(ctx context.Co
 
 // GetBackend Retrieves the configuration information for the specified backend server.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/GetBackend.go.html to see an example of how to use GetBackend API.
 func (client NetworkLoadBalancerClient) GetBackend(ctx context.Context, request GetBackendRequest) (response GetBackendResponse, err error) {
@@ -687,7 +690,7 @@ func (client NetworkLoadBalancerClient) getBackend(ctx context.Context, request 
 
 // GetBackendHealth Retrieves the current health status of the specified backend server.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/GetBackendHealth.go.html to see an example of how to use GetBackendHealth API.
 func (client NetworkLoadBalancerClient) GetBackendHealth(ctx context.Context, request GetBackendHealthRequest) (response GetBackendHealthResponse, err error) {
@@ -744,7 +747,7 @@ func (client NetworkLoadBalancerClient) getBackendHealth(ctx context.Context, re
 
 // GetBackendSet Retrieves the configuration information for the specified backend set.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/GetBackendSet.go.html to see an example of how to use GetBackendSet API.
 func (client NetworkLoadBalancerClient) GetBackendSet(ctx context.Context, request GetBackendSetRequest) (response GetBackendSetResponse, err error) {
@@ -801,7 +804,7 @@ func (client NetworkLoadBalancerClient) getBackendSet(ctx context.Context, reque
 
 // GetBackendSetHealth Retrieves the health status for the specified backend set.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/GetBackendSetHealth.go.html to see an example of how to use GetBackendSetHealth API.
 func (client NetworkLoadBalancerClient) GetBackendSetHealth(ctx context.Context, request GetBackendSetHealthRequest) (response GetBackendSetHealthResponse, err error) {
@@ -858,7 +861,7 @@ func (client NetworkLoadBalancerClient) getBackendSetHealth(ctx context.Context,
 
 // GetHealthChecker Retrieves the health check policy information for a given network load balancer and backend set.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/GetHealthChecker.go.html to see an example of how to use GetHealthChecker API.
 func (client NetworkLoadBalancerClient) GetHealthChecker(ctx context.Context, request GetHealthCheckerRequest) (response GetHealthCheckerResponse, err error) {
@@ -920,7 +923,7 @@ func (client NetworkLoadBalancerClient) getHealthChecker(ctx context.Context, re
 
 // GetListener Retrieves listener properties associated with a given network load balancer and listener name.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/GetListener.go.html to see an example of how to use GetListener API.
 func (client NetworkLoadBalancerClient) GetListener(ctx context.Context, request GetListenerRequest) (response GetListenerResponse, err error) {
@@ -977,7 +980,7 @@ func (client NetworkLoadBalancerClient) getListener(ctx context.Context, request
 
 // GetNetworkLoadBalancer Retrieves network load balancer configuration information by identifier.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/GetNetworkLoadBalancer.go.html to see an example of how to use GetNetworkLoadBalancer API.
 func (client NetworkLoadBalancerClient) GetNetworkLoadBalancer(ctx context.Context, request GetNetworkLoadBalancerRequest) (response GetNetworkLoadBalancerResponse, err error) {
@@ -1034,7 +1037,7 @@ func (client NetworkLoadBalancerClient) getNetworkLoadBalancer(ctx context.Conte
 
 // GetNetworkLoadBalancerHealth Retrieves the health status for the specified network load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/GetNetworkLoadBalancerHealth.go.html to see an example of how to use GetNetworkLoadBalancerHealth API.
 func (client NetworkLoadBalancerClient) GetNetworkLoadBalancerHealth(ctx context.Context, request GetNetworkLoadBalancerHealthRequest) (response GetNetworkLoadBalancerHealthResponse, err error) {
@@ -1091,7 +1094,7 @@ func (client NetworkLoadBalancerClient) getNetworkLoadBalancerHealth(ctx context
 
 // GetWorkRequest Retrieves the details of the work request with the given identifier.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/GetWorkRequest.go.html to see an example of how to use GetWorkRequest API.
 func (client NetworkLoadBalancerClient) GetWorkRequest(ctx context.Context, request GetWorkRequestRequest) (response GetWorkRequestResponse, err error) {
@@ -1148,7 +1151,7 @@ func (client NetworkLoadBalancerClient) getWorkRequest(ctx context.Context, requ
 
 // ListBackendSets Lists all backend sets associated with a given network load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/ListBackendSets.go.html to see an example of how to use ListBackendSets API.
 func (client NetworkLoadBalancerClient) ListBackendSets(ctx context.Context, request ListBackendSetsRequest) (response ListBackendSetsResponse, err error) {
@@ -1205,7 +1208,7 @@ func (client NetworkLoadBalancerClient) listBackendSets(ctx context.Context, req
 
 // ListBackends Lists the backend servers for a given network load balancer and backend set.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/ListBackends.go.html to see an example of how to use ListBackends API.
 func (client NetworkLoadBalancerClient) ListBackends(ctx context.Context, request ListBackendsRequest) (response ListBackendsResponse, err error) {
@@ -1262,7 +1265,7 @@ func (client NetworkLoadBalancerClient) listBackends(ctx context.Context, reques
 
 // ListListeners Lists all listeners associated with a given network load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/ListListeners.go.html to see an example of how to use ListListeners API.
 func (client NetworkLoadBalancerClient) ListListeners(ctx context.Context, request ListListenersRequest) (response ListListenersResponse, err error) {
@@ -1319,7 +1322,7 @@ func (client NetworkLoadBalancerClient) listListeners(ctx context.Context, reque
 
 // ListNetworkLoadBalancerHealths Lists the summary health statuses for all network load balancers in the specified compartment.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/ListNetworkLoadBalancerHealths.go.html to see an example of how to use ListNetworkLoadBalancerHealths API.
 func (client NetworkLoadBalancerClient) ListNetworkLoadBalancerHealths(ctx context.Context, request ListNetworkLoadBalancerHealthsRequest) (response ListNetworkLoadBalancerHealthsResponse, err error) {
@@ -1376,7 +1379,7 @@ func (client NetworkLoadBalancerClient) listNetworkLoadBalancerHealths(ctx conte
 
 // ListNetworkLoadBalancers Returns a list of network load balancers.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/ListNetworkLoadBalancers.go.html to see an example of how to use ListNetworkLoadBalancers API.
 func (client NetworkLoadBalancerClient) ListNetworkLoadBalancers(ctx context.Context, request ListNetworkLoadBalancersRequest) (response ListNetworkLoadBalancersResponse, err error) {
@@ -1433,7 +1436,7 @@ func (client NetworkLoadBalancerClient) listNetworkLoadBalancers(ctx context.Con
 
 // ListNetworkLoadBalancersPolicies Lists the available network load balancer policies.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/ListNetworkLoadBalancersPolicies.go.html to see an example of how to use ListNetworkLoadBalancersPolicies API.
 func (client NetworkLoadBalancerClient) ListNetworkLoadBalancersPolicies(ctx context.Context, request ListNetworkLoadBalancersPoliciesRequest) (response ListNetworkLoadBalancersPoliciesResponse, err error) {
@@ -1491,7 +1494,7 @@ func (client NetworkLoadBalancerClient) listNetworkLoadBalancersPolicies(ctx con
 // ListNetworkLoadBalancersProtocols This API has been deprecated so it won't return the updated list of supported protocls.
 // Lists all supported traffic protocols.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/ListNetworkLoadBalancersProtocols.go.html to see an example of how to use ListNetworkLoadBalancersProtocols API.
 func (client NetworkLoadBalancerClient) ListNetworkLoadBalancersProtocols(ctx context.Context, request ListNetworkLoadBalancersProtocolsRequest) (response ListNetworkLoadBalancersProtocolsResponse, err error) {
@@ -1548,7 +1551,7 @@ func (client NetworkLoadBalancerClient) listNetworkLoadBalancersProtocols(ctx co
 
 // ListWorkRequestErrors Return a (paginated) list of errors for a given work request.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/ListWorkRequestErrors.go.html to see an example of how to use ListWorkRequestErrors API.
 func (client NetworkLoadBalancerClient) ListWorkRequestErrors(ctx context.Context, request ListWorkRequestErrorsRequest) (response ListWorkRequestErrorsResponse, err error) {
@@ -1605,7 +1608,7 @@ func (client NetworkLoadBalancerClient) listWorkRequestErrors(ctx context.Contex
 
 // ListWorkRequestLogs Returns a (paginated) list of logs for a given work request.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/ListWorkRequestLogs.go.html to see an example of how to use ListWorkRequestLogs API.
 func (client NetworkLoadBalancerClient) ListWorkRequestLogs(ctx context.Context, request ListWorkRequestLogsRequest) (response ListWorkRequestLogsResponse, err error) {
@@ -1662,7 +1665,7 @@ func (client NetworkLoadBalancerClient) listWorkRequestLogs(ctx context.Context,
 
 // ListWorkRequests Lists all work requests.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/ListWorkRequests.go.html to see an example of how to use ListWorkRequests API.
 func (client NetworkLoadBalancerClient) ListWorkRequests(ctx context.Context, request ListWorkRequestsRequest) (response ListWorkRequestsResponse, err error) {
@@ -1719,7 +1722,7 @@ func (client NetworkLoadBalancerClient) listWorkRequests(ctx context.Context, re
 
 // UpdateBackend Updates the configuration of a backend server within the specified backend set.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/UpdateBackend.go.html to see an example of how to use UpdateBackend API.
 func (client NetworkLoadBalancerClient) UpdateBackend(ctx context.Context, request UpdateBackendRequest) (response UpdateBackendResponse, err error) {
@@ -1781,7 +1784,7 @@ func (client NetworkLoadBalancerClient) updateBackend(ctx context.Context, reque
 
 // UpdateBackendSet Updates a backend set.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/UpdateBackendSet.go.html to see an example of how to use UpdateBackendSet API.
 func (client NetworkLoadBalancerClient) UpdateBackendSet(ctx context.Context, request UpdateBackendSetRequest) (response UpdateBackendSetResponse, err error) {
@@ -1843,7 +1846,7 @@ func (client NetworkLoadBalancerClient) updateBackendSet(ctx context.Context, re
 
 // UpdateHealthChecker Updates the health check policy for a given network load balancer and backend set.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/UpdateHealthChecker.go.html to see an example of how to use UpdateHealthChecker API.
 func (client NetworkLoadBalancerClient) UpdateHealthChecker(ctx context.Context, request UpdateHealthCheckerRequest) (response UpdateHealthCheckerResponse, err error) {
@@ -1905,7 +1908,7 @@ func (client NetworkLoadBalancerClient) updateHealthChecker(ctx context.Context,
 
 // UpdateListener Updates a listener for a given network load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/UpdateListener.go.html to see an example of how to use UpdateListener API.
 func (client NetworkLoadBalancerClient) UpdateListener(ctx context.Context, request UpdateListenerRequest) (response UpdateListenerResponse, err error) {
@@ -1967,7 +1970,7 @@ func (client NetworkLoadBalancerClient) updateListener(ctx context.Context, requ
 
 // UpdateNetworkLoadBalancer Updates the network load balancer
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/UpdateNetworkLoadBalancer.go.html to see an example of how to use UpdateNetworkLoadBalancer API.
 func (client NetworkLoadBalancerClient) UpdateNetworkLoadBalancer(ctx context.Context, request UpdateNetworkLoadBalancerRequest) (response UpdateNetworkLoadBalancerResponse, err error) {
@@ -2024,7 +2027,7 @@ func (client NetworkLoadBalancerClient) updateNetworkLoadBalancer(ctx context.Co
 
 // UpdateNetworkSecurityGroups Updates the network security groups associated with the specified network load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/networkloadbalancer/UpdateNetworkSecurityGroups.go.html to see an example of how to use UpdateNetworkSecurityGroups API.
 func (client NetworkLoadBalancerClient) UpdateNetworkSecurityGroups(ctx context.Context, request UpdateNetworkSecurityGroupsRequest) (response UpdateNetworkSecurityGroupsResponse, err error) {
