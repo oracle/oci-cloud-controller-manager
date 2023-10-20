@@ -24,6 +24,10 @@ type NodeCSIOptions struct {
 
 	EnableFssDriver            bool
 	FssEndpoint                string
+	OnlyEnableLustreDriver        bool
+	LustreCsiAddress              string
+	LustreKubeletRegistrationPath string
+	LustreEndpoint                string
 }
 
 type NodeOptions struct {

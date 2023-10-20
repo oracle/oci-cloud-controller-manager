@@ -88,6 +88,7 @@ var (
 	reservedIP                    string // Testing public reserved IP feature
 	architecture                  string
 	volumeHandle                  string // The FSS mount volume handle
+	lustreVolumeHandle			  string // The Lustre mount volume handle
 	staticSnapshotCompartmentOCID string // Compartment ID for cross compartment snapshot test
 	runUhpE2E                     bool   // Whether to run UHP E2Es, requires Volume Management Plugin enabled on the node and 16+ cores (check blockvolumeperformance public doc for the exact requirements)
 	enableParallelRun			  bool
@@ -115,6 +116,7 @@ func init() {
 	flag.StringVar(&mntTargetSubnetOCID, "mnt-target-subnet-id", "", "Mount Target Subnet is required for creating storage class for FSS dynamic testing")
 	flag.StringVar(&mntTargetCompartmentOCID, "mnt-target-compartment-id", "", "Mount Target Compartment is required for creating storage class for FSS dynamic testing with cross compartment")
 	flag.StringVar(&volumeHandle, "volume-handle", "", "FSS volume handle used to mount the File System")
+	flag.StringVar(&lustreVolumeHandle, "lustre-volume-handle", "", "Lustre volume handle used to mount the File System")
 
 	flag.StringVar(&imagePullRepo, "image-pull-repo", "", "Repo to pull images from. Will pull public images if not specified.")
 	flag.StringVar(&cmekKMSKey, "cmek-kms-key", "", "KMS key to be used for CMEK testing")
@@ -162,6 +164,7 @@ type Framework struct {
 	Architecture             string
 
 	VolumeHandle string
+	LustreVolumeHandle string
 
 	// Compartment ID for cross compartment snapshot test
 	StaticSnapshotCompartmentOcid string
@@ -189,6 +192,7 @@ func NewWithConfig() *Framework {
 		NsgOCIDS:                      nsgOCIDS,
 		ReservedIP:                    reservedIP,
 		VolumeHandle:                  volumeHandle,
+		LustreVolumeHandle:            lustreVolumeHandle,
 		StaticSnapshotCompartmentOcid: staticSnapshotCompartmentOCID,
 		RunUhpE2E:                     runUhpE2E,
 		AddOkeSystemTags:              addOkeSystemTags,
@@ -225,6 +229,8 @@ func (f *Framework) Initialize() {
 	Logf("OCI Mount Target Compartment OCID: %s", f.MntTargetCompartmentOcid)
 	f.VolumeHandle = volumeHandle
 	Logf("FSS Volume Handle is : %s", f.VolumeHandle)
+	f.LustreVolumeHandle = lustreVolumeHandle
+	Logf("Lustre Volume Handle is : %s", f.LustreVolumeHandle)
 	f.StaticSnapshotCompartmentOcid = staticSnapshotCompartmentOCID
 	Logf("Static Snapshot Compartment OCID: %s", f.StaticSnapshotCompartmentOcid)
 	f.RunUhpE2E = runUhpE2E
