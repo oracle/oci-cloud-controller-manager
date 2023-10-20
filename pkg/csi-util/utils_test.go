@@ -121,3 +121,34 @@ func Test_validateFsType(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateLustreVolumeId(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected bool
+	}{
+		// Valid cases
+		{"192.168.227.11@tcp1:192.168.227.12@tcp1:/demo", true},
+		{"192.168.227.11@tcp1:/demo", true},
+		// Invalid cases
+		{"192.168.227.11@tcp1:192.168.227.12@tcp1", false}, // No fsname provided
+		{"192.168.227.11@tcp1:192.168.227.12@tcp1:demo", false}, // fsname not starting with "/"
+		{"invalidip@tcp1:192.168.227.12@tcp1:/demo", false},  // Invalid IP address
+		{"192.168.227.11@tcp1:invalidip@tcp1:/demo", false},  // Invalid IP address
+
+		// Empty input
+		{"", false},
+
+		// Single IP
+		{"192.168.227.11", false}, // Missing ":" in the input
+	}
+
+	for _, test := range tests {
+		t.Run(test.input, func(t *testing.T) {
+			result := ValidateLustreVolumeId(test.input)
+			if result != test.expected {
+				t.Errorf("For input '%s', expected %v, but got %v", test.input, test.expected, result)
+			}
+		})
+	}
+}
