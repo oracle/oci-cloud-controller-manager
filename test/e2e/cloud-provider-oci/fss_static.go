@@ -59,7 +59,7 @@ var _ = Describe("Mount Options Static FSS test", func() {
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			pvcJig.CheckSinglePodReadWrite(f.Namespace.Name, pvc.Name, false, mountOptions)
 		})
-		// TODO : Uncomment the below test once https://jira-sd.mc1.oracleiaas.com/browse/FSS-132761 is Done.
+		// TODO : Uncomment the below test once task is Done.
 		/*It("Create PV PVC and POD for FSS in-transit encryption with mount options", func() {
 			if setupF.Architecture == "AMD" {
 				checkNodeAvailability(f)
