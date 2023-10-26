@@ -188,14 +188,7 @@ version:
 build-local: build
 
 .PHONY: test-local
-test-local: build-dirs
-	@docker run --rm \
-		   --privileged \
-			 -w $(DOCKER_REPO_ROOT) \
-			 -v $(PWD):$(DOCKER_REPO_ROOT) \
-			 -e COMPONENT="$(COMPONENT)" \
-			 -e GOPATH=/go/ \
-			odo-docker-signed-local.artifactory.oci.oraclecorp.com/odx-oke/oke/k8-manager-base:go1.20.4-1.0.19 \
+test-local: build \
 			make coverage image
 
 .PHONY: run-ccm-e2e-tests-local
