@@ -89,6 +89,7 @@ var (
 	architecture                  string
 	volumeHandle                  string // The FSS mount volume handle
 	lustreVolumeHandle			  string // The Lustre mount volume handle
+	lustreSubnetCidr              string // The Lustre Subnet Cidr
 	staticSnapshotCompartmentOCID string // Compartment ID for cross compartment snapshot test
 	runUhpE2E                     bool   // Whether to run UHP E2Es, requires Volume Management Plugin enabled on the node and 16+ cores (check blockvolumeperformance public doc for the exact requirements)
 	enableParallelRun			  bool
@@ -117,6 +118,7 @@ func init() {
 	flag.StringVar(&mntTargetCompartmentOCID, "mnt-target-compartment-id", "", "Mount Target Compartment is required for creating storage class for FSS dynamic testing with cross compartment")
 	flag.StringVar(&volumeHandle, "volume-handle", "", "FSS volume handle used to mount the File System")
 	flag.StringVar(&lustreVolumeHandle, "lustre-volume-handle", "", "Lustre volume handle used to mount the File System")
+	flag.StringVar(&lustreSubnetCidr, "lustre-subnet-cidr", "", "Lustre subnet cidr to identify SVNIC in lustre subnet to configure lnet.")
 
 	flag.StringVar(&imagePullRepo, "image-pull-repo", "", "Repo to pull images from. Will pull public images if not specified.")
 	flag.StringVar(&cmekKMSKey, "cmek-kms-key", "", "KMS key to be used for CMEK testing")
@@ -166,6 +168,8 @@ type Framework struct {
 	VolumeHandle string
 	LustreVolumeHandle string
 
+	LustreSubnetCidr string
+
 	// Compartment ID for cross compartment snapshot test
 	StaticSnapshotCompartmentOcid string
 	RunUhpE2E                     bool
@@ -193,6 +197,7 @@ func NewWithConfig() *Framework {
 		ReservedIP:                    reservedIP,
 		VolumeHandle:                  volumeHandle,
 		LustreVolumeHandle:            lustreVolumeHandle,
+		LustreSubnetCidr:              lustreSubnetCidr,
 		StaticSnapshotCompartmentOcid: staticSnapshotCompartmentOCID,
 		RunUhpE2E:                     runUhpE2E,
 		AddOkeSystemTags:              addOkeSystemTags,
@@ -231,6 +236,8 @@ func (f *Framework) Initialize() {
 	Logf("FSS Volume Handle is : %s", f.VolumeHandle)
 	f.LustreVolumeHandle = lustreVolumeHandle
 	Logf("Lustre Volume Handle is : %s", f.LustreVolumeHandle)
+	f.LustreSubnetCidr = lustreSubnetCidr
+	Logf("Lustre Subnet CIDR is : %s", f.LustreSubnetCidr)
 	f.StaticSnapshotCompartmentOcid = staticSnapshotCompartmentOCID
 	Logf("Static Snapshot Compartment OCID: %s", f.StaticSnapshotCompartmentOcid)
 	f.RunUhpE2E = runUhpE2E

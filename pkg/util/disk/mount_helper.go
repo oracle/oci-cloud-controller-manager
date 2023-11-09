@@ -24,6 +24,8 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"k8s.io/kubernetes/pkg/volume/util/hostutil"
 	"k8s.io/mount-utils"
 	utilexec "k8s.io/utils/exec"
@@ -31,9 +33,13 @@ import (
 
 const (
 	directoryDeletePollInterval = 5 * time.Second
+	errNotMounted = "not mounted"
+
 	EncryptedUmountCommand      = "encrypt-umount"
 
 	EncryptionMountCommand = "encrypt-mount"
+	UnmountCommand = "umount"
+
 )
 
 func MountWithEncrypt(logger *zap.SugaredLogger, source string, target string, fstype string, options []string) error {
@@ -215,4 +221,16 @@ func deviceOpened(pathname string, logger *zap.SugaredLogger) (bool, error) {
 		return false, nil
 	}
 	return hostUtil.DeviceOpened(pathname)
+}
+
+func  UnmountWithForce(targetPath string) error {
+	command := exec.Command(UnmountCommand, "-f", targetPath)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		if strings.Contains(string(output), errNotMounted) {
+			return nil
+		}
+		return status.Errorf(codes.Internal, err.Error())
+	}
+	return nil
 }

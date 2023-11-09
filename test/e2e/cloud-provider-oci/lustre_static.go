@@ -16,8 +16,9 @@ package e2e
 
 import (
 	. "github.com/onsi/ginkgo"
-	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
 	v1 "k8s.io/api/core/v1"
+
+	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
 )
 
 var _ = Describe("Lustre Static", func() {
@@ -26,7 +27,9 @@ var _ = Describe("Lustre Static", func() {
 
 		It("Multiple Pods should be able consume same PVC and read, write to same file", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-lustre-e2e-test")
-			pv := pvcJig.CreatePVorFailLustre(f.Namespace.Name, setupF.LustreVolumeHandle, []string{})
+			pvVolumeAttributes := map[string]string{"lustreSubnetCidr": setupF.LustreSubnetCidr, "setupLnet": "true"}
+
+			pv := pvcJig.CreatePVorFailLustre(f.Namespace.Name, setupF.LustreVolumeHandle, []string{}, pvVolumeAttributes)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailStaticLustre(f.Namespace.Name, pv.Name, "50Gi", nil)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			pvcJig.CheckMultiplePodReadWrite(f.Namespace.Name, pvc.Name, false)
@@ -47,7 +50,8 @@ var _ = Describe("Lustre Static", func() {
 
 			//LUSTRE
 			lusterPVCJig := framework.NewPVCTestJig(f.ClientSet, "csi-lustre-e2e-test")
-			lustrePV := lusterPVCJig.CreatePVorFailLustre(f.Namespace.Name, setupF.LustreVolumeHandle, []string{})
+			pvVolumeAttributes := map[string]string{"lustreSubnetCidr": setupF.LustreSubnetCidr, "setupLnet": "true"}
+ 			lustrePV := lusterPVCJig.CreatePVorFailLustre(f.Namespace.Name, setupF.LustreVolumeHandle, []string{}, pvVolumeAttributes)
 			lustrePVC := lusterPVCJig.CreateAndAwaitPVCOrFailStaticLustre(f.Namespace.Name, lustrePV.Name, "50Gi", nil)
 			f.VolumeIds = append(f.VolumeIds, lustrePVC.Spec.VolumeName)
 
