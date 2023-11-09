@@ -36,11 +36,12 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	ocicore "github.com/oracle/oci-go-sdk/v65/core"
+
 	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/csi/driver"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
-	ocicore "github.com/oracle/oci-go-sdk/v65/core"
 )
 
 const (
@@ -533,6 +534,7 @@ func (j *PVCTestJig) pvAddMountOptions(pv *v1.PersistentVolume,
 	return pv
 }
 
+
 // newPVTemplateFSS returns the default template for this jig, but
 // does not actually create the PV.  The default PV has the same name
 // as the jig
@@ -557,16 +559,18 @@ func (j *PVCTestJig) newPVTemplateFSS(namespace, volumeHandle, enableIntransitEn
 // newPVTemplateLustre returns the default template for this jig, but
 // does not actually create the PV.  The default PV has the same name
 // as the jig
-func (j *PVCTestJig) newPVTemplateLustre(namespace, volumeHandle string, mountOptions []string) *v1.PersistentVolume {
+func (j *PVCTestJig) newPVTemplateLustre(namespace, volumeHandle string, mountOptions []string, pvVolumeAttributes map[string]string) *v1.PersistentVolume {
 	pv := j.CreatePVTemplate(namespace, driver.LustreDriverName, "", "Retain")
 	pv = j.pvAddVolumeMode(pv, v1.PersistentVolumeFilesystem)
 	pv = j.pvAddAccessMode(pv, v1.ReadWriteMany)
 	pv = j.pvAddMountOptions(pv, mountOptions)
+
 	pv = j.pvAddPersistentVolumeSource(pv, v1.PersistentVolumeSource{
 		CSI: &v1.CSIPersistentVolumeSource{
 			Driver:       driver.LustreDriverName,
 			VolumeHandle: volumeHandle,
 			FSType: FsTypeLustre,
+			VolumeAttributes: pvVolumeAttributes,
 		},
 	})
 
@@ -625,8 +629,8 @@ func (j *PVCTestJig) CreatePVorFailFSS(namespace, volumeHandle, encryptInTransit
 // CreatePVorFailLustre creates a new claim based on the jig's
 // defaults. Callers can provide a function to tweak the claim object
 // before it is created.
-func (j *PVCTestJig) CreatePVorFailLustre(namespace, volumeHandle string, mountOptions []string) *v1.PersistentVolume {
-	pv := j.newPVTemplateLustre(namespace, volumeHandle, mountOptions)
+func (j *PVCTestJig) CreatePVorFailLustre(namespace, volumeHandle string, mountOptions []string, pvVolumeAttributes map[string]string) *v1.PersistentVolume {
+	pv := j.newPVTemplateLustre(namespace, volumeHandle, mountOptions, pvVolumeAttributes)
 
 	result, err := j.KubeClient.CoreV1().PersistentVolumes().Create(context.Background(), pv, metav1.CreateOptions{})
 	if err != nil {
