@@ -417,10 +417,11 @@ func (d FSSNodeDriver) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequ
 	ad, err := d.util.LookupNodeAvailableDomain(d.KubeClient, d.nodeID)
 
 	if err != nil {
-		d.logger.With(zap.Error(err)).With("nodeId", d.nodeID, "availableDomain", ad).Error("Available domain of node missing.")
+		d.logger.With(zap.Error(err)).With("nodeId", d.nodeID, "availabilityDomain", ad).Error("Failed to get availability domain of node from kube api server.")
+		return nil, status.Error(codes.Internal, "Failed to get availability domain of node from kube api server.")
 	}
 
-	d.logger.With("nodeId", d.nodeID, "availableDomain", ad).Info("Available domain of node identified.")
+	d.logger.With("nodeId", d.nodeID, "availabilityDomain", ad).Info("Availability domain of node identified.")
 	return &csi.NodeGetInfoResponse{
 		NodeId: d.nodeID,
 		// make sure that the driver works on this particular AD only
