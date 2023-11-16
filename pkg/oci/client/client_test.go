@@ -209,6 +209,10 @@ func (c *mockVirtualNetworkClient) GetNetworkSecurityGroup(ctx context.Context, 
 	return core.GetNetworkSecurityGroupResponse{}, nil
 }
 
+func (c *mockVirtualNetworkClient) ListNetworkSecurityGroups(ctx context.Context, request core.ListNetworkSecurityGroupsRequest) (response core.ListNetworkSecurityGroupsResponse, err error) {
+	return core.ListNetworkSecurityGroupsResponse{}, nil
+}
+
 func (c *mockVirtualNetworkClient) CreateNetworkSecurityGroup(ctx context.Context, request core.CreateNetworkSecurityGroupRequest) (response core.CreateNetworkSecurityGroupResponse, err error) {
 	return core.CreateNetworkSecurityGroupResponse{}, nil
 }

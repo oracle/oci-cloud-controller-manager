@@ -79,6 +79,7 @@ func generateNsgBackendIngressRules(
 		}
 	}
 
+	healthCheckPortFound := false
 	for _, port := range ports {
 		if port.BackendPort != 0 { // Can happen when there are no backends.
 			rule := makeNsgSecurityRule(core.SecurityRuleDirectionIngress, frontendNsgId, serviceUid, port.BackendPort, core.SecurityRuleSourceTypeNetworkSecurityGroup)
@@ -90,7 +91,8 @@ func generateNsgBackendIngressRules(
 			ingressRules = append(ingressRules, rule)
 
 		}
-		if port.HealthCheckerPort != 0 {
+		if !healthCheckPortFound && port.HealthCheckerPort != 0 {
+			healthCheckPortFound = true
 			rule := makeNsgSecurityRule(core.SecurityRuleDirectionIngress, frontendNsgId, serviceUid, port.HealthCheckerPort, core.SecurityRuleSourceTypeNetworkSecurityGroup)
 			logger.With(
 				"source", *rule.Source,
@@ -100,8 +102,7 @@ func generateNsgBackendIngressRules(
 			ingressRules = append(ingressRules, rule)
 		}
 	}
-	uniqueIngressRules := removeDuplicateGeneratedRules(ingressRules)
-	return uniqueIngressRules
+	return ingressRules
 }
 
 // generateNsgLoadBalancerIngressRules is a helper method to generate the ingress rules for the frontend NSG
@@ -132,7 +133,7 @@ func generateNsgLoadBalancerIngressRules(
 		}
 	}
 
-	return removeDuplicateGeneratedRules(ingressRules)
+	return ingressRules
 }
 
 // generateNsgLoadBalancerEgressRules is a helper method to generate the egress rules for the frontend NSG
@@ -145,32 +146,35 @@ func generateNsgLoadBalancerEgressRules(logger *zap.SugaredLogger, ports map[str
 
 	rule := core.SecurityRule{}
 	if len(backendNsgIds) != 0 {
+		healthCheckPortFound := false
 		for _, port := range ports {
 			if port.BackendPort != 0 {
 				for _, backendNsgId := range backendNsgIds {
 					rule = makeNsgSecurityRule(core.SecurityRuleDirectionEgress, backendNsgId, serviceUid, port.BackendPort, core.SecurityRuleSourceTypeNetworkSecurityGroup)
 					egressRules = append(egressRules, rule)
+					logger.With(
+						"destination", *rule.Destination,
+						"destinationPortRangeMin", *rule.TcpOptions.DestinationPortRange.Min,
+						"destinationPortRangeMax", *rule.TcpOptions.DestinationPortRange.Max,
+					).Debug("Adding load balancer egress security rule with backend port on frontend nsg")
 				}
-				logger.With(
-					"destination", *rule.Destination,
-					"destinationPortRangeMin", *rule.TcpOptions.DestinationPortRange.Min,
-					"destinationPortRangeMax", *rule.TcpOptions.DestinationPortRange.Max,
-				).Debug("Adding load balancer egress security rule with backend port on frontend nsg")
 			}
-			if port.HealthCheckerPort != 0 {
+			if !healthCheckPortFound && port.HealthCheckerPort != 0 {
+				healthCheckPortFound = true
 				for _, backendNsgId := range backendNsgIds {
 					rule = makeNsgSecurityRule(core.SecurityRuleDirectionEgress, backendNsgId, serviceUid, port.HealthCheckerPort, core.SecurityRuleSourceTypeNetworkSecurityGroup)
 					egressRules = append(egressRules, rule)
+					logger.With(
+						"destination", *rule.Destination,
+						"destinationPortRangeMin", *rule.TcpOptions.DestinationPortRange.Min,
+						"destinationPortRangeMax", *rule.TcpOptions.DestinationPortRange.Max,
+					).Debug("Adding load balancer egress security rule with healthcheck port on frontend nsg")
 				}
-				logger.With(
-					"destination", *rule.Destination,
-					"destinationPortRangeMin", *rule.TcpOptions.DestinationPortRange.Min,
-					"destinationPortRangeMax", *rule.TcpOptions.DestinationPortRange.Max,
-				).Debug("Adding load balancer egress security rule with healthcheck port on frontend nsg")
 			}
+
 		}
 	}
-	return removeDuplicateGeneratedRules(egressRules)
+	return egressRules
 }
 
 // makeNsgSecurityRule is a helper method to build the Security Rule using direction, source and sourceType (cidr/nsg)
@@ -196,36 +200,6 @@ func makeNsgSecurityRule(direction core.SecurityRuleDirectionEnum, source string
 		rule.Direction = core.SecurityRuleDirectionIngress
 	}
 	return rule
-}
-
-// removeDuplicateGeneratedRules is a method that returns unique SecurityRules for a given slice of SecurityRules
-func removeDuplicateGeneratedRules(securityRules []core.SecurityRule) []core.SecurityRule {
-	uniqueSecurityRule := []core.SecurityRule{}
-	type key struct {
-		source string
-		port   int
-	}
-	m := make(map[key]int)
-	for _, v := range securityRules {
-		var k = key{}
-		if v.Direction == core.SecurityRuleDirectionEgress {
-			k = key{*v.Destination, *v.TcpOptions.DestinationPortRange.Max}
-		} else {
-			k = key{*v.Source, *v.TcpOptions.DestinationPortRange.Max}
-		}
-
-		if i, ok := m[k]; ok {
-			// Overwrite previous value per requirement in
-			// question to keep last matching value.
-			uniqueSecurityRule[i] = v
-		} else {
-			// Unique key found. Record position and collect
-			// in result.
-			m[k] = len(uniqueSecurityRule)
-			uniqueSecurityRule = append(uniqueSecurityRule, v)
-		}
-	}
-	return uniqueSecurityRule
 }
 
 // getNsg implements the client method to get nsg
@@ -263,9 +237,9 @@ func (s *CloudProvider) addNetworkSecurityGroupSecurityRules(ctx context.Context
 			*nsgId,
 			core.AddNetworkSecurityGroupSecurityRulesDetails{SecurityRules: securityRuleToAddSecurityRuleDetails(rulesInBatches[i])})
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to add security rules for nsg: %s OpcRequestId: %s", *nsgId, *response.OpcRequestId)
+			return nil, errors.Wrapf(err, "failed to add security rules for nsg: %s OpcRequestId: %s", *nsgId, pointer.StringDeref(response.OpcRequestId, ""))
 		}
-		s.logger.Infof("AddNetworkSecurityGroupSecurityRules OpcRequestId %s", *response.OpcRequestId)
+		s.logger.Infof("AddNetworkSecurityGroupSecurityRules OpcRequestId %s", pointer.StringDeref(response.OpcRequestId, ""))
 	}
 	return response, nil
 }
@@ -279,9 +253,9 @@ func (s *CloudProvider) removeNetworkSecurityGroupSecurityRules(ctx context.Cont
 		response, err = s.client.Networking().RemoveNetworkSecurityGroupSecurityRules(ctx, *nsgId,
 			core.RemoveNetworkSecurityGroupSecurityRulesDetails{SecurityRuleIds: rulesInBatches[i]})
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to remove security rules for nsg: %s OpcRequestId: %s", *nsgId, *response.OpcRequestId)
+			return nil, errors.Wrapf(err, "failed to remove security rules for nsg: %s OpcRequestId: %s", *nsgId, pointer.StringDeref(response.OpcRequestId, ""))
 		}
-		s.logger.Infof("RemoveNetworkSecurityGroupSecurityRules OpcRequestId %s", *response.OpcRequestId)
+		s.logger.Infof("RemoveNetworkSecurityGroupSecurityRules OpcRequestId %s", pointer.StringDeref(response.OpcRequestId, ""))
 	}
 	return response, nil
 }
