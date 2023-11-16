@@ -99,7 +99,7 @@ func (c *MockVirtualNetworkClient) CreateNetworkSecurityGroup(ctx context.Contex
 		VcnId:          common.String(vcnId),
 		DisplayName:    common.String(displayName),
 		FreeformTags: map[string]string{
-			"CreatedBy":  "OKE-CCM",
+			"CreatedBy":  "CCM",
 			"ServiceUid": serviceUid,
 		},
 	}
@@ -116,6 +116,10 @@ func (c *MockVirtualNetworkClient) GetNetworkSecurityGroup(ctx context.Context, 
 		LifecycleState: "ACTIVE",
 	}
 	return &nsg, common.String("etag"), nil
+}
+
+func (c *MockVirtualNetworkClient) ListNetworkSecurityGroups(ctx context.Context, displayName, compartmentId, vcnId string) ([]core.NetworkSecurityGroup, error) {
+	return []core.NetworkSecurityGroup{}, nil
 }
 
 func (c *MockVirtualNetworkClient) DeleteNetworkSecurityGroup(ctx context.Context, id, etag string) (*string, error) {
@@ -140,11 +144,37 @@ func TestGenerateLbNsgIngressRules(t *testing.T) {
 				ListenerPort:      80,
 				BackendPort:       0,
 				HealthCheckerPort: 0,
-			}},
+			},
+			},
 			lbId: "lbocid",
 			expected: []core.SecurityRule{
 				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "0.0.0.0/0", "lbocid", 80, core.SecurityRuleSourceTypeCidrBlock),
 				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "1.1.1.1/1", "lbocid", 80, core.SecurityRuleSourceTypeCidrBlock),
+			},
+		},
+		{
+			name: "source cidr's multiple ports",
+			sourceCIDRs: []string{
+				"0.0.0.0/0",
+				"1.1.1.1/1",
+			},
+			port: map[string]portSpec{"TCP-80": {
+				ListenerPort:      80,
+				BackendPort:       0,
+				HealthCheckerPort: 0,
+			},
+				"TCP-443": {
+					ListenerPort:      443,
+					BackendPort:       0,
+					HealthCheckerPort: 0,
+				},
+			},
+			lbId: "lbocid",
+			expected: []core.SecurityRule{
+				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "0.0.0.0/0", "lbocid", 80, core.SecurityRuleSourceTypeCidrBlock),
+				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "1.1.1.1/1", "lbocid", 80, core.SecurityRuleSourceTypeCidrBlock),
+				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "0.0.0.0/0", "lbocid", 443, core.SecurityRuleSourceTypeCidrBlock),
+				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "1.1.1.1/1", "lbocid", 443, core.SecurityRuleSourceTypeCidrBlock),
 			},
 		},
 	}
@@ -152,6 +182,9 @@ func TestGenerateLbNsgIngressRules(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			rules := generateNsgLoadBalancerIngressRules(zap.S(), tc.sourceCIDRs, tc.port, tc.lbId)
+			sort.Slice(rules, func(i, j int) bool {
+				return *rules[i].TcpOptions.DestinationPortRange.Min < *rules[j].TcpOptions.DestinationPortRange.Min
+			})
 			if !reflect.DeepEqual(rules, tc.expected) {
 				t.Errorf("expected rules\n%+v\nbut got\n%+v", tc.expected, rules)
 			}
@@ -178,12 +211,12 @@ func TestGenerateLbNsgEgressRules(t *testing.T) {
 			lbId:          "lbocid",
 			backendNsgIds: []string{"nsgId1", "nsgId2", "nsgId3"},
 			expected: []core.SecurityRule{
-				makeNsgSecurityRule(core.SecurityRuleDirectionEgress, "nsgId1", "lbocid", 30001, core.SecurityRuleSourceTypeNetworkSecurityGroup),
-				makeNsgSecurityRule(core.SecurityRuleDirectionEgress, "nsgId2", "lbocid", 30001, core.SecurityRuleSourceTypeNetworkSecurityGroup),
-				makeNsgSecurityRule(core.SecurityRuleDirectionEgress, "nsgId3", "lbocid", 30001, core.SecurityRuleSourceTypeNetworkSecurityGroup),
 				makeNsgSecurityRule(core.SecurityRuleDirectionEgress, "nsgId1", "lbocid", 10257, core.SecurityRuleSourceTypeNetworkSecurityGroup),
 				makeNsgSecurityRule(core.SecurityRuleDirectionEgress, "nsgId2", "lbocid", 10257, core.SecurityRuleSourceTypeNetworkSecurityGroup),
 				makeNsgSecurityRule(core.SecurityRuleDirectionEgress, "nsgId3", "lbocid", 10257, core.SecurityRuleSourceTypeNetworkSecurityGroup),
+				makeNsgSecurityRule(core.SecurityRuleDirectionEgress, "nsgId1", "lbocid", 30001, core.SecurityRuleSourceTypeNetworkSecurityGroup),
+				makeNsgSecurityRule(core.SecurityRuleDirectionEgress, "nsgId2", "lbocid", 30001, core.SecurityRuleSourceTypeNetworkSecurityGroup),
+				makeNsgSecurityRule(core.SecurityRuleDirectionEgress, "nsgId3", "lbocid", 30001, core.SecurityRuleSourceTypeNetworkSecurityGroup),
 			},
 		},
 		{
@@ -197,8 +230,29 @@ func TestGenerateLbNsgEgressRules(t *testing.T) {
 			backendNsgIds: []string{"backendNSGocid"},
 			lbId:          "lbocid",
 			expected: []core.SecurityRule{
-				makeNsgSecurityRule(core.SecurityRuleDirectionEgress, "backendNSGocid", "lbocid", 30001, core.SecurityRuleSourceTypeNetworkSecurityGroup),
 				makeNsgSecurityRule(core.SecurityRuleDirectionEgress, "backendNSGocid", "lbocid", 10257, core.SecurityRuleSourceTypeNetworkSecurityGroup),
+				makeNsgSecurityRule(core.SecurityRuleDirectionEgress, "backendNSGocid", "lbocid", 30001, core.SecurityRuleSourceTypeNetworkSecurityGroup),
+			},
+		},
+		{
+			name: "new egress single backend nsg ocid",
+			desiredPort: map[string]portSpec{"TCP-80": {
+				ListenerPort:      0,
+				BackendPort:       30001,
+				HealthCheckerPort: 10257,
+			},
+				"TCP-443": {
+					ListenerPort:      0,
+					BackendPort:       30002,
+					HealthCheckerPort: 10257,
+				},
+			},
+			backendNsgIds: []string{"backendNSGocid"},
+			lbId:          "lbocid",
+			expected: []core.SecurityRule{
+				makeNsgSecurityRule(core.SecurityRuleDirectionEgress, "backendNSGocid", "lbocid", 10257, core.SecurityRuleSourceTypeNetworkSecurityGroup),
+				makeNsgSecurityRule(core.SecurityRuleDirectionEgress, "backendNSGocid", "lbocid", 30001, core.SecurityRuleSourceTypeNetworkSecurityGroup),
+				makeNsgSecurityRule(core.SecurityRuleDirectionEgress, "backendNSGocid", "lbocid", 30002, core.SecurityRuleSourceTypeNetworkSecurityGroup),
 			},
 		},
 		{
@@ -217,6 +271,9 @@ func TestGenerateLbNsgEgressRules(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			rules := generateNsgLoadBalancerEgressRules(zap.S(), tc.desiredPort, tc.backendNsgIds, tc.lbId)
+			sort.Slice(rules, func(i, j int) bool {
+				return *rules[i].TcpOptions.DestinationPortRange.Min < *rules[j].TcpOptions.DestinationPortRange.Min
+			})
 			if !reflect.DeepEqual(rules, tc.expected) {
 				t.Errorf("expected rules\n%+v\nbut got\n%+v", tc.expected, rules)
 			}
@@ -251,9 +308,30 @@ func TestGenerateBackendNsgIngressRules(t *testing.T) {
 			},
 		},
 		{
+			name:          "ingress backend rules",
+			frontendNsgId: "frontendnsgocid",
+			desiredPorts: map[string]portSpec{"TCP-80": {
+				BackendPort:       80,
+				HealthCheckerPort: k8sports.ProxyHealthzPort,
+			},
+				"TCP-443": {
+					BackendPort:       443,
+					HealthCheckerPort: k8sports.ProxyHealthzPort,
+				},
+			},
+			isPreserveSource: false,
+			sourceCIDRs:      []string{"0.0.0.0/0"},
+			lbId:             "lbocid",
+			expected: []core.SecurityRule{
+				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "frontendnsgocid", "lbocid", 80, core.SecurityRuleSourceTypeNetworkSecurityGroup),
+				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "frontendnsgocid", "lbocid", 443, core.SecurityRuleSourceTypeNetworkSecurityGroup),
+				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "frontendnsgocid", "lbocid", k8sports.ProxyHealthzPort, core.SecurityRuleSourceTypeNetworkSecurityGroup),
+			},
+		},
+		{
 			name: "ingress backend rules with isPreserveSourceIP set to true",
 			desiredPorts: map[string]portSpec{"TCP-80": {
-				BackendPort:       30000,
+				BackendPort:       3000,
 				HealthCheckerPort: k8sports.ProxyHealthzPort,
 			},
 			},
@@ -262,9 +340,9 @@ func TestGenerateBackendNsgIngressRules(t *testing.T) {
 			frontendNsgId:    "frontendnsgId",
 			lbId:             "lbocid",
 			expected: []core.SecurityRule{
-				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "0.0.0.0/0", "lbocid", 30000, core.SecurityRuleSourceTypeCidrBlock),
-				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "1.1.1.1/1", "lbocid", 30000, core.SecurityRuleSourceTypeCidrBlock),
-				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "frontendnsgId", "lbocid", 30000, core.SecurityRuleSourceTypeNetworkSecurityGroup),
+				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "0.0.0.0/0", "lbocid", 3000, core.SecurityRuleSourceTypeCidrBlock),
+				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "1.1.1.1/1", "lbocid", 3000, core.SecurityRuleSourceTypeCidrBlock),
+				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "frontendnsgId", "lbocid", 3000, core.SecurityRuleSourceTypeNetworkSecurityGroup),
 				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "frontendnsgId", "lbocid", k8sports.ProxyHealthzPort, core.SecurityRuleSourceTypeNetworkSecurityGroup),
 			},
 		},
@@ -273,66 +351,9 @@ func TestGenerateBackendNsgIngressRules(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			rules := generateNsgBackendIngressRules(zap.S(), tc.desiredPorts, tc.sourceCIDRs, tc.isPreserveSource, tc.frontendNsgId, tc.lbId)
-			if !reflect.DeepEqual(rules, tc.expected) {
-				t.Errorf("expected rules\n%+v\nbut got\n%+v", tc.expected, rules)
-			}
-		})
-	}
-}
-
-func TestNSGRemoveDuplicatesRules(t *testing.T) {
-	testCases := []struct {
-		name                   string
-		generatedSecurityRules []core.SecurityRule
-		expected               []core.SecurityRule
-	}{
-		{
-			name: "base case with duplicate healthcheck port rules",
-			generatedSecurityRules: []core.SecurityRule{
-				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "frontendnsgocid", "lbocid", 32482, core.SecurityRuleSourceTypeNetworkSecurityGroup),
-				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "frontendnsgocid", "lbocid", k8sports.ProxyHealthzPort, core.SecurityRuleSourceTypeNetworkSecurityGroup),
-				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "frontendnsgocid", "lbocid", k8sports.ProxyHealthzPort, core.SecurityRuleSourceTypeNetworkSecurityGroup),
-			},
-			expected: []core.SecurityRule{
-				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "frontendnsgocid", "lbocid", 32482, core.SecurityRuleSourceTypeNetworkSecurityGroup),
-				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "frontendnsgocid", "lbocid", k8sports.ProxyHealthzPort, core.SecurityRuleSourceTypeNetworkSecurityGroup),
-			},
-		},
-		{
-			name: "existing rule is empty",
-			generatedSecurityRules: []core.SecurityRule{
-				makeNsgSecurityRule(core.SecurityRuleDirectionEgress, "frontendnsgocid", "lbocid", 3001, core.SecurityRuleSourceTypeNetworkSecurityGroup),
-				makeNsgSecurityRule(core.SecurityRuleDirectionEgress, "frontendnsgocid", "lbocid", 3001, core.SecurityRuleSourceTypeNetworkSecurityGroup),
-				makeNsgSecurityRule(core.SecurityRuleDirectionEgress, "frontendnsgocid", "lbocid", k8sports.ProxyHealthzPort, core.SecurityRuleSourceTypeNetworkSecurityGroup),
-				makeNsgSecurityRule(core.SecurityRuleDirectionEgress, "frontendnsgocid", "lbocid", k8sports.ProxyHealthzPort, core.SecurityRuleSourceTypeNetworkSecurityGroup),
-				makeNsgSecurityRule(core.SecurityRuleDirectionEgress, "0.0.0.0/0", "lbocid", 81, core.SecurityRuleSourceTypeCidrBlock),
-				makeNsgSecurityRule(core.SecurityRuleDirectionEgress, "0.0.0.0/0", "lbocid", 81, core.SecurityRuleSourceTypeCidrBlock),
-			},
-			expected: []core.SecurityRule{
-				makeNsgSecurityRule(core.SecurityRuleDirectionEgress, "frontendnsgocid", "lbocid", 3001, core.SecurityRuleSourceTypeNetworkSecurityGroup),
-				makeNsgSecurityRule(core.SecurityRuleDirectionEgress, "frontendnsgocid", "lbocid", k8sports.ProxyHealthzPort, core.SecurityRuleSourceTypeNetworkSecurityGroup),
-				makeNsgSecurityRule(core.SecurityRuleDirectionEgress, "0.0.0.0/0", "lbocid", 81, core.SecurityRuleSourceTypeCidrBlock),
-			},
-		},
-		{
-			name: "existing rule has some random rule",
-			generatedSecurityRules: []core.SecurityRule{
-				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "frontendnsgocid", "lbocid", 3001, core.SecurityRuleSourceTypeNetworkSecurityGroup),
-				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "frontendnsgocid", "lbocid", k8sports.ProxyHealthzPort, core.SecurityRuleSourceTypeNetworkSecurityGroup),
-				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "0.0.0.0/0", "lbocid", 81, core.SecurityRuleSourceTypeCidrBlock),
-			},
-			expected: []core.SecurityRule{
-				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "frontendnsgocid", "lbocid", 3001, core.SecurityRuleSourceTypeNetworkSecurityGroup),
-				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "frontendnsgocid", "lbocid", k8sports.ProxyHealthzPort, core.SecurityRuleSourceTypeNetworkSecurityGroup),
-				makeNsgSecurityRule(core.SecurityRuleDirectionIngress, "0.0.0.0/0", "lbocid", 81, core.SecurityRuleSourceTypeCidrBlock),
-			},
-		},
-	}
-
-	for _, tc := range testCases {
-
-		t.Run(tc.name, func(t *testing.T) {
-			rules := removeDuplicateGeneratedRules(tc.generatedSecurityRules)
+			sort.Slice(rules, func(i, j int) bool {
+				return *rules[i].TcpOptions.DestinationPortRange.Min < *rules[j].TcpOptions.DestinationPortRange.Min
+			})
 			if !reflect.DeepEqual(rules, tc.expected) {
 				t.Errorf("expected rules\n%+v\nbut got\n%+v", tc.expected, rules)
 			}

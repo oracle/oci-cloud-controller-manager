@@ -282,6 +282,10 @@ func (c *MockVirtualNetworkClient) GetNetworkSecurityGroup(ctx context.Context, 
 	return nil, nil, nil
 }
 
+func (c *MockVirtualNetworkClient) ListNetworkSecurityGroups(ctx context.Context, displayName, compartmentId, vcnId string) ([]core.NetworkSecurityGroup, error) {
+	return nil, nil
+}
+
 func (c *MockVirtualNetworkClient) DeleteNetworkSecurityGroup(ctx context.Context, id, etag string) (*string, error) {
 	return nil, nil
 }

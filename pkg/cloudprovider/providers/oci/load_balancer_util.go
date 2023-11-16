@@ -554,10 +554,6 @@ func hasLoadbalancerShapeChanged(ctx context.Context, spec *LBSpec, lb *client.G
 // hasLoadBalancerNetworkSecurityGroupsChanged checks for the difference in actual NSGs
 // associated to LoadBalancer with Desired NSGs provided in service annotation
 func hasLoadBalancerNetworkSecurityGroupsChanged(ctx context.Context, actualNetworkSecurityGroup, desiredNetworkSecurityGroup []string) bool {
-	if len(desiredNetworkSecurityGroup) != len(actualNetworkSecurityGroup) {
-		return true
-	}
-
 	return !DeepEqualLists(actualNetworkSecurityGroup, desiredNetworkSecurityGroup)
 }
 

@@ -2070,6 +2070,12 @@ func TestHasLoadBalancerNetworkSecurityGroupsChanged(t *testing.T) {
 			desiredNetworkSecurityGroup: []string{"ocid1, ocid2"},
 			expected:                    true,
 		},
+		{
+			name:                        "Has Changes",
+			actualNetworkSecurityGroup:  []string{"ocid1"},
+			desiredNetworkSecurityGroup: []string{"ocid3"},
+			expected:                    true,
+		},
 	}
 
 	for _, tt := range testCases {

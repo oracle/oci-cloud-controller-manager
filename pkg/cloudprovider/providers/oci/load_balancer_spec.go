@@ -1318,3 +1318,22 @@ func getBackendSetNamePortMap(service *v1.Service) map[string]v1.ServicePort {
 
 	return backendSetPortMap
 }
+
+func addFrontendNsgToSpec(spec *LBSpec, frontendNsgId string) (*LBSpec, error) {
+	if spec == nil {
+		return nil, errors.New("service spec is empty")
+	}
+	if !contains(spec.NetworkSecurityGroupIds, frontendNsgId) {
+		spec.NetworkSecurityGroupIds = append(spec.NetworkSecurityGroupIds, frontendNsgId)
+	}
+	return spec, nil
+}
+
+func updateSpecWithLbSubnets(spec *LBSpec, lbSubnetId []string) (*LBSpec, error) {
+	if spec == nil {
+		return nil, errors.New("service spec is empty")
+	}
+	spec.Subnets = lbSubnetId
+
+	return spec, nil
+}
