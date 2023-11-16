@@ -300,7 +300,7 @@ var _ = Describe("Service NSG [Slow]", func() {
 				loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), lbType, "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
 				sharedfw.ExpectNoError(err)
 
-				foentendNsgId := loadBalancer.NetworkSecurityGroupIds[0]
+				frontendNsgId := loadBalancer.NetworkSecurityGroupIds[0]
 				// Count the number of ingress/egress rules with the original port so
 				// we can check the correct number are updated.
 				tcpService = jig.ChangeServiceNodePortOrFail(ns, tcpService.Name, tcpNodePort)
@@ -316,7 +316,7 @@ var _ = Describe("Service NSG [Slow]", func() {
 				}
 
 				// Check the correct number of rules are present on the NSG
-				sharedfw.WaitForSinglePortRulesAfterPortChangeOrFailNSG(f.Client, foentendNsgId, tcpNodePortOld, tcpNodePort, core.SecurityRuleDirectionEgress)
+				sharedfw.WaitForSinglePortRulesAfterPortChangeOrFailNSG(f.Client, frontendNsgId, tcpNodePortOld, tcpNodePort, core.SecurityRuleDirectionEgress)
 				backendNsgList := strings.Split(strings.ReplaceAll(setupF.BackendNsgOcid, " ", ""), ",")
 
 				for _, backendNsg := range backendNsgList {
@@ -374,7 +374,7 @@ var _ = Describe("Service NSG [Slow]", func() {
 				jig.TestReachableHTTP(false, tcpIngressIP, svcPort, loadBalancerCreateTimeout) // this may actually recreate the LB
 
 				// Change the services back to ClusterIP.
-				sharedfw.WaitForSinglePortRulesAfterPortChangeOrFailNSG(f.Client, foentendNsgId, svcPortOld, svcPort, core.SecurityRuleDirectionIngress)
+				sharedfw.WaitForSinglePortRulesAfterPortChangeOrFailNSG(f.Client, frontendNsgId, svcPortOld, svcPort, core.SecurityRuleDirectionIngress)
 
 				By("changing TCP service back to type=ClusterIP")
 				tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {

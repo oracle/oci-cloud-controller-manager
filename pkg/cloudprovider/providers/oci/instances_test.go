@@ -278,18 +278,6 @@ func (MockSecurityListManager) Delete(ctx context.Context, lbSubnets []*core.Sub
 
 type MockSecurityListManagerFactory func(mode string) MockSecurityListManager
 
-type MockNsgManager struct{}
-
-func (MockNsgManager) Add(ctx context.Context, lbService serviceComponents) error {
-	return nil
-}
-
-func (MockNsgManager) Delete(ctx context.Context, lbService serviceComponents) error {
-	return nil
-}
-
-type MockNsgManagerFactory func(mode string) MockNsgManager
-
 type MockOCIClient struct{}
 
 func (MockOCIClient) Compute() client.ComputeInterface {
