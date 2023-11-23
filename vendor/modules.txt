@@ -284,6 +284,7 @@ github.com/opencontainers/selinux/pkg/pwalkdir
 github.com/oracle/oci-go-sdk/v65/common
 github.com/oracle/oci-go-sdk/v65/common/auth
 github.com/oracle/oci-go-sdk/v65/common/utils
+github.com/oracle/oci-go-sdk/v65/containerengine
 github.com/oracle/oci-go-sdk/v65/core
 github.com/oracle/oci-go-sdk/v65/filestorage
 github.com/oracle/oci-go-sdk/v65/identity
