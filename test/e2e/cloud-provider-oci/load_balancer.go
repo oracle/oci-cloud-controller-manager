@@ -16,9 +16,10 @@ package e2e
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"github.com/oracle/oci-go-sdk/v65/core"
 	"net"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -26,6 +27,8 @@ import (
 	. "github.com/onsi/gomega"
 	cloudprovider "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci"
 	sharedfw "github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
+	"github.com/oracle/oci-go-sdk/v65/containerengine"
+	"github.com/oracle/oci-go-sdk/v65/core"
 
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
@@ -1357,7 +1360,9 @@ var _ = Describe("LB Properties", func() {
 				"lb",
 				map[string]string{
 					cloudprovider.ServiceAnnotationLoadBalancerInternal: "true",
-					cloudprovider.ServiceAnnotationLoadBalancerShape:    "10Mbps",
+					cloudprovider.ServiceAnnotationLoadBalancerShape: "flexible",
+					cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMin: "10",
+					cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMax: "10",
 				},
 				cloudprovider.ServiceAnnotationLoadBalancerNetworkSecurityGroups,
 			},
@@ -1485,7 +1490,9 @@ var _ = Describe("LB Properties", func() {
 			{
 				"lb",
 				map[string]string{
-					cloudprovider.ServiceAnnotationLoadBalancerShape:  "10Mbps",
+					cloudprovider.ServiceAnnotationLoadBalancerShape: "flexible",
+					cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMin: "10",
+					cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMax: "10",
 					cloudprovider.ServiceAnnotationLoadBalancerPolicy: cloudprovider.IPHashLoadBalancerPolicy,
 				},
 				map[string]string{
@@ -1595,7 +1602,9 @@ var _ = Describe("LB Properties", func() {
 			{
 				"lb",
 				map[string]string{
-					cloudprovider.ServiceAnnotationLoadBalancerShape: "10Mbps",
+					cloudprovider.ServiceAnnotationLoadBalancerShape: "flexible",
+					cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMin: "10",
+					cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMax: "10",
 				},
 			},
 			{
