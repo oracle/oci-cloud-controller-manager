@@ -20,16 +20,21 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	authv1 "k8s.io/api/authentication/v1"
+	kubeAPI "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/logging"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
 	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/oracle/oci-go-sdk/v65/identity"
@@ -38,11 +43,14 @@ import (
 
 const (
 	testMinimumVolumeSizeInBytes int64 = 50 * client.GiB
+	testTimeout                        = 15 * time.Second
+	testPollInterval                   = 5 * time.Second
 )
 
 var (
 	inTransitEncryptionEnabled  = true
 	inTransitEncryptionDisabled = false
+	errNotFound                 = errors.New("not found")
 	instances                   = map[string]*core.Instance{
 		"inTransitEnabled": {
 			LaunchOptions: &core.LaunchOptions{
@@ -53,6 +61,99 @@ var (
 			LaunchOptions: &core.LaunchOptions{
 				IsPvEncryptionInTransitEnabled: &inTransitEncryptionDisabled,
 			},
+		},
+		"sample-provider-id": {
+			LaunchOptions: &core.LaunchOptions{
+				IsPvEncryptionInTransitEnabled: &inTransitEncryptionDisabled,
+			},
+		},
+	}
+
+	volumes = map[string]*core.Volume{
+		"volume-in-provisioning-state": {
+			DisplayName:        common.String("volume-in-provisioning-state"),
+			LifecycleState:     core.VolumeLifecycleStateProvisioning,
+			SizeInMBs:          common.Int64(50000),
+			AvailabilityDomain: common.String("NWuj:PHX-AD-2"),
+			Id:                 common.String("volume-in-provisioning-state"),
+		},
+		"volume-in-available-state": {
+			DisplayName:        common.String("volume-in-available-state"),
+			LifecycleState:     core.VolumeLifecycleStateAvailable,
+			SizeInMBs:          common.Int64(50000),
+			AvailabilityDomain: common.String("NWuj:PHX-AD-2"),
+			Id:                 common.String("volume-in-available-state"),
+		},
+		"clone-volume-in-provisioning-state": {
+			DisplayName:        common.String("clone-volume-in-provisioning-state"),
+			LifecycleState:     core.VolumeLifecycleStateProvisioning,
+			SizeInMBs:          common.Int64(50000),
+			AvailabilityDomain: common.String("NWuj:PHX-AD-2"),
+			Id:                 common.String("clone-volume-in-provisioning-state"),
+		},
+	}
+
+	create_volume_requests = map[string]*csi.CreateVolumeRequest{
+		"volume-stuck-in-provisioning-state": {
+			Name: "volume-in-provisioning-state",
+			VolumeCapabilities: []*csi.VolumeCapability{{
+				AccessType: &csi.VolumeCapability_Mount{
+					Mount: &csi.VolumeCapability_MountVolume{},
+				},
+				AccessMode: &csi.VolumeCapability_AccessMode{
+					Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+				},
+			}},
+			AccessibilityRequirements: &csi.TopologyRequirement{Requisite: []*csi.Topology{
+				{
+					Segments: map[string]string{kubeAPI.LabelZoneFailureDomain: "ad1"},
+				},
+			},
+			},
+		},
+		"clone-volume-stuck-in-provisioning-state": {
+			Name: "clone-volume-in-provisioning-state",
+			VolumeContentSource: &csi.VolumeContentSource{
+				Type: &csi.VolumeContentSource_Volume{
+					Volume: &csi.VolumeContentSource_VolumeSource{
+						VolumeId: "volume-in-available-state",
+					},
+				},
+			},
+			CapacityRange: &csi.CapacityRange{
+				RequiredBytes: 50000 * client.MiB,
+			},
+			VolumeCapabilities: []*csi.VolumeCapability{{
+				AccessType: &csi.VolumeCapability_Mount{
+					Mount: &csi.VolumeCapability_MountVolume{},
+				},
+				AccessMode: &csi.VolumeCapability_AccessMode{
+					Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+				},
+			}},
+			AccessibilityRequirements: &csi.TopologyRequirement{Requisite: []*csi.Topology{
+				{
+					Segments: map[string]string{kubeAPI.LabelZoneFailureDomain: "ad1"},
+				},
+			},
+			},
+		},
+	}
+
+	volume_attachments = map[string]*core.IScsiVolumeAttachment{
+		"volume-attachment-stuck-in-detaching-state": {
+			DisplayName:        common.String("volume-attachment-stuck-in-detaching-state"),
+			LifecycleState:     core.VolumeAttachmentLifecycleStateDetaching,
+			AvailabilityDomain: common.String("NWuj:PHX-AD-2"),
+			Id:                 common.String("volume-attachment-stuck-in-detaching-state"),
+			InstanceId:         common.String("sample-instance-id"),
+		},
+		"volume-attachment-stuck-in-attaching-state": {
+			DisplayName:        common.String("volume-attachment-stuck-in-attaching-state"),
+			LifecycleState:     core.VolumeAttachmentLifecycleStateAttaching,
+			AvailabilityDomain: common.String("NWuj:PHX-AD-2"),
+			Id:                 common.String("volume-attachment-stuck-in-attaching-state"),
+			InstanceId:         common.String("sample-provider-id"),
 		},
 	}
 )
@@ -83,10 +184,38 @@ func (MockOCIClient) Identity() client.IdentityInterface {
 	return &MockIdentityClient{}
 }
 
-type MockBlockStorageClient struct{}
+type MockBlockStorageClient struct {
+	bs util.MockOCIBlockStorageClient
+}
 
 // AwaitVolumeCloneAvailableOrTimeout implements client.BlockStorageInterface.
 func (c *MockBlockStorageClient) AwaitVolumeCloneAvailableOrTimeout(ctx context.Context, id string) (*core.Volume, error) {
+	var volClone *core.Volume
+	if err := wait.PollImmediateUntil(testPollInterval, func() (bool, error) {
+		var err error
+		volClone, err = c.GetVolume(ctx, id)
+		if err != nil {
+			if !client.IsRetryable(err) {
+				return false, err
+			}
+			return false, nil
+		}
+
+		switch state := volClone.LifecycleState; state {
+		case core.VolumeLifecycleStateAvailable:
+			if *volClone.IsHydrated == true {
+				return true, nil
+			}
+			return false, nil
+		case core.VolumeLifecycleStateFaulty,
+			core.VolumeLifecycleStateTerminated,
+			core.VolumeLifecycleStateTerminating:
+			return false, errors.Errorf("Clone volume did not become available and hydrated (lifecycleState=%q) (hydrationStatus=%v)", state, *volClone.IsHydrated)
+		}
+		return false, nil
+	}, ctx.Done()); err != nil {
+		return nil, err
+	}
 	return &core.Volume{}, nil
 }
 
@@ -120,6 +249,18 @@ type MockProvisionerClient struct {
 }
 
 func (c *MockBlockStorageClient) AwaitVolumeAvailableORTimeout(ctx context.Context, id string) (*core.Volume, error) {
+	volume := volumes[id]
+	if volume == nil {
+		return &core.Volume{}, nil
+	}
+	if err := wait.PollImmediateUntil(testPollInterval, func() (bool, error) {
+		if volume.LifecycleState != core.VolumeLifecycleStateAvailable {
+			return false, nil
+		}
+		return true, nil
+	}, ctx.Done()); err != nil {
+		return nil, err
+	}
 	return &core.Volume{}, nil
 }
 
@@ -145,16 +286,51 @@ func (c *MockBlockStorageClient) GetVolume(ctx context.Context, id string) (*cor
 			SizeInGBs:          &oldSizeInGB,
 		}, nil
 	} else {
-		return nil, nil
+		return volumes[id], nil
 	}
 }
 
 func (c *MockBlockStorageClient) GetVolumesByName(ctx context.Context, volumeName, compartmentID string) ([]core.Volume, error) {
+	if volumeName == "get-volumes-by-name-timeout-volume" {
+		var page *string
+		var requestMetadata common.RequestMetadata
+		volumeList := make([]core.Volume, 0)
+		for {
+			listVolumeResponse, err := c.bs.ListVolumes(ctx,
+				core.ListVolumesRequest{
+					CompartmentId:   &compartmentID,
+					Page:            page,
+					DisplayName:     &volumeName,
+					RequestMetadata: requestMetadata,
+				})
+
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+
+			for _, volume := range listVolumeResponse.Items {
+				volumeState := volume.LifecycleState
+				if volumeState == core.VolumeLifecycleStateAvailable ||
+					volumeState == core.VolumeLifecycleStateProvisioning {
+					volumeList = append(volumeList, volume)
+				}
+			}
+
+			if page = listVolumeResponse.OpcNextPage; page == nil {
+				break
+			}
+		}
+	}
 	return []core.Volume{}, nil
 }
 
 // CreateVolume mocks the BlockStorage CreateVolume implementation
 func (c *MockBlockStorageClient) CreateVolume(ctx context.Context, details core.CreateVolumeDetails) (*core.Volume, error) {
+	volume := volumes[*details.DisplayName]
+	if volume != nil {
+		return volume, nil
+	}
+
 	id := "oc1.volume1.xxxx"
 	ad := "zkJl:US-ASHBURN-AD-1"
 	return &core.Volume{
@@ -349,7 +525,9 @@ func (p *MockProvisionerClient) LoadBalancer(*zap.SugaredLogger, string, string,
 	return &MockLoadBalancerClient{}
 }
 
-type MockComputeClient struct{}
+type MockComputeClient struct {
+	compute util.MockOCIComputeClient
+}
 
 // GetInstance gets information about the specified instance.
 func (c *MockComputeClient) GetInstance(ctx context.Context, id string) (*core.Instance, error) {
@@ -370,14 +548,78 @@ func (c *MockComputeClient) GetPrimaryVNICForInstance(ctx context.Context, compa
 }
 
 func (c *MockComputeClient) FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
+	var page *string
+	var requestMetadata common.RequestMetadata
+	for {
+		resp, err := c.compute.ListVolumeAttachments(ctx, core.ListVolumeAttachmentsRequest{
+			CompartmentId:   &compartmentID,
+			VolumeId:        &volumeID,
+			Page:            page,
+			RequestMetadata: requestMetadata,
+		})
+
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		for _, attachment := range resp.Items {
+			state := attachment.GetLifecycleState()
+			if state == core.VolumeAttachmentLifecycleStateAttaching ||
+				state == core.VolumeAttachmentLifecycleStateAttached {
+				return attachment, nil
+			}
+			if state == core.VolumeAttachmentLifecycleStateDetaching {
+				return attachment, errors.WithStack(errNotFound)
+			}
+		}
+
+		if page = resp.OpcNextPage; page == nil {
+			break
+		}
+	}
+	if volume_attachments[volumeID] != nil {
+		return volume_attachments[volumeID], nil
+	}
 	return nil, nil
 }
 
 func (c *MockComputeClient) FindActiveVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
+	if volumeID == "find-active-volume-attachment-timeout-volume" {
+		var page *string
+		var requestMetadata common.RequestMetadata
+		for {
+			resp, err := c.compute.ListVolumeAttachments(ctx, core.ListVolumeAttachmentsRequest{
+				CompartmentId:   &compartmentID,
+				VolumeId:        &volumeID,
+				Page:            page,
+				RequestMetadata: requestMetadata,
+			})
+
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+
+			for _, attachment := range resp.Items {
+				state := attachment.GetLifecycleState()
+				if state == core.VolumeAttachmentLifecycleStateAttaching ||
+					state == core.VolumeAttachmentLifecycleStateAttached ||
+					state == core.VolumeAttachmentLifecycleStateDetaching {
+					return attachment, nil
+				}
+			}
+
+			if page = resp.OpcNextPage; page == nil {
+				break
+			}
+		}
+	}
+	if volume_attachments[volumeID] != nil {
+		return volume_attachments[volumeID], nil
+	}
 	return nil, nil
 }
 
-func (MockComputeClient) AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool) (core.VolumeAttachment, error) {
+func (c *MockComputeClient) AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool) (core.VolumeAttachment, error) {
 	return nil, nil
 }
 
@@ -386,12 +628,54 @@ func (c *MockComputeClient) AttachVolume(ctx context.Context, instanceID, volume
 }
 
 func (c *MockComputeClient) WaitForVolumeAttached(ctx context.Context, attachmentID string) (core.VolumeAttachment, error) {
-	return nil, nil
+	var va core.VolumeAttachment
+	if err := wait.PollImmediateUntil(testPollInterval, func() (done bool, err error) {
+		if va, err = c.GetVolumeAttachment(ctx, attachmentID); err != nil {
+			if client.IsRetryable(err) {
+				return false, nil
+			}
+			return true, errors.WithStack(err)
+		}
+		switch state := va.GetLifecycleState(); state {
+		case core.VolumeAttachmentLifecycleStateAttached:
+			return true, nil
+		case core.VolumeAttachmentLifecycleStateDetaching, core.VolumeAttachmentLifecycleStateDetached:
+			return false, errors.Errorf("attachment %q in lifecycle state %q", *(va.GetId()), state)
+		}
+		return false, nil
+	}, ctx.Done()); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return va, nil
+}
+
+func (c *MockComputeClient) GetVolumeAttachment(ctx context.Context, id string) (core.VolumeAttachment, error) {
+	var requestMetadata common.RequestMetadata
+	resp, err := c.compute.GetVolumeAttachment(ctx, core.GetVolumeAttachmentRequest{
+		VolumeAttachmentId: &id,
+		RequestMetadata:    requestMetadata,
+	})
+
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return resp.VolumeAttachment, nil
 }
 
 func (c *MockComputeClient) DetachVolume(ctx context.Context, id string) error { return nil }
 
 func (c *MockComputeClient) WaitForVolumeDetached(ctx context.Context, attachmentID string) error {
+	if err := wait.PollImmediateUntil(testPollInterval, func() (done bool, err error) {
+		va := volume_attachments[attachmentID]
+		if va.GetLifecycleState() == core.VolumeAttachmentLifecycleStateDetached {
+			return true, nil
+		}
+		return false, nil
+	}, ctx.Done()); err != nil {
+		return errors.WithStack(err)
+	}
 	return nil
 }
 
@@ -470,7 +754,7 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 				},
 			},
 			want:    nil,
-			wantErr: errors.New("invalid volume capabilities requested"),
+			wantErr: errors.New("invalid volume capabilities requested. Only SINGLE_NODE_WRITER is supported ('accessModes.ReadWriteOnce' on Kubernetes)"),
 		},
 		{
 			name:   "Error for no VolumeCapabilities provided in CreateVolumeRequest",
@@ -500,7 +784,7 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 				},
 			},
 			want:    nil,
-			wantErr: errors.New("invalid volume capabilities requested"),
+			wantErr: errors.New("invalid volume capabilities requested. Only SINGLE_NODE_WRITER is supported ('accessModes.ReadWriteOnce' on Kubernetes)"),
 		},
 		{
 			name:   "Error for unsupported VolumeCapabilities: MULTI_NODE_SINGLE_WRITER provided in CreateVolumeRequest",
@@ -517,7 +801,7 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 				},
 			},
 			want:    nil,
-			wantErr: errors.New("invalid volume capabilities requested"),
+			wantErr: errors.New("invalid volume capabilities requested. Only SINGLE_NODE_WRITER is supported ('accessModes.ReadWriteOnce' on Kubernetes)"),
 		},
 		{
 			name:   "Error for exceeding capacity range",
@@ -567,21 +851,85 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 			want:    nil,
 			wantErr: errors.New("required in PreferredTopologies or allowedTopologies"),
 		},
+		{
+			name:   "Error for unsupported volumeMode Block",
+			fields: fields{},
+			args: args{
+				ctx: nil,
+				req: &csi.CreateVolumeRequest{
+					Name: "ut-volume",
+					VolumeCapabilities: []*csi.VolumeCapability{{
+						AccessType: &csi.VolumeCapability_Block{
+							Block: &csi.VolumeCapability_BlockVolume{},
+						},
+					}},
+				},
+			},
+			want:    nil,
+			wantErr: errors.New("driver does not support Block volumeMode. Please use Filesystem mode"),
+		},
+		{
+			name:   "Create Volume times out waiting for volume to become available",
+			fields: fields{},
+			args: args{
+				req: create_volume_requests["volume-stuck-in-provisioning-state"],
+			},
+			want:    nil,
+			wantErr: errors.New("Create volume failed with time out timed out waiting for the condition"),
+		},
+		{
+			name:   "GetVolumesByName times out due to multiple pages of ListVolumes results",
+			fields: fields{},
+			args: args{
+				req: &csi.CreateVolumeRequest{
+					Name: "get-volumes-by-name-timeout-volume",
+					VolumeCapabilities: []*csi.VolumeCapability{{
+						AccessType: &csi.VolumeCapability_Mount{
+							Mount: &csi.VolumeCapability_MountVolume{},
+						},
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+						},
+					}},
+					AccessibilityRequirements: &csi.TopologyRequirement{Requisite: []*csi.Topology{
+						{
+							Segments: map[string]string{kubeAPI.LabelZoneFailureDomain: "ad1"},
+						},
+					},
+					},
+				},
+			},
+			want:    nil,
+			wantErr: errors.New("failed to check existence of volume context deadline exceeded"),
+		},
+		{
+			name:   "Create Volume times out waiting for cloned volume to become available",
+			fields: fields{},
+			args: args{
+				req: create_volume_requests["clone-volume-stuck-in-provisioning-state"],
+			},
+			want:    nil,
+			wantErr: errors.New("Create volume failed with time out timed out waiting for the condition"),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+			defer cancel()
 			d := &BlockVolumeControllerDriver{ControllerDriver{
 				KubeClient: nil,
 				logger:     zap.S(),
 				config:     &providercfg.Config{CompartmentID: ""},
 				client:     NewClientProvisioner(nil, &MockBlockStorageClient{}, nil),
-				util:       &csi_util.Util{},
+				util:       &csi_util.Util{Logger: logging.Logger().Sugar()},
 			}}
-			got, err := d.CreateVolume(tt.args.ctx, tt.args.req)
+			got, err := d.CreateVolume(ctx, tt.args.req)
 			if tt.wantErr == nil && err != nil {
 				t.Errorf("got error %q, want none", err)
 			}
-			if tt.wantErr != nil && !strings.Contains(err.Error(), tt.wantErr.Error()) {
+			if tt.wantErr != nil && err == nil {
+				t.Errorf("want error %q, got none", tt.wantErr)
+			} else if tt.wantErr != nil && !strings.Contains(err.Error(), tt.wantErr.Error()) {
 				t.Errorf("want error %q to include %q", err, tt.wantErr)
 			}
 			if !reflect.DeepEqual(got, tt.want) {
@@ -649,6 +997,148 @@ func TestControllerDriver_DeleteVolume(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ControllerDriver.DeleteVolume() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestControllerDriver_ControllerPublishVolume(t *testing.T) {
+	type args struct {
+		ctx context.Context
+		req *csi.ControllerPublishVolumeRequest
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *csi.ControllerPublishVolumeResponse
+		wantErr error
+	}{
+		{
+			name: "FindActiveVolumeAttachment times out",
+			args: args{
+				req: &csi.ControllerPublishVolumeRequest{
+					VolumeId: "find-active-volume-attachment-timeout-volume",
+					NodeId:   "sample-node-id",
+					VolumeCapability: &csi.VolumeCapability{
+						AccessType: &csi.VolumeCapability_Mount{
+							Mount: &csi.VolumeCapability_MountVolume{},
+						},
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+						},
+					},
+				},
+			},
+			want:    nil,
+			wantErr: errors.New("context deadline exceeded"),
+		},
+		{
+			name: "WaitForVolumeAttached times out",
+			args: args{
+				req: &csi.ControllerPublishVolumeRequest{
+					VolumeId: "volume-attachment-stuck-in-attaching-state",
+					NodeId:   "sample-provider-id",
+					VolumeCapability: &csi.VolumeCapability{
+						AccessType: &csi.VolumeCapability_Mount{
+							Mount: &csi.VolumeCapability_MountVolume{},
+						},
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+						},
+					},
+				},
+			},
+			want:    nil,
+			wantErr: errors.New("Failed to attach volume to the node: timed out waiting for the condition"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+			defer cancel()
+			d := &BlockVolumeControllerDriver{ControllerDriver{
+				KubeClient: &util.MockKubeClient{
+					CoreClient: &util.MockCoreClient{},
+				},
+				logger: zap.S(),
+				config: &providercfg.Config{CompartmentID: ""},
+				client: NewClientProvisioner(nil, &MockBlockStorageClient{}, nil),
+				util:   &csi_util.Util{Logger: logging.Logger().Sugar()},
+			}}
+			got, err := d.ControllerPublishVolume(ctx, tt.args.req)
+			if tt.wantErr == nil && err != nil {
+				t.Errorf("got error %q, want none", err)
+			}
+			if tt.wantErr != nil && err == nil {
+				t.Errorf("want error %q, got none", tt.wantErr)
+			} else if tt.wantErr != nil && !strings.Contains(err.Error(), tt.wantErr.Error()) {
+				t.Errorf("want error %q to include %q", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ControllerDriver.ControllerPublish() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestControllerDriver_ControllerUnpublishVolume(t *testing.T) {
+	type args struct {
+		ctx context.Context
+		req *csi.ControllerUnpublishVolumeRequest
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *csi.ControllerUnpublishVolumeResponse
+		wantErr error
+	}{
+		{
+			name: "Volume stuck in detaching state",
+			args: args{
+				req: &csi.ControllerUnpublishVolumeRequest{
+					VolumeId: "volume-attachment-stuck-in-detaching-state",
+					NodeId:   "sample-node-id",
+				},
+			},
+			want:    nil,
+			wantErr: errors.New("timed out waiting for volume to be detached"),
+		},
+		{
+			name: "FindVolumeAttachment times out",
+			args: args{
+				req: &csi.ControllerUnpublishVolumeRequest{
+					VolumeId: "find-volume-attachment-timeout",
+					NodeId:   "sample-node-id",
+				},
+			},
+			want:    nil,
+			wantErr: errors.New("context deadline exceeded"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+			defer cancel()
+			d := &BlockVolumeControllerDriver{ControllerDriver{
+				KubeClient: &util.MockKubeClient{
+					CoreClient: &util.MockCoreClient{},
+				},
+				logger: zap.S(),
+				config: &providercfg.Config{CompartmentID: ""},
+				client: NewClientProvisioner(nil, &MockBlockStorageClient{}, nil),
+				util:   &csi_util.Util{Logger: logging.Logger().Sugar()},
+			}}
+			got, err := d.ControllerUnpublishVolume(ctx, tt.args.req)
+			if tt.wantErr == nil && err != nil {
+				t.Errorf("got error %q, want none", err)
+			}
+			if tt.wantErr != nil && err == nil {
+				t.Errorf("want error %q, got none", tt.wantErr)
+			} else if tt.wantErr != nil && !strings.Contains(err.Error(), tt.wantErr.Error()) {
+				t.Errorf("want error %q to include %q", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ControllerDriver.ControllerUnpublish() = %v, want %v", got, tt.want)
 			}
 		})
 	}
