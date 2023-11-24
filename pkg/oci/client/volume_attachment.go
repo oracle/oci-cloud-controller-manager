@@ -18,6 +18,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -70,6 +71,12 @@ func (c *client) FindVolumeAttachment(ctx context.Context, compartmentID, volume
 		})
 		incRequestCounter(err, listVerb, volumeAttachmentResource)
 
+		if resp.OpcRequestId != nil {
+			c.logger.With("service", "compute", "verb", listVerb, "resource", volumeAttachmentResource).
+				With("volumeID", volumeID, "OpcRequestId", *(resp.OpcRequestId)).With("statusCode", util.GetHttpStatusCode(err)).
+				Info("OPC Request ID recorded for ListVolumeAttachments call.")
+		}
+
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -103,6 +110,13 @@ func (c *client) GetVolumeAttachment(ctx context.Context, id string) (core.Volum
 		RequestMetadata:    c.requestMetadata,
 	})
 	incRequestCounter(err, getVerb, volumeAttachmentResource)
+
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "compute", "verb", getVerb, "resource", volumeAttachmentResource).
+			With("volumeAttachedId", id, "OpcRequestId", *(resp.OpcRequestId)).With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for GetVolumeAttachment call.")
+	}
+
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -122,6 +136,13 @@ func (c *client) AttachVolume(ctx context.Context, instanceID, volumeID string) 
 		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, createVerb, volumeAttachmentResource)
+
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "compute", "verb", createVerb, "resource", volumeAttachmentResource).
+			With("volumeID", volumeID, "instanceID", instanceID, "OpcRequestId", *(resp.OpcRequestId)).With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for AttachVolume call.")
+	}
+
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -143,7 +164,16 @@ func (c *client) AttachParavirtualizedVolume(ctx context.Context, instanceID, vo
 		Limit:       &limit,
 		IsAvailable: &isAvailable,
 	})
+
 	incRequestCounter(err, listVerb, instanceResource)
+
+	if listInstanceDevicesResp.OpcRequestId != nil {
+		c.logger.With("service", "compute", "verb", listVerb, "resource", instanceResource).
+			With("volumeID", volumeID, "instanceID", instanceID, "OpcRequestId", *(listInstanceDevicesResp.OpcRequestId)).
+			With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for ListInstanceDevices call.")
+	}
+
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -159,7 +189,16 @@ func (c *client) AttachParavirtualizedVolume(ctx context.Context, instanceID, vo
 		},
 		RequestMetadata: c.requestMetadata,
 	})
+
 	incRequestCounter(err, createVerb, volumeAttachmentResource)
+
+	if listInstanceDevicesResp.OpcRequestId != nil {
+		c.logger.With("service", "compute", "verb", createVerb, "resource", instanceResource).
+			With("volumeID", volumeID, "instanceID", instanceID, "OpcRequestId", *(resp.OpcRequestId)).
+			With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for AttachVolume call.")
+	}
+
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -194,10 +233,17 @@ func (c *client) DetachVolume(ctx context.Context, id string) error {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return RateLimitError(false, "DetachVolume")
 	}
-	_, err := c.compute.DetachVolume(ctx, core.DetachVolumeRequest{
+	resp, err := c.compute.DetachVolume(ctx, core.DetachVolumeRequest{
 		VolumeAttachmentId: &id,
 		RequestMetadata:    c.requestMetadata,
 	})
+
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "compute", "verb", deleteVerb, "resource", volumeAttachmentResource).
+			With("volumeAttachedId", id, "OpcRequestId", *(resp.OpcRequestId)).With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for DetachVolume call.")
+	}
+
 	incRequestCounter(err, deleteVerb, volumeAttachmentResource)
 	if err != nil {
 		return errors.WithStack(err)
@@ -239,6 +285,13 @@ func (c *client) FindActiveVolumeAttachment(ctx context.Context, compartmentID, 
 			Page:            page,
 			RequestMetadata: c.requestMetadata,
 		})
+
+		if resp.OpcRequestId != nil {
+			c.logger.With("service", "compute", "verb", listVerb, "resource", volumeAttachmentResource).
+				With("volumeID", volumeID, "OpcRequestId", *(resp.OpcRequestId)).With("statusCode", util.GetHttpStatusCode(err)).
+				Info("OPC Request ID recorded for ListVolumeAttachments call.")
+		}
+
 		incRequestCounter(err, listVerb, volumeAttachmentResource)
 
 		if err != nil {
