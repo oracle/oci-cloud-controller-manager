@@ -351,7 +351,7 @@ func (d *BlockVolumeControllerDriver) CreateVolume(ctx context.Context, req *csi
 	}
 
 	//make sure this method is idempotent by checking existence of volume with same name.
-	volumes, err := d.client.BlockStorage().GetVolumesByName(context.Background(), volumeName, d.config.CompartmentID)
+	volumes, err := d.client.BlockStorage().GetVolumesByName(ctx, volumeName, d.config.CompartmentID)
 	if err != nil {
 		log.With("service", "blockstorage", "verb", "get", "resource", "volume", "statusCode", util.GetHttpStatusCode(err)).
 			With(zap.Error(err)).Error("Failed to find existence of volume.")
@@ -389,7 +389,7 @@ func (d *BlockVolumeControllerDriver) CreateVolume(ctx context.Context, req *csi
 
 	} else {
 		// Creating new volume
-		ad, err := d.client.Identity().GetAvailabilityDomainByName(context.Background(), d.config.CompartmentID, availableDomainShortName)
+		ad, err := d.client.Identity().GetAvailabilityDomainByName(ctx, d.config.CompartmentID, availableDomainShortName)
 		if err != nil {
 			log.With("Compartment Id", d.config.CompartmentID, "service", "identity", "verb", "get", "resource", "AD", "statusCode", util.GetHttpStatusCode(err)).
 				With(zap.Error(err)).Error("Failed to get available domain.")
@@ -417,8 +417,8 @@ func (d *BlockVolumeControllerDriver) CreateVolume(ctx context.Context, req *csi
 			bvTags = scTags
 		}
 
-		provisionedVolume, err = provision(log, d.client, volumeName, size, *ad.Name, d.config.CompartmentID, srcSnapshotId, srcVolumeId,
-			volumeParams.diskEncryptionKey, volumeParams.vpusPerGB, timeout, bvTags)
+		provisionedVolume, err = provision(ctx, log, d.client, volumeName, size, *ad.Name, d.config.CompartmentID, srcSnapshotId, srcVolumeId,
+			volumeParams.diskEncryptionKey, volumeParams.vpusPerGB, bvTags)
 		if err != nil {
 			log.With("Ad name", *ad.Name, "Compartment Id", d.config.CompartmentID).With(zap.Error(err)).Error("New volume creation failed.")
 			errorType = util.GetError(err)
@@ -428,8 +428,6 @@ func (d *BlockVolumeControllerDriver) CreateVolume(ctx context.Context, req *csi
 			return nil, status.Errorf(codes.Internal, "New volume creation failed %v", err.Error())
 		}
 	}
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
 	log.Info("Waiting for volume to become available.")
 
 	if srcVolumeId != "" {
@@ -495,9 +493,6 @@ func (d *BlockVolumeControllerDriver) DeleteVolume(ctx context.Context, req *csi
 		return nil, status.Error(codes.InvalidArgument, "DeleteVolume Volume ID must be provided")
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
 	log.Info("Deleting Volume")
 	err := d.client.BlockStorage().DeleteVolume(ctx, req.VolumeId)
 	if err != nil {
@@ -559,7 +554,7 @@ func (d *BlockVolumeControllerDriver) ControllerPublishVolume(ctx context.Contex
 	if !ok {
 		attachType = attachmentTypeISCSI
 	}
-	volumeAttachmentOptions, err := getAttachmentOptions(context.Background(), d.client.Compute(), attachType, id)
+	volumeAttachmentOptions, err := getAttachmentOptions(ctx, d.client.Compute(), attachType, id)
 	if err != nil {
 		log.With("service", "compute", "verb", "get", "resource", "instance", "statusCode", util.GetHttpStatusCode(err)).
 			With(zap.Error(err)).With("attachmentType", attachType, "instanceID", id).Error("failed to get the attachment options")
@@ -588,7 +583,7 @@ func (d *BlockVolumeControllerDriver) ControllerPublishVolume(ctx context.Contex
 		return nil, status.Errorf(codes.Unknown, "failed to get compartmentID from node annotation:. error : %s", err)
 	}
 
-	volumeAttached, err := d.client.Compute().FindActiveVolumeAttachment(context.Background(), compartmentID, req.VolumeId)
+	volumeAttached, err := d.client.Compute().FindActiveVolumeAttachment(ctx, compartmentID, req.VolumeId)
 
 	if err != nil && !client.IsNotFound(err) {
 		log.With("service", "compute", "verb", "get", "resource", "volumeAttachment", "statusCode", util.GetHttpStatusCode(err)).
@@ -654,7 +649,7 @@ func (d *BlockVolumeControllerDriver) ControllerPublishVolume(ctx context.Contex
 	log.Info("Attaching volume to instance")
 
 	if volumeAttachmentOptions.useParavirtualizedAttachment {
-		volumeAttached, err = d.client.Compute().AttachParavirtualizedVolume(context.Background(), id, req.VolumeId, volumeAttachmentOptions.enableInTransitEncryption)
+		volumeAttached, err = d.client.Compute().AttachParavirtualizedVolume(ctx, id, req.VolumeId, volumeAttachmentOptions.enableInTransitEncryption)
 		if err != nil {
 			log.With("service", "compute", "verb", "create", "resource", "volumeAttachment", "statusCode", util.GetHttpStatusCode(err)).
 				With("instanceID", id).With(zap.Error(err)).Info("failed paravirtualized attachment instance to volume.")
@@ -665,7 +660,7 @@ func (d *BlockVolumeControllerDriver) ControllerPublishVolume(ctx context.Contex
 			return nil, status.Errorf(codes.Internal, "failed paravirtualized attachment instance to volume. error : %s", err)
 		}
 	} else {
-		volumeAttached, err = d.client.Compute().AttachVolume(context.Background(), id, req.VolumeId)
+		volumeAttached, err = d.client.Compute().AttachVolume(ctx, id, req.VolumeId)
 		if err != nil {
 			log.With("service", "compute", "verb", "create", "resource", "volumeAttachment", "statusCode", util.GetHttpStatusCode(err)).
 				With("instanceID", id).With(zap.Error(err)).Info("failed iscsi attachment instance to volume.")
@@ -756,7 +751,7 @@ func (d *BlockVolumeControllerDriver) ControllerUnpublishVolume(ctx context.Cont
 		return nil, status.Errorf(codes.Unknown, "failed to get compartmentID from node annotation:: error : %s", err)
 	}
 	log = log.With("compartmentID", compartmentID)
-	attachedVolume, err := d.client.Compute().FindVolumeAttachment(context.Background(), compartmentID, req.VolumeId)
+	attachedVolume, err := d.client.Compute().FindVolumeAttachment(ctx, compartmentID, req.VolumeId)
 	if attachedVolume != nil && attachedVolume.GetId() != nil {
 		log = log.With("volumeAttachedId", *attachedVolume.GetId())
 	}
@@ -779,7 +774,7 @@ func (d *BlockVolumeControllerDriver) ControllerUnpublishVolume(ctx context.Cont
 	}
 	if attachedVolume.GetLifecycleState() != core.VolumeAttachmentLifecycleStateDetaching {
 		log.With("instanceID", *attachedVolume.GetInstanceId()).Info("Detaching Volume")
-		err = d.client.Compute().DetachVolume(context.Background(), *attachedVolume.GetId())
+		err = d.client.Compute().DetachVolume(ctx, *attachedVolume.GetId())
 		if err != nil {
 			log.With("service", "compute", "verb", "delete", "resource", "volumeAttachment", "statusCode", util.GetHttpStatusCode(err)).
 				With("instanceID", *attachedVolume.GetInstanceId()).With(zap.Error(err)).Error("Volume can not be detached")
@@ -791,7 +786,7 @@ func (d *BlockVolumeControllerDriver) ControllerUnpublishVolume(ctx context.Cont
 		}
 	}
 	log.With("instanceID", *attachedVolume.GetInstanceId()).Info("Waiting for Volume to Detach")
-	err = d.client.Compute().WaitForVolumeDetached(context.Background(), *attachedVolume.GetId())
+	err = d.client.Compute().WaitForVolumeDetached(ctx, *attachedVolume.GetId())
 	if err != nil {
 		log.With("service", "compute", "verb", "get", "resource", "volumeAttachment", "statusCode", util.GetHttpStatusCode(err)).
 			With("instanceID", *attachedVolume.GetInstanceId()).With(zap.Error(err)).Error("timed out waiting for volume to be detached")
@@ -1057,8 +1052,6 @@ func (d *BlockVolumeControllerDriver) CreateSnapshot(ctx context.Context, req *c
 
 	ts := timestamppb.New(snapshot.TimeCreated.Time)
 
-	ctx, cancel := context.WithTimeout(ctx, newBackupAvailableTimeout)
-	defer cancel()
 	_, err = d.client.BlockStorage().AwaitVolumeBackupAvailableOrTimeout(ctx, *snapshot.Id)
 	if err != nil {
 		if strings.Contains(err.Error(), "timed out") {
@@ -1121,9 +1114,6 @@ func (d *BlockVolumeControllerDriver) DeleteSnapshot(ctx context.Context, req *c
 		return nil, status.Error(codes.InvalidArgument, "SnapshotId must be provided")
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
 	err := d.client.BlockStorage().DeleteVolumeBackup(ctx, req.SnapshotId)
 	if err != nil && !k8sapierrors.IsNotFound(err) {
 		errorType = util.GetError(err)
@@ -1172,7 +1162,7 @@ func (d *BlockVolumeControllerDriver) ControllerExpandVolume(ctx context.Context
 	}
 
 	//make sure this method is idempotent by checking existence of volume with same name.
-	volume, err := d.client.BlockStorage().GetVolume(context.Background(), volumeId)
+	volume, err := d.client.BlockStorage().GetVolume(ctx, volumeId)
 	if err != nil {
 		log.With("service", "blockstorage", "verb", "get", "resource", "volume", "statusCode", util.GetHttpStatusCode(err)).
 			With(zap.Error(err)).Error("Failed to find existence of volume")
@@ -1229,10 +1219,8 @@ func (d *BlockVolumeControllerDriver) ControllerGetVolume(ctx context.Context, r
 	return nil, status.Error(codes.Unimplemented, "ControllerGetVolume is not supported yet")
 }
 
-func provision(log *zap.SugaredLogger, c client.Interface, volName string, volSize int64, availDomainName, compartmentID,
-	backupID, srcVolumeID, kmsKeyID string, vpusPerGB int64, timeout time.Duration, bvTags *config.TagConfig) (core.Volume, error) {
-
-	ctx := context.Background()
+func provision(ctx context.Context, log *zap.SugaredLogger, c client.Interface, volName string, volSize int64, availDomainName, compartmentID,
+	backupID, srcVolumeID, kmsKeyID string, vpusPerGB int64, bvTags *config.TagConfig) (core.Volume, error) {
 
 	volSizeGB, minSizeGB := csi_util.RoundUpSize(volSize, 1*client.GiB), csi_util.RoundUpMinSize()
 
@@ -1263,9 +1251,6 @@ func provision(log *zap.SugaredLogger, c client.Interface, volName string, volSi
 	if bvTags != nil && bvTags.DefinedTags != nil {
 		volumeDetails.DefinedTags = bvTags.DefinedTags
 	}
-
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
 
 	newVolume, err := c.BlockStorage().CreateVolume(ctx, volumeDetails)
 
