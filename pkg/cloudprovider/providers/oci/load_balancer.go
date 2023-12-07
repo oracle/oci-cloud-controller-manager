@@ -844,12 +844,12 @@ func (cp *CloudProvider) getOciLoadBalancerSubnets(ctx context.Context, logger *
 		}
 	}
 
+	if subnets[0] == "" || (len(subnets) == 2 && subnets[1] == "") {
+		return nil, errors.Errorf("a subnet must be specified for creating a load balancer")
+	}
 	if internal {
 		// Public load balancers need two subnets if they are AD specific and only first subnet is used if regional. Internal load
 		// balancers will always use the first subnet.
-		if subnets[0] == "" {
-			return nil, errors.Errorf("a configuration for subnet1 must be specified for an internal load balancer")
-		}
 		return subnets[:1], nil
 	}
 
