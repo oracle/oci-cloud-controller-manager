@@ -24,7 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-const attachmentPollInterval = 5 * time.Second
+const attachmentPollInterval = 10 * time.Second
 
 // VolumeAttachmentInterface defines the interface to the OCI volume attachement
 // API.
