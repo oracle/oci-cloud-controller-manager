@@ -398,7 +398,7 @@ func (d *FSSControllerDriver) getOrCreateExport(ctx context.Context, err error, 
 
 	provisionedExport := &fss.Export{}
 	if exportSummary != nil {
-		provisionedExport = &fss.Export{Id: exportSummary.ExportSetId}
+		provisionedExport = &fss.Export{Id: exportSummary.Id}
 	} else {
 		// Creating new export
 		provisionedExport, err = provisionExport(ctx, log, d.client, filesystemOCID, exportSetId, storageClassParameters)
@@ -641,9 +641,9 @@ func (d *FSSControllerDriver) DeleteVolume(ctx context.Context, req *csi.DeleteV
 			metrics.SendMetricData(d.metricPusher, metrics.FSSDelete, time.Since(startTime).Seconds(), dimensionsMap)
 			metrics.SendMetricData(d.metricPusher, metrics.FssAllDelete, time.Since(startTime).Seconds(), dimensionsMap)
 			return nil, status.Errorf(codes.Internal, "failed to delete filesystem, volumeId: %s ERROR: %v", volumeId, err.Error())
-		} else {
-			log.Info("File system does not exist.")
 		}
+		log.Info("File system does not exist.")
+		return &csi.DeleteVolumeResponse{}, nil
 	}
 
 	compartmentID := *fileSystem.CompartmentId
