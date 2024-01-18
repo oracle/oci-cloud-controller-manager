@@ -16,13 +16,6 @@ package client
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
-	"io/ioutil"
-	"net"
-	"net/http"
-	"net/url"
-	"os"
 	"time"
 
 	"github.com/oracle/oci-go-sdk/v65/common"
@@ -170,6 +163,7 @@ type client struct {
 
 // New constructs an OCI API client.
 func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimiter *RateLimiter) (Interface, error) {
+
 	compute, err := core.NewComputeClientWithConfigurationProvider(cp)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewComputeClientWithConfigurationProvider")
@@ -361,51 +355,5 @@ func (c *client) FSS() FileStorageInterface {
 }
 
 func configureCustomTransport(logger *zap.SugaredLogger, baseClient *common.BaseClient) error {
-	httpClient := baseClient.HTTPClient.(*http.Client)
-
-	var transport *http.Transport
-	if httpClient.Transport == nil {
-		transport = &http.Transport{
-			DialContext: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-				DualStack: true,
-			}).DialContext,
-			MaxIdleConns:          100,
-			IdleConnTimeout:       90 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-		}
-	} else {
-		transport = httpClient.Transport.(*http.Transport)
-	}
-
-	ociProxy := os.Getenv("OCI_PROXY")
-	if ociProxy != "" {
-		proxyURL, err := url.Parse(ociProxy)
-		if err != nil {
-			return errors.Wrapf(err, "failed to parse OCI proxy url: %s", ociProxy)
-		}
-		transport.Proxy = func(req *http.Request) (*url.URL, error) {
-			return proxyURL, nil
-		}
-	}
-
-	trustedCACertPath := os.Getenv("TRUSTED_CA_CERT_PATH")
-	if trustedCACertPath != "" {
-		logger.With("path", trustedCACertPath).Infof("Configuring OCI client with a new trusted ca")
-		trustedCACert, err := ioutil.ReadFile(trustedCACertPath)
-		if err != nil {
-			return errors.Wrapf(err, "failed to read root certificate: %s", trustedCACertPath)
-		}
-		caCertPool := x509.NewCertPool()
-		ok := caCertPool.AppendCertsFromPEM(trustedCACert)
-		if !ok {
-			return errors.Wrapf(err, "failed to parse root certificate: %s", trustedCACertPath)
-		}
-		transport.TLSClientConfig = &tls.Config{RootCAs: caCertPool}
-	}
-
-	httpClient.Transport = transport
 	return nil
 }
