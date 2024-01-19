@@ -1253,6 +1253,16 @@ func (d *BlockVolumeControllerDriver) ControllerExpandVolume(ctx context.Context
 		metrics.SendMetricData(d.metricPusher, metrics.PVExpand, time.Since(startTime).Seconds(), dimensionsMap)
 		return nil, status.Error(codes.Internal, message)
 	}
+	_, err = d.client.BlockStorage().AwaitVolumeAvailableORTimeout(ctx, volumeId)
+ 	if err != nil {
+		log.With("service", "blockstorage", "verb", "get", "resource", "volume", "statusCode", util.GetHttpStatusCode(err)).
+			Error("Volume Expansion failed with time out")
+		errorType = util.GetError(err)
+		csiMetricDimension = util.GetMetricDimensionForComponent(errorType, util.CSIStorageType)
+		dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
+		metrics.SendMetricData(d.metricPusher, metrics.PVExpand, time.Since(startTime).Seconds(), dimensionsMap)
+		return nil, status.Errorf(codes.DeadlineExceeded, "ControllerExpand failed with time out %v", err.Error())
+	}
 
 	log.Info("Volume is expanded.")
 	csiMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.CSIStorageType)
