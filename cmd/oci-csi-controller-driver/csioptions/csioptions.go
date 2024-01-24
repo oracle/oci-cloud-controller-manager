@@ -26,9 +26,10 @@ const (
 	fssAddressSuffix               = "-fss.sock"
 	fssVolumeNameAppendedPrefix    = "-fss"
 	CrossNamespaceVolumeDataSource = "CrossNamespaceVolumeDataSource"
+	VolumeAttributesClass		   = "VolumeAttributesClass"
 )
 
-// CSIOptions structure which contains flag values
+//CSIOptions structure which contains flag values
 type CSIOptions struct {
 	Master                  string
 	Kubeconfig              string
@@ -57,9 +58,12 @@ type CSIOptions struct {
 	ExtraCreateMetadata     bool
 	ReconcileSync           time.Duration
 	EnableResizer           bool
+	GroupSnapshotNamePrefix   string
+	GroupSnapshotNameUUIDLength int
+	EnableNodeDeployment	  bool
 }
 
-// NewCSIOptions initializes the flag
+//NewCSIOptions initializes the flag
 func NewCSIOptions() *CSIOptions {
 	csioptions := CSIOptions{
 		Master:                  *flag.String("master", "", "kube master"),
@@ -88,6 +92,9 @@ func NewCSIOptions() *CSIOptions {
 		ExtraCreateMetadata:     *flag.Bool("extra-create-metadata", false, "If set, add pv/pvc metadata to plugin create requests as parameters."),
 		ReconcileSync:           *flag.Duration("reconcile-sync", 1*time.Minute, "Resync interval of the VolumeAttachment reconciler."),
 		EnableResizer:           *flag.Bool("csi-bv-expansion-enabled", false, "Enables go routine csi-resizer."),
+		GroupSnapshotNamePrefix:   *flag.String("groupsnapshot-name-prefix", "groupsnapshot", "Prefix to apply to the name of a created group snapshot"),
+		GroupSnapshotNameUUIDLength: *flag.Int("groupsnapshot-name-uuid-length", -1, "Length in characters for the generated uuid of a created group snapshot. Defaults behavior is to NOT truncate."),
+		EnableNodeDeployment: 		*flag.Bool("node-deployment", false, "Enables deploying the sidecar controller together with a CSI driver on nodes to manage snapshots for node-local volumes."),
 	}
 	return &csioptions
 }
@@ -110,10 +117,15 @@ func GetFssVolumeNamePrefix(csiVolumeNamePrefix string) string {
 }
 
 // UpdateFeatureGates add CrossNamespaceVolumeDataSource (default value false) to featureGate if not present
+// add VolumeAttributesClass (default value false) to featureGate if not present
+
 func UpdateFeatureGates(featureGate map[string]bool) map[string]bool {
 	//If key does not exist
 	if featureGate != nil && !featureGate[CrossNamespaceVolumeDataSource] {
 		featureGate[CrossNamespaceVolumeDataSource] = false
+	}
+	if featureGate != nil && !featureGate[VolumeAttributesClass] {
+		featureGate[VolumeAttributesClass] = false
 	}
 	return featureGate
 }
