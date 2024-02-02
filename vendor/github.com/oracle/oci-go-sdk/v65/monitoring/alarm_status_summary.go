@@ -1,12 +1,13 @@
-// Copyright (c) 2016, 2018, 2023, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
 // Monitoring API
 //
 // Use the Monitoring API to manage metric queries and alarms for assessing the health, capacity, and performance of your cloud resources.
-// Endpoints vary by operation. For PostMetric, use the `telemetry-ingestion` endpoints; for all other operations, use the `telemetry` endpoints.
-// For information about monitoring, see Monitoring Overview (https://docs.cloud.oracle.com/iaas/Content/Monitoring/Concepts/monitoringoverview.htm).
+// Endpoints vary by operation. For PostMetricData, use the `telemetry-ingestion` endpoints; for all other operations, use the `telemetry` endpoints.
+// For more information, see
+// the Monitoring documentation (https://docs.cloud.oracle.com/iaas/Content/Monitoring/home.htm).
 //
 
 package monitoring
@@ -18,12 +19,14 @@ import (
 )
 
 // AlarmStatusSummary A summary of properties for the specified alarm and its current evaluation status.
-// For information about alarms, see Alarms Overview (https://docs.cloud.oracle.com/iaas/Content/Monitoring/Concepts/monitoringoverview.htm#AlarmsOverview).
+// For information about alarms, see
+// Alarms Overview (https://docs.cloud.oracle.com/iaas/Content/Monitoring/Concepts/monitoringoverview.htm#AlarmsOverview).
 // To use any of the API operations, you must be authorized in an IAM policy. If you're not authorized,
 // talk to an administrator. If you're an administrator who needs to write policies to give users access, see
 // Getting Started with Policies (https://docs.cloud.oracle.com/iaas/Content/Identity/Concepts/policygetstarted.htm).
 // For information about endpoints and signing API requests, see
-// About the API (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm). For information about available SDKs and tools, see
+// About the API (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm).
+// For information about available SDKs and tools, see
 // SDKS and Other Tools (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/sdks.htm).
 type AlarmStatusSummary struct {
 
@@ -34,19 +37,18 @@ type AlarmStatusSummary struct {
 	// Example: `High CPU Utilization`
 	DisplayName *string `mandatory:"true" json:"displayName"`
 
-	// The configured severity of the alarm.
+	// The perceived type of response required when the alarm is in the "FIRING" state.
 	// Example: `CRITICAL`
 	Severity AlarmStatusSummarySeverityEnum `mandatory:"true" json:"severity"`
 
 	// Timestamp for the transition of the alarm state. For example, the time when the alarm transitioned from OK to Firing.
 	// Note: A three-minute lag for this value accounts for any late-arriving metrics.
-	// Example: `2019-02-01T01:02:29.600Z`
+	// Example: `2023-02-01T01:02:29.600Z`
 	TimestampTriggered *common.SDKTime `mandatory:"true" json:"timestampTriggered"`
 
 	// The status of this alarm.
 	// Status is collective, across all metric streams in the alarm.
 	// To list alarm status for each metric stream, use RetrieveDimensionStates.
-	// The alarm attribute `isNotificationsPerMetricDimensionEnabled` must be set to `true`.
 	// Example: `FIRING`
 	Status AlarmStatusSummaryStatusEnum `mandatory:"true" json:"status"`
 
