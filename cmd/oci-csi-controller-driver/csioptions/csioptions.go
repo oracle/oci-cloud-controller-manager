@@ -60,7 +60,7 @@ type CSIOptions struct {
 	EnableResizer           bool
 	GroupSnapshotNamePrefix   string
 	GroupSnapshotNameUUIDLength int
-	EnableNodeDeployment	  bool
+
 }
 
 //NewCSIOptions initializes the flag
@@ -94,7 +94,7 @@ func NewCSIOptions() *CSIOptions {
 		EnableResizer:           *flag.Bool("csi-bv-expansion-enabled", false, "Enables go routine csi-resizer."),
 		GroupSnapshotNamePrefix:   *flag.String("groupsnapshot-name-prefix", "groupsnapshot", "Prefix to apply to the name of a created group snapshot"),
 		GroupSnapshotNameUUIDLength: *flag.Int("groupsnapshot-name-uuid-length", -1, "Length in characters for the generated uuid of a created group snapshot. Defaults behavior is to NOT truncate."),
-		EnableNodeDeployment: 		*flag.Bool("node-deployment", false, "Enables deploying the sidecar controller together with a CSI driver on nodes to manage snapshots for node-local volumes."),
+
 	}
 	return &csioptions
 }
