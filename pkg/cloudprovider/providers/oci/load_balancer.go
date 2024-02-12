@@ -1421,6 +1421,7 @@ func (cp *CloudProvider) cleanupSecurityRulesForLoadBalancerDelete(lb *client.Ge
 			return errors.Wrapf(err, "delete security rules for listener %q on load balancer %q", listenerName, name)
 		}
 
+		logger.Infof("Security rule management mode %s", securityRuleManagerMode)
 		if securityRuleManagerMode == ManagementModeAll || securityRuleManagerMode == ManagementModeFrontend {
 			if err = securityListManager.Delete(ctx, lbSubnets, nodeSubnets, ports, sourceCIDRs, isPreserveSource); err != nil {
 				logger.With(zap.Error(err)).Errorf("Failed to delete security rules for listener %q on load balancer %q", listenerName, name)
