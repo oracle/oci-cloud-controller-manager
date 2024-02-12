@@ -4007,13 +4007,23 @@ func Test_getSecurityListManagementMode(t *testing.T) {
 		service  *v1.Service
 		expected string
 	}{
-		"defaults": {
+		"defaults - lb": {
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{},
 				},
 			},
-			expected: "",
+			expected: "All",
+		},
+		"defaults - nlb": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			expected: "None",
 		},
 		"lb mode None": {
 			service: &v1.Service{
@@ -4115,7 +4125,22 @@ func Test_getRuleManagementMode(t *testing.T) {
 					Annotations: map[string]string{},
 				},
 			},
-			expected: "",
+			expected: "All",
+			nsg: &ManagedNetworkSecurityGroup{
+				nsgRuleManagementMode: ManagementModeNone,
+				frontendNsgId:         "",
+				backendNsgId:          []string{},
+			},
+		},
+		"defaults - nlb": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			expected: "None",
 			nsg: &ManagedNetworkSecurityGroup{
 				nsgRuleManagementMode: ManagementModeNone,
 				frontendNsgId:         "",
