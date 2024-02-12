@@ -421,17 +421,17 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sub
 
 func getSecurityListManagementMode(svc *v1.Service) (string, error) {
 	lbType := getLoadBalancerType(svc)
+	logger := *zap.L().Sugar()
 	knownSecListModes := map[string]struct{}{
 		ManagementModeAll:      struct{}{},
 		ManagementModeNone:     struct{}{},
 		ManagementModeFrontend: struct{}{},
 	}
-
+	annotationExists := false
+	var annotationValue string
 	switch lbType {
 	case NLB:
 		{
-			annotationExists := false
-			var annotationValue string
 			annotationValue, annotationExists = svc.Annotations[ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode]
 			if !annotationExists {
 				return ManagementModeNone, nil
@@ -442,6 +442,14 @@ func getSecurityListManagementMode(svc *v1.Service) (string, error) {
 			return svc.Annotations[ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode], nil
 		}
 	default:
+		annotationValue, annotationExists = svc.Annotations[ServiceAnnotationLoadBalancerSecurityListManagementMode]
+		if !annotationExists {
+			return ManagementModeAll, nil
+		}
+		if _, ok := knownSecListModes[annotationValue]; !ok {
+			logger.Infof("invalid value: %s provided for annotation: %s; using default All", annotationValue, ServiceAnnotationLoadBalancerSecurityListManagementMode)
+			return ManagementModeAll, nil
+		}
 		return svc.Annotations[ServiceAnnotationLoadBalancerSecurityListManagementMode], nil
 	}
 }

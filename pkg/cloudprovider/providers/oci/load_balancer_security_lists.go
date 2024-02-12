@@ -382,7 +382,7 @@ func getNodeIngressRules(
 					"source", *rule.Source,
 					"destinationPortRangeMin", *rule.TcpOptions.DestinationPortRange.Min,
 					"destinationPortRangeMax", *rule.TcpOptions.DestinationPortRange.Max,
-				).Debug("Deleting load balancer ingres security rule")
+				).Debug("Deleting node ingress security rule")
 				continue
 			}
 		}
@@ -512,7 +512,7 @@ func getLoadBalancerIngressRules(
 			"source", *rule.Source,
 			"destinationPortRangeMin", *rule.TcpOptions.DestinationPortRange.Min,
 			"destinationPortRangeMax", *rule.TcpOptions.DestinationPortRange.Max,
-		).Debug("Deleting load balancer ingres security rule")
+		).Debug("Deleting load balancer ingress security rule")
 	}
 
 	if desired.Len() == 0 {
@@ -558,7 +558,7 @@ func getLoadBalancerEgressRules(
 				"destination", *rule.Destination,
 				"destinationPortRangeMin", *rule.TcpOptions.DestinationPortRange.Min,
 				"destinationPortRangeMax", *rule.TcpOptions.DestinationPortRange.Max,
-			).Debug("Deleting load balancer ingres security rule")
+			).Debug("Deleting load balancer egress security rule")
 			continue
 		}
 
@@ -655,15 +655,20 @@ func makeIngressSecurityRule(cidrBlock string, port int) core.IngressSecurityRul
 
 func portInUse(serviceLister listersv1.ServiceLister, port int32) (bool, error) {
 	serviceList, err := serviceLister.List(labels.Everything())
+
 	if err != nil {
 		return false, err
 	}
 	for _, service := range serviceList {
-		if service.Spec.Type == api.ServiceTypeLoadBalancer {
-			for _, p := range service.Spec.Ports {
-				if p.Port == port {
-					return true, nil
-				}
+		if service.DeletionTimestamp != nil {
+			continue
+		}
+		if service.Spec.Type != api.ServiceTypeLoadBalancer {
+			continue
+		}
+		for _, p := range service.Spec.Ports {
+			if p.Port == port {
+				return true, nil
 			}
 		}
 	}
