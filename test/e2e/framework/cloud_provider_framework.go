@@ -87,6 +87,7 @@ type CloudProviderFramework struct {
 
 	// Backend Nsg ocids test
 	BackendNsgOcids string
+	RunUhpE2E       bool
 }
 
 // NewDefaultFramework constructs a new e2e test CloudProviderFramework with default options.
@@ -127,6 +128,7 @@ func NewCcmFramework(baseName string, client clientset.Interface, backup bool) *
 	if backendNsgIds != "" {
 		f.BackendNsgOcids = backendNsgIds
 	}
+	f.RunUhpE2E = runUhpE2E
 	BeforeEach(f.BeforeEach)
 	AfterEach(f.AfterEach)
 
