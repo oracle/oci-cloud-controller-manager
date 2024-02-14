@@ -27,7 +27,6 @@ import (
 	v17 "k8s.io/client-go/kubernetes/typed/batch/v1"
 	v1beta15 "k8s.io/client-go/kubernetes/typed/batch/v1beta1"
 	v18 "k8s.io/client-go/kubernetes/typed/certificates/v1"
-	v1alpha18 "k8s.io/client-go/kubernetes/typed/certificates/v1alpha1"
 	v1beta16 "k8s.io/client-go/kubernetes/typed/certificates/v1beta1"
 	v19 "k8s.io/client-go/kubernetes/typed/coordination/v1"
 	v1beta17 "k8s.io/client-go/kubernetes/typed/coordination/v1beta1"
@@ -52,7 +51,7 @@ import (
 	v115 "k8s.io/client-go/kubernetes/typed/rbac/v1"
 	v1alpha17 "k8s.io/client-go/kubernetes/typed/rbac/v1alpha1"
 	v1beta115 "k8s.io/client-go/kubernetes/typed/rbac/v1beta1"
-	"k8s.io/client-go/kubernetes/typed/resource/v1alpha2"
+	v1alpha20 "k8s.io/client-go/kubernetes/typed/resource/v1alpha1"
 	v116 "k8s.io/client-go/kubernetes/typed/scheduling/v1"
 	v1alpha19 "k8s.io/client-go/kubernetes/typed/scheduling/v1alpha1"
 	v1beta116 "k8s.io/client-go/kubernetes/typed/scheduling/v1beta1"
@@ -180,11 +179,7 @@ func (m MockCoreClient) ServiceAccounts(namespace string) v12.ServiceAccountInte
 	return nil
 }
 
-func (m MockKubeClient) ResourceV1alpha2() v1alpha2.ResourceV1alpha2Interface {
-	return nil
-}
-
-func (m MockKubeClient) CertificatesV1alpha1() v1alpha18.CertificatesV1alpha1Interface {
+func (m MockKubeClient) ResourceV1alpha1() v1alpha20.ResourceV1alpha1Interface {
 	return nil
 }
 
