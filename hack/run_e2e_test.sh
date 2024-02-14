@@ -30,7 +30,7 @@ check-env "FSS_VOLUME_HANDLE"         $FSS_VOLUME_HANDLE
 check-env "MNT_TARGET_ID"             $MNT_TARGET_ID
 check-env "MNT_TARGET_SUBNET_ID"      $MNT_TARGET_SUBNET_ID
 check-env "MNT_TARGET_COMPARTMENT_ID" $MNT_TARGET_COMPARTMENT_ID
-check-env "CREATE_UHP_NODEPOOL"       $CREATE_UHP_NODEPOOL
+check-env "RUN_UHP_E2E"               $RUN_UHP_E2E
 
 
 function set_image_pull_repo_and_delete_namespace_flag () {
@@ -59,7 +59,7 @@ function run_e2e_tests_existing_cluster() {
         --architecture=${ARCHITECTURE} \
         --volume-handle=${FSS_VOLUME_HANDLE} \
         --static-snapshot-compartment-id=${STATIC_SNAPSHOT_COMPARTMENT_ID} \
-        --create-uhp-nodepool=${CREATE_UHP_NODEPOOL}
+        --run-uhp-e2e=${RUN_UHP_E2E}
     retval=$?
     return $retval
 }
