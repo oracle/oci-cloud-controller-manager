@@ -56,6 +56,18 @@ Please refer [FSS Network Setup][5] for FSS setup.
 
 The BV expand tests need the cluster version and nodepool version to be 1.19+
 
+## Running Ultra High Performance tests (UHP)
+Please refer [Block Volume Ultra High Performance Doc][6] for details on UHP Block Volumes.
+
+#### Pre-requisite for UHP:
+
+1. Nodes should have 16+ cores. Please refer [Shapes Block Details Doc][7] for exact compute shape requirements for the node.
+2. [Enabling Block Volume Management on Existing Instances][8]
+
+To run UHP E2Es set the environment variable ``RUN_UHP_E2E=true`` [here](../../../hack/existing-standalone-cluster-env-template.sh). Then run the E2Es.
+
+Set ``FOCUS=[UHP]`` to run only the UHP E2Es.
+
 ## Additional Debug Options when running tests on existing cluster
 
 Additional seclist count based sanity checks can be applied during e2e testing
@@ -121,3 +133,6 @@ make run-ccm-e2e-tests-local FOCUS="load_*" FILES="true"
 [3]: https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/
 [4]: https://www.oracle.com/downloads/cloud/cloud-infrastructure-file-storage-downloads.html
 [5]: https://docs.oracle.com/en-us/iaas/Content/File/Tasks/securitylistsfilestorage.htm
+[6]: https://docs.oracle.com/en-us/iaas/Content/Block/Concepts/blockvolumeultrahighperformance.htm#Higher_Performance
+[7]: https://docs.oracle.com/en-us/iaas/Content/Block/Concepts/blockvolumeperformance.htm#shapes_block_details
+[8]: https://docs.oracle.com/en-us/iaas/Content/Block/Tasks/enablingblockvolumemanagementplugin.htm#enablingblockvolumemanagementplugin
