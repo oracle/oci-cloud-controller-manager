@@ -88,7 +88,7 @@ var (
 	architecture                  string
 	volumeHandle                  string // The FSS mount volume handle
 	staticSnapshotCompartmentOCID string // Compartment ID for cross compartment snapshot test
-	createUhpNodepool             bool   // Creates UHP nodepool instead of normal nodepool
+	runUhpE2E                     bool   // Whether to run UHP E2Es, requires Volume Management Plugin enabled on the node and 16+ cores (check blockvolumeperformance public doc for the exact requirements)
 )
 
 func init() {
@@ -118,7 +118,7 @@ func init() {
 	flag.StringVar(&architecture, "architecture", "", "CPU architecture to be used for testing.")
 
 	flag.StringVar(&staticSnapshotCompartmentOCID, "static-snapshot-compartment-id", "", "Compartment ID for cross compartment snapshot test")
-	flag.BoolVar(&createUhpNodepool, "create-uhp-nodepool", false, "Run UHP E2Es as well")
+	flag.BoolVar(&runUhpE2E, "run-uhp-e2e", false, "Run UHP E2Es as well")
 }
 
 // Framework is the context of the text execution.
@@ -151,7 +151,7 @@ type Framework struct {
 
 	// Compartment ID for cross compartment snapshot test
 	StaticSnapshotCompartmentOcid string
-	CreateUhpNodepool             bool
+	RunUhpE2E                     bool
 }
 
 // New creates a new a framework that holds the context of the test
@@ -175,7 +175,7 @@ func NewWithConfig() *Framework {
 		ReservedIP:                    reservedIP,
 		VolumeHandle:                  volumeHandle,
 		StaticSnapshotCompartmentOcid: staticSnapshotCompartmentOCID,
-		CreateUhpNodepool:             createUhpNodepool,
+		RunUhpE2E:                     runUhpE2E,
 	}
 
 	f.CloudConfigPath = cloudConfigFile
@@ -210,8 +210,8 @@ func (f *Framework) Initialize() {
 	Logf("FSS Volume Handle is : %s", f.VolumeHandle)
 	f.StaticSnapshotCompartmentOcid = staticSnapshotCompartmentOCID
 	Logf("Static Snapshot Compartment OCID: %s", f.StaticSnapshotCompartmentOcid)
-	f.CreateUhpNodepool = createUhpNodepool
-	Logf("Create Uhp Nodepool: %v", f.CreateUhpNodepool)
+	f.RunUhpE2E = runUhpE2E
+	Logf("Run Uhp E2Es as well: %v", f.RunUhpE2E)
 	f.CMEKKMSKey = cmekKMSKey
 	Logf("CMEK KMS Key: %s", f.CMEKKMSKey)
 	f.NsgOCIDS = nsgOCIDS
