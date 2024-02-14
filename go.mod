@@ -69,7 +69,7 @@ require (
 	k8s.io/klog v1.0.0
 	k8s.io/klog/v2 v2.100.1
 	k8s.io/kubelet v0.28.4 // indirect
-	k8s.io/kubernetes v1.28.6
+	k8s.io/kubernetes v1.28.4
 	k8s.io/mount-utils v0.28.4
 	k8s.io/utils v0.0.0-20230406110748-d93618cff8a2
 	sigs.k8s.io/sig-storage-lib-external-provisioner/v9 v9.1.0-rc.0

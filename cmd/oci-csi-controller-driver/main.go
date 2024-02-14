@@ -53,8 +53,15 @@ func main() {
 		logger.With(zap.Error(err)).Errorf("failed to get kube-apiserver version")
 		return
 	}
+	//setting operation timeout to 240 seconds for FSS driver (used for CreateVolume/DeleteVolume gRPCs)
+	csiOptions.OperationTimeout = 240 * time.Second
+
+	//setting timeout to 200 seconds for BV driver (used for ControllerPublish/ControllerUnpublish/ControllerExpand gRPCs)
+	csiOptions.Timeout = 200 * time.Second
+
 	logger.With("endpoint", csiOptions.Endpoint).Infof("Starting controller driver go routine.")
 	go csicontrollerdriver.StartControllerDriver(csiOptions, driver.BV)
+
 	go csicontrollerdriver.StartControllerDriver(csiOptions, driver.FSS)
 	<-stopCh
 }
