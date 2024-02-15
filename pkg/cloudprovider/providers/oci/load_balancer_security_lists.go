@@ -680,21 +680,22 @@ func healthCheckPortInUse(serviceLister listersv1.ServiceLister, port int32) (bo
 		return false, err
 	}
 	for _, service := range serviceList {
-		if service.DeletionTimestamp == nil || service.Spec.Type == api.ServiceTypeLoadBalancer {
-			if service.Spec.ExternalTrafficPolicy == api.ServiceExternalTrafficPolicyCluster {
-				// This service is using the default healthcheck port, so we must check if
-				// any other service is also using this default healthcheck port.
-				if port == lbNodesHealthCheckPort {
-					return true, nil
-				}
-			} else if service.Spec.ExternalTrafficPolicy == api.ServiceExternalTrafficPolicyLocal {
-				// This service is using a custom healthcheck port (enabled through setting
-				// externalTrafficPolicy=Local on the service). As this port is unique
-				// per service, we know no other service will be using this port too.
-				if port == service.Spec.HealthCheckNodePort {
-					// Service with this healthCheckerPort is still not deleted (this would be a "delete listener" call in that case)
-					return true, nil
-				}
+		if service.DeletionTimestamp != nil || service.Spec.Type != api.ServiceTypeLoadBalancer {
+			continue
+		}
+		if service.Spec.ExternalTrafficPolicy == api.ServiceExternalTrafficPolicyCluster {
+			// This service is using the default healthcheck port, so we must check if
+			// any other service is also using this default healthcheck port.
+			if port == lbNodesHealthCheckPort {
+				return true, nil
+			}
+		} else if service.Spec.ExternalTrafficPolicy == api.ServiceExternalTrafficPolicyLocal {
+			// This service is using a custom healthcheck port (enabled through setting
+			// externalTrafficPolicy=Local on the service). As this port is unique
+			// per service, we know no other service will be using this port too.
+			if port == service.Spec.HealthCheckNodePort {
+				// Service with this healthCheckerPort is still not deleted (this would be a "delete listener" call in that case)
+				return true, nil
 			}
 		}
 	}
