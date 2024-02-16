@@ -49,6 +49,7 @@ const (
 	ClassOCILowCost    = "oci-bv-low"
 	ClassOCIBalanced   = "oci-bal"
 	ClassOCIHigh       = "oci-bv-high"
+	ClassOCIUHP        = "oci-uhp"
 	ClassOCIKMS        = "oci-kms"
 	ClassOCIExt3       = "oci-ext3"
 	ClassOCIXfs        = "oci-xfs"
@@ -59,7 +60,8 @@ const (
 	MaxVolumeBlock     = "100Gi"
 	VolumeFss          = "1Gi"
 
-	VSClassDefault = "oci-snapclass"
+	VSClassDefault    = "oci-snapclass"
+	NodeHostnameLabel = "kubernetes.io/hostname"
 )
 
 var (
@@ -81,10 +83,12 @@ var (
 	imagePullRepo                 string // Repo to pull images from. Will pull public images if not specified.
 	cmekKMSKey                    string //KMS key for CMEK testing
 	nsgOCIDS                      string // Testing CCM NSG feature
+	backendNsgIds                 string // Testing Rule management Backend NSG feature
 	reservedIP                    string // Testing public reserved IP feature
 	architecture                  string
 	volumeHandle                  string // The FSS mount volume handle
 	staticSnapshotCompartmentOCID string // Compartment ID for cross compartment snapshot test
+	runUhpE2E                     bool   // Whether to run UHP E2Es, requires Volume Management Plugin enabled on the node and 16+ cores (check blockvolumeperformance public doc for the exact requirements)
 )
 
 func init() {
@@ -109,10 +113,12 @@ func init() {
 	flag.StringVar(&imagePullRepo, "image-pull-repo", "", "Repo to pull images from. Will pull public images if not specified.")
 	flag.StringVar(&cmekKMSKey, "cmek-kms-key", "", "KMS key to be used for CMEK testing")
 	flag.StringVar(&nsgOCIDS, "nsg-ocids", "", "NSG OCIDs to be used to associate to LB")
+	flag.StringVar(&backendNsgIds, "backend-nsg-ocids", "", "backend NSG Ids associated with backends of LB")
 	flag.StringVar(&reservedIP, "reserved-ip", "", "Public reservedIP to be used for testing loadbalancer with reservedIP")
 	flag.StringVar(&architecture, "architecture", "", "CPU architecture to be used for testing.")
 
 	flag.StringVar(&staticSnapshotCompartmentOCID, "static-snapshot-compartment-id", "", "Compartment ID for cross compartment snapshot test")
+	flag.BoolVar(&runUhpE2E, "run-uhp-e2e", false, "Run UHP E2Es as well")
 }
 
 // Framework is the context of the text execution.
@@ -137,6 +143,7 @@ type Framework struct {
 	MntTargetCompartmentOcid string
 	CMEKKMSKey               string
 	NsgOCIDS                 string
+	BackendNsgOcid           string
 	ReservedIP               string
 	Architecture             string
 
@@ -144,6 +151,7 @@ type Framework struct {
 
 	// Compartment ID for cross compartment snapshot test
 	StaticSnapshotCompartmentOcid string
+	RunUhpE2E                     bool
 }
 
 // New creates a new a framework that holds the context of the test
@@ -167,6 +175,7 @@ func NewWithConfig() *Framework {
 		ReservedIP:                    reservedIP,
 		VolumeHandle:                  volumeHandle,
 		StaticSnapshotCompartmentOcid: staticSnapshotCompartmentOCID,
+		RunUhpE2E:                     runUhpE2E,
 	}
 
 	f.CloudConfigPath = cloudConfigFile
@@ -201,10 +210,14 @@ func (f *Framework) Initialize() {
 	Logf("FSS Volume Handle is : %s", f.VolumeHandle)
 	f.StaticSnapshotCompartmentOcid = staticSnapshotCompartmentOCID
 	Logf("Static Snapshot Compartment OCID: %s", f.StaticSnapshotCompartmentOcid)
+	f.RunUhpE2E = runUhpE2E
+	Logf("Run Uhp E2Es as well: %v", f.RunUhpE2E)
 	f.CMEKKMSKey = cmekKMSKey
 	Logf("CMEK KMS Key: %s", f.CMEKKMSKey)
 	f.NsgOCIDS = nsgOCIDS
 	Logf("NSG OCIDS: %s", f.NsgOCIDS)
+	f.BackendNsgOcid = backendNsgIds
+	Logf("Backend NSG OCIDS: %s", f.BackendNsgOcid)
 	f.ReservedIP = reservedIP
 	Logf("Reserved IP: %s", f.ReservedIP)
 	f.Architecture = architecture
@@ -240,4 +253,18 @@ func (f *Framework) setImages() {
 		nginx = Nginx
 		centos = Centos
 	}
+}
+
+func (f *CloudProviderFramework) GetCompartmentId(setupF Framework) string {
+	compartmentId := ""
+	if setupF.Compartment1 != "" {
+		compartmentId = setupF.Compartment1
+	} else if f.CloudProviderConfig.CompartmentID != "" {
+		compartmentId = f.CloudProviderConfig.CompartmentID
+	} else if f.CloudProviderConfig.Auth.CompartmentID != "" {
+		compartmentId = f.CloudProviderConfig.Auth.CompartmentID
+	} else {
+		Failf("Compartment Id undefined.")
+	}
+	return compartmentId
 }

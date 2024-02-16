@@ -50,6 +50,9 @@ export CMEK_KMS_KEY=""
 # Mandatory
 export NSG_OCIDS=""
 
+# NSG Network security group created in cluster's VCN for backend management, this NSG will have to be attached to the nodes manually for tests to pass
+export BACKEND_NSG_OCIDS=""
+
 # FSS VOLUME HANDLE in the format filesystem_ocid:mountTargetIP:export_path
 # Make sure fss volume handle is in the same subnet as your nodes
 # Create a file system, file export path and mount target in your VCN by following
@@ -72,3 +75,8 @@ export MNT_TARGET_SUBNET_ID=""
 export MNT_TARGET_COMPARTMENT_ID=""
 
 export STATIC_SNAPSHOT_COMPARTMENT_ID=""
+
+# Whether to run UHP E2Es or not, requires Volume Management Plugin enabled on the node and 16+ cores
+# Check the following doc for the exact requirements:
+# https://docs.oracle.com/en-us/iaas/Content/Block/Concepts/blockvolumeperformance.htm#shapes_block_details
+export RUN_UHP_E2E="false"

@@ -4,7 +4,6 @@
 implementation (or out-of-tree cloud-provider) for [Oracle Cloud
 Infrastucture][1] (OCI).
 
-[![wercker status](https://app.wercker.com/status/17a52304e0309d138ad41f7ae9f9ea49/s/master "wercker status")](https://app.wercker.com/project/byKey/17a52304e0309d138ad41f7ae9f9ea49)
 [![Go Report Card](https://goreportcard.com/badge/github.com/oracle/oci-cloud-controller-manager)](https://goreportcard.com/report/github.com/oracle/oci-cloud-controller-manager)
 
 ## Introduction
@@ -32,9 +31,9 @@ cloud-provider specific code out of the Kubernetes codebase.
 | v1.23.0   | v1.23                  | -                      |
 | v1.24.2   | v1.24                  | -                      |
 | v1.25.2   | v1.25                  | -                      |
-| v1.26.2   | v1.26                  | -                      |
-| v1.27.0   | v1.27                  | -                      |
-
+| v1.26.3   | v1.26                  | -                      |
+| v1.27.2   | v1.27                  | -                      |
+| v1.28.0   | v1.28                  | -                      |
 
 
 
