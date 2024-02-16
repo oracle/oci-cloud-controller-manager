@@ -784,7 +784,6 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 	}
 
 	// Service controller provided empty nodes list
-	// TODO: Revisit this condition when clusters with mixed node pools are introduced, possibly add len(virtualPods) == 0 check
 	if len(nodes) == 0 {
 		// List all nodes in the cluster
 		nodeList, err := cp.NodeLister.List(labels.Everything())
