@@ -24,6 +24,8 @@ import (
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -228,7 +230,7 @@ func (d OCIFlexvolumeDriver) Attach(logger *zap.SugaredLogger, opts flexvolume.O
 	}
 
 	// Handle possible oci:// prefix.
-	id, err = ociprovider.MapProviderIDToInstanceID(id)
+	id, err = ociprovider.MapProviderIDToResourceID(id)
 	if err != nil {
 		errorType = util.GetError(err)
 		fvdMetricDimension = util.GetMetricDimensionForComponent(errorType, util.FVDStorageType)
@@ -469,15 +471,25 @@ func (d OCIFlexvolumeDriver) MountDevice(logger *zap.SugaredLogger, mountDir, mo
 		return flexvolume.Fail(logger, err)
 	}
 
-	if !waitForPathToExist(mountDevice, 20) {
-		return flexvolume.Fail(logger, "Failed waiting for device to exist: ", mountDevice)
+	scsiInfo, err := disk.GetScsiInfo(mountDevice)
+	if err != nil {
+		return flexvolume.Fail(logger, err)
+	}
+
+	ctx := context.Background()
+
+	// Wait and get device path using the publish context
+	devicePath, err := disk.WaitForDevicePathToExist(ctx, scsiInfo, logger)
+	if err != nil {
+		logger.With(zap.Error(err)).Error("Failed to get /dev/disk/by-path device path for iscsi volume.")
+		return flexvolume.Fail(logger, status.Error(codes.InvalidArgument, "Failed to get device path for iscsi volume"))
 	}
 
 	options := []string{}
 	if opts[flexvolume.OptionReadWrite] == "ro" {
 		options = []string{"ro"}
 	}
-	err = iSCSIMounter.FormatAndMount(mountDevice, mountDir, opts[flexvolume.OptionFSType], options)
+	err = iSCSIMounter.FormatAndMount(devicePath, mountDir, opts[flexvolume.OptionFSType], options)
 	if err != nil {
 		return flexvolume.Fail(logger, err)
 	}

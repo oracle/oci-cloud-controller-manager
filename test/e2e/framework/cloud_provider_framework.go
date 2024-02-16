@@ -70,6 +70,7 @@ type CloudProviderFramework struct {
 	namespacesToDelete    []*v1.Namespace // Some tests have more than one.
 
 	BlockStorageClient ocicore.BlockstorageClient
+	ComputeClient      ocicore.ComputeClient
 	IsBackup           bool
 	BackupIDs          []string
 	StorageClasses     []string
@@ -83,6 +84,10 @@ type CloudProviderFramework struct {
 	//
 	// NB: This can fail from the CI when external temrination (e.g. timeouts) occur.
 	cleanupHandle CleanupActionHandle
+
+	// Backend Nsg ocids test
+	BackendNsgOcids string
+	RunUhpE2E       bool
 }
 
 // NewDefaultFramework constructs a new e2e test CloudProviderFramework with default options.
@@ -120,6 +125,10 @@ func NewCcmFramework(baseName string, client clientset.Interface, backup bool) *
 	if k8sSeclistID != "" {
 		f.K8SSecListID = k8sSeclistID
 	}
+	if backendNsgIds != "" {
+		f.BackendNsgOcids = backendNsgIds
+	}
+	f.RunUhpE2E = runUhpE2E
 	BeforeEach(f.BeforeEach)
 	AfterEach(f.AfterEach)
 
@@ -127,18 +136,23 @@ func NewCcmFramework(baseName string, client clientset.Interface, backup bool) *
 }
 
 // CreateNamespace creates a e2e test namespace.
-func (f *CloudProviderFramework) CreateNamespace(baseName string, labels map[string]string) (*v1.Namespace, error) {
+func (f *CloudProviderFramework) CreateNamespace(generateName bool, baseName string, labels map[string]string) (*v1.Namespace, error) {
 	if labels == nil {
 		labels = map[string]string{}
 	}
 
 	namespaceObj := &v1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: fmt.Sprintf("cloud-provider-e2e-tests-%v-", baseName),
-			Namespace:    "",
-			Labels:       labels,
+			Namespace: "",
+			Labels:    labels,
 		},
 		Status: v1.NamespaceStatus{},
+	}
+
+	if generateName {
+		namespaceObj.ObjectMeta.GenerateName = fmt.Sprintf("cloud-provider-e2e-tests-%v-", baseName)
+	} else {
+		namespaceObj.Name = baseName
 	}
 
 	// Be robust about making the namespace creation call.
@@ -261,7 +275,7 @@ func (f *CloudProviderFramework) BeforeEach() {
 
 	if !f.SkipNamespaceCreation {
 		By("Building a namespace api object")
-		namespace, err := f.CreateNamespace(f.BaseName, map[string]string{
+		namespace, err := f.CreateNamespace(true, f.BaseName, map[string]string{
 			"e2e-framework": f.BaseName,
 		})
 		Expect(err).NotTo(HaveOccurred())
@@ -270,6 +284,7 @@ func (f *CloudProviderFramework) BeforeEach() {
 
 	if f.IsBackup {
 		f.BlockStorageClient = f.createStorageClient()
+		f.ComputeClient = f.createComputeClient()
 	}
 }
 
@@ -364,6 +379,22 @@ func (f *CloudProviderFramework) createStorageClient() ocicore.BlockstorageClien
 	}
 
 	return blockStorageClient
+}
+
+func (f *CloudProviderFramework) createComputeClient() ocicore.ComputeClient {
+	By("Creating an OCI compute client")
+
+	provider, err := providercfg.NewConfigurationProvider(f.CloudProviderConfig)
+	if err != nil {
+		Failf("Unable to create configuration provider %v", err)
+	}
+
+	computeClient, err := ocicore.NewComputeClientWithConfigurationProvider(provider)
+	if err != nil {
+		Failf("Unable to load compute client %v", err)
+	}
+
+	return computeClient
 }
 
 func instanceCacheKeyFn(obj interface{}) (string, error) {

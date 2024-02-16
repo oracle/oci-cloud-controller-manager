@@ -38,12 +38,8 @@ var _ = Describe("FSS Static in-transit encryption test", func() {
 	f := framework.NewDefaultFramework("fss-basic")
 	Context("[cloudprovider][storage][csi][fss][static]", func() {
 		It("Create PVC and POD for FSS in-transit encryption", func() {
-			if setupF.Architecture == "AMD" {
-				checkNodeAvailability(f)
-				TestEncryptionType(f, []string{})
-			} else {
-				framework.Logf("CSI-FSS Intransit Encryption is not supported on ARM architecture")
-			}
+			checkNodeAvailability(f)
+			TestEncryptionType(f, []string{})
 		})
 	})
 })
@@ -91,16 +87,12 @@ var _ = Describe("Multiple Pods Static FSS test", func() {
 		})
 
 		It("Multiple Pods should be able to read write same file with InTransit encryption enabled", func() {
-			if setupF.Architecture == "AMD" {
-				checkNodeAvailability(f)
-				pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-e2e-test")
-				pv := pvcJig.CreatePVorFailFSS(f.Namespace.Name, setupF.VolumeHandle, "true", []string{})
-				pvc := pvcJig.CreateAndAwaitPVCOrFailStaticFSS(f.Namespace.Name, pv.Name, "50Gi", nil)
-				f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
-				pvcJig.CheckMultiplePodReadWrite(f.Namespace.Name, pvc.Name, true)
-			} else {
-				framework.Logf("CSI-FSS Intransit Encryption is not supported on ARM architecture")
-			}
+			checkNodeAvailability(f)
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-e2e-test")
+			pv := pvcJig.CreatePVorFailFSS(f.Namespace.Name, setupF.VolumeHandle, "true", []string{})
+			pvc := pvcJig.CreateAndAwaitPVCOrFailStaticFSS(f.Namespace.Name, pv.Name, "50Gi", nil)
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+			pvcJig.CheckMultiplePodReadWrite(f.Namespace.Name, pvc.Name, true)
 		})
 	})
 })

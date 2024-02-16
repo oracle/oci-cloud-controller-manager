@@ -16,6 +16,7 @@ package driver
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -26,16 +27,52 @@ import (
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
+	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/filestorage"
+	fss "github.com/oracle/oci-go-sdk/v65/filestorage"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	authv1 "k8s.io/api/authentication/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 )
 
-type MockFileStorageClient struct{}
+type MockFileStorageClient struct {
+	filestorage util.MockOCIFileStorageClient
+}
+
+var (
+	mountTargets = map[string]*fss.MountTarget{
+		"mount-target-stuck-creating": {
+			DisplayName:        common.String("mount-target-stuck-creating"),
+			LifecycleState:     fss.MountTargetLifecycleStateCreating,
+			AvailabilityDomain: common.String("NWuj:PHX-AD-2"),
+			Id:                 common.String("mount-target-stuck-creating"),
+		},
+	}
+
+	fileSystems = map[string]*fss.FileSystem{
+		"file-system-stuck-creating": {
+			DisplayName:        common.String("file-system-stuck-creating"),
+			LifecycleState:     fss.FileSystemLifecycleStateCreating,
+			AvailabilityDomain: common.String("NWuj:PHX-AD-2"),
+			Id:                 common.String("file-system-stuck-creating"),
+		},
+	}
+
+	exports = map[string]*fss.Export{
+		"export-stuck-creating": {
+			LifecycleState: fss.ExportLifecycleStateCreating,
+			Id:             common.String("export-stuck-creating"),
+		},
+	}
+)
 
 func (c *MockFileStorageClient) GetMountTarget(ctx context.Context, id string) (*filestorage.MountTarget, error) {
+	if mountTargets[id] != nil {
+		return mountTargets[id], nil
+	}
 	idMt := "oc1.mounttarget.xxxx"
 	ad := "zkJl:US-ASHBURN-AD-1"
 	privateIpIds := []string{"10.0.20.1"}
@@ -47,16 +84,51 @@ func (c *MockFileStorageClient) GetMountTarget(ctx context.Context, id string) (
 		DisplayName:        &displayName,
 		PrivateIpIds:       privateIpIds,
 		ExportSetId:        &idEx,
+		LifecycleState:     fss.MountTargetLifecycleStateActive,
 	}, nil
 }
 
 func (c *MockFileStorageClient) GetMountTargetSummaryByDisplayName(ctx context.Context, compartmentID, ad, mountTargetName string) (bool, []filestorage.MountTargetSummary, error) {
-	return true, nil, nil
+	if mountTargetName == "mount-target-idempotency-check-timeout-volume" {
+		var page *string
+		var requestMetadata common.RequestMetadata
+		mountTargetSummaries := make([]fss.MountTargetSummary, 0)
+		conflictingMountTargetSummaries := make([]fss.MountTargetSummary, 0)
+		foundConflicting := false
+		for {
+
+			resp, err := c.filestorage.ListMountTargets(ctx, fss.ListMountTargetsRequest{
+				CompartmentId:      &compartmentID,
+				AvailabilityDomain: &ad,
+				DisplayName:        &mountTargetName,
+				RequestMetadata:    requestMetadata,
+			})
+			if err != nil {
+				return foundConflicting, nil, errors.WithStack(err)
+			}
+
+			for _, mountTargetSummary := range resp.Items {
+				lifecycleState := mountTargetSummary.LifecycleState
+				if lifecycleState == fss.MountTargetSummaryLifecycleStateActive ||
+					lifecycleState == fss.MountTargetSummaryLifecycleStateCreating {
+					mountTargetSummaries = append(mountTargetSummaries, mountTargetSummary)
+				} else {
+					conflictingMountTargetSummaries = append(conflictingMountTargetSummaries, mountTargetSummary)
+					foundConflicting = true
+				}
+			}
+
+			if page = resp.OpcNextPage; page == nil {
+				break
+			}
+		}
+	}
+	return false, []filestorage.MountTargetSummary{}, nil
 }
 
 // CreateFileSystem mocks the FileStorage CreateFileSystem implementation.
 func (c *MockFileStorageClient) CreateFileSystem(ctx context.Context, details filestorage.CreateFileSystemDetails) (*filestorage.FileSystem, error) {
-	idFs := "oc1.filesystem.xxxx"
+	idFs := *details.DisplayName
 	ad := "zkJl:US-ASHBURN-AD-1"
 	return &filestorage.FileSystem{
 		Id:                 &idFs,
@@ -66,20 +138,43 @@ func (c *MockFileStorageClient) CreateFileSystem(ctx context.Context, details fi
 
 // GetFileSystem mocks the FileStorage GetFileSystem implementation.
 func (c *MockFileStorageClient) GetFileSystem(ctx context.Context, id string) (*filestorage.FileSystem, error) {
-	idFs := "oc1.filesystem.xxxx"
+	if fileSystems[id] != nil {
+		return fileSystems[id], nil
+	}
+	idFs := id
 	ad := "zkJl:US-ASHBURN-AD-1"
-	displayName := "filesystem"
+	displayName := id
 	compartmentOcid := "oc1.comp.xxxx"
 	return &filestorage.FileSystem{
 		Id:                 &idFs,
 		AvailabilityDomain: &ad,
 		DisplayName:        &displayName,
 		CompartmentId:      &compartmentOcid,
+		LifecycleState:     fss.FileSystemLifecycleStateActive,
 	}, nil
 }
 
 func (c *MockFileStorageClient) AwaitFileSystemActive(ctx context.Context, logger *zap.SugaredLogger, id string) (*filestorage.FileSystem, error) {
-	idFs := "oc1.filesystem.xxxx"
+	var fs *fss.FileSystem
+	err := wait.PollImmediateUntil(testPollInterval, func() (bool, error) {
+		var err error
+		fs, err = c.GetFileSystem(ctx, id)
+		if err != nil {
+			return false, err
+		}
+		switch state := fs.LifecycleState; state {
+		case fss.FileSystemLifecycleStateActive:
+			return true, nil
+		case fss.FileSystemLifecycleStateDeleting, fss.FileSystemLifecycleStateDeleted, fss.FileSystemLifecycleStateFailed:
+			return false, errors.Errorf("file system %q is in lifecycle state %q", *fs.Id, state)
+		default:
+			return false, nil
+		}
+	}, ctx.Done())
+	if err != nil {
+		return nil, err
+	}
+	idFs := id
 	ad := "zkJl:US-ASHBURN-AD-1"
 	displayName := "filesystem"
 	return &filestorage.FileSystem{
@@ -90,7 +185,45 @@ func (c *MockFileStorageClient) AwaitFileSystemActive(ctx context.Context, logge
 }
 
 func (c *MockFileStorageClient) GetFileSystemSummaryByDisplayName(ctx context.Context, compartmentID, ad, displayName string) (bool, []filestorage.FileSystemSummary, error) {
-	idFs := "oc1.filesystem.xxxx"
+	if displayName == "file-system-idempotency-check-timeout-volume" {
+		var page *string
+		fileSystemSummaries := make([]fss.FileSystemSummary, 0)
+		conflictingFileSystemSummaries := make([]fss.FileSystemSummary, 0)
+		foundConflicting := false
+		var requestMetadata common.RequestMetadata
+		for {
+			resp, err := c.filestorage.ListFileSystems(ctx, fss.ListFileSystemsRequest{
+				CompartmentId:      &compartmentID,
+				AvailabilityDomain: &ad,
+				DisplayName:        &displayName,
+				RequestMetadata:    requestMetadata,
+			})
+			if err != nil {
+				return foundConflicting, nil, errors.WithStack(err)
+			}
+
+			for _, fileSystemSummary := range resp.Items {
+				lifecycleState := fileSystemSummary.LifecycleState
+				if lifecycleState == fss.FileSystemSummaryLifecycleStateActive ||
+					lifecycleState == fss.FileSystemSummaryLifecycleStateCreating {
+					fileSystemSummaries = append(fileSystemSummaries, fileSystemSummary)
+				} else {
+					conflictingFileSystemSummaries = append(fileSystemSummaries, fileSystemSummary)
+					foundConflicting = true
+				}
+			}
+
+			if page = resp.OpcNextPage; page == nil {
+				break
+			}
+		}
+
+		if foundConflicting {
+			return foundConflicting, conflictingFileSystemSummaries, errors.Errorf("Found file system summary neither active nor creating state")
+		}
+		return foundConflicting, fileSystemSummaries, nil
+	}
+	idFs := displayName
 	fileSystemSummary := filestorage.FileSystemSummary{
 		Id: &idFs,
 	}
@@ -106,7 +239,7 @@ func (c *MockFileStorageClient) DeleteFileSystem(ctx context.Context, id string)
 // CreateExport mocks the FileStorage CreateExport implementation
 func (c *MockFileStorageClient) CreateExport(ctx context.Context, details filestorage.CreateExportDetails) (*filestorage.Export, error) {
 	idEx := "oc1.export.xxxx"
-	idFs := "oc1.filesystem.xxxx"
+	idFs := *details.FileSystemId
 	return &filestorage.Export{
 		Id:           &idEx,
 		FileSystemId: &idFs,
@@ -114,11 +247,40 @@ func (c *MockFileStorageClient) CreateExport(ctx context.Context, details filest
 }
 
 // GetExport mocks the FileStorage CreateExport implementation.
-func (c *MockFileStorageClient) GetExport(ctx context.Context, request filestorage.GetExportRequest) (response filestorage.GetExportResponse, err error) {
-	return filestorage.GetExportResponse{}, nil
+func (c *MockFileStorageClient) GetExport(ctx context.Context, id string) (*fss.Export, error) {
+	if exports[id] != nil {
+		return exports[id], nil
+	}
+	return &fss.Export{}, nil
 }
 
 func (c *MockFileStorageClient) AwaitExportActive(ctx context.Context, logger *zap.SugaredLogger, id string) (*filestorage.Export, error) {
+	logger.Info("Waiting for Export to be in lifecycle state ACTIVE")
+
+	var export *fss.Export
+	if err := wait.PollImmediateUntil(testPollInterval, func() (bool, error) {
+		logger.Debug("Polling export lifecycle state")
+
+		var err error
+		export, err = c.GetExport(ctx, id)
+		if err != nil {
+			return false, err
+		}
+
+		switch state := export.LifecycleState; state {
+		case fss.ExportLifecycleStateActive:
+			logger.Infof("Export is in lifecycle state %q", state)
+			return true, nil
+		case fss.ExportLifecycleStateDeleting, fss.ExportLifecycleStateDeleted:
+			logger.Errorf("Export is in lifecycle state %q", state)
+			return false, fmt.Errorf("export %q is in lifecycle state %q", *export.Id, state)
+		default:
+			logger.Debugf("Export is in lifecycle state %q", state)
+			return false, nil
+		}
+	}, ctx.Done()); err != nil {
+		return nil, err
+	}
 	idEx := "oc1.export.xxxx"
 	idFs := "oc1.filesystem.xxxx"
 	return &filestorage.Export{
@@ -128,8 +290,33 @@ func (c *MockFileStorageClient) AwaitExportActive(ctx context.Context, logger *z
 }
 
 func (c *MockFileStorageClient) FindExport(ctx context.Context, fsID, path, exportSetID string) (*filestorage.ExportSummary, error) {
+	var page *string
+	var requestMetadata common.RequestMetadata
+	for {
+		resp, err := c.filestorage.ListExports(ctx, fss.ListExportsRequest{
+			FileSystemId:    &fsID,
+			ExportSetId:     &exportSetID,
+			Page:            page,
+			RequestMetadata: requestMetadata,
+		})
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		for _, export := range resp.Items {
+			if *export.Path == path {
+				if export.LifecycleState == fss.ExportSummaryLifecycleStateCreating ||
+					export.LifecycleState == fss.ExportSummaryLifecycleStateActive {
+					return &export, nil
+				}
+				return &export, errors.Errorf("Found export in conflicting state %s: %s", *export.Id, export.LifecycleState)
+			}
+		}
+		if page = resp.OpcNextPage; resp.OpcNextPage == nil {
+			break
+		}
+	}
 	idEx := "oc1.export.xxxx"
-	idFs := "oc1.filesystem.xxxx"
+	idFs := fsID
 	lifeCycleStatus := filestorage.ExportSummaryLifecycleStateActive
 	return &filestorage.ExportSummary{
 		ExportSetId:    &idEx,
@@ -145,6 +332,29 @@ func (c *MockFileStorageClient) DeleteExport(ctx context.Context, id string) err
 
 // GetMountTarget mocks the FileStorage GetMountTarget implementation
 func (c *MockFileStorageClient) AwaitMountTargetActive(ctx context.Context, logger *zap.SugaredLogger, id string) (*filestorage.MountTarget, error) {
+	var mt *fss.MountTarget
+	if err := wait.PollImmediateUntil(testPollInterval, func() (bool, error) {
+		var err error
+		mt, err = c.GetMountTarget(ctx, id)
+		if err != nil {
+			return false, err
+		}
+
+		switch state := mt.LifecycleState; state {
+		case fss.MountTargetLifecycleStateActive:
+			logger.Infof("Mount target is in lifecycle state %q", state)
+			return true, nil
+		case fss.MountTargetLifecycleStateFailed,
+			fss.MountTargetLifecycleStateDeleting,
+			fss.MountTargetLifecycleStateDeleted:
+			return false, fmt.Errorf("mount target %q is in lifecycle state %q and will not become ACTIVE", *mt.Id, state)
+		default:
+			logger.Debugf("Mount target is in lifecycle state %q", state)
+			return false, nil
+		}
+	}, ctx.Done()); err != nil {
+		return nil, err
+	}
 	idMt := "oc1.mounttarget.xxxx"
 	ad := "zkJl:US-ASHBURN-AD-1"
 	privateIpIds := []string{"10.0.20.1"}
@@ -161,6 +371,9 @@ func (c *MockFileStorageClient) AwaitMountTargetActive(ctx context.Context, logg
 
 // CreateMountTarget mocks the FileStorage CreateMountTarget implementation.
 func (c *MockFileStorageClient) CreateMountTarget(ctx context.Context, details filestorage.CreateMountTargetDetails) (*filestorage.MountTarget, error) {
+	if mountTargets[*details.DisplayName] != nil {
+		return mountTargets[*details.DisplayName], nil
+	}
 	idMt := "oc1.mounttarget.xxxx"
 	ad := "zkJl:US-ASHBURN-AD-1"
 	privateIpIds := []string{"10.0.20.1"}
@@ -317,8 +530,119 @@ func TestFSSControllerDriver_CreateVolume(t *testing.T) {
 			want:    nil,
 			wantErr: errors.New("Neither Mount Target Ocid nor Mount Target Subnet Ocid provided in storage class"),
 		},
+		{
+			name:   "Time out during file system idempotency check",
+			fields: fields{},
+			args: args{
+				ctx: context.Background(),
+				req: &csi.CreateVolumeRequest{
+					Name: "file-system-idempotency-check-timeout-volume",
+					Parameters: map[string]string{"availabilityDomain": "US-ASHBURN-AD-1",
+						"mountTargetOcid": "oc1.mounttarget.xxxx"},
+					VolumeCapabilities: []*csi.VolumeCapability{{
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+						},
+					}},
+				},
+			},
+			want:    nil,
+			wantErr: errors.New("context deadline exceeded"),
+		},
+		{
+			name:   "Time out during mount target idempotency check",
+			fields: fields{},
+			args: args{
+				ctx: context.Background(),
+				req: &csi.CreateVolumeRequest{
+					Name:       "mount-target-idempotency-check-timeout-volume",
+					Parameters: map[string]string{"availabilityDomain": "US-ASHBURN-AD-1", "mountTargetSubnetOcid": "oc1.subnet.xxxx"},
+					VolumeCapabilities: []*csi.VolumeCapability{{
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+						},
+					}},
+				},
+			},
+			want:    nil,
+			wantErr: errors.New("context deadline exceeded"),
+		},
+		{
+			name:   "Time out due to mount target stuck in creating state",
+			fields: fields{},
+			args: args{
+				ctx: context.Background(),
+				req: &csi.CreateVolumeRequest{
+					Name:       "mount-target-stuck-creating",
+					Parameters: map[string]string{"availabilityDomain": "US-ASHBURN-AD-1", "mountTargetSubnetOcid": "oc1.subnet.xxxx"},
+					VolumeCapabilities: []*csi.VolumeCapability{{
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+						},
+					}},
+				},
+			},
+			want:    nil,
+			wantErr: errors.New("await mount target to be available failed with time out"),
+		},
+		{
+			name:   "Time out due to file system stuck in creating state",
+			fields: fields{},
+			args: args{
+				ctx: context.Background(),
+				req: &csi.CreateVolumeRequest{
+					Name:       "file-system-stuck-creating",
+					Parameters: map[string]string{"availabilityDomain": "US-ASHBURN-AD-1", "mountTargetSubnetOcid": "oc1.subnet.xxxx"},
+					VolumeCapabilities: []*csi.VolumeCapability{{
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+						},
+					}},
+				},
+			},
+			want:    nil,
+			wantErr: errors.New("Await File System failed with time out"),
+		},
+		{
+			name:   "Timed out finding export",
+			fields: fields{},
+			args: args{
+				ctx: context.Background(),
+				req: &csi.CreateVolumeRequest{
+					Name:       "export-idempotency-check-timeout",
+					Parameters: map[string]string{"availabilityDomain": "US-ASHBURN-AD-1", "mountTargetSubnetOcid": "oc1.subnet.xxxx"},
+					VolumeCapabilities: []*csi.VolumeCapability{{
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+						},
+					}},
+				},
+			},
+			want:    nil,
+			wantErr: errors.New("failed to check existence of export"),
+		},
+		{
+			name:   "Time out due to export stuck in creating state",
+			fields: fields{},
+			args: args{
+				ctx: context.Background(),
+				req: &csi.CreateVolumeRequest{
+					Name:       "export-stuck-creating",
+					Parameters: map[string]string{"availabilityDomain": "US-ASHBURN-AD-1", "mountTargetSubnetOcid": "oc1.subnet.xxxx"},
+					VolumeCapabilities: []*csi.VolumeCapability{{
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+						},
+					}},
+				},
+			},
+			want:    nil,
+			wantErr: errors.New("await export failed with time out"),
+		},
 	}
 	for _, tt := range tests {
+		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+		defer cancel()
 		t.Run(tt.name, func(t *testing.T) {
 			d := &FSSControllerDriver{ControllerDriver{
 				KubeClient: nil,
@@ -327,11 +651,13 @@ func TestFSSControllerDriver_CreateVolume(t *testing.T) {
 				client:     NewClientProvisioner(nil, nil, &MockFileStorageClient{}),
 				util:       &csi_util.Util{},
 			}}
-			got, err := d.CreateVolume(tt.args.ctx, tt.args.req)
+			got, err := d.CreateVolume(ctx, tt.args.req)
 			if tt.wantErr == nil && err != nil {
 				t.Errorf("got error %q, want none", err)
 			}
-			if tt.wantErr != nil && !strings.Contains(err.Error(), tt.wantErr.Error()) {
+			if tt.wantErr != nil && err == nil {
+				t.Errorf("want error %q, got none", tt.wantErr)
+			} else if tt.wantErr != nil && !strings.Contains(err.Error(), tt.wantErr.Error()) {
 				t.Errorf("want error %q to include %q", err, tt.wantErr)
 			}
 			if !reflect.DeepEqual(got, tt.want) {
@@ -576,7 +902,7 @@ func TestExtractStorageClassParameters(t *testing.T) {
 			wantErrMessage:                 "Neither Mount Target Ocid nor Mount Target Subnet Ocid provided in storage class",
 		},
 	}
-
+	ctx := context.Background()
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
 			d := &FSSControllerDriver{ControllerDriver{
@@ -586,7 +912,7 @@ func TestExtractStorageClassParameters(t *testing.T) {
 				client:     NewClientProvisioner(nil, nil, &MockFileStorageClient{}),
 				util:       &csi_util.Util{},
 			}}
-			_, _, gotStorageClassParameters, err, _ := extractStorageClassParameters(d, d.logger, map[string]string{}, "ut-volume", tt.parameters, time.Now())
+			_, _, gotStorageClassParameters, err, _ := extractStorageClassParameters(ctx, d, d.logger, map[string]string{}, "ut-volume", tt.parameters, time.Now())
 			if tt.wantErr == false && err != nil {
 				t.Errorf("got error %q, want none", err)
 			}

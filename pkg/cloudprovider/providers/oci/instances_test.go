@@ -401,7 +401,7 @@ func (c *MockVirtualNetworkClient) IsRegionalSubnet(ctx context.Context, id stri
 	return subnets[id].AvailabilityDomain == nil, nil
 }
 
-func (c *MockVirtualNetworkClient) GetPrivateIP(ctx context.Context, id string) (*core.PrivateIp, error) {
+func (c *MockVirtualNetworkClient) GetPrivateIp(ctx context.Context, id string) (*core.PrivateIp, error) {
 	return nil, nil
 }
 

@@ -95,6 +95,9 @@ func newSecurityListManager(logger *zap.SugaredLogger, client client.Interface, 
 	case ManagementModeNone:
 		logger.Infof("Security list management mode: %q. Not managing security lists.", ManagementModeNone)
 		return &securityListManagerNOOP{}
+	case RuleManagementModeNsg:
+		logger.Infof("Security rule management mode: %q. Not managing security lists.", RuleManagementModeNsg)
+		return &securityListManagerNOOP{}
 	default:
 		logger.Infof("Security list management mode: %q. Managing all security lists.", ManagementModeAll)
 		return &defaultSecurityListManager{baseSecurityListManager: baseMgr}

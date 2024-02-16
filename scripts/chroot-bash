@@ -1,0 +1,3 @@
+#!/bin/sh
+# This file can be used to run any command on the worker node
+chroot /host /usr/bin/bash -c '$0' "$*"
