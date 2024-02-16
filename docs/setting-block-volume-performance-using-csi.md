@@ -71,4 +71,8 @@ Performance of block volume can be specified at the creation itself. Performance
 CSI version 1.19.12 or later which runs on k8s cluster 1.19 or later supports block volume expansion.
 Flex volume does not support. 
 
+## Ultra High Performance (UHP)
+Please refer [Block Volume Ultra High Performance Doc][2]
+
 [1]: https://docs.oracle.com/en-us/iaas/Content/ContEng/Tasks/contengcreatingpersistentvolumeclaim.htm#contengcreatingpersistentvolumeclaim_topic_Provisioning_PVCs_on_BV_PV_Volume_performance
+[2]: https://docs.oracle.com/en-us/iaas/Content/Block/Concepts/blockvolumeultrahighperformance.htm#Higher_Performance

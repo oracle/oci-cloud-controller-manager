@@ -686,6 +686,61 @@ func (j *PVCTestJig) NewPodForCSI(name string, namespace string, claimName strin
 	return pod.Name
 }
 
+// NewPodWithLabels returns the default template for this jig,
+// creates the Pod. Attaches PVC to the Pod which is created by CSI
+func (j *PVCTestJig) NewPodWithLabels(name string, namespace string, claimName string, labels map[string]string) string {
+	By("Creating a pod with the claiming PVC created by CSI")
+
+	pod, err := j.KubeClient.CoreV1().Pods(namespace).Create(context.Background(), &v1.Pod{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Pod",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: j.Name,
+			Namespace:    namespace,
+		},
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
+				{
+					Name:    name,
+					Image:   centos,
+					Command: []string{"/bin/sh"},
+					Args:    []string{"-c", "echo 'Hello World' > /data/testdata.txt; while true; do echo $(date -u) >> /data/out.txt; sleep 5; done"},
+					VolumeMounts: []v1.VolumeMount{
+						{
+							Name:      "persistent-storage",
+							MountPath: "/data",
+						},
+					},
+				},
+			},
+			Volumes: []v1.Volume{
+				{
+					Name: "persistent-storage",
+					VolumeSource: v1.VolumeSource{
+						PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+							ClaimName: claimName,
+						},
+					},
+				},
+			},
+			NodeSelector: map[string]string{},
+		},
+	}, metav1.CreateOptions{})
+	if err != nil {
+		Failf("Pod %q Create API error: %v", pod.Name, err)
+	}
+
+	// Waiting for pod to be running
+	err = j.waitTimeoutForPodRunningInNamespace(pod.Name, namespace, slowPodStartTimeout)
+	if err != nil {
+		Failf("Pod %q is not Running: %v", pod.Name, err)
+	}
+	zap.S().With(pod.Namespace).With(pod.Name).Info("CSI POD is created.")
+	return pod.Name
+}
+
 func (j *PVCTestJig) NewPodForCSIClone(name string, namespace string, claimName string, adLabel string) string {
 	By("Creating a pod with the claiming PVC created by CSI")
 
@@ -1525,4 +1580,56 @@ func (j *PVCTestJig) pvcBound(pvcName, namespace string) wait.ConditionFunc {
 func (j *PVCTestJig) InitialiseSnapClient(snapClient snapclientset.Interface) {
 	j.SnapClient = snapClient
 	return
+}
+
+func (j *PVCTestJig) VerifyMultipathEnabled(ctx context.Context, client ocicore.ComputeClient, pvcName string, ns string, compartmentId string) {
+	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(ns).Get(context.Background(), pvcName, metav1.GetOptions{})
+	if err != nil {
+		Failf("Error getting pvc %s: %v", pvcName, err)
+	}
+	pvName := pvc.Spec.VolumeName
+	Logf("Found pvc %s bound to pv %s", pvcName, pvName)
+	pv, err := j.KubeClient.CoreV1().PersistentVolumes().Get(context.Background(), pvName, metav1.GetOptions{})
+	if err != nil {
+		Failf("Error getting pv %s: %v", pvName, err)
+	}
+	if pv.Spec.CSI == nil || pv.Spec.CSI.VolumeHandle == "" {
+		Failf("Unable to find volume ID in pv object")
+	}
+	volumeId := pv.Spec.CSI.VolumeHandle
+
+	request := ocicore.ListVolumeAttachmentsRequest{
+		CompartmentId: &compartmentId,
+		VolumeId:      &volumeId,
+	}
+
+	vaList, err := client.ListVolumeAttachments(ctx, request)
+	if err != nil {
+		Failf("Error listing volume attachments: %v", err)
+	}
+
+	if len(vaList.Items) == 0 {
+		Failf("No volume attachments found for volume %v", volumeId)
+	}
+
+	isMultipath := vaList.Items[0].GetIsMultipath()
+
+	if *isMultipath {
+		Logf("Verified that the given volume is attached with multipath enabled")
+	} else {
+		Failf("No volume attachments found for volume %v", volumeId)
+	}
+}
+
+func (j *PVCTestJig) GetVolumeNameFromPVC(pvcName string, ns string) string {
+	pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(ns).Get(context.Background(), pvcName, metav1.GetOptions{})
+	if err != nil {
+		Failf("Error getting pvc %s: %v", pvcName, err)
+	}
+	if pvc.Spec.VolumeName == "" {
+		Failf("Could not obtain pv name from pvc %s", pvcName)
+	}
+	pvName := pvc.Spec.VolumeName
+	Logf("Found pvc %s bound to pv %s", pvcName, pvName)
+	return pvName
 }

@@ -16,8 +16,10 @@ package client
 
 import (
 	"context"
+
 	"time"
 
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -76,6 +78,12 @@ func (c *client) GetVolume(ctx context.Context, id string) (*core.Volume, error)
 		RequestMetadata: c.requestMetadata})
 	incRequestCounter(err, getVerb, volumeResource)
 
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "blockstorage", "verb", getVerb, "resource", volumeResource).
+			With("volumeID", id, "OpcRequestId", *(resp.OpcRequestId)).
+			With("statusCode", util.GetHttpStatusCode(err)).Info("OPC Request ID recorded for GetVolume call.")
+	}
+
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -92,7 +100,13 @@ func (c *client) GetVolumeBackup(ctx context.Context, id string) (*core.VolumeBa
 	resp, err := c.bs.GetVolumeBackup(ctx, core.GetVolumeBackupRequest{
 		VolumeBackupId:  &id,
 		RequestMetadata: c.requestMetadata})
-	incRequestCounter(err, getVerb, snapshotResource)
+	incRequestCounter(err, getVerb, volumeBackupResource)
+
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "blockstorage", "verb", getVerb, "resource", volumeBackupResource).
+			With("volumeBackupId", id, "OpcRequestId", *(resp.OpcRequestId)).With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for GetVolumeBackup call.")
+	}
 
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -199,12 +213,13 @@ func (c *client) CreateVolume(ctx context.Context, details core.CreateVolumeDeta
 		RequestMetadata: c.requestMetadata})
 	incRequestCounter(err, createVerb, volumeResource)
 
-	if err == nil {
-		logger := c.logger.With("AvailabilityDomain", *(details.AvailabilityDomain),
-			"CompartmentId", *(details.CompartmentId), "volumeName", *(details.DisplayName),
-			"OpcRequestId", *(resp.OpcRequestId))
-		logger.Info("OPC Request ID recorded while creating volume.")
-	} else {
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "blockstorage", "verb", createVerb, "resource", volumeResource).
+			With("volumeName", *(details.DisplayName), "OpcRequestId", *(resp.OpcRequestId)).With("statusCode", util.GetHttpStatusCode(err)).
+			With("availabilityDomain", *(details.AvailabilityDomain), "CompartmentId", *(details.CompartmentId)).
+			Info("OPC Request ID recorded while creating volume.")
+	}
+	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	return &resp.Volume, nil
@@ -217,7 +232,13 @@ func (c *client) CreateVolumeBackup(ctx context.Context, details core.CreateVolu
 
 	resp, err := c.bs.CreateVolumeBackup(ctx, core.CreateVolumeBackupRequest{CreateVolumeBackupDetails: details,
 		RequestMetadata: c.requestMetadata})
-	incRequestCounter(err, createVerb, snapshotResource)
+	incRequestCounter(err, createVerb, volumeBackupResource)
+
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "blockstorage", "verb", createVerb, "resource", volumeBackupResource).
+			With("volumeBackupName", *(details.DisplayName), "OpcRequestId", *(resp.OpcRequestId)).
+			With("statusCode", util.GetHttpStatusCode(err)).Info("OPC Request ID recorded for CreateVolumeBackup call.")
+	}
 
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -238,11 +259,14 @@ func (c *client) UpdateVolume(ctx context.Context, volumeId string, details core
 	})
 	incRequestCounter(err, updateVerb, volumeResource)
 
-	if err == nil {
-		logger := c.logger.With("volumeName", *(details.DisplayName),
-			"OpcRequestId", *(resp.OpcRequestId))
-		logger.Info("OPC Request ID recorded while updating volume.")
-	} else {
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "blockstorage", "verb", updateVerb, "resource", volumeResource).
+			With("volumeName", *(details.DisplayName), "volumeID", volumeId, "OpcRequestId", *(resp.OpcRequestId)).
+			With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded while updating volume.")
+	}
+
+	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	return &resp.Volume, nil
@@ -253,10 +277,17 @@ func (c *client) DeleteVolume(ctx context.Context, id string) error {
 		return RateLimitError(true, "DeleteVolume")
 	}
 
-	_, err := c.bs.DeleteVolume(ctx, core.DeleteVolumeRequest{
+	resp, err := c.bs.DeleteVolume(ctx, core.DeleteVolumeRequest{
 		VolumeId:        &id,
 		RequestMetadata: c.requestMetadata})
 	incRequestCounter(err, deleteVerb, volumeResource)
+
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "blockstorage", "verb", deleteVerb, "resource", volumeResource).
+			With("volumeID", id, "OpcRequestId", *(resp.OpcRequestId)).
+			With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for DeleteVolume call.")
+	}
 
 	if err != nil {
 		return errors.WithStack(err)
@@ -270,10 +301,16 @@ func (c *client) DeleteVolumeBackup(ctx context.Context, id string) error {
 		return RateLimitError(true, "DeleteSnapshot")
 	}
 
-	_, err := c.bs.DeleteVolumeBackup(ctx, core.DeleteVolumeBackupRequest{
+	resp, err := c.bs.DeleteVolumeBackup(ctx, core.DeleteVolumeBackupRequest{
 		VolumeBackupId:  &id,
 		RequestMetadata: c.requestMetadata})
-	incRequestCounter(err, deleteVerb, snapshotResource)
+	incRequestCounter(err, deleteVerb, volumeBackupResource)
+
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "blockstorage", "verb", deleteVerb, "resource", volumeBackupResource).
+			With("volumeBackupId", id, "OpcRequestId", *(resp.OpcRequestId)).With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for DeleteVolumeBackup call.")
+	}
 
 	if err != nil {
 		return errors.WithStack(err)
@@ -304,13 +341,16 @@ func (c *client) GetVolumesByName(ctx context.Context, volumeName, compartmentID
 				RequestMetadata: c.requestMetadata,
 			})
 
+		if listVolumeResponse.OpcRequestId != nil {
+			c.logger.With("service", "blockstorage", "verb", listVerb, "resource", volumeResource).
+				With("volumeName", volumeName, "CompartmentID", compartmentID, "OpcRequestId", *(listVolumeResponse.OpcRequestId)).
+				With("statusCode", util.GetHttpStatusCode(err)).
+				Info("OPC Request ID recorded while fetching volumes by name.")
+		}
+
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-
-		logger := c.logger.With("volumeName", volumeName, "CompartmentID", compartmentID,
-			"OpcRequestId", *(listVolumeResponse.OpcRequestId))
-		logger.Info("OPC Request ID recorded while fetching volumes by name.")
 
 		for _, volume := range listVolumeResponse.Items {
 			volumeState := volume.LifecycleState
@@ -346,13 +386,16 @@ func (c *client) GetVolumeBackupsByName(ctx context.Context, snapshotName, compa
 				RequestMetadata: c.requestMetadata,
 			})
 
+		if listVolumeBackupsResponse.OpcRequestId != nil {
+			c.logger.With("service", "blockstorage", "verb", listVerb, "resource", volumeBackupResource).
+				With("snapshotName", snapshotName, "CompartmentID", compartmentID, "OpcRequestId", *(listVolumeBackupsResponse.OpcRequestId)).
+				With("statusCode", util.GetHttpStatusCode(err)).
+				Info("OPC Request ID recorded while fetching volume backups by name.")
+		}
+
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-
-		logger := c.logger.With("snapshotName", snapshotName, "CompartmentID", compartmentID,
-			"OpcRequestId", *(listVolumeBackupsResponse.OpcRequestId))
-		logger.Info("OPC Request ID recorded while fetching volume backups by name.")
 
 		for _, volumeBackup := range listVolumeBackupsResponse.Items {
 			volumeState := volumeBackup.LifecycleState

@@ -16,13 +16,16 @@ package driver
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/oracle/oci-go-sdk/v65/core"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -67,23 +70,44 @@ func (d BlockVolumeNodeDriver) NodeStageVolume(ctx context.Context, req *csi.Nod
 		logger.Error("Unable to get the attachmentType from the attribute list, assuming iscsi")
 		attachment = attachmentTypeISCSI
 	}
+
 	var devicePath string
 	var mountHandler disk.Interface
+	var scsiInfo *disk.Disk
+	var err error
+	var multipathDevices []core.MultipathDevice
+	multipathEnabledVolume := false
+
+	if req.PublishContext[multipathEnabled] != "" {
+		multipathEnabledVolume, err = strconv.ParseBool(req.PublishContext[multipathEnabled])
+		if err != nil {
+			logger.With(zap.Error(err)).Error("failed to determine if volume is multipath enabled")
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
 
 	switch attachment {
 	case attachmentTypeISCSI:
-		scsiInfo, err := csi_util.ExtractISCSIInformation(req.PublishContext)
-		if err != nil {
-			logger.With(zap.Error(err)).Error("Failed to get SCSI info from publish context.")
-			return nil, status.Error(codes.InvalidArgument, "PublishContext is invalid.")
+		if multipathEnabledVolume {
+			logger.Info("Volume attachment is multipath enabled")
+			multipathDevices, err = getMultipathDevicesFromReq(req)
+			devicePath, err = disk.GetMultipathIscsiDevicePath(ctx, req.PublishContext[device], logger)
+			if err != nil {
+				logger.With(zap.Error(err)).Error("Failed to get device path for multipath enabled volume")
+				return nil, status.Error(codes.Internal, "Failed to get device path for multipath enabled volume")
+			}
+			mountHandler = disk.NewISCSIUHPMounter(d.logger)
+			logger.Info("starting to stage UHP iSCSI Mounting.")
+		} else {
+			logger.Info("Volume attachment is multipath disabled")
+			scsiInfo, err = csi_util.ExtractISCSIInformation(req.PublishContext)
+			if err != nil {
+				logger.With(zap.Error(err)).Error("Failed to get SCSI info from publish context.")
+				return nil, status.Error(codes.InvalidArgument, "PublishContext is invalid.")
+			}
+			mountHandler = disk.NewFromISCSIDisk(d.logger, scsiInfo)
+			logger.Info("starting to stage iSCSI Mounting.")
 		}
-
-		// Get the device path using the publish context
-		devicePath = csi_util.GetDevicePath(scsiInfo)
-
-		mountHandler = disk.NewFromISCSIDisk(d.logger, scsiInfo)
-		logger.With("devicePath", devicePath).Info("starting to stage iSCSI Mounting.")
-
 	case attachmentTypeParavirtualized:
 		devicePath, ok = req.PublishContext[device]
 		if !ok {
@@ -113,7 +137,7 @@ func (d BlockVolumeNodeDriver) NodeStageVolume(ctx context.Context, req *csi.Nod
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
-	err := mountHandler.AddToDB()
+	err = mountHandler.AddToDB()
 	if err != nil {
 		logger.With(zap.Error(err)).Error("failed to add the iSCSI node record.")
 		return nil, status.Error(codes.Internal, err.Error())
@@ -148,8 +172,21 @@ func (d BlockVolumeNodeDriver) NodeStageVolume(ctx context.Context, req *csi.Nod
 		logger.With(zap.Error(err)).Error("failed to log into the iSCSI target.")
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	if attachment == attachmentTypeISCSI && !multipathEnabledVolume {
+		// Wait and get device path using the publish context
+		devicePath, err = disk.WaitForDevicePathToExist(ctx, scsiInfo, logger)
+		if err != nil {
+			logger.With(zap.Error(err)).Error("Failed to get /dev/disk/by-path device path for iscsi volume.")
+			return nil, status.Error(codes.InvalidArgument, "Failed to get device path for iscsi volume")
+		}
+	}
 
-	if !d.util.WaitForPathToExist(devicePath, 20) {
+	err = mountHandler.WaitForVolumeLoginOrTimeout(ctx, multipathDevices)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	if !mountHandler.WaitForPathToExist(devicePath, 20) {
 		logger.Error("failed to wait for device to exist.")
 		return nil, status.Error(codes.DeadlineExceeded, "Failed to wait for device to exist.")
 	}
@@ -251,19 +288,28 @@ func (d BlockVolumeNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.N
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	// for multipath enabled volumes the device path will be eg: /dev/mapper/mpathd
+	isMultipathEnabled := strings.HasPrefix(devicePath, "/dev/mapper")
+
+	var scsiInfo *disk.Disk
 	var mountHandler disk.Interface
 	switch attachmentType {
 	case attachmentTypeISCSI:
-		scsiInfo, err := csi_util.ExtractISCSIInformationFromMountPath(d.logger, diskPath)
-		if err != nil {
-			logger.With(zap.Error(err)).Error("failed to ISCSI info.")
-			return nil, status.Error(codes.Internal, err.Error())
+		if !isMultipathEnabled {
+			scsiInfo, err = csi_util.ExtractISCSIInformationFromMountPath(d.logger, diskPath)
+			if err != nil {
+				logger.With(zap.Error(err)).Error("failed to ISCSI info.")
+				return nil, status.Error(codes.Internal, err.Error())
+			}
+			if scsiInfo == nil {
+				logger.Warn("unable to get the ISCSI info")
+				return &csi.NodeUnstageVolumeResponse{}, nil
+			}
+			mountHandler = disk.NewFromISCSIDisk(d.logger, scsiInfo)
+		} else {
+			mountHandler = disk.NewISCSIUHPMounter(d.logger)
+			logger.With("diskPath", diskPath).Info("Volume is multipath enabled")
 		}
-		if scsiInfo == nil {
-			logger.Warn("unable to get the ISCSI info")
-			return &csi.NodeUnstageVolumeResponse{}, nil
-		}
-		mountHandler = disk.NewFromISCSIDisk(d.logger, scsiInfo)
 		logger.Info("starting to unstage iscsi Mounting.")
 	case attachmentTypeParavirtualized:
 		mountHandler = disk.NewFromPVDisk(d.logger)
@@ -350,16 +396,31 @@ func (d BlockVolumeNodeDriver) NodePublishVolume(ctx context.Context, req *csi.N
 		return nil, status.Error(codes.Internal, "Failed to create TargetPath directory")
 	}
 
+	multipathEnabledVolume := false
+
+	if req.PublishContext[multipathEnabled] != "" {
+		var err error
+		multipathEnabledVolume, err = strconv.ParseBool(req.PublishContext[multipathEnabled])
+		if err != nil {
+			logger.With(zap.Error(err)).Error("failed to determine if volume is multipath enabled")
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+
 	var mountHandler disk.Interface
 
 	switch attachment {
 	case attachmentTypeISCSI:
-		scsiInfo, err := csi_util.ExtractISCSIInformation(req.PublishContext)
-		if err != nil {
-			logger.With(zap.Error(err)).Error("Failed to get iSCSI info from publish context")
-			return nil, status.Error(codes.InvalidArgument, "PublishContext is invalid")
+		if multipathEnabledVolume {
+			mountHandler = disk.NewISCSIUHPMounter(d.logger)
+		} else {
+			scsiInfo, err := csi_util.ExtractISCSIInformation(req.PublishContext)
+			if err != nil {
+				logger.With(zap.Error(err)).Error("Failed to get iSCSI info from publish context")
+				return nil, status.Error(codes.InvalidArgument, "PublishContext is invalid")
+			}
+			mountHandler = disk.NewFromISCSIDisk(logger, scsiInfo)
 		}
-		mountHandler = disk.NewFromISCSIDisk(logger, scsiInfo)
 		logger.Info("starting to publish iSCSI Mounting.")
 
 	case attachmentTypeParavirtualized:
@@ -414,32 +475,41 @@ func (d BlockVolumeNodeDriver) NodePublishVolume(ctx context.Context, req *csi.N
 			}
 			requestedSizeGB := csi_util.RoundUpSize(requestedSize, 1*client.GiB)
 
-			var devicePath string
+			diskPath, err := disk.GetDiskPathFromMountPath(d.logger, req.StagingTargetPath)
+			if err != nil {
+				// do a clean exit in case of mount point not found
+				if err == disk.ErrMountPointNotFound {
+					logger.With(zap.Error(err)).With("volumePath", req.StagingTargetPath).Warn("unable to fetch mount point")
+					return &csi.NodePublishVolumeResponse{}, err
+				}
+				logger.With(zap.Error(err)).With("volumePath", req.StagingTargetPath).Error("unable to get diskPath from mount path")
+				return nil, status.Error(codes.Internal, err.Error())
+			}
 
-			switch attachment {
+			attachmentType, devicePath, err := getDevicePathAndAttachmentType(diskPath)
+			if err != nil {
+				logger.With(zap.Error(err)).With("diskPath", diskPath).Error("unable to determine the attachment type")
+				return nil, status.Error(codes.Internal, err.Error())
+			}
+			logger.With("diskPath", diskPath, "attachmentType", attachmentType, "devicePath", devicePath).Infof("Extracted attachment type and device path")
+
+			var mountHandler disk.Interface
+			switch attachmentType {
 			case attachmentTypeISCSI:
-				scsiInfo, err := csi_util.ExtractISCSIInformation(req.PublishContext)
-				if err != nil {
-					logger.With(zap.Error(err)).Error("Failed to get SCSI info from publish context.")
-					return nil, status.Error(codes.InvalidArgument, "PublishContext is invalid.")
+				if multipathEnabledVolume {
+					mountHandler = disk.NewISCSIUHPMounter(d.logger)
+				} else {
+					mountHandler = disk.NewFromISCSIDisk(d.logger, nil)
 				}
-
-				// Get the device path using the publish context
-				devicePath = csi_util.GetDevicePath(scsiInfo)
 			case attachmentTypeParavirtualized:
-				devicePath, ok = req.PublishContext[device]
-				if !ok {
-					logger.Error("Unable to get the device from the attribute list")
-					return nil, status.Error(codes.InvalidArgument, "Unable to get the device from the attribute list")
-				}
+				mountHandler = disk.NewFromPVDisk(d.logger)
+				logger.Info("starting to expand paravirtualized Mounting.")
 			default:
 				logger.Error("unknown attachment type. supported attachment types are iscsi and paravirtualized")
 				return nil, status.Error(codes.InvalidArgument, "unknown attachment type. supported attachment types are iscsi and paravirtualized")
 			}
 
-			logger.With("devicePath", devicePath).Infof("Extracted device path")
-
-			if err := csi_util.Rescan(logger, devicePath); err != nil {
+			if err := mountHandler.Rescan(devicePath); err != nil {
 				return nil, status.Errorf(codes.Internal, "Failed to rescan volume %q (%q):  %v", req.VolumeId, devicePath, err)
 			}
 			logger.With("devicePath", devicePath).Debug("Rescan completed")
@@ -496,22 +566,23 @@ func (d BlockVolumeNodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	attachmentType, _, err := getDevicePathAndAttachmentType(diskPath)
+	attachmentType, devicePath, err := getDevicePathAndAttachmentType(diskPath)
 	if err != nil {
 		logger.With(zap.Error(err)).With("diskPath", diskPath).Error("unable to determine the attachment type")
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	// for multipath enabled volumes the device path will be eg: /dev/mapper/mpathd
+	isMultipathEnabled := strings.HasPrefix(devicePath, "/dev/mapper")
+
 	var mountHandler disk.Interface
 	switch attachmentType {
 	case attachmentTypeISCSI:
-		scsiInfo, _ := csi_util.ExtractISCSIInformationFromMountPath(d.logger, diskPath)
-		if scsiInfo == nil {
-			logger.Warn("unable to get the ISCSI info")
-			return &csi.NodeUnpublishVolumeResponse{}, nil
+		if isMultipathEnabled {
+			mountHandler = disk.NewISCSIUHPMounter(d.logger)
+		} else {
+			mountHandler = disk.NewFromISCSIDisk(d.logger, nil)
 		}
-		mountHandler = disk.NewFromISCSIDisk(d.logger, scsiInfo)
-		d.logger.With("ISCSIInfo", scsiInfo, "mountPath", req.GetTargetPath()).Info("Found ISCSIInfo for NodeUnpublishVolume.")
 	case attachmentTypeParavirtualized:
 		mountHandler = disk.NewFromPVDisk(d.logger)
 		logger.Info("starting to unpublish paravirtualized Mounting.")
@@ -539,6 +610,9 @@ func getDevicePathAndAttachmentType(path []string) (string, string, error) {
 	for _, diskByPath := range path {
 		matched, _ := regexp.MatchString(csi_util.DiskByPathPatternISCSI, diskByPath)
 		if matched {
+			return attachmentTypeISCSI, diskByPath, nil
+		}
+		if strings.HasPrefix(diskByPath, "/dev/mapper") {
 			return attachmentTypeISCSI, diskByPath, nil
 		}
 	}
@@ -572,10 +646,11 @@ func (d BlockVolumeNodeDriver) NodeGetInfo(ctx context.Context, req *csi.NodeGet
 	ad, err := d.util.LookupNodeAvailableDomain(d.KubeClient, d.nodeID)
 
 	if err != nil {
-		d.logger.With(zap.Error(err)).With("nodeId", d.nodeID, "availableDomain", ad).Error("Available domain of node missing.")
+		d.logger.With(zap.Error(err)).With("nodeId", d.nodeID, "availabilityDomain", ad).Error("Failed to get availability domain of node from kube api server.")
+		return nil, status.Error(codes.Internal, "Failed to get availability domain of node from kube api server.")
 	}
 
-	d.logger.With("nodeId", d.nodeID, "availableDomain", ad).Info("Available domain of node identified.")
+	d.logger.With("nodeId", d.nodeID, "availabilityDomain", ad).Info("Availability domain of node identified.")
 	return &csi.NodeGetInfoResponse{
 		NodeId:            d.nodeID,
 		MaxVolumesPerNode: maxVolumesPerNode,
@@ -686,16 +761,17 @@ func (d BlockVolumeNodeDriver) NodeExpandVolume(ctx context.Context, req *csi.No
 	}
 	logger.With("diskPath", diskPath, "attachmentType", attachmentType, "devicePath", devicePath).Infof("Extracted attachment type and device path")
 
+	// for multipath enabled volumes the device path will be eg: /dev/mapper/mpathd
+	isMultipathEnabled := strings.HasPrefix(devicePath, "/dev/mapper")
+
 	var mountHandler disk.Interface
 	switch attachmentType {
 	case attachmentTypeISCSI:
-		scsiInfo, _ := csi_util.ExtractISCSIInformationFromMountPath(d.logger, diskPath)
-		if scsiInfo == nil {
-			logger.Warn("unable to get the ISCSI info")
-			return &csi.NodeExpandVolumeResponse{}, nil
+		if !isMultipathEnabled {
+			mountHandler = disk.NewFromISCSIDisk(d.logger, nil)
+		} else {
+			mountHandler = disk.NewISCSIUHPMounter(d.logger)
 		}
-		mountHandler = disk.NewFromISCSIDisk(d.logger, scsiInfo)
-		d.logger.With("ISCSIInfo", scsiInfo, "mountPath", volumePath).Info("Found ISCSIInfo for NodeExpandVolume.")
 	case attachmentTypeParavirtualized:
 		mountHandler = disk.NewFromPVDisk(d.logger)
 		logger.Info("starting to expand paravirtualized Mounting.")
@@ -704,7 +780,7 @@ func (d BlockVolumeNodeDriver) NodeExpandVolume(ctx context.Context, req *csi.No
 		return nil, status.Error(codes.InvalidArgument, "unknown attachment type. supported attachment types are iscsi and paravirtualized")
 	}
 
-	if err := csi_util.Rescan(logger, devicePath); err != nil {
+	if err := mountHandler.Rescan(devicePath); err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to rescan volume %q (%q):  %v", volumeID, devicePath, err)
 	}
 	logger.With("devicePath", devicePath).Debug("Rescan completed")
@@ -739,4 +815,29 @@ func hasMountOption(options []string, opt string) bool {
 		}
 	}
 	return false
+}
+
+func getMultipathDevicesFromReq(req *csi.NodeStageVolumeRequest) ([]core.MultipathDevice, error) {
+	var multipathDevicesList []core.MultipathDevice
+
+	err := json.Unmarshal([]byte(req.PublishContext[multipathDevices]), &multipathDevicesList)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to get multipath devices from publish context.")
+	}
+
+	port, err := strconv.Atoi(req.PublishContext[disk.ISCSIPORT])
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Invalid port number received for iscsi session")
+	}
+
+	iscsi_iqn := req.PublishContext[disk.ISCSIIQN]
+	iscsi_ip := req.PublishContext[disk.ISCSIIP]
+
+	multipathDevicesList = append(multipathDevicesList, core.MultipathDevice{
+		Iqn:  &iscsi_iqn,
+		Ipv4: &iscsi_ip,
+		Port: &port,
+	})
+
+	return multipathDevicesList, nil
 }

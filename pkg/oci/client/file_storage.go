@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
 	fss "github.com/oracle/oci-go-sdk/v65/filestorage"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -64,6 +65,12 @@ func (c *client) CreateFileSystem(ctx context.Context, details fss.CreateFileSys
 
 	incRequestCounter(err, createVerb, fileSystemResource)
 
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "fss", "verb", createVerb, "resource", fileSystemResource).
+			With("volumeName", *(details.DisplayName), "OpcRequestId", *(resp.OpcRequestId)).With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for CreateFileSystem call.")
+	}
+
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -82,6 +89,12 @@ func (c *client) GetFileSystem(ctx context.Context, id string) (*fss.FileSystem,
 	})
 	incRequestCounter(err, getVerb, fileSystemResource)
 
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "fss", "verb", getVerb, "resource", fileSystemResource).
+			With("fssID", id, "OpcRequestId", *(resp.OpcRequestId)).With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for GetFileSystem call.")
+	}
+
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -93,7 +106,7 @@ func (c *client) AwaitFileSystemActive(ctx context.Context, logger *zap.SugaredL
 	logger.Infof("Waiting for FileSystem to be in lifecycle state %q", fss.FileSystemLifecycleStateActive)
 
 	var fs *fss.FileSystem
-	err := wait.PollImmediate(defaultInterval, defaultTimeout, func() (bool, error) {
+	err := wait.PollImmediateUntil(defaultInterval, func() (bool, error) {
 		logger.Debug("Polling FileSystem lifecycle state")
 
 		var err error
@@ -112,7 +125,7 @@ func (c *client) AwaitFileSystemActive(ctx context.Context, logger *zap.SugaredL
 			logger.Debugf("FileSystem is in lifecycle state %q", state)
 			return false, nil
 		}
-	})
+	}, ctx.Done())
 	if err != nil {
 		return nil, err
 	}
@@ -138,13 +151,17 @@ func (c *client) GetFileSystemSummaryByDisplayName(ctx context.Context, compartm
 			RequestMetadata:    c.requestMetadata,
 		})
 		incRequestCounter(err, listVerb, fileSystemResource)
+
+		if resp.OpcRequestId != nil {
+			c.logger.With("service", "fss", "verb", listVerb, "resource", fileSystemResource).
+				With("volumeName", displayName, "compartmentID", compartmentID, "availabilityDomain", ad, "OpcRequestId", *(resp.OpcRequestId)).
+				With("statusCode", util.GetHttpStatusCode(err)).
+				Info("OPC Request ID recorded for ListFileSystems call.")
+		}
+
 		if err != nil {
 			return foundConflicting, nil, errors.WithStack(err)
 		}
-
-		logger := c.logger.With("volumeName", displayName, "compartmentID", compartmentID, "availabilityDomain", ad,
-			"OpcRequestId", *(resp.OpcRequestId))
-		logger.Info("OPC Request ID recorded while fetching file systems by name.")
 
 		for _, fileSystemSummary := range resp.Items {
 			lifecycleState := fileSystemSummary.LifecycleState
@@ -173,11 +190,18 @@ func (c *client) DeleteFileSystem(ctx context.Context, id string) error {
 		return RateLimitError(true, "DeleteFileSystem")
 	}
 
-	_, err := c.filestorage.DeleteFileSystem(ctx, fss.DeleteFileSystemRequest{
+	resp, err := c.filestorage.DeleteFileSystem(ctx, fss.DeleteFileSystemRequest{
 		FileSystemId:    &id,
 		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, deleteVerb, fileSystemResource)
+
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "fss", "verb", deleteVerb, "resource", fileSystemResource).
+			With("fssID", id, "OpcRequestId", *(resp.OpcRequestId)).
+			With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for DeleteFileSystem call.")
+	}
 
 	if err != nil {
 		return errors.WithStack(err)
@@ -197,6 +221,13 @@ func (c *client) GetMountTarget(ctx context.Context, id string) (*fss.MountTarge
 	})
 	incRequestCounter(err, getVerb, mountTargetResource)
 
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "fss", "verb", getVerb, "resource", mountTargetResource).
+			With("mountTargetID", id, "OpcRequestId", *(resp.OpcRequestId)).
+			With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for GetMountTarget call.")
+	}
+
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -208,7 +239,7 @@ func (c *client) AwaitMountTargetActive(ctx context.Context, logger *zap.Sugared
 	logger.Infof("Waiting for MountTarget to be in lifecycle state %q", fss.MountTargetLifecycleStateActive)
 
 	var mt *fss.MountTarget
-	if err := wait.PollImmediate(defaultInterval, defaultTimeout, func() (bool, error) {
+	if err := wait.PollImmediateUntil(defaultInterval, func() (bool, error) {
 		logger.Debug("Polling MountTarget lifecycle state")
 
 		var err error
@@ -230,7 +261,7 @@ func (c *client) AwaitMountTargetActive(ctx context.Context, logger *zap.Sugared
 			logger.Debugf("Mount target is in lifecycle state %q", state)
 			return false, nil
 		}
-	}); err != nil {
+	}, ctx.Done()); err != nil {
 		return nil, err
 	}
 	return mt, nil
@@ -246,6 +277,13 @@ func (c *client) CreateExport(ctx context.Context, details fss.CreateExportDetai
 		RequestMetadata:     c.requestMetadata,
 	})
 	incRequestCounter(err, createVerb, exportResource)
+
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "fss", "verb", createVerb, "resource", exportResource).
+			With("fssID", *(details.FileSystemId), "OpcRequestId", *(resp.OpcRequestId)).
+			With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for CreateExport call.")
+	}
 
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -265,6 +303,13 @@ func (c *client) GetExport(ctx context.Context, id string) (*fss.Export, error) 
 		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, getVerb, exportResource)
+
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "fss", "verb", getVerb, "resource", exportResource).
+			With("exportId", id, "OpcRequestId", *(resp.OpcRequestId)).
+			With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for GetExport call.")
+	}
 
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -287,6 +332,14 @@ func (c *client) FindExport(ctx context.Context, fsID, path, exportSetID string)
 			RequestMetadata: c.requestMetadata,
 		})
 		incRequestCounter(err, listVerb, exportResource)
+
+		if resp.OpcRequestId != nil {
+			c.logger.With("service", "fss", "verb", listVerb, "resource", exportResource).
+				With("fssID", fsID, "OpcRequestId", *(resp.OpcRequestId)).
+				With("statusCode", util.GetHttpStatusCode(err)).
+				Info("OPC Request ID recorded for ListExports call.")
+		}
+
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -311,7 +364,7 @@ func (c *client) AwaitExportActive(ctx context.Context, logger *zap.SugaredLogge
 	logger.Info("Waiting for Export to be in lifecycle state ACTIVE")
 
 	var export *fss.Export
-	if err := wait.PollImmediate(defaultInterval, defaultTimeout, func() (bool, error) {
+	if err := wait.PollImmediateUntil(defaultInterval, func() (bool, error) {
 		logger.Debug("Polling export lifecycle state")
 
 		var err error
@@ -331,7 +384,7 @@ func (c *client) AwaitExportActive(ctx context.Context, logger *zap.SugaredLogge
 			logger.Debugf("Export is in lifecycle state %q", state)
 			return false, nil
 		}
-	}); err != nil {
+	}, ctx.Done()); err != nil {
 		return nil, err
 	}
 	return export, nil
@@ -342,11 +395,18 @@ func (c *client) DeleteExport(ctx context.Context, id string) error {
 		return RateLimitError(true, "DeleteExport")
 	}
 
-	_, err := c.filestorage.DeleteExport(ctx, fss.DeleteExportRequest{
+	resp, err := c.filestorage.DeleteExport(ctx, fss.DeleteExportRequest{
 		ExportId:        &id,
 		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, deleteVerb, exportResource)
+
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "fss", "verb", deleteVerb, "resource", exportResource).
+			With("exportId", id, "OpcRequestId", *(resp.OpcRequestId)).
+			With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for DeleteExport call.")
+	}
 
 	if err != nil {
 		return errors.WithStack(err)
@@ -366,6 +426,13 @@ func (c *client) CreateMountTarget(ctx context.Context, details fss.CreateMountT
 	})
 	incRequestCounter(err, createVerb, mountTargetResource)
 
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "fss", "verb", createVerb, "resource", mountTargetResource).
+			With("mountTargetName", *(details.DisplayName), "OpcRequestId", *(resp.OpcRequestId)).
+			With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for CreateMountTarget call.")
+	}
+
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -378,11 +445,18 @@ func (c *client) DeleteMountTarget(ctx context.Context, id string) error {
 		return RateLimitError(true, "DeleteMountTarget")
 	}
 
-	_, err := c.filestorage.DeleteMountTarget(ctx, fss.DeleteMountTargetRequest{
+	resp, err := c.filestorage.DeleteMountTarget(ctx, fss.DeleteMountTargetRequest{
 		MountTargetId:   &id,
 		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, deleteVerb, mountTargetResource)
+
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "fss", "verb", deleteVerb, "resource", mountTargetResource).
+			With("mountTargetID", id, "OpcRequestId", *(resp.OpcRequestId)).
+			With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for DeleteMountTarget call.")
+	}
 
 	if err != nil {
 		return errors.WithStack(err)
@@ -409,13 +483,17 @@ func (c *client) GetMountTargetSummaryByDisplayName(ctx context.Context, compart
 			RequestMetadata:    c.requestMetadata,
 		})
 		incRequestCounter(err, listVerb, mountTargetResource)
+
+		if resp.OpcRequestId != nil {
+			c.logger.With("service", "fss", "verb", listVerb, "resource", mountTargetResource).
+				With("volumeName", mountTargetName, "compartmentID", compartmentID, "availabilityDomain", ad, "OpcRequestId", *(resp.OpcRequestId)).
+				With("statusCode", util.GetHttpStatusCode(err)).
+				Info("OPC Request ID recorded while fetching mount targets by name.")
+		}
+
 		if err != nil {
 			return foundConflicting, nil, errors.WithStack(err)
 		}
-
-		logger := c.logger.With("volumeName", mountTargetName, "compartmentID", compartmentID, "availabilityDomain", ad,
-			"OpcRequestId", *(resp.OpcRequestId))
-		logger.Info("OPC Request ID recorded while fetching mount targets by name.")
 
 		for _, mountTargetSummary := range resp.Items {
 			lifecycleState := mountTargetSummary.LifecycleState
