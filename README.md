@@ -164,11 +164,11 @@ If you think you've found a bug, please [raise an issue][3].
 
 ## Contributing
 
-`oci-cloud-controller-manager` is an open source project. See [CONTRIBUTING](CONTRIBUTING.md) for
-details.
+This project welcomes contributions from the community. Before submitting a pull request, please [review our contribution guide](./CONTRIBUTING.md)
 
-Oracle gratefully acknowledges the contributions to this project that have been made
-by the community.
+## Security
+
+Please consult the [security guide](./SECURITY.md) for our responsible security vulnerability disclosure process
 
 ## Upcoming Releases
 
@@ -178,7 +178,7 @@ by the community.
 
 ## License
 
-Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+Copyright (c) 2017, 2023 Oracle and/or its affiliates. All rights reserved.
 
 `oci-cloud-controller-manager` is licensed under the Apache License 2.0.
 

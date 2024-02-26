@@ -1,34 +1,70 @@
-# Contributing to the OCI Cloud Controller Manager
+# Contributing to this repository
 
-*Copyright (c) 2017 Oracle and/or its affiliates. All rights reserved.*
+We welcome your contributions! There are multiple ways to contribute.
 
-## Guidelines to raise a PR
+## Opening issues
 
-### Contributor Agreement
+For bugs or enhancement requests, please file a GitHub issue unless it's
+security related. When filing a bug remember that the better written the bug is,
+the more likely it is to be fixed. If you think you've found a security
+vulnerability, do not raise a GitHub issue and follow the instructions in our
+[security policy](./SECURITY.md).
 
-Pull requests can be made under
-[The Oracle Contributor Agreement](https://www.oracle.com/technetwork/community/oca-486395.html)
-(OCA).
-For pull requests to be accepted, the bottom of
-your commit message must have the following line using your name and
-e-mail address as it appears in the OCA Signatories list.
-```
+## Contributing code
+
+We welcome your code contributions. Before submitting code via a pull request,
+you will need to have signed the [Oracle Contributor Agreement][OCA] (OCA) and
+your commits need to include the following line using the name and e-mail
+address you used to sign the OCA:
+
+```text
 Signed-off-by: Your Name <you@example.org>
 ```
-This can be automatically added to pull requests by committing with:
-```
+
+This can be automatically added to pull requests by committing with `--sign-off`
+or `-s`, e.g.
+
+```text
 git commit --signoff
 ```
-**Only pull requests from committers that can be verified as having
-signed the OCA can be accepted.**
+
+Only pull requests from committers that can be verified as having signed the OCA
+can be accepted.
+
+## Pull request process
+
+1. Ensure there is an issue created to track and discuss the fix or enhancement
+   you intend to submit.
+1. Fork this repository.
+1. Create a branch in your fork to implement the changes. We recommend using
+   the issue number as part of your branch name, e.g. `1234-fixes`.
+1. Ensure that any documentation is updated with the changes that are required
+   by your change.
+1. Ensure that any samples are updated if the base image has been changed.
+1. Submit the pull request. *Do not leave the pull request blank*. Explain exactly
+   what your changes are meant to do and provide simple steps on how to validate.
+   your changes. Ensure that you reference the issue you created as well.
+1. We will assign the pull request to 2-3 people for review before it is merged.
 
 ### Commit Message
-* The commits message should prefix "External-ccm:" 
-* All commits should be squashed to a single commit before merging
 
-### Best Practices
+* The commits message should prefix "External-ccm:".
+* All commits should be squashed to a single commit before merging.  
+
+### Best Practices:
+
 * Follow the development guidelines [here](docs/development.md)
-* govet, golint, gofmt should pass on the PR
-* make targets "build" and "test" should be successful on the PR
-* E2E should be run on a self managed test cluster, you will have to create a test cluster with the image generated from your changes. Please follow E2E guide [here](test/e2e/cloud-provider-oci/README.md)
-* E2E tests should pass on 3 versions of kubernetes currently supported by the repo
+* `govet`, `golint`, `gofmt` should pass on the PR
+* Make targets "build" and "test" should be successful on the PR
+* E2E should be run on a self managed test cluster, you will have to create a test
+  cluster with the image generated from your changes.
+  Please follow E2E guide [here](test/e2e/cloud-provider-oci/README.md)
+* E2E tests should pass on 3 versions of kubernetes currently supported by the repo.
+
+## Code of conduct
+
+Follow the [Golden Rule](https://en.wikipedia.org/wiki/Golden_Rule). If you'd
+like more specific guidelines, see the [Contributor Covenant Code of Conduct][COC].
+
+[OCA]: https://oca.opensource.oracle.com
+[COC]: https://www.contributor-covenant.org/version/1/4/code-of-conduct/
