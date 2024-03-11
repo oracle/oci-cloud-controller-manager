@@ -756,8 +756,20 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 	}
 
 	if lb.LifecycleState == nil || *lb.LifecycleState != lbLifecycleStateActive {
-		logger.With("lifecycleState", lb.LifecycleState).Infof("LB is not in %s state, will retry EnsureLoadBalancer", lbLifecycleStateActive)
-		return nil, errors.Errorf("rejecting request to update LB which is not in %s state", lbLifecycleStateActive)
+		logger := logger.With("lifecycleState", lb.LifecycleState)
+		switch loadBalancerType {
+		case NLB:
+			// This check is added here since NLBs are marked as failed in case nlb work-requests fail NLB-26239
+			if *lb.LifecycleState == string(networkloadbalancer.LifecycleStateFailed) {
+				logger.Infof("NLB is in %s state, process the Loadbalancer", *lb.LifecycleState)
+			} else {
+				return nil, errors.Errorf("NLB is in %s state, wait for NLB to move to %s", *lb.LifecycleState, lbLifecycleStateActive)
+			}
+			break
+		default:
+			logger.Infof("LB is not in %s state, will retry EnsureLoadBalancer", lbLifecycleStateActive)
+			return nil, errors.Errorf("rejecting request to update LB which is not in %s state", lbLifecycleStateActive)
+		}
 	}
 
 	// Existing load balancers cannot change subnets. This ensures that the spec matches
