@@ -18,8 +18,8 @@ FROM arm64v8/oraclelinux:7-slim
 
 RUN yum install -y util-linux \
   && yum install -y e2fsprogs \
+  && yum install -y xfsprogs \
   && yum clean all
- \
 
 COPY scripts/encrypt-mount /sbin/encrypt-mount
 COPY scripts/encrypt-umount /sbin/encrypt-umount
