@@ -404,22 +404,7 @@ func (d *BlockVolumeControllerDriver) CreateVolume(ctx context.Context, req *csi
 			return nil, status.Errorf(codes.InvalidArgument, "invalid available domain: %s or compartment ID: %s", availableDomainShortName, d.config.CompartmentID)
 		}
 
-		// use initial tags for all BVs
-		bvTags := &config.TagConfig{}
-		if d.config.Tags != nil && d.config.Tags.BlockVolume != nil {
-			bvTags = d.config.Tags.BlockVolume
-		}
-
-		// use storage class level tags if provided
-		scTags := &config.TagConfig{
-			FreeformTags: volumeParams.freeformTags,
-			DefinedTags:  volumeParams.definedTags,
-		}
-
-		// storage class tags overwrite initial BV Tags
-		if scTags.FreeformTags != nil || scTags.DefinedTags != nil {
-			bvTags = scTags
-		}
+		bvTags := getBVTags(d.config.Tags, volumeParams)
 
 		provisionedVolume, err = provision(ctx, log, d.client, volumeName, size, *ad.Name, d.config.CompartmentID, srcSnapshotId, srcVolumeId,
 			volumeParams.diskEncryptionKey, volumeParams.vpusPerGB, bvTags)
@@ -1254,7 +1239,7 @@ func (d *BlockVolumeControllerDriver) ControllerExpandVolume(ctx context.Context
 		return nil, status.Error(codes.Internal, message)
 	}
 	_, err = d.client.BlockStorage().AwaitVolumeAvailableORTimeout(ctx, volumeId)
- 	if err != nil {
+	if err != nil {
 		log.With("service", "blockstorage", "verb", "get", "resource", "volume", "statusCode", util.GetHttpStatusCode(err)).
 			Error("Volume Expansion failed with time out")
 		errorType = util.GetError(err)
@@ -1352,4 +1337,26 @@ func isBlockVolumeAvailable(backup core.VolumeBackup) (bool, error) {
 		return false, errors.Errorf("snapshot did not become available (lifecycleState=%q)", state)
 	}
 	return false, nil
+}
+
+func getBVTags(tags *config.InitialTags, vp VolumeParameters) *config.TagConfig {
+
+	bvTags := &config.TagConfig{}
+	if tags != nil && tags.BlockVolume != nil {
+		bvTags = tags.BlockVolume
+	}
+
+	// use storage class level tags if provided
+	scTags := &config.TagConfig{
+		FreeformTags: vp.freeformTags,
+		DefinedTags:  vp.definedTags,
+	}
+	if scTags.FreeformTags != nil || scTags.DefinedTags != nil {
+		bvTags = scTags
+	}
+	// merge final tags with common tags
+	if util.IsCommonTagPresent(tags) {
+		bvTags = util.MergeTagConfig(bvTags, tags.Common)
+	}
+	return bvTags
 }
