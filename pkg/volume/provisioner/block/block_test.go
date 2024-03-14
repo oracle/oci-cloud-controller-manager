@@ -457,6 +457,10 @@ func (c *MockLoadBalancerClient) UpdateNetworkSecurityGroups(context.Context, st
 	return "", nil
 }
 
+func (c *MockLoadBalancerClient) UpdateLoadBalancer(ctx context.Context, lbID string, details *client.GenericUpdateLoadBalancerDetails) (string, error) {
+	return "", nil
+}
+
 func (c *MockVirtualNetworkClient) AddNetworkSecurityGroupSecurityRules(ctx context.Context, id string, details core.AddNetworkSecurityGroupSecurityRulesDetails) (*core.AddNetworkSecurityGroupSecurityRulesResponse, error) {
 	return nil, nil
 }

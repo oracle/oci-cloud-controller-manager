@@ -146,6 +146,7 @@ type GenericLoadBalancer struct {
 
 	FreeformTags map[string]string
 	DefinedTags  map[string]map[string]interface{}
+	SystemTags   map[string]map[string]interface{}
 }
 
 type GenericWorkRequest struct {
@@ -161,4 +162,9 @@ type GenericWorkRequest struct {
 
 type GenericUpdateNetworkSecurityGroupsDetails struct {
 	NetworkSecurityGroupIds []string
+}
+
+type GenericUpdateLoadBalancerDetails struct {
+	FreeformTags map[string]string
+	DefinedTags  map[string]map[string]interface{}
 }
