@@ -385,6 +385,27 @@ func (c *networkLoadbalancer) UpdateNetworkSecurityGroups(ctx context.Context, l
 	return *resp.OpcWorkRequestId, nil
 }
 
+func (c *networkLoadbalancer) UpdateLoadBalancer(ctx context.Context, lbID string, details *GenericUpdateLoadBalancerDetails) (string, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return "", RateLimitError(true, "UpdateLoadBalancer")
+	}
+
+	resp, err := c.networkloadbalancer.UpdateNetworkLoadBalancer(ctx, networkloadbalancer.UpdateNetworkLoadBalancerRequest{
+		UpdateNetworkLoadBalancerDetails: networkloadbalancer.UpdateNetworkLoadBalancerDetails{
+			FreeformTags: details.FreeformTags,
+			DefinedTags:  details.DefinedTags,
+		},
+		NetworkLoadBalancerId: &lbID,
+	})
+	incRequestCounter(err, updateVerb, networkLoadBalancerResource)
+
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	return *resp.OpcWorkRequestId, nil
+}
+
 func backendsToBackendDetails(backends []GenericBackend) []networkloadbalancer.BackendDetails {
 	backendDetails := make([]networkloadbalancer.BackendDetails, 0)
 	for _, backend := range backends {
@@ -430,6 +451,7 @@ func (c *networkLoadbalancer) networkLoadbalancerToGenericLoadbalancer(nlb *netw
 		BackendSets:             c.backendSetsToGenericBackendSetDetails(nlb.BackendSets),
 		FreeformTags:            nlb.FreeformTags,
 		DefinedTags:             nlb.DefinedTags,
+		SystemTags:              nlb.SystemTags,
 	}
 }
 
@@ -448,6 +470,7 @@ func (c *networkLoadbalancer) networkLoadbalancerSummaryToGenericLoadbalancer(nl
 		BackendSets:             c.backendSetsToGenericBackendSetDetails(nlb.BackendSets),
 		FreeformTags:            nlb.FreeformTags,
 		DefinedTags:             nlb.DefinedTags,
+		SystemTags:              nlb.SystemTags,
 	}
 }
 

@@ -61,6 +61,7 @@ type GenericLoadBalancerInterface interface {
 
 	AwaitWorkRequest(ctx context.Context, id string) (*GenericWorkRequest, error)
 	ListWorkRequests(ctx context.Context, compartmentId, lbId string) ([]*GenericWorkRequest, error)
+	UpdateLoadBalancer(ctx context.Context, lbID string, details *GenericUpdateLoadBalancerDetails) (string, error)
 }
 
 func (c *loadbalancerClientStruct) GetLoadBalancer(ctx context.Context, id string) (*GenericLoadBalancer, error) {
@@ -515,6 +516,25 @@ func (c *loadbalancerClientStruct) UpdateNetworkSecurityGroups(ctx context.Conte
 	return *resp.OpcWorkRequestId, nil
 }
 
+func (c *loadbalancerClientStruct) UpdateLoadBalancer(ctx context.Context, lbID string, details *GenericUpdateLoadBalancerDetails) (string, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return "", RateLimitError(true, "UpdateLoadBalancer")
+	}
+
+	resp, err := c.loadbalancer.UpdateLoadBalancer(ctx, loadbalancer.UpdateLoadBalancerRequest{
+		UpdateLoadBalancerDetails: loadbalancer.UpdateLoadBalancerDetails{
+			FreeformTags: details.FreeformTags,
+			DefinedTags:  details.DefinedTags,
+		},
+		LoadBalancerId:  &lbID,
+		RequestMetadata: c.requestMetadata,
+	})
+	incRequestCounter(err, updateVerb, loadBalancerResource)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	return *resp.OpcWorkRequestId, nil
+}
 func (c *loadbalancerClientStruct) loadbalancerToGenericLoadbalancer(lb *loadbalancer.LoadBalancer) *GenericLoadBalancer {
 	if lb == nil {
 		return nil
@@ -536,6 +556,7 @@ func (c *loadbalancerClientStruct) loadbalancerToGenericLoadbalancer(lb *loadbal
 		BackendSets:             c.backendSetsToGenericBackendSetDetails(lb.BackendSets),
 		FreeformTags:            lb.FreeformTags,
 		DefinedTags:             lb.DefinedTags,
+		SystemTags:              lb.SystemTags,
 	}
 }
 

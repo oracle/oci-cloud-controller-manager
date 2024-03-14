@@ -452,3 +452,17 @@ func ValidateFssId(id string) *FSSVolumeHandler {
 	}
 	return volumeHandler
 }
+
+func GetIsFeatureEnabledFromEnv(logger *zap.SugaredLogger, featureName string, defaultValue bool) bool {
+	enableFeature := defaultValue
+	enableFeatureEnvVar, ok := os.LookupEnv(featureName)
+	if ok {
+		var err error
+		enableFeature, err = strconv.ParseBool(enableFeatureEnvVar)
+		if err != nil {
+			logger.With(zap.Error(err)).Errorf("failed to parse %s envvar, defaulting to %t", featureName, defaultValue)
+			return defaultValue
+		}
+	}
+	return enableFeature
+}

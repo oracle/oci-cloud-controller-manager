@@ -65,6 +65,7 @@ func (ssr mockSSLSecretReader) readSSLSecret(ns, name string) (sslSecret *certif
 }
 
 func TestNewLBSpecSuccess(t *testing.T) {
+	enableOkeSystemTags = true
 	testCases := map[string]struct {
 		defaultSubnetOne string
 		defaultSubnetTwo string
@@ -2126,6 +2127,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 }
 
 func TestNewLBSpecForTags(t *testing.T) {
+	enableOkeSystemTags = true
 	tests := map[string]struct {
 		defaultSubnetOne string
 		defaultSubnetTwo string
@@ -2135,6 +2137,7 @@ func TestNewLBSpecForTags(t *testing.T) {
 		sslConfig        *SSLConfig
 		expected         *LBSpec
 		clusterTags      *providercfg.InitialTags
+		featureEnabled   bool
 	}{
 		"no resource & cluster level tags but common tags from config": {
 			defaultSubnetOne: "one",
@@ -2207,6 +2210,7 @@ func TestNewLBSpecForTags(t *testing.T) {
 				FreeformTags:                map[string]string{},
 				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"cluster": "CommonCluster", "owner": "CommonClusterOwner"}},
 			},
+			featureEnabled: true,
 		},
 		"no resource or cluster level tags and no common tags": {
 			defaultSubnetOne: "one",
@@ -2270,6 +2274,7 @@ func TestNewLBSpecForTags(t *testing.T) {
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
+			featureEnabled: true,
 		},
 		"resource level tags with common tags from config": {
 			defaultSubnetOne: "one",
@@ -2345,6 +2350,7 @@ func TestNewLBSpecForTags(t *testing.T) {
 				FreeformTags:                map[string]string{"cluster": "resource", "unique": "tag", "name": "development_cluster"},
 				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}, "namespace2": {"owner2": "team2", "key2": "value2"}},
 			},
+			featureEnabled: true,
 		},
 		"resource level defined tags and common defined tags from config with same key": {
 			defaultSubnetOne: "one",
@@ -2419,6 +2425,7 @@ func TestNewLBSpecForTags(t *testing.T) {
 				FreeformTags:                map[string]string{"cluster": "resource", "unique": "tag", "name": "development_cluster"},
 				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"owner2": "team2", "key2": "value2"}},
 			},
+			featureEnabled: true,
 		},
 		"cluster level tags and common tags": {
 			defaultSubnetOne: "one",
@@ -2493,6 +2500,7 @@ func TestNewLBSpecForTags(t *testing.T) {
 				FreeformTags:                map[string]string{"lbname": "development_cluster_loadbalancer", "name": "development_cluster"},
 				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}, "namespace2": {"owner2": "team2", "key2": "value2"}},
 			},
+			featureEnabled: true,
 		},
 		"cluster level defined tags and common defined tags with same key": {
 			defaultSubnetOne: "one",
@@ -2567,6 +2575,7 @@ func TestNewLBSpecForTags(t *testing.T) {
 				FreeformTags:                map[string]string{"lbname": "development_cluster_loadbalancer", "name": "development_cluster"},
 				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"owner2": "team2", "key2": "value2"}},
 			},
+			featureEnabled: true,
 		},
 		"cluster level tags with no common tags": {
 			defaultSubnetOne: "one",
@@ -2637,6 +2646,7 @@ func TestNewLBSpecForTags(t *testing.T) {
 				FreeformTags:                map[string]string{"lbname": "development_cluster_loadbalancer"},
 				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}},
 			},
+			featureEnabled: true,
 		},
 		"no cluster or level tags but common tags from config": {
 			defaultSubnetOne: "one",
@@ -2707,6 +2717,76 @@ func TestNewLBSpecForTags(t *testing.T) {
 				FreeformTags:                map[string]string{"lbname": "development_cluster_loadbalancer"},
 				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}},
 			},
+			featureEnabled: true,
+		},
+		"when the feature is disabled": {
+			defaultSubnetOne: "one",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			clusterTags: &providercfg.InitialTags{
+				Common: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"lbname": "development_cluster_loadbalancer"},
+					DefinedTags:  map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Type:     "lb",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"one"},
+				Listeners: map[string]client.GenericListener{
+					"TCP-80": {
+						Name:                  common.String("TCP-80"),
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]client.GenericBackendSetDetails{
+					"TCP-80": {
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
+						},
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
+					},
+				},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+			},
+			featureEnabled: false,
 		},
 	}
 	cp := &CloudProvider{
@@ -2716,6 +2796,7 @@ func TestNewLBSpecForTags(t *testing.T) {
 
 	for name, tc := range tests {
 		logger := zap.L()
+		enableOkeSystemTags = tc.featureEnabled
 		t.Run(name, func(t *testing.T) {
 			// we expect the service to be unchanged
 			tc.expected.service = tc.service
@@ -6329,6 +6410,50 @@ func Test_getNetworkLoadbalancerSubnets(t *testing.T) {
 			}
 			if err != nil && err.Error() != tc.expectedErrMsg {
 				t.Errorf("Expected error with message %q but got %q", tc.expectedErrMsg, err)
+			}
+		})
+	}
+}
+
+func Test_getResourceTrackingSysTagsFromConfig(t *testing.T) {
+	tests := map[string]struct {
+		initialTags *providercfg.InitialTags
+		wantTag     map[string]map[string]interface{}
+	}{
+		"expect an empty system tag when has no common tags": {
+			initialTags: &providercfg.InitialTags{},
+			wantTag:     nil,
+		},
+		"expect an empty system tag when resource tracking tags are not in common tags": {
+			initialTags: &providercfg.InitialTags{
+				LoadBalancer: &providercfg.TagConfig{
+					DefinedTags: map[string]map[string]interface{}{"ns": {"key": "val"}},
+				},
+				Common: &providercfg.TagConfig{
+					DefinedTags: map[string]map[string]interface{}{"orcl-not-a-tracking-tag": {"Cluster": "ocid1.cluster.aa..."}},
+				},
+			},
+			wantTag: nil,
+		},
+		"extract tracking system tag from config": {
+			initialTags: &providercfg.InitialTags{
+				LoadBalancer: &providercfg.TagConfig{
+					DefinedTags: map[string]map[string]interface{}{"ns": {"key": "val"}},
+				},
+				Common: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"Cluster": "ocid1.cluster.aa..."},
+					DefinedTags:  map[string]map[string]interface{}{"orcl-containerengine": {"Cluster": "ocid1.cluster.aa..."}},
+				},
+			},
+			wantTag: map[string]map[string]interface{}{"orcl-containerengine": {"Cluster": "ocid1.cluster.aa..."}},
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			tag := getResourceTrackingSysTagsFromConfig(zap.S(), test.initialTags)
+			t.Logf("%#v", tag)
+			if !reflect.DeepEqual(test.wantTag, tag) {
+				t.Errorf("wanted %v but got %v", test.wantTag, tag)
 			}
 		})
 	}

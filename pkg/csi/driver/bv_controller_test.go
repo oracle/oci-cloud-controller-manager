@@ -533,6 +533,10 @@ func (c *MockLoadBalancerClient) UpdateNetworkSecurityGroups(context.Context, st
 	return "", nil
 }
 
+func (c *MockLoadBalancerClient) UpdateLoadBalancer(ctx context.Context, lbID string, details *client.GenericUpdateLoadBalancerDetails) (string, error) {
+	return "", nil
+}
+
 // Networking mocks client VirtualNetwork implementation.
 func (p *MockProvisionerClient) LoadBalancer(*zap.SugaredLogger, string, string, *authv1.TokenRequest) client.GenericLoadBalancerInterface {
 	return &MockLoadBalancerClient{}
@@ -1870,15 +1874,18 @@ func TestGetBVTags(t *testing.T) {
 	emptyTags := &providercfg.InitialTags{}
 	emptyTagConfig := &providercfg.TagConfig{}
 	emptyVolumeParameters := VolumeParameters{}
+	enableOkeSystemTags = true
 	tests := map[string]struct {
 		initialTags       *providercfg.InitialTags
 		volumeParameters  VolumeParameters
 		expectedTagConfig *providercfg.TagConfig
+		featureEnabled    bool
 	}{
 		"no resource tags, no common tags": {
 			initialTags:       emptyTags,
 			volumeParameters:  emptyVolumeParameters,
 			expectedTagConfig: emptyTagConfig,
+			featureEnabled:    true,
 		},
 		"no resource tags, but common tags": {
 			initialTags: &providercfg.InitialTags{
@@ -1892,6 +1899,7 @@ func TestGetBVTags(t *testing.T) {
 				FreeformTags: map[string]string{"key1": "value1"},
 				DefinedTags:  map[string]map[string]interface{}{"ns1": {"key1": "value1"}},
 			},
+			featureEnabled: true,
 		},
 		"resource tags with common tags from config": {
 			initialTags: &providercfg.InitialTags{
@@ -1908,6 +1916,7 @@ func TestGetBVTags(t *testing.T) {
 				FreeformTags: map[string]string{"key1": "value1", "key2": "value2"},
 				DefinedTags:  map[string]map[string]interface{}{"ns1": {"key1": "value1"}, "ns2": {"key2": "value2"}},
 			},
+			featureEnabled: true,
 		},
 		"resource level tags with common tags from config with same key": {
 			initialTags: &providercfg.InitialTags{
@@ -1924,6 +1933,7 @@ func TestGetBVTags(t *testing.T) {
 				FreeformTags: map[string]string{"key1": "value1"},
 				DefinedTags:  map[string]map[string]interface{}{"ns1": {"key1": "value1"}},
 			},
+			featureEnabled: true,
 		},
 		"cluster level tags with common tags from config": {
 			initialTags: &providercfg.InitialTags{
@@ -1941,6 +1951,7 @@ func TestGetBVTags(t *testing.T) {
 				FreeformTags: map[string]string{"key1": "value1", "key2": "value2"},
 				DefinedTags:  map[string]map[string]interface{}{"ns1": {"key1": "value1"}, "ns2": {"key2": "value2"}},
 			},
+			featureEnabled: true,
 		},
 		"cluster level tags with common tags from config with same key": {
 			initialTags: &providercfg.InitialTags{
@@ -1958,6 +1969,7 @@ func TestGetBVTags(t *testing.T) {
 				FreeformTags: map[string]string{"key1": "value2"},
 				DefinedTags:  map[string]map[string]interface{}{"ns1": {"key2": "value2"}},
 			},
+			featureEnabled: true,
 		},
 		"cluster level tags but no common tags": {
 			initialTags: &providercfg.InitialTags{
@@ -1971,6 +1983,7 @@ func TestGetBVTags(t *testing.T) {
 				FreeformTags: map[string]string{"key1": "value1"},
 				DefinedTags:  map[string]map[string]interface{}{"ns1": {"key1": "value1"}},
 			},
+			featureEnabled: true,
 		},
 		"no cluster level or resource level tags but common tags": {
 			initialTags: &providercfg.InitialTags{
@@ -1984,13 +1997,30 @@ func TestGetBVTags(t *testing.T) {
 				FreeformTags: map[string]string{"key1": "value1"},
 				DefinedTags:  map[string]map[string]interface{}{"ns1": {"key1": "value1"}},
 			},
+			featureEnabled: true,
+		},
+		"when the feature is disabled": {
+			initialTags: &providercfg.InitialTags{
+				Common: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"key1": "value1"},
+					DefinedTags:  map[string]map[string]interface{}{"ns1": {"key1": "value1"}},
+				},
+			},
+			volumeParameters: VolumeParameters{
+				freeformTags: map[string]string{"key2": "value2"},
+				definedTags:  map[string]map[string]interface{}{"ns2": {"key2": "value2"}},
+			},
+			expectedTagConfig: &providercfg.TagConfig{
+				FreeformTags: map[string]string{"key2": "value2"},
+				DefinedTags:  map[string]map[string]interface{}{"ns2": {"key2": "value2"}},
+			},
+			featureEnabled: false,
 		},
 	}
 	for name, testcase := range tests {
+		enableOkeSystemTags = testcase.featureEnabled
 		t.Run(name, func(t *testing.T) {
-			actualTagConfig := getBVTags(testcase.initialTags, testcase.volumeParameters)
-			t.Logf("%v", actualTagConfig)
-			t.Logf("%v", testcase.expectedTagConfig)
+			actualTagConfig := getBVTags(zap.S(), testcase.initialTags, testcase.volumeParameters)
 			if !reflect.DeepEqual(actualTagConfig, testcase.expectedTagConfig) {
 				t.Errorf("Expected tagconfig %v but got %v", testcase.expectedTagConfig, actualTagConfig)
 			}
