@@ -69,6 +69,17 @@ const DefaultNetworkLoadBalancerListenerProtocol = "TCP"
 const MaxNsgPerVnic = 5
 
 const (
+	OkeSystemTagNamesapce = "orcl-containerengine"
+	// MaxDefinedTagPerLB is the maximum number of defined tags that be can be associated with the resource
+	//https://docs.oracle.com/en-us/iaas/Content/Tagging/Concepts/taggingoverview.htm#limits
+	MaxDefinedTagPerLB              = 64
+	resourceTrackingFeatureFlagName = "CPO_ENABLE_RESOURCE_ATTRIBUTION"
+)
+
+var MaxDefinedTagPerLBErr = fmt.Errorf("max limit of defined tags for lb is reached. skip adding tags. sending metric")
+var enableOkeSystemTags = false
+
+const (
 	// Fallback value if annotation on service is not set
 	lbDefaultShape = "100Mbps"
 
@@ -372,6 +383,11 @@ func (clb *CloudLoadBalancerProvider) createLoadBalancer(ctx context.Context, sp
 		NetworkSecurityGroupIds: spec.NetworkSecurityGroupIds,
 		FreeformTags:            spec.FreeformTags,
 		DefinedTags:             spec.DefinedTags,
+	}
+	// do not block creation if the defined tag limit is reached. defer LB to tracked by backfilling
+	if len(details.DefinedTags) > MaxDefinedTagPerLB {
+		logger.Warnf("the number of defined tags in the LB create request is beyond the limit. removing the resource tracking tags from the details..")
+		delete(details.DefinedTags, OkeSystemTagNamesapce)
 	}
 
 	if spec.Shape == flexible {
@@ -714,6 +730,19 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 
 	if !lbExists {
 		lbStatus, newLBOCID, err := lbProvider.createLoadBalancer(ctx, spec)
+		if err != nil && client.IsSystemTagNotFoundOrNotAuthorisedError(logger, err) {
+			logger.Warn("LB creation failed due to error in adding system tags. sending metric & retrying without system tags")
+
+			// send resource track tagging failure metrics
+			errorType = util.SystemTagErrTypePrefix + util.GetError(err)
+			lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
+			dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
+			metrics.SendMetricData(cp.metricPusher, getMetric(loadBalancerType, Create), time.Since(startTime).Seconds(), dimensionsMap)
+
+			// retry create without resource tracking system tags
+			delete(spec.DefinedTags, OkeSystemTagNamesapce)
+			lbStatus, newLBOCID, err = lbProvider.createLoadBalancer(ctx, spec)
+		}
 		if err != nil {
 			logger.With(zap.Error(err)).Error("Failed to provision LoadBalancer")
 			errorType = util.GetError(err)
@@ -884,7 +913,7 @@ func (cp *CloudProvider) getLoadBalancerSubnets(ctx context.Context, logger *zap
 
 func (clb *CloudLoadBalancerProvider) updateLoadBalancer(ctx context.Context, lb *client.GenericLoadBalancer, spec *LBSpec) error {
 	lbID := *lb.Id
-
+	start := time.Now()
 	logger := clb.logger.With("loadBalancerID", lbID, "compartmentID", clb.config.CompartmentID, "loadBalancerType", getLoadBalancerType(spec.service), "serviceName", spec.service.Name)
 
 	var actualPublicReservedIP *string
@@ -981,6 +1010,24 @@ func (clb *CloudLoadBalancerProvider) updateLoadBalancer(ctx context.Context, lb
 	if spec.LoadBalancerIP != "" || actualPublicReservedIP != nil {
 		if actualPublicReservedIP == nil || *actualPublicReservedIP != spec.LoadBalancerIP {
 			return errors.Errorf("The Load Balancer service reserved IP cannot be updated after the Load Balancer is created.")
+		}
+	}
+
+	dimensionsMap := make(map[string]string)
+	var errType string
+	if enableOkeSystemTags && !doesLbHaveOkeSystemTags(lb, spec) {
+		logger.Info("detected loadbalancer without oke system tags. proceeding to add")
+		err = clb.addLoadBalancerOkeSystemTags(ctx, lb, spec)
+		if err != nil {
+			// fail open if the update request fails
+			logger.With(zap.Error(err)).Warn("updateLoadBalancer didn't succeed. unable to add oke system tags")
+			errType = util.SystemTagErrTypePrefix + util.GetError(err)
+			if errors.Is(err, MaxDefinedTagPerLBErr) {
+				errType = util.ErrTagLimitReached
+			}
+			dimensionsMap[metrics.ComponentDimension] = util.GetMetricDimensionForComponent(errType, util.LoadBalancerType)
+			dimensionsMap[metrics.ResourceOCIDDimension] = *lb.Id
+			metrics.SendMetricData(clb.metricPusher, getMetric(spec.Type, Update), time.Since(start).Seconds(), dimensionsMap)
 		}
 	}
 	return nil
@@ -1645,6 +1692,56 @@ func (clb *CloudLoadBalancerProvider) updateLoadBalancerNetworkSecurityGroups(ct
 		return errors.Wrap(err, "failed to await UpdateNetworkSecurityGroups workrequest")
 	}
 	logger.Info("Loadbalancer UpdateNetworkSecurityGroups workrequest completed successfully")
+	return nil
+}
+
+func doesLbHaveOkeSystemTags(lb *client.GenericLoadBalancer, spec *LBSpec) bool {
+	if lb.SystemTags == nil || spec.SystemTags == nil {
+		return false
+	}
+	if okeSystemTag, okeSystemTagNsExists := lb.SystemTags[OkeSystemTagNamesapce]; okeSystemTagNsExists {
+		return reflect.DeepEqual(okeSystemTag, spec.SystemTags[OkeSystemTagNamesapce])
+	}
+	return false
+}
+func (clb *CloudLoadBalancerProvider) addLoadBalancerOkeSystemTags(ctx context.Context, lb *client.GenericLoadBalancer, spec *LBSpec) error {
+	lbDefinedTagsRequest := make(map[string]map[string]interface{})
+
+	if spec.SystemTags == nil {
+		return fmt.Errorf("oke system tag is not found in LB spec. ignoring..")
+	}
+	if _, exists := spec.SystemTags[OkeSystemTagNamesapce]; !exists {
+		return fmt.Errorf("oke system tag namespace is not found in LB spec")
+	}
+
+	if lb.DefinedTags != nil {
+		lbDefinedTagsRequest = lb.DefinedTags
+	}
+
+	// no overwriting customer tags as customer can not have a tag namespace with prefix 'orcl-'
+	// system tags are passed as defined tags in the request
+	lbDefinedTagsRequest[OkeSystemTagNamesapce] = spec.SystemTags[OkeSystemTagNamesapce]
+
+	// update fails if the number of defined tags is more than the service limit i.e 64
+	if len(lbDefinedTagsRequest) > MaxDefinedTagPerLB {
+		return MaxDefinedTagPerLBErr
+	}
+
+	lbUpdateDetails := &client.GenericUpdateLoadBalancerDetails{
+		FreeformTags: lb.FreeformTags,
+		DefinedTags:  lbDefinedTagsRequest,
+	}
+	wrID, err := clb.lbClient.UpdateLoadBalancer(ctx, *lb.Id, lbUpdateDetails)
+	if err != nil {
+		return errors.Wrap(err, "UpdateLoadBalancer request failed")
+	}
+	_, err = clb.lbClient.AwaitWorkRequest(ctx, wrID)
+	if err != nil {
+		return errors.Wrap(err, "failed to await updateloadbalancer work request")
+	}
+
+	logger := clb.logger.With("opc-workrequest-id", wrID, "loadBalancerID", lb.Id)
+	logger.Info("UpdateLoadBalancer request to add oke system tags completed successfully")
 	return nil
 }
 

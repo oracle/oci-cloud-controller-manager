@@ -497,6 +497,18 @@ func (c *MockLoadBalancerClient) DeleteListener(ctx context.Context, lbID, name 
 	return "", nil
 }
 
+var updateLoadBalancerErrors = map[string]error{
+	"work request fail": errors.New("internal server error"),
+}
+
+func (c *MockLoadBalancerClient) UpdateLoadBalancer(ctx context.Context, lbID string, details *client.GenericUpdateLoadBalancerDetails) (string, error) {
+	if err, ok := updateLoadBalancerErrors[lbID]; ok {
+		return "", err
+	}
+
+	return "", nil
+}
+
 var awaitLoadbalancerWorkrequestMap = map[string]error{
 	"failedToGetUpdateNetworkSecurityGroupsWorkRequest": errors.New("internal server error for get workrequest call"),
 }
@@ -609,6 +621,10 @@ func (c *MockNetworkLoadBalancerClient) UpdateNetworkSecurityGroups(ctx context.
 	if wrID, ok := updateNetworkSecurityGroupsLBsWorkRequests[lbId]; ok {
 		return wrID, nil
 	}
+	return "", nil
+}
+
+func (c *MockNetworkLoadBalancerClient) UpdateLoadBalancer(ctx context.Context, lbID string, details *client.GenericUpdateLoadBalancerDetails) (string, error) {
 	return "", nil
 }
 

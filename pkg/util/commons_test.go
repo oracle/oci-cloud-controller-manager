@@ -16,9 +16,10 @@ package util
 
 import (
 	"errors"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"reflect"
 	"testing"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 
 	errors2 "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
