@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"regexp"
 	"strconv"
 	"strings"
@@ -119,4 +120,40 @@ func GetHttpStatusCode(err error) int {
 		}
 	}
 	return statusCode
+}
+
+func mergeFreeFormTags(freefromTags ...map[string]string) map[string]string {
+	merged := make(map[string]string)
+	for _, t := range freefromTags {
+		for k, v := range t {
+			merged[k] = v
+		}
+	}
+	return merged
+}
+
+func mergeDefinedTags(definedTags ...map[string]map[string]interface{}) map[string]map[string]interface{} {
+	merged := make(map[string]map[string]interface{})
+	for _, t := range definedTags {
+		for k, v := range t {
+			merged[k] = v
+		}
+	}
+	return merged
+}
+
+// MergeTagConfig merges TagConfig's where dstTagConfig takes precedence
+func MergeTagConfig(srcTagConfig, dstTagConfig *config.TagConfig) *config.TagConfig {
+	var mergedTag config.TagConfig
+	mergedTag.FreeformTags = mergeFreeFormTags(srcTagConfig.FreeformTags, dstTagConfig.FreeformTags)
+	mergedTag.DefinedTags = mergeDefinedTags(srcTagConfig.DefinedTags, dstTagConfig.DefinedTags)
+
+	return &mergedTag
+}
+
+// IsCommonTagPresent return true if Common tags are initialised in config
+func IsCommonTagPresent(initialTags *config.InitialTags) bool {
+	// TODO: perform feature enabled check
+
+	return initialTags != nil && initialTags.Common != nil
 }
