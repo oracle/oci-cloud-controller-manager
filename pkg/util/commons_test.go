@@ -16,6 +16,8 @@ package util
 
 import (
 	"errors"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
+	"reflect"
 	"testing"
 
 	errors2 "github.com/pkg/errors"
@@ -121,6 +123,150 @@ func TestGetError(t *testing.T) {
 			if actualError != tt.expectedError {
 				t.Errorf("Expected errorType = %s, but got %s", tt.expectedError, actualError)
 				return
+			}
+		})
+	}
+}
+func TestIsCommonTagPresent(t *testing.T) {
+	emptyInitialTags := &config.InitialTags{}
+	tests := map[string]struct {
+		initialtag *config.InitialTags
+		want       bool
+	}{
+		"empty initial tags": {
+			initialtag: emptyInitialTags,
+			want:       false,
+		},
+		"No common tags": {
+			initialtag: &config.InitialTags{
+				LoadBalancer: &config.TagConfig{
+					FreeformTags: nil,
+					DefinedTags:  nil,
+				},
+				BlockVolume: &config.TagConfig{
+					FreeformTags: nil,
+					DefinedTags:  nil,
+				},
+				FSS: &config.TagConfig{
+					FreeformTags: nil,
+					DefinedTags:  nil,
+				},
+			},
+			want: false,
+		},
+		"Common tags": {
+			initialtag: &config.InitialTags{
+				Common: &config.TagConfig{
+					FreeformTags: nil,
+					DefinedTags:  nil,
+				},
+			},
+			want: true,
+		},
+	}
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			actual := IsCommonTagPresent(tc.initialtag)
+			if actual != tc.want {
+				t.Errorf("Expected %t but got %t", tc.want, actual)
+			}
+		})
+	}
+}
+
+func TestMergeTagConfig(t *testing.T) {
+	emptyTagConfig := &config.TagConfig{}
+	tests := map[string]struct {
+		srcTagConfig    *config.TagConfig
+		dstTagConfig    *config.TagConfig
+		mergedTagConfig config.TagConfig
+	}{
+		"null test case": {
+			srcTagConfig: emptyTagConfig,
+			dstTagConfig: emptyTagConfig,
+			mergedTagConfig: config.TagConfig{
+				FreeformTags: map[string]string{},
+				DefinedTags:  map[string]map[string]interface{}{},
+			},
+		},
+		"base test case": {
+			srcTagConfig: &config.TagConfig{
+				FreeformTags: map[string]string{"foo": "bar"},
+				DefinedTags: map[string]map[string]interface{}{
+					"ns": {"foo": "bar"},
+				},
+			},
+			dstTagConfig: &config.TagConfig{
+				FreeformTags: map[string]string{"foo1": "bar1"},
+				DefinedTags: map[string]map[string]interface{}{
+					"ns1": {"foo1": "bar1"},
+				},
+			},
+			mergedTagConfig: config.TagConfig{
+				FreeformTags: map[string]string{"foo": "bar", "foo1": "bar1"},
+				DefinedTags: map[string]map[string]interface{}{
+					"ns":  {"foo": "bar"},
+					"ns1": {"foo1": "bar1"},
+				},
+			},
+		},
+		"test case with conflicting key": {
+			srcTagConfig: &config.TagConfig{
+				FreeformTags: map[string]string{"foo": "bar"},
+				DefinedTags: map[string]map[string]interface{}{
+					"ns": {"foo": "bar"},
+				},
+			},
+			dstTagConfig: &config.TagConfig{
+				FreeformTags: map[string]string{"foo": "bar1"},
+				DefinedTags: map[string]map[string]interface{}{
+					"ns": {"foo2": "bar2"},
+				},
+			},
+			mergedTagConfig: config.TagConfig{
+				FreeformTags: map[string]string{"foo1": "bar1"},
+				DefinedTags: map[string]map[string]interface{}{
+					"ns": {"foo2": "bar2"},
+				},
+			},
+		},
+		"test case with one empty config - 1": {
+			srcTagConfig: emptyTagConfig,
+			dstTagConfig: &config.TagConfig{
+				FreeformTags: map[string]string{"foo": "bar1"},
+				DefinedTags: map[string]map[string]interface{}{
+					"ns": {"foo2": "bar2"},
+				},
+			},
+			mergedTagConfig: config.TagConfig{
+				FreeformTags: map[string]string{"foo": "bar1"},
+				DefinedTags: map[string]map[string]interface{}{
+					"ns": {"foo2": "bar2"},
+				},
+			},
+		},
+		"test case with one empty config - 2": {
+			srcTagConfig: &config.TagConfig{
+				FreeformTags: map[string]string{"foo": "bar1"},
+				DefinedTags: map[string]map[string]interface{}{
+					"ns": {"foo2": "bar2"},
+				},
+			},
+			dstTagConfig: emptyTagConfig,
+			mergedTagConfig: config.TagConfig{
+				FreeformTags: map[string]string{"foo": "bar1"},
+				DefinedTags: map[string]map[string]interface{}{
+					"ns": {"foo2": "bar2"},
+				},
+			},
+		},
+	}
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			actual := MergeTagConfig(tc.srcTagConfig, tc.dstTagConfig)
+			if !reflect.DeepEqual(actual.FreeformTags, tc.mergedTagConfig.FreeformTags) &&
+				!reflect.DeepEqual(actual.DefinedTags, tc.mergedTagConfig.DefinedTags) {
+				t.Errorf("Expected %v but got %v", tc.mergedTagConfig, actual)
 			}
 		})
 	}
