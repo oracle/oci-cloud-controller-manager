@@ -116,25 +116,43 @@ func (c *loadbalancerClientStruct) CreateLoadBalancer(ctx context.Context, detai
 	if !c.rateLimiter.Writer.TryAccept() {
 		return "", RateLimitError(true, "CreateLoadBalancer")
 	}
+	createLoadBalancerDetails := loadbalancer.CreateLoadBalancerDetails{
+		CompartmentId:           details.CompartmentId,
+		DisplayName:             details.DisplayName,
+		SubnetIds:               details.SubnetIds,
+		ShapeName:               details.ShapeName,
+		ShapeDetails:            c.genericShapeDetailsToShapeDetails(details.ShapeDetails),
+		ReservedIps:             c.genericReservedIpToReservedIps(details.ReservedIps),
+		Certificates:            c.genericCertificatesToCertificates(details.Certificates),
+		IsPrivate:               details.IsPrivate,
+		NetworkSecurityGroupIds: details.NetworkSecurityGroupIds,
+		Listeners:               c.genericListenerDetailsToListenerDetails(details.Listeners),
+		BackendSets:             c.genericBackendSetDetailsToBackendSets(details.BackendSets),
+		FreeformTags:            details.FreeformTags,
+		DefinedTags:             details.DefinedTags,
+	}
+
+	// IpMode for OCI Load balancers can only be set at Create
+	// Existing loadbalancer cannot be updated to have IPv6 LB endpoints
+	if details.IpVersion != nil {
+		switch *details.IpVersion {
+		case GenericIPv4:
+			createLoadBalancerDetails.IpMode = loadbalancer.CreateLoadBalancerDetailsIpModeIpv4
+		case GenericIPv6:
+			// OCI LBaaS does not support SingleStack IPv6
+			createLoadBalancerDetails.IpMode = loadbalancer.CreateLoadBalancerDetailsIpModeIpv6
+		case GenericIPv4AndIPv6:
+			createLoadBalancerDetails.IpMode = loadbalancer.CreateLoadBalancerDetailsIpModeIpv6
+		}
+
+	}
+
 	resp, err := c.loadbalancer.CreateLoadBalancer(ctx, loadbalancer.CreateLoadBalancerRequest{
-		CreateLoadBalancerDetails: loadbalancer.CreateLoadBalancerDetails{
-			CompartmentId:           details.CompartmentId,
-			DisplayName:             details.DisplayName,
-			SubnetIds:               details.SubnetIds,
-			ShapeName:               details.ShapeName,
-			ShapeDetails:            c.genericShapeDetailsToShapeDetails(details.ShapeDetails),
-			ReservedIps:             c.genericReservedIpToReservedIps(details.ReservedIps),
-			Certificates:            c.genericCertificatesToCertificates(details.Certificates),
-			IsPrivate:               details.IsPrivate,
-			NetworkSecurityGroupIds: details.NetworkSecurityGroupIds,
-			Listeners:               c.genericListenerDetailsToListenerDetails(details.Listeners),
-			BackendSets:             c.genericBackendSetDetailsToBackendSets(details.BackendSets),
-			FreeformTags:            details.FreeformTags,
-			DefinedTags:             details.DefinedTags,
-		},
-		RequestMetadata: c.requestMetadata,
-		OpcRetryToken:   serviceUid,
+		CreateLoadBalancerDetails: createLoadBalancerDetails,
+		RequestMetadata:           c.requestMetadata,
+		OpcRetryToken:             serviceUid,
 	})
+
 	incRequestCounter(err, createVerb, loadBalancerResource)
 
 	if err != nil {
@@ -535,6 +553,7 @@ func (c *loadbalancerClientStruct) UpdateLoadBalancer(ctx context.Context, lbID 
 	}
 	return *resp.OpcWorkRequestId, nil
 }
+
 func (c *loadbalancerClientStruct) loadbalancerToGenericLoadbalancer(lb *loadbalancer.LoadBalancer) *GenericLoadBalancer {
 	if lb == nil {
 		return nil

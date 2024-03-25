@@ -42,13 +42,18 @@ const (
 	batchSize = 25
 )
 
-type serviceComponents struct {
+type securityRuleComponents struct {
 	frontendNsgOcid  string
 	backendNsgOcids  []string
 	ports            map[string]portSpec
 	sourceCIDRs      []string
 	isPreserveSource bool
 	serviceUid       string
+	lbSubnets        []*core.Subnet
+	backendSubnets   []*core.Subnet
+	actualPorts      *portSpec
+	desiredPorts     portSpec
+	ipFamilies       []string
 }
 
 // generateNsgBackendIngressRules is a helper method to generate the ingress rules for the backend NSG
@@ -303,7 +308,7 @@ func splitRuleIdsIntoBatches(rules []string) [][]string {
 	return securityRulesInBatches
 }
 
-func (s *CloudProvider) reconcileSecurityGroup(ctx context.Context, lbservice serviceComponents) error {
+func (s *CloudProvider) reconcileSecurityGroup(ctx context.Context, lbservice securityRuleComponents) error {
 	if len(lbservice.backendNsgOcids) > 0 {
 		updateRulesMutex.Lock()
 		defer updateRulesMutex.Unlock()
@@ -385,7 +390,7 @@ func (s *CloudProvider) reconcileSecurityGroup(ctx context.Context, lbservice se
 	return nil
 }
 
-func (s *CloudProvider) removeBackendSecurityGroupRules(ctx context.Context, lbservice serviceComponents) error {
+func (s *CloudProvider) removeBackendSecurityGroupRules(ctx context.Context, lbservice securityRuleComponents) error {
 
 	for _, backendNsg := range lbservice.backendNsgOcids {
 		nsg, err := s.getNsg(ctx, backendNsg)
