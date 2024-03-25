@@ -18,16 +18,17 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/pkg/errors"
 	"k8s.io/utils/pointer"
 )
 
-// NetworkingInterface defines the subset of the OCI compute API utilised by the CCM.
+// NetworkingInterface defines the subset of the OCI compute API utilised by the CCM
 type NetworkingInterface interface {
 	GetSubnet(ctx context.Context, id string) (*core.Subnet, error)
-	GetSubnetFromCacheByIP(ip string) (*core.Subnet, error)
+	GetSubnetFromCacheByIP(ip IpAddresses) (*core.Subnet, error)
 	IsRegionalSubnet(ctx context.Context, id string) (bool, error)
 
 	GetVcn(ctx context.Context, id string) (*core.Vcn, error)
@@ -53,6 +54,11 @@ type NetworkingInterface interface {
 	RemoveNetworkSecurityGroupSecurityRules(ctx context.Context, id string, details core.RemoveNetworkSecurityGroupSecurityRulesDetails) (*core.RemoveNetworkSecurityGroupSecurityRulesResponse, error)
 	ListNetworkSecurityGroupSecurityRules(ctx context.Context, id string, direction core.ListNetworkSecurityGroupSecurityRulesDirectionEnum) ([]core.SecurityRule, error)
 	UpdateNetworkSecurityGroupSecurityRules(ctx context.Context, id string, details core.UpdateNetworkSecurityGroupSecurityRulesDetails) (*core.UpdateNetworkSecurityGroupSecurityRulesResponse, error)
+}
+
+type IpAddresses struct {
+	V4 string
+	V6 string
 }
 
 func (c *client) GetVNIC(ctx context.Context, id string) (*core.Vnic, error) {
@@ -105,20 +111,54 @@ func (c *client) GetSubnet(ctx context.Context, id string) (*core.Subnet, error)
 
 // GetSubnetFromCacheByIP checks to see if the given IP is contained by any subnet CIDR block in the subnet cache
 // If no hits were found then no subnet and no error will be returned (nil, nil)
-func (c *client) GetSubnetFromCacheByIP(ip string) (*core.Subnet, error) {
-	ipAddr := net.ParseIP(ip)
+func (c *client) GetSubnetFromCacheByIP(ip IpAddresses) (*core.Subnet, error) {
+	ipAddrV4 := net.ParseIP(ip.V4)
+	ipAddrV6 := net.ParseIP(ip.V6)
+
 	for _, subnetItem := range c.subnetCache.List() {
 		subnet := subnetItem.(*core.Subnet)
-		_, cidr, err := net.ParseCIDR(*subnet.CidrBlock)
-		if err != nil {
-			// This should never actually error but just in case
-			return nil, fmt.Errorf("unable to parse CIDR block %q for subnet %q: %v", *subnet.CidrBlock, *subnet.Id, err)
+		if subnet == nil {
+			continue
 		}
-
-		if cidr.Contains(ipAddr) {
-			return subnet, nil
+		if subnet.CidrBlock != nil {
+			// By design IPv4 CidrBlock is not allowed to be null or empty, so it has been hardcoded with string "<null>"
+			if !strings.Contains(*subnet.CidrBlock, "null") {
+				_, cidrV4, err := net.ParseCIDR(*subnet.CidrBlock)
+				if err != nil {
+					// This should never actually error but just in case
+					return nil, fmt.Errorf("unable to parse CIDR block %q for subnet %q: %v", *subnet.CidrBlock, *subnet.Id, err)
+				}
+				if cidrV4.Contains(ipAddrV4) {
+					return subnet, nil
+				}
+			}
+		}
+		if subnet.Ipv6CidrBlock != nil {
+			_, cidrV6, err := net.ParseCIDR(*subnet.Ipv6CidrBlock)
+			if err != nil {
+				// This should never actually error but just in case
+				return nil, fmt.Errorf("unable to parse CIDR block %q for subnet %q: %v", *subnet.Ipv6CidrBlock, *subnet.Id, err)
+			}
+			if cidrV6.Contains(ipAddrV6) {
+				return subnet, nil
+			}
+		}
+		if subnet.Ipv6CidrBlocks != nil && len(subnet.Ipv6CidrBlocks) > 0 {
+			for _, ipv6CidrBlock := range subnet.Ipv6CidrBlocks {
+				if ipv6CidrBlock != "" {
+					_, cidrV6, err := net.ParseCIDR(ipv6CidrBlock)
+					if err != nil {
+						// This should never actually error but just in case
+						return nil, fmt.Errorf("unable to parse CIDR block %q for subnet %q: %v", ipv6CidrBlock, *subnet.Id, err)
+					}
+					if cidrV6.Contains(ipAddrV6) {
+						return subnet, nil
+					}
+				}
+			}
 		}
 	}
+
 	return nil, nil
 }
 

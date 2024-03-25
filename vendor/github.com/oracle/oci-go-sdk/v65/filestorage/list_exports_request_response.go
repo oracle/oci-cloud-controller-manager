@@ -23,7 +23,7 @@ type ListExportsRequest struct {
 
 	// For list pagination. The maximum number of results per page,
 	// or items to return in a paginated "List" call.
-	// 1 is the minimum, 1000 is the maximum.
+	// 1 is the minimum, 4096 is the maximum.
 	// For important details about how pagination works,
 	// see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	// Example: `500`
@@ -152,6 +152,7 @@ type ListExportsLifecycleStateEnum string
 const (
 	ListExportsLifecycleStateCreating ListExportsLifecycleStateEnum = "CREATING"
 	ListExportsLifecycleStateActive   ListExportsLifecycleStateEnum = "ACTIVE"
+	ListExportsLifecycleStateUpdating ListExportsLifecycleStateEnum = "UPDATING"
 	ListExportsLifecycleStateDeleting ListExportsLifecycleStateEnum = "DELETING"
 	ListExportsLifecycleStateDeleted  ListExportsLifecycleStateEnum = "DELETED"
 	ListExportsLifecycleStateFailed   ListExportsLifecycleStateEnum = "FAILED"
@@ -160,6 +161,7 @@ const (
 var mappingListExportsLifecycleStateEnum = map[string]ListExportsLifecycleStateEnum{
 	"CREATING": ListExportsLifecycleStateCreating,
 	"ACTIVE":   ListExportsLifecycleStateActive,
+	"UPDATING": ListExportsLifecycleStateUpdating,
 	"DELETING": ListExportsLifecycleStateDeleting,
 	"DELETED":  ListExportsLifecycleStateDeleted,
 	"FAILED":   ListExportsLifecycleStateFailed,
@@ -168,6 +170,7 @@ var mappingListExportsLifecycleStateEnum = map[string]ListExportsLifecycleStateE
 var mappingListExportsLifecycleStateEnumLowerCase = map[string]ListExportsLifecycleStateEnum{
 	"creating": ListExportsLifecycleStateCreating,
 	"active":   ListExportsLifecycleStateActive,
+	"updating": ListExportsLifecycleStateUpdating,
 	"deleting": ListExportsLifecycleStateDeleting,
 	"deleted":  ListExportsLifecycleStateDeleted,
 	"failed":   ListExportsLifecycleStateFailed,
@@ -187,6 +190,7 @@ func GetListExportsLifecycleStateEnumStringValues() []string {
 	return []string{
 		"CREATING",
 		"ACTIVE",
+		"UPDATING",
 		"DELETING",
 		"DELETED",
 		"FAILED",

@@ -33,15 +33,25 @@ type Listener struct {
 	Port *int `mandatory:"true" json:"port"`
 
 	// The protocol on which the listener accepts connection requests.
-	// For public network load balancers, ANY protocol refers to TCP/UDP.
+	// For public network load balancers, ANY protocol refers to TCP/UDP with the wildcard port.
 	// For private network load balancers, ANY protocol refers to TCP/UDP/ICMP (note that ICMP requires isPreserveSourceDestination to be set to true).
-	// To get a list of valid protocols, use the ListNetworkLoadBalancersProtocols
-	// operation.
+	// "ListNetworkLoadBalancersProtocols" API is deprecated and it will not return the updated values. Use the allowed values for the protocol instead.
 	// Example: `TCP`
 	Protocol ListenerProtocolsEnum `mandatory:"true" json:"protocol"`
 
 	// IP version associated with the listener.
 	IpVersion IpVersionEnum `mandatory:"false" json:"ipVersion,omitempty"`
+
+	// Property to enable/disable PPv2 feature for this listener.
+	IsPpv2Enabled *bool `mandatory:"false" json:"isPpv2Enabled"`
+
+	// The duration for TCP idle timeout in seconds.
+	// Example: `300`
+	TcpIdleTimeout *int `mandatory:"false" json:"tcpIdleTimeout"`
+
+	// The duration for UDP idle timeout in seconds.
+	// Example: `120`
+	UdpIdleTimeout *int `mandatory:"false" json:"udpIdleTimeout"`
 }
 
 func (m Listener) String() string {

@@ -27,7 +27,7 @@ type ListFileSystemsRequest struct {
 
 	// For list pagination. The maximum number of results per page,
 	// or items to return in a paginated "List" call.
-	// 1 is the minimum, 1000 is the maximum.
+	// 1 is the minimum, 4096 is the maximum.
 	// For important details about how pagination works,
 	// see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	// Example: `500`
@@ -164,6 +164,7 @@ type ListFileSystemsLifecycleStateEnum string
 const (
 	ListFileSystemsLifecycleStateCreating ListFileSystemsLifecycleStateEnum = "CREATING"
 	ListFileSystemsLifecycleStateActive   ListFileSystemsLifecycleStateEnum = "ACTIVE"
+	ListFileSystemsLifecycleStateUpdating ListFileSystemsLifecycleStateEnum = "UPDATING"
 	ListFileSystemsLifecycleStateDeleting ListFileSystemsLifecycleStateEnum = "DELETING"
 	ListFileSystemsLifecycleStateDeleted  ListFileSystemsLifecycleStateEnum = "DELETED"
 	ListFileSystemsLifecycleStateFailed   ListFileSystemsLifecycleStateEnum = "FAILED"
@@ -172,6 +173,7 @@ const (
 var mappingListFileSystemsLifecycleStateEnum = map[string]ListFileSystemsLifecycleStateEnum{
 	"CREATING": ListFileSystemsLifecycleStateCreating,
 	"ACTIVE":   ListFileSystemsLifecycleStateActive,
+	"UPDATING": ListFileSystemsLifecycleStateUpdating,
 	"DELETING": ListFileSystemsLifecycleStateDeleting,
 	"DELETED":  ListFileSystemsLifecycleStateDeleted,
 	"FAILED":   ListFileSystemsLifecycleStateFailed,
@@ -180,6 +182,7 @@ var mappingListFileSystemsLifecycleStateEnum = map[string]ListFileSystemsLifecyc
 var mappingListFileSystemsLifecycleStateEnumLowerCase = map[string]ListFileSystemsLifecycleStateEnum{
 	"creating": ListFileSystemsLifecycleStateCreating,
 	"active":   ListFileSystemsLifecycleStateActive,
+	"updating": ListFileSystemsLifecycleStateUpdating,
 	"deleting": ListFileSystemsLifecycleStateDeleting,
 	"deleted":  ListFileSystemsLifecycleStateDeleted,
 	"failed":   ListFileSystemsLifecycleStateFailed,
@@ -199,6 +202,7 @@ func GetListFileSystemsLifecycleStateEnumStringValues() []string {
 	return []string{
 		"CREATING",
 		"ACTIVE",
+		"UPDATING",
 		"DELETING",
 		"DELETED",
 		"FAILED",
