@@ -15,10 +15,7 @@ import (
 	"strings"
 )
 
-// BackendSetSummary The configuration of a network load balancer backend set.
-// For more information about backend set configuration, see
-// Managing Backend Sets (https://docs.cloud.oracle.com/Content/Balance/Tasks/managingbackendsets.htm).
-// **Caution:** Oracle recommends that you avoid using any confidential information when you supply string values using the API.
+// BackendSetSummary The representation of BackendSetSummary
 type BackendSetSummary struct {
 
 	// A user-friendly name for the backend set that must be unique and cannot be changed.
@@ -34,12 +31,20 @@ type BackendSetSummary struct {
 	// An array of backends.
 	Backends []Backend `mandatory:"true" json:"backends"`
 
+	// The health check policy configuration.
 	HealthChecker *HealthChecker `mandatory:"true" json:"healthChecker"`
 
 	// If this parameter is enabled, the network load balancer preserves the source IP of the packet forwarded to the backend servers.
 	// Backend servers see the original source IP. If the `isPreserveSourceDestination` parameter is enabled for the network load balancer resource, this parameter cannot be disabled.
 	// The value is true by default.
 	IsPreserveSource *bool `mandatory:"false" json:"isPreserveSource"`
+
+	// If enabled, the network load balancer will continue to distribute traffic in the configured distribution in the event all backends are unhealthy.
+	// The value is false by default.
+	IsFailOpen *bool `mandatory:"false" json:"isFailOpen"`
+
+	// If enabled existing connections will be forwarded to an alternative healthy backend as soon as current backend becomes unhealthy.
+	IsInstantFailoverEnabled *bool `mandatory:"false" json:"isInstantFailoverEnabled"`
 
 	// IP version associated with the backend set.
 	IpVersion IpVersionEnum `mandatory:"false" json:"ipVersion,omitempty"`

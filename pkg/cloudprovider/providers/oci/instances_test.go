@@ -20,23 +20,37 @@ import (
 	"reflect"
 	"testing"
 
-	"go.uber.org/zap"
-	authv1 "k8s.io/api/authentication/v1"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
-
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/oracle/oci-go-sdk/v65/filestorage"
 	"github.com/oracle/oci-go-sdk/v65/identity"
+
+	"go.uber.org/zap"
+	authv1 "k8s.io/api/authentication/v1"
+	v1 "k8s.io/api/core/v1"
+	v1discovery "k8s.io/api/discovery/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
+	v1discoverylisters "k8s.io/client-go/listers/discovery/v1"
 )
 
 var (
 	instanceVnics = map[string]*core.Vnic{
+		"default": {
+			PrivateIp:     common.String("10.0.0.1"),
+			PublicIp:      common.String("0.0.0.1"),
+			HostnameLabel: common.String("default"),
+			SubnetId:      common.String("subnetwithdnslabel"),
+		},
+		"instance1": {
+			PrivateIp:     common.String("10.0.0.1"),
+			PublicIp:      common.String("0.0.0.1"),
+			HostnameLabel: common.String("instance1"),
+			SubnetId:      common.String("subnetwithdnslabel"),
+		},
 		"basic-complete": {
 			PrivateIp:     common.String("10.0.0.1"),
 			PublicIp:      common.String("0.0.0.1"),
@@ -75,6 +89,41 @@ var (
 			SubnetId:      common.String("subnetwithoutdnslabel"),
 		},
 		"no-vcn-dns-label": {
+			PrivateIp:     common.String("10.0.0.1"),
+			PublicIp:      common.String("0.0.0.1"),
+			HostnameLabel: common.String("no-vcn-dns-label"),
+			SubnetId:      common.String("subnetwithnovcndnslabel"),
+		},
+		"ipv6-instance": {
+			HostnameLabel: common.String("no-vcn-dns-label"),
+			SubnetId:      common.String("IPv6-subnet"),
+			Ipv6Addresses: []string{"2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
+		},
+		"ipv6-instance-ula": {
+			HostnameLabel: common.String("no-vcn-dns-label"),
+			SubnetId:      common.String("IPv6-subnet"),
+			Ipv6Addresses: []string{"fc00:0000:0000:0000:0000:0000:0000:0000"},
+		},
+		"ipv6-instance-2": {
+			PrivateIp:     common.String("10.0.0.1"),
+			PublicIp:      common.String("0.0.0.1"),
+			HostnameLabel: common.String("no-vcn-dns-label"),
+			SubnetId:      common.String("IPv6-subnet"),
+			Ipv6Addresses: []string{"2001:0db8:85a3:0000:0000:8a2e:0370:idfe"},
+		},
+		"instance-id-ipv4-ipv6": {
+			PrivateIp:     common.String("10.0.0.1"),
+			PublicIp:      common.String("0.0.0.1"),
+			HostnameLabel: common.String("no-vcn-dns-label"),
+			SubnetId:      common.String("IPv4-IPv6-subnet"),
+			Ipv6Addresses: []string{"2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
+		},
+		"instance-id-ipv6": {
+			HostnameLabel: common.String("no-vcn-dns-label"),
+			SubnetId:      common.String("ipv6-instance"),
+			Ipv6Addresses: []string{"2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
+		},
+		"instance-id-ipv4": {
 			PrivateIp:     common.String("10.0.0.1"),
 			PublicIp:      common.String("0.0.0.1"),
 			HostnameLabel: common.String("no-vcn-dns-label"),
@@ -120,6 +169,18 @@ var (
 			Region:             common.String("PHX"),
 			Shape:              common.String("VM.Standard1.2"),
 			DisplayName:        common.String("instance_zone_test"),
+		},
+		"ipv6-instance": {
+			CompartmentId: common.String("ipv6-instance"),
+		},
+		"instance-id-ipv4-ipv6": {
+			CompartmentId: common.String("instance-id-ipv4-ipv6"),
+		},
+		"instance-id-ipv4": {
+			CompartmentId: common.String("instance-id-ipv4"),
+		},
+		"instance-id-ipv6": {
+			CompartmentId: common.String("instance-id-ipv6"),
 		},
 	}
 	subnets = map[string]*core.Subnet{
@@ -167,6 +228,30 @@ var (
 			VcnId:              common.String("vcnwithoutdnslabel"),
 			AvailabilityDomain: nil,
 		},
+		"IPv4-subnet": {
+			Id:                 common.String("IPv4-subnet"),
+			DnsLabel:           common.String("subnetwithnovcndnslabel"),
+			VcnId:              common.String("vcnwithoutdnslabel"),
+			AvailabilityDomain: nil,
+			CidrBlock:          common.String("10.0.0.0/16"),
+		},
+		"IPv6-subnet": {
+			Id:                 common.String("IPv6-subnet"),
+			DnsLabel:           common.String("subnetwithnovcndnslabel"),
+			VcnId:              common.String("vcnwithoutdnslabel"),
+			AvailabilityDomain: nil,
+			Ipv6CidrBlock:      common.String("IPv6Cidr"),
+			Ipv6CidrBlocks:     []string{"IPv6Cidr"},
+		},
+		"IPv4-IPv6-subnet": {
+			Id:                 common.String("IPv4-IPv6-subnet"),
+			DnsLabel:           common.String("subnetwithnovcndnslabel"),
+			VcnId:              common.String("vcnwithoutdnslabel"),
+			AvailabilityDomain: nil,
+			CidrBlock:          common.String("10.0.0.0/16"),
+			Ipv6CidrBlocks:     []string{},
+			Ipv6CidrBlock:      common.String("IPv6Cidr"),
+		},
 	}
 
 	vcns = map[string]*core.Vcn{
@@ -185,6 +270,7 @@ var (
 				Annotations: map[string]string{
 					CompartmentIDAnnotation: "default",
 				},
+				Name: "default",
 			},
 			Spec: v1.NodeSpec{
 				ProviderID: "default",
@@ -195,9 +281,455 @@ var (
 				Annotations: map[string]string{
 					CompartmentIDAnnotation: "compartment1",
 				},
+				Name: "instance1",
 			},
 			Spec: v1.NodeSpec{
 				ProviderID: "instance1",
+			},
+		},
+		"instanceWithAddress1": {
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					CompartmentIDAnnotation: "compartment1",
+				},
+				Name: "instanceWithAddress1",
+			},
+			Spec: v1.NodeSpec{
+				ProviderID: "instanceWithAddress1",
+			},
+			Status: v1.NodeStatus{
+				Addresses: []v1.NodeAddress{
+					{
+						Address: "0.0.0.0",
+						Type:    "InternalIP",
+					},
+				},
+			},
+		},
+		"instanceWithAddress2": {
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					CompartmentIDAnnotation: "compartment1",
+				},
+				Name: "instanceWithAddress2",
+			},
+			Spec: v1.NodeSpec{
+				ProviderID: "instanceWithAddress2",
+			},
+			Status: v1.NodeStatus{
+				Addresses: []v1.NodeAddress{
+					{
+						Address: "0.0.0.1",
+						Type:    "InternalIP",
+					},
+				},
+			},
+		},
+		"instanceWithAddressIPv4IPv6": {
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					CompartmentIDAnnotation: "compartment1",
+				},
+				Name: "instanceWithAddressIPv4IPv6",
+			},
+			Spec: v1.NodeSpec{
+				ProviderID: "instanceWithAddressIPv4IPv6",
+			},
+			Status: v1.NodeStatus{
+				Addresses: []v1.NodeAddress{
+					{
+						Address: "0.0.0.1",
+						Type:    "InternalIP",
+					},
+					{
+						Address: "2001:0db8:85a3:0000:0000:8a2e:0370:7335",
+						Type:    "InternalIP",
+					},
+				},
+			},
+		},
+		"virtualNodeDefault": {
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					VirtualNodePoolIdAnnotation: "vnpId",
+				},
+				Name: "virtualNodeDefault",
+			},
+			Spec: v1.NodeSpec{
+				ProviderID: "ocid1.virtualnode.oc1.iad.default",
+			},
+		},
+		"virtualNodeZoneTest": {
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					VirtualNodePoolIdAnnotation: "vnpId",
+				},
+				Name: "virtualNodeZoneTest",
+			},
+			Spec: v1.NodeSpec{
+				ProviderID: "ocid1.virtualnode.oc1.iad.zonetest",
+			},
+		},
+		"virtualNodeNonCache": {
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					VirtualNodePoolIdAnnotation: "vnpId",
+				},
+				Name: "virtualNodeNonCache",
+			},
+			Spec: v1.NodeSpec{
+				ProviderID: "ocid1.virtualnode.oc1.iad.noncache",
+			},
+		},
+		"ipv6-node": {
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					CompartmentIDAnnotation: "default",
+				},
+				Labels: map[string]string{
+					IPv4NodeIPFamilyLabel: "true",
+					IPv6NodeIPFamilyLabel: "true",
+				},
+				Name: "Node-Ipv6",
+			},
+			Spec: v1.NodeSpec{
+				ProviderID: "ipv6-instance",
+			},
+		},
+		"ipv6-node-ula": {
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					CompartmentIDAnnotation: "default",
+				},
+				Labels: map[string]string{
+					IPv4NodeIPFamilyLabel: "true",
+					IPv6NodeIPFamilyLabel: "true",
+				},
+				Name: "Node-Ipv6",
+			},
+			Spec: v1.NodeSpec{
+				ProviderID: "ipv6-instance-ula",
+			},
+		},
+		"instance-id-ipv4-ipv6": {
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					CompartmentIDAnnotation: "default",
+				},
+				Labels: map[string]string{
+					IPv4NodeIPFamilyLabel: "true",
+					IPv6NodeIPFamilyLabel: "true",
+				},
+				Name: "Node-Ipv6",
+			},
+			Spec: v1.NodeSpec{
+				ProviderID: "instance-id-ipv4-ipv6",
+			},
+		},
+		"instance-id-ipv4": {
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					CompartmentIDAnnotation: "default",
+				},
+				Labels: map[string]string{
+					IPv4NodeIPFamilyLabel: "true",
+				},
+				Name: "Node-Ipv6",
+			},
+			Spec: v1.NodeSpec{
+				ProviderID: "instance-id-ipv4",
+			},
+		},
+		"instance-id-ipv6": {
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					CompartmentIDAnnotation: "default",
+				},
+				Labels: map[string]string{
+					IPv6NodeIPFamilyLabel: "true",
+				},
+				Name: "Node-Ipv6",
+			},
+			Spec: v1.NodeSpec{
+				ProviderID: "instance-id-ipv6",
+			},
+		},
+	}
+
+	podList = map[string]*v1.Pod{
+		"virtualPod1": {
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "virtualPod1",
+				Labels: map[string]string{
+					"app": "pod1",
+				},
+			},
+			Spec: v1.PodSpec{
+				NodeName: "virtualNodeDefault",
+			},
+		},
+		"virtualPod2": {
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "virtualPod2",
+				Labels: map[string]string{
+					"app": "pod2",
+				},
+			},
+			Spec: v1.PodSpec{
+				NodeName: "virtualNodeDefault",
+			},
+			Status: v1.PodStatus{
+				PodIP: "0.0.0.10",
+				PodIPs: []v1.PodIP{
+					{"0.0.0.10"},
+				},
+			},
+		},
+		"virtualPodIPv4Ipv6": {
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "virtualPodIPv4Ipv6",
+				Labels: map[string]string{
+					"app": "pod3",
+				},
+			},
+			Spec: v1.PodSpec{
+				NodeName: "virtualNodeDefault",
+			},
+			Status: v1.PodStatus{
+				PodIP: "0.0.0.20",
+				PodIPs: []v1.PodIP{
+					{"0.0.0.20"},
+					{"2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
+				},
+			},
+		},
+		"regularPod1": {
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "regularPod1",
+			},
+			Spec: v1.PodSpec{
+				NodeName: "default",
+			},
+		},
+		"regularPod2": {
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "regularPod2",
+			},
+			Spec: v1.PodSpec{
+				NodeName: "default",
+			},
+		},
+	}
+
+	ready             = true
+	endpointSliceList = map[string]*v1discovery.EndpointSlice{
+		"endpointSliceVirtual": {
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					v1discovery.LabelServiceName: "virtualService",
+				},
+			},
+			Endpoints: []v1discovery.Endpoint{
+				{
+					TargetRef: &v1.ObjectReference{
+						Kind: "Pod",
+						Name: "virtualPod1",
+					},
+					Conditions: v1discovery.EndpointConditions{
+						Ready: &ready,
+					},
+					Addresses: []string{"0.0.0.9"},
+					NodeName:  common.String("virtualNodeDefault"),
+				},
+				{
+					TargetRef: &v1.ObjectReference{
+						Kind: "Pod",
+						Name: "virtualPod2",
+					},
+					Conditions: v1discovery.EndpointConditions{
+						Ready: &ready,
+					},
+					Addresses: []string{"0.0.0.10"},
+					NodeName:  common.String("virtualNodeDefault"),
+				},
+			},
+		},
+		"endpointSliceRegular": {
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					v1discovery.LabelServiceName: "regularService",
+				},
+			},
+			Endpoints: []v1discovery.Endpoint{
+				{
+					TargetRef: &v1.ObjectReference{
+						Kind: "Pod",
+						Name: "regularPod1",
+					},
+					Conditions: v1discovery.EndpointConditions{
+						Ready: &ready,
+					},
+					Addresses: []string{"0.0.0.19"},
+					NodeName:  common.String("default"),
+				},
+				{
+					TargetRef: &v1.ObjectReference{
+						Kind: "Pod",
+						Name: "regularPod2",
+					},
+					Conditions: v1discovery.EndpointConditions{
+						Ready: &ready,
+					},
+					Addresses: []string{"0.0.0.20"},
+					NodeName:  common.String("default"),
+				},
+			},
+		},
+
+		"endpointSliceMixed": {
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					v1discovery.LabelServiceName: "mixedService",
+				},
+			},
+			Endpoints: []v1discovery.Endpoint{
+				{
+					TargetRef: &v1.ObjectReference{
+						Kind: "Pod",
+						Name: "virtualPod1",
+					},
+					Conditions: v1discovery.EndpointConditions{
+						Ready: &ready,
+					},
+					Addresses: []string{"0.0.0.9"},
+					NodeName:  common.String("virtualNodeDefault"),
+				},
+				{
+					TargetRef: &v1.ObjectReference{
+						Kind: "Pod",
+						Name: "regularPod1",
+					},
+					Conditions: v1discovery.EndpointConditions{
+						Ready: &ready,
+					},
+					Addresses: []string{"0.0.0.19"},
+					NodeName:  common.String("default"),
+				},
+				{
+					TargetRef: &v1.ObjectReference{
+						Kind: "Pod",
+						Name: "virtualPod2",
+					},
+					Conditions: v1discovery.EndpointConditions{
+						Ready: &ready,
+					},
+					Addresses: []string{"0.0.0.10"},
+					NodeName:  common.String("virtualNodeDefault"),
+				},
+				{
+					TargetRef: &v1.ObjectReference{
+						Kind: "Pod",
+						Name: "regularPod2",
+					},
+					Conditions: v1discovery.EndpointConditions{
+						Ready: &ready,
+					},
+					Addresses: []string{"0.0.0.20"},
+					NodeName:  common.String("default"),
+				},
+			},
+		},
+		"endpointSliceUnknownPod": {
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					v1discovery.LabelServiceName: "unknownService",
+				},
+			},
+			Endpoints: []v1discovery.Endpoint{
+				{
+					TargetRef: &v1.ObjectReference{
+						Kind: "Pod",
+						Name: "unknown",
+					},
+					Conditions: v1discovery.EndpointConditions{
+						Ready: &ready,
+					},
+					Addresses: []string{"0.0.0.100"},
+				},
+			},
+		},
+		"endpointSliceDuplicate1.1": {
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					v1discovery.LabelServiceName: "duplicateEndpointsService",
+				},
+			},
+			Endpoints: []v1discovery.Endpoint{
+				{
+					TargetRef: &v1.ObjectReference{
+						Kind: "Pod",
+						Name: "virtualPod1",
+					},
+					Conditions: v1discovery.EndpointConditions{
+						Ready: &ready,
+					},
+					Addresses: []string{"0.0.0.10"},
+				},
+				{
+					TargetRef: &v1.ObjectReference{
+						Kind: "Pod",
+						Name: "virtualPod2",
+					},
+					Conditions: v1discovery.EndpointConditions{
+						Ready: &ready,
+					},
+					Addresses: []string{"0.0.0.9"},
+				},
+			},
+		},
+		"endpointSliceDuplicate1.2": {
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					v1discovery.LabelServiceName: "duplicateEndpointsService",
+				},
+			},
+			Endpoints: []v1discovery.Endpoint{
+				{
+					TargetRef: &v1.ObjectReference{
+						Kind: "Pod",
+						Name: "virtualPod1",
+					},
+					Conditions: v1discovery.EndpointConditions{
+						Ready: &ready,
+					},
+					Addresses: []string{"0.0.0.10"},
+				},
+				{
+					TargetRef: &v1.ObjectReference{
+						Kind: "Pod",
+						Name: "virtualPod2",
+					},
+					Conditions: v1discovery.EndpointConditions{
+						Ready: &ready,
+					},
+					Addresses: []string{"0.0.0.9"},
+				},
+			},
+		},
+	}
+
+	serviceList = map[string]*v1.Service{
+		"default": {
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "default",
+			},
+			Spec: v1.ServiceSpec{
+				Type: v1.ServiceTypeLoadBalancer,
+			},
+		},
+		"non-loadbalancer": {
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "non-loadbalancer",
 			},
 		},
 	}
@@ -268,11 +800,11 @@ var (
 
 type MockSecurityListManager struct{}
 
-func (MockSecurityListManager) Update(ctx context.Context, lbSubnets []*core.Subnet, _ []*core.Subnet, sourceCIDRs []string, actualPorts *portSpec, desiredPorts portSpec, isPreserveSource bool) error {
+func (MockSecurityListManager) Update(ctx context.Context, sc securityRuleComponents) error {
 	return nil
 }
 
-func (MockSecurityListManager) Delete(ctx context.Context, lbSubnets []*core.Subnet, backendSubnets []*core.Subnet, ports portSpec, sourceCIDRs []string, isPreserveSource bool) error {
+func (MockSecurityListManager) Delete(ctx context.Context, sc securityRuleComponents) error {
 	return nil
 }
 
@@ -401,10 +933,6 @@ func (c *MockBlockStorageClient) GetVolumeBackupsByName(ctx context.Context, sna
 type MockVirtualNetworkClient struct {
 }
 
-func (c *MockVirtualNetworkClient) GetVNIC(ctx context.Context, id string) (*core.Vnic, error) {
-	return nil, nil
-}
-
 func (c *MockVirtualNetworkClient) ListPrivateIps(ctx context.Context, vnicId string) ([]core.PrivateIp, error) {
 	return nil, nil
 }
@@ -425,6 +953,14 @@ func (c *MockVirtualNetworkClient) GetPrivateIp(ctx context.Context, id string) 
 	return nil, nil
 }
 
+func (c *MockVirtualNetworkClient) ListIpv6s(ctx context.Context, vnicId string) ([]core.Ipv6, error) {
+	return []core.Ipv6{}, nil
+}
+
+func (c *MockVirtualNetworkClient) CreateIpv6(ctx context.Context, vnicID string) (*core.Ipv6, error) {
+	return &core.Ipv6{}, nil
+}
+
 func (c *MockVirtualNetworkClient) GetSubnet(ctx context.Context, id string) (*core.Subnet, error) {
 	if subnet, ok := subnets[id]; ok {
 		return subnet, nil
@@ -436,7 +972,11 @@ func (c *MockVirtualNetworkClient) GetVcn(ctx context.Context, id string) (*core
 	return vcns[id], nil
 }
 
-func (c *MockVirtualNetworkClient) GetSubnetFromCacheByIP(ip string) (*core.Subnet, error) {
+func (c *MockVirtualNetworkClient) GetVNIC(ctx context.Context, id string) (*core.Vnic, error) {
+	return &core.Vnic{}, nil
+}
+
+func (c *MockVirtualNetworkClient) GetSubnetFromCacheByIP(ip client.IpAddresses) (*core.Subnet, error) {
 	return nil, nil
 }
 
@@ -864,6 +1404,22 @@ func TestExtractNodeAddresses(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			name: "ipv6-instance",
+			in:   "ipv6-instance",
+			out: []v1.NodeAddress{
+				{Type: v1.NodeExternalIP, Address: "2001:db8:85a3::8a2e:370:7334"},
+			},
+			err: nil,
+		},
+		{
+			name: "ipv6-instance-ULA",
+			in:   "ipv6-instance-ula",
+			out: []v1.NodeAddress{
+				{Type: v1.NodeInternalIP, Address: "fc00::"},
+			},
+			err: nil,
+		},
 	}
 
 	cp := &CloudProvider{
@@ -871,6 +1427,7 @@ func TestExtractNodeAddresses(t *testing.T) {
 		config:        &providercfg.Config{CompartmentID: "testCompartment"},
 		NodeLister:    &mockNodeLister{},
 		instanceCache: &mockInstanceCache{},
+		logger:        zap.S(),
 	}
 
 	for _, tt := range testCases {
@@ -965,6 +1522,54 @@ func TestInstanceType(t *testing.T) {
 			}
 			if !reflect.DeepEqual(result, tt.out) {
 				t.Errorf("InstanceType(context, %+v) => %+v, want %+v", tt.in, result, tt.out)
+			}
+		})
+	}
+}
+
+func TestGetNodeIpFamily(t *testing.T) {
+	testCases := []struct {
+		name string
+		in   string
+		out  []string
+		err  error
+	}{
+		{
+			name: "IPv4",
+			in:   "instance-id-ipv4",
+			out:  []string{IPv4},
+			err:  nil,
+		},
+		{
+			name: "IPv6",
+			in:   "instance-id-ipv6",
+			out:  []string{IPv6},
+			err:  nil,
+		},
+		{
+			name: "IPv4 & IPv6",
+			in:   "instance-id-ipv4-ipv6",
+			out:  []string{IPv4, IPv6},
+			err:  nil,
+		},
+	}
+
+	cp := &CloudProvider{
+		NodeLister:    &mockNodeLister{},
+		client:        MockOCIClient{},
+		config:        &providercfg.Config{CompartmentID: "testCompartment"},
+		logger:        zap.S(),
+		instanceCache: &mockInstanceCache{},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := cp.getNodeIpFamily(tt.in)
+			if err != nil && err.Error() != tt.err.Error() {
+				t.Errorf("getNodeIpFamily(context, %+v) got error %v, expected %v", tt.in, err, tt.err)
+			}
+			if !reflect.DeepEqual(result, tt.out) {
+				t.Errorf("getNodeIpFamily(context, %+v) => %+v, want %+v", tt.name, result, tt.out)
 			}
 		})
 	}
@@ -1209,22 +1814,78 @@ func TestGetCompartmentIDByInstanceID(t *testing.T) {
 	}
 }
 
-type mockNodeLister struct{}
+type mockNodeLister struct {
+	nodes []*v1.Node
+}
 
 func (s *mockNodeLister) List(selector labels.Selector) (ret []*v1.Node, err error) {
-	nodes := make([]*v1.Node, len(nodeList))
-	nodes[0] = nodeList["default"]
-	nodes[1] = nodeList["instance1"]
+	var nodes, allNodes []*v1.Node
+	if len(s.nodes) > 0 {
+		allNodes = s.nodes
+	} else {
+		for _, n := range nodeList {
+			allNodes = append(allNodes, n)
+		}
+	}
+
+	for _, n := range allNodes {
+		if selector != nil {
+			if selector.Matches(labels.Set(n.ObjectMeta.GetLabels())) {
+				nodes = append(nodes, n)
+			}
+		} else {
+			nodes = append(nodes, n)
+		}
+	}
 	return nodes, nil
 }
 
 func (s *mockNodeLister) Get(name string) (*v1.Node, error) {
-	if node, ok := nodeList[name]; ok {
+	if len(s.nodes) > 0 {
+		for _, n := range s.nodes {
+			if n.Name == name {
+				return n, nil
+			}
+		}
+	} else if node, ok := nodeList[name]; ok {
 		return node, nil
 	}
-	return nil, nil
+	return nil, errors.New("get node error")
 }
 
 func (s *mockNodeLister) ListWithPredicate() ([]*v1.Node, error) {
 	return nil, nil
+}
+
+type mockEndpointSliceLister struct{}
+
+func (s *mockEndpointSliceLister) List(selector labels.Selector) (ret []*v1discovery.EndpointSlice, err error) {
+	return []*v1discovery.EndpointSlice{}, nil
+}
+
+func (s *mockEndpointSliceLister) EndpointSlices(namespace string) v1discoverylisters.EndpointSliceNamespaceLister {
+	return &mockEndpointSliceNamespaceLister{}
+}
+
+type mockEndpointSliceNamespaceLister struct{}
+
+func (s *mockEndpointSliceNamespaceLister) List(selector labels.Selector) (ret []*v1discovery.EndpointSlice, err error) {
+	var endpointSlices []*v1discovery.EndpointSlice
+	for _, es := range endpointSliceList {
+		if selector != nil {
+			if selector.Matches(labels.Set(es.ObjectMeta.GetLabels())) {
+				endpointSlices = append(endpointSlices, es)
+			}
+		} else {
+			endpointSlices = append(endpointSlices, es)
+		}
+	}
+	return endpointSlices, nil
+}
+
+func (s *mockEndpointSliceNamespaceLister) Get(name string) (ret *v1discovery.EndpointSlice, err error) {
+	if es, ok := endpointSliceList[name]; ok {
+		return es, nil
+	}
+	return nil, errors.New("get endpointSlice error")
 }

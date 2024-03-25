@@ -38,7 +38,7 @@ type NetworkLoadBalancerSummary struct {
 	// An array of IP addresses.
 	IpAddresses []IpAddress `mandatory:"true" json:"ipAddresses"`
 
-	// The subnet in which the network load balancer is spawned OCIDs (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm)."
+	// The subnet in which the network load balancer is spawned OCIDs (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm).
 	SubnetId *string `mandatory:"true" json:"subnetId"`
 
 	// A message describing the current state in more detail.
@@ -67,6 +67,10 @@ type NetworkLoadBalancerSummary struct {
 	// Packets are sent to the backend set without any changes to the source and destination IP.
 	IsPreserveSourceDestination *bool `mandatory:"false" json:"isPreserveSourceDestination"`
 
+	// This can only be enabled when NLB is working in transparent mode with source destination header preservation enabled.
+	// This removes the additional dependency from NLB backends(like Firewalls) to perform SNAT.
+	IsSymmetricHashEnabled *bool `mandatory:"false" json:"isSymmetricHashEnabled"`
+
 	// An array of network security groups OCIDs (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) associated with the network load
 	// balancer.
 	// During the creation of the network load balancer, the service adds the new load balancer to the specified network security groups.
@@ -87,6 +91,11 @@ type NetworkLoadBalancerSummary struct {
 	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
+
+	// ZPR tags for this resource. Each tag is a simple key-value pair with no predefined name, type, or namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Example: `{ "oracle-zpr": { "td": { "value": "42", "mode": "audit" } } }`
+	SecurityAttributes map[string]map[string]interface{} `mandatory:"false" json:"securityAttributes"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
 	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).

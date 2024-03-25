@@ -168,6 +168,12 @@ func contains(s []string, e string) bool {
 	return false
 }
 
+// removeAtPosition is a helper method to remove an element from remove and return it given the index
+func removeAtPosition(slice []string, position int) []string {
+	slice[position] = slice[len(slice)-1]
+	return slice[:len(slice)-1]
+}
+
 func getHealthCheckerChanges(actual *client.GenericHealthChecker, desired *client.GenericHealthChecker) []string {
 
 	var healthCheckerChanges []string
@@ -368,6 +374,7 @@ func getBackendSetChanges(logger *zap.SugaredLogger, actual map[string]client.Ge
 					Backends:                        backendsToBackendDetails(actualBackendSet.Backends),
 					SessionPersistenceConfiguration: actualBackendSet.SessionPersistenceConfiguration,
 					SslConfiguration:                sslConfigurationToDetails(actualBackendSet.SslConfiguration),
+					IpVersion:                       actualBackendSet.IpVersion,
 				},
 				Ports:      portsFromBackendSet(logger, *actualBackendSet.Name, &actualBackendSet),
 				actionType: Delete,
@@ -441,6 +448,7 @@ func hasListenerChanged(logger *zap.SugaredLogger, actual client.GenericListener
 	if toString(actual.Protocol) != toString(desired.Protocol) {
 		listenerChanges = append(listenerChanges, fmt.Sprintf(changeFmtStr, "Listener:Protocol", toString(actual.Protocol), toString(desired.Protocol)))
 	}
+
 	listenerChanges = append(listenerChanges, getSSLConfigurationChanges(actual.SslConfiguration, desired.SslConfiguration)...)
 	listenerChanges = append(listenerChanges, getConnectionConfigurationChanges(actual.ConnectionConfiguration, desired.ConnectionConfiguration)...)
 
@@ -557,6 +565,11 @@ func hasLoadBalancerNetworkSecurityGroupsChanged(ctx context.Context, actualNetw
 	return !DeepEqualLists(actualNetworkSecurityGroup, desiredNetworkSecurityGroup)
 }
 
+// hasIpVersionChanged checks if the IP version has changed
+func hasIpVersionChanged(previousIpVersion, currentIpVersion string) bool {
+	return !strings.EqualFold(previousIpVersion, currentIpVersion)
+}
+
 func sslEnabled(sslConfigMap map[int]*loadbalancer.SslConfiguration) bool {
 	return len(sslConfigMap) > 0
 }
@@ -571,6 +584,9 @@ func getSanitizedName(name string) string {
 		name = fmt.Sprintf(strings.Join(fields, "-"))
 	}
 	if len(fields) > 2 {
+		if contains(fields, IPv6) {
+			return fmt.Sprintf(strings.Join(fields[:3], "-"))
+		}
 		return fmt.Sprintf(strings.Join(fields[:2], "-"))
 	}
 	return name
@@ -759,4 +775,44 @@ func parseFlexibleShapeBandwidth(shape, annotation string) (int, error) {
 		return 0, fmt.Errorf("invalid format for %s annotation : %v", annotation, shape)
 	}
 	return parsedIntFlexibleShape, nil
+}
+
+// GenericIpVersion returns the address of the value client.GenericIpVersion
+func GenericIpVersion(value client.GenericIpVersion) *client.GenericIpVersion {
+	return &value
+}
+
+// convertK8sIpFamiliesToOciIpVersion helper method to convert ipFamily string to GenericIpVersion
+func convertK8sIpFamiliesToOciIpVersion(ipFamily string) client.GenericIpVersion {
+	switch ipFamily {
+	case IPv4:
+		return client.GenericIPv4
+	case IPv6:
+		return client.GenericIPv6
+	case IPv4AndIPv6:
+		return client.GenericIPv4AndIPv6
+	default:
+		return client.GenericIPv4
+	}
+}
+
+// convertOciIpVersionsToOciIpFamilies helper method to convert ociIpVersions slice to string slice
+func convertOciIpVersionsToOciIpFamilies(ipVersions []client.GenericIpVersion) []string {
+	if len(ipVersions) == 0 {
+		return []string{IPv4}
+	}
+	k8sIpFamily := []string{}
+	for _, ipVersion := range ipVersions {
+		switch ipVersion {
+		case client.GenericIPv4:
+			k8sIpFamily = append(k8sIpFamily, IPv4)
+		case client.GenericIPv6:
+			k8sIpFamily = append(k8sIpFamily, IPv6)
+		case client.GenericIPv4AndIPv6:
+			k8sIpFamily = append(k8sIpFamily, IPv4AndIPv6)
+		default:
+			k8sIpFamily = append(k8sIpFamily, IPv4)
+		}
+	}
+	return k8sIpFamily
 }

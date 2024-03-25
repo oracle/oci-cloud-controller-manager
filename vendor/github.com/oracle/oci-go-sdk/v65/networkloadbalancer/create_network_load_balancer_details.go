@@ -38,6 +38,10 @@ type CreateNetworkLoadBalancerDetails struct {
 	// enabled on the load balancer VNIC, and packets are sent to the backend with the entire IP header intact.
 	IsPreserveSourceDestination *bool `mandatory:"false" json:"isPreserveSourceDestination"`
 
+	// This can only be enabled when NLB is working in transparent mode with source destination header preservation enabled.
+	// This removes the additional dependency from NLB backends(like Firewalls) to perform SNAT.
+	IsSymmetricHashEnabled *bool `mandatory:"false" json:"isSymmetricHashEnabled"`
+
 	// An array of reserved Ips.
 	ReservedIps []ReservedIp `mandatory:"false" json:"reservedIps"`
 
@@ -65,6 +69,19 @@ type CreateNetworkLoadBalancerDetails struct {
 	// IP version associated with the NLB.
 	NlbIpVersion NlbIpVersionEnum `mandatory:"false" json:"nlbIpVersion,omitempty"`
 
+	// IPv6 subnet prefix selection. If Ipv6 subnet prefix is passed, Nlb Ipv6 Address would be assign within the cidr block. NLB has to be dual or single stack ipv6 to support this.
+	SubnetIpv6Cidr *string `mandatory:"false" json:"subnetIpv6Cidr"`
+
+	// Private IP address to be assigned to the network load balancer being created.
+	// This IP address has to be in the CIDR range of the subnet where network load balancer is being created
+	// Example: "10.0.0.1"
+	AssignedPrivateIpv4 *string `mandatory:"false" json:"assignedPrivateIpv4"`
+
+	// IPv6 address to be assigned to the network load balancer being created.
+	// This IP address has to be part of one of the prefixes supported by the subnet.
+	// Example: "2607:9b80:9a0a:9a7e:abcd:ef01:2345:6789"
+	AssignedIpv6 *string `mandatory:"false" json:"assignedIpv6"`
+
 	// Listeners associated with the network load balancer.
 	Listeners map[string]ListenerDetails `mandatory:"false" json:"listeners"`
 
@@ -78,6 +95,11 @@ type CreateNetworkLoadBalancerDetails struct {
 	// Defined tags for this resource. Each key is predefined and scoped to a namespace.
 	// Example: `{"foo-namespace": {"bar-key": "value"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
+
+	// ZPR tags for this resource. Each tag is a simple key-value pair with no predefined name, type, or namespace.
+	// For more information, see Resource Tags (https://docs.cloud.oracle.com/Content/General/Concepts/resourcetags.htm).
+	// Example: `{"oracle-zpr": {"td": {"value": "42", "mode": "audit"}}}`
+	SecurityAttributes map[string]map[string]interface{} `mandatory:"false" json:"securityAttributes"`
 }
 
 func (m CreateNetworkLoadBalancerDetails) String() string {

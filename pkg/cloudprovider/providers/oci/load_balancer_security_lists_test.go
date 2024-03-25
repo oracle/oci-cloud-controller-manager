@@ -41,6 +41,7 @@ func TestGetNodeIngressRules(t *testing.T) {
 		sourceCIDRs      []string
 		isPreserveSource bool
 		expected         []core.IngressSecurityRule
+		ipFamilies       []string
 	}{
 		{
 			name: "new ingress",
@@ -67,7 +68,9 @@ func TestGetNodeIngressRules(t *testing.T) {
 				makeIngressSecurityRule("1", k8sports.ProxyHealthzPort),
 				makeIngressSecurityRule("2", k8sports.ProxyHealthzPort),
 			},
-		}, {
+			ipFamilies: []string{IPv4},
+		},
+		{
 			name: "no change",
 			securityList: &core.SecurityList{
 				IngressSecurityRules: []core.IngressSecurityRule{
@@ -96,7 +99,9 @@ func TestGetNodeIngressRules(t *testing.T) {
 				makeIngressSecurityRule("2", 80),
 				makeIngressSecurityRule("2", k8sports.ProxyHealthzPort),
 			},
-		}, {
+			ipFamilies: []string{IPv4},
+		},
+		{
 			name: "change lb subnet",
 			securityList: &core.SecurityList{
 				IngressSecurityRules: []core.IngressSecurityRule{
@@ -127,6 +132,7 @@ func TestGetNodeIngressRules(t *testing.T) {
 				makeIngressSecurityRule("3", 80),
 				makeIngressSecurityRule("3", k8sports.ProxyHealthzPort),
 			},
+			ipFamilies: []string{IPv4},
 		},
 		{
 			name: "remove lb subnets",
@@ -152,6 +158,7 @@ func TestGetNodeIngressRules(t *testing.T) {
 				makeIngressSecurityRule("existing", 9000),
 				makeIngressSecurityRule("existing", 9001),
 			},
+			ipFamilies: []string{IPv4},
 		},
 		{
 			name: "do not delete health check rules that are used by other services",
@@ -181,6 +188,7 @@ func TestGetNodeIngressRules(t *testing.T) {
 			expected: []core.IngressSecurityRule{
 				makeIngressSecurityRule("0.0.0.0/0", lbNodesHealthCheckPort),
 			},
+			ipFamilies: []string{IPv4},
 		},
 		{
 			name: "multiple services for same cluster; one uses default healthcheck and other uses HealthcheckNodeport",
@@ -221,6 +229,7 @@ func TestGetNodeIngressRules(t *testing.T) {
 				makeIngressSecurityRule("0.0.0.0/0", lbNodesHealthCheckPort),
 				makeIngressSecurityRule("1.1.1.1/1", 32000),
 			},
+			ipFamilies: []string{IPv4},
 		},
 		{
 			name: "update service port",
@@ -255,7 +264,9 @@ func TestGetNodeIngressRules(t *testing.T) {
 				makeIngressSecurityRule("1", 80),
 				makeIngressSecurityRule("2", 80),
 			},
-		}, {
+			ipFamilies: []string{IPv4},
+		},
+		{
 			name: "update service health check port",
 			securityList: &core.SecurityList{
 				IngressSecurityRules: []core.IngressSecurityRule{
@@ -288,7 +299,9 @@ func TestGetNodeIngressRules(t *testing.T) {
 				makeIngressSecurityRule("10.0.50.0/24", k8sports.ProxyHealthzPort+1),
 				makeIngressSecurityRule("10.0.51.0/24", k8sports.ProxyHealthzPort+1),
 			},
-		}, {
+			ipFamilies: []string{IPv4},
+		},
+		{
 			name: "external traffic policy local service health check port",
 			securityList: &core.SecurityList{
 				IngressSecurityRules: []core.IngressSecurityRule{
@@ -330,6 +343,57 @@ func TestGetNodeIngressRules(t *testing.T) {
 				makeIngressSecurityRule("10.0.50.0/24", 30000),
 				makeIngressSecurityRule("10.0.51.0/24", 30000),
 			},
+			ipFamilies: []string{IPv4},
+		},
+		{
+			name: "external traffic policy local service health check port",
+			securityList: &core.SecurityList{
+				IngressSecurityRules: []core.IngressSecurityRule{
+					core.IngressSecurityRule{Source: common.String("0.0.0.0/0")},
+					makeIngressSecurityRule("10.0.50.0/24", 8081),
+					makeIngressSecurityRule("10.0.51.0/24", 8081),
+					makeIngressSecurityRule("10.0.50.0/24", k8sports.ProxyHealthzPort),
+					makeIngressSecurityRule("10.0.51.0/24", k8sports.ProxyHealthzPort),
+				},
+			},
+			lbSubnets: []*core.Subnet{
+				{CidrBlock: common.String("10.0.50.0/24")},
+				{
+					CidrBlock:      common.String("10.0.51.0/24"),
+					Ipv6CidrBlock:  common.String("2001:0000:130F:0000:0000:09C0:876A:130B/7"),
+					Ipv6CidrBlocks: []string{"2001:0000:130F:0000:0000:09C0:876A:130B/7"},
+				},
+			},
+			actualPorts: &portSpec{
+				BackendPort:       8081,
+				HealthCheckerPort: k8sports.ProxyHealthzPort,
+			},
+			desiredPorts: portSpec{
+				BackendPort:       8081,
+				HealthCheckerPort: 30000,
+			},
+			services: []*v1.Service{
+				{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-non-default-health-check-port"},
+					Spec: v1.ServiceSpec{
+						Type:                  v1.ServiceTypeLoadBalancer,
+						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicy(api.ServiceExternalTrafficPolicyLocal),
+						Ports:                 []v1.ServicePort{{Port: 8081}},
+					},
+				},
+			},
+			isPreserveSource: false,
+			sourceCIDRs:      []string{"0.0.0.0/0"},
+			expected: []core.IngressSecurityRule{
+				core.IngressSecurityRule{Source: common.String("0.0.0.0/0")},
+				makeIngressSecurityRule("10.0.50.0/24", 8081),
+				makeIngressSecurityRule("10.0.51.0/24", 8081),
+				makeIngressSecurityRule("2001:0000:130F:0000:0000:09C0:876A:130B/7", 8081),
+				makeIngressSecurityRule("10.0.50.0/24", 30000),
+				makeIngressSecurityRule("10.0.51.0/24", 30000),
+				makeIngressSecurityRule("2001:0000:130F:0000:0000:09C0:876A:130B/7", 30000),
+			},
+			ipFamilies: []string{IPv4, IPv6},
 		},
 	}
 
@@ -342,7 +406,8 @@ func TestGetNodeIngressRules(t *testing.T) {
 			}
 		}
 		t.Run(tc.name, func(t *testing.T) {
-			rules := getNodeIngressRules(zap.S(), tc.securityList.IngressSecurityRules, tc.lbSubnets, tc.actualPorts, tc.desiredPorts, serviceLister, tc.sourceCIDRs, tc.isPreserveSource)
+			rules := getNodeIngressRules(zap.S(), tc.securityList.IngressSecurityRules, tc.lbSubnets, tc.actualPorts,
+				tc.desiredPorts, serviceLister, tc.sourceCIDRs, tc.isPreserveSource, tc.ipFamilies)
 			if !reflect.DeepEqual(rules, tc.expected) {
 				t.Errorf("expected rules\n%+v\nbut got\n%+v", tc.expected, rules)
 			}
@@ -361,6 +426,7 @@ func TestGetNodeIngressRules_NLB(t *testing.T) {
 		sourceCIDRs      []string
 		isPreserveSource bool
 		expected         []core.IngressSecurityRule
+		ipFamilies       []string
 	}{
 		{
 			name: "new ingress",
@@ -388,7 +454,8 @@ func TestGetNodeIngressRules_NLB(t *testing.T) {
 				makeIngressSecurityRule("1", k8sports.ProxyHealthzPort),
 				makeIngressSecurityRule("2", k8sports.ProxyHealthzPort),
 			},
-		}, {
+			ipFamilies: []string{IPv4}},
+		{
 			name: "no change",
 			securityList: &core.SecurityList{
 				IngressSecurityRules: []core.IngressSecurityRule{
@@ -419,7 +486,9 @@ func TestGetNodeIngressRules_NLB(t *testing.T) {
 				makeIngressSecurityRule("2", k8sports.ProxyHealthzPort),
 				makeIngressSecurityRule("0.0.0.0/0", 80),
 			},
-		}, {
+			ipFamilies: []string{IPv4},
+		},
+		{
 			name: "change lb subnet",
 			securityList: &core.SecurityList{
 				IngressSecurityRules: []core.IngressSecurityRule{
@@ -452,7 +521,9 @@ func TestGetNodeIngressRules_NLB(t *testing.T) {
 				makeIngressSecurityRule("3", 80),
 				makeIngressSecurityRule("3", k8sports.ProxyHealthzPort),
 			},
-		}, {
+			ipFamilies: []string{IPv4},
+		},
+		{
 			name: "remove lb subnets",
 			securityList: &core.SecurityList{
 				IngressSecurityRules: []core.IngressSecurityRule{
@@ -477,7 +548,9 @@ func TestGetNodeIngressRules_NLB(t *testing.T) {
 				makeIngressSecurityRule("existing", 9000),
 				makeIngressSecurityRule("existing", 9001),
 			},
-		}, {
+			ipFamilies: []string{IPv4},
+		},
+		{
 			name: "do not delete health check rules that are used by other services",
 			securityList: &core.SecurityList{
 				IngressSecurityRules: []core.IngressSecurityRule{
@@ -504,7 +577,9 @@ func TestGetNodeIngressRules_NLB(t *testing.T) {
 			expected: []core.IngressSecurityRule{
 				makeIngressSecurityRule("0.0.0.0/0", lbNodesHealthCheckPort),
 			},
-		}, {
+			ipFamilies: []string{IPv4},
+		},
+		{
 			name: "update service port",
 			securityList: &core.SecurityList{
 				IngressSecurityRules: []core.IngressSecurityRule{
@@ -539,7 +614,9 @@ func TestGetNodeIngressRules_NLB(t *testing.T) {
 				makeIngressSecurityRule("1", 80),
 				makeIngressSecurityRule("2", 80),
 			},
-		}, {
+			ipFamilies: []string{IPv4},
+		},
+		{
 			name: "update service health check port",
 			securityList: &core.SecurityList{
 				IngressSecurityRules: []core.IngressSecurityRule{
@@ -574,7 +651,9 @@ func TestGetNodeIngressRules_NLB(t *testing.T) {
 				makeIngressSecurityRule("10.0.50.0/24", k8sports.ProxyHealthzPort+1),
 				makeIngressSecurityRule("10.0.51.0/24", k8sports.ProxyHealthzPort+1),
 			},
-		}, {
+			ipFamilies: []string{IPv4},
+		},
+		{
 			name: "new ingress without source IP preservation",
 			securityList: &core.SecurityList{
 				IngressSecurityRules: []core.IngressSecurityRule{
@@ -600,7 +679,9 @@ func TestGetNodeIngressRules_NLB(t *testing.T) {
 				makeIngressSecurityRule("1", k8sports.ProxyHealthzPort),
 				makeIngressSecurityRule("2", k8sports.ProxyHealthzPort),
 			},
-		}, {
+			ipFamilies: []string{IPv4},
+		},
+		{
 			name: "update service to not preserve source",
 			securityList: &core.SecurityList{
 				IngressSecurityRules: []core.IngressSecurityRule{
@@ -634,7 +715,9 @@ func TestGetNodeIngressRules_NLB(t *testing.T) {
 				makeIngressSecurityRule("10.0.50.0/24", k8sports.ProxyHealthzPort+1),
 				makeIngressSecurityRule("10.0.51.0/24", k8sports.ProxyHealthzPort+1),
 			},
-		}, {
+			ipFamilies: []string{IPv4},
+		},
+		{
 			name: "update service to preserve source",
 			securityList: &core.SecurityList{
 				IngressSecurityRules: []core.IngressSecurityRule{
@@ -667,6 +750,7 @@ func TestGetNodeIngressRules_NLB(t *testing.T) {
 				makeIngressSecurityRule("10.0.50.0/24", k8sports.ProxyHealthzPort+1),
 				makeIngressSecurityRule("10.0.51.0/24", k8sports.ProxyHealthzPort+1),
 			},
+			ipFamilies: []string{IPv4},
 		},
 	}
 
@@ -679,7 +763,8 @@ func TestGetNodeIngressRules_NLB(t *testing.T) {
 			}
 		}
 		t.Run(tc.name, func(t *testing.T) {
-			rules := getNodeIngressRules(zap.S(), tc.securityList.IngressSecurityRules, tc.lbSubnets, tc.actualPorts, tc.desiredPorts, serviceLister, tc.sourceCIDRs, tc.isPreserveSource)
+			rules := getNodeIngressRules(zap.S(), tc.securityList.IngressSecurityRules, tc.lbSubnets, tc.actualPorts, tc.desiredPorts,
+				serviceLister, tc.sourceCIDRs, tc.isPreserveSource, tc.ipFamilies)
 			if !reflect.DeepEqual(rules, tc.expected) {
 				t.Errorf("expected rules\n%+v\nbut got\n%+v", tc.expected, rules)
 			}
@@ -695,6 +780,7 @@ func TestGetLoadBalancerIngressRules(t *testing.T) {
 		port         int
 		services     []*v1.Service
 		expected     []core.IngressSecurityRule
+		ipFamilies   []string
 	}{
 		{
 			name: "new source cidrs",
@@ -806,7 +892,8 @@ func TestGetLoadBalancerIngressRules(t *testing.T) {
 			}
 		}
 		t.Run(tc.name, func(t *testing.T) {
-			rules := getLoadBalancerIngressRules(zap.S(), tc.securityList.IngressSecurityRules, tc.sourceCIDRs, tc.port, serviceLister)
+			rules := getLoadBalancerIngressRules(zap.S(), tc.securityList.IngressSecurityRules, tc.sourceCIDRs, tc.port,
+				serviceLister)
 			if !reflect.DeepEqual(rules, tc.expected) {
 				t.Errorf("expected rules\n%+v\nbut got\n%+v", tc.expected, rules)
 			}
@@ -823,6 +910,7 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 		desiredPort  int
 		services     []*v1.Service
 		expected     []core.EgressSecurityRule
+		ipFamilies   []string
 	}{
 		{
 			name: "new egress",
@@ -843,7 +931,9 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 				makeEgressSecurityRule("1", 80),
 				makeEgressSecurityRule("2", 80),
 			},
-		}, {
+			ipFamilies: []string{IPv4},
+		},
+		{
 			name: "no change",
 			securityList: &core.SecurityList{
 				EgressSecurityRules: []core.EgressSecurityRule{
@@ -864,7 +954,9 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 				makeEgressSecurityRule("1", 80),
 				makeEgressSecurityRule("2", 80),
 			},
-		}, {
+			ipFamilies: []string{IPv4},
+		},
+		{
 			name: "update service port",
 			securityList: &core.SecurityList{
 				EgressSecurityRules: []core.EgressSecurityRule{
@@ -902,7 +994,9 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 				makeEgressSecurityRule("10.0.41.0/24", 30355),
 				makeEgressSecurityRule("10.0.42.0/24", 30355),
 			},
-		}, {
+			ipFamilies: []string{IPv4},
+		},
+		{
 			name: "update service health check port",
 			securityList: &core.SecurityList{
 				EgressSecurityRules: []core.EgressSecurityRule{
@@ -940,7 +1034,9 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 				makeEgressSecurityRule("10.0.41.0/24", lbNodesHealthCheckPort+1),
 				makeEgressSecurityRule("10.0.42.0/24", lbNodesHealthCheckPort+1),
 			},
-		}, {
+			ipFamilies: []string{IPv4},
+		},
+		{
 			name: "change node subnet",
 			securityList: &core.SecurityList{
 				EgressSecurityRules: []core.EgressSecurityRule{
@@ -963,7 +1059,9 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 				makeEgressSecurityRule("existing", 9001),
 				makeEgressSecurityRule("3", 80),
 			},
-		}, {
+			ipFamilies: []string{IPv4},
+		},
+		{
 			name: "remove node subnets",
 			securityList: &core.SecurityList{
 				EgressSecurityRules: []core.EgressSecurityRule{
@@ -981,7 +1079,9 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 				makeEgressSecurityRule("existing", 9000),
 				makeEgressSecurityRule("existing", 9001),
 			},
-		}, {
+			ipFamilies: []string{IPv4},
+		},
+		{
 			name: "do not delete a port rule which is used by another services (default) health check",
 			securityList: &core.SecurityList{
 				EgressSecurityRules: []core.EgressSecurityRule{
@@ -1004,6 +1104,7 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 			expected: []core.EgressSecurityRule{
 				makeEgressSecurityRule("0.0.0.0/0", lbNodesHealthCheckPort),
 			},
+			ipFamilies: []string{IPv4},
 		},
 		{
 			name: "do not delete a port rule during listener deletes",
@@ -1028,6 +1129,7 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 			expected: []core.EgressSecurityRule{
 				makeEgressSecurityRule("0.0.0.0/0", 30000),
 			},
+			ipFamilies: []string{IPv4},
 		},
 		{
 			name: "multiple services in the same cluster; one using default healthcheck and other using healthcheck Nodeport",
@@ -1063,6 +1165,33 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 				makeEgressSecurityRule("0.0.0.0/0", 30000),
 				makeEgressSecurityRule("0.0.0.0/0", lbNodesHealthCheckPort),
 			},
+			ipFamilies: []string{IPv4},
+		},
+		{
+			name: "new egress Ipv6",
+			securityList: &core.SecurityList{
+				EgressSecurityRules: []core.EgressSecurityRule{
+					makeEgressSecurityRule("existing", 9000),
+				},
+			},
+			subnets: []*core.Subnet{
+				{CidrBlock: common.String("1")},
+				{
+					CidrBlock:      common.String("2"),
+					Ipv6CidrBlock:  common.String("2001:0000:130F:0000:0000:09C0:876A:130B/7"),
+					Ipv6CidrBlocks: []string{"2001:0000:130F:0000:0000:09C0:876A:130B/7"},
+				},
+			},
+			actualPort:  80,
+			desiredPort: 80,
+			services:    []*v1.Service{},
+			expected: []core.EgressSecurityRule{
+				makeEgressSecurityRule("existing", 9000),
+				makeEgressSecurityRule("1", 80),
+				makeEgressSecurityRule("2", 80),
+				makeEgressSecurityRule("2001:0000:130F:0000:0000:09C0:876A:130B/7", 80),
+			},
+			ipFamilies: []string{IPv4, IPv6},
 		},
 	}
 
@@ -1075,7 +1204,8 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 			}
 		}
 		t.Run(tc.name, func(t *testing.T) {
-			rules := getLoadBalancerEgressRules(zap.S(), tc.securityList.EgressSecurityRules, tc.subnets, tc.actualPort, tc.desiredPort, serviceLister)
+			rules := getLoadBalancerEgressRules(zap.S(), tc.securityList.EgressSecurityRules, tc.subnets, tc.actualPort,
+				tc.desiredPort, serviceLister, tc.ipFamilies)
 			if !reflect.DeepEqual(rules, tc.expected) {
 				t.Errorf("expected rules\n%+v\nbut got\n%+v", tc.expected, rules)
 			}

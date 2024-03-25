@@ -461,7 +461,7 @@ func (c *MockVirtualNetworkClient) GetSubnet(ctx context.Context, id string) (*c
 	return subnets[id], nil
 }
 
-func (c *MockVirtualNetworkClient) GetSubnetFromCacheByIP(ip string) (*core.Subnet, error) {
+func (c *MockVirtualNetworkClient) GetSubnetFromCacheByIP(ip client.IpAddresses) (*core.Subnet, error) {
 	return nil, nil
 }
 
