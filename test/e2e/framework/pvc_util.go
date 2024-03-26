@@ -54,7 +54,7 @@ const (
 	DataSourceVolumeSnapshotAPIGroup = "snapshot.storage.k8s.io"
 	DataSourceVolumePVCKind          = "PersistentVolumeClaim"
 
-	FsTypeLustre 					 = "lustre"
+	FsTypeLustre = "lustre"
 )
 
 // PVCTestJig is a jig to help create PVC tests.
@@ -206,6 +206,7 @@ func (j *PVCTestJig) NewPVCTemplateCSI(namespace string, volumeSize string, scNa
 	pvc = j.pvcAddVolumeMode(pvc, volumeMode)
 	return pvc
 }
+
 // newPVCTemplateStaticFSS returns the default template for this jig, but
 // does not actually create the PVC.  The default PVC has the same name
 // as the jig
@@ -333,7 +334,6 @@ func (j *PVCTestJig) CreatePVCorFailStaticLustre(namespace, volumeName, volumeSi
 	return j.CheckPVCorFail(pvc, tweak, namespace, volumeSize)
 }
 
-
 // CreatePVCorFailDynamicFSS creates a new claim based on the jig's
 // defaults. Callers can provide a function to tweak the claim object
 // before it is created.
@@ -407,7 +407,6 @@ func (j *PVCTestJig) CreateAndAwaitPVCOrFailStaticLustre(namespace, volumeName, 
 	pvc := j.CreatePVCorFailStaticLustre(namespace, volumeName, volumeSize, tweak)
 	return j.CheckAndAwaitPVCOrFail(pvc, namespace, v1.ClaimBound)
 }
-
 
 // CreateAndAwaitPVCOrFailCSI creates a new PVC based on the
 // jig's defaults, waits for it to become ready, and then sanity checks it and
@@ -534,7 +533,6 @@ func (j *PVCTestJig) pvAddMountOptions(pv *v1.PersistentVolume,
 	return pv
 }
 
-
 // newPVTemplateFSS returns the default template for this jig, but
 // does not actually create the PV.  The default PV has the same name
 // as the jig
@@ -567,16 +565,15 @@ func (j *PVCTestJig) newPVTemplateLustre(namespace, volumeHandle string, mountOp
 
 	pv = j.pvAddPersistentVolumeSource(pv, v1.PersistentVolumeSource{
 		CSI: &v1.CSIPersistentVolumeSource{
-			Driver:       driver.LustreDriverName,
-			VolumeHandle: volumeHandle,
-			FSType: FsTypeLustre,
+			Driver:           driver.LustreDriverName,
+			VolumeHandle:     volumeHandle,
+			FSType:           FsTypeLustre,
 			VolumeAttributes: pvVolumeAttributes,
 		},
 	})
 
 	return pv
 }
-
 
 // newPVTemplateCSI returns the default template for this jig, but
 // does not actually create the PV.  The default PV has the same name
@@ -638,7 +635,6 @@ func (j *PVCTestJig) CreatePVorFailLustre(namespace, volumeHandle string, mountO
 	}
 	return result
 }
-
 
 // CreatePVorFail creates a new claim based on the jig's
 // defaults. Callers can provide a function to tweak the claim object
@@ -1329,17 +1325,17 @@ func (j *PVCTestJig) CheckAttachmentTypeAndEncryptionType(compute client.Compute
 // CheckEncryptionType verifies encryption type
 func (j *PVCTestJig) CheckEncryptionType(namespace, podName string) {
 	By("Checking encryption type")
-	dfCommand := "df | grep data"
+	dfCommand := "mount | grep data"
 
 	// This test is written this way, since the only way to verify if in-transit encryption is present on FSS is by checking the df command on the pod
-	// and if the IP starts with 192.x.x.x is present on the FSS mount
+	// and if the IP starts with 192.x.x.x or fd40:: is present on the FSS mount
 	output, err := RunHostCmd(namespace, podName, dfCommand)
 	if err != nil || output == "" {
 		Failf("kubectl exec failed or output is nil")
 	}
 
-	ipStart192 := output[0:3]
-	if ipStart192 == "192" {
+	ipStart := output[0:5]
+	if strings.HasPrefix(ipStart, "192") || strings.HasPrefix(ipStart, "[fd40") {
 		Logf("FSS has in-transit encryption %s", output)
 	} else {
 		Failf("FSS does not have in-transit encryption")
