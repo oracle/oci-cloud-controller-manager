@@ -340,6 +340,10 @@ func (MockComputeClient) GetPrimaryVNICForInstance(ctx context.Context, compartm
 	return instanceVnics[instanceID], nil
 }
 
+func (MockComputeClient) GetSecondaryVNICForInstance(ctx context.Context, compartmentID, instanceID string) (*core.Vnic, error) {
+	return instanceVnics[instanceID], nil
+}
+
 func (MockComputeClient) FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
 	return nil, nil
 }
@@ -764,6 +768,8 @@ func TestExtractNodeAddresses(t *testing.T) {
 			out: []v1.NodeAddress{
 				{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
 				{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
+				{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
+				{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
 				// v1.NodeAddress{Type: v1.NodeHostName, Address: "basic-complete.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
 				// v1.NodeAddress{Type: v1.NodeInternalDNS, Address: "basic-complete.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
 			},
@@ -774,6 +780,7 @@ func TestExtractNodeAddresses(t *testing.T) {
 			in:   "no-external-ip",
 			out: []v1.NodeAddress{
 				{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
+				{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
 				// v1.NodeAddress{Type: v1.NodeHostName, Address: "no-external-ip.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
 				// v1.NodeAddress{Type: v1.NodeInternalDNS, Address: "no-external-ip.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
 			},
@@ -783,6 +790,7 @@ func TestExtractNodeAddresses(t *testing.T) {
 			name: "no-internal-ip",
 			in:   "no-internal-ip",
 			out: []v1.NodeAddress{
+				{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
 				{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
 				// v1.NodeAddress{Type: v1.NodeHostName, Address: "no-internal-ip.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
 				// v1.NodeAddress{Type: v1.NodeInternalDNS, Address: "no-internal-ip.subnetwithdnslabel.vcnwithdnslabel.oraclevcn.com"},
@@ -807,6 +815,8 @@ func TestExtractNodeAddresses(t *testing.T) {
 			out: []v1.NodeAddress{
 				{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
 				{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
+				{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
+				{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
 			},
 			err: nil,
 		},
@@ -816,6 +826,8 @@ func TestExtractNodeAddresses(t *testing.T) {
 			out: []v1.NodeAddress{
 				{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
 				{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
+				{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
+				{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
 			},
 			err: nil,
 		},
@@ -823,6 +835,8 @@ func TestExtractNodeAddresses(t *testing.T) {
 			name: "no-vcn-dns-label",
 			in:   "no-vcn-dns-label",
 			out: []v1.NodeAddress{
+				{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
+				{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
 				{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
 				{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
 			},
@@ -995,6 +1009,8 @@ func TestNodeAddressesByProviderID(t *testing.T) {
 			out: []v1.NodeAddress{
 				{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
 				{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
+				{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
+				{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
 			},
 			err: nil,
 		},
@@ -1002,6 +1018,8 @@ func TestNodeAddressesByProviderID(t *testing.T) {
 			name: "provider id with provider prefix",
 			in:   providerPrefix + "basic-complete",
 			out: []v1.NodeAddress{
+				{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
+				{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
 				{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
 				{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
 			},
