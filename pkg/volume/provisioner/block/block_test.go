@@ -227,6 +227,10 @@ func (c *MockFileStorageClient) AwaitMountTargetActive(ctx context.Context, logg
 
 type MockComputeClient struct{}
 
+func (c *MockComputeClient) ListInstancesByCompartmentAndAD(ctx context.Context, compartmentId, availabilityDomain string) (response []core.Instance, err error) {
+	return nil, nil
+}
+
 // GetInstance gets information about the specified instance.
 func (c *MockComputeClient) GetInstance(ctx context.Context, id string) (*core.Instance, error) {
 	return nil, nil
