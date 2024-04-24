@@ -310,6 +310,10 @@ func (MockOCIClient) Identity() client.IdentityInterface {
 // MockComputeClient mocks Compute client implementation
 type MockComputeClient struct{}
 
+func (c MockComputeClient) ListInstancesByCompartmentAndAD(ctx context.Context, compartmentId, availabilityDomain string) (response []core.Instance, err error) {
+	return nil, nil
+}
+
 func (MockComputeClient) GetInstance(ctx context.Context, id string) (*core.Instance, error) {
 	if instance, ok := instances[id]; ok {
 		return instance, nil
