@@ -36,11 +36,12 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	ocicore "github.com/oracle/oci-go-sdk/v65/core"
+
 	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/csi/driver"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
-	ocicore "github.com/oracle/oci-go-sdk/v65/core"
 )
 
 const (
@@ -100,7 +101,7 @@ func (j *PVCTestJig) pvcAddLabelSelector(pvc *v1.PersistentVolumeClaim, adLabel 
 	if pvc != nil {
 		pvc.Spec.Selector = &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				plugin.LabelZoneFailureDomain: adLabel,
+				v1.LabelTopologyZone: adLabel,
 			},
 		}
 	}
@@ -686,7 +687,7 @@ func (j *PVCTestJig) NewPodForCSI(name string, namespace string, claimName strin
 	return pod.Name
 }
 
-// NewPodWithLabels returns the default template for this jig,
+// newPODTemplate returns the default template for this jig,
 // creates the Pod. Attaches PVC to the Pod which is created by CSI
 func (j *PVCTestJig) NewPodWithLabels(name string, namespace string, claimName string, labels map[string]string) string {
 	By("Creating a pod with the claiming PVC created by CSI")
@@ -777,7 +778,7 @@ func (j *PVCTestJig) NewPodForCSIClone(name string, namespace string, claimName 
 				},
 			},
 			NodeSelector: map[string]string{
-				plugin.LabelZoneFailureDomain: adLabel,
+				v1.LabelTopologyZone: adLabel,
 			},
 		},
 	}, metav1.CreateOptions{})
@@ -832,7 +833,7 @@ func (j *PVCTestJig) NewPodForCSIWithoutWait(name string, namespace string, clai
 				},
 			},
 			NodeSelector: map[string]string{
-				plugin.LabelZoneFailureDomain: adLabel,
+				v1.LabelTopologyZone: adLabel,
 			},
 		},
 	}, metav1.CreateOptions{})

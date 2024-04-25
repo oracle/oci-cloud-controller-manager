@@ -109,14 +109,16 @@ func (u *Util) LookupNodeAvailableDomain(k kubernetes.Interface, nodeID string) 
 		return "", fmt.Errorf("failed to get node %s", nodeID)
 	}
 	if n.Labels != nil {
-		ad, ok := n.Labels[kubeAPI.LabelZoneFailureDomain]
+		ad, ok := n.Labels[kubeAPI.LabelTopologyZone]
+		if !ok {
+			ad, ok = n.Labels[kubeAPI.LabelZoneFailureDomain]
+		}
 		if ok {
 			return ad, nil
 		}
 	}
-
-	errMsg := fmt.Sprint("Did not find the label for the fault domain.")
-	u.Logger.With("nodeId", nodeID, "label", kubeAPI.LabelZoneFailureDomain).Error(errMsg)
+	errMsg := fmt.Sprintf("Did not find the label for the fault domain. Checked Topology Labels: %s, %s", kubeAPI.LabelTopologyZone, kubeAPI.LabelZoneFailureDomain)
+	u.Logger.With("nodeId", nodeID).Error(errMsg)
 	return "", fmt.Errorf(errMsg)
 }
 
