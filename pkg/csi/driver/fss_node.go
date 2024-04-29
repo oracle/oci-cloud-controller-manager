@@ -52,14 +52,23 @@ func (d FSSNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVo
 		return nil, status.Error(codes.InvalidArgument, "Staging path must be provided")
 	}
 
+	logger := d.logger.With("volumeID", req.VolumeId)
+
 	volumeHandler := csi_util.ValidateFssId(req.VolumeId)
 	_, mountTargetIP, exportPath := volumeHandler.FilesystemOcid, volumeHandler.MountTargetIPAddress, volumeHandler.FsExportPath
+
+	logger.Debugf("volumeHandler :  %v", volumeHandler)
 
 	if mountTargetIP == "" || exportPath == "" {
 		return nil, status.Error(codes.InvalidArgument, "Invalid Volume ID provided")
 	}
 
-	logger := d.logger.With("volumeID", req.VolumeId)
+	if csi_util.IsIpv4(mountTargetIP) && !d.nodeIpFamily.Ipv4Enabled {
+		return nil, status.Error(codes.InvalidArgument, "Ipv4 mount target identified in volume id, but worker node does not support ipv4 ip family.")
+	} else if csi_util.IsIpv6(mountTargetIP) && !d.nodeIpFamily.Ipv6Enabled {
+		return nil, status.Error(codes.InvalidArgument, "Ipv6 mount target identified in volume id, but worker node does not support ipv6 ip family.")
+	}
+
 	logger.Debugf("volume context: %v", req.VolumeContext)
 
 	var fsType = ""
@@ -137,7 +146,7 @@ func (d FSSNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVo
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
-	source := fmt.Sprintf("%s:%s", mountTargetIP, exportPath)
+	source := fmt.Sprintf("%s:%s", csi_util.FormatValidIp(mountTargetIP), exportPath)
 
 	if encryptInTransit {
 		err = disk.MountWithEncrypt(logger, source, targetPath, fsType, options)
@@ -298,18 +307,21 @@ func (d FSSNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnsta
 		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
 	}
 
+	if req.StagingTargetPath == "" {
+		return nil, status.Error(codes.InvalidArgument, "Staging path must be provided")
+	}
+
 	volumeHandler := csi_util.ValidateFssId(req.VolumeId)
+
+	logger := d.logger.With("volumeID", req.VolumeId, "stagingPath", req.StagingTargetPath)
+
+	logger.Debugf("volumeHandler :  %v", volumeHandler)
+
 	_, mountTargetIP, exportPath := volumeHandler.FilesystemOcid, volumeHandler.MountTargetIPAddress, volumeHandler.FsExportPath
 
 	if mountTargetIP == "" || exportPath == "" {
 		return nil, status.Error(codes.InvalidArgument, "Invalid Volume ID provided")
 	}
-
-	if req.StagingTargetPath == "" {
-		return nil, status.Error(codes.InvalidArgument, "Staging path must be provided")
-	}
-
-	logger := d.logger.With("volumeID", req.VolumeId, "stagingPath", req.StagingTargetPath)
 
 	if acquired := d.volumeLocks.TryAcquire(req.VolumeId); !acquired {
 		logger.Error("Could not acquire lock for NodeUnstageVolume.")
@@ -373,8 +385,11 @@ func (d FSSNodeDriver) unmountAndCleanup(logger *zap.SugaredLogger, targetPath s
 
 	inTransitEncryption := false
 	for _, device := range sources {
-		source := strings.Split(device, ":")
-		if len(source) == 2 && source[1] == exportPath && source[0] != mountTargetIP {
+
+		logger.With("device", device).With("exportPath", exportPath).
+			With("mountTargetIP", mountTargetIP).Debugf("Identifying intransit encryption.")
+		if strings.HasSuffix(device, exportPath) && !strings.HasPrefix(device, mountTargetIP) {
+			logger.Debugf("Intransit encryption identified.")
 			inTransitEncryption = true
 			break
 		}

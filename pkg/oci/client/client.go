@@ -73,7 +73,11 @@ type virtualNetworkClient interface {
 	UpdateSecurityList(ctx context.Context, request core.UpdateSecurityListRequest) (response core.UpdateSecurityListResponse, err error)
 
 	GetPrivateIp(ctx context.Context, request core.GetPrivateIpRequest) (response core.GetPrivateIpResponse, err error)
+	ListPrivateIps(ctx context.Context, request core.ListPrivateIpsRequest) (response core.ListPrivateIpsResponse, err error)
+	CreatePrivateIp(ctx context.Context, request core.CreatePrivateIpRequest) (response core.CreatePrivateIpResponse, err error)
+
 	GetPublicIpByIpAddress(ctx context.Context, request core.GetPublicIpByIpAddressRequest) (response core.GetPublicIpByIpAddressResponse, err error)
+	GetIpv6(ctx context.Context, request core.GetIpv6Request) (response core.GetIpv6Response, err error)
 
 	CreateNetworkSecurityGroup(ctx context.Context, request core.CreateNetworkSecurityGroupRequest) (response core.CreateNetworkSecurityGroupResponse, err error)
 	GetNetworkSecurityGroup(ctx context.Context, request core.GetNetworkSecurityGroupRequest) (response core.GetNetworkSecurityGroupResponse, err error)
