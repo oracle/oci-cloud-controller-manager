@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	cmdexec "os/exec"
 	"path/filepath"
@@ -61,7 +62,7 @@ var ErrMountPointNotFound = errors.New("mount point not found")
 // diskByPathPattern is the regex for extracting the iSCSI connection details
 // from /dev/disk/by-path/<disk>.
 var diskByPathPattern = regexp.MustCompile(
-	`/dev/disk/by-path/ip-(?P<IPv4>[\w\.]+):(?P<Port>\d+)-iscsi-(?P<IQN>[\w\.\-:]+)-lun-\d+`,
+	`/dev/disk/by-path/ip-(?P<IscsiIp>[[?\w\.\:]+]?):(?P<Port>\d+)-iscsi-(?P<IQN>[\w\.\-:]+)-lun-\d+`,
 )
 
 // Interface mounts iSCSI volumes.
@@ -125,26 +126,29 @@ type iSCSIMounter struct {
 
 // Disk interface
 type Disk struct {
-	IQN  string
-	IPv4 string
-	Port int
+	IQN     string
+	IscsiIp string
+	Port    int
 }
 
 func (sd *Disk) String() string {
-	return fmt.Sprintf("%s:%d-%s", sd.IPv4, sd.Port, sd.IQN)
+	return fmt.Sprintf("%s:%d-%s", sd.IscsiIp, sd.Port, sd.IQN)
 }
 
-// Target returns the target to connect to in the format ip:port.
+// Target returns the target to connect to in the format ip:port for Ipv4 and [ip]:port for ipv6.
 func (sd *Disk) Target() string {
-	return fmt.Sprintf("%s:%d", sd.IPv4, sd.Port)
+	if net.ParseIP(sd.IscsiIp).To4() != nil {
+		return fmt.Sprintf("%s:%d", sd.IscsiIp, sd.Port)
+	}
+	return fmt.Sprintf("[%s]:%d", sd.IscsiIp, sd.Port)
 }
 
-func newWithMounter(logger *zap.SugaredLogger, mounter mount.Interface, iqn, ipv4 string, port int) Interface {
+func newWithMounter(logger *zap.SugaredLogger, mounter mount.Interface, iqn, iSCSIIp string, port int) Interface {
 	return &iSCSIMounter{
 		disk: &Disk{
-			IQN:  iqn,
-			IPv4: ipv4,
-			Port: port,
+			IQN:     iqn,
+			IscsiIp: iSCSIIp,
+			Port:    port,
 		},
 		runner:  exec.New(),
 		mounter: mounter,
@@ -153,8 +157,8 @@ func newWithMounter(logger *zap.SugaredLogger, mounter mount.Interface, iqn, ipv
 }
 
 // New creates a new iSCSI handler.
-func New(logger *zap.SugaredLogger, iqn, ipv4 string, port int) Interface {
-	return newWithMounter(logger, mount.New(mountCommand), iqn, ipv4, port)
+func New(logger *zap.SugaredLogger, iqn, iSCSIIp string, port int) Interface {
+	return newWithMounter(logger, mount.New(mountCommand), iqn, iSCSIIp, port)
 }
 
 // NewFromISCSIDisk creates a new iSCSI handler from ISCSIDisk.
@@ -168,7 +172,7 @@ func NewFromISCSIDisk(logger *zap.SugaredLogger, sd *Disk) Interface {
 	}
 }
 
-// NewFromDevicePath extracts the IQN, IPv4 address, and port from a
+// NewFromDevicePath extracts the IQN, IscsiIp address, and port from a
 // iSCSI mount device path.
 // i.e. /dev/disk/by-path/ip-<ip>:<port>-iscsi-<IQN>-lun-1
 func NewFromDevicePath(logger *zap.SugaredLogger, mountDevice string) (Interface, error) {
@@ -185,7 +189,7 @@ func NewFromDevicePath(logger *zap.SugaredLogger, mountDevice string) (Interface
 	return New(logger, m[3], m[1], port), nil
 }
 
-// FindFromDevicePath extracts the IQN, IPv4 address, and port from a
+// FindFromDevicePath extracts the IQN, IscsiIp address, and port from a
 // iSCSI mount device path.
 // i.e. /dev/disk/by-path/ip-<ip>:<port>-iscsi-<IQN>-lun-1
 func FindFromDevicePath(logger *zap.SugaredLogger, mountDevice string) ([]string, error) {
@@ -488,14 +492,14 @@ func diskByPathsForMountPoint(mountPoint mount.MountPoint) ([]string, error) {
 
 func GetIscsiDevicePath(disk *Disk) (string, error) {
 	// run command ls -l /dev/disk/by-path
-	cmdStr := fmt.Sprintf("ls -f /dev/disk/by-path/ip-%s:%d-iscsi-%s-lun-*", disk.IPv4, disk.Port, disk.IQN)
+	cmdStr := fmt.Sprintf("ls -f /dev/disk/by-path/ip-%s:%d-iscsi-%s-lun-*", disk.IscsiIp, disk.Port, disk.IQN)
 	cmd := cmdexec.Command("bash", "-c", cmdStr)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("command failed: %v\ncommand: %s\nOutput: %s\n", err, LIST_PATHS_COMMAND, string(output))
 	}
 	for _, line := range strings.Split(string(output), "\n") {
-		re := regexp.MustCompile(fmt.Sprintf(`(ip-%s:%d-iscsi-%s-lun-\d+)`, disk.IPv4, disk.Port, disk.IQN))
+		re := regexp.MustCompile(fmt.Sprintf(`(ip-%s:%d-iscsi-%s-lun-\d+)`, disk.IscsiIp, disk.Port, disk.IQN))
 		match := re.FindStringSubmatch(line)
 		if len(match) > 0 {
 			fileName := match[1]
@@ -580,8 +584,8 @@ func GetScsiInfo(mountDevice string) (*Disk, error) {
 	}
 
 	return &Disk{
-		IQN:  m[3],
-		IPv4: m[1],
-		Port: port,
+		IQN:     m[3],
+		IscsiIp: m[1],
+		Port:    port,
 	}, nil
 }

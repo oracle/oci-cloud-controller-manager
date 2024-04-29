@@ -33,13 +33,12 @@ import (
 
 const (
 	directoryDeletePollInterval = 5 * time.Second
-	errNotMounted = "not mounted"
+	errNotMounted               = "not mounted"
 
-	EncryptedUmountCommand      = "encrypt-umount"
+	EncryptedUmountCommand = "encrypt-umount"
 
 	EncryptionMountCommand = "encrypt-mount"
-	UnmountCommand = "umount"
-
+	UnmountCommand         = "umount"
 )
 
 func MountWithEncrypt(logger *zap.SugaredLogger, source string, target string, fstype string, options []string) error {
@@ -141,7 +140,7 @@ func WaitForDirectoryDeletion(logger *zap.SugaredLogger, mountPath string) error
 
 // Unmount the target that is in-transit encryption enabled
 func UnmountWithEncrypt(logger *zap.SugaredLogger, target string) error {
-	logger.With("target", target).Info("Unmounting.")
+	logger.With("target", target).Info("Unmounting in-transit encryption mount point.")
 	command := exec.Command(EncryptedUmountCommand, target)
 	output, err := command.CombinedOutput()
 	if err != nil {
@@ -223,7 +222,7 @@ func deviceOpened(pathname string, logger *zap.SugaredLogger) (bool, error) {
 	return hostUtil.DeviceOpened(pathname)
 }
 
-func  UnmountWithForce(targetPath string) error {
+func UnmountWithForce(targetPath string) error {
 	command := exec.Command(UnmountCommand, "-f", targetPath)
 	output, err := command.CombinedOutput()
 	if err != nil {

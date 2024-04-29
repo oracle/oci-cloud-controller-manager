@@ -86,12 +86,13 @@ type Driver struct {
 
 // ControllerDriver implements CSI Controller interfaces
 type ControllerDriver struct {
-	KubeClient   kubernetes.Interface
-	logger       *zap.SugaredLogger
-	config       *providercfg.Config
-	client       client.Interface
-	util         *csi_util.Util
-	metricPusher *metrics.MetricPusher
+	KubeClient      kubernetes.Interface
+	logger          *zap.SugaredLogger
+	config          *providercfg.Config
+	client          client.Interface
+	util            *csi_util.Util
+	metricPusher    *metrics.MetricPusher
+	clusterIpFamily string
 }
 
 // BlockVolumeControllerDriver extends ControllerDriver
@@ -106,11 +107,12 @@ type FSSControllerDriver struct {
 
 // NodeDriver implements CSI Node interfaces
 type NodeDriver struct {
-	nodeID      string
-	KubeClient  kubernetes.Interface
-	logger      *zap.SugaredLogger
-	util        *csi_util.Util
-	volumeLocks *csi_util.VolumeLocks
+	nodeID       string
+	KubeClient   kubernetes.Interface
+	logger       *zap.SugaredLogger
+	util         *csi_util.Util
+	volumeLocks  *csi_util.VolumeLocks
+	nodeIpFamily *csi_util.NodeIpFamily
 }
 
 // BlockVolumeNodeDriver extends NodeDriver
@@ -134,43 +136,47 @@ type ControllerDriverConfig struct {
 	EnableControllerServer bool
 	DriverName             string
 	DriverVersion          string
+	ClusterIpFamily        string
 }
 
 type MetricPusherGetter func(logger *zap.SugaredLogger) (*metrics.MetricPusher, error)
 
-func newControllerDriver(kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger, config *providercfg.Config, c client.Interface, metricPusher *metrics.MetricPusher) ControllerDriver {
+func newControllerDriver(kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger, config *providercfg.Config, c client.Interface, metricPusher *metrics.MetricPusher, clusterIpFamily string) ControllerDriver {
 	return ControllerDriver{
+		KubeClient:      kubeClientSet,
+		logger:          logger,
+		util:            &csi_util.Util{Logger: logger},
+		config:          config,
+		client:          c,
+		metricPusher:    metricPusher,
+		clusterIpFamily: clusterIpFamily,
+	}
+}
+
+func newNodeDriver(nodeID string, nodeIpFamily *csi_util.NodeIpFamily, kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger) NodeDriver {
+	return NodeDriver{
+		nodeID:       nodeID,
 		KubeClient:   kubeClientSet,
 		logger:       logger,
 		util:         &csi_util.Util{Logger: logger},
-		config:       config,
-		client:       c,
-		metricPusher: metricPusher,
+		volumeLocks:  csi_util.NewVolumeLocks(),
+		nodeIpFamily: nodeIpFamily,
 	}
 }
 
-func newNodeDriver(nodeID string, kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger) NodeDriver {
-	return NodeDriver{
-		nodeID:      nodeID,
-		KubeClient:  kubeClientSet,
-		logger:      logger,
-		util:        &csi_util.Util{Logger: logger},
-		volumeLocks: csi_util.NewVolumeLocks(),
-	}
-}
-
-func GetControllerDriver(name string, kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger, config *providercfg.Config, c client.Interface) csi.ControllerServer {
+func GetControllerDriver(name string, kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger, config *providercfg.Config, c client.Interface, clusterIpFamily string) csi.ControllerServer {
 	metricPusher, err := getMetricPusher(newMetricPusher, logger)
 	if err != nil {
 		logger.With("error", err).Error("Metrics collection could not be enabled")
 		// disable metric collection
 		metricPusher = nil
 	}
+
 	if name == BlockVolumeDriverName {
-		return &BlockVolumeControllerDriver{ControllerDriver: newControllerDriver(kubeClientSet, logger, config, c, metricPusher)}
+		return &BlockVolumeControllerDriver{ControllerDriver: newControllerDriver(kubeClientSet, logger, config, c, metricPusher, clusterIpFamily)}
 	}
 	if name == FSSDriverName {
-		return &FSSControllerDriver{ControllerDriver: newControllerDriver(kubeClientSet, logger, config, c, metricPusher)}
+		return &FSSControllerDriver{ControllerDriver: newControllerDriver(kubeClientSet, logger, config, c, metricPusher, clusterIpFamily)}
 	}
 	return nil
 }
@@ -194,15 +200,15 @@ func getMetricPusher(metricPusherGetter MetricPusherGetter, logger *zap.SugaredL
 	return metricPusher, nil
 }
 
-func GetNodeDriver(name string, nodeID string, kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger) csi.NodeServer {
+func GetNodeDriver(name string, nodeID string, nodeIpFamily *csi_util.NodeIpFamily, kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger) csi.NodeServer {
 	if name == BlockVolumeDriverName {
-		return BlockVolumeNodeDriver{NodeDriver: newNodeDriver(nodeID, kubeClientSet, logger)}
+		return BlockVolumeNodeDriver{NodeDriver: newNodeDriver(nodeID, nodeIpFamily, kubeClientSet, logger)}
 	}
 	if name == FSSDriverName {
-		return FSSNodeDriver{NodeDriver: newNodeDriver(nodeID, kubeClientSet, logger)}
+		return FSSNodeDriver{NodeDriver: newNodeDriver(nodeID, nodeIpFamily, kubeClientSet, logger)}
 	}
 	if name == LustreDriverName {
-		return LustreNodeDriver{NodeDriver: newNodeDriver(nodeID, kubeClientSet, logger)}
+		return LustreNodeDriver{NodeDriver: newNodeDriver(nodeID, nodeIpFamily, kubeClientSet, logger)}
 	}
 	return nil
 }
@@ -214,9 +220,14 @@ func NewNodeDriver(logger *zap.SugaredLogger, nodeOptions nodedriveroptions.Node
 
 	kubeClientSet := csi_util.GetKubeClient(logger, nodeOptions.Master, nodeOptions.Kubeconfig)
 
+	nodeIpFamily, err := csi_util.GetNodeIpFamily(kubeClientSet, nodeOptions.NodeID, logger)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Driver{
 		controllerDriver:       nil,
-		nodeDriver:             GetNodeDriver(nodeOptions.DriverName, nodeOptions.NodeID, kubeClientSet, logger),
+		nodeDriver:             GetNodeDriver(nodeOptions.DriverName, nodeOptions.NodeID, nodeIpFamily, kubeClientSet, logger),
 		endpoint:               nodeOptions.Endpoint,
 		logger:                 logger,
 		enableControllerServer: nodeOptions.EnableControllerServer,
@@ -238,7 +249,7 @@ func NewControllerDriver(logger *zap.SugaredLogger, driverConfig ControllerDrive
 	c := getClient(logger)
 
 	return &Driver{
-		controllerDriver:       GetControllerDriver(driverConfig.DriverName, kubeClientSet, logger, cfg, c),
+		controllerDriver:       GetControllerDriver(driverConfig.DriverName, kubeClientSet, logger, cfg, c, driverConfig.ClusterIpFamily),
 		nodeDriver:             nil,
 		endpoint:               driverConfig.CsiEndpoint,
 		logger:                 logger,

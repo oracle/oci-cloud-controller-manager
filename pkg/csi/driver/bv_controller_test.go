@@ -23,13 +23,6 @@ import (
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/pkg/errors"
-	"go.uber.org/zap"
-	authv1 "k8s.io/api/authentication/v1"
-	kubeAPI "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
-
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/logging"
@@ -39,6 +32,13 @@ import (
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/oracle/oci-go-sdk/v65/identity"
 	"github.com/oracle/oci-go-sdk/v65/loadbalancer"
+	"github.com/pkg/errors"
+	"go.uber.org/zap"
+	authv1 "k8s.io/api/authentication/v1"
+	kubeAPI "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/utils/pointer"
 )
 
 const (
@@ -154,6 +154,22 @@ var (
 			AvailabilityDomain: common.String("NWuj:PHX-AD-2"),
 			Id:                 common.String("volume-attachment-stuck-in-attaching-state"),
 			InstanceId:         common.String("sample-provider-id"),
+		},
+	}
+
+	subnets = map[string]*core.Subnet{
+		"ocid1.ipv4-subnet": &core.Subnet{
+			CidrBlock: pointer.String("10.0.0.1/24"),
+		},
+		"ocid1.ipv6-subnet": &core.Subnet{
+			CidrBlock:      pointer.String("<null>"),
+			Ipv6CidrBlock:  pointer.String("2603:c020:e:897e::/64"),
+			Ipv6CidrBlocks: []string{"2603:c020:e:897e::/64"},
+		},
+		"ocid1.dual-stack-subnet": &core.Subnet{
+			CidrBlock:      pointer.String("10.0.2.0/24"),
+			Ipv6CidrBlock:  pointer.String("2603:c020:e:897e::/64"),
+			Ipv6CidrBlocks: []string{"2603:c020:e:897e::/64"},
 		},
 	}
 )
@@ -382,6 +398,10 @@ func (p *MockProvisionerClient) BlockStorage() client.BlockStorageInterface {
 type MockVirtualNetworkClient struct {
 }
 
+func (c *MockVirtualNetworkClient) GetIpv6(ctx context.Context, id string) (*core.Ipv6, error) {
+	return &core.Ipv6{}, nil
+}
+
 func (c *MockVirtualNetworkClient) CreateNetworkSecurityGroup(ctx context.Context, compartmentId, vcnId, displayName, lbID string) (*core.NetworkSecurityGroup, error) {
 	return nil, nil
 }
@@ -426,8 +446,19 @@ func (c *MockVirtualNetworkClient) GetPrivateIp(ctx context.Context, id string) 
 	}, nil
 }
 
+func (c *MockVirtualNetworkClient) CreatePrivateIp(ctx context.Context, vnicId string) (*core.PrivateIp, error) {
+	return &core.PrivateIp{}, nil
+}
+
+func (c *MockVirtualNetworkClient) ListPrivateIps(ctx context.Context, id string) ([]core.PrivateIp, error) {
+	return []core.PrivateIp{}, nil
+}
+
 func (c *MockVirtualNetworkClient) GetSubnet(ctx context.Context, id string) (*core.Subnet, error) {
-	return nil, nil
+	if strings.EqualFold(id, "ocid1.invalid-subnet") {
+		return nil, errors.New("Internal Error.")
+	}
+	return subnets[id], nil
 }
 
 func (c *MockVirtualNetworkClient) GetSubnetFromCacheByIP(ip string) (*core.Subnet, error) {
@@ -436,6 +467,10 @@ func (c *MockVirtualNetworkClient) GetSubnetFromCacheByIP(ip string) (*core.Subn
 
 func (c *MockVirtualNetworkClient) GetVcn(ctx context.Context, id string) (*core.Vcn, error) {
 	return &core.Vcn{}, nil
+}
+
+func (c *MockVirtualNetworkClient) GetVNIC(ctx context.Context, id string) (*core.Vnic, error) {
+	return &core.Vnic{}, nil
 }
 
 func (c *MockVirtualNetworkClient) GetSecurityList(ctx context.Context, id string) (core.GetSecurityListResponse, error) {
@@ -566,6 +601,18 @@ func (c *MockComputeClient) GetInstanceByNodeName(ctx context.Context, compartme
 
 func (c *MockComputeClient) GetPrimaryVNICForInstance(ctx context.Context, compartmentID, instanceID string) (*core.Vnic, error) {
 	return nil, nil
+}
+
+func (c *MockComputeClient) ListVnicAttachments(ctx context.Context, compartmentID, instanceID string) ([]core.VnicAttachment, error) {
+	return nil, nil
+}
+
+func (c *MockComputeClient) GetVnicAttachment(ctx context.Context, vnicAttachmentId *string) (response *core.VnicAttachment, err error) {
+	return nil, nil
+}
+
+func (c *MockComputeClient) AttachVnic(ctx context.Context, instanceID, subnetID *string, nsgIds []*string, skipSourceDestCheck *bool) (response core.VnicAttachment, err error) {
+	return core.VnicAttachment{}, nil
 }
 
 func (c *MockComputeClient) FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {

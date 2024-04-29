@@ -105,6 +105,15 @@ func (d BlockVolumeNodeDriver) NodeStageVolume(ctx context.Context, req *csi.Nod
 				logger.With(zap.Error(err)).Error("Failed to get SCSI info from publish context.")
 				return nil, status.Error(codes.InvalidArgument, "PublishContext is invalid.")
 			}
+
+			if strings.EqualFold(d.nodeIpFamily.PreferredNodeIpFamily, csi_util.Ipv6Stack) {
+				scsiInfo.IscsiIp, err = csi_util.ConvertIscsiIpFromIpv4ToIpv6(scsiInfo.IscsiIp)
+				if err != nil {
+					logger.With(zap.Error(err)).Error("Failed get ipv6 address for Iscsi Target.")
+					return nil, status.Errorf(codes.Internal, "Failed get ipv6 address for Iscsi Target.")
+				}
+			}
+
 			mountHandler = disk.NewFromISCSIDisk(d.logger, scsiInfo)
 			logger.Info("starting to stage iSCSI Mounting.")
 		}
