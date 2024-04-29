@@ -31,11 +31,15 @@ type NetworkingInterface interface {
 	IsRegionalSubnet(ctx context.Context, id string) (bool, error)
 
 	GetVcn(ctx context.Context, id string) (*core.Vcn, error)
+	GetVNIC(ctx context.Context, id string) (*core.Vnic, error)
 
 	GetSecurityList(ctx context.Context, id string) (core.GetSecurityListResponse, error)
 	UpdateSecurityList(ctx context.Context, id string, etag string, ingressRules []core.IngressSecurityRule, egressRules []core.EgressSecurityRule) (core.UpdateSecurityListResponse, error)
 
+	ListPrivateIps(ctx context.Context, vnicId string) ([]core.PrivateIp, error)
 	GetPrivateIp(ctx context.Context, id string) (*core.PrivateIp, error)
+	CreatePrivateIp(ctx context.Context, vnicID string) (*core.PrivateIp, error)
+	GetIpv6(ctx context.Context, id string) (*core.Ipv6, error)
 
 	GetPublicIpByIpAddress(ctx context.Context, id string) (*core.PublicIp, error)
 
@@ -217,6 +221,70 @@ func (c *client) GetPublicIpByIpAddress(ctx context.Context, ip string) (*core.P
 	}
 
 	return &resp.PublicIp, nil
+}
+
+func (c *client) ListPrivateIps(ctx context.Context, vnicId string) ([]core.PrivateIp, error) {
+	privateIps := []core.PrivateIp{}
+	// Walk through all pages to get all private IPs for VNIC
+	for {
+		if !c.rateLimiter.Reader.TryAccept() {
+			return nil, RateLimitError(false, "ListPrivateIp")
+		}
+
+		resp, err := c.network.ListPrivateIps(ctx, core.ListPrivateIpsRequest{
+			VnicId:          &vnicId,
+			RequestMetadata: c.requestMetadata,
+		})
+		incRequestCounter(err, listVerb, privateIPResource)
+		if err != nil {
+			c.logger.With(vnicId).Infof("ListPrivateIps failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+			return nil, errors.WithStack(err)
+		}
+		privateIps = append(privateIps, resp.Items...)
+		if page := resp.OpcNextPage; page == nil {
+			break
+		}
+	}
+
+	return privateIps, nil
+}
+
+func (c *client) CreatePrivateIp(ctx context.Context, vnicId string) (*core.PrivateIp, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return nil, RateLimitError(false, "CreatePrivateIp")
+	}
+	requestMetadata := getDefaultRequestMetadata(c.requestMetadata)
+	resp, err := c.network.CreatePrivateIp(ctx, core.CreatePrivateIpRequest{
+		CreatePrivateIpDetails: core.CreatePrivateIpDetails{
+			VnicId: &vnicId,
+		},
+		RequestMetadata: requestMetadata,
+	})
+	incRequestCounter(err, createVerb, privateIPResource)
+	if err != nil {
+		c.logger.With(vnicId).Infof("CreatePrivateIp failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		return nil, errors.WithStack(err)
+	}
+
+	return &resp.PrivateIp, nil
+}
+
+func (c *client) GetIpv6(ctx context.Context, id string) (*core.Ipv6, error) {
+	if !c.rateLimiter.Reader.TryAccept() {
+		return nil, RateLimitError(false, "GetIpv6")
+	}
+	resp, err := c.network.GetIpv6(ctx, core.GetIpv6Request{
+		Ipv6Id:          &id,
+		RequestMetadata: c.requestMetadata,
+	})
+	incRequestCounter(err, getVerb, ipv6IPResource)
+
+	if err != nil {
+		c.logger.With(id).Infof("GetIpv6 failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		return nil, errors.WithStack(err)
+	}
+
+	return &resp.Ipv6, nil
 }
 
 func (c *client) CreateNetworkSecurityGroup(ctx context.Context, compartmentId, vcnId, displayName, serviceUid string) (*core.NetworkSecurityGroup, error) {

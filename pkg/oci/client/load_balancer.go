@@ -855,6 +855,22 @@ func sslConfigurationToGenericSslConfiguration(details *loadbalancer.SslConfigur
 	}
 }
 
+func backendTcpProxyProtocolOptionsStringArrayToEnum(options []string) []loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum {
+	ccString := make([]loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum, 0)
+	for _, option := range options {
+		ccString = append(ccString, loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum(option))
+	}
+	return ccString
+}
+
+func stringArrayToBackendTcpProxyProtocolOptionsEnum(options []loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum) []string {
+	ccString := make([]string, 0)
+	for _, option := range options {
+		ccString = append(ccString, string(option))
+	}
+	return ccString
+}
+
 func getSessionPersistenceConfiguration(details *GenericSessionPersistenceConfiguration) *loadbalancer.SessionPersistenceConfigurationDetails {
 	if details == nil {
 		return nil

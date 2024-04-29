@@ -54,6 +54,7 @@ const (
 	mountTargetResource         resource = "mount_target"
 	exportResource              resource = "export"
 	privateIPResource           resource = "private_ip"
+	ipv6IPResource              resource = "ipv6_ip"
 	availabilityDomainResource  resource = "availability_domain"
 	nsgResource                 resource = "network_security_groups"
 	nsgRuleResource             resource = "network_security_group_rules"

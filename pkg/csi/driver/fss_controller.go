@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -140,7 +141,7 @@ func (d *FSSControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateV
 		return response, err
 	}
 
-	fssVolumeHandle := fmt.Sprintf("%s:%s:%s", filesystemOCID, mountTargetIp, storageClassParameters.exportPath)
+	fssVolumeHandle := fmt.Sprintf("%s:%s:%s", filesystemOCID, csi_util.FormatValidIp(mountTargetIp), storageClassParameters.exportPath)
 	log.With("volumeID", fssVolumeHandle).Info("All FSS resource successfully created")
 	csiMetricDimension := util.GetMetricDimensionForComponent(util.Success, util.CSIStorageType)
 	dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
@@ -258,6 +259,8 @@ func (d *FSSControllerDriver) getOrCreateMountTarget(ctx context.Context, storag
 	provisionedMountTarget := &fss.MountTarget{}
 	isExistingMountTargetUsed := false
 
+	log = log.With("ClusterIpFamily", d.clusterIpFamily)
+
 	if storageClassParameters.mountTargetOcid != "" {
 		isExistingMountTargetUsed = true
 		provisionedMountTarget = &fss.MountTarget{Id: &storageClassParameters.mountTargetOcid}
@@ -302,6 +305,19 @@ func (d *FSSControllerDriver) getOrCreateMountTarget(ctx context.Context, storag
 			}
 
 		} else {
+			// Validating mount target subnet with cluster ip family when its present
+			if csi_util.IsValidIpFamilyPresentInClusterIpFamily(d.clusterIpFamily) {
+				log = log.With("mountTargetSubnet", storageClassParameters.mountTargetSubnetOcid)
+				mtSubnetValidationErr := d.validateMountTargetSubnetWithClusterIpFamily(ctx, storageClassParameters.mountTargetSubnetOcid, log)
+				if mtSubnetValidationErr != nil {
+					log.With(zap.Error(mtSubnetValidationErr)).Error("Mount target subnet validation failed.")
+					csiMetricDimension := util.GetMetricDimensionForComponent(util.GetError(mtSubnetValidationErr), util.CSIStorageType)
+					dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
+					metrics.SendMetricData(d.metricPusher, metrics.MTProvision, time.Since(startTimeMountTarget).Seconds(), dimensionsMap)
+					return log, "", "", "", nil, mtSubnetValidationErr, true
+				}
+			}
+
 			// Creating new mount target
 			provisionedMountTarget, err = provisionMountTarget(ctx, log, d.client, volumeName, storageClassParameters)
 			if err != nil {
@@ -320,6 +336,7 @@ func (d *FSSControllerDriver) getOrCreateMountTarget(ctx context.Context, storag
 	}
 	log = log.With("mountTargetID", mountTargetOCID)
 	activeMountTarget, err := d.client.FSS().AwaitMountTargetActive(ctx, log, *provisionedMountTarget.Id)
+
 	if err != nil {
 		log.With("service", "fss", "verb", "get", "resource", "mountTarget", "statusCode", util.GetHttpStatusCode(err)).
 			With(zap.Error(err)).Error("await mount target to be available failed with time out")
@@ -330,9 +347,12 @@ func (d *FSSControllerDriver) getOrCreateMountTarget(ctx context.Context, storag
 		}
 		return log, "", "", "", nil, status.Errorf(codes.DeadlineExceeded, "await mount target to be available failed with time out, error: %s", err.Error()), true
 	}
+
 	activeMountTargetName := *activeMountTarget.DisplayName
 	log = log.With("mountTargetName", activeMountTargetName)
-	if activeMountTarget.PrivateIpIds == nil || len(activeMountTarget.PrivateIpIds) == 0 {
+	// TODO: Uncomment after SDK Supports Ipv6 - 1 line replace
+	//if len(activeMountTarget.PrivateIpIds) == 0 && len(activeMountTarget.MountTargetIpv6Ids) == 0 {
+	if len(activeMountTarget.PrivateIpIds) == 0 {
 		log.Error("IP not assigned to mount target")
 		if !isExistingMountTargetUsed {
 			csiMetricDimension := util.GetMetricDimensionForComponent(util.ErrValidation, util.CSIStorageType)
@@ -341,20 +361,49 @@ func (d *FSSControllerDriver) getOrCreateMountTarget(ctx context.Context, storag
 		}
 		return log, "", "", "", nil, status.Errorf(codes.Internal, "IP not assigned to mount target"), true
 	}
-	mountTargetIpId := activeMountTarget.PrivateIpIds[0]
-	log.Infof("getting private IP of mount target from mountTargetIpId %s", mountTargetIpId)
-	privateIpObject, err := d.client.Networking().GetPrivateIp(ctx, mountTargetIpId)
+
+	if isExistingMountTargetUsed && csi_util.IsValidIpFamilyPresentInClusterIpFamily(d.clusterIpFamily) {
+		// TODO: Uncomment after SDK Supports Ipv6 - 1 line replace
+		//mtValidationErr := d.validateMountTargetWithClusterIpFamily(activeMountTarget.MountTargetIpv6Ids, activeMountTarget.PrivateIpIds)
+		mtValidationErr := d.validateMountTargetWithClusterIpFamily(nil, activeMountTarget.PrivateIpIds)
+		if mtValidationErr != nil {
+			log.With(zap.Error(mtValidationErr)).Error("Mount target validation failed.")
+			return log, "", "", "", nil, mtValidationErr, true
+		}
+	}
+
+	var mountTargetIp string
+	var mountTargetIpId string
+	var ipType string
+	// TODO: Uncomment after SDK Supports Ipv6 - 10 lines
+	//if len(activeMountTarget.MountTargetIpv6Ids) > 0 {
+	//	ipType = "ipv6"
+	//	// Ipv6 Mount Target
+	//	mountTargetIpId = activeMountTarget.MountTargetIpv6Ids[0]
+	//	log.With("mountTargetIpId", mountTargetIpId).Infof("Getting Ipv6 IP of mount target")
+	//	if ipv6IpObject, err := d.client.Networking().GetIpv6(ctx, mountTargetIpId); err == nil {
+	//		mountTargetIp = *ipv6IpObject.IpAddress
+	//	}
+	//} else {
+	// Ipv4 Mount Target
+	mountTargetIpId = activeMountTarget.PrivateIpIds[0]
+	ipType = "privateIp"
+	log.With("mountTargetIpId", mountTargetIpId).Infof("Getting private IP of mount target")
+	if privateIpObject, err := d.client.Networking().GetPrivateIp(ctx, mountTargetIpId); err == nil {
+		mountTargetIp = *privateIpObject.IpAddress
+	}
+	//}
 	if err != nil {
-		log.With("service", "vcn", "verb", "get", "resource", "privateIp", "statusCode", util.GetHttpStatusCode(err)).
-			With(zap.Error(err)).Error("Failed to fetch Mount Target Private IP from IP ID: %s", mountTargetIpId)
+		log.With("service", "vcn", "verb", "get", "resource", ipType, "statusCode", util.GetHttpStatusCode(err)).
+			With("mountTargetIpId", mountTargetIpId).With(zap.Error(err)).Errorf("Failed to get mount target %s ip from ip id.", ipType)
 		if !isExistingMountTargetUsed {
 			csiMetricDimension := util.GetMetricDimensionForComponent(util.GetError(err), util.CSIStorageType)
 			dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
 			metrics.SendMetricData(d.metricPusher, metrics.MTProvision, time.Since(startTimeMountTarget).Seconds(), dimensionsMap)
 		}
-		return log, "", "", "", nil, status.Errorf(codes.Internal, "Failed to fetch Mount Target Private IP from IP ID: %s, error: %s", mountTargetIpId, err.Error()), true
+		return log, "", "", "", nil, status.Errorf(codes.Internal, "Failed to get mount target %s ip from ip id %s, error: %s", ipType, mountTargetIpId, err.Error()), true
 	}
-	mountTargetIp := *privateIpObject.IpAddress
+
 	log = log.With("mountTargetValidatedIp", mountTargetIp)
 	if activeMountTarget.ExportSetId == nil || *activeMountTarget.ExportSetId == "" {
 		log.Error("ExportSetId not assigned to mount target")
@@ -375,6 +424,38 @@ func (d *FSSControllerDriver) getOrCreateMountTarget(ctx context.Context, storag
 		metrics.SendMetricData(d.metricPusher, metrics.MTProvision, time.Since(startTimeMountTarget).Seconds(), dimensionsMap)
 	}
 	return log, mountTargetOCID, mountTargetIp, exportSetId, nil, nil, false
+}
+
+func (d *FSSControllerDriver) validateMountTargetSubnetWithClusterIpFamily(ctx context.Context, mountTargetSubnetId string, log *zap.SugaredLogger) error {
+
+	mountTargetSubnet, err := d.client.Networking().GetSubnet(ctx, mountTargetSubnetId)
+
+	if err != nil {
+		log.With("service", "vcn", "verb", "get", "resource", "subnet", "statusCode", util.GetHttpStatusCode(err)).
+			With(zap.Error(err)).Error("Failed to get mount target subnet.")
+		return status.Errorf(codes.Internal, "Failed to get mount target subnet, error: %s", err.Error())
+	}
+
+	var mtSubnetValidationErr error
+	if csi_util.IsIpv4SingleStackSubnet(mountTargetSubnet) && !strings.Contains(d.clusterIpFamily, csi_util.Ipv4Stack) {
+		mtSubnetValidationErr = status.Errorf(codes.InvalidArgument, "Invalid mount target subnet. For using IPv4 mount target subnet, cluster needs to be IPv4 or dual stack but found to be %s.", d.clusterIpFamily)
+	} else if csi_util.IsDualStackSubnet(mountTargetSubnet) && !strings.Contains(d.clusterIpFamily, csi_util.Ipv4Stack) {
+		mtSubnetValidationErr = status.Errorf(codes.InvalidArgument, "Invalid mount target subnet. For using dual stack mount target subnet, cluster needs to IPv4 or dual stack but found to be %s.", d.clusterIpFamily)
+	} else if csi_util.IsIpv6SingleStackSubnet(mountTargetSubnet) && !strings.Contains(d.clusterIpFamily, csi_util.Ipv6Stack) {
+		mtSubnetValidationErr = status.Errorf(codes.InvalidArgument, "Invalid mount target subnet. For using ipv6 mount target subnet, cluster needs to be IPv6 or dual stack but found to be %s.", d.clusterIpFamily)
+	}
+	return mtSubnetValidationErr
+}
+
+func (d *FSSControllerDriver) validateMountTargetWithClusterIpFamily(mtIpv6Ids []string, privateIpIds []string) error {
+
+	var mtSubnetValidationErr error
+	if len(mtIpv6Ids) > 0 && !strings.Contains(d.clusterIpFamily, csi_util.Ipv6Stack) {
+		mtSubnetValidationErr = status.Errorf(codes.InvalidArgument, "Invalid mount target. For using IPv6 mount target, cluster needs to be IPv6 or dual stack but found to be %s.", d.clusterIpFamily)
+	} else if len(privateIpIds) > 0 && !strings.Contains(d.clusterIpFamily, csi_util.Ipv4Stack) {
+		mtSubnetValidationErr = status.Errorf(codes.InvalidArgument, "Invalid mount target. For using IPv4 mount target, cluster needs to IPv4 or dual stack but found to be %s.", d.clusterIpFamily)
+	}
+	return mtSubnetValidationErr
 }
 
 func (d *FSSControllerDriver) getOrCreateExport(ctx context.Context, err error, storageClassParameters StorageClassParameters, filesystemOCID string, exportSetId string, log *zap.SugaredLogger, dimensionsMap map[string]string) (*zap.SugaredLogger, *csi.CreateVolumeResponse, error, bool) {
@@ -843,31 +924,53 @@ func (d *FSSControllerDriver) ValidateVolumeCapabilities(ctx context.Context, re
 		log = log.With("mountTargetOCID", mountTargetOCID)
 		log.Info("filesystem tagged with mount target ocid, getting mount target")
 		mountTarget, err = d.client.FSS().GetMountTarget(ctx, mountTargetOCID)
-		if err != nil && !client.IsNotFound(err) {
-			log.With("service", "fss", "verb", "get", "resource", "mountTarget", "statusCode", util.GetHttpStatusCode(err)).
-				With(zap.Error(err)).Error("failed to get mount target")
-			return nil, status.Errorf(codes.NotFound, "failed to get mount target, error: %s", err.Error())
+		if err != nil {
+			if !client.IsNotFound(err) {
+				log.With("service", "fss", "verb", "get", "resource", "mountTarget", "statusCode", util.GetHttpStatusCode(err)).
+					With(zap.Error(err)).Error("Failed to get mount target")
+				return nil, status.Errorf(codes.NotFound, "Failed to get mount target, error: %s", err.Error())
+			} else {
+				log.With("service", "fss", "verb", "get", "resource", "mountTarget", "statusCode", util.GetHttpStatusCode(err)).
+					With(zap.Error(err)).Error("Mount Target not found")
+				return nil, status.Errorf(codes.NotFound, "Mount Target not found")
+			}
 		}
 	}
+	// TODO: Uncomment after SDK Supports Ipv6 - 1 line replace
+	//if len(mountTarget.PrivateIpIds) == 0 && len(mountTarget.MountTargetIpv6Ids) == 0 {
+	if len(mountTarget.PrivateIpIds) == 0 {
+		return nil, status.Error(codes.NotFound, "IP not assigned to mount target.")
+	}
 
-	if mountTarget != nil && mountTarget.PrivateIpIds != nil {
-		mountTargetIpId := mountTarget.PrivateIpIds[0]
-		log = log.With("mountTargetIpId", mountTargetIpId)
-		privateIpObject, err := d.client.Networking().GetPrivateIp(ctx, mountTargetIpId)
-		if err != nil {
-			log.With("service", "vcn", "verb", "get", "resource", "privateIp", "statusCode", util.GetHttpStatusCode(err)).
-				With(zap.Error(err)).Errorf("Failed to fetch Mount Target Private IP from IP ID: %s", mountTargetIpId)
-			return nil, status.Errorf(codes.NotFound, "Failed to fetch Mount Target Private IP from IP ID: %s, error: %s", mountTargetIpId, err.Error())
-		}
-		mountTargetIp := *privateIpObject.IpAddress
-		log = log.With("mountTargetValidatedIp", mountTargetIp)
-		if mountTargetIp != mountTargetIP {
-			log.Errorf("Failed to fetch Mount Target Private IP from IP ID: %s", mountTargetIpId)
-			return nil, status.Errorf(codes.NotFound, "Mount Target IP mis-match.")
-		}
-	} else {
-		log.Error("Mount Target not found")
-		return nil, status.Errorf(codes.NotFound, "Mount Target not found")
+	var mountTargetIp string
+	// TODO: Uncomment after SDK Supports Ipv6 - 13 line
+	//if len(mountTarget.MountTargetIpv6Ids) > 0 {
+	//	// Ipv6 Mount Target
+	//	mountTargetIpId := mountTarget.MountTargetIpv6Ids[0]
+	//	log = log.With("mountTargetIpId", mountTargetIpId)
+	//	ipv6IpObject, err := d.client.Networking().GetIpv6(ctx, mountTargetIpId)
+	//	if err != nil {
+	//		log.With("service", "vcn", "verb", "get", "resource", "ipv6", "statusCode", util.GetHttpStatusCode(err)).
+	//			With(zap.Error(err)).Errorf("Failed to fetch Mount Target Ipv6 IP from IP ID: %s", mountTargetIpId)
+	//		return nil, status.Errorf(codes.NotFound, "Failed to fetch Mount Target Ipv6 IP from IP ID: %s, error: %s", mountTargetIpId, err.Error())
+	//	}
+	//	mountTargetIp = *ipv6IpObject.IpAddress
+	//} else {
+	// Ipv4 Mount Target
+	mountTargetIpId := mountTarget.PrivateIpIds[0]
+	privateIpObject, err := d.client.Networking().GetPrivateIp(ctx, mountTargetIpId)
+	if err != nil {
+		log.With("service", "vcn", "verb", "get", "resource", "privateIp", "statusCode", util.GetHttpStatusCode(err)).
+			With(zap.Error(err)).Errorf("Failed to fetch Mount Target Private IP from IP ID: %s", mountTargetIpId)
+		return nil, status.Errorf(codes.NotFound, "Failed to fetch Mount Target Private IP from IP ID: %s, error: %s", mountTargetIpId, err.Error())
+	}
+	mountTargetIp = *privateIpObject.IpAddress
+	//}
+
+	log = log.With("mountTargetValidatedIp", mountTargetIp)
+	if !strings.EqualFold(csi_util.FormatValidIp(mountTargetIp), mountTargetIP) {
+		log.With("mountTargetIpFromVolumeId", mountTargetIP).Errorf("Mount Target IP mismatch.")
+		return nil, status.Errorf(codes.NotFound, "Mount Target IP mismatch.")
 	}
 
 	exportSummary := &fss.ExportSummary{}

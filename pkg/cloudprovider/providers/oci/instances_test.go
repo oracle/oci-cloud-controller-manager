@@ -401,6 +401,22 @@ func (c *MockBlockStorageClient) GetVolumeBackupsByName(ctx context.Context, sna
 type MockVirtualNetworkClient struct {
 }
 
+func (c *MockVirtualNetworkClient) GetVNIC(ctx context.Context, id string) (*core.Vnic, error) {
+	return nil, nil
+}
+
+func (c *MockVirtualNetworkClient) ListPrivateIps(ctx context.Context, vnicId string) ([]core.PrivateIp, error) {
+	return nil, nil
+}
+
+func (c *MockVirtualNetworkClient) CreatePrivateIp(ctx context.Context, vnicID string) (*core.PrivateIp, error) {
+	return nil, nil
+}
+
+func (c *MockVirtualNetworkClient) GetIpv6(ctx context.Context, id string) (*core.Ipv6, error) {
+	return &core.Ipv6{}, nil
+}
+
 func (c *MockVirtualNetworkClient) IsRegionalSubnet(ctx context.Context, id string) (bool, error) {
 	return subnets[id].AvailabilityDomain == nil, nil
 }

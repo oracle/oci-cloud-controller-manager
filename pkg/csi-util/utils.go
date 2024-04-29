@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/oracle/oci-go-sdk/v65/core"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -70,6 +71,13 @@ const (
 	FINDMNT_COMMAND                = "findmnt"
 	CAT_COMMAND                    = "cat"
 	RPM_COMMAND                    = "rpm-host"
+	LabelIpFamilyPreferred         = "oci.oraclecloud.com/ip-family-preferred"
+	LabelIpFamilyIpv4              = "oci.oraclecloud.com/ip-family-ipv4"
+	LabelIpFamilyIpv6              = "oci.oraclecloud.com/ip-family-ipv6"
+	IscsiIpv6Prefix                = "fd00:00c1::"
+
+	Ipv6Stack = "IPv6"
+	Ipv4Stack = "IPv4"
 )
 
 // Util interface
@@ -79,13 +87,19 @@ type Util struct {
 
 var (
 	DiskByPathPatternPV    = `/dev/disk/by-path/pci-\w{4}:\w{2}:\w{2}\.\d+-scsi-\d+:\d+:\d+:\d+$`
-	DiskByPathPatternISCSI = `/dev/disk/by-path/ip-[\w\.]+:\d+-iscsi-[\w\.\-:]+-lun-\d+$`
+	DiskByPathPatternISCSI = `/dev/disk/by-path/ip-[[?\w\.\:]+]?:\d+-iscsi-[\w\.\-:]+-lun-\d+$`
 )
 
 type FSSVolumeHandler struct {
 	FilesystemOcid       string
 	MountTargetIPAddress string
 	FsExportPath         string
+}
+
+type NodeIpFamily struct {
+	PreferredNodeIpFamily string
+	Ipv4Enabled           bool
+	Ipv6Enabled           bool
 }
 
 func (u *Util) LookupNodeID(k kubernetes.Interface, nodeName string) (string, error) {
@@ -154,18 +168,14 @@ func (u *Util) GetAvailableDomainInNodeLabel(fullAD string) string {
 	return ""
 }
 
-func GetDevicePath(sd *disk.Disk) string {
-	return fmt.Sprintf("/dev/disk/by-path/ip-%s:%d-iscsi-%s-lun-1", sd.IPv4, sd.Port, sd.IQN)
-}
-
 func ExtractISCSIInformation(attributes map[string]string) (*disk.Disk, error) {
 	iqn, ok := attributes[disk.ISCSIIQN]
 	if !ok {
 		return nil, fmt.Errorf("unable to get the IQN from the attribute list")
 	}
-	ipv4, ok := attributes[disk.ISCSIIP]
+	iSCSIIp, ok := attributes[disk.ISCSIIP]
 	if !ok {
-		return nil, fmt.Errorf("unable to get the ipv4 from the attribute list")
+		return nil, fmt.Errorf("unable to get the iSCSIIp from the attribute list")
 	}
 	port, ok := attributes[disk.ISCSIPORT]
 	if !ok {
@@ -178,9 +188,9 @@ func ExtractISCSIInformation(attributes map[string]string) (*disk.Disk, error) {
 	}
 
 	return &disk.Disk{
-		IQN:  iqn,
-		IPv4: ipv4,
-		Port: nPort,
+		IQN:     iqn,
+		IscsiIp: iSCSIIp,
+		Port:    nPort,
 	}, nil
 }
 
@@ -212,11 +222,11 @@ func ExtractISCSIInformationFromMountPath(logger *zap.SugaredLogger, diskPath []
 		return nil, err
 	}
 
-	logger.With("IQN", m[3], "IPv4", m[1], "Port", port).Info("Found ISCSIInfo for the mount path: ", diskPath)
+	logger.With("IQN", m[3], "IscsiIP", m[1], "Port", port).Info("Found ISCSIInfo for the mount path: ", diskPath)
 	return &disk.Disk{
-		IQN:  m[3],
-		IPv4: m[1],
-		Port: port,
+		IQN:     m[3],
+		IscsiIp: m[1],
+		Port:    port,
 	}, nil
 }
 
@@ -439,16 +449,17 @@ func ValidateFssId(id string) *FSSVolumeHandler {
 	if id == "" {
 		return volumeHandler
 	}
-	volumeHandlerSlice := strings.Split(id, ":")
-	const numOfParamsFromVolumeHandle = 3
-	if len(volumeHandlerSlice) == numOfParamsFromVolumeHandle {
-		if net.ParseIP(volumeHandlerSlice[1]) != nil {
-			volumeHandler.FilesystemOcid = volumeHandlerSlice[0]
-			volumeHandler.MountTargetIPAddress = volumeHandlerSlice[1]
-			volumeHandler.FsExportPath = volumeHandlerSlice[2]
+	//As ipv6 mount target address contains colons we need to find index of first and last colon to get the three parts
+	firstColon := strings.Index(id, ":")
+	lastColon := strings.LastIndex(id, ":")
+	if firstColon > 0 && lastColon < len(id)-1 && firstColon != lastColon {
+		//To handle ipv6  ex.[fd00:00c1::a9fe:202] trim brackets to get fd00:00c1::a9fe:202 which is parsable
+		if net.ParseIP(strings.Trim(id[firstColon+1:lastColon], "[]")) != nil {
+			volumeHandler.FilesystemOcid = id[:firstColon]
+			volumeHandler.MountTargetIPAddress = id[firstColon+1 : lastColon]
+			volumeHandler.FsExportPath = id[lastColon+1:]
 			return volumeHandler
 		}
-		return volumeHandler
 	}
 	return volumeHandler
 }
@@ -465,4 +476,87 @@ func GetIsFeatureEnabledFromEnv(logger *zap.SugaredLogger, featureName string, d
 		}
 	}
 	return enableFeature
+}
+
+func GetNodeIpFamily(k kubernetes.Interface, nodeID string, logger *zap.SugaredLogger) (*NodeIpFamily, error) {
+	n, err := k.CoreV1().Nodes().Get(context.Background(), nodeID, metav1.GetOptions{})
+
+	if err != nil {
+		logger.With(zap.Error(err)).With("nodeId", nodeID).Error("Failed to get Node information from kube api server, Please check if kube api server is accessible.")
+		return nil, fmt.Errorf("Failed to get node information from kube api server, please check if kube api server is accessible.")
+	}
+
+	nodeIpFamily := &NodeIpFamily{}
+
+	if n.Labels != nil {
+		if preferredIpFamily, ok := n.Labels[LabelIpFamilyPreferred]; ok {
+			nodeIpFamily.PreferredNodeIpFamily = FormatValidIpStackInK8SConvention(preferredIpFamily)
+		}
+		if ipv4Enabled, ok := n.Labels[LabelIpFamilyIpv4]; ok && strings.EqualFold(ipv4Enabled, "true") {
+			nodeIpFamily.Ipv4Enabled = true
+		}
+		if ipv6Enabled, ok := n.Labels[LabelIpFamilyIpv6]; ok && strings.EqualFold(ipv6Enabled, "true") {
+			nodeIpFamily.Ipv6Enabled = true
+		}
+	}
+	if !nodeIpFamily.Ipv4Enabled && !nodeIpFamily.Ipv6Enabled {
+		nodeIpFamily.PreferredNodeIpFamily = Ipv4Stack
+		nodeIpFamily.Ipv4Enabled = true
+		logger.With("nodeId", nodeID, "nodeIpFamily", *nodeIpFamily).Info("No IP family labels identified on node, defaulting to ipv4.")
+	} else {
+		logger.With("nodeId", nodeID, "nodeIpFamily", *nodeIpFamily).Info("Node IP family identified.")
+	}
+
+	return nodeIpFamily, nil
+}
+func ConvertIscsiIpFromIpv4ToIpv6(ipv4IscsiIp string) (string, error) {
+	ipv4IscsiIP := net.ParseIP(ipv4IscsiIp).To4()
+	if ipv4IscsiIP == nil {
+		return "", fmt.Errorf("invalid iSCSIIp identified %s", ipv4IscsiIp)
+	}
+	ipv6IscsiIp := net.ParseIP(IscsiIpv6Prefix)
+	ipv6IscsiIpBytes := ipv6IscsiIp.To16()
+	copy(ipv6IscsiIpBytes[12:], ipv4IscsiIP.To4())
+	return ipv6IscsiIpBytes.String(), nil
+}
+
+func FormatValidIp(ipAddress string) string {
+	if net.ParseIP(ipAddress).To4() != nil {
+		return ipAddress
+	}
+	return fmt.Sprintf("[%s]", strings.Trim(ipAddress, "[]"))
+}
+
+func FormatValidIpStackInK8SConvention(ipStack string) string {
+	if strings.EqualFold(ipStack, Ipv4Stack) {
+		return Ipv4Stack
+	} else if strings.EqualFold(ipStack, Ipv6Stack) {
+		return Ipv6Stack
+	}
+	return ipStack
+}
+
+func IsIpv4(ipAddress string) bool {
+	return net.ParseIP(ipAddress).To4() != nil
+}
+
+func IsIpv6(ipAddress string) bool {
+	return net.ParseIP(ipAddress).To4() == nil && net.ParseIP(strings.Trim(ipAddress, "[]")).To16() != nil
+}
+
+func IsIpv4SingleStackSubnet(subnet *core.Subnet) bool {
+	return !IsDualStackSubnet(subnet) && subnet.CidrBlock != nil && len(*subnet.CidrBlock) > 0 && !strings.Contains(*subnet.CidrBlock, "null")
+}
+
+func IsIpv6SingleStackSubnet(subnet *core.Subnet) bool {
+	return !IsDualStackSubnet(subnet) && !IsIpv4SingleStackSubnet(subnet)
+}
+
+func IsDualStackSubnet(subnet *core.Subnet) bool {
+	return subnet.CidrBlock != nil && len(*subnet.CidrBlock) > 0 && !strings.Contains(*subnet.CidrBlock, "null") &&
+		((subnet.Ipv6CidrBlock != nil && len(*subnet.Ipv6CidrBlock) > 0) || len(subnet.Ipv6CidrBlocks) > 0)
+}
+
+func IsValidIpFamilyPresentInClusterIpFamily(clusterIpFamily string) bool {
+	return len(clusterIpFamily) > 0 && (strings.Contains(clusterIpFamily, Ipv4Stack) || strings.Contains(clusterIpFamily, Ipv6Stack))
 }
