@@ -26,7 +26,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
-	api "k8s.io/kubernetes/pkg/apis/core"
 	k8sports "k8s.io/kubernetes/pkg/cluster/ports"
 )
 
@@ -171,7 +170,7 @@ func TestGetNodeIngressRules(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-default-health-check-port"},
 					Spec: v1.ServiceSpec{
 						Type:                  v1.ServiceTypeLoadBalancer,
-						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicy(api.ServiceExternalTrafficPolicyCluster),
+						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicyTypeCluster,
 						Ports:                 []v1.ServicePort{{Port: 443}},
 					},
 				},
@@ -201,7 +200,7 @@ func TestGetNodeIngressRules(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-default-health-check-port"},
 					Spec: v1.ServiceSpec{
 						Type:                  v1.ServiceTypeLoadBalancer,
-						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicy(api.ServiceExternalTrafficPolicyCluster),
+						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicyTypeCluster,
 						Ports:                 []v1.ServicePort{{Port: 443}},
 					},
 				},
@@ -209,7 +208,7 @@ func TestGetNodeIngressRules(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-NodePort-health-check-port"},
 					Spec: v1.ServiceSpec{
 						Type:                  v1.ServiceTypeLoadBalancer,
-						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicy(api.ServiceExternalTrafficPolicyLocal),
+						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicyTypeCluster,
 						Ports:                 []v1.ServicePort{{Port: 8081}},
 						HealthCheckNodePort:   32000,
 					},
@@ -316,7 +315,7 @@ func TestGetNodeIngressRules(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-non-default-health-check-port"},
 					Spec: v1.ServiceSpec{
 						Type:                  v1.ServiceTypeLoadBalancer,
-						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicy(api.ServiceExternalTrafficPolicyLocal),
+						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicyTypeLocal,
 						Ports:                 []v1.ServicePort{{Port: 8081}},
 					},
 				},
@@ -495,7 +494,7 @@ func TestGetNodeIngressRules_NLB(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-default-health-check-port"},
 					Spec: v1.ServiceSpec{
 						Type:                  v1.ServiceTypeLoadBalancer,
-						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicy(api.ServiceExternalTrafficPolicyCluster),
+						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicyTypeCluster,
 						Ports:                 []v1.ServicePort{{Port: 443}},
 					},
 				},
@@ -996,7 +995,7 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-default-health-check-port"},
 					Spec: v1.ServiceSpec{
 						Type:                  v1.ServiceTypeLoadBalancer,
-						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicy(api.ServiceExternalTrafficPolicyCluster),
+						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicyTypeCluster,
 						Ports:                 []v1.ServicePort{{Port: 80}},
 					},
 				},
@@ -1020,7 +1019,7 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-default-health-check-port"},
 					Spec: v1.ServiceSpec{
 						Type:                  v1.ServiceTypeLoadBalancer,
-						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicy(api.ServiceExternalTrafficPolicyLocal),
+						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicyTypeLocal,
 						HealthCheckNodePort:   30000,
 					},
 				},
@@ -1045,7 +1044,7 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-Nodeport-health-check-port"},
 					Spec: v1.ServiceSpec{
 						Type:                  v1.ServiceTypeLoadBalancer,
-						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicy(api.ServiceExternalTrafficPolicyLocal),
+						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicyTypeLocal,
 						Ports:                 []v1.ServicePort{{Port: 80}},
 						HealthCheckNodePort:   30000,
 					},
@@ -1055,7 +1054,7 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 					Spec: v1.ServiceSpec{
 						Type:                  v1.ServiceTypeLoadBalancer,
 						Ports:                 []v1.ServicePort{{Port: 8080}},
-						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicy(api.ServiceExternalTrafficPolicyCluster),
+						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicyTypeCluster,
 					},
 				},
 			},
