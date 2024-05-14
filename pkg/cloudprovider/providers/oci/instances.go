@@ -97,6 +97,31 @@ func (cp *CloudProvider) extractNodeAddresses(ctx context.Context, instanceID st
 		addresses = append(addresses, api.NodeAddress{Type: api.NodeExternalIP, Address: ip.String()})
 	}
 
+	secondaryVnic, err := cp.client.Compute().GetSecondaryVNICForInstance(ctx, compartmentID, instanceID)
+	if err != nil {
+		return nil, errors.Wrap(err, "GetSecondaryVNICForInstance")
+	}
+
+	if secondaryVnic == nil {
+		return addresses, nil
+	}
+
+	if (secondaryVnic.IsPrimary == nil || !*secondaryVnic.IsPrimary) && secondaryVnic.PrivateIp != nil && *secondaryVnic.PrivateIp != "" {
+		ip := net.ParseIP(*secondaryVnic.PrivateIp)
+		if ip == nil {
+			return nil, fmt.Errorf("instance has invalid private address: %q", *secondaryVnic.PrivateIp)
+		}
+		addresses = append(addresses, api.NodeAddress{Type: api.NodeInternalIP, Address: ip.String()})
+	}
+
+	if (secondaryVnic.IsPrimary == nil || !*secondaryVnic.IsPrimary) && secondaryVnic.PublicIp != nil && *secondaryVnic.PublicIp != "" {
+		ip := net.ParseIP(*secondaryVnic.PublicIp)
+		if ip == nil {
+			return nil, errors.Errorf("instance has invalid public address: %q", *secondaryVnic.PublicIp)
+		}
+		addresses = append(addresses, api.NodeAddress{Type: api.NodeExternalIP, Address: ip.String()})
+	}
+
 	// Changing this can have wide reaching impact.
 	//
 	// if vnic.HostnameLabel != nil && *vnic.HostnameLabel != "" {

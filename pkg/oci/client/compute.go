@@ -32,6 +32,7 @@ type ComputeInterface interface {
 	GetInstanceByNodeName(ctx context.Context, compartmentID, vcnID, nodeName string) (*core.Instance, error)
 
 	GetPrimaryVNICForInstance(ctx context.Context, compartmentID, instanceID string) (*core.Vnic, error)
+	GetSecondaryVNICForInstance(ctx context.Context, compartmentID, instanceID string) (*core.Vnic, error)
 
 	VolumeAttachmentInterface
 }
@@ -139,6 +140,53 @@ func (c *client) GetPrimaryVNICForInstance(ctx context.Context, compartmentID, i
 				return nil, err
 			}
 			if vnic.IsPrimary != nil && *vnic.IsPrimary {
+				return vnic, nil
+			}
+		}
+
+		if page = resp.OpcNextPage; resp.OpcNextPage == nil {
+			break
+		}
+	}
+
+	return nil, errors.WithStack(errNotFound)
+}
+
+func (c *client) GetSecondaryVNICForInstance(ctx context.Context, compartmentID, instanceID string) (*core.Vnic, error) {
+	logger := c.logger.With("instanceID", instanceID, "compartmentID", compartmentID)
+
+	var page *string
+	for {
+		resp, err := c.listVNICAttachments(ctx, core.ListVnicAttachmentsRequest{
+			InstanceId:      &instanceID,
+			CompartmentId:   &compartmentID,
+			Page:            page,
+			RequestMetadata: c.requestMetadata,
+		})
+
+		if err != nil {
+			return nil, err
+		}
+
+		for _, attachment := range resp.Items {
+			if attachment.LifecycleState != core.VnicAttachmentLifecycleStateAttached {
+				logger.With("vnicAttachmentID", *attachment.Id).Info("VNIC attachment is not in attached state")
+				continue
+			}
+
+			if attachment.VnicId == nil {
+				// Should never happen but lets be extra cautious as field is non-mandatory in OCI API.
+				logger.With("vnicAttachmentID", *attachment.Id).Error("VNIC attachment is attached but has no VNIC ID")
+				continue
+			}
+
+			// TODO(apryde): Cache map[instanceID]primaryVNICID.
+			vnic, err := c.GetVNIC(ctx, *attachment.VnicId)
+			if err != nil {
+				return nil, err
+			}
+
+			if !*vnic.IsPrimary {
 				return vnic, nil
 			}
 		}
