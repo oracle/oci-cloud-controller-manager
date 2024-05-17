@@ -20,6 +20,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -70,6 +71,9 @@ const (
 	FINDMNT_COMMAND                = "findmnt"
 	CAT_COMMAND                    = "cat"
 	RPM_COMMAND                    = "rpm-host"
+
+	// For Raw Block Volumes, the name of the bind-mounted file inside StagingTargetPath
+	RawBlockStagingFile = "mountfile"
 )
 
 // Util interface
@@ -449,4 +453,37 @@ func ValidateFssId(id string) *FSSVolumeHandler {
 		return volumeHandler
 	}
 	return volumeHandler
+}
+
+func GetStagingTargetPathForFile(stagingTargetPath string) string {
+	stagingTargetPathFile := filepath.Join(stagingTargetPath, RawBlockStagingFile)
+	return stagingTargetPathFile
+}
+
+// Creates a file on the specified path after creating the containing directory
+func CreateFilePath(logger *zap.SugaredLogger, path string) error {
+	pathDir := filepath.Dir(path)
+
+	logger.Infof("trying to create surrounding directory %s", pathDir)
+	err := os.MkdirAll(pathDir, 0750)
+	if err != nil {
+		logger.Infof("failed to create surrounding directory %s", pathDir)
+		return err
+	}
+
+	logger.Infof("created surrounding directory, trying to create the target file %s", path)
+	file, fileErr := os.OpenFile(path, os.O_CREATE, 0640)
+	if fileErr != nil && !os.IsExist(fileErr) {
+		logger.Infof("failed to create/open the target file at %s", path)
+		return fileErr
+	}
+
+	fileErr = file.Close()
+	if fileErr != nil {
+		logger.Infof("failed to close %s", path)
+		return fileErr
+	}
+
+	logger.Infof("ensured file at %s", path)
+	return nil
 }

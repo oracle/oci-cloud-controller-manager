@@ -134,6 +134,15 @@ func waitForPathToExist(path string, maxRetries int) bool {
 	return false
 }
 
+func (c *pvMounter) MountWithoutFormat(source string, target string, fstype string, options []string) error {
+	return c.mounter.Mount(source, target, fstype, options)
+}
+
+func (c *pvMounter) UnmountDeviceBindAndDelete(path string) error {
+	// TODO: Need to figure this out
+	return nil
+}
+
 func (c *pvMounter) WaitForPathToExist(path string, maxRetries int) bool {
 	return waitForPathToExist(path, maxRetries)
 }

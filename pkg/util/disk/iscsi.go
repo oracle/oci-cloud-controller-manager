@@ -109,6 +109,13 @@ type Interface interface {
 	GetDiskFormat(devicePath string) (string, error)
 
 	WaitForPathToExist(path string, maxRetries int) bool
+
+	// Both iSCSIMounter and pvMounter call Mount through a SafeFormatAndMount struct
+	// which in turn checks formatting before mounting. MountWithoutFormat calls the mount.Interface.Mount() method
+	// directly.
+	MountWithoutFormat(source string, target string, fstype string, options []string) error
+
+	UnmountDeviceBindAndDelete(path string) error
 }
 
 // iSCSIMounter implements Interface.
@@ -446,6 +453,15 @@ func (c *iSCSIMounter) WaitForPathToExist(path string, maxRetries int) bool {
 	return true
 }
 
+func (c *iSCSIMounter) UnmountDeviceBindAndDelete(path string) error {
+	// TODO: Need to figure this out
+	return nil
+}
+
+func (c *iSCSIMounter) MountWithoutFormat(source string, target string, fstype string, options []string) error {
+	return c.mounter.Mount(source, target, fstype, options)
+}
+
 // getMountPointForPath returns the mount.MountPoint for a given path. If the
 // given path is not a mount point
 func getMountPointForPath(ml mount.Interface, path string) (mount.MountPoint, error) {
@@ -584,4 +600,60 @@ func GetScsiInfo(mountDevice string) (*Disk, error) {
 		IPv4: m[1],
 		Port: port,
 	}, nil
+}
+
+func GetDiskPathFromBindDeviceFilePath(logger *zap.SugaredLogger, mountPath string) ([]string, error) {
+	// mounter := mount.New(mountCommand)
+	findMountOutput, err := GetMountRefs(mountPath)
+	logger.Infof("output from GetMountRefs is %v", findMountOutput)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(findMountOutput) != 1 {
+		return nil, errors.New("Didn't find exactly a single bind mount on " + mountPath)
+	}
+
+	for i, v := range findMountOutput {
+		findMountOutput[i] = filepath.Join("/dev/", strings.TrimSuffix(strings.TrimPrefix(v, "udev[/"), "]"))
+	}
+	logger.Infof("The device path is %s", findMountOutput[0])
+
+	diskByPaths := []string{}
+	err = filepath.Walk("/dev/disk/by-path/", func(path string, info os.FileInfo, err error) error {
+		target, err := filepath.EvalSymlinks(path)
+		if err != nil {
+			return err
+		}
+		if target == findMountOutput[0] {
+			diskByPaths = append(diskByPaths, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(diskByPaths) == 0 {
+		return nil, errors.New("disk by path link not found")
+	}
+
+	logger.Infof("diskByPaths is %v", diskByPaths)
+	return diskByPaths, nil
+}
+
+func GetMountRefs(path string) ([]string, error) {
+	// Construct the findmnt command
+	cmd := cmdexec.Command("findmnt", "-o", "TARGET", "--noheadings", "--target", path)
+
+	// Run the command and capture the output
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	// Split the output into lines to get individual mount points
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+
+	return lines, nil
 }

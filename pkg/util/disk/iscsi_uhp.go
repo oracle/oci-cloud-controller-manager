@@ -143,6 +143,16 @@ func (c *iSCSIUHPMounter) WaitForPathToExist(path string, maxRetries int) bool {
 	return true
 }
 
+func (c *iSCSIUHPMounter) MountWithoutFormat(source string, target string, fstype string, options []string) error {
+	// TODO: Need to figure this out
+	return nil
+}
+
+func (c *iSCSIUHPMounter) UnmountDeviceBindAndDelete(path string) error {
+	// TODO: Need to figure this out
+	return nil
+}
+
 func (c *iSCSIUHPMounter) GetISCSILoginState(multipathDevices []core.MultipathDevice) (bool, error) {
 	c.logger.Info("Getting login state")
 	cmdStr := fmt.Sprintf(DISK_BY_PATH_FOLDER)
