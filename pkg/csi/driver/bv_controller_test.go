@@ -1236,6 +1236,24 @@ func TestControllerDriver_ControllerExpandVolume(t *testing.T) {
 			wantErr: errors.New("Update volume failed"),
 		},
 		{
+			name:   "If no changes then do nothing in ControllerExpandVolume",
+			fields: fields{},
+			args: args{
+				ctx: nil,
+				req: &csi.ControllerExpandVolumeRequest{
+					VolumeId: "valid_volume_id",
+					CapacityRange: &csi.CapacityRange{
+						RequiredBytes: int64(csi_util.MaximumVolumeSizeInBytes),
+					},
+				},
+			},
+			want: &csi.ControllerExpandVolumeResponse{
+				CapacityBytes:         int64(csi_util.MaximumVolumeSizeInBytes),
+				NodeExpansionRequired: true,
+			},
+			wantErr: nil,
+		},
+		{
 			name:   "Uhp volume expand success in ControllerExpandVolume",
 			fields: fields{},
 			args: args{
