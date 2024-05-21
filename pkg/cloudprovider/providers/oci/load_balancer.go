@@ -394,7 +394,8 @@ func (clb *CloudLoadBalancerProvider) createLoadBalancer(ctx context.Context, sp
 		}
 	}
 
-	wrID, err := clb.lbClient.CreateLoadBalancer(ctx, &details)
+	serviceUid := fmt.Sprintf("%s", spec.service.UID)
+	wrID, err := clb.lbClient.CreateLoadBalancer(ctx, &details, &serviceUid)
 	if err != nil {
 		return nil, "", errors.Wrap(err, "creating load balancer")
 	}
