@@ -39,7 +39,7 @@ type loadbalancerClientStruct struct {
 }
 
 type GenericLoadBalancerInterface interface {
-	CreateLoadBalancer(ctx context.Context, details *GenericCreateLoadBalancerDetails) (string, error)
+	CreateLoadBalancer(ctx context.Context, details *GenericCreateLoadBalancerDetails, serviceUid *string) (string, error)
 
 	GetLoadBalancer(ctx context.Context, id string) (*GenericLoadBalancer, error)
 	GetLoadBalancerByName(ctx context.Context, compartmentID, name string) (*GenericLoadBalancer, error)
@@ -111,11 +111,10 @@ func (c *loadbalancerClientStruct) GetLoadBalancerByName(ctx context.Context, co
 	return nil, errors.WithStack(errNotFound)
 }
 
-func (c *loadbalancerClientStruct) CreateLoadBalancer(ctx context.Context, details *GenericCreateLoadBalancerDetails) (string, error) {
+func (c *loadbalancerClientStruct) CreateLoadBalancer(ctx context.Context, details *GenericCreateLoadBalancerDetails, serviceUid *string) (string, error) {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return "", RateLimitError(true, "CreateLoadBalancer")
 	}
-
 	resp, err := c.loadbalancer.CreateLoadBalancer(ctx, loadbalancer.CreateLoadBalancerRequest{
 		CreateLoadBalancerDetails: loadbalancer.CreateLoadBalancerDetails{
 			CompartmentId:           details.CompartmentId,
@@ -133,7 +132,7 @@ func (c *loadbalancerClientStruct) CreateLoadBalancer(ctx context.Context, detai
 			DefinedTags:             details.DefinedTags,
 		},
 		RequestMetadata: c.requestMetadata,
-		OpcRetryToken:   details.DisplayName,
+		OpcRetryToken:   serviceUid,
 	})
 	incRequestCounter(err, createVerb, loadBalancerResource)
 

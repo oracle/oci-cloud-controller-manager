@@ -84,7 +84,7 @@ func (c *networkLoadbalancer) GetLoadBalancerByName(ctx context.Context, compart
 	return nil, errors.WithStack(errNotFound)
 }
 
-func (c *networkLoadbalancer) CreateLoadBalancer(ctx context.Context, details *GenericCreateLoadBalancerDetails) (string, error) {
+func (c *networkLoadbalancer) CreateLoadBalancer(ctx context.Context, details *GenericCreateLoadBalancerDetails, serviceUid *string) (string, error) {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return "", RateLimitError(true, "CreateLoadBalancer")
 	}
@@ -104,7 +104,7 @@ func (c *networkLoadbalancer) CreateLoadBalancer(ctx context.Context, details *G
 			DefinedTags:                 details.DefinedTags,
 		},
 		RequestMetadata: c.requestMetadata,
-		OpcRetryToken:   details.DisplayName,
+		OpcRetryToken:   serviceUid,
 	})
 	incRequestCounter(err, createVerb, networkLoadBalancerResource)
 
