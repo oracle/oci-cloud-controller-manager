@@ -465,7 +465,7 @@ func (c *MockLoadBalancerClient) ListWorkRequests(ctx context.Context, compartme
 	return nil, nil
 }
 
-func (c *MockLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details *client.GenericCreateLoadBalancerDetails) (string, error) {
+func (c *MockLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details *client.GenericCreateLoadBalancerDetails, serviceUid *string) (string, error) {
 	return "", nil
 }
 
