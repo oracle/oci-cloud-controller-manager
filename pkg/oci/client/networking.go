@@ -232,7 +232,7 @@ func (c *client) CreateNetworkSecurityGroup(ctx context.Context, compartmentId, 
 			DisplayName:   &displayName,
 			FreeformTags:  map[string]string{"CreatedBy": "CCM", "ServiceUid": serviceUid},
 		},
-		OpcRetryToken:   &displayName,
+		OpcRetryToken:   &serviceUid,
 		RequestMetadata: requestMetadata,
 	})
 
