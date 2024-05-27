@@ -1229,7 +1229,7 @@ func (d *BlockVolumeControllerDriver) ControllerExpandVolume(ctx context.Context
 	if newSizeInGB <= oldSize {
 		log.Infof("Existing volume size: %v Requested volume size: %v No action needed.", *volume.SizeInGBs, newSizeInGB)
 		return &csi.ControllerExpandVolumeResponse{
-			CapacityBytes:         oldSize,
+			CapacityBytes:         oldSize * client.GiB,
 			NodeExpansionRequired: true,
 		}, nil
 	}
