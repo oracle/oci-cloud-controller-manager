@@ -1072,7 +1072,9 @@ func Test_addLoadBalancerOkeSystemTags(t *testing.T) {
 			lb: &client.GenericLoadBalancer{
 				Id: common.String("ocid1.loadbalancer."),
 			},
-			spec:    &LBSpec{},
+			spec: &LBSpec{
+				service: &v1.Service{},
+			},
 			wantErr: errors.New("oke system tag is not found in LB spec. ignoring.."),
 		},
 		"expect an error when spec system tag is empty map": {
@@ -1081,6 +1083,7 @@ func Test_addLoadBalancerOkeSystemTags(t *testing.T) {
 			},
 			spec: &LBSpec{
 				SystemTags: map[string]map[string]interface{}{},
+				service:    &v1.Service{},
 			},
 			wantErr: errors.New("oke system tag namespace is not found in LB spec"),
 		},
@@ -1091,6 +1094,7 @@ func Test_addLoadBalancerOkeSystemTags(t *testing.T) {
 			},
 			spec: &LBSpec{
 				SystemTags: map[string]map[string]interface{}{"orcl-containerengine": {"Cluster": "val"}},
+				service:    &v1.Service{},
 			},
 			wantErr: errors.New("max limit of defined tags for lb is reached. skip adding tags. sending metric"),
 		},
@@ -1102,8 +1106,27 @@ func Test_addLoadBalancerOkeSystemTags(t *testing.T) {
 			},
 			spec: &LBSpec{
 				SystemTags: map[string]map[string]interface{}{"orcl-containerengine": {"Cluster": "val"}},
+				service:    &v1.Service{},
 			},
 			wantErr: errors.New("UpdateLoadBalancer request failed: internal server error"),
+		},
+		"expect an error when using workload identity": {
+			lb: &client.GenericLoadBalancer{
+				Id:           common.String("service using workload identity"),
+				FreeformTags: map[string]string{"key": "val"},
+				DefinedTags:  map[string]map[string]interface{}{"ns1": {"key1": "val1"}},
+			},
+			spec: &LBSpec{
+				SystemTags: map[string]map[string]interface{}{"orcl-containerengine": {"Cluster": "val"}},
+				service: &v1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							ServiceAnnotationServiceAccountName: "test-service-account",
+						},
+					},
+				},
+			},
+			wantErr: errors.New("principal type is workload identity. skip addition of oke system tags."),
 		},
 	}
 

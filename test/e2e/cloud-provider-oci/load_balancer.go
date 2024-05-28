@@ -16,8 +16,10 @@ package e2e
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -25,6 +27,7 @@ import (
 	. "github.com/onsi/gomega"
 	cloudprovider "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci"
 	sharedfw "github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
+	"github.com/oracle/oci-go-sdk/v65/containerengine"
 	"github.com/oracle/oci-go-sdk/v65/core"
 
 	"go.uber.org/zap"
@@ -39,6 +42,9 @@ var _ = Describe("Service [Slow]", func() {
 
 	baseName := "service"
 	f := sharedfw.NewDefaultFramework(baseName)
+
+	testDefinedTags := map[string]map[string]interface{}{"oke-tag": {"oke-tagging": "ccm-test-integ"}}
+	testDefinedTagsByteArray, _ := json.Marshal(testDefinedTags)
 
 	basicTestArray := []struct {
 		lbType              string
@@ -55,10 +61,31 @@ var _ = Describe("Service [Slow]", func() {
 				cloudprovider.ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode: "All",
 			},
 		},
+		{
+			"lb-wris",
+			map[string]string{
+				cloudprovider.ServiceAnnotationServiceAccountName:                     "sa",
+				cloudprovider.ServiceAnnotationLoadBalancerInitialDefinedTagsOverride: string(testDefinedTagsByteArray),
+			},
+		},
+		{
+			"nlb-wris",
+			map[string]string{
+				cloudprovider.ServiceAnnotationServiceAccountName:                            "sa",
+				cloudprovider.ServiceAnnotationLoadBalancerType:                              "nlb",
+				cloudprovider.ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode: "All",
+				cloudprovider.ServiceAnnotationNetworkLoadBalancerInitialDefinedTagsOverride: string(testDefinedTagsByteArray),
+			},
+		},
 	}
 	Context("[cloudprovider][ccm][lb][SL][system-tags]", func() {
 		It("should be possible to create and mutate a Service type:LoadBalancer (change nodeport) [Canary]", func() {
 			for _, test := range basicTestArray {
+				if strings.HasSuffix(test.lbType, "-wris") && f.ClusterType != containerengine.ClusterTypeEnhancedCluster {
+					sharedfw.Logf("Skipping Workload Identity Principal test for LB Type (%s) because the cluster is not an OKE ENHANCED_CLUSTER", test.lbType)
+					continue
+				}
+
 				By("Running test for: " + test.lbType)
 				serviceName := "basic-" + test.lbType + "-test"
 				ns := f.Namespace.Name
@@ -71,6 +98,11 @@ var _ = Describe("Service [Slow]", func() {
 				loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
 				if nodes := sharedfw.GetReadySchedulableNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
 					loadBalancerCreateTimeout = sharedfw.LoadBalancerCreateTimeoutLarge
+				}
+
+				if sa, exists := test.CreationAnnotations[cloudprovider.ServiceAnnotationServiceAccountName]; exists {
+					// Create a service account in the same namespace as the service
+					jig.CreateServiceAccountOrFail(ns, sa, nil)
 				}
 
 				// TODO(apryde): Test that LoadBalancers can receive static IP addresses
@@ -96,29 +128,56 @@ var _ = Describe("Service [Slow]", func() {
 				tcpService = jig.WaitForLoadBalancerOrFail(ns, tcpService.Name, loadBalancerCreateTimeout)
 				jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
 
-				By("validating system tags on the loadbalancer")
-				lbName := cloudprovider.GetLoadBalancerName(tcpService)
-				sharedfw.Logf("LB Name is %s", lbName)
-				ctx := context.TODO()
-				compartmentId := ""
-				if setupF.Compartment1 != "" {
-					compartmentId = setupF.Compartment1
-				} else if f.CloudProviderConfig.CompartmentID != "" {
-					compartmentId = f.CloudProviderConfig.CompartmentID
-				} else if f.CloudProviderConfig.Auth.CompartmentID != "" {
-					compartmentId = f.CloudProviderConfig.Auth.CompartmentID
-				} else {
-					sharedfw.Failf("Compartment Id undefined.")
-				}
-				lbType := test.lbType
 				if strings.HasSuffix(test.lbType, "-wris") {
-					lbType = strings.TrimSuffix(test.lbType, "-wris")
+					lbName := cloudprovider.GetLoadBalancerName(tcpService)
+					sharedfw.Logf("LB Name is %s", lbName)
+					ctx := context.TODO()
+					compartmentId := ""
+					if setupF.Compartment1 != "" {
+						compartmentId = setupF.Compartment1
+					} else if f.CloudProviderConfig.CompartmentID != "" {
+						compartmentId = f.CloudProviderConfig.CompartmentID
+					} else if f.CloudProviderConfig.Auth.CompartmentID != "" {
+						compartmentId = f.CloudProviderConfig.Auth.CompartmentID
+					} else {
+						sharedfw.Failf("Compartment Id undefined.")
+					}
+					lbType := strings.TrimSuffix(test.lbType, "-wris")
+					loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), lbType, "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
+					sharedfw.ExpectNoError(err)
+
+					if !reflect.DeepEqual(loadBalancer.DefinedTags, testDefinedTags) {
+						sharedfw.Failf("Defined tag mismatch! Expected: %v, Got: %v", testDefinedTags, loadBalancer.DefinedTags)
+					}
 				}
-				loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), lbType, "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
-				sharedfw.ExpectNoError(err)
-				sharedfw.Logf("Loadbalancer details %v:", loadBalancer)
-				if setupF.AddOkeSystemTags && !sharedfw.HasOkeSystemTags(loadBalancer.SystemTags) {
-					sharedfw.Failf("Loadbalancer is expected to have the system tags")
+
+				if strings.HasSuffix(test.lbType, "-wris") {
+					sharedfw.Logf("skip evaluating system tag when the principal type is Workload identity")
+				} else {
+					By("validating system tags on the loadbalancer")
+					lbName := cloudprovider.GetLoadBalancerName(tcpService)
+					sharedfw.Logf("LB Name is %s", lbName)
+					ctx := context.TODO()
+					compartmentId := ""
+					if setupF.Compartment1 != "" {
+						compartmentId = setupF.Compartment1
+					} else if f.CloudProviderConfig.CompartmentID != "" {
+						compartmentId = f.CloudProviderConfig.CompartmentID
+					} else if f.CloudProviderConfig.Auth.CompartmentID != "" {
+						compartmentId = f.CloudProviderConfig.Auth.CompartmentID
+					} else {
+						sharedfw.Failf("Compartment Id undefined.")
+					}
+					lbType := test.lbType
+					if strings.HasSuffix(test.lbType, "-wris") {
+						lbType = strings.TrimSuffix(test.lbType, "-wris")
+					}
+					loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), lbType, "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
+					sharedfw.ExpectNoError(err)
+					sharedfw.Logf("Loadbalancer details %v:", loadBalancer)
+					if setupF.AddOkeSystemTags && !sharedfw.HasOkeSystemTags(loadBalancer.SystemTags) {
+						sharedfw.Failf("Loadbalancer is expected to have the system tags")
+					}
 				}
 
 				tcpNodePort := int(tcpService.Spec.Ports[0].NodePort)
@@ -252,6 +311,10 @@ var _ = Describe("Service NSG [Slow]", func() {
 	Context("[cloudprovider][ccm][lb][managedNsg]", func() {
 		It("should be possible to create and mutate a Service type:LoadBalancer (change nodeport) [Canary]", func() {
 			for _, test := range basicTestArray {
+				if strings.HasSuffix(test.lbType, "-wris") && f.ClusterType != containerengine.ClusterTypeEnhancedCluster {
+					sharedfw.Logf("Skipping Workload Identity Principal test for LB Type (%s) because the cluster is not an OKE ENHANCED_CLUSTER", test.lbType)
+					continue
+				}
 
 				By("Running test for: " + test.lbType)
 				serviceName := "basic-" + test.lbType + "-test"
@@ -265,6 +328,11 @@ var _ = Describe("Service NSG [Slow]", func() {
 				loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
 				if nodes := sharedfw.GetReadySchedulableNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
 					loadBalancerCreateTimeout = sharedfw.LoadBalancerCreateTimeoutLarge
+				}
+
+				if sa, exists := test.CreationAnnotations[cloudprovider.ServiceAnnotationServiceAccountName]; exists {
+					// Create a service account in the same namespace as the service
+					jig.CreateServiceAccountOrFail(ns, sa, nil)
 				}
 
 				// TODO(apryde): Test that LoadBalancers can receive static IP addresses
@@ -1172,11 +1240,23 @@ var _ = Describe("LB Properties", func() {
 						"10",
 						"100",
 					},
+				},
+			},
+			{
+				"Create and update flexible LB",
+				"flexible",
+				[]struct {
+					shape   string
+					flexMin string
+					flexMax string
+				}{
 					{
 						"flexible",
 						"50",
 						"150",
 					},
+					// Note: We can't go back to fixed shape after converting to flexible shape.
+					// Use Min and Max values to be the same value to get fixed shape LB
 				},
 			},
 		}
@@ -1640,6 +1720,7 @@ var _ = Describe("LB Properties", func() {
 
 				reservedIP := setupF.ReservedIP
 				sharedfw.Logf(reservedIP)
+
 				tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
 					s.Spec.Type = v1.ServiceTypeLoadBalancer
 					s.Spec.LoadBalancerIP = reservedIP
