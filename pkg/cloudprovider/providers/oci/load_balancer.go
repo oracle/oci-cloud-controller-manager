@@ -386,7 +386,12 @@ func (clb *CloudLoadBalancerProvider) createLoadBalancer(ctx context.Context, sp
 	}
 	// do not block creation if the defined tag limit is reached. defer LB to tracked by backfilling
 	if len(details.DefinedTags) > MaxDefinedTagPerLB {
-		logger.Warnf("the number of defined tags in the LB create request is beyond the limit. removing the resource tracking tags from the details..")
+		logger.Warnf("the number of defined tags in the LB create request is beyond the limit. removing the resource tracking tags from the details")
+		delete(details.DefinedTags, OkeSystemTagNamesapce)
+	}
+
+	if _, useWI := spec.service.Annotations[ServiceAnnotationServiceAccountName]; useWI { // When using Workload Identity
+		logger.Warnf("principal type is workload identity. removing oke system tags from the request")
 		delete(details.DefinedTags, OkeSystemTagNamesapce)
 	}
 
@@ -732,7 +737,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 	if !lbExists {
 		lbStatus, newLBOCID, err := lbProvider.createLoadBalancer(ctx, spec)
 		if err != nil && client.IsSystemTagNotFoundOrNotAuthorisedError(logger, err) {
-			logger.Warn("LB creation failed due to error in adding system tags. sending metric & retrying without system tags")
+			logger.With(zap.Error(err)).Warn("LB creation failed due to error in adding system tags. sending metric & retrying without system tags")
 
 			// send resource track tagging failure metrics
 			errorType = util.SystemTagErrTypePrefix + util.GetError(err)
@@ -1707,6 +1712,10 @@ func doesLbHaveOkeSystemTags(lb *client.GenericLoadBalancer, spec *LBSpec) bool 
 }
 func (clb *CloudLoadBalancerProvider) addLoadBalancerOkeSystemTags(ctx context.Context, lb *client.GenericLoadBalancer, spec *LBSpec) error {
 	lbDefinedTagsRequest := make(map[string]map[string]interface{})
+
+	if _, useWI := spec.service.Annotations[ServiceAnnotationServiceAccountName]; useWI { // When using Workload Identity
+		return fmt.Errorf("principal type is workload identity. skip addition of oke system tags.")
+	}
 
 	if spec.SystemTags == nil {
 		return fmt.Errorf("oke system tag is not found in LB spec. ignoring..")
