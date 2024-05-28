@@ -27,7 +27,7 @@ type ListOutboundConnectorsRequest struct {
 
 	// For list pagination. The maximum number of results per page,
 	// or items to return in a paginated "List" call.
-	// 1 is the minimum, 1000 is the maximum.
+	// 1 is the minimum, 4096 is the maximum.
 	// For important details about how pagination works,
 	// see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	// Example: `500`
@@ -154,6 +154,7 @@ type ListOutboundConnectorsLifecycleStateEnum string
 const (
 	ListOutboundConnectorsLifecycleStateCreating ListOutboundConnectorsLifecycleStateEnum = "CREATING"
 	ListOutboundConnectorsLifecycleStateActive   ListOutboundConnectorsLifecycleStateEnum = "ACTIVE"
+	ListOutboundConnectorsLifecycleStateUpdating ListOutboundConnectorsLifecycleStateEnum = "UPDATING"
 	ListOutboundConnectorsLifecycleStateDeleting ListOutboundConnectorsLifecycleStateEnum = "DELETING"
 	ListOutboundConnectorsLifecycleStateDeleted  ListOutboundConnectorsLifecycleStateEnum = "DELETED"
 	ListOutboundConnectorsLifecycleStateFailed   ListOutboundConnectorsLifecycleStateEnum = "FAILED"
@@ -162,6 +163,7 @@ const (
 var mappingListOutboundConnectorsLifecycleStateEnum = map[string]ListOutboundConnectorsLifecycleStateEnum{
 	"CREATING": ListOutboundConnectorsLifecycleStateCreating,
 	"ACTIVE":   ListOutboundConnectorsLifecycleStateActive,
+	"UPDATING": ListOutboundConnectorsLifecycleStateUpdating,
 	"DELETING": ListOutboundConnectorsLifecycleStateDeleting,
 	"DELETED":  ListOutboundConnectorsLifecycleStateDeleted,
 	"FAILED":   ListOutboundConnectorsLifecycleStateFailed,
@@ -170,6 +172,7 @@ var mappingListOutboundConnectorsLifecycleStateEnum = map[string]ListOutboundCon
 var mappingListOutboundConnectorsLifecycleStateEnumLowerCase = map[string]ListOutboundConnectorsLifecycleStateEnum{
 	"creating": ListOutboundConnectorsLifecycleStateCreating,
 	"active":   ListOutboundConnectorsLifecycleStateActive,
+	"updating": ListOutboundConnectorsLifecycleStateUpdating,
 	"deleting": ListOutboundConnectorsLifecycleStateDeleting,
 	"deleted":  ListOutboundConnectorsLifecycleStateDeleted,
 	"failed":   ListOutboundConnectorsLifecycleStateFailed,
@@ -189,6 +192,7 @@ func GetListOutboundConnectorsLifecycleStateEnumStringValues() []string {
 	return []string{
 		"CREATING",
 		"ACTIVE",
+		"UPDATING",
 		"DELETING",
 		"DELETED",
 		"FAILED",

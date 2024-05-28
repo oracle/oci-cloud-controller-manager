@@ -27,7 +27,7 @@ type ListMountTargetsRequest struct {
 
 	// For list pagination. The maximum number of results per page,
 	// or items to return in a paginated "List" call.
-	// 1 is the minimum, 1000 is the maximum.
+	// 1 is the minimum, 4096 is the maximum.
 	// For important details about how pagination works,
 	// see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	// Example: `500`
@@ -157,6 +157,7 @@ type ListMountTargetsLifecycleStateEnum string
 const (
 	ListMountTargetsLifecycleStateCreating ListMountTargetsLifecycleStateEnum = "CREATING"
 	ListMountTargetsLifecycleStateActive   ListMountTargetsLifecycleStateEnum = "ACTIVE"
+	ListMountTargetsLifecycleStateUpdating ListMountTargetsLifecycleStateEnum = "UPDATING"
 	ListMountTargetsLifecycleStateDeleting ListMountTargetsLifecycleStateEnum = "DELETING"
 	ListMountTargetsLifecycleStateDeleted  ListMountTargetsLifecycleStateEnum = "DELETED"
 	ListMountTargetsLifecycleStateFailed   ListMountTargetsLifecycleStateEnum = "FAILED"
@@ -165,6 +166,7 @@ const (
 var mappingListMountTargetsLifecycleStateEnum = map[string]ListMountTargetsLifecycleStateEnum{
 	"CREATING": ListMountTargetsLifecycleStateCreating,
 	"ACTIVE":   ListMountTargetsLifecycleStateActive,
+	"UPDATING": ListMountTargetsLifecycleStateUpdating,
 	"DELETING": ListMountTargetsLifecycleStateDeleting,
 	"DELETED":  ListMountTargetsLifecycleStateDeleted,
 	"FAILED":   ListMountTargetsLifecycleStateFailed,
@@ -173,6 +175,7 @@ var mappingListMountTargetsLifecycleStateEnum = map[string]ListMountTargetsLifec
 var mappingListMountTargetsLifecycleStateEnumLowerCase = map[string]ListMountTargetsLifecycleStateEnum{
 	"creating": ListMountTargetsLifecycleStateCreating,
 	"active":   ListMountTargetsLifecycleStateActive,
+	"updating": ListMountTargetsLifecycleStateUpdating,
 	"deleting": ListMountTargetsLifecycleStateDeleting,
 	"deleted":  ListMountTargetsLifecycleStateDeleted,
 	"failed":   ListMountTargetsLifecycleStateFailed,
@@ -192,6 +195,7 @@ func GetListMountTargetsLifecycleStateEnumStringValues() []string {
 	return []string{
 		"CREATING",
 		"ACTIVE",
+		"UPDATING",
 		"DELETING",
 		"DELETED",
 		"FAILED",

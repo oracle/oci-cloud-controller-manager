@@ -21,12 +21,24 @@ import (
 // AlarmDimensionStatesEntry A timestamped alarm state entry for a metric stream.
 type AlarmDimensionStatesEntry struct {
 
+	// Customizable alarm summary (`alarmSummary` alarm message parameter (https://docs.cloud.oracle.com/iaas/Content/Monitoring/alarm-message-format.htm)).
+	// Optionally include dynamic variables (https://docs.cloud.oracle.com/iaas/Content/Monitoring/Tasks/update-alarm-dynamic-variables.htm).
+	// The alarm summary appears within the body of the alarm message and in responses to
+	// ListAlarmsStatus
+	// GetAlarmHistory and
+	// RetrieveDimensionStates.
+	AlarmSummary *string `mandatory:"true" json:"alarmSummary"`
+
 	// Indicator of the metric stream associated with the alarm state entry. Includes one or more dimension key-value pairs.
 	Dimensions map[string]string `mandatory:"true" json:"dimensions"`
 
 	// Transition state (status value) associated with the alarm state entry.
 	// Example: `FIRING`
 	Status AlarmDimensionStatesEntryStatusEnum `mandatory:"true" json:"status"`
+
+	// Identifier of the alarm's base values for alarm evaluation, for use when the alarm contains overrides.
+	// Default value is `BASE`. For information about alarm overrides, see AlarmOverride.
+	RuleName *string `mandatory:"true" json:"ruleName"`
 
 	// Transition time associated with the alarm state entry. Format defined by RFC3339.
 	// Example: `2022-02-01T01:02:29.600Z`

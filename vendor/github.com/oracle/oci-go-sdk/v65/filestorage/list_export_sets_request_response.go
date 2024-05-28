@@ -27,7 +27,7 @@ type ListExportSetsRequest struct {
 
 	// For list pagination. The maximum number of results per page,
 	// or items to return in a paginated "List" call.
-	// 1 is the minimum, 1000 is the maximum.
+	// 1 is the minimum, 4096 is the maximum.
 	// For important details about how pagination works,
 	// see List Pagination (https://docs.cloud.oracle.com/iaas/Content/API/Concepts/usingapi.htm#nine).
 	// Example: `500`
@@ -154,6 +154,7 @@ type ListExportSetsLifecycleStateEnum string
 const (
 	ListExportSetsLifecycleStateCreating ListExportSetsLifecycleStateEnum = "CREATING"
 	ListExportSetsLifecycleStateActive   ListExportSetsLifecycleStateEnum = "ACTIVE"
+	ListExportSetsLifecycleStateUpdating ListExportSetsLifecycleStateEnum = "UPDATING"
 	ListExportSetsLifecycleStateDeleting ListExportSetsLifecycleStateEnum = "DELETING"
 	ListExportSetsLifecycleStateDeleted  ListExportSetsLifecycleStateEnum = "DELETED"
 	ListExportSetsLifecycleStateFailed   ListExportSetsLifecycleStateEnum = "FAILED"
@@ -162,6 +163,7 @@ const (
 var mappingListExportSetsLifecycleStateEnum = map[string]ListExportSetsLifecycleStateEnum{
 	"CREATING": ListExportSetsLifecycleStateCreating,
 	"ACTIVE":   ListExportSetsLifecycleStateActive,
+	"UPDATING": ListExportSetsLifecycleStateUpdating,
 	"DELETING": ListExportSetsLifecycleStateDeleting,
 	"DELETED":  ListExportSetsLifecycleStateDeleted,
 	"FAILED":   ListExportSetsLifecycleStateFailed,
@@ -170,6 +172,7 @@ var mappingListExportSetsLifecycleStateEnum = map[string]ListExportSetsLifecycle
 var mappingListExportSetsLifecycleStateEnumLowerCase = map[string]ListExportSetsLifecycleStateEnum{
 	"creating": ListExportSetsLifecycleStateCreating,
 	"active":   ListExportSetsLifecycleStateActive,
+	"updating": ListExportSetsLifecycleStateUpdating,
 	"deleting": ListExportSetsLifecycleStateDeleting,
 	"deleted":  ListExportSetsLifecycleStateDeleted,
 	"failed":   ListExportSetsLifecycleStateFailed,
@@ -189,6 +192,7 @@ func GetListExportSetsLifecycleStateEnumStringValues() []string {
 	return []string{
 		"CREATING",
 		"ACTIVE",
+		"UPDATING",
 		"DELETING",
 		"DELETED",
 		"FAILED",
