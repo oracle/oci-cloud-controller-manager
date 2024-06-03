@@ -1150,23 +1150,11 @@ var _ = Describe("LB Properties", func() {
 						"10",
 						"100",
 					},
-				},
-			},
-			{
-				"Create and update flexible LB",
-				"flexible",
-				[]struct {
-					shape   string
-					flexMin string
-					flexMax string
-				}{
 					{
 						"flexible",
 						"50",
 						"150",
 					},
-					// Note: We can't go back to fixed shape after converting to flexible shape.
-					// Use Min and Max values to be the same value to get fixed shape LB
 				},
 			},
 		}
