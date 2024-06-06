@@ -64,6 +64,14 @@ func (d BlockVolumeNodeDriver) NodeStageVolume(ctx context.Context, req *csi.Nod
 
 	logger := d.logger.With("volumeID", req.VolumeId, "stagingPath", req.StagingTargetPath)
 
+	stagingTargetFilePath := csi_util.GetStagingTargetPathForFile(req.StagingTargetPath)
+
+	isRawBlockVolume := false
+
+	if _, ok := req.VolumeCapability.GetAccessType().(*csi.VolumeCapability_Block); ok {
+		isRawBlockVolume = true
+	}
+
 	attachment, ok := req.PublishContext[attachmentType]
 
 	if !ok {
@@ -128,6 +136,13 @@ func (d BlockVolumeNodeDriver) NodeStageVolume(ctx context.Context, req *csi.Nod
 
 	defer d.volumeLocks.Release(req.VolumeId)
 
+	/*
+	  Code block to check if the block device is ready for consumption.
+	  - devicePath is the source and is extracted based on attachmentType.
+	  - DeviceOpened also has different implentation based on attachmentType.
+	  TBD: Do we need to do something different for Raw Block Volume Case - dont think so
+	*/
+
 	isMounted, oErr := mountHandler.DeviceOpened(devicePath)
 	if oErr != nil {
 		logger.With(zap.Error(oErr)).Error("getting error to get the details about volume is already mounted or not.")
@@ -189,6 +204,15 @@ func (d BlockVolumeNodeDriver) NodeStageVolume(ctx context.Context, req *csi.Nod
 	if !mountHandler.WaitForPathToExist(devicePath, 20) {
 		logger.Error("failed to wait for device to exist.")
 		return nil, status.Error(codes.DeadlineExceeded, "Failed to wait for device to exist.")
+	}
+
+	if isRawBlockVolume {
+		err = createFileAndBindMountDevice(logger, devicePath, stagingTargetFilePath, mountHandler, false)
+		if err != nil {
+			logger.Infof("failed to bind mount raw block volume to stagingTargetFile %s", stagingTargetFilePath)
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
 	mnt := req.VolumeCapability.GetMount()
@@ -263,6 +287,9 @@ func (d BlockVolumeNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.N
 
 	logger := d.logger.With("volumeID", req.VolumeId, "stagingPath", req.StagingTargetPath)
 
+	stagingTargetPathFile := csi_util.GetStagingTargetPathForFile(req.StagingTargetPath)
+	isRawBlockVolume := false
+
 	if acquired := d.volumeLocks.TryAcquire(req.VolumeId); !acquired {
 		logger.Error("Could not acquire lock for NodeUnstageVolume.")
 		return nil, status.Errorf(codes.Aborted, volumeOperationAlreadyExistsFmt, req.VolumeId)
@@ -273,13 +300,32 @@ func (d BlockVolumeNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.N
 	diskPath, err := disk.GetDiskPathFromMountPath(d.logger, req.GetStagingTargetPath())
 
 	if err != nil {
-		// do a clean exit in case of mount point not found
 		if err == disk.ErrMountPointNotFound {
-			logger.With(zap.Error(err)).With("mountPath", req.GetStagingTargetPath()).Warn("unable to fetch mount point")
-			return &csi.NodeUnstageVolumeResponse{}, nil
+			// Check if it is a raw block volume if StagingTargetPath isn't mounted.
+			isDevice, pathErr := disk.PathIsDevice(logger, stagingTargetPathFile)
+			if pathErr != nil {
+				logger.Errorf("unable to check if %s represents a device file.", stagingTargetPathFile)
+				return nil, status.Error(codes.Internal, pathErr.Error())
+			}
+
+			// Update StagingTargetPath and find diskPaths if it is a raw block volume
+			if isDevice {
+				isRawBlockVolume = true
+				diskPath, err = disk.GetDiskPathFromBindDeviceFilePath(logger, stagingTargetPathFile)
+				if err != nil {
+					logger.With(zap.Error(err)).Warn("unable to fetch the disk paths")
+					return &csi.NodeUnstageVolumeResponse{}, nil
+				}
+				logger.Info("the volume is detected to be a raw block volume, fetched disk paths")
+			} else {
+				// Else, treat as usual
+				logger.With(zap.Error(err)).With("mountPath", req.GetStagingTargetPath()).Warn("unable to fetch mount point")
+				return &csi.NodeUnstageVolumeResponse{}, nil
+			}
+		} else {
+			logger.With(zap.Error(err)).With("mountPath", req.GetStagingTargetPath()).Error("unable to get diskPath from mount path")
+			return nil, status.Error(codes.Internal, err.Error())
 		}
-		logger.With(zap.Error(err)).With("mountPath", req.GetStagingTargetPath()).Error("unable to get diskPath from mount path")
-		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	attachmentType, devicePath, err := getDevicePathAndAttachmentType(diskPath)
@@ -318,16 +364,24 @@ func (d BlockVolumeNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.N
 		logger.Error("unknown attachment type. supported attachment types are iscsi and paravirtualized")
 		return nil, status.Error(codes.InvalidArgument, "unknown attachment type. supported attachment types are iscsi and paravirtualized")
 	}
-	isMounted, oErr := mountHandler.DeviceOpened(devicePath)
-	if oErr != nil {
-		logger.With(zap.Error(oErr)).Error("getting error to get the details about volume is already mounted or not.")
-		return nil, status.Error(codes.Internal, oErr.Error())
-	} else if !isMounted {
-		logger.Info("volume is already mounted on the staging path.")
-		return &csi.NodeUnstageVolumeResponse{}, nil
+
+	if !isRawBlockVolume {
+		isMounted, oErr := mountHandler.DeviceOpened(devicePath)
+		if oErr != nil {
+			logger.With(zap.Error(oErr)).Error("getting error to get the details about volume is already mounted or not.")
+			return nil, status.Error(codes.Internal, oErr.Error())
+		} else if !isMounted {
+			logger.Info("volume is already mounted on the staging path.")
+			return &csi.NodeUnstageVolumeResponse{}, nil
+		}
 	}
 
-	err = mountHandler.UnmountPath(req.StagingTargetPath)
+	if isRawBlockVolume {
+		err = mountHandler.UnmountDeviceBindAndDelete(stagingTargetPathFile)
+	} else {
+		err = mountHandler.UnmountPath(req.StagingTargetPath)
+	}
+
 	if err != nil {
 		logger.With(zap.Error(err)).Error("failed to unmount the staging path")
 		return nil, status.Error(codes.Internal, err.Error())
@@ -374,6 +428,14 @@ func (d BlockVolumeNodeDriver) NodePublishVolume(ctx context.Context, req *csi.N
 
 	logger := d.logger.With("volumeID", req.VolumeId, "targetPath", req.TargetPath)
 
+	stagingTargetFilePath := csi_util.GetStagingTargetPathForFile(req.StagingTargetPath)
+
+	isRawBlockVolume := false
+
+	if _, ok := req.VolumeCapability.GetAccessType().(*csi.VolumeCapability_Block); ok {
+		isRawBlockVolume = true
+	}
+
 	attachment, ok := req.PublishContext[attachmentType]
 	if !ok {
 		logger.Error("Unable to get the attachmentType from the attribute list, assuming iscsi")
@@ -387,13 +449,15 @@ func (d BlockVolumeNodeDriver) NodePublishVolume(ctx context.Context, req *csi.N
 
 	defer d.volumeLocks.Release(req.VolumeId)
 
-	// k8s v1.20+ will not create the TargetPath directory
-	// https://github.com/kubernetes/kubernetes/pull/88759
-	// if the path exists already (<v1.20) this is a no op
-	// https://golang.org/pkg/os/#MkdirAll
-	if err := os.MkdirAll(req.TargetPath, 0750); err != nil {
-		logger.With(zap.Error(err)).Error("Failed to create TargetPath directory")
-		return nil, status.Error(codes.Internal, "Failed to create TargetPath directory")
+	if !isRawBlockVolume {
+		// k8s v1.20+ will not create the TargetPath directory
+		// https://github.com/kubernetes/kubernetes/pull/88759
+		// if the path exists already (<v1.20) this is a no op
+		// https://golang.org/pkg/os/#MkdirAll
+		if err := os.MkdirAll(req.TargetPath, 0750); err != nil {
+			logger.With(zap.Error(err)).Error("Failed to create TargetPath directory")
+			return nil, status.Error(codes.Internal, "Failed to create TargetPath directory")
+		}
 	}
 
 	multipathEnabledVolume := false
@@ -431,6 +495,15 @@ func (d BlockVolumeNodeDriver) NodePublishVolume(ctx context.Context, req *csi.N
 		return nil, status.Error(codes.InvalidArgument, "unknown attachment type. supported attachment types are iscsi and paravirtualized")
 	}
 
+	if isRawBlockVolume {
+		err := createFileAndBindMountDevice(logger, stagingTargetFilePath, req.TargetPath, mountHandler, req.Readonly)
+		if err != nil {
+			logger.Infof("failed to bind mount raw block volume to TargetPath %s", req.TargetPath)
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		return &csi.NodePublishVolumeResponse{}, nil
+	}
+
 	mnt := req.VolumeCapability.GetMount()
 	options := mnt.MountFlags
 
@@ -458,6 +531,7 @@ func (d BlockVolumeNodeDriver) NodePublishVolume(ctx context.Context, req *csi.N
 
 	logger.With("attachmentType", attachment).Info("Publish volume to the Node is Completed.")
 
+	// TBD: Might need to determine if the following code block has to be changed
 	if req.PublishContext[needResize] != "" {
 		needsResize, err := strconv.ParseBool(req.PublishContext[needResize])
 		if err != nil {
@@ -548,6 +622,13 @@ func (d BlockVolumeNodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi
 
 	logger := d.logger.With("volumeID", req.VolumeId, "targetPath", req.TargetPath)
 
+	//Check if TargetPath is a device file to see for Raw Block.
+	isRawBlockVolume, checkErr := disk.PathIsDevice(logger, req.TargetPath)
+	if checkErr != nil {
+		logger.Errorf("failed to check if %s is a device file", req.TargetPath)
+		return nil, status.Errorf(codes.Internal, checkErr.Error())
+	}
+
 	if acquired := d.volumeLocks.TryAcquire(req.VolumeId); !acquired {
 		logger.Error("Could not acquire lock for NodeUnpublishVolume.")
 		return nil, status.Errorf(codes.Aborted, volumeOperationAlreadyExistsFmt, req.VolumeId)
@@ -555,15 +636,26 @@ func (d BlockVolumeNodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi
 
 	defer d.volumeLocks.Release(req.VolumeId)
 
-	diskPath, err := disk.GetDiskPathFromMountPath(d.logger, req.TargetPath)
-	if err != nil {
-		// do a clean exit in case of mount point not found
-		if err == disk.ErrMountPointNotFound {
-			logger.With(zap.Error(err)).With("mountPath", req.TargetPath).Warn("unable to fetch mount point")
+	var diskPath []string
+	var err error
+
+	if isRawBlockVolume {
+		diskPath, err = disk.GetDiskPathFromBindDeviceFilePath(logger, req.TargetPath)
+		if err != nil {
+			logger.With(zap.Error(err)).Warn("unable to fetch disk paths, exiting.")
 			return &csi.NodeUnpublishVolumeResponse{}, nil
 		}
-		logger.With(zap.Error(err)).With("mountPath", req.TargetPath).Error("unable to get diskPath from mount path")
-		return nil, status.Error(codes.Internal, err.Error())
+	} else {
+		diskPath, err = disk.GetDiskPathFromMountPath(d.logger, req.TargetPath)
+		if err != nil {
+			// do a clean exit in case of mount point not found
+			if err == disk.ErrMountPointNotFound {
+				logger.With(zap.Error(err)).With("mountPath", req.TargetPath).Warn("unable to fetch mount point")
+				return &csi.NodeUnpublishVolumeResponse{}, nil
+			}
+			logger.With(zap.Error(err)).With("mountPath", req.TargetPath).Error("unable to get diskPath from mount path")
+			return nil, status.Error(codes.Internal, err.Error())
+		}
 	}
 
 	attachmentType, devicePath, err := getDevicePathAndAttachmentType(diskPath)
@@ -591,7 +683,15 @@ func (d BlockVolumeNodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi
 		return nil, status.Error(codes.InvalidArgument, "unknown attachment type. supported attachment types are iscsi and paravirtualized")
 	}
 
-	if err := mountHandler.UnmountPath(req.TargetPath); err != nil {
+	var umountErr error
+
+	if isRawBlockVolume {
+		umountErr = mountHandler.UnmountDeviceBindAndDelete(req.TargetPath)
+	} else {
+		umountErr = mountHandler.UnmountPath(req.TargetPath)
+	}
+
+	if umountErr != nil {
 		logger.With(zap.Error(err)).Error("failed to unmount the target path, error")
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -679,6 +779,44 @@ func (d BlockVolumeNodeDriver) NodeGetVolumeStats(ctx context.Context, req *csi.
 		return nil, status.Error(codes.InvalidArgument, "volume path must be provided")
 	}
 
+	isRawBlockVolume := false
+	isDevice, err := disk.PathIsDevice(logger, volumePath)
+	if err != nil {
+		logger.With(zap.Error(err)).Errorf("failed to check if the volumePath is a Device %s", volumePath)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if isDevice {
+		isRawBlockVolume = true
+	} else {
+		isDevice, err = disk.PathIsDevice(logger, csi_util.GetStagingTargetPathForFile(volumePath))
+		if err != nil {
+			logger.With(zap.Error(err)).Errorf("failed to check if the volumePathFile is a Device %s", volumePath)
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+		if isDevice {
+			isRawBlockVolume = true
+			volumePath = csi_util.GetStagingTargetPathForFile(volumePath)
+		}
+	}
+
+	if isRawBlockVolume {
+		metricsProvider := volume.NewMetricsBlock(volumePath)
+		metrics, err := metricsProvider.GetMetrics()
+		if err != nil {
+			logger.With(zap.Error(err)).Errorf("failed to get metrics for device at %s", volumePath)
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+
+		return &csi.NodeGetVolumeStatsResponse{
+			Usage: []*csi.VolumeUsage{
+				{
+					Unit:  csi.VolumeUsage_BYTES,
+					Total: metrics.Capacity.AsDec().UnscaledBig().Int64(),
+				},
+			},
+		}, nil
+	}
+
 	hostUtil := hostutil.NewHostUtil()
 	exists, err := hostUtil.PathExists(volumePath)
 	if err != nil {
@@ -716,6 +854,7 @@ func (d BlockVolumeNodeDriver) NodeGetVolumeStats(ctx context.Context, req *csi.
 }
 
 // NodeExpandVolume returns the expand of the volume
+// TBD - Need to handle this case as well
 func (d BlockVolumeNodeDriver) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
 	volumeID := req.GetVolumeId()
 	if len(volumeID) == 0 {
@@ -840,4 +979,28 @@ func getMultipathDevicesFromReq(req *csi.NodeStageVolumeRequest) ([]core.Multipa
 	})
 
 	return multipathDevicesList, nil
+}
+
+// Creates a file at target and bind mounts a device placed on source to it
+func createFileAndBindMountDevice(logger *zap.SugaredLogger, source string, target string, mountHandler disk.Interface, readOnly bool) error {
+	err := csi_util.CreateFilePath(logger, target)
+	if err != nil {
+		logger.Infof("failed to create the target file at %s", target)
+		return err
+	}
+
+	options := []string{"bind"}
+	if readOnly {
+		options = append(options, "ro")
+	}
+
+	logger.Infof("trying to bind mount %s on %s", source, target)
+	err = mountHandler.MountWithoutFormat(source, target, "", options)
+	if err != nil {
+		logger.Infof("failed to mount %s on %s", source, target)
+		return err
+	}
+
+	logger.Infof("successfully bind mounted to %s", target)
+	return nil
 }

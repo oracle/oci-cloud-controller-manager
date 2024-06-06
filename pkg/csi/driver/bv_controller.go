@@ -949,10 +949,10 @@ func (d *BlockVolumeControllerDriver) validateCapabilities(caps []*csi.VolumeCap
 	}
 
 	for _, cap := range caps {
-		if blk := cap.GetBlock(); blk != nil {
-			d.logger.Error("volumeMode is set to Block which is not supported.")
-			return fmt.Errorf("driver does not support Block volumeMode. Please use Filesystem mode")
-		}
+		// if blk := cap.GetBlock(); blk != nil {
+		// 	d.logger.Error("volumeMode is set to Block which is not supported.")
+		// 	return fmt.Errorf("driver does not support Block volumeMode. Please use Filesystem mode")
+		// }
 		if hasSupport(cap.AccessMode.Mode) {
 			continue
 		} else {

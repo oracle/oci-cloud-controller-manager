@@ -216,3 +216,20 @@ func deviceOpened(pathname string, logger *zap.SugaredLogger) (bool, error) {
 	}
 	return hostUtil.DeviceOpened(pathname)
 }
+
+func PathIsDevice(logger *zap.SugaredLogger, pathname string) (bool, error) {
+	/*
+		mounter := mount.New(mountCommand)
+		return mount.IsLikelyDevice(pathname)
+
+		This utility function does not exist anymore. Need to find an alternate
+	*/
+
+	fileInfo, err := os.Lstat(pathname)
+	if err != nil {
+		logger.With(zap.Error(err)).Errorf("Failed to ascertain if path is device %s", pathname)
+		return false, err
+	}
+	mode := fileInfo.Mode()
+	return mode&os.ModeDevice != 0, nil
+}
