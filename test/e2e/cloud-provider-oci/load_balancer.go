@@ -511,12 +511,15 @@ var _ = Describe("ESIPP [Slow]", func() {
 	}{
 		{
 			"lb",
-			map[string]string{},
+			map[string]string{
+				cloudprovider.ServiceAnnotationLoadBalancerInternal: "true",
+			},
 		},
 		{
 			"nlb",
 			map[string]string{
 				cloudprovider.ServiceAnnotationLoadBalancerType:                              "nlb",
+				cloudprovider.ServiceAnnotationNetworkLoadBalancerInternal:                   "true",
 				cloudprovider.ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode: "All",
 			},
 		},
@@ -538,7 +541,6 @@ var _ = Describe("ESIPP [Slow]", func() {
 							svc.Spec.Ports[0].TargetPort = intstr.FromInt(int(svc.Spec.Ports[0].Port))
 							svc.Spec.Ports[0].Port = 8081
 						}
-
 					})
 				serviceLBNames = append(serviceLBNames, cloudprovider.GetLoadBalancerName(svc))
 				defer func() {
@@ -675,8 +677,9 @@ var _ = Describe("End to end TLS", func() {
 					v1.ServicePort{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
 				s.ObjectMeta.Annotations = map[string]string{cloudprovider.ServiceAnnotationLoadBalancerSSLPorts: "443",
 					cloudprovider.ServiceAnnotationLoadBalancerTLSSecret:           sslSecretName,
-					cloudprovider.ServiceAnnotationLoadBalancerTLSBackendSetSecret: sslSecretName}
-
+					cloudprovider.ServiceAnnotationLoadBalancerTLSBackendSetSecret: sslSecretName,
+					cloudprovider.ServiceAnnotationLoadBalancerInternal:            "true",
+				}
 			})
 
 			svcPort := int(tcpService.Spec.Ports[0].Port)
@@ -756,8 +759,9 @@ var _ = Describe("BackendSet only enabled TLS", func() {
 				s.Spec.Ports = []v1.ServicePort{v1.ServicePort{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
 					v1.ServicePort{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
 				s.ObjectMeta.Annotations = map[string]string{cloudprovider.ServiceAnnotationLoadBalancerSSLPorts: "443",
-					cloudprovider.ServiceAnnotationLoadBalancerTLSBackendSetSecret: sslSecretName}
-
+					cloudprovider.ServiceAnnotationLoadBalancerTLSBackendSetSecret: sslSecretName,
+					cloudprovider.ServiceAnnotationLoadBalancerInternal:            "true",
+				}
 			})
 
 			svcPort := int(tcpService.Spec.Ports[0].Port)
@@ -834,9 +838,11 @@ var _ = Describe("Listener only enabled TLS", func() {
 				s.Spec.LoadBalancerIP = requestedIP
 				s.Spec.Ports = []v1.ServicePort{v1.ServicePort{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
 					v1.ServicePort{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
-				s.ObjectMeta.Annotations = map[string]string{cloudprovider.ServiceAnnotationLoadBalancerSSLPorts: "443",
-					cloudprovider.ServiceAnnotationLoadBalancerTLSSecret: sslSecretName}
-
+				s.ObjectMeta.Annotations = map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerSSLPorts:  "443",
+					cloudprovider.ServiceAnnotationLoadBalancerTLSSecret: sslSecretName,
+					cloudprovider.ServiceAnnotationLoadBalancerInternal:  "true",
+				}
 			})
 
 			svcPort := int(tcpService.Spec.Ports[0].Port)
@@ -926,10 +932,12 @@ var _ = Describe("End to end enabled TLS - different certificates", func() {
 				s.Spec.LoadBalancerIP = requestedIP
 				s.Spec.Ports = []v1.ServicePort{v1.ServicePort{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
 					v1.ServicePort{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
-				s.ObjectMeta.Annotations = map[string]string{cloudprovider.ServiceAnnotationLoadBalancerSSLPorts: "443",
+				s.ObjectMeta.Annotations = map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerSSLPorts:            "443",
 					cloudprovider.ServiceAnnotationLoadBalancerTLSSecret:           sslListenerSecretName,
-					cloudprovider.ServiceAnnotationLoadBalancerTLSBackendSetSecret: sslBackendSetSecretName}
-
+					cloudprovider.ServiceAnnotationLoadBalancerTLSBackendSetSecret: sslBackendSetSecretName,
+					cloudprovider.ServiceAnnotationLoadBalancerInternal:            "true",
+				}
 			})
 
 			svcPort := int(tcpService.Spec.Ports[0].Port)
@@ -988,6 +996,7 @@ var _ = Describe("Configure preservation of source IP in NLB", func() {
 				map[string]string{
 					cloudprovider.ServiceAnnotationLoadBalancerType:                    "nlb",
 					cloudprovider.ServiceAnnotationNetworkLoadBalancerIsPreserveSource: "true",
+					cloudprovider.ServiceAnnotationLoadBalancerInternal:                "true",
 				},
 				true,
 			},
@@ -997,6 +1006,7 @@ var _ = Describe("Configure preservation of source IP in NLB", func() {
 				map[string]string{
 					cloudprovider.ServiceAnnotationLoadBalancerType:                    "nlb",
 					cloudprovider.ServiceAnnotationNetworkLoadBalancerIsPreserveSource: "false",
+					cloudprovider.ServiceAnnotationLoadBalancerInternal:                "true",
 				},
 				false,
 			},
@@ -1023,6 +1033,7 @@ var _ = Describe("Configure preservation of source IP in NLB", func() {
 						{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
 					s.ObjectMeta.Annotations = test.annotations
 					s.Spec.ExternalTrafficPolicy = v1.ServiceExternalTrafficPolicyTypeLocal
+					s.ObjectMeta.Annotations[cloudprovider.ServiceAnnotationLoadBalancerInternal] = "true"
 				})
 
 				svcPort := int(tcpService.Spec.Ports[0].Port)
@@ -1148,6 +1159,7 @@ var _ = Describe("LB Properties", func() {
 					s.Spec.Ports = []v1.ServicePort{{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
 						{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
 					s.ObjectMeta.Annotations = test.CreationAnnotations
+					s.ObjectMeta.Annotations[cloudprovider.ServiceAnnotationLoadBalancerInternal] = "true"
 				})
 
 				svcPort := int(tcpService.Spec.Ports[0].Port)
@@ -1281,7 +1293,6 @@ var _ = Describe("LB Properties", func() {
 				s.Spec.LoadBalancerIP = requestedIP
 				s.Spec.Ports = []v1.ServicePort{{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
 					{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
-
 			})
 			By("creating a pod to be part of the TCP service " + serviceName)
 			jig.RunOrFail(ns, nil)
@@ -1297,6 +1308,7 @@ var _ = Describe("LB Properties", func() {
 						// Setting default values for Min and Max (Does not matter for fixed shape test)
 						cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMin: "10",
 						cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMax: "100",
+						cloudprovider.ServiceAnnotationLoadBalancerInternal:     "true",
 					}
 
 				})
@@ -1371,6 +1383,7 @@ var _ = Describe("LB Properties", func() {
 					{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
 				s.ObjectMeta.Annotations = map[string]string{
 					cloudprovider.ServiceAnnotationLoadBalancerConnectionIdleTimeout: "500",
+					cloudprovider.ServiceAnnotationLoadBalancerInternal:              "true",
 				}
 			})
 
@@ -1499,6 +1512,7 @@ var _ = Describe("LB Properties", func() {
 					s.Spec.Ports = []v1.ServicePort{{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
 						{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
 					s.ObjectMeta.Annotations = test.Annotations
+					s.ObjectMeta.Annotations[cloudprovider.ServiceAnnotationLoadBalancerInternal] = "true"
 				})
 
 				svcPort := int(tcpService.Spec.Ports[0].Port)
@@ -1616,6 +1630,7 @@ var _ = Describe("LB Properties", func() {
 					s.Spec.Ports = []v1.ServicePort{{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
 						{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
 					s.ObjectMeta.Annotations = test.CreationAnnotations
+					s.ObjectMeta.Annotations[cloudprovider.ServiceAnnotationLoadBalancerInternal] = "true"
 				})
 
 				svcPort := int(tcpService.Spec.Ports[0].Port)
