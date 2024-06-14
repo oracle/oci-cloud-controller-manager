@@ -55,3 +55,25 @@ func (j *ServiceTestJig) CreateServiceAccountOrFail(namespace, name string, twea
 	}
 	return result
 }
+
+// SetServiceOwnerReferenceOnServiceAccountOrFail sets Owner reference for parent Service in Service Account
+func (j *ServiceTestJig) SetServiceOwnerReferenceOnServiceAccountOrFail(namespace string, serviceAccount *v1.ServiceAccount, svc *v1.Service) *v1.ServiceAccount {
+
+	// Create new Owner Reference with given service as parent
+	ownerRef := metav1.OwnerReference{
+		Kind:       "Service",
+		Name:       svc.Name,
+		APIVersion: "v1",
+		UID:        svc.UID,
+	}
+
+	// Update owner references slice
+	serviceAccount.OwnerReferences = append(serviceAccount.OwnerReferences, ownerRef)
+
+	// Update service account with new owner reference
+	serviceAccount, err := j.Client.CoreV1().ServiceAccounts(namespace).Update(context.Background(), serviceAccount, metav1.UpdateOptions{})
+	if err != nil {
+		Failf("Failed to update service Owner Reference on Service Account %q: %v", serviceAccount.Name, err)
+	}
+	return serviceAccount
+}
