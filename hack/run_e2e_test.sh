@@ -123,7 +123,7 @@ function set_focus () {
         # e.g. export FILES="true"
         if [[ ! -z "${FILES}" && "${FILES}" == "true" ]]; then
             echo "Running focused test regex as filepath expression."
-            FOCUS_FP_OPT="-regexScansFilePath=${FILES}"
+            FOCUS_FP_OPT="-regexScansFilePath=${FOCUS}"
         fi
     fi
 }
