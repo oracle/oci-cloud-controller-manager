@@ -174,7 +174,7 @@ Please consult the [security guide](./SECURITY.md) for our responsible security 
 
 | Release               | Expected Release Date |
 |-----------------------|-----------------------|
-| Support for K8s v1.24 | August 2022           |
+| Support for K8s v1.29 | July 2024           |
 
 ## License
 
