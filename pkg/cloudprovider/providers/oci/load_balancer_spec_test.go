@@ -2733,7 +2733,7 @@ func TestNewLBSpecForTags(t *testing.T) {
 				return newSecurityListManagerNOOP()
 			}
 
-			result, err := NewLBSpec(logger.Sugar(), tc.service, tc.nodes, tc.virtualPods, subnets, tc.sslConfig, slManagerFactory, tc.clusterTags, nil)
+			result, err := NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, tc.sslConfig, slManagerFactory, tc.clusterTags, nil)
 			if err != nil {
 				t.Error(err)
 			}
