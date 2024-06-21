@@ -66,6 +66,11 @@ func MapProviderIDToResourceID(providerID string) (string, error) {
 	if strings.HasPrefix(providerID, providerPrefix) {
 		return strings.TrimPrefix(providerID, providerPrefix), nil
 	}
+	// can't process if provider ID does not have ocid1 prefix which are present
+	// for all OCI resource identifiers
+	if !strings.HasPrefix(providerID, "ocid1") {
+		return providerID, errors.New("provider ID '" + providerID + "' is not valid for oci")
+	}
 	return providerID, nil
 }
 
