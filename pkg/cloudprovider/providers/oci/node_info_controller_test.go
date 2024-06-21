@@ -18,22 +18,21 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/oracle/oci-go-sdk/v65/common"
-
 	"go.uber.org/zap"
-
-	"github.com/oracle/oci-go-sdk/v65/core"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/oracle/oci-go-sdk/v65/common"
+	"github.com/oracle/oci-go-sdk/v65/core"
 )
 
 var (
 	instanceCompID = "instanceCompID"
 	instanceFD     = "instanceFD"
-	instanceID     = "instanceID"
+	instanceID     = "ocid1.instanceID"
 )
 
-func TestGetPatchBytes(t *testing.T) {
+func TestGetNodePatchBytes(t *testing.T) {
 	testCases := map[string]struct {
 		node               *v1.Node
 		instance           *core.Instance
@@ -98,7 +97,7 @@ func TestGetPatchBytes(t *testing.T) {
 	logger := zap.L()
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			patchedBytes := getPatchBytes(tc.node, tc.instance, logger.Sugar())
+			patchedBytes := getNodePatchBytes(tc.node, tc.instance, logger.Sugar())
 			if !reflect.DeepEqual(patchedBytes, tc.expectedPatchBytes) {
 				t.Errorf("Expected PatchBytes \n%+v\nbut got\n%+v", tc.expectedPatchBytes, patchedBytes)
 			}

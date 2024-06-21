@@ -562,7 +562,7 @@ func TestGetSubnetsForNodes(t *testing.T) {
 			nodes: []*v1.Node{
 				{
 					Spec: v1.NodeSpec{
-						ProviderID: "basic-complete",
+						ProviderID: "ocid1.basic-complete",
 					},
 					ObjectMeta: metav1.ObjectMeta{
 						Annotations: map[string]string{
@@ -586,7 +586,7 @@ func TestGetSubnetsForNodes(t *testing.T) {
 			nodes: []*v1.Node{
 				{
 					Spec: v1.NodeSpec{
-						ProviderID: "basic-complete",
+						ProviderID: "ocid1.basic-complete",
 					},
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "testnode",
@@ -627,7 +627,7 @@ func TestGetSubnetsForNodes(t *testing.T) {
 			nodes: []*v1.Node{
 				{
 					Spec: v1.NodeSpec{
-						ProviderID: "ipv6-instance",
+						ProviderID: "ocid1.ipv6-instance",
 					},
 					ObjectMeta: metav1.ObjectMeta{
 						Annotations: map[string]string{
@@ -651,7 +651,7 @@ func TestGetSubnetsForNodes(t *testing.T) {
 			nodes: []*v1.Node{
 				{
 					Spec: v1.NodeSpec{
-						ProviderID: "ipv6-instance",
+						ProviderID: "ocid1.ipv6-instance",
 					},
 					ObjectMeta: metav1.ObjectMeta{
 						Annotations: map[string]string{

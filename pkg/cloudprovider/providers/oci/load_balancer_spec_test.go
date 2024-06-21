@@ -35,7 +35,7 @@ import (
 var (
 	backendSecret  = "backendsecret"
 	listenerSecret = "listenersecret"
-	testNodeString = "testNodeTargetID"
+	testNodeString = "ocid1.testNodeTargetID"
 )
 
 var (

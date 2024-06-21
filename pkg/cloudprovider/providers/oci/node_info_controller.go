@@ -175,7 +175,7 @@ func (nic *NodeInfoController) processItem(key string) error {
 		return err
 	}
 
-	nodePatchBytes := getPatchBytes(cacheNode, instance, logger)
+	nodePatchBytes := getNodePatchBytes(cacheNode, instance, logger)
 
 	if nodePatchBytes == nil {
 		return nil
@@ -193,7 +193,7 @@ func (nic *NodeInfoController) processItem(key string) error {
 	return nil
 }
 
-func getPatchBytes(cacheNode *v1.Node, instance *core.Instance, logger *zap.SugaredLogger) []byte {
+func getNodePatchBytes(cacheNode *v1.Node, instance *core.Instance, logger *zap.SugaredLogger) []byte {
 	if validateNodeHasRequiredLabels(cacheNode) {
 		return nil
 	}
