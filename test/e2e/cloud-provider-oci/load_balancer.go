@@ -493,9 +493,9 @@ var _ = Describe("Service NSG [Slow]", func() {
 // NOTE: OCI LBaaS is not a passthrough load balancer so ESIPP (External Source IP
 // Presevation) is not possible, however, this test covers support for node-local
 // routing (i.e. avoidance of a second hop).
-var _ = Describe("ESIPP [Slow]", func() {
+var _ = Describe("Node Local Routing [Slow]", func() {
 
-	baseName := "esipp"
+	baseName := "node-local-routing"
 	f := sharedfw.NewDefaultFramework(baseName)
 
 	loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
@@ -511,17 +511,20 @@ var _ = Describe("ESIPP [Slow]", func() {
 	}{
 		{
 			"lb",
-			map[string]string{},
+			map[string]string{
+				cloudprovider.ServiceAnnotationLoadBalancerInternal: "true",
+			},
 		},
 		{
 			"nlb",
 			map[string]string{
 				cloudprovider.ServiceAnnotationLoadBalancerType:                              "nlb",
+				cloudprovider.ServiceAnnotationNetworkLoadBalancerInternal:                   "true",
 				cloudprovider.ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode: "All",
 			},
 		},
 	}
-	Context("[cloudprovider][ccm][lb]", func() {
+	Context("[cloudprovider][ccm][lb][node-local]", func() {
 		It("should only target nodes with endpoints", func() {
 			for _, test := range esippTestsArray {
 				By("Running test for: " + test.lbType)
@@ -538,7 +541,6 @@ var _ = Describe("ESIPP [Slow]", func() {
 							svc.Spec.Ports[0].TargetPort = intstr.FromInt(int(svc.Spec.Ports[0].Port))
 							svc.Spec.Ports[0].Port = 8081
 						}
-
 					})
 				serviceLBNames = append(serviceLBNames, cloudprovider.GetLoadBalancerName(svc))
 				defer func() {
@@ -591,7 +593,188 @@ var _ = Describe("ESIPP [Slow]", func() {
 				jig := sharedfw.NewServiceTestJig(cs, serviceName)
 				nodes := jig.GetNodes(sharedfw.MaxNodesForEndpointsTests)
 
+				svc := jig.CreateOnlyLocalLoadBalancerService(namespace, serviceName, loadBalancerCreateTimeout, true, test.CreationAnnotations, func(s *v1.Service) {
+					if test.lbType == "lb" {
+						s.ObjectMeta.Annotations = map[string]string{
+							cloudprovider.ServiceAnnotationLoadBalancerInternal:     "true",
+							cloudprovider.ServiceAnnotationLoadBalancerShape:        "flexible",
+							cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMin: "10",
+							cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMax: "100",
+						}
+					}
+					if test.lbType == "nlb" {
+						s.ObjectMeta.Annotations = map[string]string{
+							cloudprovider.ServiceAnnotationNetworkLoadBalancerInternal: "true",
+						}
+					}
+				})
+				serviceLBNames = append(serviceLBNames, cloudprovider.GetLoadBalancerName(svc))
+				defer func() {
+					jig.ChangeServiceType(svc.Namespace, svc.Name, v1.ServiceTypeClusterIP, loadBalancerCreateTimeout)
+					Expect(cs.CoreV1().Services(svc.Namespace).Delete(context.Background(), svc.Name, metav1.DeleteOptions{})).NotTo(HaveOccurred())
+				}()
+
+				ingressIP := sharedfw.GetIngressPoint(&svc.Status.LoadBalancer.Ingress[0])
+				port := strconv.Itoa(int(svc.Spec.Ports[0].Port))
+				ipPort := net.JoinHostPort(ingressIP, port)
+				path := fmt.Sprintf("%s/clientip", ipPort)
+				nodeName := nodes.Items[0].Name
+				podName := "execpod-sourceip"
+
+				By(fmt.Sprintf("Creating %v on node %v", podName, nodeName))
+				execPodName := sharedfw.CreateExecPodOrFail(f.ClientSet, namespace, podName, func(pod *v1.Pod) {
+					pod.Spec.NodeName = nodeName
+				})
+				defer func() {
+					err := cs.CoreV1().Pods(namespace).Delete(context.Background(), execPodName, metav1.DeleteOptions{})
+					Expect(err).NotTo(HaveOccurred())
+				}()
+				execPod, err := f.ClientSet.CoreV1().Pods(namespace).Get(context.Background(), execPodName, metav1.GetOptions{})
+				sharedfw.ExpectNoError(err)
+
+				sharedfw.Logf("Waiting up to %v wget %v", sharedfw.KubeProxyLagTimeout, path)
+				cmd := fmt.Sprintf(`wget -T 30 -qO- %v`, path)
+
+				var srcIP string
+				By(fmt.Sprintf("Hitting external lb %v from pod %v on node %v", ingressIP, podName, nodeName))
+				if pollErr := wait.PollImmediate(sharedfw.K8sResourcePoll, sharedfw.LoadBalancerCreateTimeoutDefault, func() (bool, error) {
+					stdout, err := sharedfw.RunHostCmd(execPod.Namespace, execPod.Name, cmd)
+					if err != nil {
+						sharedfw.Logf("got err: %v, retry until timeout", err)
+						return false, nil
+					}
+					srcIP = strings.TrimSpace(strings.Split(stdout, ":")[0])
+					return srcIP == execPod.Status.PodIP, nil
+				}); pollErr != nil {
+					sharedfw.Failf("Source IP not preserved from %v, expected '%v' got '%v'", podName, execPod.Status.PodIP, srcIP)
+				}
+			}
+		})
+	})
+})
+
+var _ = Describe("IpMode [Slow]", func() {
+
+	baseName := "ingress-ipmode"
+	f := sharedfw.NewDefaultFramework(baseName)
+
+	loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
+	serviceLBNames := []string{}
+
+	var cs clientset.Interface
+	BeforeEach(func() {
+		cs = f.ClientSet
+	})
+	esippTestsArray := []struct {
+		lbType              string
+		CreationAnnotations map[string]string
+	}{
+		{
+			"nlb",
+			map[string]string{
+				cloudprovider.ServiceAnnotationLoadBalancerType:                              "nlb",
+				cloudprovider.ServiceAnnotationNetworkLoadBalancerInternal:                   "true",
+				cloudprovider.ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode: "All",
+				cloudprovider.ServiceAnnotationNetworkLoadBalancerIsPreserveSource:           "false",
+				cloudprovider.ServiceAnnotationIngressIpMode:                                 "Proxy",
+			},
+		},
+	}
+	Context("[cloudprovider][ccm][lb][ipMode]", func() {
+		It("should work from pods", func() {
+			for _, test := range esippTestsArray {
+				By("Running test for: " + test.lbType)
+				namespace := f.Namespace.Name
+				serviceName := "external-local-" + test.lbType
+				jig := sharedfw.NewServiceTestJig(cs, serviceName)
+				nodes := jig.GetNodes(sharedfw.MaxNodesForEndpointsTests)
+
 				svc := jig.CreateOnlyLocalLoadBalancerService(namespace, serviceName, loadBalancerCreateTimeout, true, test.CreationAnnotations, nil)
+				serviceLBNames = append(serviceLBNames, cloudprovider.GetLoadBalancerName(svc))
+				defer func() {
+					jig.ChangeServiceType(svc.Namespace, svc.Name, v1.ServiceTypeClusterIP, loadBalancerCreateTimeout)
+					Expect(cs.CoreV1().Services(svc.Namespace).Delete(context.Background(), svc.Name, metav1.DeleteOptions{})).NotTo(HaveOccurred())
+				}()
+
+				ingressIP := sharedfw.GetIngressPoint(&svc.Status.LoadBalancer.Ingress[0])
+				port := strconv.Itoa(int(svc.Spec.Ports[0].Port))
+				ipPort := net.JoinHostPort(ingressIP, port)
+				path := fmt.Sprintf("%s/clientip", ipPort)
+				nodeName := nodes.Items[0].Name
+				podName := "execpod-sourceip"
+
+				By(fmt.Sprintf("Creating %v on node %v", podName, nodeName))
+				execPodName := sharedfw.CreateExecPodOrFail(f.ClientSet, namespace, podName, func(pod *v1.Pod) {
+					pod.Spec.NodeName = nodeName
+				})
+				defer func() {
+					err := cs.CoreV1().Pods(namespace).Delete(context.Background(), execPodName, metav1.DeleteOptions{})
+					Expect(err).NotTo(HaveOccurred())
+				}()
+				execPod, err := f.ClientSet.CoreV1().Pods(namespace).Get(context.Background(), execPodName, metav1.GetOptions{})
+				sharedfw.ExpectNoError(err)
+
+				sharedfw.Logf("Waiting up to %v wget %v", sharedfw.KubeProxyLagTimeout, path)
+				cmd := fmt.Sprintf(`wget -T 30 -qO- %v`, path)
+
+				var srcIP string
+				By(fmt.Sprintf("Hitting external lb %v from pod %v on node %v", ingressIP, podName, nodeName))
+				if pollErr := wait.PollImmediate(sharedfw.K8sResourcePoll, sharedfw.LoadBalancerCreateTimeoutDefault, func() (bool, error) {
+					stdout, err := sharedfw.RunHostCmd(execPod.Namespace, execPod.Name, cmd)
+					if err != nil {
+						sharedfw.Logf("got err: %v, retry until timeout", err)
+						return false, nil
+					}
+					srcIP = strings.TrimSpace(strings.Split(stdout, ":")[0])
+					return srcIP == ingressIP, nil
+				}); pollErr != nil {
+					sharedfw.Failf("Source IP not preserved from %v, expected '%v' got '%v'", podName, ingressIP, srcIP)
+				}
+			}
+		})
+	})
+})
+
+var _ = Describe("ESIPP [Slow]", func() {
+
+	baseName := "esipp-internal"
+	f := sharedfw.NewDefaultFramework(baseName)
+
+	loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
+	serviceLBNames := []string{}
+
+	var cs clientset.Interface
+	BeforeEach(func() {
+		cs = f.ClientSet
+	})
+	esippTestsArray := []struct {
+		lbType              string
+		CreationAnnotations map[string]string
+	}{
+		{
+			"nlb",
+			map[string]string{
+				cloudprovider.ServiceAnnotationLoadBalancerType:                              "nlb",
+				cloudprovider.ServiceAnnotationNetworkLoadBalancerInternal:                   "true",
+				cloudprovider.ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode: "All",
+				cloudprovider.ServiceAnnotationNetworkLoadBalancerIsPreserveSource:           "true",
+				cloudprovider.ServiceAnnotationIngressIpMode:                                 "Proxy",
+			},
+		},
+	}
+	Context("[cloudprovider][ccm][lb][esipp]", func() {
+		It("should work from pods", func() {
+			for _, test := range esippTestsArray {
+				By("Running test for: " + test.lbType)
+				namespace := f.Namespace.Name
+				serviceName := "external-local-" + test.lbType
+				jig := sharedfw.NewServiceTestJig(cs, serviceName)
+				nodes := jig.GetNodes(sharedfw.MaxNodesForEndpointsTests)
+
+				svc := jig.CreateOnlyLocalLoadBalancerService(namespace, serviceName, loadBalancerCreateTimeout, true, test.CreationAnnotations, func(s *v1.Service) {
+					s.Spec.Ports = []v1.ServicePort{v1.ServicePort{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
+						v1.ServicePort{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
+				})
 				serviceLBNames = append(serviceLBNames, cloudprovider.GetLoadBalancerName(svc))
 				defer func() {
 					jig.ChangeServiceType(svc.Namespace, svc.Name, v1.ServiceTypeClusterIP, loadBalancerCreateTimeout)

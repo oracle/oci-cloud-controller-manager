@@ -6458,3 +6458,79 @@ func Test_getResourceTrackingSysTagsFromConfig(t *testing.T) {
 		})
 	}
 }
+
+func Test_getIngressIpMode(t *testing.T) {
+	var proxy = v1.LoadBalancerIPModeProxy
+	var vip = v1.LoadBalancerIPModeVIP
+	var tests = map[string]struct {
+		service        *v1.Service
+		expectedIpMode *v1.LoadBalancerIPMode
+		wantErr        error
+	}{
+		"ipMode is Proxy": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationIngressIpMode: "Proxy",
+					},
+				},
+			},
+			expectedIpMode: &proxy,
+			wantErr:        nil,
+		},
+		"ipMode is VIP": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationIngressIpMode: "VIP",
+					},
+				},
+			},
+			expectedIpMode: &vip,
+			wantErr:        nil,
+		},
+		"ipMode not set": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+				},
+			},
+			expectedIpMode: nil,
+			wantErr:        nil,
+		},
+		"ipMode is invalid": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationIngressIpMode: "tcp",
+					},
+				},
+			},
+			expectedIpMode: nil,
+			wantErr:        errors.New("IpMode can only be set as Proxy or VIP"),
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			actual, err := getIngressIpMode(test.service)
+			if !assertError(err, test.wantErr) {
+				t.Errorf("Expected error = %v, but got %v", test.wantErr, err)
+				return
+			}
+			if err == nil && !reflect.DeepEqual(actual, test.expectedIpMode) {
+				t.Errorf("expected %v but got %v", test.expectedIpMode, actual)
+			}
+		})
+	}
+}

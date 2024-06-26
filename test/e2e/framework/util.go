@@ -80,7 +80,7 @@ func checkForExpectedError(err error, expectedError common.ServiceError) {
 	Expect(serviceError.GetCode()).To(Equal(expectedError.GetCode()))
 }
 
-func compareVersions(v1 string, v2 string) (ret int) {
+func CompareVersions(v1 string, v2 string) (ret int) {
 	v1Arr := strings.Split(v1, ".")
 	v2Arr := strings.Split(v2, ".")
 	num := len(v2Arr)

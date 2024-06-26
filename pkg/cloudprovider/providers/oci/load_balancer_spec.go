@@ -159,6 +159,11 @@ const (
 	// ServiceAnnotationBackendSecurityRuleManagement is a service annotation to denote management of backend Network Security Group(s)
 	// ingress / egress security rules for a given kubernetes service could be either LB or NLB
 	ServiceAnnotationBackendSecurityRuleManagement = "oci.oraclecloud.com/oci-backend-network-security-group"
+
+	// ServiceAnnotationIngressIpMode is a service annotation allows you to set the ".status.loadBalancer.ingress.ipMode" for a Service
+	// with type set to LoadBalancer.
+	// https://kubernetes.io/docs/concepts/services-networking/service/#load-balancer-ip-mode:~:text=Specifying%20IPMode%20of%20load%20balancer%20status
+	ServiceAnnotationIngressIpMode = "oci.oraclecloud.com/ingress-ip-mode"
 )
 
 // NLB specific annotations
@@ -319,6 +324,7 @@ type LBSpec struct {
 	FreeformTags                map[string]string
 	DefinedTags                 map[string]map[string]interface{}
 	SystemTags                  map[string]map[string]interface{}
+	ingressIpMode               *v1.LoadBalancerIPMode
 
 	service *v1.Service
 	nodes   []*v1.Node
@@ -400,6 +406,11 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sub
 
 	lbType := getLoadBalancerType(svc)
 
+	ingressIpMode, err := getIngressIpMode(svc)
+	if err != nil {
+		return nil, err
+	}
+
 	return &LBSpec{
 		Type:                        lbType,
 		Name:                        GetLoadBalancerName(svc),
@@ -423,6 +434,7 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sub
 		FreeformTags:                lbTags.FreeformTags,
 		DefinedTags:                 lbTags.DefinedTags,
 		SystemTags:                  getResourceTrackingSysTagsFromConfig(logger, initialLBTags),
+		ingressIpMode:               ingressIpMode,
 	}, nil
 }
 
@@ -1371,4 +1383,24 @@ func getResourceTrackingSysTagsFromConfig(logger *zap.SugaredLogger, initialTags
 
 	logger.Error("tag config doesn't consist resource tracking tags")
 	return nil
+}
+
+// patchIngressIpMode reads ingress ipMode specified in the service annotation if exists
+func getIngressIpMode(service *v1.Service) (*v1.LoadBalancerIPMode, error) {
+	var ipMode, exists = "", false
+
+	if ipMode, exists = service.Annotations[ServiceAnnotationIngressIpMode]; !exists {
+		return nil, nil
+	}
+
+	switch strings.ToLower(ipMode) {
+	case "proxy":
+		ipModeProxy := v1.LoadBalancerIPModeProxy
+		return &ipModeProxy, nil
+	case "vip":
+		ipModeProxy := v1.LoadBalancerIPModeVIP
+		return &ipModeProxy, nil
+	default:
+		return nil, errors.New("IpMode can only be set as Proxy or VIP")
+	}
 }

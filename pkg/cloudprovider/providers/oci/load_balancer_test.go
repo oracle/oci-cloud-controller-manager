@@ -1200,6 +1200,77 @@ func Test_doesLbHaveResourceTrackingSystemTags(t *testing.T) {
 	}
 }
 
+func Test_getGoadBalancerStatus(t *testing.T) {
+	var proxy = v1.LoadBalancerIPModeProxy
+	var vip = v1.LoadBalancerIPModeVIP
+	var ipAddress = "10.0.0.0"
+	var lbName = "test-lb"
+	var tests = map[string]struct {
+		lb             *client.GenericLoadBalancer
+		setIpMode      *v1.LoadBalancerIPMode
+		expectedIpMode *v1.LoadBalancerIPMode
+		wantErr        error
+	}{
+		"ipMode is Proxy": {
+			lb: &client.GenericLoadBalancer{
+				IpAddresses: []client.GenericIpAddress{
+					{
+						IpAddress: &ipAddress,
+					},
+				},
+			},
+			setIpMode:      &proxy,
+			expectedIpMode: &proxy,
+			wantErr:        nil,
+		},
+		"ipMode is VIP": {
+			lb: &client.GenericLoadBalancer{
+				IpAddresses: []client.GenericIpAddress{
+					{
+						IpAddress: &ipAddress,
+					},
+				},
+			},
+			setIpMode:      &vip,
+			expectedIpMode: &vip,
+			wantErr:        nil,
+		},
+		"ipMode not set": {
+			lb: &client.GenericLoadBalancer{
+				IpAddresses: []client.GenericIpAddress{
+					{
+						IpAddress: &ipAddress,
+					},
+				},
+			},
+			setIpMode:      nil,
+			expectedIpMode: nil,
+			wantErr:        nil,
+		},
+		"zero ip addresses": {
+			lb: &client.GenericLoadBalancer{
+				DisplayName: &lbName,
+				IpAddresses: []client.GenericIpAddress{},
+			},
+			setIpMode:      nil,
+			expectedIpMode: nil,
+			wantErr:        errors.New(fmt.Sprintf("no ip addresses found for load balancer %q", lbName)),
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			actual, err := loadBalancerToStatus(test.lb, test.setIpMode)
+			if !assertError(err, test.wantErr) {
+				t.Errorf("Expected error = %v, but got %v", test.wantErr, err)
+				return
+			}
+			if err == nil && !reflect.DeepEqual(actual.Ingress[0].IPMode, test.expectedIpMode) {
+				t.Errorf("expected %v but got %v", test.expectedIpMode, actual.Ingress[0].IPMode)
+			}
+		})
+	}
+}
+
 func assertError(actual, expected error) bool {
 	if expected == nil || actual == nil {
 		return expected == actual
