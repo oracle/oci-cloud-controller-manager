@@ -14,7 +14,7 @@
 
 ARG CI_IMAGE_REGISTRY
 
-FROM golang:1.20.4 as builder
+FROM golang:1.21.5 as builder
 
 ARG COMPONENT
 
@@ -27,7 +27,7 @@ WORKDIR $SRC
 
 RUN COMPONENT=${COMPONENT} make clean build
 
-FROM oraclelinux:7-slim
+FROM oraclelinux:8-slim
 
 COPY --from=0 /go/src/github.com/oracle/oci-cloud-controller-manager/dist/* /usr/local/bin/
 COPY --from=0 /go/src/github.com/oracle/oci-cloud-controller-manager/image/* /usr/local/bin/
@@ -41,6 +41,7 @@ COPY scripts/encrypt-mount /sbin/encrypt-mount
 COPY scripts/encrypt-umount /sbin/encrypt-umount
 COPY scripts/rpm-host /sbin/rpm-host
 COPY scripts/chroot-bash /sbin/chroot-bash
+
 RUN chmod 755 /sbin/encrypt-mount
 RUN chmod 755 /sbin/encrypt-umount
 RUN chmod 755 /sbin/rpm-host

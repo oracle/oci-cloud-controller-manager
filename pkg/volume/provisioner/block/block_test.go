@@ -25,6 +25,7 @@ import (
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/oracle/oci-go-sdk/v65/filestorage"
 	"github.com/oracle/oci-go-sdk/v65/identity"
+
 	"go.uber.org/zap"
 	authv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
@@ -528,7 +529,7 @@ func TestCreateVolumeFromBackup(t *testing.T) {
 			},
 			Spec: v1.PersistentVolumeClaimSpec{
 				StorageClassName: common.String("oci"),
-				Resources: v1.ResourceRequirements{
+				Resources: v1.VolumeResourceRequirements{
 					Requests: v1.ResourceList{
 						v1.ResourceName(v1.ResourceStorage): resource.MustParse("50Gi"),
 					},
@@ -631,7 +632,7 @@ func createPVC(size string) *v1.PersistentVolumeClaim {
 		ObjectMeta: metav1.ObjectMeta{},
 		Spec: v1.PersistentVolumeClaimSpec{
 			StorageClassName: common.String("oci"),
-			Resources: v1.ResourceRequirements{
+			Resources: v1.VolumeResourceRequirements{
 				Requests: v1.ResourceList{
 					v1.ResourceName(v1.ResourceStorage): resource.MustParse(size),
 				},

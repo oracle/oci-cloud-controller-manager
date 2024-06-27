@@ -1270,6 +1270,10 @@ func (d *BlockVolumeControllerDriver) ControllerGetVolume(ctx context.Context, r
 	return nil, status.Error(codes.Unimplemented, "ControllerGetVolume is not supported yet")
 }
 
+func (d *BlockVolumeControllerDriver) ControllerModifyVolume(ctx context.Context, request *csi.ControllerModifyVolumeRequest) (*csi.ControllerModifyVolumeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "ControllerModifyVolume is not supported yet")
+}
+
 func provision(ctx context.Context, log *zap.SugaredLogger, c client.Interface, volName string, volSize int64, availDomainName, compartmentID,
 	backupID, srcVolumeID, kmsKeyID string, vpusPerGB int64, bvTags *config.TagConfig) (core.Volume, error) {
 
