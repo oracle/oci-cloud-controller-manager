@@ -659,6 +659,7 @@ func (d BlockVolumeNodeDriver) NodeGetInfo(ctx context.Context, req *csi.NodeGet
 		AccessibleTopology: &csi.Topology{
 			Segments: map[string]string{
 				kubeAPI.LabelZoneFailureDomain: ad,
+				kubeAPI.LabelTopologyZone:      ad,
 			},
 		},
 	}, nil

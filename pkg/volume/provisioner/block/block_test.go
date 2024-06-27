@@ -226,6 +226,10 @@ func (c *MockFileStorageClient) AwaitMountTargetActive(ctx context.Context, logg
 
 type MockComputeClient struct{}
 
+func (c *MockComputeClient) ListInstancesByCompartmentAndAD(ctx context.Context, compartmentId, availabilityDomain string) (response []core.Instance, err error) {
+	return nil, nil
+}
+
 // GetInstance gets information about the specified instance.
 func (c *MockComputeClient) GetInstance(ctx context.Context, id string) (*core.Instance, error) {
 	return nil, nil
@@ -393,7 +397,7 @@ func (c *MockLoadBalancerClient) ListWorkRequests(ctx context.Context, compartme
 	return nil, nil
 }
 
-func (c *MockLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details *client.GenericCreateLoadBalancerDetails) (string, error) {
+func (c *MockLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details *client.GenericCreateLoadBalancerDetails, serviceUid *string) (string, error) {
 	return "", nil
 }
 
@@ -450,6 +454,10 @@ func (c *MockLoadBalancerClient) AwaitWorkRequest(ctx context.Context, id string
 }
 
 func (c *MockLoadBalancerClient) UpdateNetworkSecurityGroups(context.Context, string, []string) (string, error) {
+	return "", nil
+}
+
+func (c *MockLoadBalancerClient) UpdateLoadBalancer(ctx context.Context, lbID string, details *client.GenericUpdateLoadBalancerDetails) (string, error) {
 	return "", nil
 }
 

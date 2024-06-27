@@ -16,6 +16,8 @@ package client
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
 	"time"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
@@ -181,7 +183,14 @@ func (c *client) getDevicePath(ctx context.Context, instanceID string) (*string,
 		return nil, errors.WithStack(err)
 	}
 
-	device := listInstanceDevicesResp.Items[0].Name
+	//When more than 32 pods get scheduled at same time on same node, some attach operations will reach this condition where no device is left
+	if len(listInstanceDevicesResp.Items) == 0 {
+		c.logger.With("service", "compute", "verb", listVerb, "resource", instanceResource).
+			With("instanceID", instanceID).Warn("No consistent device paths available for worker node.")
+		return nil, fmt.Errorf("Max number of volumes are already attached to instance %s. Please schedule workload on different node.",  instanceID)
+	}
+	//Picks device path from available path randomly so that 2 volume attachments don't get same path when operations happen concurrently resulting in failure of one of them.
+	device := listInstanceDevicesResp.Items[rand.Intn(len(listInstanceDevicesResp.Items))].Name
 
 	return device, nil
 }

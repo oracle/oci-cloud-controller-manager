@@ -15,6 +15,9 @@
 package client
 
 import (
+	"fmt"
+	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	"net/http"
 	"testing"
 
@@ -42,6 +45,9 @@ func (m mockServiceError) GetCode() string {
 
 func (m mockServiceError) GetOpcRequestID() string {
 	return m.OpcRequestID
+}
+func (m mockServiceError) Error() string {
+	return m.Message
 }
 
 func TestIsRetryableServiceError(t *testing.T) {
@@ -116,4 +122,65 @@ func TestIsRetryableServiceError(t *testing.T) {
 		})
 	}
 
+}
+
+func TestIsSystemTagNotFoundOrNotAuthorisedError(t *testing.T) {
+	systemTagError := mockServiceError{
+		StatusCode: http.StatusBadRequest,
+		Code:       HTTP400RelatedResourceNotAuthorizedOrNotFoundCode,
+		Message:    "The following tag namespaces / keys are not authorized or not found: 'orcl-containerengine'",
+	}
+	systemTagError2 := mockServiceError{
+		StatusCode: http.StatusBadRequest,
+		Code:       HTTP400RelatedResourceNotAuthorizedOrNotFoundCode,
+		Message:    "The following tag namespaces / keys are not authorized or not found: TagDefinition cluster_foobar in TagNamespace orcl-containerengine does not exists.\\n",
+	}
+	userDefinedTagError1 := mockServiceError{
+		StatusCode: http.StatusBadRequest,
+		Code:       HTTP400RelatedResourceNotAuthorizedOrNotFoundCode,
+		Message:    "The following tag namespaces / keys are not authorized or not found: 'foobar-namespace'",
+	}
+	userDefinedTagError2 := mockServiceError{
+		StatusCode: http.StatusBadRequest,
+		Code:       HTTP400RelatedResourceNotAuthorizedOrNotFoundCode,
+		Message:    "TagNamespace orcl-foobar does not exists.\\nTagNamespace orcl-foobar-name does not exists.\\n",
+	}
+	tests := map[string]struct {
+		se               mockServiceError
+		wrappedError     error
+		expectIsTagError bool
+	}{
+		"base case": {
+			wrappedError:     errors.WithMessage(systemTagError, "taggin failure"),
+			expectIsTagError: true,
+		},
+		"three layer wrapping - resource tracking system tag error": {
+			wrappedError:     errors.Wrap(errors.Wrap(errors.WithMessage(systemTagError, "taggin failure"), "first layer"), "second layer"),
+			expectIsTagError: true,
+		},
+		"wrapping with stack trace - resource tracking system tag error": {
+			wrappedError:     errors.WithStack(errors.Wrap(errors.WithMessage(systemTagError2, "taggin failure"), "first layer")),
+			expectIsTagError: true,
+		},
+		"three layer wrapping - user defined tag error": {
+			wrappedError:     errors.Wrap(errors.Wrap(errors.WithMessage(userDefinedTagError1, "taggin failure"), "first layer"), "second layer"),
+			expectIsTagError: false,
+		},
+		"wrapping with stack trace - user defined tag error": {
+			wrappedError:     errors.WithStack(errors.Wrap(errors.WithMessage(userDefinedTagError2, "taggin failure"), "first layer")),
+			expectIsTagError: false,
+		},
+		"not a service error": {
+			wrappedError:     errors.Wrap(fmt.Errorf("not a service error"), "precheck error"),
+			expectIsTagError: false,
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			actualResult := IsSystemTagNotFoundOrNotAuthorisedError(zap.S(), test.wrappedError)
+			if actualResult != test.expectIsTagError {
+				t.Errorf("expected %t but got %t", actualResult, test.expectIsTagError)
+			}
+		})
+	}
 }
