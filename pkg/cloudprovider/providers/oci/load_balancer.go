@@ -539,6 +539,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
 		dimensionsMap[metrics.ResourceOCIDDimension] = lbName
 		metrics.SendMetricData(cp.metricPusher, getMetric(loadBalancerType, Update), time.Since(startTime).Seconds(), dimensionsMap)
+		return nil, err
 	}
 	lbExists := !client.IsNotFound(err)
 	lbOCID := ""
