@@ -15,26 +15,13 @@
 package framework
 
 import (
-	"context"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
-	"os"
-	"strconv"
 	"strings"
 	"time"
 
 	imageutils "k8s.io/kubernetes/test/utils/image"
-
-	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
-
-	. "github.com/onsi/gomega"
-	"github.com/oracle/oci-go-sdk/v65/common"
-	oke "github.com/oracle/oci-go-sdk/v65/containerengine"
-	"github.com/oracle/oci-go-sdk/v65/core"
-	"github.com/oracle/oci-go-sdk/v65/identity"
-	"gopkg.in/yaml.v2"
 )
 
 const (
