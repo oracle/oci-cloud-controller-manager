@@ -38,7 +38,7 @@ cloud-provider specific code out of the Kubernetes codebase.
 
 
 Note: 
-Versions older than v1.26.3 are no longer supported, new features / bug fixes will be available in v1.26.3 and later. 
+Versions older than v1.27.3 are no longer supported, new features / bug fixes will be available in v1.27.3 and later. 
 
 ## Implementation
  Currently `oci-cloud-controller-manager` implements:
@@ -169,12 +169,6 @@ This project welcomes contributions from the community. Before submitting a pull
 ## Security
 
 Please consult the [security guide](./SECURITY.md) for our responsible security vulnerability disclosure process
-
-## Upcoming Releases
-
-| Release               | Expected Release Date |
-|-----------------------|-----------------------|
-| Support for K8s v1.29 | July 2024           |
 
 ## License
 

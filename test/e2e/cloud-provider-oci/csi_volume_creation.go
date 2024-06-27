@@ -44,7 +44,6 @@ var _ = Describe("CSI Volume Creation", func() {
 			// volume name duplicate should not exist
 			for _, volume := range volumes {
 				framework.Logf("volume details %v :", volume)
-				framework.Logf("cluster ocid from setup is %s", setupF.ClusterOcid)
 				if setupF.AddOkeSystemTags && !framework.HasOkeSystemTags(volume.SystemTags) {
 					framework.Failf("the resource %s is expected to have oke system tags", *volume.Id)
 				}
