@@ -512,9 +512,7 @@ var _ = Describe("Service NSG [Slow]", func() {
 	})
 })
 
-// NOTE: OCI LBaaS is not a passthrough load balancer so ESIPP (External Source IP
-// Presevation) is not possible, however, this test covers support for node-local
-// routing (i.e. avoidance of a second hop).
+// This test covers support for node-local routing (i.e. avoidance of a second hop).
 var _ = Describe("Node Local Routing [Slow]", func() {
 
 	baseName := "node-local-routing"
@@ -701,6 +699,9 @@ var _ = Describe("IpMode [Slow]", func() {
 	}
 	Context("[cloudprovider][ccm][lb][ipMode]", func() {
 		It("traffic should work from pods via load balancer", func() {
+			if sharedfw.CompareVersions(setupF.OkeClusterK8sVersion, "v1.30") < 0 {
+				Skip("Cluster K8s Version " + setupF.OkeClusterK8sVersion + " is less than v1.30, skipping test for Load Balancer ingress ipMode=\"Proxy\"")
+			}
 			for _, test := range esippTestsArray {
 				By("Running test for: " + test.lbType)
 				namespace := f.Namespace.Name
@@ -789,6 +790,9 @@ var _ = Describe("ESIPP - IpMode Proxy [Slow]", func() {
 	}
 	Context("[cloudprovider][ccm][lb][esipp]", func() {
 		It("should preserve source IP of pod with ipMode Proxy", func() {
+			if sharedfw.CompareVersions(setupF.OkeClusterK8sVersion, "v1.30") < 0 {
+				Skip("Cluster K8s Version " + setupF.OkeClusterK8sVersion + " is less than v1.30, skipping test for ESIPP since it relies on ipMode=\"Proxy\"")
+			}
 			for _, test := range esippTestsArray {
 				By("Running test for: " + test.lbType)
 				namespace := f.Namespace.Name
@@ -1986,7 +1990,7 @@ var _ = Describe("LB Properties", func() {
 				sharedfw.ExpectNoError(err)
 				By("waiting upto 5m0s to verify whether LB has been created with public reservedIP")
 
-				reservedIPOCID, err := f.Client.Networking().GetPublicIpByIpAddress(ctx, reservedIP)
+				reservedIPOCID, err := f.Client.Networking(nil).GetPublicIpByIpAddress(ctx, reservedIP)
 				sharedfw.Logf("Loadbalancer reserved IP OCID is: %s  Expected reserved IP OCID: %s", *loadBalancer.IpAddresses[0].ReservedIp.Id, *reservedIPOCID.Id)
 				Expect(strings.Compare(*loadBalancer.IpAddresses[0].ReservedIp.Id, *reservedIPOCID.Id) == 0).To(BeTrue())
 

@@ -21,6 +21,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
+	"github.com/oracle/oci-go-sdk/v65/containerengine"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
 )
@@ -77,6 +78,29 @@ var _ = Describe("Dynamic FSS test in cluster compartment", func() {
 			f.StorageClasses = append(f.StorageClasses, scName)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailDynamicFSS(f.Namespace.Name, "50Gi", scName, v1.ClaimPending, nil)
 			pvcJig.CheckSinglePodReadWrite(f.Namespace.Name, pvc.Name, true, []string{})
+		})
+		It("Create PVC & POD for CSI-FSS using workload Identity Resource Principal", func() {
+			if f.ClusterType != containerengine.ClusterTypeEnhancedCluster {
+				Skip("Skipping Workload Identity test because the cluster is not an OKE ENHANCED_CLUSTER")
+			}
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
+			saName := pvcJig.CreateServiceAccountOrFail(f.Namespace.Name, "sa")
+			pvcJig.CreateSecret("fss-secret", saName.Name, f.Namespace.Name)
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetOcid": setupF.MntTargetOcid, "csi.storage.k8s.io/provisioner-secret-name": "fss-secret", "csi.storage.k8s.io/provisioner-secret-namespace": f.Namespace.Name}
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, framework.FssProvisionerType, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
+			f.StorageClasses = append(f.StorageClasses, scName)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailDynamicFSS(f.Namespace.Name, "50Gi", scName, v1.ClaimPending, nil)
+			writePod, readPod := pvcJig.CheckSinglePodReadWrite(f.Namespace.Name, pvc.Name, false, []string{})
+			//adding pod deletion check as resources are being created by using workload identity resource principal
+			err := pvcJig.DeleteAndAwaitPod(f.Namespace.Name, writePod); if err != nil {
+				framework.Failf("Error deleting pod: %v", err)
+			}
+			err = pvcJig.DeleteAndAwaitPod(f.Namespace.Name, readPod); if err != nil {
+				framework.Failf("Error deleting pod: %v", err)
+			}
+			err = pvcJig.DeleteAndAwaitPVC(f.Namespace.Name, pvc.Name); if err != nil {
+				framework.Failf("Error deleting PVC: %v", err)
+			}
 		})
 	})
 	Context("[cloudprovider][storage][csi][fss][mtcreate]", func() {
@@ -166,6 +190,31 @@ var _ = Describe("Dynamic FSS test in cluster compartment", func() {
 				framework.Failf("Error deleting PVC: %v", err)
 			}
 			By("Completed test: Create PVC and POD for CSI-FSS with kmsKey and with new mount-target creation")
+
+			if f.ClusterType == containerengine.ClusterTypeEnhancedCluster {
+				By("Running test: Basic Create PVC and POD for CSI-FSS with new mount-target creation using Workload Identity Resourse Principal")
+				saName5 := pvcJig.CreateServiceAccountOrFail(f.Namespace.Name, "sa")
+				pvcJig.CreateSecret("fss-secret", saName5.Name, f.Namespace.Name)
+
+				scParameters5 := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "csi.storage.k8s.io/provisioner-secret-name": "fss-secret", "csi.storage.k8s.io/provisioner-secret-namespace": f.Namespace.Name}
+				scName5 := f.CreateStorageClassOrFail(f.Namespace.Name+"-5", framework.FssProvisionerType, scParameters5, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
+				f.StorageClasses = append(f.StorageClasses, scName5)
+				pvc5 := pvcJig.CreateAndAwaitPVCOrFailDynamicFSS(f.Namespace.Name, "50Gi", scName5, v1.ClaimPending, nil)
+				writePod5, readPod5 := pvcJig.CheckSinglePodReadWrite(f.Namespace.Name, pvc5.Name, false, []string{})
+				err = pvcJig.DeleteAndAwaitPod(f.Namespace.Name, writePod5);
+				if err != nil {
+					framework.Failf("Error deleting pod: %v", err)
+				}
+				err = pvcJig.DeleteAndAwaitPod(f.Namespace.Name, readPod5);
+				if err != nil {
+					framework.Failf("Error deleting pod: %v", err)
+				}
+				err = pvcJig.DeleteAndAwaitPVC(f.Namespace.Name, pvc5.Name);
+				if err != nil {
+					framework.Failf("Error deleting PVC: %v", err)
+				}
+				By("Completed test: Basic Create PVC and POD for CSI-FSS with new mount-target creation tests using workload Identity Resource Principal")
+			}
 		})
 		// TODO: Think of parallelising this test when there is a way to label the nodes as part of the test suite to run this test
 		It("Create PVC and POD for CSI-FSS with in-transit encryption and with new mount-target creation", func() {
@@ -230,6 +279,29 @@ var _ = Describe("Dynamic FSS test in different compartment", func() {
 			f.StorageClasses = append(f.StorageClasses, scName)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailDynamicFSS(f.Namespace.Name, "50Gi", scName, v1.ClaimPending, nil)
 			pvcJig.CheckSinglePodReadWrite(f.Namespace.Name, pvc.Name, true, []string{})
+		})
+		It("Create PVC & POD for CSI-FSS with file-system compartment set using workload Identity Resource Principal", func() {
+			if f.ClusterType != containerengine.ClusterTypeEnhancedCluster {
+				Skip("Skipping Workload Identity test because the cluster is not an OKE ENHANCED_CLUSTER")
+			}
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
+			saName := pvcJig.CreateServiceAccountOrFail(f.Namespace.Name, "sa")
+			pvcJig.CreateSecret("fss-secret", saName.Name, f.Namespace.Name)
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetOcid": setupF.MntTargetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "csi.storage.k8s.io/provisioner-secret-name": "fss-secret", "csi.storage.k8s.io/provisioner-secret-namespace": f.Namespace.Name}
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, framework.FssProvisionerType, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
+			f.StorageClasses = append(f.StorageClasses, scName)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailDynamicFSS(f.Namespace.Name, "50Gi", scName, v1.ClaimPending, nil)
+			writePod, readPod := pvcJig.CheckSinglePodReadWrite(f.Namespace.Name, pvc.Name, false, []string{})
+			//adding pod deletion check as resources are being created by using workload identity resource principal
+			err := pvcJig.DeleteAndAwaitPod(f.Namespace.Name, writePod); if err != nil {
+				framework.Failf("Error deleting pod: %v", err)
+			}
+			err = pvcJig.DeleteAndAwaitPod(f.Namespace.Name, readPod); if err != nil {
+				framework.Failf("Error deleting pod: %v", err)
+			}
+			err = pvcJig.DeleteAndAwaitPVC(f.Namespace.Name, pvc.Name); if err != nil {
+				framework.Failf("Error deleting PVC: %v", err)
+			}
 		})
 	})
 	Context("[cloudprovider][storage][csi][fss][mtcreate]", func() {
@@ -318,6 +390,31 @@ var _ = Describe("Dynamic FSS test in different compartment", func() {
 				framework.Failf("Error deleting PVC: %v", err)
 			}
 			By("Completed test: Create PVC and POD for CSI-FSS with kmsKey and with file-system compartment set and with new mount-target creation")
+
+			if f.ClusterType == containerengine.ClusterTypeEnhancedCluster {
+				By("Running test: Basic Create PVC and POD for CSI-FSS with new mount-target creation and with file-system compartment set using Workload Identity Resourse Principal")
+				saName5 := pvcJig.CreateServiceAccountOrFail(f.Namespace.Name, "sa")
+				pvcJig.CreateSecret("fss-secret", saName5.Name, f.Namespace.Name)
+
+				scParameters5 := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "csi.storage.k8s.io/provisioner-secret-name": "fss-secret", "csi.storage.k8s.io/provisioner-secret-namespace": f.Namespace.Name}
+				scName5 := f.CreateStorageClassOrFail(f.Namespace.Name+"-5", framework.FssProvisionerType, scParameters5, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
+				f.StorageClasses = append(f.StorageClasses, scName5)
+				pvc5 := pvcJig.CreateAndAwaitPVCOrFailDynamicFSS(f.Namespace.Name, "50Gi", scName5, v1.ClaimPending, nil)
+				writePod5, readPod5 := pvcJig.CheckSinglePodReadWrite(f.Namespace.Name, pvc5.Name, false, []string{})
+				err = pvcJig.DeleteAndAwaitPod(f.Namespace.Name, writePod5);
+				if err != nil {
+					framework.Failf("Error deleting pod: %v", err)
+				}
+				err = pvcJig.DeleteAndAwaitPod(f.Namespace.Name, readPod5);
+				if err != nil {
+					framework.Failf("Error deleting pod: %v", err)
+				}
+				err = pvcJig.DeleteAndAwaitPVC(f.Namespace.Name, pvc5.Name);
+				if err != nil {
+					framework.Failf("Error deleting PVC: %v", err)
+				}
+				By("Completed test: Basic Create PVC and POD for CSI-FSS with new mount-target creation and with file-system compartment set using workload Identity Resource Principal")
+			}
 		})
 		// TODO: Think of parallelising this test when there is a way to label the nodes as part of the test suite to run this test
 		It("Create PVC and POD for CSI-FSS with in-transit encryption", func() {
