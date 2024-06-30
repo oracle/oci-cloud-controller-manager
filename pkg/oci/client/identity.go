@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
 	"github.com/oracle/oci-go-sdk/v65/identity"
 	"github.com/pkg/errors"
 )
@@ -39,6 +40,11 @@ func (c *client) ListAvailabilityDomains(ctx context.Context, compartmentID stri
 		CompartmentId:   &compartmentID,
 		RequestMetadata: c.requestMetadata,
 	})
+	if resp.OpcRequestId != nil{
+		c.logger.With("service", "Identity", "verb", listVerb).
+			With("OpcRequestId", *(resp.OpcRequestId)).With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for ListAvailabilityDomains call.")
+	}
 	incRequestCounter(err, listVerb, availabilityDomainResource)
 	if err != nil {
 		return nil, errors.WithStack(err)

@@ -275,7 +275,7 @@ func getSubnetsForNodes(ctx context.Context, nodes []*v1.Node, networkClient cli
 			ip.V6 = externalIPs.V6
 		}
 
-		subnet, err := networkClient.Networking().GetSubnetFromCacheByIP(ip)
+		subnet, err := networkClient.Networking(nil).GetSubnetFromCacheByIP(ip)
 		if err != nil {
 			return nil, err
 		}
@@ -317,7 +317,7 @@ func getSubnetsForNodes(ctx context.Context, nodes []*v1.Node, networkClient cli
 				ipAddresses.V6 = vnic.Ipv6Addresses[0]
 			}
 			if ipAddresses != (client.IpAddresses{}) && ipSet.Has(ipAddresses) && !subnetOCIDs.Has(*vnic.SubnetId) {
-				subnet, err := networkClient.Networking().GetSubnet(ctx, *vnic.SubnetId)
+				subnet, err := networkClient.Networking(nil).GetSubnet(ctx, *vnic.SubnetId)
 				if err != nil {
 					return nil, errors.Wrapf(err, "get subnet %q for instance %q", *vnic.SubnetId, id)
 				}
@@ -386,7 +386,7 @@ func (clb *CloudLoadBalancerProvider) createLoadBalancer(ctx context.Context, sp
 
 	// First update the security lists so that if it fails (due to the etag
 	// bug or otherwise) we'll retry prior to LB creation.
-	lbSubnets, err := getSubnets(ctx, spec.Subnets, clb.client.Networking())
+	lbSubnets, err := getSubnets(ctx, spec.Subnets, clb.client.Networking(nil))
 	if err != nil {
 		return nil, "", errors.Wrap(err, "getting subnets for load balancers")
 	}
@@ -434,7 +434,7 @@ func (clb *CloudLoadBalancerProvider) createLoadBalancer(ctx context.Context, sp
 	}
 
 	if spec.LoadBalancerIP != "" {
-		reservedIpOCID, err := getReservedIpOcidByIpAddress(ctx, spec.LoadBalancerIP, clb.client.Networking())
+		reservedIpOCID, err := getReservedIpOcidByIpAddress(ctx, spec.LoadBalancerIP, clb.client.Networking(nil))
 		if err != nil {
 			return nil, "", err
 		}
@@ -652,7 +652,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		return nil, err
 	}
 
-	lbSubnets, err := getSubnets(ctx, lbSubnetIds, cp.client.Networking())
+	lbSubnets, err := getSubnets(ctx, lbSubnetIds, cp.client.Networking(nil))
 	if err != nil {
 		logger.With(zap.Error(err)).Error("failed to get loadbalancer nodeSubnets")
 		return nil, err
@@ -740,7 +740,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 			if len(spec.NetworkSecurityGroupIds) >= MaxNsgPerVnic {
 				return nil, fmt.Errorf("invalid number of Network Security Groups (Max: 5) including managed nsg")
 			}
-			resp, err := cp.client.Networking().CreateNetworkSecurityGroup(ctx, cp.config.CompartmentID, cp.config.VCNID, generateNsgName(service), fmt.Sprintf("%s", service.UID))
+			resp, err := cp.client.Networking(nil).CreateNetworkSecurityGroup(ctx, cp.config.CompartmentID, cp.config.VCNID, generateNsgName(service), fmt.Sprintf("%s", service.UID))
 			if err != nil {
 				logger.With(zap.Error(err)).Error("Failed to create nsg")
 				errorType = util.GetError(err)
@@ -764,7 +764,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		}
 		if len(backendNsgs) > 0 {
 			for _, nsg := range backendNsgs {
-				resp, etag, err := cp.client.Networking().GetNetworkSecurityGroup(ctx, nsg)
+				resp, etag, err := cp.client.Networking(nil).GetNetworkSecurityGroup(ctx, nsg)
 				if err != nil {
 					logger.With(zap.Error(err)).Error("Failed to get nsg")
 					errorType = util.GetError(err)
@@ -777,7 +777,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 				if _, ok := freeformTags["ManagedBy"]; !ok {
 					if etag != nil {
 						freeformTags["ManagedBy"] = "CCM"
-						response, err := cp.client.Networking().UpdateNetworkSecurityGroup(ctx, nsg, *etag, freeformTags)
+						response, err := cp.client.Networking(nil).UpdateNetworkSecurityGroup(ctx, nsg, *etag, freeformTags)
 						if err != nil {
 							logger.With(zap.Error(err)).Errorf("Failed to update nsg %s", nsg)
 							errorType = util.GetError(err)
@@ -944,7 +944,7 @@ func (cp *CloudProvider) getOciLoadBalancerSubnets(ctx context.Context, logger *
 
 	if s, ok := svc.Annotations[ServiceAnnotationLoadBalancerSubnet1]; ok && len(s) != 0 {
 		subnets[0] = s
-		r, err := cp.client.Networking().IsRegionalSubnet(ctx, s)
+		r, err := cp.client.Networking(nil).IsRegionalSubnet(ctx, s)
 		if err != nil {
 			return nil, err
 		}
@@ -954,7 +954,7 @@ func (cp *CloudProvider) getOciLoadBalancerSubnets(ctx context.Context, logger *
 	}
 
 	if s, ok := svc.Annotations[ServiceAnnotationLoadBalancerSubnet2]; ok && len(s) != 0 {
-		r, err := cp.client.Networking().IsRegionalSubnet(ctx, s)
+		r, err := cp.client.Networking(nil).IsRegionalSubnet(ctx, s)
 		if err != nil {
 			return nil, err
 		}
@@ -1009,7 +1009,7 @@ func (clb *CloudLoadBalancerProvider) updateLoadBalancer(ctx context.Context, lb
 			break
 		}
 	}
-	lbSubnets, err := getSubnets(ctx, spec.Subnets, clb.client.Networking())
+	lbSubnets, err := getSubnets(ctx, spec.Subnets, clb.client.Networking(nil))
 	if err != nil {
 		return errors.Wrapf(err, "getting load balancer subnets")
 	}
@@ -1154,7 +1154,7 @@ func (clb *CloudLoadBalancerProvider) updateLoadBalancerBackends(ctx context.Con
 
 	logger := clb.logger.With("loadBalancerID", lbID, "compartmentID", clb.config.CompartmentID, "loadBalancerType", getLoadBalancerType(spec.service), "serviceName", spec.service.Name)
 
-	lbSubnets, err := getSubnets(ctx, spec.Subnets, clb.client.Networking())
+	lbSubnets, err := getSubnets(ctx, spec.Subnets, clb.client.Networking(nil))
 	if err != nil {
 		return errors.Wrapf(err, "getting load balancer subnets")
 	}
@@ -1447,7 +1447,7 @@ func (cp *CloudProvider) UpdateLoadBalancer(ctx context.Context, clusterName str
 		return err
 	}
 
-	lbSubnets, err := getSubnets(ctx, lbSubnetIds, cp.client.Networking())
+	lbSubnets, err := getSubnets(ctx, lbSubnetIds, cp.client.Networking(nil))
 	if err != nil {
 		logger.With(zap.Error(err)).Error("failed to get loadbalancer subnets")
 		return err
@@ -1730,7 +1730,7 @@ func (cp *CloudProvider) cleanupSecurityRulesForLoadBalancerDelete(lb *client.Ge
 		return errors.Wrap(err, "getting subnets for nodes")
 	}
 
-	lbSubnets, err := getSubnets(ctx, lb.SubnetIds, cp.client.Networking())
+	lbSubnets, err := getSubnets(ctx, lb.SubnetIds, cp.client.Networking(nil))
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to get subnets for load balancers")
 		return errors.Wrap(err, "getting subnets for load balancers")
@@ -1986,10 +1986,9 @@ func (cp *CloudProvider) checkAllBackendNodesNotReady(nodeList []*v1.Node) bool 
 	}
 	return true
 }
-
 // If CCM manages the NSG for the service, CCM to delete the NSG when the LB/NLB service is deleted
 func (cp *CloudProvider) deleteNsg(ctx context.Context, logger *zap.SugaredLogger, id, etag string) (bool, error) {
-	opcRequestId, err := cp.client.Networking().DeleteNetworkSecurityGroup(ctx, id, etag)
+	opcRequestId, err := cp.client.Networking(nil).DeleteNetworkSecurityGroup(ctx, id, etag)
 	if err != nil {
 		logger.Errorf("failed to delete nsg %s OpcRequestId %s", id, pointer.StringDeref(opcRequestId, ""))
 		return false, err
@@ -1999,7 +1998,7 @@ func (cp *CloudProvider) deleteNsg(ctx context.Context, logger *zap.SugaredLogge
 }
 
 func (cp *CloudProvider) getFrontendNsg(ctx context.Context, logger *zap.SugaredLogger, id, uid string) (frontendNsgId string, etag *string, err error) {
-	nsg, etag, err := cp.client.Networking().GetNetworkSecurityGroup(ctx, id)
+	nsg, etag, err := cp.client.Networking(nil).GetNetworkSecurityGroup(ctx, id)
 	if err != nil || nsg == nil || etag == nil {
 		logger.Errorf("failed to get nsg %s", id)
 		return "", nil, err
@@ -2016,7 +2015,7 @@ func (cp *CloudProvider) getFrontendNsg(ctx context.Context, logger *zap.Sugared
 }
 
 func (cp *CloudProvider) getFrontendNsgByName(ctx context.Context, logger *zap.SugaredLogger, displayName, compartmentId, vcnId, uid string) (frontendNsgId string, etag *string, err error) {
-	nsgs, err := cp.client.Networking().ListNetworkSecurityGroups(ctx, displayName, compartmentId, vcnId)
+	nsgs, err := cp.client.Networking(nil).ListNetworkSecurityGroups(ctx, displayName, compartmentId, vcnId)
 	for _, nsg := range nsgs {
 		frontendNsgId, etag, err = cp.getFrontendNsg(ctx, logger, pointer.StringDeref(nsg.Id, ""), uid)
 		if err != nil {

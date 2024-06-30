@@ -124,7 +124,7 @@ func (s *baseSecurityListManager) updateBackendRules(ctx context.Context, lbSubn
 
 		logger.Info("Node subnet security list changed")
 
-		_, err = s.client.Networking().UpdateSecurityList(ctx, *secList.Id, etag, ingressRules, secList.EgressSecurityRules)
+		_, err = s.client.Networking(nil).UpdateSecurityList(ctx, *secList.Id, etag, ingressRules, secList.EgressSecurityRules)
 		if err != nil {
 			return errors.Wrapf(err, "update security list rules %q for subnet %q", *secList.Id, *subnet.Id)
 		}
@@ -168,7 +168,7 @@ func (s *baseSecurityListManager) updateLoadBalancerRules(ctx context.Context, l
 
 		logger.Info("Load balancer subnet security list changed")
 
-		_, err = s.client.Networking().UpdateSecurityList(ctx, *secList.Id, etag, lbIngressRules, lbEgressRules)
+		_, err = s.client.Networking(nil).UpdateSecurityList(ctx, *secList.Id, etag, lbIngressRules, lbEgressRules)
 		if err != nil {
 			return errors.Wrapf(err, "update lb security list rules %q for subnet %q", *secList.Id, *lbSubnet.Id)
 		}
@@ -184,7 +184,7 @@ func (s *baseSecurityListManager) getSecurityList(ctx context.Context, subnet *c
 
 	// Use the security list from cloud-provider config if provided.
 	if id, ok := s.securityLists[*subnet.Id]; ok && sets.NewString(subnet.SecurityListIds...).Has(id) {
-		response, err := s.client.Networking().GetSecurityList(ctx, id)
+		response, err := s.client.Networking(nil).GetSecurityList(ctx, id)
 		if err != nil {
 			return nil, "", err
 		}
@@ -195,7 +195,7 @@ func (s *baseSecurityListManager) getSecurityList(ctx context.Context, subnet *c
 	// NOTE(apryde): This is rather arbitrary but we're probably stuck with it at this point.
 	responses := make([]core.GetSecurityListResponse, len(subnet.SecurityListIds))
 	for i, id := range subnet.SecurityListIds {
-		response, err := s.client.Networking().GetSecurityList(ctx, id)
+		response, err := s.client.Networking(nil).GetSecurityList(ctx, id)
 		if err != nil {
 			return nil, "", err
 		}

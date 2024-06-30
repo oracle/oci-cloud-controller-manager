@@ -23,13 +23,10 @@ import (
 	"path"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
-
-	"go.uber.org/zap"
-	"google.golang.org/grpc"
-	"k8s.io/client-go/kubernetes"
 
 	"github.com/oracle/oci-cloud-controller-manager/cmd/oci-csi-node-driver/nodedriveroptions"
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
@@ -37,6 +34,14 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/metrics"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
+	listersv1 "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/cache"
 )
 
 const (
@@ -103,6 +108,7 @@ type BlockVolumeControllerDriver struct {
 // FSSControllerDriver extends ControllerDriver
 type FSSControllerDriver struct {
 	ControllerDriver
+	serviceAccountLister listersv1.ServiceAccountLister
 }
 
 // NodeDriver implements CSI Node interfaces
@@ -176,7 +182,17 @@ func GetControllerDriver(name string, kubeClientSet kubernetes.Interface, logger
 		return &BlockVolumeControllerDriver{ControllerDriver: newControllerDriver(kubeClientSet, logger, config, c, metricPusher, clusterIpFamily)}
 	}
 	if name == FSSDriverName {
-		return &FSSControllerDriver{ControllerDriver: newControllerDriver(kubeClientSet, logger, config, c, metricPusher, clusterIpFamily)}
+
+		factory := informers.NewSharedInformerFactory(kubeClientSet, 5*time.Minute)
+		serviceAccountInformer := factory.Core().V1().ServiceAccounts()
+		go serviceAccountInformer.Informer().Run(wait.NeverStop)
+
+		if !cache.WaitForCacheSync(wait.NeverStop, serviceAccountInformer.Informer().HasSynced) {
+			utilruntime.HandleError(fmt.Errorf("timed out waiting for informers to sync"))
+		}
+
+		return &FSSControllerDriver{ControllerDriver: newControllerDriver(kubeClientSet, logger, config, c, metricPusher, clusterIpFamily), serviceAccountLister: serviceAccountInformer.Lister()}
+
 	}
 	return nil
 }

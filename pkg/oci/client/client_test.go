@@ -128,7 +128,7 @@ func TestRateLimiting(t *testing.T) {
 	// Write requests up to qpsWrite should pass and the others fail
 	for i := 0; i < int(qpsWrite)*2; i++ {
 
-		_, err := client.Networking().UpdateSecurityList(context.Background(), "1234", "", nil, nil)
+		_, err := client.Networking(nil).UpdateSecurityList(context.Background(), "1234", "", nil, nil)
 		p := (err == nil)
 
 		if (i < int(qpsRead) && !p) || (i >= int(qpsRead) && p) {

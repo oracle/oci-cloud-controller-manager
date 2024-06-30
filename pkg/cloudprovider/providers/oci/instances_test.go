@@ -819,7 +819,7 @@ func (MockOCIClient) LoadBalancer(logger *zap.SugaredLogger, lbType string, tena
 	return &MockLoadBalancerClient{}
 }
 
-func (MockOCIClient) Networking() client.NetworkingInterface {
+func (MockOCIClient) Networking(ociClientConfig *client.OCIClientConfig) client.NetworkingInterface {
 	return &MockVirtualNetworkClient{}
 }
 
@@ -827,11 +827,11 @@ func (MockOCIClient) BlockStorage() client.BlockStorageInterface {
 	return &MockBlockStorageClient{}
 }
 
-func (MockOCIClient) FSS() client.FileStorageInterface {
+func (MockOCIClient) FSS(ociClientConfig *client.OCIClientConfig) client.FileStorageInterface {
 	return &MockFileStorageClient{}
 }
 
-func (MockOCIClient) Identity() client.IdentityInterface {
+func (MockOCIClient) Identity(ociClientConfig *client.OCIClientConfig) client.IdentityInterface {
 	return &MockIdentityClient{}
 }
 
