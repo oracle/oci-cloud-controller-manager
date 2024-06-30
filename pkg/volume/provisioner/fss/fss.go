@@ -80,7 +80,7 @@ func NewFilesystemProvisioner(logger *zap.SugaredLogger, client client.Interface
 }
 
 func (fsp *filesystemProvisioner) getOrCreateFileSystem(ctx context.Context, logger *zap.SugaredLogger, ad, displayName string) (*fss.FileSystem, error) {
-	_, summary, err := fsp.client.FSS().GetFileSystemSummaryByDisplayName(ctx, fsp.compartmentID, ad, displayName)
+	_, summary, err := fsp.client.FSS(nil).GetFileSystemSummaryByDisplayName(ctx, fsp.compartmentID, ad, displayName)
 	if err != nil && !client.IsNotFound(err) {
 		return nil, err
 	}
@@ -89,9 +89,9 @@ func (fsp *filesystemProvisioner) getOrCreateFileSystem(ctx context.Context, log
 		return nil, fmt.Errorf("duplicate volume %q exists", displayName)
 	} else if len(summary) > 0 {
 		filesystem := summary[0]
-		return fsp.client.FSS().AwaitFileSystemActive(ctx, logger, *filesystem.Id)
+		return fsp.client.FSS(nil).AwaitFileSystemActive(ctx, logger, *filesystem.Id)
 	}
-	fs, err := fsp.client.FSS().CreateFileSystem(ctx, fss.CreateFileSystemDetails{
+	fs, err := fsp.client.FSS(nil).CreateFileSystem(ctx, fss.CreateFileSystemDetails{
 		CompartmentId:      &fsp.compartmentID,
 		AvailabilityDomain: &ad,
 		DisplayName:        &displayName,
@@ -102,21 +102,21 @@ func (fsp *filesystemProvisioner) getOrCreateFileSystem(ctx context.Context, log
 
 	logger.With("fileSystemID", *fs.Id).Info("Created FileSystem")
 
-	return fsp.client.FSS().AwaitFileSystemActive(ctx, logger, *fs.Id)
+	return fsp.client.FSS(nil).AwaitFileSystemActive(ctx, logger, *fs.Id)
 }
 
 func (fsp *filesystemProvisioner) getOrCreateExport(ctx context.Context, logger *zap.SugaredLogger, fsID, exportSetID string) (*fss.Export, error) {
 	path := "/" + fsID
-	summary, err := fsp.client.FSS().FindExport(ctx, fsID, path, exportSetID)
+	summary, err := fsp.client.FSS(nil).FindExport(ctx, fsID, path, exportSetID)
 	if err != nil && !client.IsNotFound(err) {
 		return nil, err
 	}
 	if summary != nil {
-		return fsp.client.FSS().AwaitExportActive(ctx, logger, *summary.Id)
+		return fsp.client.FSS(nil).AwaitExportActive(ctx, logger, *summary.Id)
 	}
 
 	// If export doesn't already exist create it.
-	export, err := fsp.client.FSS().CreateExport(ctx, fss.CreateExportDetails{
+	export, err := fsp.client.FSS(nil).CreateExport(ctx, fss.CreateExportDetails{
 		ExportSetId:  &exportSetID,
 		FileSystemId: &fsID,
 		Path:         &path,
@@ -126,7 +126,7 @@ func (fsp *filesystemProvisioner) getOrCreateExport(ctx context.Context, logger 
 	}
 
 	logger.With("exportID", *export.Id).Info("Created Export")
-	return fsp.client.FSS().AwaitExportActive(ctx, logger, *export.Id)
+	return fsp.client.FSS(nil).AwaitExportActive(ctx, logger, *export.Id)
 }
 
 // getMountTargetID retrieves MountTarget OCID if provided.
@@ -167,7 +167,7 @@ func (fsp *filesystemProvisioner) Provision(options controller.ProvisionOptions,
 	logger = logger.With("mountTargetID", mtID)
 
 	// Wait for MountTarget to be ACTIVE.
-	target, err := fsp.client.FSS().AwaitMountTargetActive(ctx, logger, mtID)
+	target, err := fsp.client.FSS(nil).AwaitMountTargetActive(ctx, logger, mtID)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to retrieve mount target")
 		return nil, err
@@ -188,7 +188,7 @@ func (fsp *filesystemProvisioner) Provision(options controller.ProvisionOptions,
 	{
 		id := target.PrivateIpIds[rand.Int()%len(target.PrivateIpIds)]
 		logger = logger.With("privateIPID", id)
-		privateIP, err := fsp.client.Networking().GetPrivateIp(ctx, id)
+		privateIP, err := fsp.client.Networking(nil).GetPrivateIp(ctx, id)
 		if err != nil {
 			logger.With(zap.Error(err)).Error("Failed to retrieve IP address for mount target")
 			return nil, err
@@ -264,7 +264,7 @@ func (fsp *filesystemProvisioner) Delete(volume *v1.PersistentVolume) error {
 	)
 
 	logger.Info("Deleting export")
-	if err := fsp.client.FSS().DeleteExport(ctx, exportID); err != nil {
+	if err := fsp.client.FSS(nil).DeleteExport(ctx, exportID); err != nil {
 		if !client.IsNotFound(err) {
 			logger.With(zap.Error(err)).Error("Failed to delete export")
 			return err
@@ -273,7 +273,7 @@ func (fsp *filesystemProvisioner) Delete(volume *v1.PersistentVolume) error {
 	}
 
 	logger.Info("Deleting File System")
-	if err := fsp.client.FSS().DeleteFileSystem(ctx, filesystemID); err != nil {
+	if err := fsp.client.FSS(nil).DeleteFileSystem(ctx, filesystemID); err != nil {
 		if !client.IsNotFound(err) {
 			return err
 		}

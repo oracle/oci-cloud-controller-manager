@@ -611,7 +611,21 @@ var _ = Describe("ESIPP [Slow]", func() {
 				jig := sharedfw.NewServiceTestJig(cs, serviceName)
 				nodes := jig.GetNodes(sharedfw.MaxNodesForEndpointsTests)
 
-				svc := jig.CreateOnlyLocalLoadBalancerService(namespace, serviceName, loadBalancerCreateTimeout, true, test.CreationAnnotations, nil)
+				svc := jig.CreateOnlyLocalLoadBalancerService(namespace, serviceName, loadBalancerCreateTimeout, true, test.CreationAnnotations, func(s *v1.Service) {
+					if test.lbType == "lb" {
+						s.ObjectMeta.Annotations = map[string]string{
+							cloudprovider.ServiceAnnotationLoadBalancerInternal:     "true",
+							cloudprovider.ServiceAnnotationLoadBalancerShape:        "flexible",
+							cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMin: "10",
+							cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMax: "100",
+						}
+					}
+					if test.lbType == "nlb" {
+						s.ObjectMeta.Annotations = map[string]string{
+							cloudprovider.ServiceAnnotationNetworkLoadBalancerInternal: "true",
+						}
+					}
+				})
 				serviceLBNames = append(serviceLBNames, cloudprovider.GetLoadBalancerName(svc))
 				defer func() {
 					jig.ChangeServiceType(svc.Namespace, svc.Name, v1.ServiceTypeClusterIP, loadBalancerCreateTimeout)
@@ -1782,7 +1796,7 @@ var _ = Describe("LB Properties", func() {
 				sharedfw.ExpectNoError(err)
 				By("waiting upto 5m0s to verify whether LB has been created with public reservedIP")
 
-				reservedIPOCID, err := f.Client.Networking().GetPublicIpByIpAddress(ctx, reservedIP)
+				reservedIPOCID, err := f.Client.Networking(nil).GetPublicIpByIpAddress(ctx, reservedIP)
 				sharedfw.Logf("Loadbalancer reserved IP OCID is: %s  Expected reserved IP OCID: %s", *loadBalancer.IpAddresses[0].ReservedIp.Id, *reservedIPOCID.Id)
 				Expect(strings.Compare(*loadBalancer.IpAddresses[0].ReservedIp.Id, *reservedIPOCID.Id) == 0).To(BeTrue())
 

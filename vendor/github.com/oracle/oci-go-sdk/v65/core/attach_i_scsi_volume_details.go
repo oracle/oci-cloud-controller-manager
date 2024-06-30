@@ -25,11 +25,10 @@ import (
 // AttachIScsiVolumeDetails The representation of AttachIScsiVolumeDetails
 type AttachIScsiVolumeDetails struct {
 
-	// The OCID of the instance. For AttachVolume operation, this is a required field for the request,
-	// see AttachVolume.
+	// The OCID of the instance.
 	InstanceId *string `mandatory:"true" json:"instanceId"`
 
-	// The OCID of the volume. If CreateVolumeDetails is specified, this field must be omitted from the request.
+	// The OCID of the volume.
 	VolumeId *string `mandatory:"true" json:"volumeId"`
 
 	// The device name. To retrieve a list of devices for a given instance, see ListInstanceDevices.

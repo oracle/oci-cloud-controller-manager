@@ -30,9 +30,8 @@ type CreateExportDetails struct {
 	// Example: `/mediafiles`
 	Path *string `mandatory:"true" json:"path"`
 
-	// Export options for the new export. For exports of mount targets with
-	// IPv4 address, if client options are left unspecified, client options
-	// would default to:
+	// Export options for the new export. If left unspecified,
+	// defaults to:
 	//        [
 	//          {
 	//             "source" : "0.0.0.0/0",
@@ -45,9 +44,6 @@ type CreateExportDetails struct {
 	//             "allowedAuth": ["SYS"]
 	//           }
 	//        ]
-	//   For exports of mount targets with IPv6 address, if client options are
-	//   left unspecified, client options would be an empty array, i.e. export
-	//   would not be visible to any clients.
 	//   **Note:** Mount targets do not have Internet-routable IP
 	//   addresses.  Therefore they will not be reachable from the
 	//   Internet, even if an associated `ClientOptions` item has
@@ -57,9 +53,6 @@ type CreateExportDetails struct {
 	//   The export's `exportOptions` can be changed after creation
 	//   using the `UpdateExport` operation.
 	ExportOptions []ClientOptions `mandatory:"false" json:"exportOptions"`
-
-	// Locks associated with this resource.
-	Locks []ResourceLock `mandatory:"false" json:"locks"`
 
 	// Whether or not the export should use ID mapping for Unix groups rather than the group list provided within an NFS request's RPC header. When this flag is true the Unix UID from the RPC header is used to retrieve the list of secondary groups from a the ID mapping subsystem. The primary GID is always taken from the RPC header. If ID mapping is not configured, incorrectly configured, unavailable, or cannot be used to determine a list of secondary groups then an empty secondary group list is used for authorization. If the number of groups exceeds the limit of 256 groups, the list retrieved from LDAP is truncated to the first 256 groups read.
 	IsIdmapGroupsForSysAuth *bool `mandatory:"false" json:"isIdmapGroupsForSysAuth"`

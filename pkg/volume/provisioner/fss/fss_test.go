@@ -372,7 +372,7 @@ func (p *MockProvisionerClient) BlockStorage() client.BlockStorageInterface {
 }
 
 // Networking mocks client VirtualNetwork implementation.
-func (p *MockProvisionerClient) Networking() client.NetworkingInterface {
+func (p *MockProvisionerClient) Networking(ociClientConfig *client.OCIClientConfig) client.NetworkingInterface {
 	return &MockVirtualNetworkClient{}
 }
 
@@ -386,12 +386,12 @@ func (p *MockProvisionerClient) Compute() client.ComputeInterface {
 }
 
 // Identity mocks client Identity implementation
-func (p *MockProvisionerClient) Identity() client.IdentityInterface {
+func (p *MockProvisionerClient) Identity(ociClientConfig *client.OCIClientConfig) client.IdentityInterface {
 	return &MockIdentityClient{}
 }
 
 // FSS mocks client FileStorage implementation
-func (p *MockProvisionerClient) FSS() client.FileStorageInterface {
+func (p *MockProvisionerClient) FSS(ociClientConfig *client.OCIClientConfig) client.FileStorageInterface {
 	return &MockFileStorageClient{}
 }
 

@@ -38,7 +38,7 @@ import (
 	v111 "k8s.io/client-go/kubernetes/typed/events/v1"
 	v1beta19 "k8s.io/client-go/kubernetes/typed/events/v1beta1"
 	v1beta110 "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
-	v13 "k8s.io/client-go/kubernetes/typed/flowcontrol/v1"
+	alpha1 "k8s.io/client-go/kubernetes/typed/flowcontrol/v1alpha1"
 	v1beta111 "k8s.io/client-go/kubernetes/typed/flowcontrol/v1beta1"
 	v1beta22 "k8s.io/client-go/kubernetes/typed/flowcontrol/v1beta2"
 	v1beta31 "k8s.io/client-go/kubernetes/typed/flowcontrol/v1beta3"
@@ -65,6 +65,11 @@ import (
 
 type MockKubeClient struct {
 	CoreClient *MockCoreClient
+}
+
+func (m MockKubeClient) FlowcontrolV1alpha1() alpha1.FlowcontrolV1alpha1Interface {
+	//TODO implement me
+	panic("implement me")
 }
 
 type MockCoreClient v12.CoreV1Client
@@ -378,10 +383,6 @@ func (m MockKubeClient) AutoscalingV2beta2() v2beta21.AutoscalingV2beta2Interfac
 }
 
 func (m MockKubeClient) FlowcontrolV1beta3() v1beta31.FlowcontrolV1beta3Interface {
-	return nil
-}
-
-func (m MockKubeClient) FlowcontrolV1() v13.FlowcontrolV1Interface {
 	return nil
 }
 

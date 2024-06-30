@@ -39,19 +39,12 @@ type InstanceConfigurationLaunchInstanceDetails struct {
 	// as the instance that was used to create the instance configuration.
 	CompartmentId *string `mandatory:"false" json:"compartmentId"`
 
-	// The OCID of the cluster placement group of the instance.
-	ClusterPlacementGroupId *string `mandatory:"false" json:"clusterPlacementGroupId"`
-
 	CreateVnicDetails *InstanceConfigurationCreateVnicDetails `mandatory:"false" json:"createVnicDetails"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a
 	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
-
-	// Security Attributes for this resource. This is unique to ZPR, and helps identify which resources are allowed to be accessed by what permission controls.
-	// Example: `{"Oracle-DataSecurity-ZPR": {"MaxEgressCount": {"value":"42","mode":"audit"}}}`
-	SecurityAttributes map[string]map[string]interface{} `mandatory:"false" json:"securityAttributes"`
 
 	// A user-friendly name. Does not have to be unique, and it's changeable.
 	// Avoid entering confidential information.
@@ -211,10 +204,8 @@ func (m *InstanceConfigurationLaunchInstanceDetails) UnmarshalJSON(data []byte) 
 		AvailabilityDomain             *string                                                                  `json:"availabilityDomain"`
 		CapacityReservationId          *string                                                                  `json:"capacityReservationId"`
 		CompartmentId                  *string                                                                  `json:"compartmentId"`
-		ClusterPlacementGroupId        *string                                                                  `json:"clusterPlacementGroupId"`
 		CreateVnicDetails              *InstanceConfigurationCreateVnicDetails                                  `json:"createVnicDetails"`
 		DefinedTags                    map[string]map[string]interface{}                                        `json:"definedTags"`
-		SecurityAttributes             map[string]map[string]interface{}                                        `json:"securityAttributes"`
 		DisplayName                    *string                                                                  `json:"displayName"`
 		ExtendedMetadata               map[string]interface{}                                                   `json:"extendedMetadata"`
 		FreeformTags                   map[string]string                                                        `json:"freeformTags"`
@@ -247,13 +238,9 @@ func (m *InstanceConfigurationLaunchInstanceDetails) UnmarshalJSON(data []byte) 
 
 	m.CompartmentId = model.CompartmentId
 
-	m.ClusterPlacementGroupId = model.ClusterPlacementGroupId
-
 	m.CreateVnicDetails = model.CreateVnicDetails
 
 	m.DefinedTags = model.DefinedTags
-
-	m.SecurityAttributes = model.SecurityAttributes
 
 	m.DisplayName = model.DisplayName
 

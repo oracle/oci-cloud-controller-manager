@@ -227,10 +227,7 @@ func (client MonitoringClient) createAlarm(ctx context.Context, request common.O
 	return response, err
 }
 
-// CreateAlarmSuppression Creates a new alarm suppression at the specified level (alarm-wide or dimension-specific).
-// For more information, see
-// Adding an Alarm-wide Suppression (https://docs.cloud.oracle.com/iaas/Content/Monitoring/Tasks/add-alarm-suppression.htm) and
-// Adding a Dimension-Specific Alarm Suppression (https://docs.cloud.oracle.com/iaas/Content/Monitoring/Tasks/create-alarm-suppression.htm).
+// CreateAlarmSuppression Creates a dimension-specific suppression for an alarm.
 // For important limits information, see
 // Limits on Monitoring (https://docs.cloud.oracle.com/iaas/Content/Monitoring/Concepts/monitoringoverview.htm#limits).
 // This call is subject to a Monitoring limit that applies to the total number of requests across all alarm operations.
@@ -361,9 +358,7 @@ func (client MonitoringClient) deleteAlarm(ctx context.Context, request common.O
 	return response, err
 }
 
-// DeleteAlarmSuppression Deletes the specified alarm suppression. For more information, see
-// Removing an Alarm-wide Suppression (https://docs.cloud.oracle.com/iaas/Content/Monitoring/Tasks/remove-alarm-suppression.htm) and
-// Removing a Dimension-Specific Alarm Suppression (https://docs.cloud.oracle.com/iaas/Content/Monitoring/Tasks/delete-alarm-suppression.htm).
+// DeleteAlarmSuppression Deletes the specified alarm suppression.
 // For important limits information, see
 // Limits on Monitoring (https://docs.cloud.oracle.com/iaas/Content/Monitoring/Concepts/monitoringoverview.htm#limits).
 // This call is subject to a Monitoring limit that applies to the total number of requests across all alarm operations.
@@ -553,8 +548,7 @@ func (client MonitoringClient) getAlarmHistory(ctx context.Context, request comm
 	return response, err
 }
 
-// GetAlarmSuppression Gets the specified alarm suppression. For more information, see
-// Getting an Alarm-wide Suppression (https://docs.cloud.oracle.com/iaas/Content/Monitoring/Tasks/get-alarm-suppression.htm).
+// GetAlarmSuppression Gets the specified alarm suppression.
 // For important limits information, see
 // Limits on Monitoring (https://docs.cloud.oracle.com/iaas/Content/Monitoring/Concepts/monitoringoverview.htm#limits).
 // This call is subject to a Monitoring limit that applies to the total number of requests across all alarm operations.
@@ -616,8 +610,8 @@ func (client MonitoringClient) getAlarmSuppression(ctx context.Context, request 
 	return response, err
 }
 
-// ListAlarmSuppressions Lists alarm suppressions for the specified alarm. For more information, see
-// Listing Alarm Suppressions (https://docs.cloud.oracle.com/iaas/Content/Monitoring/Tasks/list-alarm-suppression.htm).
+// ListAlarmSuppressions Lists alarm suppressions for the specified alarm.
+// Only dimension-level suppressions are listed. Alarm-level suppressions are not listed.
 // For important limits information, see
 // Limits on Monitoring (https://docs.cloud.oracle.com/iaas/Content/Monitoring/Concepts/monitoringoverview.htm#limits).
 // This call is subject to a Monitoring limit that applies to the total number of requests across all alarm operations.
@@ -1083,8 +1077,7 @@ func (client MonitoringClient) retrieveDimensionStates(ctx context.Context, requ
 	return response, err
 }
 
-// SummarizeAlarmSuppressionHistory Returns history of suppressions for the specified alarm, including both dimension-specific and and alarm-wide suppressions. For more information, see
-// Getting Suppression History for an Alarm (https://docs.cloud.oracle.com/iaas/Content/Monitoring/Tasks/summarize-alarm-suppression-history.htm).
+// SummarizeAlarmSuppressionHistory Returns history of suppressions for the specified alarm, including both dimension-specific and and alarm-wide suppressions.
 // For important limits information, see
 // Limits on Monitoring (https://docs.cloud.oracle.com/iaas/Content/Monitoring/Concepts/monitoringoverview.htm#limits).
 // This call is subject to a Monitoring limit that applies to the total number of requests across all alarm operations.

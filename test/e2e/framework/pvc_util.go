@@ -1703,3 +1703,58 @@ func (j *PVCTestJig) GetVolumeNameFromPVC(pvcName string, ns string) string {
 	Logf("Found pvc %s bound to pv %s", pvcName, pvName)
 	return pvName
 }
+
+func (j *PVCTestJig) newServiceAccountTemplate(namespace, name string) *v1.ServiceAccount {
+	serviceAccount := &v1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      name,
+		},
+	}
+	return serviceAccount
+}
+
+// CreateServiceAccountOrFail creates a new Service Account based on the default SA template
+// in the namespace and with a name provided by the caller.
+// Callers can provide a function to tweak the Service object before it is created.
+func (j *PVCTestJig) CreateServiceAccountOrFail(namespace, name string) *v1.ServiceAccount {
+	sa := j.newServiceAccountTemplate(namespace, name)
+
+	result, err := j.KubeClient.CoreV1().ServiceAccounts(namespace).Get(context.Background(), name, metav1.GetOptions{})
+	if err == nil {
+		return result
+	}
+
+	result, err = j.KubeClient.CoreV1().ServiceAccounts(namespace).Create(context.Background(), sa, metav1.CreateOptions{})
+	if err != nil {
+		Failf("Failed to create Service Account %q: %v", sa.Name, err)
+	}
+	return result
+}
+
+func (j *PVCTestJig) newSecretTemplate(secretName, namespace, saName string) *v1.Secret {
+	secret := &v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: namespace,
+		},
+		Data: map[string][]byte{
+			"serviceAccount":          []byte(saName),
+			"serviceAccountNamespace": []byte(namespace),
+		},
+		Type: v1.SecretTypeOpaque,
+	}
+	return secret
+}
+
+func (j *PVCTestJig) CreateSecret(secretName, saName, saNamespace string) error {
+
+	secret := j.newSecretTemplate(secretName, saNamespace, saName)
+
+	_, err := j.KubeClient.CoreV1().Secrets(saNamespace).Create(context.Background(), secret, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create secret: %v", err)
+	}
+	fmt.Printf("Secret %s created in namespace %s\n", secretName, saNamespace)
+	return nil
+}

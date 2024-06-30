@@ -28,6 +28,9 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
 	fss "github.com/oracle/oci-go-sdk/v65/filestorage"
+	authv1 "k8s.io/api/authentication/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -53,6 +56,12 @@ var (
 	}
 )
 
+const (
+	serviceAccountTokenExpiry = 3600
+)
+
+var ServiceAccountTokenExpiry = int64(serviceAccountTokenExpiry)
+
 // StorageClassParameters holds configuration
 type StorageClassParameters struct {
 	// availabilityDomain where File System and Mount Target should exist
@@ -75,6 +84,36 @@ type StorageClassParameters struct {
 	scTags *config.TagConfig
 }
 
+type SecretParameters struct {
+	// service account namespace passed in the secret that can be used in gRPC req parameters
+	serviceAccountNamespace string
+	// service account passed in the secret that can be used in gRPC req parameters
+	serviceAccount string
+	// parent rpt url used for omk clusterNamespace resource principal exchange
+	parentRptURL string
+}
+
+func (d *FSSControllerDriver) getServiceAccountToken(context context.Context, saName string, saNamespace string) (*authv1.TokenRequest, error) {
+	d.logger.With("serviceAccount", saName).With("serviceAccountNamespace", saNamespace).
+		Info("Creating the service account token for service account.")
+	if saName == "" || saNamespace == "" {
+		return nil, status.Error(codes.InvalidArgument, "Failed to get service account token. Missing service account or namespaces in request.")
+	}
+	// validate service account exists
+	if _, err := d.serviceAccountLister.ServiceAccounts(saNamespace).Get(saName); err != nil {
+		d.logger.With(zap.Error(err)).Errorf("Error fetching service account %v in the namespace %v", saName, saNamespace)
+		return nil, status.Errorf(codes.Internal, "Error fetching service account %v in the namespace %v", saName, saNamespace)
+	}
+	tokenRequest := authv1.TokenRequest{Spec: authv1.TokenRequestSpec{ExpirationSeconds: &ServiceAccountTokenExpiry}}
+	saToken, err := d.KubeClient.CoreV1().ServiceAccounts(saNamespace).CreateToken(context, saName, &tokenRequest, metav1.CreateOptions{})
+
+	if err != nil {
+		d.logger.With(zap.Error(err)).Errorf("Error creating service account token for service account %v in the namespace %v", saName, saNamespace)
+		return nil, status.Errorf(codes.Internal, "Error creating service account token for service account %v in the namespace %v", saName, saNamespace)
+	}
+	return saToken, nil
+}
+
 func (d *FSSControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	startTime := time.Now()
 	var log = d.logger.With("volumeName", req.Name, "csiOperation", "create")
@@ -82,6 +121,8 @@ func (d *FSSControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateV
 	if req.Name == "" {
 		return nil, status.Error(codes.InvalidArgument, "CreateVolume Name must be provided")
 	}
+
+	log.Debug("Request being passed in CreateVolume gRPC ", req)
 
 	volumeCapabilities := req.GetVolumeCapabilities()
 
@@ -94,18 +135,47 @@ func (d *FSSControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateV
 	dimensionsMap := make(map[string]string)
 	dimensionsMap[metrics.ResourceOCIDDimension] = volumeName
 
+	var serviceAccountToken *authv1.TokenRequest
+
+	secretParameters := extractSecretParameters(log, req.GetSecrets())
+	if secretParameters.serviceAccount != "" || secretParameters.serviceAccountNamespace != "" {
+		serviceAccountTokenCreated, err := d.getServiceAccountToken(ctx, secretParameters.serviceAccount, secretParameters.serviceAccountNamespace)
+		if err != nil {
+			return nil, err
+		}
+		serviceAccountToken = serviceAccountTokenCreated
+	}
+
+	ociClientConfig := &client.OCIClientConfig{SaToken: serviceAccountToken, ParentRptURL: secretParameters.parentRptURL, TenancyId: d.config.Auth.TenancyID}
+
+	networkingClient := d.client.Networking(ociClientConfig)
+	if networkingClient == nil {
+		return nil, status.Error(codes.Internal, "Unable to create networking client")
+	}
+
+	identityClient := d.client.Identity(ociClientConfig)
+	if identityClient == nil {
+		return nil, status.Error(codes.Internal, "Unable to create identity client")
+	}
+
+	fssClient := d.client.FSS(ociClientConfig)
+	if fssClient == nil {
+		return nil, status.Error(codes.Internal, "Unable to create fss client")
+	}
+
 	if err := checkForSupportedVolumeCapabilities(volumeCapabilities); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "Requested Volume Capability not supported")
 	}
 
-	log, response, storageClassParameters, err, done := extractStorageClassParameters(ctx, d, log, dimensionsMap, volumeName, req.GetParameters(), startTime)
+	log, response, storageClassParameters, err, done := extractStorageClassParameters(ctx, d, log, dimensionsMap, volumeName, req.GetParameters(), startTime, identityClient)
 	if done {
 		dimensionsMap[metrics.ComponentDimension] = util.GetMetricDimensionForComponent(util.ErrValidation, util.CSIStorageType)
 		metrics.SendMetricData(d.metricPusher, metrics.FssAllProvision, time.Since(startTime).Seconds(), dimensionsMap)
 		return response, err
 	}
 
-	log, mountTargetOCID, mountTargetIp, exportSetId, response, err, done := d.getOrCreateMountTarget(ctx, *storageClassParameters, volumeName, log, dimensionsMap)
+	log, mountTargetOCID, mountTargetIp, exportSetId, response, err, done := d.getOrCreateMountTarget(ctx, *storageClassParameters, volumeName, log, dimensionsMap, fssClient, networkingClient)
+
 	if done {
 		dimensionsMap[metrics.ComponentDimension] = util.GetMetricDimensionForComponent(util.GetError(err), util.CSIStorageType)
 		metrics.SendMetricData(d.metricPusher, metrics.FssAllProvision, time.Since(startTime).Seconds(), dimensionsMap)
@@ -127,14 +197,14 @@ func (d *FSSControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateV
 	freeformTags["mountTargetOCID"] = mountTargetOCID
 	freeformTags["exportSetId"] = exportSetId
 
-	log, filesystemOCID, response, err, done := d.getOrCreateFileSystem(ctx, *storageClassParameters, volumeName, log, dimensionsMap)
+	log, filesystemOCID, response, err, done := d.getOrCreateFileSystem(ctx, *storageClassParameters, volumeName, log, dimensionsMap, fssClient)
 	if done {
 		dimensionsMap[metrics.ComponentDimension] = util.GetMetricDimensionForComponent(util.GetError(err), util.CSIStorageType)
 		metrics.SendMetricData(d.metricPusher, metrics.FssAllProvision, time.Since(startTime).Seconds(), dimensionsMap)
 		return response, err
 	}
 
-	log, response, err, done = d.getOrCreateExport(ctx, err, *storageClassParameters, filesystemOCID, exportSetId, log, dimensionsMap)
+	log, response, err, done = d.getOrCreateExport(ctx, err, *storageClassParameters, filesystemOCID, exportSetId, log, dimensionsMap, fssClient)
 	if done {
 		dimensionsMap[metrics.ComponentDimension] = util.GetMetricDimensionForComponent(util.GetError(err), util.CSIStorageType)
 		metrics.SendMetricData(d.metricPusher, metrics.FssAllProvision, time.Since(startTime).Seconds(), dimensionsMap)
@@ -159,6 +229,21 @@ func (d *FSSControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateV
 	}, nil
 }
 
+func extractSecretParameters(log *zap.SugaredLogger, parameters map[string]string) *SecretParameters {
+
+	secretParameters := &SecretParameters{
+		serviceAccount:          parameters["serviceAccount"],
+		serviceAccountNamespace: parameters["serviceAccountNamespace"],
+		parentRptURL:            parameters["parentRptURL"],
+	}
+
+	log.With("serviceAccount", secretParameters.serviceAccount).With("serviceAccountNamespace", secretParameters.serviceAccountNamespace).
+		With("parentRptURL", secretParameters.parentRptURL).Info("Extracted secrets passed.")
+
+	return secretParameters
+
+}
+
 func checkForSupportedVolumeCapabilities(volumeCaps []*csi.VolumeCapability) error {
 	hasSupport := func(cap *csi.VolumeCapability) error {
 		if blk := cap.GetBlock(); blk != nil {
@@ -180,11 +265,11 @@ func checkForSupportedVolumeCapabilities(volumeCaps []*csi.VolumeCapability) err
 	return nil
 }
 
-func (d *FSSControllerDriver) getOrCreateFileSystem(ctx context.Context, storageClassParameters StorageClassParameters, volumeName string, log *zap.SugaredLogger, dimensionsMap map[string]string) (*zap.SugaredLogger, string, *csi.CreateVolumeResponse, error, bool) {
+func (d *FSSControllerDriver) getOrCreateFileSystem(ctx context.Context, storageClassParameters StorageClassParameters, volumeName string, log *zap.SugaredLogger, dimensionsMap map[string]string, fssClient client.FileStorageInterface) (*zap.SugaredLogger, string, *csi.CreateVolumeResponse, error, bool) {
 	startTimeFileSystem := time.Now()
 	//make sure this method is idempotent by checking existence of volume with same name.
 	log.Info("searching for existing filesystem")
-	foundConflictingFs, fileSystemSummaries, err := d.client.FSS().GetFileSystemSummaryByDisplayName(ctx, storageClassParameters.compartmentOcid, storageClassParameters.availabilityDomain, volumeName)
+	foundConflictingFs, fileSystemSummaries, err := fssClient.GetFileSystemSummaryByDisplayName(ctx, storageClassParameters.compartmentOcid, storageClassParameters.availabilityDomain, volumeName)
 	if err != nil && !client.IsNotFound(err) {
 		message := ""
 		if foundConflictingFs {
@@ -220,7 +305,7 @@ func (d *FSSControllerDriver) getOrCreateFileSystem(ctx context.Context, storage
 
 	} else {
 		// Creating new file system
-		provisionedFileSystem, err = provisionFileSystem(ctx, log, d.client, volumeName, storageClassParameters)
+		provisionedFileSystem, err = provisionFileSystem(ctx, log, d.client, volumeName, storageClassParameters, fssClient)
 		if err != nil {
 			log.With("service", "fss", "verb", "create", "resource", "fileSystem", "statusCode", util.GetHttpStatusCode(err)).
 				With(zap.Error(err)).Error("New File System creation failed")
@@ -235,7 +320,7 @@ func (d *FSSControllerDriver) getOrCreateFileSystem(ctx context.Context, storage
 		filesystemOCID = *provisionedFileSystem.Id
 	}
 	log = log.With("fssID", filesystemOCID)
-	_, err = d.client.FSS().AwaitFileSystemActive(ctx, log, *provisionedFileSystem.Id)
+	_, err = fssClient.AwaitFileSystemActive(ctx, log, *provisionedFileSystem.Id)
 	if err != nil {
 		log.With("service", "fss", "verb", "get", "resource", "fileSystem", "statusCode", util.GetHttpStatusCode(err)).
 			With(zap.Error(err)).Error("Await File System failed with time out")
@@ -253,7 +338,7 @@ func (d *FSSControllerDriver) getOrCreateFileSystem(ctx context.Context, storage
 	return log, filesystemOCID, nil, nil, false
 }
 
-func (d *FSSControllerDriver) getOrCreateMountTarget(ctx context.Context, storageClassParameters StorageClassParameters, volumeName string, log *zap.SugaredLogger, dimensionsMap map[string]string) (*zap.SugaredLogger, string, string, string, *csi.CreateVolumeResponse, error, bool) {
+func (d *FSSControllerDriver) getOrCreateMountTarget(ctx context.Context, storageClassParameters StorageClassParameters, volumeName string, log *zap.SugaredLogger, dimensionsMap map[string]string, fssClient client.FileStorageInterface, networkingClient client.NetworkingInterface) (*zap.SugaredLogger, string, string, string, *csi.CreateVolumeResponse, error, bool) {
 	startTimeMountTarget := time.Now()
 	// Mount Target creation
 	provisionedMountTarget := &fss.MountTarget{}
@@ -267,7 +352,7 @@ func (d *FSSControllerDriver) getOrCreateMountTarget(ctx context.Context, storag
 	} else {
 		log.Info("searching for existing Mount Target")
 		//make sure this method is idempotent by checking existence of volume with same name.
-		foundConflictingMt, mountTargets, err := d.client.FSS().GetMountTargetSummaryByDisplayName(ctx, storageClassParameters.compartmentOcid, storageClassParameters.availabilityDomain, volumeName)
+		foundConflictingMt, mountTargets, err := fssClient.GetMountTargetSummaryByDisplayName(ctx, storageClassParameters.compartmentOcid, storageClassParameters.availabilityDomain, volumeName)
 		if err != nil && !client.IsNotFound(err) {
 			message := ""
 			if foundConflictingMt {
@@ -308,7 +393,7 @@ func (d *FSSControllerDriver) getOrCreateMountTarget(ctx context.Context, storag
 			// Validating mount target subnet with cluster ip family when its present
 			if csi_util.IsValidIpFamilyPresentInClusterIpFamily(d.clusterIpFamily) {
 				log = log.With("mountTargetSubnet", storageClassParameters.mountTargetSubnetOcid)
-				mtSubnetValidationErr := d.validateMountTargetSubnetWithClusterIpFamily(ctx, storageClassParameters.mountTargetSubnetOcid, log)
+				mtSubnetValidationErr := d.validateMountTargetSubnetWithClusterIpFamily(ctx, storageClassParameters.mountTargetSubnetOcid, log, networkingClient)
 				if mtSubnetValidationErr != nil {
 					log.With(zap.Error(mtSubnetValidationErr)).Error("Mount target subnet validation failed.")
 					csiMetricDimension := util.GetMetricDimensionForComponent(util.GetError(mtSubnetValidationErr), util.CSIStorageType)
@@ -319,7 +404,7 @@ func (d *FSSControllerDriver) getOrCreateMountTarget(ctx context.Context, storag
 			}
 
 			// Creating new mount target
-			provisionedMountTarget, err = provisionMountTarget(ctx, log, d.client, volumeName, storageClassParameters)
+			provisionedMountTarget, err = provisionMountTarget(ctx, log, d.client, volumeName, storageClassParameters, fssClient)
 			if err != nil {
 				log.With("service", "fss", "verb", "create", "resource", "mountTarget", "statusCode", util.GetHttpStatusCode(err)).
 					With(zap.Error(err)).Error("New Mount Target creation failed")
@@ -335,7 +420,7 @@ func (d *FSSControllerDriver) getOrCreateMountTarget(ctx context.Context, storag
 		mountTargetOCID = *provisionedMountTarget.Id
 	}
 	log = log.With("mountTargetID", mountTargetOCID)
-	activeMountTarget, err := d.client.FSS().AwaitMountTargetActive(ctx, log, *provisionedMountTarget.Id)
+	activeMountTarget, err := fssClient.AwaitMountTargetActive(ctx, log, *provisionedMountTarget.Id)
 
 	if err != nil {
 		log.With("service", "fss", "verb", "get", "resource", "mountTarget", "statusCode", util.GetHttpStatusCode(err)).
@@ -381,7 +466,7 @@ func (d *FSSControllerDriver) getOrCreateMountTarget(ctx context.Context, storag
 	//	// Ipv6 Mount Target
 	//	mountTargetIpId = activeMountTarget.MountTargetIpv6Ids[0]
 	//	log.With("mountTargetIpId", mountTargetIpId).Infof("Getting Ipv6 IP of mount target")
-	//	if ipv6IpObject, err := d.client.Networking().GetIpv6(ctx, mountTargetIpId); err == nil {
+	//	if ipv6IpObject, err := networkingClient.GetIpv6(ctx, mountTargetIpId); err == nil {
 	//		mountTargetIp = *ipv6IpObject.IpAddress
 	//	}
 	//} else {
@@ -389,7 +474,7 @@ func (d *FSSControllerDriver) getOrCreateMountTarget(ctx context.Context, storag
 	mountTargetIpId = activeMountTarget.PrivateIpIds[0]
 	ipType = "privateIp"
 	log.With("mountTargetIpId", mountTargetIpId).Infof("Getting private IP of mount target")
-	if privateIpObject, err := d.client.Networking().GetPrivateIp(ctx, mountTargetIpId); err == nil {
+	if privateIpObject, err := networkingClient.GetPrivateIp(ctx, mountTargetIpId); err == nil {
 		mountTargetIp = *privateIpObject.IpAddress
 	}
 	//}
@@ -426,9 +511,9 @@ func (d *FSSControllerDriver) getOrCreateMountTarget(ctx context.Context, storag
 	return log, mountTargetOCID, mountTargetIp, exportSetId, nil, nil, false
 }
 
-func (d *FSSControllerDriver) validateMountTargetSubnetWithClusterIpFamily(ctx context.Context, mountTargetSubnetId string, log *zap.SugaredLogger) error {
+func (d *FSSControllerDriver) validateMountTargetSubnetWithClusterIpFamily(ctx context.Context, mountTargetSubnetId string, log *zap.SugaredLogger, networkingClient client.NetworkingInterface) error {
 
-	mountTargetSubnet, err := d.client.Networking().GetSubnet(ctx, mountTargetSubnetId)
+	mountTargetSubnet, err := networkingClient.GetSubnet(ctx, mountTargetSubnetId)
 
 	if err != nil {
 		log.With("service", "vcn", "verb", "get", "resource", "subnet", "statusCode", util.GetHttpStatusCode(err)).
@@ -458,10 +543,10 @@ func (d *FSSControllerDriver) validateMountTargetWithClusterIpFamily(mtIpv6Ids [
 	return mtSubnetValidationErr
 }
 
-func (d *FSSControllerDriver) getOrCreateExport(ctx context.Context, err error, storageClassParameters StorageClassParameters, filesystemOCID string, exportSetId string, log *zap.SugaredLogger, dimensionsMap map[string]string) (*zap.SugaredLogger, *csi.CreateVolumeResponse, error, bool) {
+func (d *FSSControllerDriver) getOrCreateExport(ctx context.Context, err error, storageClassParameters StorageClassParameters, filesystemOCID string, exportSetId string, log *zap.SugaredLogger, dimensionsMap map[string]string, fssClient client.FileStorageInterface) (*zap.SugaredLogger, *csi.CreateVolumeResponse, error, bool) {
 	startTimeExport := time.Now()
 	log.Info("searching for existing export")
-	exportSummary, err := d.client.FSS().FindExport(ctx, filesystemOCID, storageClassParameters.exportPath, exportSetId)
+	exportSummary, err := fssClient.FindExport(ctx, filesystemOCID, storageClassParameters.exportPath, exportSetId)
 
 	if err != nil && !client.IsNotFound(err) {
 		message := ""
@@ -482,7 +567,7 @@ func (d *FSSControllerDriver) getOrCreateExport(ctx context.Context, err error, 
 		provisionedExport = &fss.Export{Id: exportSummary.Id}
 	} else {
 		// Creating new export
-		provisionedExport, err = provisionExport(ctx, log, d.client, filesystemOCID, exportSetId, storageClassParameters)
+		provisionedExport, err = provisionExport(ctx, log, d.client, filesystemOCID, exportSetId, storageClassParameters, fssClient)
 		if err != nil {
 			log.With(zap.Error(err)).Error("New Export creation failed")
 			csiMetricDimension := util.GetMetricDimensionForComponent(util.GetError(err), util.CSIStorageType)
@@ -497,7 +582,7 @@ func (d *FSSControllerDriver) getOrCreateExport(ctx context.Context, err error, 
 		exportId = *provisionedExport.Id
 	}
 	log = log.With("exportId", exportId)
-	_, err = d.client.FSS().AwaitExportActive(ctx, log, exportId)
+	_, err = fssClient.AwaitExportActive(ctx, log, exportId)
 	if err != nil {
 		log.With(zap.Error(err)).Error("await export failed with time out")
 		csiMetricDimension := util.GetMetricDimensionForComponent(util.GetError(err), util.CSIStorageType)
@@ -514,7 +599,7 @@ func (d *FSSControllerDriver) getOrCreateExport(ctx context.Context, err error, 
 	return log, nil, nil, false
 }
 
-func extractStorageClassParameters(ctx context.Context, d *FSSControllerDriver, log *zap.SugaredLogger, dimensionsMap map[string]string, volumeName string, parameters map[string]string, startTime time.Time) (*zap.SugaredLogger, *csi.CreateVolumeResponse, *StorageClassParameters, error, bool) {
+func extractStorageClassParameters(ctx context.Context, d *FSSControllerDriver, log *zap.SugaredLogger, dimensionsMap map[string]string, volumeName string, parameters map[string]string, startTime time.Time, identityClient client.IdentityInterface) (*zap.SugaredLogger, *csi.CreateVolumeResponse, *StorageClassParameters, error, bool) {
 
 	storageClassParameters := &StorageClassParameters{
 		encryptInTransit: "false",
@@ -537,7 +622,7 @@ func extractStorageClassParameters(ctx context.Context, d *FSSControllerDriver, 
 		return log, nil, nil, status.Errorf(codes.InvalidArgument, "AvailabilityDomain not provided in storage class"), true
 	}
 
-	ad, err := d.client.Identity().GetAvailabilityDomainByName(ctx, compartmentId, availabilityDomain)
+	ad, err := identityClient.GetAvailabilityDomainByName(ctx, compartmentId, availabilityDomain)
 	if err != nil {
 		log.With(zap.Error(err)).Errorf("invalid available domain: %s or compartmentID: %s", availabilityDomain, compartmentId)
 		dimensionsMap[metrics.ComponentDimension] = util.GetMetricDimensionForComponent(util.GetError(err), util.CSIStorageType)
@@ -652,7 +737,7 @@ func extractStorageClassParameters(ctx context.Context, d *FSSControllerDriver, 
 	return log, nil, storageClassParameters, nil, false
 }
 
-func provisionFileSystem(ctx context.Context, log *zap.SugaredLogger, c client.Interface, volumeName string, storageClassParameters StorageClassParameters) (*fss.FileSystem, error) {
+func provisionFileSystem(ctx context.Context, log *zap.SugaredLogger, c client.Interface, volumeName string, storageClassParameters StorageClassParameters, fssClient client.FileStorageInterface) (*fss.FileSystem, error) {
 	log.Info("Creating new File System")
 	createFileSystemDetails := fss.CreateFileSystemDetails{
 		AvailabilityDomain: &storageClassParameters.availabilityDomain,
@@ -664,10 +749,10 @@ func provisionFileSystem(ctx context.Context, log *zap.SugaredLogger, c client.I
 	if storageClassParameters.kmsKey != "" {
 		createFileSystemDetails.KmsKeyId = &storageClassParameters.kmsKey
 	}
-	return c.FSS().CreateFileSystem(ctx, createFileSystemDetails)
+	return fssClient.CreateFileSystem(ctx, createFileSystemDetails)
 }
 
-func provisionMountTarget(ctx context.Context, log *zap.SugaredLogger, c client.Interface, volumeName string, storageClassParameters StorageClassParameters) (*fss.MountTarget, error) {
+func provisionMountTarget(ctx context.Context, log *zap.SugaredLogger, c client.Interface, volumeName string, storageClassParameters StorageClassParameters, fssClient client.FileStorageInterface) (*fss.MountTarget, error) {
 	log.Info("Creating new Mount Target")
 	createMountTargetDetails := fss.CreateMountTargetDetails{
 		AvailabilityDomain: &storageClassParameters.availabilityDomain,
@@ -677,10 +762,10 @@ func provisionMountTarget(ctx context.Context, log *zap.SugaredLogger, c client.
 		FreeformTags:       storageClassParameters.scTags.FreeformTags,
 		DefinedTags:        storageClassParameters.scTags.DefinedTags,
 	}
-	return c.FSS().CreateMountTarget(ctx, createMountTargetDetails)
+	return fssClient.CreateMountTarget(ctx, createMountTargetDetails)
 }
 
-func provisionExport(ctx context.Context, log *zap.SugaredLogger, c client.Interface, filesystemOCID string, exportSetId string, storageClassParameters StorageClassParameters) (*fss.Export, error) {
+func provisionExport(ctx context.Context, log *zap.SugaredLogger, c client.Interface, filesystemOCID string, exportSetId string, storageClassParameters StorageClassParameters, fssClient client.FileStorageInterface) (*fss.Export, error) {
 	log.Info("Creating new Export")
 	createExportDetails := fss.CreateExportDetails{
 		ExportSetId:  &exportSetId,
@@ -691,17 +776,38 @@ func provisionExport(ctx context.Context, log *zap.SugaredLogger, c client.Inter
 	if storageClassParameters.exportOptions != nil {
 		createExportDetails.ExportOptions = storageClassParameters.exportOptions
 	}
-	return c.FSS().CreateExport(ctx, createExportDetails)
+	return fssClient.CreateExport(ctx, createExportDetails)
 }
 
 func (d *FSSControllerDriver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	startTime := time.Now()
 	volumeId := req.GetVolumeId()
 	log := d.logger.With("volumeID", volumeId, "csiOperation", "delete")
+	log.Debug("Request being passed in DeleteVolume gRPC ", req)
 	dimensionsMap := make(map[string]string)
 	dimensionsMap[metrics.ResourceOCIDDimension] = req.VolumeId
 	volumeHandler := csi_util.ValidateFssId(volumeId)
 	filesystemOcid, mountTargetIP, exportPath := volumeHandler.FilesystemOcid, volumeHandler.MountTargetIPAddress, volumeHandler.FsExportPath
+
+	var serviceAccountToken *authv1.TokenRequest
+
+	secretParameters := extractSecretParameters(log, req.GetSecrets())
+	if secretParameters.serviceAccount != "" || secretParameters.serviceAccountNamespace != "" {
+		serviceAccountTokenGenerated, err := d.getServiceAccountToken(ctx, secretParameters.serviceAccount, secretParameters.serviceAccountNamespace)
+		if err != nil {
+			return nil, err
+		}
+		serviceAccountToken = serviceAccountTokenGenerated
+	}
+
+	ociClientConfig := &client.OCIClientConfig{SaToken: serviceAccountToken, ParentRptURL: secretParameters.parentRptURL, TenancyId: d.config.Auth.TenancyID}
+
+	fssClient := d.client.FSS(ociClientConfig)
+
+	if fssClient == nil {
+		return nil, status.Error(codes.Internal, "Unable to create fss client")
+	}
+
 	if filesystemOcid == "" || mountTargetIP == "" || exportPath == "" {
 		log.Error("Unable to parse Volume Id")
 		csiMetricDimension := util.GetMetricDimensionForComponent(util.ErrValidation, util.CSIStorageType)
@@ -713,7 +819,7 @@ func (d *FSSControllerDriver) DeleteVolume(ctx context.Context, req *csi.DeleteV
 	log = log.With("fssID", filesystemOcid).With("mountTargetIP", mountTargetIP).With("exportPath", exportPath)
 
 	log.Info("Getting file system to be deleted")
-	fileSystem, err := d.client.FSS().GetFileSystem(ctx, filesystemOcid)
+	fileSystem, err := fssClient.GetFileSystem(ctx, filesystemOcid)
 	if err != nil {
 		if !client.IsNotFound(err) {
 			log.With("service", "fss", "verb", "get", "resource", "fileSystem", "statusCode", util.GetHttpStatusCode(err)).
@@ -756,7 +862,7 @@ func (d *FSSControllerDriver) DeleteVolume(ctx context.Context, req *csi.DeleteV
 		log = log.With("mountTargetOCID", mountTargetOCID)
 		log.Info("filesystem tagged with mount target ocid, deleting mount target")
 		// first delete Mount Target
-		err = d.client.FSS().DeleteMountTarget(ctx, mountTargetOCID)
+		err = fssClient.DeleteMountTarget(ctx, mountTargetOCID)
 		if err != nil {
 			if !client.IsNotFound(err) {
 				log.With("service", "fss", "verb", "delete", "resource", "mountTarget", "statusCode", util.GetHttpStatusCode(err)).
@@ -780,7 +886,7 @@ func (d *FSSControllerDriver) DeleteVolume(ctx context.Context, req *csi.DeleteV
 	if exportSetId != "" {
 		startTimeExport := time.Now()
 		log.Infof("searching export with tagged exportSetId %s", exportSetId)
-		exportSummary, err := d.client.FSS().FindExport(ctx, filesystemOcid, exportPath, exportSetId)
+		exportSummary, err := fssClient.FindExport(ctx, filesystemOcid, exportPath, exportSetId)
 		if err != nil {
 			if !client.IsNotFound(err) {
 				if exportSummary != nil {
@@ -798,7 +904,7 @@ func (d *FSSControllerDriver) DeleteVolume(ctx context.Context, req *csi.DeleteV
 			}
 		} else {
 			log.Infof("deleting export with exportId %s", *exportSummary.Id)
-			err = d.client.FSS().DeleteExport(ctx, *exportSummary.Id)
+			err = fssClient.DeleteExport(ctx, *exportSummary.Id)
 			if err != nil {
 				log.With("service", "fss", "verb", "delete", "resource", "export", "statusCode", util.GetHttpStatusCode(err)).
 					With(zap.Error(err)).Error("failed to delete export.")
@@ -817,7 +923,7 @@ func (d *FSSControllerDriver) DeleteVolume(ctx context.Context, req *csi.DeleteV
 	startTimeFileSystem := time.Now()
 	log.Info("deleting file system")
 	// last delete File System
-	err = d.client.FSS().DeleteFileSystem(ctx, filesystemOcid)
+	err = fssClient.DeleteFileSystem(ctx, filesystemOcid)
 	if err != nil {
 		if !client.IsNotFound(err) {
 			log.With("service", "fss", "verb", "delete", "resource", "fileSystem", "statusCode", util.GetHttpStatusCode(err)).
@@ -877,6 +983,8 @@ func (d *FSSControllerDriver) ValidateVolumeCapabilities(ctx context.Context, re
 
 	log := d.logger.With("volumeID", volumeId)
 
+	log.Debug("Request being passed in ValidateVolumeCapabilities gRPC ", req)
+
 	if req.VolumeCapabilities == nil {
 		log.Error("Volume Capabilities must be provided")
 		return nil, status.Error(codes.InvalidArgument, "Volume Capabilities must be provided")
@@ -884,6 +992,29 @@ func (d *FSSControllerDriver) ValidateVolumeCapabilities(ctx context.Context, re
 
 	volumeHandler := csi_util.ValidateFssId(volumeId)
 	filesystemOcid, mountTargetIP, exportPath := volumeHandler.FilesystemOcid, volumeHandler.MountTargetIPAddress, volumeHandler.FsExportPath
+
+	var serviceAccountToken *authv1.TokenRequest
+
+	secretParameters := extractSecretParameters(log, req.GetSecrets())
+	if secretParameters.serviceAccount != "" || secretParameters.serviceAccountNamespace != "" {
+		serviceAccountTokenGenerated, err := d.getServiceAccountToken(ctx, secretParameters.serviceAccount, secretParameters.serviceAccountNamespace)
+		if err != nil {
+			return nil, err
+		}
+		serviceAccountToken = serviceAccountTokenGenerated
+	}
+
+	ociClientConfig := &client.OCIClientConfig{SaToken: serviceAccountToken, ParentRptURL: secretParameters.parentRptURL, TenancyId: d.config.Auth.TenancyID}
+
+	networkingClient := d.client.Networking(ociClientConfig)
+	if networkingClient == nil {
+		return nil, status.Error(codes.Internal, "Unable to create networking client")
+	}
+
+	fssClient := d.client.FSS(ociClientConfig)
+	if fssClient == nil {
+		return nil, status.Error(codes.Internal, "Unable to create fss client")
+	}
 
 	if filesystemOcid == "" || mountTargetIP == "" || exportPath == "" {
 		log.Info("Unable to parse Volume Id")
@@ -895,7 +1026,7 @@ func (d *FSSControllerDriver) ValidateVolumeCapabilities(ctx context.Context, re
 	defer cancel()
 
 	log.Info("Fetching filesystem")
-	fileSystem, err := d.client.FSS().GetFileSystem(ctx, filesystemOcid)
+	fileSystem, err := fssClient.GetFileSystem(ctx, filesystemOcid)
 	if err != nil {
 		log.With("service", "fss", "verb", "get", "resource", "fileSystem", "statusCode", util.GetHttpStatusCode(err)).
 			With(zap.Error(err)).Error("File system not found.")
@@ -923,7 +1054,7 @@ func (d *FSSControllerDriver) ValidateVolumeCapabilities(ctx context.Context, re
 	if mountTargetOCID != "" {
 		log = log.With("mountTargetOCID", mountTargetOCID)
 		log.Info("filesystem tagged with mount target ocid, getting mount target")
-		mountTarget, err = d.client.FSS().GetMountTarget(ctx, mountTargetOCID)
+		mountTarget, err = fssClient.GetMountTarget(ctx, mountTargetOCID)
 		if err != nil {
 			if !client.IsNotFound(err) {
 				log.With("service", "fss", "verb", "get", "resource", "mountTarget", "statusCode", util.GetHttpStatusCode(err)).
@@ -948,7 +1079,7 @@ func (d *FSSControllerDriver) ValidateVolumeCapabilities(ctx context.Context, re
 	//	// Ipv6 Mount Target
 	//	mountTargetIpId := mountTarget.MountTargetIpv6Ids[0]
 	//	log = log.With("mountTargetIpId", mountTargetIpId)
-	//	ipv6IpObject, err := d.client.Networking().GetIpv6(ctx, mountTargetIpId)
+	//	ipv6IpObject, err := networkingClient.GetIpv6(ctx, mountTargetIpId)
 	//	if err != nil {
 	//		log.With("service", "vcn", "verb", "get", "resource", "ipv6", "statusCode", util.GetHttpStatusCode(err)).
 	//			With(zap.Error(err)).Errorf("Failed to fetch Mount Target Ipv6 IP from IP ID: %s", mountTargetIpId)
@@ -958,7 +1089,7 @@ func (d *FSSControllerDriver) ValidateVolumeCapabilities(ctx context.Context, re
 	//} else {
 	// Ipv4 Mount Target
 	mountTargetIpId := mountTarget.PrivateIpIds[0]
-	privateIpObject, err := d.client.Networking().GetPrivateIp(ctx, mountTargetIpId)
+	privateIpObject, err := networkingClient.GetPrivateIp(ctx, mountTargetIpId)
 	if err != nil {
 		log.With("service", "vcn", "verb", "get", "resource", "privateIp", "statusCode", util.GetHttpStatusCode(err)).
 			With(zap.Error(err)).Errorf("Failed to fetch Mount Target Private IP from IP ID: %s", mountTargetIpId)
@@ -976,7 +1107,7 @@ func (d *FSSControllerDriver) ValidateVolumeCapabilities(ctx context.Context, re
 	exportSummary := &fss.ExportSummary{}
 	if exportSetId != "" {
 		log.Infof("searching export with tagged exportSetId %s", exportSetId)
-		exportSummary, err = d.client.FSS().FindExport(ctx, filesystemOcid, exportPath, exportSetId)
+		exportSummary, err = fssClient.FindExport(ctx, filesystemOcid, exportPath, exportSetId)
 		if err != nil {
 			log.With("service", "fss", "verb", "get", "resource", "export", "statusCode", util.GetHttpStatusCode(err)).
 				With(zap.Error(err)).Error("export not found.")

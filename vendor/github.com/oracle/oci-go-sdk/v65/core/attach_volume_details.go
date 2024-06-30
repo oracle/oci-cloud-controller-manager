@@ -25,11 +25,10 @@ import (
 // AttachVolumeDetails The representation of AttachVolumeDetails
 type AttachVolumeDetails interface {
 
-	// The OCID of the instance. For AttachVolume operation, this is a required field for the request,
-	// see AttachVolume.
+	// The OCID of the instance.
 	GetInstanceId() *string
 
-	// The OCID of the volume. If CreateVolumeDetails is specified, this field must be omitted from the request.
+	// The OCID of the volume.
 	GetVolumeId() *string
 
 	// The device name. To retrieve a list of devices for a given instance, see ListInstanceDevices.
