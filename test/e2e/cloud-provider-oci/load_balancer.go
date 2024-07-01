@@ -16,9 +16,10 @@ package e2e
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"github.com/oracle/oci-go-sdk/v65/core"
 	"net"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -26,6 +27,8 @@ import (
 	. "github.com/onsi/gomega"
 	cloudprovider "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci"
 	sharedfw "github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
+	"github.com/oracle/oci-go-sdk/v65/containerengine"
+	"github.com/oracle/oci-go-sdk/v65/core"
 
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
@@ -56,7 +59,7 @@ var _ = Describe("Service [Slow]", func() {
 			},
 		},
 	}
-	Context("[cloudprovider][ccm][lb][SL]", func() {
+	Context("[cloudprovider][ccm][lb][SL][system-tags]", func() {
 		It("should be possible to create and mutate a Service type:LoadBalancer (change nodeport) [Canary]", func() {
 			for _, test := range basicTestArray {
 				By("Running test for: " + test.lbType)
@@ -95,6 +98,32 @@ var _ = Describe("Service [Slow]", func() {
 				// Wait for the load balancer to be created asynchronously
 				tcpService = jig.WaitForLoadBalancerOrFail(ns, tcpService.Name, loadBalancerCreateTimeout)
 				jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
+				By("validating system tags on the loadbalancer")
+				lbName := cloudprovider.GetLoadBalancerName(tcpService)
+				sharedfw.Logf("LB Name is %s", lbName)
+				ctx := context.TODO()
+				compartmentId := ""
+				if setupF.Compartment1 != "" {
+					compartmentId = setupF.Compartment1
+				} else if f.CloudProviderConfig.CompartmentID != "" {
+					compartmentId = f.CloudProviderConfig.CompartmentID
+				} else if f.CloudProviderConfig.Auth.CompartmentID != "" {
+					compartmentId = f.CloudProviderConfig.Auth.CompartmentID
+				} else {
+					sharedfw.Failf("Compartment Id undefined.")
+				}
+				lbType := test.lbType
+				if strings.HasSuffix(test.lbType, "-wris") {
+					lbType = strings.TrimSuffix(test.lbType, "-wris")
+				}
+				loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), lbType, "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
+				sharedfw.ExpectNoError(err)
+				sharedfw.Logf("Loadbalancer details %v:", loadBalancer)
+				sharedfw.Logf("cluster ocid from setup is %s", setupF.ClusterOcid)
+				if setupF.AddOkeSystemTags && !sharedfw.HasOkeSystemTags(loadBalancer.SystemTags) {
+					sharedfw.Failf("Loadbalancer is expected to have the system tags")
+				}
 
 				tcpNodePort := int(tcpService.Spec.Ports[0].NodePort)
 				sharedfw.Logf("TCP node port: %d", tcpNodePort)
@@ -1147,23 +1176,11 @@ var _ = Describe("LB Properties", func() {
 						"10",
 						"100",
 					},
-				},
-			},
-			{
-				"Create and update flexible LB",
-				"flexible",
-				[]struct {
-					shape   string
-					flexMin string
-					flexMax string
-				}{
 					{
 						"flexible",
 						"50",
 						"150",
 					},
-					// Note: We can't go back to fixed shape after converting to flexible shape.
-					// Use Min and Max values to be the same value to get fixed shape LB
 				},
 			},
 		}
@@ -1356,8 +1373,10 @@ var _ = Describe("LB Properties", func() {
 			{
 				"lb",
 				map[string]string{
-					cloudprovider.ServiceAnnotationLoadBalancerInternal: "true",
-					cloudprovider.ServiceAnnotationLoadBalancerShape:    "10Mbps",
+					cloudprovider.ServiceAnnotationLoadBalancerInternal:     "true",
+					cloudprovider.ServiceAnnotationLoadBalancerShape:        "flexible",
+					cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMin: "10",
+					cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMax: "10",
 				},
 				cloudprovider.ServiceAnnotationLoadBalancerNetworkSecurityGroups,
 			},
@@ -1485,8 +1504,10 @@ var _ = Describe("LB Properties", func() {
 			{
 				"lb",
 				map[string]string{
-					cloudprovider.ServiceAnnotationLoadBalancerShape:  "10Mbps",
-					cloudprovider.ServiceAnnotationLoadBalancerPolicy: cloudprovider.IPHashLoadBalancerPolicy,
+					cloudprovider.ServiceAnnotationLoadBalancerShape:        "flexible",
+					cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMin: "10",
+					cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMax: "10",
+					cloudprovider.ServiceAnnotationLoadBalancerPolicy:       cloudprovider.IPHashLoadBalancerPolicy,
 				},
 				map[string]string{
 					cloudprovider.ServiceAnnotationLoadBalancerPolicy: cloudprovider.LeastConnectionsLoadBalancerPolicy,
@@ -1595,7 +1616,9 @@ var _ = Describe("LB Properties", func() {
 			{
 				"lb",
 				map[string]string{
-					cloudprovider.ServiceAnnotationLoadBalancerShape: "10Mbps",
+					cloudprovider.ServiceAnnotationLoadBalancerShape:        "flexible",
+					cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMin: "10",
+					cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMax: "10",
 				},
 			},
 			{

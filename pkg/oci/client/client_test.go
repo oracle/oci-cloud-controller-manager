@@ -173,6 +173,22 @@ func (c *mockComputeClient) DetachVolume(ctx context.Context, request core.Detac
 }
 
 func (c *mockComputeClient) ListInstanceDevices(ctx context.Context, request core.ListInstanceDevicesRequest) (response core.ListInstanceDevicesResponse, err error) {
+	devicePath := "/dev/oracleoci/oraclevdac"
+
+	if *request.InstanceId == "ocid1.device-path-returns-error" {
+		return core.ListInstanceDevicesResponse{}, errNotFound
+	} else if  *request.InstanceId == "ocid1.device-path-not-available" {
+		return core.ListInstanceDevicesResponse{
+				Items: []core.Device{},
+			}, nil
+	} else if  *request.InstanceId == "ocid1.one-device-path-available" {
+		return core.ListInstanceDevicesResponse{
+			Items: []core.Device{{
+					Name: &devicePath,
+				},
+			},
+		}, nil
+	}
 	return core.ListInstanceDevicesResponse{}, nil
 }
 
