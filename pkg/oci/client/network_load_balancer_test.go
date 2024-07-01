@@ -208,3 +208,7 @@ func (c *MockNetworkLoadBalancerClient) DeleteListener(ctx context.Context, requ
 func (c *MockNetworkLoadBalancerClient) UpdateNetworkSecurityGroups(ctx context.Context, request networkloadbalancer.UpdateNetworkSecurityGroupsRequest) (response networkloadbalancer.UpdateNetworkSecurityGroupsResponse, err error) {
 	return
 }
+func (c *MockNetworkLoadBalancerClient) UpdateNetworkLoadBalancer(ctx context.Context, request networkloadbalancer.UpdateNetworkLoadBalancerRequest) (response networkloadbalancer.UpdateNetworkLoadBalancerResponse, err error) {
+	//TODO implement me
+	return
+}

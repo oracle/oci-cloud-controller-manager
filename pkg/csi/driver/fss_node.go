@@ -428,6 +428,7 @@ func (d FSSNodeDriver) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequ
 		AccessibleTopology: &csi.Topology{
 			Segments: map[string]string{
 				kubeAPI.LabelZoneFailureDomain: ad,
+				kubeAPI.LabelTopologyZone:      ad,
 			},
 		},
 	}, nil

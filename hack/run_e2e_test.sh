@@ -30,6 +30,7 @@ check-env "FSS_VOLUME_HANDLE"         $FSS_VOLUME_HANDLE
 check-env "MNT_TARGET_ID"             $MNT_TARGET_ID
 check-env "MNT_TARGET_SUBNET_ID"      $MNT_TARGET_SUBNET_ID
 check-env "MNT_TARGET_COMPARTMENT_ID" $MNT_TARGET_COMPARTMENT_ID
+check-env "ENABLE_PARALLEL_RUN"       $ENABLE_PARALLEL_RUN
 check-env "RUN_UHP_E2E"               $RUN_UHP_E2E
 
 
@@ -59,7 +60,9 @@ function run_e2e_tests_existing_cluster() {
         --architecture=${ARCHITECTURE} \
         --volume-handle=${FSS_VOLUME_HANDLE} \
         --static-snapshot-compartment-id=${STATIC_SNAPSHOT_COMPARTMENT_ID} \
-        --run-uhp-e2e=${RUN_UHP_E2E}
+        --enable-parallel-run=${ENABLE_PARALLEL_RUN} \
+        --run-uhp-e2e=${RUN_UHP_E2E} \
+        --add-oke-system-tags="false"
     retval=$?
     return $retval
 }
