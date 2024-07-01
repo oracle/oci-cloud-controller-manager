@@ -2,6 +2,7 @@ package util
 
 import (
 	"context"
+
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -37,7 +38,7 @@ import (
 	v111 "k8s.io/client-go/kubernetes/typed/events/v1"
 	v1beta19 "k8s.io/client-go/kubernetes/typed/events/v1beta1"
 	v1beta110 "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
-	v1alpha14 "k8s.io/client-go/kubernetes/typed/flowcontrol/v1alpha1"
+	v13 "k8s.io/client-go/kubernetes/typed/flowcontrol/v1"
 	v1beta111 "k8s.io/client-go/kubernetes/typed/flowcontrol/v1beta1"
 	v1beta22 "k8s.io/client-go/kubernetes/typed/flowcontrol/v1beta2"
 	v1beta31 "k8s.io/client-go/kubernetes/typed/flowcontrol/v1beta3"
@@ -320,10 +321,6 @@ func (m MockKubeClient) AuthorizationV1beta1() v1beta14.AuthorizationV1beta1Inte
 	return nil
 }
 
-func (m MockKubeClient) FlowcontrolV1alpha1() v1alpha14.FlowcontrolV1alpha1Interface {
-	return nil
-}
-
 func (m MockKubeClient) AuthenticationV1alpha1() v1alpha13.AuthenticationV1alpha1Interface {
 	return nil
 }
@@ -381,6 +378,10 @@ func (m MockKubeClient) AutoscalingV2beta2() v2beta21.AutoscalingV2beta2Interfac
 }
 
 func (m MockKubeClient) FlowcontrolV1beta3() v1beta31.FlowcontrolV1beta3Interface {
+	return nil
+}
+
+func (m MockKubeClient) FlowcontrolV1() v13.FlowcontrolV1Interface {
 	return nil
 }
 

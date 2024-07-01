@@ -220,6 +220,9 @@ func (c *MockLoadBalancerClient) UpdateLoadBalancerShape(ctx context.Context, re
 func (c *MockLoadBalancerClient) UpdateNetworkSecurityGroups(ctx context.Context, request loadbalancer.UpdateNetworkSecurityGroupsRequest) (response loadbalancer.UpdateNetworkSecurityGroupsResponse, err error) {
 	return
 }
+func (c *MockLoadBalancerClient) UpdateLoadBalancer(ctx context.Context, request loadbalancer.UpdateLoadBalancerRequest) (response loadbalancer.UpdateLoadBalancerResponse, err error) {
+	return
+}
 
 func assertError(actual, expected error) bool {
 	if expected == nil || actual == nil {

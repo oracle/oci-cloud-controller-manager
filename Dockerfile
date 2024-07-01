@@ -14,7 +14,7 @@
 
 ARG CI_IMAGE_REGISTRY
 
-FROM golang:1.20.4 as builder
+FROM golang:1.21.5 as builder
 
 ARG COMPONENT
 
@@ -27,15 +27,14 @@ WORKDIR $SRC
 
 RUN COMPONENT=${COMPONENT} make clean build
 
-FROM oraclelinux:7-slim
+FROM oraclelinux:8-slim
 
 COPY --from=0 /go/src/github.com/oracle/oci-cloud-controller-manager/dist/* /usr/local/bin/
 COPY --from=0 /go/src/github.com/oracle/oci-cloud-controller-manager/image/* /usr/local/bin/
 
-RUN yum install -y util-linux \
-  && yum install -y e2fsprogs \
-  && yum install -y xfsprogs \
-  && yum clean all
+RUN microdnf -y install util-linux e2fsprogs xfsprogs python2 && \
+    microdnf update && \
+    microdnf clean all
 
 COPY scripts/encrypt-mount /sbin/encrypt-mount
 COPY scripts/encrypt-umount /sbin/encrypt-umount

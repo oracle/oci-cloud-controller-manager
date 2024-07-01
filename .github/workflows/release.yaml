@@ -26,7 +26,7 @@ jobs:
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${GITHUB_ACTOR,,} --password-stdin
 
       - name: Build Image
-        run: OSS_REGISTRY="ghcr.io/oracle" VERSION="${{ github.ref_name }}" make image
+        run: OSS_REGISTRY="ghcr.io/${GITHUB_ACTOR,,}" VERSION="${{ github.ref_name }}" make image
 
       - name: Push Image
-        run: OSS_REGISTRY="ghcr.io/oracle" VERSION="${{ github.ref_name }}" make docker-push-all
+        run: OSS_REGISTRY="ghcr.io/${GITHUB_ACTOR,,}" VERSION="${{ github.ref_name }}" make docker-push-all

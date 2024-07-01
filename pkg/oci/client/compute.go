@@ -26,6 +26,7 @@ import (
 type ComputeInterface interface {
 	// GetInstance gets information about the specified instance.
 	GetInstance(ctx context.Context, id string) (*core.Instance, error)
+	ListInstancesByCompartmentAndAD(ctx context.Context, compartmentId, availabilityDomain string) (response []core.Instance, err error)
 
 	// GetInstanceByNodeName gets the OCI instance corresponding to the given
 	// Kubernetes node name.
@@ -51,6 +52,36 @@ func (c *client) GetInstance(ctx context.Context, id string) (*core.Instance, er
 	}
 
 	return &resp.Instance, nil
+}
+
+func (c *client) ListInstancesByCompartmentAndAD(ctx context.Context, compartmentID, availabilityDomain string) ([]core.Instance, error) {
+	var (
+		page      *string
+		instances []core.Instance
+	)
+	for {
+		if !c.rateLimiter.Reader.TryAccept() {
+			return nil, RateLimitError(false, "ListInstances")
+		}
+		resp, err := c.compute.ListInstances(ctx, core.ListInstancesRequest{
+			AvailabilityDomain: &availabilityDomain,
+			CompartmentId:      &compartmentID,
+			Page:               page,
+			RequestMetadata:    c.requestMetadata,
+		})
+		incRequestCounter(err, listVerb, instanceResource)
+
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		instances = append(instances, resp.Items...)
+		if page = resp.OpcNextPage; resp.OpcNextPage == nil {
+			break
+		}
+	}
+
+	return instances, nil
 }
 
 func (c *client) getInstanceByDisplayName(ctx context.Context, compartmentID, displayName string) (*core.Instance, error) {

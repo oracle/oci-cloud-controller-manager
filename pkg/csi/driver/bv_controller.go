@@ -65,7 +65,10 @@ const (
 	multipathEnabled              = "multipathEnabled"
 	multipathDevices              = "multipathDevices"
 	//device is the consistent device path that would be used for paravirtualized attachment
-	device = "device"
+	device                          = "device"
+	resourceTrackingFeatureFlagName = "CPO_ENABLE_RESOURCE_ATTRIBUTION"
+	OkeSystemTagNamesapce           = "orcl-containerengine"
+	MaxDefinedTagPerVolume          = 64
 )
 
 var (
@@ -76,6 +79,8 @@ var (
 		Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
 	}
 )
+
+var enableOkeSystemTags = csi_util.GetIsFeatureEnabledFromEnv(zap.S(), resourceTrackingFeatureFlagName, false)
 
 // VolumeParameters holds configuration
 type VolumeParameters struct {
@@ -324,7 +329,11 @@ func (d *BlockVolumeControllerDriver) CreateVolume(ctx context.Context, req *csi
 
 	if req.AccessibilityRequirements != nil && req.AccessibilityRequirements.Preferred != nil && availableDomainShortName == "" {
 		for _, t := range req.AccessibilityRequirements.Preferred {
-			availableDomainShortName, _ = t.Segments[kubeAPI.LabelZoneFailureDomain]
+			var ok bool
+			availableDomainShortName, ok = t.Segments[kubeAPI.LabelTopologyZone]
+			if !ok {
+				availableDomainShortName, _ = t.Segments[kubeAPI.LabelZoneFailureDomain]
+			}
 			log.With("AD", availableDomainShortName).Info("Using preferred topology for AD.")
 			if len(availableDomainShortName) > 0 {
 				break
@@ -335,7 +344,11 @@ func (d *BlockVolumeControllerDriver) CreateVolume(ctx context.Context, req *csi
 	if availableDomainShortName == "" {
 		if req.AccessibilityRequirements != nil && req.AccessibilityRequirements.Requisite != nil {
 			for _, t := range req.AccessibilityRequirements.Requisite {
-				availableDomainShortName, _ = t.Segments[kubeAPI.LabelZoneFailureDomain]
+				var ok bool
+				availableDomainShortName, ok = t.Segments[kubeAPI.LabelTopologyZone]
+				if !ok {
+					availableDomainShortName, _ = t.Segments[kubeAPI.LabelZoneFailureDomain]
+				}
 				log.With("AD", availableDomainShortName).Info("Using requisite topology for AD.")
 				if len(availableDomainShortName) > 0 {
 					break
@@ -360,7 +373,7 @@ func (d *BlockVolumeControllerDriver) CreateVolume(ctx context.Context, req *csi
 		dimensionsMap[metrics.ComponentDimension] = metricDimension
 		metrics.SendMetricData(d.metricPusher, metric, time.Since(startTime).Seconds(), dimensionsMap)
 		log.Error("Available domain short name is not found")
-		return nil, status.Errorf(codes.InvalidArgument, "%s is required in PreferredTopologies or allowedTopologies", kubeAPI.LabelZoneFailureDomain)
+		return nil, status.Errorf(codes.InvalidArgument, "(%s) or (%s) is required in PreferredTopologies or allowedTopologies", kubeAPI.LabelTopologyZone, kubeAPI.LabelZoneFailureDomain)
 	}
 
 	//make sure this method is idempotent by checking existence of volume with same name.
@@ -404,25 +417,23 @@ func (d *BlockVolumeControllerDriver) CreateVolume(ctx context.Context, req *csi
 			return nil, status.Errorf(codes.InvalidArgument, "invalid available domain: %s or compartment ID: %s", availableDomainShortName, d.config.CompartmentID)
 		}
 
-		// use initial tags for all BVs
-		bvTags := &config.TagConfig{}
-		if d.config.Tags != nil && d.config.Tags.BlockVolume != nil {
-			bvTags = d.config.Tags.BlockVolume
-		}
-
-		// use storage class level tags if provided
-		scTags := &config.TagConfig{
-			FreeformTags: volumeParams.freeformTags,
-			DefinedTags:  volumeParams.definedTags,
-		}
-
-		// storage class tags overwrite initial BV Tags
-		if scTags.FreeformTags != nil || scTags.DefinedTags != nil {
-			bvTags = scTags
-		}
+		bvTags := getBVTags(log, d.config.Tags, volumeParams)
 
 		provisionedVolume, err = provision(ctx, log, d.client, volumeName, size, *ad.Name, d.config.CompartmentID, srcSnapshotId, srcVolumeId,
 			volumeParams.diskEncryptionKey, volumeParams.vpusPerGB, bvTags)
+
+		if err != nil && client.IsSystemTagNotFoundOrNotAuthorisedError(log, errors.Unwrap(err)) {
+			log.With("Ad name", *ad.Name, "Compartment Id", d.config.CompartmentID).With(zap.Error(err)).Warn("New volume creation failed due to oke system tags error. sending metric & retrying without oke system tags")
+			errorType = util.SystemTagErrTypePrefix + util.GetError(err)
+			metricDimension = util.GetMetricDimensionForComponent(errorType, metricType)
+			dimensionsMap[metrics.ComponentDimension] = metricDimension
+			metrics.SendMetricData(d.metricPusher, metric, time.Since(startTime).Seconds(), dimensionsMap)
+
+			// retry provision without oke system tags
+			delete(bvTags.DefinedTags, OkeSystemTagNamesapce)
+			provisionedVolume, err = provision(ctx, log, d.client, volumeName, size, *ad.Name, d.config.CompartmentID, srcSnapshotId, srcVolumeId,
+				volumeParams.diskEncryptionKey, volumeParams.vpusPerGB, bvTags)
+		}
 		if err != nil {
 			log.With("Ad name", *ad.Name, "Compartment Id", d.config.CompartmentID).With(zap.Error(err)).Error("New volume creation failed.")
 			errorType = util.GetError(err)
@@ -467,6 +478,11 @@ func (d *BlockVolumeControllerDriver) CreateVolume(ctx context.Context, req *csi
 			VolumeId:      *provisionedVolume.Id,
 			CapacityBytes: *provisionedVolume.SizeInMBs * client.MiB,
 			AccessibleTopology: []*csi.Topology{
+				{
+					Segments: map[string]string{
+						kubeAPI.LabelTopologyZone: d.util.GetAvailableDomainInNodeLabel(*provisionedVolume.AvailabilityDomain),
+					},
+				},
 				{
 					Segments: map[string]string{
 						kubeAPI.LabelZoneFailureDomain: d.util.GetAvailableDomainInNodeLabel(*provisionedVolume.AvailabilityDomain),
@@ -1231,7 +1247,7 @@ func (d *BlockVolumeControllerDriver) ControllerExpandVolume(ctx context.Context
 	if newSizeInGB <= oldSize {
 		log.Infof("Existing volume size: %v Requested volume size: %v No action needed.", *volume.SizeInGBs, newSizeInGB)
 		return &csi.ControllerExpandVolumeResponse{
-			CapacityBytes:         oldSize,
+			CapacityBytes:         oldSize * client.GiB,
 			NodeExpansionRequired: true,
 		}, nil
 	}
@@ -1253,6 +1269,16 @@ func (d *BlockVolumeControllerDriver) ControllerExpandVolume(ctx context.Context
 		metrics.SendMetricData(d.metricPusher, metrics.PVExpand, time.Since(startTime).Seconds(), dimensionsMap)
 		return nil, status.Error(codes.Internal, message)
 	}
+	_, err = d.client.BlockStorage().AwaitVolumeAvailableORTimeout(ctx, volumeId)
+	if err != nil {
+		log.With("service", "blockstorage", "verb", "get", "resource", "volume", "statusCode", util.GetHttpStatusCode(err)).
+			Error("Volume Expansion failed with time out")
+		errorType = util.GetError(err)
+		csiMetricDimension = util.GetMetricDimensionForComponent(errorType, util.CSIStorageType)
+		dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
+		metrics.SendMetricData(d.metricPusher, metrics.PVExpand, time.Since(startTime).Seconds(), dimensionsMap)
+		return nil, status.Errorf(codes.DeadlineExceeded, "ControllerExpand failed with time out %v", err.Error())
+	}
 
 	log.Info("Volume is expanded.")
 	csiMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.CSIStorageType)
@@ -1268,6 +1294,10 @@ func (d *BlockVolumeControllerDriver) ControllerExpandVolume(ctx context.Context
 // ControllerGetVolume returns ControllerGetVolumeResponse response
 func (d *BlockVolumeControllerDriver) ControllerGetVolume(ctx context.Context, req *csi.ControllerGetVolumeRequest) (*csi.ControllerGetVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "ControllerGetVolume is not supported yet")
+}
+
+func (d *BlockVolumeControllerDriver) ControllerModifyVolume(ctx context.Context, request *csi.ControllerModifyVolumeRequest) (*csi.ControllerModifyVolumeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "ControllerModifyVolume is not supported yet")
 }
 
 func provision(ctx context.Context, log *zap.SugaredLogger, c client.Interface, volName string, volSize int64, availDomainName, compartmentID,
@@ -1301,6 +1331,11 @@ func provision(ctx context.Context, log *zap.SugaredLogger, c client.Interface, 
 	}
 	if bvTags != nil && bvTags.DefinedTags != nil {
 		volumeDetails.DefinedTags = bvTags.DefinedTags
+		if len(volumeDetails.DefinedTags) > MaxDefinedTagPerVolume {
+			log.With("service", "blockstorage", "verb", "create", "resource", "volume", "volumeName", volName).
+				Warn("the number of defined tags in the volume create request is beyond the limit. removing system tags from the details")
+			delete(volumeDetails.DefinedTags, OkeSystemTagNamesapce)
+		}
 	}
 
 	newVolume, err := c.BlockStorage().CreateVolume(ctx, volumeDetails)
@@ -1342,4 +1377,26 @@ func isBlockVolumeAvailable(backup core.VolumeBackup) (bool, error) {
 		return false, errors.Errorf("snapshot did not become available (lifecycleState=%q)", state)
 	}
 	return false, nil
+}
+
+func getBVTags(logger *zap.SugaredLogger, tags *config.InitialTags, vp VolumeParameters) *config.TagConfig {
+
+	bvTags := &config.TagConfig{}
+	if tags != nil && tags.BlockVolume != nil {
+		bvTags = tags.BlockVolume
+	}
+
+	// use storage class level tags if provided
+	scTags := &config.TagConfig{
+		FreeformTags: vp.freeformTags,
+		DefinedTags:  vp.definedTags,
+	}
+	if scTags.FreeformTags != nil || scTags.DefinedTags != nil {
+		bvTags = scTags
+	}
+	// merge final tags with common tags
+	if enableOkeSystemTags && util.IsCommonTagPresent(tags) {
+		bvTags = util.MergeTagConfig(bvTags, tags.Common)
+	}
+	return bvTags
 }
