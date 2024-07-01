@@ -16,10 +16,8 @@ package e2e
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -27,7 +25,6 @@ import (
 	. "github.com/onsi/gomega"
 	cloudprovider "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci"
 	sharedfw "github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
-	"github.com/oracle/oci-go-sdk/v65/containerengine"
 	"github.com/oracle/oci-go-sdk/v65/core"
 
 	"go.uber.org/zap"
@@ -120,7 +117,6 @@ var _ = Describe("Service [Slow]", func() {
 				loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), lbType, "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
 				sharedfw.ExpectNoError(err)
 				sharedfw.Logf("Loadbalancer details %v:", loadBalancer)
-				sharedfw.Logf("cluster ocid from setup is %s", setupF.ClusterOcid)
 				if setupF.AddOkeSystemTags && !sharedfw.HasOkeSystemTags(loadBalancer.SystemTags) {
 					sharedfw.Failf("Loadbalancer is expected to have the system tags")
 				}
@@ -1702,8 +1698,8 @@ var _ = Describe("LB Properties", func() {
 	})
 })
 
-//ips is the list of private IPs of the nodes, the path is the endpoint at which health is checked,
-//and nodeIndex is the node which has the current pod
+// ips is the list of private IPs of the nodes, the path is the endpoint at which health is checked,
+// and nodeIndex is the node which has the current pod
 func CreateHealthCheckScript(healthCheckNodePort int, ips []string, path string, nodeIndex int) string {
 	script := ""
 
