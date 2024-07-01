@@ -249,7 +249,7 @@ var _ = Describe("Service NSG [Slow]", func() {
 			},
 		},
 	}
-	Context("[cloudprovider][ccm][lb][managedNsg]", func() {
+	Context("[cloudprovider][ccm][lb][managedNsg][test2]", func() {
 		It("should be possible to create and mutate a Service type:LoadBalancer (change nodeport) [Canary]", func() {
 			for _, test := range basicTestArray {
 
