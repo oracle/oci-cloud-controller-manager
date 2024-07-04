@@ -81,7 +81,7 @@ var (
 	busyBoxImage                  string // Image for busyBoxImage
 	centos                        string // Image for centos
 	imagePullRepo                 string // Repo to pull images from. Will pull public images if not specified.
-	cmekKMSKey                    string //KMS key for CMEK testing
+	cmekKMSKey                    string // KMS key for CMEK testing
 	nsgOCIDS                      string // Testing CCM NSG feature
 	backendNsgIds                 string // Testing Rule management Backend NSG feature
 	reservedIP                    string // Testing public reserved IP feature
@@ -89,6 +89,8 @@ var (
 	volumeHandle                  string // The FSS mount volume handle
 	staticSnapshotCompartmentOCID string // Compartment ID for cross compartment snapshot test
 	runUhpE2E                     bool   // Whether to run UHP E2Es, requires Volume Management Plugin enabled on the node and 16+ cores (check blockvolumeperformance public doc for the exact requirements)
+	enableParallelRun			  bool
+	addOkeSystemTags              bool
 )
 
 func init() {
@@ -119,6 +121,8 @@ func init() {
 
 	flag.StringVar(&staticSnapshotCompartmentOCID, "static-snapshot-compartment-id", "", "Compartment ID for cross compartment snapshot test")
 	flag.BoolVar(&runUhpE2E, "run-uhp-e2e", false, "Run UHP E2Es as well")
+	flag.BoolVar(&enableParallelRun, "enable-parallel-run", true, "Enables parallel running of test suite")
+	flag.BoolVar(&addOkeSystemTags, "add-oke-system-tags", false, "Adds oke system tags to new and existing loadbalancers and storage resources")
 }
 
 // Framework is the context of the text execution.
@@ -152,6 +156,7 @@ type Framework struct {
 	// Compartment ID for cross compartment snapshot test
 	StaticSnapshotCompartmentOcid string
 	RunUhpE2E                     bool
+	AddOkeSystemTags        bool
 }
 
 // New creates a new a framework that holds the context of the test
@@ -176,6 +181,7 @@ func NewWithConfig() *Framework {
 		VolumeHandle:                  volumeHandle,
 		StaticSnapshotCompartmentOcid: staticSnapshotCompartmentOCID,
 		RunUhpE2E:                     runUhpE2E,
+		AddOkeSystemTags:              addOkeSystemTags,
 	}
 
 	f.CloudConfigPath = cloudConfigFile

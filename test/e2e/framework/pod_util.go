@@ -211,12 +211,13 @@ func (j *PVCTestJig) CheckUsableVolumeSizeInsidePod(namespace string, podName st
 			return false, nil
 		}
 		if strings.Fields(strings.TrimSpace(stdout))[1] != capacity {
+			Logf("Expected capacity: %v, got capacity: %v", capacity, strings.Fields(strings.TrimSpace(stdout))[1])
 			return false, nil
 		} else {
 			return true, nil
 		}
 	}); pollErr != nil {
-		Failf("Write Test failed in pod '%v' after expanding pvc", podName)
+		Failf("Check Usable Volume Size Inside Pod Test failed in pod '%v' after expanding pvc", podName)
 	}
 
 }
