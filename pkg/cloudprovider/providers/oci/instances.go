@@ -243,13 +243,42 @@ func (cp *CloudProvider) InstanceExistsByProviderID(ctx context.Context, provide
 	}
 	instance, err := cp.client.Compute().GetInstance(ctx, instanceID)
 	if client.IsNotFound(err) {
-		return false, nil
+		return cp.checkForAuthorizationError(ctx, providerID)
+
 	}
 	if err != nil {
 		return false, err
 	}
 
 	return !client.IsInstanceInTerminalState(instance), nil
+}
+
+func (cp *CloudProvider) checkForAuthorizationError(ctx context.Context, instanceId string) (bool, error) {
+	cp.logger.With("instanceId", instanceId).Info("Received 404 for an instance, listing instances to check for authorization errors")
+	compartmentId, err := cp.getCompartmentIDByInstanceID(instanceId)
+	if err != nil {
+		return false, err
+	}
+	// to eliminate AD specific issues, list all ADs and make AD specific requests
+	availabilityDomains, err := cp.client.Identity().ListAvailabilityDomains(ctx, compartmentId)
+	for _, availabilityDomain := range availabilityDomains {
+		instances, err := cp.client.Compute().ListInstancesByCompartmentAndAD(ctx, compartmentId, *availabilityDomain.Name)
+		// if we are getting errors for ListInstances the issue can be authorization or other issues
+		// so to be safe we return the error back as we can't list instances in the compartment
+		if err != nil {
+			cp.logger.With("instanceId", instanceId).Info("Received error when listing instances to check for authorization errors")
+			return false, err
+		}
+
+		for _, instance := range instances {
+			if *instance.Id == instanceId {
+				// Can only happen if changes are done in policy in-between requests
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
 }
 
 // InstanceShutdownByProviderID returns true if the instance is shutdown in cloudprovider.

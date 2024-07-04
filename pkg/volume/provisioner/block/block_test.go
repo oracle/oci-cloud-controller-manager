@@ -25,6 +25,7 @@ import (
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/oracle/oci-go-sdk/v65/filestorage"
 	"github.com/oracle/oci-go-sdk/v65/identity"
+
 	"go.uber.org/zap"
 	authv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
@@ -226,6 +227,10 @@ func (c *MockFileStorageClient) AwaitMountTargetActive(ctx context.Context, logg
 
 type MockComputeClient struct{}
 
+func (c *MockComputeClient) ListInstancesByCompartmentAndAD(ctx context.Context, compartmentId, availabilityDomain string) (response []core.Instance, err error) {
+	return nil, nil
+}
+
 // GetInstance gets information about the specified instance.
 func (c *MockComputeClient) GetInstance(ctx context.Context, id string) (*core.Instance, error) {
 	return nil, nil
@@ -393,7 +398,7 @@ func (c *MockLoadBalancerClient) ListWorkRequests(ctx context.Context, compartme
 	return nil, nil
 }
 
-func (c *MockLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details *client.GenericCreateLoadBalancerDetails) (string, error) {
+func (c *MockLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details *client.GenericCreateLoadBalancerDetails, serviceUid *string) (string, error) {
 	return "", nil
 }
 
@@ -450,6 +455,10 @@ func (c *MockLoadBalancerClient) AwaitWorkRequest(ctx context.Context, id string
 }
 
 func (c *MockLoadBalancerClient) UpdateNetworkSecurityGroups(context.Context, string, []string) (string, error) {
+	return "", nil
+}
+
+func (c *MockLoadBalancerClient) UpdateLoadBalancer(ctx context.Context, lbID string, details *client.GenericUpdateLoadBalancerDetails) (string, error) {
 	return "", nil
 }
 
@@ -528,7 +537,7 @@ func TestCreateVolumeFromBackup(t *testing.T) {
 			},
 			Spec: v1.PersistentVolumeClaimSpec{
 				StorageClassName: common.String("oci"),
-				Resources: v1.ResourceRequirements{
+				Resources: v1.VolumeResourceRequirements{
 					Requests: v1.ResourceList{
 						v1.ResourceName(v1.ResourceStorage): resource.MustParse("50Gi"),
 					},
@@ -631,7 +640,7 @@ func createPVC(size string) *v1.PersistentVolumeClaim {
 		ObjectMeta: metav1.ObjectMeta{},
 		Spec: v1.PersistentVolumeClaimSpec{
 			StorageClassName: common.String("oci"),
-			Resources: v1.ResourceRequirements{
+			Resources: v1.VolumeResourceRequirements{
 				Requests: v1.ResourceList{
 					v1.ResourceName(v1.ResourceStorage): resource.MustParse(size),
 				},

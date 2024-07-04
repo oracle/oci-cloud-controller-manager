@@ -28,9 +28,12 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	sharedfw.Logf("CloudProviderFramework Setup")
 	sharedfw.Logf("Running tests with existing cluster.")
 	return nil
-}, func(data []byte) {})
+}, func(data []byte) {
+	setupF = sharedfw.New()
+},
+)
 
-var _ = ginkgo.SynchronizedAfterSuite(func() {
+var _ = ginkgo.SynchronizedAfterSuite(func() {}, func() {
 	sharedfw.Logf("Running AfterSuite actions on all node")
 	sharedfw.RunCleanupActions()
-}, func() {})
+})
