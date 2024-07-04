@@ -30,7 +30,6 @@ import (
 	sets "k8s.io/apimachinery/pkg/util/sets"
 	informersv1 "k8s.io/client-go/informers/core/v1"
 	listersv1 "k8s.io/client-go/listers/core/v1"
-	helper "k8s.io/cloud-provider/service/helpers"
 )
 
 const (
@@ -382,7 +381,7 @@ func getNodeIngressRules(
 					"source", *rule.Source,
 					"destinationPortRangeMin", *rule.TcpOptions.DestinationPortRange.Min,
 					"destinationPortRangeMax", *rule.TcpOptions.DestinationPortRange.Max,
-				).Debug("Deleting load balancer ingres security rule")
+				).Debug("Deleting node ingress security rule")
 				continue
 			}
 		}
@@ -429,7 +428,7 @@ func getNodeIngressRules(
 			"source", *rule.Source,
 			"destinationPortRangeMin", *rule.TcpOptions.DestinationPortRange.Min,
 			"destinationPortRangeMax", *rule.TcpOptions.DestinationPortRange.Max,
-		).Debug("Deleting node ingres security rule")
+		).Debug("Deleting node ingress security rule")
 	}
 
 	if desiredBackend.Len() == 0 && desiredHealthChecker.Len() == 0 {
@@ -512,7 +511,7 @@ func getLoadBalancerIngressRules(
 			"source", *rule.Source,
 			"destinationPortRangeMin", *rule.TcpOptions.DestinationPortRange.Min,
 			"destinationPortRangeMax", *rule.TcpOptions.DestinationPortRange.Max,
-		).Debug("Deleting load balancer ingres security rule")
+		).Debug("Deleting load balancer ingress security rule")
 	}
 
 	if desired.Len() == 0 {
@@ -558,7 +557,7 @@ func getLoadBalancerEgressRules(
 				"destination", *rule.Destination,
 				"destinationPortRangeMin", *rule.TcpOptions.DestinationPortRange.Min,
 				"destinationPortRangeMax", *rule.TcpOptions.DestinationPortRange.Max,
-			).Debug("Deleting load balancer ingres security rule")
+			).Debug("Deleting load balancer egress security rule")
 			continue
 		}
 
@@ -655,15 +654,20 @@ func makeIngressSecurityRule(cidrBlock string, port int) core.IngressSecurityRul
 
 func portInUse(serviceLister listersv1.ServiceLister, port int32) (bool, error) {
 	serviceList, err := serviceLister.List(labels.Everything())
+
 	if err != nil {
 		return false, err
 	}
 	for _, service := range serviceList {
-		if service.Spec.Type == api.ServiceTypeLoadBalancer {
-			for _, p := range service.Spec.Ports {
-				if p.Port == port {
-					return true, nil
-				}
+		if service.DeletionTimestamp != nil {
+			continue
+		}
+		if service.Spec.Type != api.ServiceTypeLoadBalancer {
+			continue
+		}
+		for _, p := range service.Spec.Ports {
+			if p.Port == port {
+				return true, nil
 			}
 		}
 	}
@@ -671,24 +675,26 @@ func portInUse(serviceLister listersv1.ServiceLister, port int32) (bool, error) 
 }
 
 func healthCheckPortInUse(serviceLister listersv1.ServiceLister, port int32) (bool, error) {
-	if port != lbNodesHealthCheckPort {
-		// This service is using a custom healthcheck port (enabled through setting
-		// extenalTrafficPolicy=Local on the service). As this port is unique
-		// per service, we know no other service will be using this port too.
-		return false, nil
-	}
-
-	// This service is using the default healthcheck port, so we must check if
-	// any other service is also using this default healthcheck port.
 	serviceList, err := serviceLister.List(labels.Everything())
 	if err != nil {
 		return false, err
 	}
 	for _, service := range serviceList {
-		if service.Spec.Type == api.ServiceTypeLoadBalancer {
-			healthCheckPath, _ := helper.GetServiceHealthCheckPathPort(service)
-			if healthCheckPath == "" {
-				// We have found another service using the default port.
+		if service.DeletionTimestamp != nil || service.Spec.Type != api.ServiceTypeLoadBalancer {
+			continue
+		}
+		if service.Spec.ExternalTrafficPolicy == api.ServiceExternalTrafficPolicyTypeCluster {
+			// This service is using the default healthcheck port, so we must check if
+			// any other service is also using this default healthcheck port.
+			if port == lbNodesHealthCheckPort {
+				return true, nil
+			}
+		} else if service.Spec.ExternalTrafficPolicy == api.ServiceExternalTrafficPolicyTypeLocal {
+			// This service is using a custom healthcheck port (enabled through setting
+			// externalTrafficPolicy=Local on the service). As this port is unique
+			// per service, we know no other service will be using this port too.
+			if port == service.Spec.HealthCheckNodePort {
+				// Service with this healthCheckerPort is still not deleted (this would be a "delete listener" call in that case)
 				return true, nil
 			}
 		}
