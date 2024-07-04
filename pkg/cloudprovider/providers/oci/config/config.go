@@ -22,7 +22,6 @@ import (
 	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/common/auth"
 	"github.com/pkg/errors"
-
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 )
@@ -127,6 +126,7 @@ type InitialTags struct {
 	LoadBalancer *TagConfig `yaml:"loadBalancer"`
 	BlockVolume  *TagConfig `yaml:"blockVolume"`
 	FSS          *TagConfig `yaml:"fss"`
+	Common       *TagConfig `yaml:"common"`
 }
 
 // Config holds the OCI cloud-provider config passed to Kubernetes components
@@ -151,7 +151,7 @@ type Config struct {
 	// cluster resides.
 	VCNID string `yaml:"vcn"`
 
-	//Metadata service to help fill in certain fields
+	// Metadata service to help fill in certain fields
 	metadataSvc metadata.Interface
 }
 

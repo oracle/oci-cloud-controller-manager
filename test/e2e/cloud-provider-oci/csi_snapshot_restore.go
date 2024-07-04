@@ -70,14 +70,14 @@ var _ = Describe("Snapshot Creation and Restore", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-snapshot-restore-e2e-tests")
 			pvcJig.InitialiseSnapClient(f.SnapClientSet)
 
-			scName := f.CreateStorageClassOrFail(framework.ClassSnapshot, BVDriverName, scParams, pvcJig.Labels, BindingModeWaitForFirstConsumer, true, ReclaimPolicyDelete, nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, BVDriverName, scParams, pvcJig.Labels, BindingModeWaitForFirstConsumer, true, ReclaimPolicyDelete, nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
 
 			_ = pvcJig.NewPodForCSI("pod-original", f.Namespace.Name, pvc.Name, setupF.AdLabel)
 
 			time.Sleep(60 * time.Second) //waiting for pod to up and running
 
-			vscName := f.CreateVolumeSnapshotClassOrFail(framework.VSClassDefault, BVDriverName, vscParams, ReclaimPolicyDelete)
+			vscName := f.CreateVolumeSnapshotClassOrFail(f.Namespace.Name, BVDriverName, vscParams, ReclaimPolicyDelete)
 			vs  := pvcJig.CreateAndAwaitVolumeSnapshotOrFail(f.Namespace.Name, vscName, pvc.Name, nil)
 
 			pvcRestore := pvcJig.CreateAndAwaitPVCOrFailSnapshotSource(f.Namespace.Name, framework.MaxVolumeBlock, scName, vs.Name, v1.ClaimPending, nil)
@@ -88,8 +88,8 @@ var _ = Describe("Snapshot Creation and Restore", func() {
 			pvcJig.CheckUsableVolumeSizeInsidePod(f.Namespace.Name, podRestoreName, "99G")
 
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
-			_ = f.DeleteVolumeSnapshotClass(framework.VSClassDefault)
-			_ = f.DeleteStorageClass(framework.ClassSnapshot)
+			_ = f.DeleteVolumeSnapshotClass(f.Namespace.Name)
+			_ = f.DeleteStorageClass(f.Namespace.Name)
 		})
 		It("FS should get expanded when a PVC is restored with a lesser size backup (paravirtualized)", func() {
 			checkOrInstallCRDs(f)
@@ -98,14 +98,14 @@ var _ = Describe("Snapshot Creation and Restore", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-snapshot-restore-e2e-tests")
 			pvcJig.InitialiseSnapClient(f.SnapClientSet)
 
-			scName := f.CreateStorageClassOrFail(framework.ClassSnapshot, BVDriverName, scParams, pvcJig.Labels, BindingModeWaitForFirstConsumer, true, ReclaimPolicyDelete, nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, BVDriverName, scParams, pvcJig.Labels, BindingModeWaitForFirstConsumer, true, ReclaimPolicyDelete, nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
 
 			_ = pvcJig.NewPodForCSI("pod-original", f.Namespace.Name, pvc.Name, setupF.AdLabel)
 
 			time.Sleep(60 * time.Second) //waiting for pod to up and running
 
-			vscName := f.CreateVolumeSnapshotClassOrFail(framework.VSClassDefault, BVDriverName, vscParams, ReclaimPolicyDelete)
+			vscName := f.CreateVolumeSnapshotClassOrFail(f.Namespace.Name, BVDriverName, vscParams, ReclaimPolicyDelete)
 			vs  := pvcJig.CreateAndAwaitVolumeSnapshotOrFail(f.Namespace.Name, vscName, pvc.Name, nil)
 
 			pvcRestore := pvcJig.CreateAndAwaitPVCOrFailSnapshotSource(f.Namespace.Name, framework.MaxVolumeBlock, scName, vs.Name, v1.ClaimPending, nil)
@@ -116,8 +116,8 @@ var _ = Describe("Snapshot Creation and Restore", func() {
 			pvcJig.CheckUsableVolumeSizeInsidePod(f.Namespace.Name, podRestoreName, "99G")
 
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
-			_ = f.DeleteVolumeSnapshotClass(framework.VSClassDefault)
-			_ = f.DeleteStorageClass(framework.ClassSnapshot)
+			_ = f.DeleteVolumeSnapshotClass(f.Namespace.Name)
+			_ = f.DeleteStorageClass(f.Namespace.Name)
 		})
 		It("Should be able to create and restore a snapshot from a backup(static case)", func() {
 			checkOrInstallCRDs(f)
@@ -127,10 +127,10 @@ var _ = Describe("Snapshot Creation and Restore", func() {
 			pvcJig.InitialiseSnapClient(f.SnapClientSet)
 
 			//creating a snapshot dynamically
-			scName := f.CreateStorageClassOrFail(framework.ClassSnapshot, BVDriverName, scParams, pvcJig.Labels, BindingModeWaitForFirstConsumer, true, ReclaimPolicyDelete, nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, BVDriverName, scParams, pvcJig.Labels, BindingModeWaitForFirstConsumer, true, ReclaimPolicyDelete, nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
 			_ = pvcJig.CreateAndAwaitNginxPodOrFail(f.Namespace.Name, pvc, WriteCommand)
-			vscName := f.CreateVolumeSnapshotClassOrFail(framework.VSClassDefault, BVDriverName, vscParams, ReclaimPolicyDelete)
+			vscName := f.CreateVolumeSnapshotClassOrFail(f.Namespace.Name, BVDriverName, vscParams, ReclaimPolicyDelete)
 			vs  := pvcJig.CreateAndAwaitVolumeSnapshotOrFail(f.Namespace.Name, vscName, pvc.Name, nil)
 
 			//Waiting for volume snapshot content to be created and status field to be populated
@@ -142,7 +142,7 @@ var _ = Describe("Snapshot Creation and Restore", func() {
 
 			//creating a snapshot statically using the backup provisioned dynamically
 			restoreVsName := "e2e-restore-vs"
-			vscontentName := pvcJig.CreateVolumeSnapshotContentOrFail("e2e-snapshot-vsc", BVDriverName, backupOCID, ReclaimPolicyDelete, restoreVsName, f.Namespace.Name)
+			vscontentName := pvcJig.CreateVolumeSnapshotContentOrFail(f.Namespace.Name + "-e2e-snapshot-vsc", BVDriverName, backupOCID, ReclaimPolicyDelete, restoreVsName, f.Namespace.Name)
 
 			pvcJig.CreateAndAwaitVolumeSnapshotStaticOrFail(restoreVsName, f.Namespace.Name, vscontentName)
 
@@ -152,8 +152,8 @@ var _ = Describe("Snapshot Creation and Restore", func() {
 			pvcJig.CheckFileExists(f.Namespace.Name, podRestoreName, "/usr/share/nginx/html", "testdata.txt")
 
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
-			_ = f.DeleteVolumeSnapshotClass(framework.VSClassDefault)
-			_ = f.DeleteStorageClass(framework.ClassSnapshot)
+			_ = f.DeleteVolumeSnapshotClass(f.Namespace.Name)
+			_ = f.DeleteStorageClass(f.Namespace.Name)
 		})
 		It("Should be able to create a snapshot and restore from a backup in another compartment", func() {
 			checkOrInstallCRDs(f)
@@ -167,11 +167,11 @@ var _ = Describe("Snapshot Creation and Restore", func() {
 
 			backupOCID := pvcJig.CreateVolumeBackup(f.BlockStorageClient, setupF.AdLabel, setupF.StaticSnapshotCompartmentOcid, *volId, "test-backup")
 
-			scName := f.CreateStorageClassOrFail(framework.ClassSnapshot, BVDriverName, scParams, pvcJig.Labels, BindingModeWaitForFirstConsumer, true, ReclaimPolicyDelete, nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, BVDriverName, scParams, pvcJig.Labels, BindingModeWaitForFirstConsumer, true, ReclaimPolicyDelete, nil)
 
 			//creating a snapshot statically using the backup provisioned dynamically
 			restoreVsName := "e2e-restore-vs"
-			vscontentName := pvcJig.CreateVolumeSnapshotContentOrFail("e2e-snapshot-vsc", BVDriverName, *backupOCID, ReclaimPolicyDelete, restoreVsName, f.Namespace.Name)
+			vscontentName := pvcJig.CreateVolumeSnapshotContentOrFail(f.Namespace.Name + "-e2e-snapshot-vsc", BVDriverName, *backupOCID, ReclaimPolicyDelete, restoreVsName, f.Namespace.Name)
 
 			pvcJig.CreateAndAwaitVolumeSnapshotStaticOrFail(restoreVsName, f.Namespace.Name, vscontentName)
 
@@ -186,8 +186,8 @@ var _ = Describe("Snapshot Creation and Restore", func() {
 			pvcJig.DeleteVolumeBackup(f.BlockStorageClient, *backupOCID)
 
 			f.VolumeIds = append(f.VolumeIds, *volId)
-			_ = f.DeleteVolumeSnapshotClass(framework.VSClassDefault)
-			_ = f.DeleteStorageClass(framework.ClassSnapshot)
+			_ = f.DeleteVolumeSnapshotClass(f.Namespace.Name)
+			_ = f.DeleteStorageClass(f.Namespace.Name)
 		})
 	})
 })
@@ -204,12 +204,12 @@ var _ = Describe("Volume Snapshot Deletion Tests", func() {
 			scParams  := map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI}
 			vscParams := map[string]string{framework.BackupType: framework.BackupTypeFull}
 
-			scName := f.CreateStorageClassOrFail(framework.ClassSnapshot, BVDriverName, scParams, pvcJig.Labels, BindingModeWaitForFirstConsumer, true, ReclaimPolicyDelete, nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, BVDriverName, scParams, pvcJig.Labels, BindingModeWaitForFirstConsumer, true, ReclaimPolicyDelete, nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
 
 			_ = pvcJig.CreateAndAwaitNginxPodOrFail(f.Namespace.Name, pvc, WriteCommand)
 
-			vscName := f.CreateVolumeSnapshotClassOrFail(framework.VSClassDefault, BVDriverName, vscParams, ReclaimPolicyDelete)
+			vscName := f.CreateVolumeSnapshotClassOrFail(f.Namespace.Name, BVDriverName, vscParams, ReclaimPolicyDelete)
 			vs  := pvcJig.CreateAndAwaitVolumeSnapshotOrFail(f.Namespace.Name, vscName, pvc.Name, nil)
 
 			//Waiting for volume snapshot content to be created and status field to be populated
@@ -230,8 +230,8 @@ var _ = Describe("Volume Snapshot Deletion Tests", func() {
 			}
 
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
-			_ = f.DeleteVolumeSnapshotClass(framework.VSClassDefault)
-			_ = f.DeleteStorageClass(framework.ClassSnapshot)
+			_ = f.DeleteVolumeSnapshotClass(f.Namespace.Name)
+			_ = f.DeleteStorageClass(f.Namespace.Name)
 		})
 		It("Test VSContent not deleted when reclaim policy is Retain", func() {
 			checkOrInstallCRDs(f)
@@ -241,12 +241,12 @@ var _ = Describe("Volume Snapshot Deletion Tests", func() {
 			scParams  := map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI}
 			vscParams := map[string]string{framework.BackupType: framework.BackupTypeFull}
 
-			scName := f.CreateStorageClassOrFail(framework.ClassSnapshot, BVDriverName, scParams, pvcJig.Labels, BindingModeWaitForFirstConsumer, true, ReclaimPolicyDelete, nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, BVDriverName, scParams, pvcJig.Labels, BindingModeWaitForFirstConsumer, true, ReclaimPolicyDelete, nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
 
 			_ = pvcJig.CreateAndAwaitNginxPodOrFail(f.Namespace.Name, pvc, WriteCommand)
 
-			vscName := f.CreateVolumeSnapshotClassOrFail(framework.VSClassDefault, BVDriverName, vscParams, ReclaimPolicyRetain)
+			vscName := f.CreateVolumeSnapshotClassOrFail(f.Namespace.Name, BVDriverName, vscParams, ReclaimPolicyRetain)
 			vs  := pvcJig.CreateAndAwaitVolumeSnapshotOrFail(f.Namespace.Name, vscName, pvc.Name, nil)
 
 			//Waiting for volume snapshot content to be created and status field to be populated
@@ -278,8 +278,8 @@ var _ = Describe("Volume Snapshot Deletion Tests", func() {
 			pvcJig.DeleteVolumeBackup(f.BlockStorageClient, backupId)
 
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
-			_ = f.DeleteVolumeSnapshotClass(framework.VSClassDefault)
-			_ = f.DeleteStorageClass(framework.ClassSnapshot)
+			_ = f.DeleteVolumeSnapshotClass(f.Namespace.Name)
+			_ = f.DeleteStorageClass(f.Namespace.Name)
 		})
 	})
 })
@@ -289,7 +289,7 @@ func testSnapshotAndRestore(f *framework.CloudProviderFramework, scParams map[st
 	pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-snapshot-restore-e2e-tests")
 	pvcJig.InitialiseSnapClient(f.SnapClientSet)
 
-	scName := f.CreateStorageClassOrFail(framework.ClassSnapshot, BVDriverName, scParams, pvcJig.Labels, BindingModeWaitForFirstConsumer, true, ReclaimPolicyDelete, nil)
+	scName := f.CreateStorageClassOrFail(f.Namespace.Name, BVDriverName, scParams, pvcJig.Labels, BindingModeWaitForFirstConsumer, true, ReclaimPolicyDelete, nil)
 	pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
 
 	_ = pvcJig.CreateAndAwaitNginxPodOrFail(f.Namespace.Name, pvc, WriteCommand)
@@ -297,7 +297,7 @@ func testSnapshotAndRestore(f *framework.CloudProviderFramework, scParams map[st
 	// Waiting to be sure write command runs
 	time.Sleep(30 * time.Second)
 
-	vscName := f.CreateVolumeSnapshotClassOrFail(framework.VSClassDefault, BVDriverName, vscParams, ReclaimPolicyDelete)
+	vscName := f.CreateVolumeSnapshotClassOrFail(f.Namespace.Name, BVDriverName, vscParams, ReclaimPolicyDelete)
 	vs  := pvcJig.CreateAndAwaitVolumeSnapshotOrFail(f.Namespace.Name, vscName, pvc.Name, nil)
 
 	pvcRestore := pvcJig.CreateAndAwaitPVCOrFailSnapshotSource(f.Namespace.Name, framework.MinVolumeBlock, scName, vs.Name, v1.ClaimPending, nil)
@@ -306,8 +306,8 @@ func testSnapshotAndRestore(f *framework.CloudProviderFramework, scParams map[st
 	pvcJig.CheckFileExists(f.Namespace.Name, podRestoreName, "/usr/share/nginx/html", "testdata.txt")
 
 	f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
-	_ = f.DeleteVolumeSnapshotClass(framework.VSClassDefault)
-	_ = f.DeleteStorageClass(framework.ClassSnapshot)
+	_ = f.DeleteVolumeSnapshotClass(f.Namespace.Name)
+	_ = f.DeleteStorageClass(f.Namespace.Name)
 }
 
 func checkOrInstallCRDs(f *framework.CloudProviderFramework) {
