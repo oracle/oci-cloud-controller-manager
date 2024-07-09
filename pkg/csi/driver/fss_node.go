@@ -16,6 +16,7 @@ package driver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -37,9 +38,11 @@ import (
 const (
 	mountPath                  = "mount"
 	FipsEnabled                = "1"
+	fssMountSemaphoreTimeout   = time.Second * 30
 	fssUnmountSemaphoreTimeout = time.Second * 30
 )
 
+var fssMountSemaphore = semaphore.NewWeighted(int64(2))
 var fssUnmountSemaphore = semaphore.NewWeighted(int64(4))
 
 // NodeStageVolume mounts the volume to a staging path on the node.
@@ -121,6 +124,27 @@ func (d FSSNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVo
 
 	defer d.volumeLocks.Release(req.VolumeId)
 
+	logger.Debug("Trying to stage.")
+	startTime := time.Now()
+
+	fssMountSemaphoreCtx, cancel := context.WithTimeout(ctx, fssMountSemaphoreTimeout)
+	defer cancel()
+
+	err = fssMountSemaphore.Acquire(fssMountSemaphoreCtx, 1)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			logger.Error("Semaphore acquire timed out.")
+		} else if errors.Is(err, context.Canceled) {
+			logger.Error("Stage semaphore acquire context was canceled.")
+		} else {
+			logger.With(zap.Error(err)).Error("Error acquiring lock during stage.")
+		}
+		return nil, status.Error(codes.Aborted, "Too many mount requests.")
+	}
+	defer fssMountSemaphore.Release(1)
+
+	logger.Info("Stage started.")
+
 	targetPath := req.StagingTargetPath
 	mountPoint, err := isMountPoint(mounter, targetPath)
 	if err != nil {
@@ -157,7 +181,7 @@ func (d FSSNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVo
 		logger.With(zap.Error(err)).Error("failed to mount volume to staging target path.")
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	logger.With("mountTarget", mountTargetIP, "exportPath", exportPath, "StagingTargetPath", targetPath).
+	logger.With("mountTarget", mountTargetIP, "exportPath", exportPath, "StagingTargetPath", targetPath, "StageTime", time.Since(startTime).Milliseconds()).
 		Info("Mounting the volume to staging target path is completed.")
 
 	return &csi.NodeStageVolumeResponse{}, nil
@@ -233,12 +257,34 @@ func (d FSSNodeDriver) NodePublishVolume(ctx context.Context, req *csi.NodePubli
 		options = append(options, "ro")
 	}
 	source := req.GetStagingTargetPath()
+
+	logger.Debug("Trying to publish.")
+	startTime := time.Now()
+
+	fssMountSemaphoreCtx, cancel := context.WithTimeout(ctx, fssMountSemaphoreTimeout)
+	defer cancel()
+
+	err = fssMountSemaphore.Acquire(fssMountSemaphoreCtx, 1)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			logger.Error("Semaphore acquire timed out.")
+		} else if errors.Is(err, context.Canceled) {
+			logger.Error("Publish semaphore acquire context was canceled.")
+		} else {
+			logger.With(zap.Error(err)).Error("Error acquiring lock during stage.")
+		}
+		return nil, status.Error(codes.Aborted, "Too many mount requests.")
+	}
+	defer fssMountSemaphore.Release(1)
+
+	logger.Info("Publish started.")
+
 	err = mounter.Mount(source, targetPath, fsType, options)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("failed to bind mount volume to target path.")
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	logger.With("staging target path", source, "TargetPath", targetPath).
+	logger.With("staging target path", source, "TargetPath", targetPath, "PublishTime", time.Since(startTime).Milliseconds()).
 		Info("Bind mounting the volume to target path is completed.")
 
 	return &csi.NodePublishVolumeResponse{}, nil
