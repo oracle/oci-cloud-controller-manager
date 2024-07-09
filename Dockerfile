@@ -14,7 +14,7 @@
 
 ARG CI_IMAGE_REGISTRY
 
-FROM golang:1.20.4 as builder
+FROM odo-docker-signed-local.artifactory.oci.oraclecorp.com/oke/golang-buildbox:1.22.3-1 as builder
 
 ARG COMPONENT
 

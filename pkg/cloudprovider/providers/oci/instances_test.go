@@ -348,11 +348,11 @@ func (MockComputeClient) FindVolumeAttachment(ctx context.Context, compartmentID
 	return nil, nil
 }
 
-func (MockComputeClient) AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool) (core.VolumeAttachment, error) {
+func (MockComputeClient) AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool, isSharable bool) (core.VolumeAttachment, error) {
 	return nil, nil
 }
 
-func (MockComputeClient) AttachVolume(ctx context.Context, instanceID, volumeID string) (core.VolumeAttachment, error) {
+func (MockComputeClient) AttachVolume(ctx context.Context, instanceID, volumeID string, isSharable bool) (core.VolumeAttachment, error) {
 	return nil, nil
 }
 

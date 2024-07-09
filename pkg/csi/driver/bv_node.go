@@ -66,11 +66,15 @@ func (d BlockVolumeNodeDriver) NodeStageVolume(ctx context.Context, req *csi.Nod
 
 	stagingTargetFilePath := csi_util.GetStagingTargetPathForFile(req.StagingTargetPath)
 
+	logger.With("devicePath", stagingTargetFilePath).Info("Roger, devicePath")
+
 	isRawBlockVolume := false
 
 	if _, ok := req.VolumeCapability.GetAccessType().(*csi.VolumeCapability_Block); ok {
 		isRawBlockVolume = true
 	}
+
+	logger.With("isRawBlockVolume", isRawBlockVolume).Info("Roger, isRawBlockVolume")
 
 	attachment, ok := req.PublishContext[attachmentType]
 
