@@ -144,6 +144,15 @@ func Test_ValidateFssId(t *testing.T) {
 			},
 		},
 		{
+			name:         "Filesystem exposed by Mount Target having dns",
+			volumeHandle: "ocid1.filesystem.oc1.phx.aaaaaaaaaahjpdudobuhqllqojxwiotqnb4c2ylefuzaaaaa:myhostname.subnet123.dnslabel.oraclevcn.com:/FileSystem-Test",
+			wantFssVolumeHandler: &FSSVolumeHandler{
+				FilesystemOcid:       "ocid1.filesystem.oc1.phx.aaaaaaaaaahjpdudobuhqllqojxwiotqnb4c2ylefuzaaaaa",
+				MountTargetIPAddress: "myhostname.subnet123.dnslabel.oraclevcn.com",
+				FsExportPath:         "/FileSystem-Test",
+			},
+		},
+		{
 			name:                 "Invalid Ipv4 provided in volume handle",
 			volumeHandle:         "ocid1.filesystem.oc1.phx.aaaaaaaaaahjpdudobuhqllqojxwiotqnb4c2ylefuzaaaaa:10.0.2:/FileSystem-Test",
 			wantFssVolumeHandler: &FSSVolumeHandler{},
@@ -199,6 +208,11 @@ func Test_ValidateFssId(t *testing.T) {
 		{
 			name:                 "Export not provided",
 			volumeHandle:         "ocid1.filesystem.oc1.phx.aaaaaaaaaahjpdudobuhqllqojxwiotqnb4c2ylefuzaaaaa:fd00:c1::a9fe:504:",
+			wantFssVolumeHandler: &FSSVolumeHandler{},
+		},
+		{
+			name:                 "Invalid dns name provided in volume handle",
+			volumeHandle:         "ocid1.filesystem.oc1.phx.aaaaaaaaaahjpdudobuhqllqojxwiotqnb4c2ylefuzaaaaa:Invalid Dns:/FileSystem-Test",
 			wantFssVolumeHandler: &FSSVolumeHandler{},
 		},
 	}
@@ -474,14 +488,21 @@ func Test_Ip_Util_Methods(t *testing.T) {
 		{
 			name:               "Invalid ipv4",
 			ipAddress:          "10.0.0.",
-			formattedIpAddress: "[10.0.0.]",
+			formattedIpAddress: "10.0.0.",
 			isIpv4:             false,
 			isIpv6:             false,
 		},
 		{
 			name:               "Invalid ipv6",
 			ipAddress:          "zxf0:00c1::a9fe",
-			formattedIpAddress: "[zxf0:00c1::a9fe]",
+			formattedIpAddress: "zxf0:00c1::a9fe",
+			isIpv4:             false,
+			isIpv6:             false,
+		},
+		{
+			name:               "dns name",
+			ipAddress:          "mtwithdns.subc7a90bc13.cluster1.oraclevcn.com",
+			formattedIpAddress: "mtwithdns.subc7a90bc13.cluster1.oraclevcn.com",
 			isIpv4:             false,
 			isIpv6:             false,
 		},
@@ -671,6 +692,53 @@ func Test_SubnetStack(t *testing.T) {
 			gotStr := IsDualStackSubnet(tt.subnet)
 			if tt.IsDualStackSubnet != gotStr {
 				t.Errorf("IsDualStackSubnet() = %v, want %v", gotStr, tt.IsDualStackSubnet)
+			}
+		})
+	}
+}
+
+func Test_ValidateDNSName(t *testing.T) {
+	tests := []struct {
+		name           string
+		dnsName        string
+		expectedResult bool
+	}{
+		{
+			name:           "Valid DNS Name",
+			dnsName:        "myhostname.subnet123.dnslabel.oraclevcn.com",
+			expectedResult: true,
+		},
+		{
+			name:           "Valid DNS Name",
+			dnsName:        "mymounttarget.dev",
+			expectedResult: true,
+		},
+		{
+			name:           "Valid DNS Name",
+			dnsName:        "all.chars-123ns.org",
+			expectedResult: true,
+		},
+		{
+			name:           "Invalid dns",
+			dnsName:        "-myhostname.com",
+			expectedResult: false,
+		},
+		{
+			name:           "Invalid dns",
+			dnsName:        "InvalidDns",
+			expectedResult: false,
+		},
+		{
+			name:           "Invalid dns",
+			dnsName:        "10.10.0.0",
+			expectedResult: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			validationResult := ValidateDNSName(tt.dnsName)
+			if validationResult != tt.expectedResult {
+				t.Errorf("ValidateDNSName() = %v, want %v", validationResult, tt.expectedResult)
 			}
 		})
 	}
