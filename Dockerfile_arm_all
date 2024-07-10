@@ -1,6 +1,6 @@
 ARG CI_IMAGE_REGISTRY
 
-FROM golang:1.20.4 as builder
+FROM golang:1.21.5 as builder
 
 ARG COMPONENT
 
@@ -14,12 +14,11 @@ WORKDIR $SRC
 
 RUN ARCH=arm make clean build-arm-all
 
-FROM arm64v8/oraclelinux:7-slim
+FROM arm64v8/oraclelinux:8-slim
 
-RUN yum install -y util-linux \
-  && yum install -y e2fsprogs \
-  && yum clean all
- \
+RUN microdnf -y install util-linux e2fsprogs xfsprogs python2 && \
+    microdnf update && \
+    microdnf clean all
 
 COPY scripts/encrypt-mount /sbin/encrypt-mount
 COPY scripts/encrypt-umount /sbin/encrypt-umount

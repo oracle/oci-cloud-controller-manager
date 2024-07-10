@@ -310,6 +310,10 @@ func (MockOCIClient) Identity() client.IdentityInterface {
 // MockComputeClient mocks Compute client implementation
 type MockComputeClient struct{}
 
+func (c MockComputeClient) ListInstancesByCompartmentAndAD(ctx context.Context, compartmentId, availabilityDomain string) (response []core.Instance, err error) {
+	return nil, nil
+}
+
 func (MockComputeClient) GetInstance(ctx context.Context, id string) (*core.Instance, error) {
 	if instance, ok := instances[id]; ok {
 		return instance, nil
@@ -443,7 +447,7 @@ func (c *MockLoadBalancerClient) ListWorkRequests(ctx context.Context, compartme
 	return nil, nil
 }
 
-func (c *MockLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details *client.GenericCreateLoadBalancerDetails) (string, error) {
+func (c *MockLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details *client.GenericCreateLoadBalancerDetails, serviceUid *string) (string, error) {
 	return "", nil
 }
 
@@ -497,6 +501,18 @@ func (c *MockLoadBalancerClient) DeleteListener(ctx context.Context, lbID, name 
 	return "", nil
 }
 
+var updateLoadBalancerErrors = map[string]error{
+	"work request fail": errors.New("internal server error"),
+}
+
+func (c *MockLoadBalancerClient) UpdateLoadBalancer(ctx context.Context, lbID string, details *client.GenericUpdateLoadBalancerDetails) (string, error) {
+	if err, ok := updateLoadBalancerErrors[lbID]; ok {
+		return "", err
+	}
+
+	return "", nil
+}
+
 var awaitLoadbalancerWorkrequestMap = map[string]error{
 	"failedToGetUpdateNetworkSecurityGroupsWorkRequest": errors.New("internal server error for get workrequest call"),
 }
@@ -537,7 +553,7 @@ func (c *MockNetworkLoadBalancerClient) ListWorkRequests(ctx context.Context, co
 	return nil, nil
 }
 
-func (c *MockNetworkLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details *client.GenericCreateLoadBalancerDetails) (string, error) {
+func (c *MockNetworkLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details *client.GenericCreateLoadBalancerDetails, serviceUid *string) (string, error) {
 	return "", nil
 }
 
@@ -609,6 +625,10 @@ func (c *MockNetworkLoadBalancerClient) UpdateNetworkSecurityGroups(ctx context.
 	if wrID, ok := updateNetworkSecurityGroupsLBsWorkRequests[lbId]; ok {
 		return wrID, nil
 	}
+	return "", nil
+}
+
+func (c *MockNetworkLoadBalancerClient) UpdateLoadBalancer(ctx context.Context, lbID string, details *client.GenericUpdateLoadBalancerDetails) (string, error) {
 	return "", nil
 }
 

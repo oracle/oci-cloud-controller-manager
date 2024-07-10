@@ -26,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	api "k8s.io/kubernetes/pkg/apis/core"
 	k8sports "k8s.io/kubernetes/pkg/cluster/ports"
 )
 
@@ -126,7 +127,8 @@ func TestGetNodeIngressRules(t *testing.T) {
 				makeIngressSecurityRule("3", 80),
 				makeIngressSecurityRule("3", k8sports.ProxyHealthzPort),
 			},
-		}, {
+		},
+		{
 			name: "remove lb subnets",
 			securityList: &core.SecurityList{
 				IngressSecurityRules: []core.IngressSecurityRule{
@@ -150,7 +152,8 @@ func TestGetNodeIngressRules(t *testing.T) {
 				makeIngressSecurityRule("existing", 9000),
 				makeIngressSecurityRule("existing", 9001),
 			},
-		}, {
+		},
+		{
 			name: "do not delete health check rules that are used by other services",
 			securityList: &core.SecurityList{
 				IngressSecurityRules: []core.IngressSecurityRule{
@@ -167,8 +170,9 @@ func TestGetNodeIngressRules(t *testing.T) {
 				{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-default-health-check-port"},
 					Spec: v1.ServiceSpec{
-						Type:  v1.ServiceTypeLoadBalancer,
-						Ports: []v1.ServicePort{{Port: 443}},
+						Type:                  v1.ServiceTypeLoadBalancer,
+						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicy(api.ServiceExternalTrafficPolicyCluster),
+						Ports:                 []v1.ServicePort{{Port: 443}},
 					},
 				},
 			},
@@ -177,7 +181,48 @@ func TestGetNodeIngressRules(t *testing.T) {
 			expected: []core.IngressSecurityRule{
 				makeIngressSecurityRule("0.0.0.0/0", lbNodesHealthCheckPort),
 			},
-		}, {
+		},
+		{
+			name: "multiple services for same cluster; one uses default healthcheck and other uses HealthcheckNodeport",
+			securityList: &core.SecurityList{
+				IngressSecurityRules: []core.IngressSecurityRule{
+					makeIngressSecurityRule("0.0.0.0/0", lbNodesHealthCheckPort),
+					makeIngressSecurityRule("0.0.0.0/0", 80),
+					makeIngressSecurityRule("1.1.1.1/1", 32000),
+				},
+			},
+			lbSubnets: []*core.Subnet{},
+			desiredPorts: portSpec{
+				BackendPort:       80,
+				HealthCheckerPort: k8sports.ProxyHealthzPort,
+			},
+			services: []*v1.Service{
+				{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-default-health-check-port"},
+					Spec: v1.ServiceSpec{
+						Type:                  v1.ServiceTypeLoadBalancer,
+						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicy(api.ServiceExternalTrafficPolicyCluster),
+						Ports:                 []v1.ServicePort{{Port: 443}},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-NodePort-health-check-port"},
+					Spec: v1.ServiceSpec{
+						Type:                  v1.ServiceTypeLoadBalancer,
+						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicy(api.ServiceExternalTrafficPolicyLocal),
+						Ports:                 []v1.ServicePort{{Port: 8081}},
+						HealthCheckNodePort:   32000,
+					},
+				},
+			},
+			isPreserveSource: false,
+			sourceCIDRs:      []string{"0.0.0.0/0"},
+			expected: []core.IngressSecurityRule{
+				makeIngressSecurityRule("0.0.0.0/0", lbNodesHealthCheckPort),
+				makeIngressSecurityRule("1.1.1.1/1", 32000),
+			},
+		},
+		{
 			name: "update service port",
 			securityList: &core.SecurityList{
 				IngressSecurityRules: []core.IngressSecurityRule{
@@ -242,6 +287,48 @@ func TestGetNodeIngressRules(t *testing.T) {
 				makeIngressSecurityRule("10.0.51.0/24", 8081),
 				makeIngressSecurityRule("10.0.50.0/24", k8sports.ProxyHealthzPort+1),
 				makeIngressSecurityRule("10.0.51.0/24", k8sports.ProxyHealthzPort+1),
+			},
+		}, {
+			name: "external traffic policy local service health check port",
+			securityList: &core.SecurityList{
+				IngressSecurityRules: []core.IngressSecurityRule{
+					core.IngressSecurityRule{Source: common.String("0.0.0.0/0")},
+					makeIngressSecurityRule("10.0.50.0/24", 8081),
+					makeIngressSecurityRule("10.0.51.0/24", 8081),
+					makeIngressSecurityRule("10.0.50.0/24", k8sports.ProxyHealthzPort),
+					makeIngressSecurityRule("10.0.51.0/24", k8sports.ProxyHealthzPort),
+				},
+			},
+			lbSubnets: []*core.Subnet{
+				{CidrBlock: common.String("10.0.50.0/24")},
+				{CidrBlock: common.String("10.0.51.0/24")},
+			},
+			actualPorts: &portSpec{
+				BackendPort:       8081,
+				HealthCheckerPort: k8sports.ProxyHealthzPort,
+			},
+			desiredPorts: portSpec{
+				BackendPort:       8081,
+				HealthCheckerPort: 30000,
+			},
+			services: []*v1.Service{
+				{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-non-default-health-check-port"},
+					Spec: v1.ServiceSpec{
+						Type:                  v1.ServiceTypeLoadBalancer,
+						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicy(api.ServiceExternalTrafficPolicyLocal),
+						Ports:                 []v1.ServicePort{{Port: 8081}},
+					},
+				},
+			},
+			isPreserveSource: false,
+			sourceCIDRs:      []string{"0.0.0.0/0"},
+			expected: []core.IngressSecurityRule{
+				core.IngressSecurityRule{Source: common.String("0.0.0.0/0")},
+				makeIngressSecurityRule("10.0.50.0/24", 8081),
+				makeIngressSecurityRule("10.0.51.0/24", 8081),
+				makeIngressSecurityRule("10.0.50.0/24", 30000),
+				makeIngressSecurityRule("10.0.51.0/24", 30000),
 			},
 		},
 	}
@@ -407,8 +494,9 @@ func TestGetNodeIngressRules_NLB(t *testing.T) {
 				{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-default-health-check-port"},
 					Spec: v1.ServiceSpec{
-						Type:  v1.ServiceTypeLoadBalancer,
-						Ports: []v1.ServicePort{{Port: 443}},
+						Type:                  v1.ServiceTypeLoadBalancer,
+						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicy(api.ServiceExternalTrafficPolicyCluster),
+						Ports:                 []v1.ServicePort{{Port: 443}},
 					},
 				},
 			},
@@ -907,12 +995,72 @@ func TestGetLoadBalancerEgressRules(t *testing.T) {
 				{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-default-health-check-port"},
 					Spec: v1.ServiceSpec{
-						Type:  v1.ServiceTypeLoadBalancer,
-						Ports: []v1.ServicePort{{Port: 80}},
+						Type:                  v1.ServiceTypeLoadBalancer,
+						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicy(api.ServiceExternalTrafficPolicyCluster),
+						Ports:                 []v1.ServicePort{{Port: 80}},
 					},
 				},
 			},
 			expected: []core.EgressSecurityRule{
+				makeEgressSecurityRule("0.0.0.0/0", lbNodesHealthCheckPort),
+			},
+		},
+		{
+			name: "do not delete a port rule during listener deletes",
+			securityList: &core.SecurityList{
+				EgressSecurityRules: []core.EgressSecurityRule{
+					makeEgressSecurityRule("0.0.0.0/0", 30000),
+				},
+			},
+			subnets:     []*core.Subnet{},
+			actualPort:  30000,
+			desiredPort: 30000,
+			services: []*v1.Service{
+				{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-default-health-check-port"},
+					Spec: v1.ServiceSpec{
+						Type:                  v1.ServiceTypeLoadBalancer,
+						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicy(api.ServiceExternalTrafficPolicyLocal),
+						HealthCheckNodePort:   30000,
+					},
+				},
+			},
+			expected: []core.EgressSecurityRule{
+				makeEgressSecurityRule("0.0.0.0/0", 30000),
+			},
+		},
+		{
+			name: "multiple services in the same cluster; one using default healthcheck and other using healthcheck Nodeport",
+			securityList: &core.SecurityList{
+				EgressSecurityRules: []core.EgressSecurityRule{
+					makeEgressSecurityRule("0.0.0.0/0", 30000),
+					makeEgressSecurityRule("0.0.0.0/0", lbNodesHealthCheckPort),
+				},
+			},
+			subnets:     []*core.Subnet{},
+			actualPort:  31000,
+			desiredPort: 31000,
+			services: []*v1.Service{
+				{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-Nodeport-health-check-port"},
+					Spec: v1.ServiceSpec{
+						Type:                  v1.ServiceTypeLoadBalancer,
+						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicy(api.ServiceExternalTrafficPolicyLocal),
+						Ports:                 []v1.ServicePort{{Port: 80}},
+						HealthCheckNodePort:   30000,
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "using-default-health-check-port"},
+					Spec: v1.ServiceSpec{
+						Type:                  v1.ServiceTypeLoadBalancer,
+						Ports:                 []v1.ServicePort{{Port: 8080}},
+						ExternalTrafficPolicy: v1.ServiceExternalTrafficPolicy(api.ServiceExternalTrafficPolicyCluster),
+					},
+				},
+			},
+			expected: []core.EgressSecurityRule{
+				makeEgressSecurityRule("0.0.0.0/0", 30000),
 				makeEgressSecurityRule("0.0.0.0/0", lbNodesHealthCheckPort),
 			},
 		},

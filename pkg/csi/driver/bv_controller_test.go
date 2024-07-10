@@ -465,7 +465,7 @@ func (c *MockLoadBalancerClient) ListWorkRequests(ctx context.Context, compartme
 	return nil, nil
 }
 
-func (c *MockLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details *client.GenericCreateLoadBalancerDetails) (string, error) {
+func (c *MockLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details *client.GenericCreateLoadBalancerDetails, serviceUid *string) (string, error) {
 	return "", nil
 }
 
@@ -533,6 +533,10 @@ func (c *MockLoadBalancerClient) UpdateNetworkSecurityGroups(context.Context, st
 	return "", nil
 }
 
+func (c *MockLoadBalancerClient) UpdateLoadBalancer(ctx context.Context, lbID string, details *client.GenericUpdateLoadBalancerDetails) (string, error) {
+	return "", nil
+}
+
 // Networking mocks client VirtualNetwork implementation.
 func (p *MockProvisionerClient) LoadBalancer(*zap.SugaredLogger, string, string, *authv1.TokenRequest) client.GenericLoadBalancerInterface {
 	return &MockLoadBalancerClient{}
@@ -540,6 +544,10 @@ func (p *MockProvisionerClient) LoadBalancer(*zap.SugaredLogger, string, string,
 
 type MockComputeClient struct {
 	compute util.MockOCIComputeClient
+}
+
+func (c *MockComputeClient) ListInstancesByCompartmentAndAD(ctx context.Context, compartmentId, availabilityDomain string) (response []core.Instance, err error) {
+	return nil, nil
 }
 
 // GetInstance gets information about the specified instance.
@@ -1240,6 +1248,24 @@ func TestControllerDriver_ControllerExpandVolume(t *testing.T) {
 			wantErr: errors.New("Update volume failed"),
 		},
 		{
+			name:   "If no changes then do nothing in ControllerExpandVolume",
+			fields: fields{},
+			args: args{
+				ctx: nil,
+				req: &csi.ControllerExpandVolumeRequest{
+					VolumeId: "valid_volume_id",
+					CapacityRange: &csi.CapacityRange{
+						RequiredBytes: int64(csi_util.MaximumVolumeSizeInBytes),
+					},
+				},
+			},
+			want: &csi.ControllerExpandVolumeResponse{
+				CapacityBytes:         int64(csi_util.MaximumVolumeSizeInBytes),
+				NodeExpansionRequired: true,
+			},
+			wantErr: nil,
+		},
+		{
 			name:   "Uhp volume expand success in ControllerExpandVolume",
 			fields: fields{},
 			args: args{
@@ -1844,6 +1870,165 @@ func TestGetAttachmentOptions(t *testing.T) {
 			if !reflect.DeepEqual(volumeAttachmentOption, tt.volumeAttachmentOption) {
 				t.Errorf("getAttachmentOptions() = %v, want %v", volumeAttachmentOption, tt.volumeAttachmentOption)
 			}
+		})
+	}
+}
+
+func TestGetBVTags(t *testing.T) {
+	emptyTags := &providercfg.InitialTags{}
+	emptyTagConfig := &providercfg.TagConfig{}
+	emptyVolumeParameters := VolumeParameters{}
+	enableOkeSystemTags = true
+	tests := map[string]struct {
+		initialTags       *providercfg.InitialTags
+		volumeParameters  VolumeParameters
+		expectedTagConfig *providercfg.TagConfig
+		featureEnabled    bool
+	}{
+		"no resource tags, no common tags": {
+			initialTags:       emptyTags,
+			volumeParameters:  emptyVolumeParameters,
+			expectedTagConfig: emptyTagConfig,
+			featureEnabled:    true,
+		},
+		"no resource tags, but common tags": {
+			initialTags: &providercfg.InitialTags{
+				Common: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"key1": "value1"},
+					DefinedTags:  map[string]map[string]interface{}{"ns1": {"key1": "value1"}},
+				},
+			},
+			volumeParameters: emptyVolumeParameters,
+			expectedTagConfig: &providercfg.TagConfig{
+				FreeformTags: map[string]string{"key1": "value1"},
+				DefinedTags:  map[string]map[string]interface{}{"ns1": {"key1": "value1"}},
+			},
+			featureEnabled: true,
+		},
+		"resource tags with common tags from config": {
+			initialTags: &providercfg.InitialTags{
+				Common: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"key1": "value1"},
+					DefinedTags:  map[string]map[string]interface{}{"ns1": {"key1": "value1"}},
+				},
+			},
+			volumeParameters: VolumeParameters{
+				freeformTags: map[string]string{"key2": "value2"},
+				definedTags:  map[string]map[string]interface{}{"ns2": {"key2": "value2"}},
+			},
+			expectedTagConfig: &providercfg.TagConfig{
+				FreeformTags: map[string]string{"key1": "value1", "key2": "value2"},
+				DefinedTags:  map[string]map[string]interface{}{"ns1": {"key1": "value1"}, "ns2": {"key2": "value2"}},
+			},
+			featureEnabled: true,
+		},
+		"resource level tags with common tags from config with same key": {
+			initialTags: &providercfg.InitialTags{
+				Common: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"key1": "value1"},
+					DefinedTags:  map[string]map[string]interface{}{"ns1": {"key1": "value1"}},
+				},
+			},
+			volumeParameters: VolumeParameters{
+				freeformTags: map[string]string{"key1": "value2"},
+				definedTags:  map[string]map[string]interface{}{"ns1": {"key2": "value2"}},
+			},
+			expectedTagConfig: &providercfg.TagConfig{
+				FreeformTags: map[string]string{"key1": "value1"},
+				DefinedTags:  map[string]map[string]interface{}{"ns1": {"key1": "value1"}},
+			},
+			featureEnabled: true,
+		},
+		"cluster level tags with common tags from config": {
+			initialTags: &providercfg.InitialTags{
+				BlockVolume: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"key1": "value1"},
+					DefinedTags:  map[string]map[string]interface{}{"ns1": {"key1": "value1"}},
+				},
+				Common: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"key2": "value2"},
+					DefinedTags:  map[string]map[string]interface{}{"ns2": {"key2": "value2"}},
+				},
+			},
+			volumeParameters: emptyVolumeParameters,
+			expectedTagConfig: &providercfg.TagConfig{
+				FreeformTags: map[string]string{"key1": "value1", "key2": "value2"},
+				DefinedTags:  map[string]map[string]interface{}{"ns1": {"key1": "value1"}, "ns2": {"key2": "value2"}},
+			},
+			featureEnabled: true,
+		},
+		"cluster level tags with common tags from config with same key": {
+			initialTags: &providercfg.InitialTags{
+				BlockVolume: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"key1": "value1"},
+					DefinedTags:  map[string]map[string]interface{}{"ns1": {"key1": "value1"}},
+				},
+				Common: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"key1": "value2"},
+					DefinedTags:  map[string]map[string]interface{}{"ns1": {"key2": "value2"}},
+				},
+			},
+			volumeParameters: emptyVolumeParameters,
+			expectedTagConfig: &providercfg.TagConfig{
+				FreeformTags: map[string]string{"key1": "value2"},
+				DefinedTags:  map[string]map[string]interface{}{"ns1": {"key2": "value2"}},
+			},
+			featureEnabled: true,
+		},
+		"cluster level tags but no common tags": {
+			initialTags: &providercfg.InitialTags{
+				BlockVolume: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"key1": "value1"},
+					DefinedTags:  map[string]map[string]interface{}{"ns1": {"key1": "value1"}},
+				},
+			},
+			volumeParameters: emptyVolumeParameters,
+			expectedTagConfig: &providercfg.TagConfig{
+				FreeformTags: map[string]string{"key1": "value1"},
+				DefinedTags:  map[string]map[string]interface{}{"ns1": {"key1": "value1"}},
+			},
+			featureEnabled: true,
+		},
+		"no cluster level or resource level tags but common tags": {
+			initialTags: &providercfg.InitialTags{
+				Common: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"key1": "value1"},
+					DefinedTags:  map[string]map[string]interface{}{"ns1": {"key1": "value1"}},
+				},
+			},
+			volumeParameters: emptyVolumeParameters,
+			expectedTagConfig: &providercfg.TagConfig{
+				FreeformTags: map[string]string{"key1": "value1"},
+				DefinedTags:  map[string]map[string]interface{}{"ns1": {"key1": "value1"}},
+			},
+			featureEnabled: true,
+		},
+		"when the feature is disabled": {
+			initialTags: &providercfg.InitialTags{
+				Common: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"key1": "value1"},
+					DefinedTags:  map[string]map[string]interface{}{"ns1": {"key1": "value1"}},
+				},
+			},
+			volumeParameters: VolumeParameters{
+				freeformTags: map[string]string{"key2": "value2"},
+				definedTags:  map[string]map[string]interface{}{"ns2": {"key2": "value2"}},
+			},
+			expectedTagConfig: &providercfg.TagConfig{
+				FreeformTags: map[string]string{"key2": "value2"},
+				DefinedTags:  map[string]map[string]interface{}{"ns2": {"key2": "value2"}},
+			},
+			featureEnabled: false,
+		},
+	}
+	for name, testcase := range tests {
+		enableOkeSystemTags = testcase.featureEnabled
+		t.Run(name, func(t *testing.T) {
+			actualTagConfig := getBVTags(zap.S(), testcase.initialTags, testcase.volumeParameters)
+			if !reflect.DeepEqual(actualTagConfig, testcase.expectedTagConfig) {
+				t.Errorf("Expected tagconfig %v but got %v", testcase.expectedTagConfig, actualTagConfig)
+			}
+
 		})
 	}
 }
