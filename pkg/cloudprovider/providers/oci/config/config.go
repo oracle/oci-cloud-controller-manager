@@ -15,9 +15,10 @@
 package config
 
 import (
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 	"io"
 	"os"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 
 	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/common/auth"
@@ -103,6 +104,10 @@ type RateLimiterConfig struct {
 	DisableRateLimiter   bool    `yaml:"disableRateLimiter"`
 }
 
+type SecondaryVnicConfig struct {
+	SecondaryVnicCIDRRange string `yaml:"secondaryVnicCIDRRange"`
+}
+
 // MetricsConfig holds the configuration for collection metrics
 // which are pushed to OCI Monitoring. More details present at
 // https://docs.cloud.oracle.com/en-us/iaas/Content/Monitoring/Tasks/publishingcustommetrics.htm
@@ -132,9 +137,10 @@ type InitialTags struct {
 // Config holds the OCI cloud-provider config passed to Kubernetes components
 // via the --cloud-config option.
 type Config struct {
-	Auth         AuthConfig          `yaml:"auth"`
-	LoadBalancer *LoadBalancerConfig `yaml:"loadBalancer"`
-	RateLimiter  *RateLimiterConfig  `yaml:"rateLimiter"`
+	Auth          AuthConfig           `yaml:"auth"`
+	LoadBalancer  *LoadBalancerConfig  `yaml:"loadBalancer"`
+	RateLimiter   *RateLimiterConfig   `yaml:"rateLimiter"`
+	SecondaryVnic *SecondaryVnicConfig `yaml:secondaryVnic`
 	// Metrics collection is enabled when this configuration is provided
 	Metrics *MetricsConfig `yaml:"metrics"`
 	// Tags to be added to managed LB and BV
