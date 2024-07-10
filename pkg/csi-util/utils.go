@@ -20,6 +20,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -444,6 +445,12 @@ func GetBlockSizeBytes(logger *zap.SugaredLogger, devicePath string) (int64, err
 	return gotSizeBytes, nil
 }
 
+func ValidateDNSName(name string) bool {
+	pattern := `^([a-zA-Z0-9]+(-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,}$`
+	match, _ := regexp.MatchString(pattern, name)
+	return match
+}
+
 func ValidateFssId(id string) *FSSVolumeHandler {
 	volumeHandler := &FSSVolumeHandler{"", "", ""}
 	if id == "" {
@@ -454,7 +461,7 @@ func ValidateFssId(id string) *FSSVolumeHandler {
 	lastColon := strings.LastIndex(id, ":")
 	if firstColon > 0 && lastColon < len(id)-1 && firstColon != lastColon {
 		//To handle ipv6  ex.[fd00:00c1::a9fe:202] trim brackets to get fd00:00c1::a9fe:202 which is parsable
-		if net.ParseIP(strings.Trim(id[firstColon+1:lastColon], "[]")) != nil {
+		if net.ParseIP(strings.Trim(id[firstColon+1:lastColon], "[]")) != nil || ValidateDNSName(id[firstColon+1:lastColon]) {
 			volumeHandler.FilesystemOcid = id[:firstColon]
 			volumeHandler.MountTargetIPAddress = id[firstColon+1 : lastColon]
 			volumeHandler.FsExportPath = id[lastColon+1:]
@@ -523,8 +530,10 @@ func ConvertIscsiIpFromIpv4ToIpv6(ipv4IscsiIp string) (string, error) {
 func FormatValidIp(ipAddress string) string {
 	if net.ParseIP(ipAddress).To4() != nil {
 		return ipAddress
+	} else if net.ParseIP(ipAddress).To16() != nil {
+		return fmt.Sprintf("[%s]", strings.Trim(ipAddress, "[]"))
 	}
-	return fmt.Sprintf("[%s]", strings.Trim(ipAddress, "[]"))
+	return ipAddress
 }
 
 func FormatValidIpStackInK8SConvention(ipStack string) string {
