@@ -177,15 +177,15 @@ func (c *mockComputeClient) ListInstanceDevices(ctx context.Context, request cor
 
 	if *request.InstanceId == "ocid1.device-path-returns-error" {
 		return core.ListInstanceDevicesResponse{}, errNotFound
-	} else if  *request.InstanceId == "ocid1.device-path-not-available" {
+	} else if *request.InstanceId == "ocid1.device-path-not-available" {
 		return core.ListInstanceDevicesResponse{
-				Items: []core.Device{},
-			}, nil
-	} else if  *request.InstanceId == "ocid1.one-device-path-available" {
+			Items: []core.Device{},
+		}, nil
+	} else if *request.InstanceId == "ocid1.one-device-path-available" {
 		return core.ListInstanceDevicesResponse{
 			Items: []core.Device{{
-					Name: &devicePath,
-				},
+				Name: &devicePath,
+			},
 			},
 		}, nil
 	}

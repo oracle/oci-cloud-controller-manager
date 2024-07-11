@@ -25,7 +25,7 @@ const (
 	bvCsiDriver = "BV"
 )
 
-//StartControllerDriver main function to start CSI Controller Driver
+// StartControllerDriver main function to start CSI Controller Driver
 func StartControllerDriver(csioptions csioptions.CSIOptions, csiDriver driver.CSIDriver) {
 
 	logger := logging.Logger().Sugar()

@@ -187,7 +187,7 @@ func (c *client) getDevicePath(ctx context.Context, instanceID string) (*string,
 	if len(listInstanceDevicesResp.Items) == 0 {
 		c.logger.With("service", "compute", "verb", listVerb, "resource", instanceResource).
 			With("instanceID", instanceID).Warn("No consistent device paths available for worker node.")
-		return nil, fmt.Errorf("Max number of volumes are already attached to instance %s. Please schedule workload on different node.",  instanceID)
+		return nil, fmt.Errorf("Max number of volumes are already attached to instance %s. Please schedule workload on different node.", instanceID)
 	}
 	//Picks device path from available path randomly so that 2 volume attachments don't get same path when operations happen concurrently resulting in failure of one of them.
 	device := listInstanceDevicesResp.Items[rand.Intn(len(listInstanceDevicesResp.Items))].Name

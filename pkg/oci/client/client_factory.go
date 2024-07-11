@@ -19,7 +19,7 @@ import (
 	"go.uber.org/zap"
 )
 
-//GetClient returns the client for given Configuration
+// GetClient returns the client for given Configuration
 func GetClient(logger *zap.SugaredLogger, cfg *config.Config) (Interface, error) {
 	cp, err := config.NewConfigurationProvider(cfg)
 	if err != nil {

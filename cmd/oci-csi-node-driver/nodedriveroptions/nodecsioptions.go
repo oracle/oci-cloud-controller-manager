@@ -14,7 +14,7 @@
 
 package nodedriveroptions
 
-//NodeCSIOptions contains details about the flag
+// NodeCSIOptions contains details about the flag
 type NodeCSIOptions struct {
 	Endpoint   string // Used for Block Volume CSI driver
 	NodeID     string
@@ -22,8 +22,8 @@ type NodeCSIOptions struct {
 	Master     string
 	Kubeconfig string
 
-	EnableFssDriver            bool
-	FssEndpoint                string
+	EnableFssDriver bool
+	FssEndpoint     string
 }
 
 type NodeOptions struct {
