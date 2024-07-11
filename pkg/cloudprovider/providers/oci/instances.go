@@ -97,11 +97,10 @@ func (cp *CloudProvider) extractNodeAddresses(ctx context.Context, instanceID st
 		addresses = append(addresses, api.NodeAddress{Type: api.NodeExternalIP, Address: ip.String()})
 	}
 
-	if cp.config.secondaryVnic != nil {
-		_, cidr, err := net.ParseCIDR(cp.config.secondaryVnic)
+	if cp.config.SecondaryVnicCIDRRange != "" {
+		_, cidr, err := net.ParseCIDR(cp.config.SecondaryVnicCIDRRange)
 		if err != nil {
-			fmt.Println("Error parsing CIDR:", err)
-			return
+			return nil, errors.Wrap(err, "Error parsing CIDR")
 		}
 		secondaryVnic, err := cp.client.Compute().GetSecondaryVNICForInstance(ctx, compartmentID, instanceID)
 		if err != nil {
