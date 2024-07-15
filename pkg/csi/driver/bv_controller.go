@@ -72,8 +72,13 @@ var (
 	// OCI currently only support a single node to be attached to a single node
 	// in read/write mode. This corresponds to `accessModes.ReadWriteOnce` in a
 	// PVC resource on Kubernetes
-	supportedAccessMode = &csi.VolumeCapability_AccessMode{
-		Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+	supportedAccessModes = []*csi.VolumeCapability_AccessMode{
+		{
+			Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+		},
+		{
+			Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
+		},
 	}
 )
 
@@ -558,6 +563,18 @@ func (d *BlockVolumeControllerDriver) ControllerPublishVolume(ctx context.Contex
 	if !ok {
 		attachType = attachmentTypeISCSI
 	}
+
+	// Check if the access mode is ReadWriteMany and set isShareable to true
+	isSharable := false
+	if req.VolumeCapability.AccessMode != nil {
+		mode := req.VolumeCapability.AccessMode.Mode
+		if mode == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY ||
+			mode == csi.VolumeCapability_AccessMode_MULTI_NODE_SINGLE_WRITER ||
+			mode == csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER {
+			isSharable = true
+		}
+	}
+
 	volumeAttachmentOptions, err := getAttachmentOptions(ctx, d.client.Compute(), attachType, id)
 	if err != nil {
 		log.With("service", "compute", "verb", "get", "resource", "instance", "statusCode", util.GetHttpStatusCode(err)).
@@ -606,7 +623,7 @@ func (d *BlockVolumeControllerDriver) ControllerPublishVolume(ctx context.Contex
 	}
 
 	// volume already attached to an instance
-	if err == nil {
+	if err == nil && !isSharable {
 		log = log.With("volumeAttachedId", *volumeAttached.GetId())
 		if volumeAttached.GetLifecycleState() == core.VolumeAttachmentLifecycleStateDetaching {
 			log.With("instanceID", *volumeAttached.GetInstanceId()).Info("Waiting for volume to get detached before attaching.")
@@ -662,7 +679,7 @@ func (d *BlockVolumeControllerDriver) ControllerPublishVolume(ctx context.Contex
 	log.Info("Attaching volume to instance")
 
 	if volumeAttachmentOptions.useParavirtualizedAttachment {
-		volumeAttached, err = d.client.Compute().AttachParavirtualizedVolume(ctx, id, req.VolumeId, volumeAttachmentOptions.enableInTransitEncryption)
+		volumeAttached, err = d.client.Compute().AttachParavirtualizedVolume(ctx, id, req.VolumeId, volumeAttachmentOptions.enableInTransitEncryption, isSharable)
 		if err != nil {
 			log.With("service", "compute", "verb", "create", "resource", "volumeAttachment", "statusCode", util.GetHttpStatusCode(err)).
 				With("instanceID", id).With(zap.Error(err)).Info("failed paravirtualized attachment instance to volume.")
@@ -673,7 +690,7 @@ func (d *BlockVolumeControllerDriver) ControllerPublishVolume(ctx context.Contex
 			return nil, status.Errorf(codes.Internal, "failed paravirtualized attachment instance to volume. error : %s", err)
 		}
 	} else {
-		volumeAttached, err = d.client.Compute().AttachVolume(ctx, id, req.VolumeId)
+		volumeAttached, err = d.client.Compute().AttachVolume(ctx, id, req.VolumeId, isSharable)
 		if err != nil {
 			log.With("service", "compute", "verb", "create", "resource", "volumeAttachment", "statusCode", util.GetHttpStatusCode(err)).
 				With("instanceID", id).With(zap.Error(err)).Info("failed iscsi attachment instance to volume.")
@@ -885,7 +902,10 @@ func (d *BlockVolumeControllerDriver) ValidateVolumeCapabilities(ctx context.Con
 			Confirmed: &csi.ValidateVolumeCapabilitiesResponse_Confirmed{
 				VolumeCapabilities: []*csi.VolumeCapability{
 					{
-						AccessMode: supportedAccessMode,
+						AccessMode: supportedAccessModes[0],
+					},
+					{
+						AccessMode: supportedAccessModes[1],
 					},
 				},
 			},
@@ -937,7 +957,7 @@ func (d *BlockVolumeControllerDriver) ControllerGetCapabilities(ctx context.Cont
 // validateCapabilities validates the requested capabilities. It returns an error
 // if it doesn't satisfy the currently supported modes of OCI Block Volume
 func (d *BlockVolumeControllerDriver) validateCapabilities(caps []*csi.VolumeCapability) error {
-	vcaps := []*csi.VolumeCapability_AccessMode{supportedAccessMode}
+	vcaps := supportedAccessModes
 
 	hasSupport := func(mode csi.VolumeCapability_AccessMode_Mode) bool {
 		for _, m := range vcaps {
@@ -949,10 +969,6 @@ func (d *BlockVolumeControllerDriver) validateCapabilities(caps []*csi.VolumeCap
 	}
 
 	for _, cap := range caps {
-		if blk := cap.GetBlock(); blk != nil {
-			d.logger.Error("volumeMode is set to Block which is not supported.")
-			return fmt.Errorf("driver does not support Block volumeMode. Please use Filesystem mode")
-		}
 		if hasSupport(cap.AccessMode.Mode) {
 			continue
 		} else {

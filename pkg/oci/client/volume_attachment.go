@@ -35,9 +35,9 @@ type VolumeAttachmentInterface interface {
 
 	// AttachVolume attaches a block storage volume to the specified instance.
 	// See https://docs.us-phoenix-1.oraclecloud.com/api/#/en/iaas/20160918/VolumeAttachment/AttachVolume
-	AttachVolume(ctx context.Context, instanceID, volumeID string) (core.VolumeAttachment, error)
+	AttachVolume(ctx context.Context, instanceID, volumeID string, isSharable bool) (core.VolumeAttachment, error)
 
-	AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool) (core.VolumeAttachment, error)
+	AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool, isSharable bool) (core.VolumeAttachment, error)
 
 	// WaitForVolumeAttached polls waiting for a OCI block volume to be in the
 	// ATTACHED state.
@@ -124,7 +124,7 @@ func (c *client) GetVolumeAttachment(ctx context.Context, id string) (core.Volum
 	return resp.VolumeAttachment, nil
 }
 
-func (c *client) AttachVolume(ctx context.Context, instanceID, volumeID string) (core.VolumeAttachment, error) {
+func (c *client) AttachVolume(ctx context.Context, instanceID, volumeID string, isSharable bool) (core.VolumeAttachment, error) {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return nil, RateLimitError(false, "")
 	}
@@ -136,9 +136,10 @@ func (c *client) AttachVolume(ctx context.Context, instanceID, volumeID string) 
 
 	resp, err := c.compute.AttachVolume(ctx, core.AttachVolumeRequest{
 		AttachVolumeDetails: core.AttachIScsiVolumeDetails{
-			InstanceId: &instanceID,
-			VolumeId:   &volumeID,
-			Device:     device,
+			InstanceId:  &instanceID,
+			VolumeId:    &volumeID,
+			Device:      device,
+			IsShareable: &isSharable,
 		},
 		RequestMetadata: c.requestMetadata,
 	})
@@ -186,7 +187,7 @@ func (c *client) getDevicePath(ctx context.Context, instanceID string) (*string,
 	return device, nil
 }
 
-func (c *client) AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool) (core.VolumeAttachment, error) {
+func (c *client) AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool, isShareable bool) (core.VolumeAttachment, error) {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return nil, RateLimitError(false, "")
 	}
@@ -202,6 +203,7 @@ func (c *client) AttachParavirtualizedVolume(ctx context.Context, instanceID, vo
 			VolumeId:                       &volumeID,
 			IsPvEncryptionInTransitEnabled: &isPvEncryptionInTransitEnabled,
 			Device:                         device,
+			IsShareable:                    &isShareable,
 		},
 		RequestMetadata: c.requestMetadata,
 	})
