@@ -136,6 +136,24 @@ var (
 			SubnetId:      common.String("ipv6-gua-ipv4-instance"),
 			Ipv6Addresses: []string{"2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
 		},
+		"ocid1.openshift-instance-ipv4": {
+			IsPrimary:     common.Bool(false),
+			PrivateIp:     common.String("10.0.0.1"),
+			PublicIp:      common.String("0.0.0.1"),
+			HostnameLabel: common.String("openshift-instance"),
+			SubnetId:      common.String("subnetwithdnslabel"),
+		},
+		"ocid1.openshift-instance-invalid": {
+			PrivateIp:     common.String("10.0.0."),
+			HostnameLabel: common.String("openshift-instance-invalid"),
+			SubnetId:      common.String("subnetwithdnslabel"),
+		},
+		"ocid1.openshift-instance-ipv6": {
+			IsPrimary:     common.Bool(false),
+			HostnameLabel: common.String("openshift-instance"),
+			SubnetId:      common.String("ipv6-instance"),
+			Ipv6Addresses: []string{"2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
+		},
 	}
 
 	instances = map[string]*core.Instance{
@@ -204,6 +222,33 @@ var (
 		"ipv6-gua-ipv4-instance": {
 			Id:            common.String("ocid1.ipv6-gua-ipv4-instance"),
 			CompartmentId: common.String("ipv6-gua-ipv4-instance"),
+		},
+		"openshift-instance-ipv4": {
+			Id:            common.String("ocid1.openshift-instance-ipv4"),
+			CompartmentId: common.String("default"),
+			DefinedTags: map[string]map[string]interface{}{
+				"openshift-namespace": {
+					"role": "compute",
+				},
+			},
+		},
+		"openshift-instance-invalid": {
+			Id:            common.String("ocid1.openshift-instance-invalid"),
+			CompartmentId: common.String("default"),
+			DefinedTags: map[string]map[string]interface{}{
+				"openshift-namespace": {
+					"role": "compute",
+				},
+			},
+		},
+		"openshift-instance-ipv6": {
+			Id:            common.String("ocid1.openshift-instance-ipv6"),
+			CompartmentId: common.String("default"),
+			DefinedTags: map[string]map[string]interface{}{
+				"openshift-namespace": {
+					"role": "compute",
+				},
+			},
 		},
 	}
 	subnets = map[string]*core.Subnet{
@@ -449,6 +494,20 @@ var (
 			},
 			Spec: v1.NodeSpec{
 				ProviderID: "ocid1.instance-id-ipv6",
+			},
+		},
+		"openshift-instance-id-ipv6": {
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					CompartmentIDAnnotation: "default",
+				},
+				Labels: map[string]string{
+					IPv6NodeIPFamilyLabel: "true",
+				},
+				Name: "Node-Ipv6",
+			},
+			Spec: v1.NodeSpec{
+				ProviderID: "ocid1.openshift-instance-ipv6",
 			},
 		},
 	}
@@ -871,6 +930,10 @@ func (MockComputeClient) GetInstanceByNodeName(ctx context.Context, compartmentI
 
 func (MockComputeClient) GetPrimaryVNICForInstance(ctx context.Context, compartmentID, instanceID string) (*core.Vnic, error) {
 	return instanceVnics[instanceID], nil
+}
+
+func (MockComputeClient) GetSecondaryVNICsForInstance(ctx context.Context, compartmentID, instanceID string) ([]*core.Vnic, error) {
+	return []*core.Vnic{instanceVnics[instanceID]}, nil
 }
 
 func (MockComputeClient) FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
@@ -1436,6 +1499,29 @@ func TestExtractNodeAddresses(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			name: "openshift-instance-ipv4",
+			in:   "ocid1.openshift-instance-ipv4",
+			out: []v1.NodeAddress{
+				{Type: v1.NodeInternalIP, Address: "10.0.0.1"},
+				{Type: v1.NodeExternalIP, Address: "0.0.0.1"},
+			},
+			err: nil,
+		},
+		{
+			name: "openshift-instance-invalid",
+			in:   "ocid1.openshift-instance-invalid",
+			out:  nil,
+			err:  errors.New(`instance has invalid private address: "10.0.0."`),
+		},
+		{
+			name: "openshift-instance-ipv6",
+			in:   "ocid1.openshift-instance-ipv6",
+			out: []v1.NodeAddress{
+				{Type: v1.NodeExternalIP, Address: "2001:db8:85a3::8a2e:370:7334"},
+			},
+			err: nil,
+		},
 	}
 
 	cp := &CloudProvider{
@@ -1930,4 +2016,114 @@ func (m mockServiceError) GetOpcRequestID() string {
 }
 func (m mockServiceError) Error() string {
 	return m.Message
+}
+
+func TestGetOpenShiftTagNamespaceByInstance(t *testing.T) {
+	testCases := []struct {
+		name       string
+		instanceID string
+		expected   string
+	}{
+		{
+			name:       "Instance with OpenShift namespace",
+			instanceID: "openshift-instance-ipv4",
+			expected:   "openshift-namespace",
+		},
+		{
+			name:       "Instance without OpenShift namespace",
+			instanceID: "basic-complete",
+			expected:   "",
+		},
+		{
+			name:       "Non-existent instance",
+			instanceID: "non-existent-instance-id",
+			expected:   "",
+		},
+	}
+
+	cp := &CloudProvider{
+		client:        MockOCIClient{},
+		config:        &providercfg.Config{CompartmentID: "testCompartment"},
+		NodeLister:    &mockNodeLister{},
+		instanceCache: &mockInstanceCache{},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			result := cp.getOpenShiftTagNamespaceByInstance(context.Background(), tt.instanceID)
+			if !reflect.DeepEqual(result, tt.expected) {
+				t.Errorf("expected %s, got %s", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestCheckOpenShiftISCSIBootVolumeTagByVnic(t *testing.T) {
+	testCases := []struct {
+		name      string
+		vnic      *core.Vnic
+		namespace string
+		expected  bool
+	}{
+		{
+			name: "VNIC with ISCSI boot volume tag",
+			vnic: &core.Vnic{
+				DefinedTags: map[string]map[string]interface{}{
+					"openshift-namespace": {
+						"boot-volume-type": "ISCSI",
+					},
+				},
+			},
+			namespace: "openshift-namespace",
+			expected:  true,
+		},
+		{
+			name: "VNIC without ISCSI boot volume tag",
+			vnic: &core.Vnic{
+				DefinedTags: map[string]map[string]interface{}{
+					"openshift-namespace": {
+						"boot-volume-type": "NVMe",
+					},
+				},
+			},
+			namespace: "openshift-namespace",
+			expected:  false,
+		},
+		{
+			name: "VNIC with no defined tags",
+			vnic: &core.Vnic{
+				DefinedTags: nil,
+			},
+			namespace: "openshift-namespace",
+			expected:  false,
+		},
+		{
+			name: "Namespace not found in VNIC tags",
+			vnic: &core.Vnic{
+				DefinedTags: map[string]map[string]interface{}{
+					"another-namespace": {
+						"bootVolumeType": "ISCSI",
+					},
+				},
+			},
+			namespace: "openshift-namespace",
+			expected:  false,
+		},
+	}
+
+	cp := &CloudProvider{
+		client:        MockOCIClient{},
+		config:        &providercfg.Config{CompartmentID: "testCompartment"},
+		NodeLister:    &mockNodeLister{},
+		instanceCache: &mockInstanceCache{},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			result := cp.checkOpenShiftISCSIBootVolumeTagByVnic(context.Background(), tt.vnic, tt.namespace)
+			if !reflect.DeepEqual(result, tt.expected) {
+				t.Errorf("expected %v, got %v", tt.expected, result)
+			}
+		})
+	}
 }
