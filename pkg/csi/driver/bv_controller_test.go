@@ -616,6 +616,10 @@ func (c *MockComputeClient) GetPrimaryVNICForInstance(ctx context.Context, compa
 	return nil, nil
 }
 
+func (MockComputeClient) GetSecondaryVNICsForInstance(ctx context.Context, compartmentID, instanceID string) ([]*core.Vnic, error) {
+	return nil, nil
+}
+
 func (c *MockComputeClient) ListVnicAttachments(ctx context.Context, compartmentID, instanceID string) ([]core.VnicAttachment, error) {
 	return nil, nil
 }

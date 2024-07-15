@@ -33,6 +33,9 @@ const (
 	VirtualNodePoolIdAnnotation = "oci.oraclecloud.com/virtual-node-pool-id"
 	IPv4NodeIPFamilyLabel       = "oci.oraclecloud.com/ip-family-ipv4"
 	IPv6NodeIPFamilyLabel       = "oci.oraclecloud.com/ip-family-ipv6"
+	OpenShiftTagNamesapcePrefix = "openshift-"
+	OpenShiftBootVolumeType     = "boot-volume-type"
+	OpenShiftBootVolumeISCSI    = "ISCSI"
 )
 
 var _ cloudprovider.Instances = &CloudProvider{}
@@ -118,6 +121,59 @@ func (cp *CloudProvider) extractNodeAddresses(ctx context.Context, instanceID st
 						addresses = append(addresses, api.NodeAddress{Type: api.NodeInternalIP, Address: ip.String()})
 					} else {
 						addresses = append(addresses, api.NodeAddress{Type: api.NodeExternalIP, Address: ip.String()})
+					}
+				}
+			}
+		}
+	}
+
+	OpenShiftTagNamesapce := cp.getOpenShiftTagNamespaceByInstance(ctx, instanceID)
+
+	if OpenShiftTagNamesapce != "" {
+		secondaryVnics, err := cp.client.Compute().GetSecondaryVNICsForInstance(ctx, compartmentID, instanceID)
+		if err != nil {
+			return nil, err
+		}
+
+		if secondaryVnics == nil || len(secondaryVnics) == 0 {
+			return addresses, nil
+		}
+		for _, secondaryVnic := range secondaryVnics {
+			if cp.checkOpenShiftISCSIBootVolumeTagByVnic(ctx, secondaryVnic, OpenShiftTagNamesapce) {
+				if (secondaryVnic.IsPrimary == nil || !*secondaryVnic.IsPrimary) && secondaryVnic.PrivateIp != nil && *secondaryVnic.PrivateIp != "" {
+					ip := net.ParseIP(*secondaryVnic.PrivateIp)
+					if ip == nil {
+						return nil, fmt.Errorf("instance has invalid private address: %q", *secondaryVnic.PrivateIp)
+					}
+					addresses = append(addresses, api.NodeAddress{Type: api.NodeInternalIP, Address: ip.String()})
+				}
+
+				if (secondaryVnic.IsPrimary == nil || !*secondaryVnic.IsPrimary) && secondaryVnic.PublicIp != nil && *secondaryVnic.PublicIp != "" {
+					ip := net.ParseIP(*secondaryVnic.PublicIp)
+					if ip == nil {
+						return nil, errors.Errorf("instance has invalid public address: %q", *secondaryVnic.PublicIp)
+					}
+					addresses = append(addresses, api.NodeAddress{Type: api.NodeExternalIP, Address: ip.String()})
+				}
+			}
+		}
+		nodeIpFamily, err := cp.getNodeIpFamily(instanceID)
+		if err != nil {
+			return nil, err
+		}
+		if contains(nodeIpFamily, IPv6) {
+			if vnic.Ipv6Addresses != nil {
+				for _, ipv6Addresses := range vnic.Ipv6Addresses {
+					if ipv6Addresses != "" {
+						ip := net.ParseIP(ipv6Addresses)
+						if ip == nil {
+							return nil, errors.Errorf("instance has invalid ipv6 address: %q", vnic.Ipv6Addresses[0])
+						}
+						if ip.IsPrivate() {
+							addresses = append(addresses, api.NodeAddress{Type: api.NodeInternalIP, Address: ip.String()})
+						} else {
+							addresses = append(addresses, api.NodeAddress{Type: api.NodeExternalIP, Address: ip.String()})
+						}
 					}
 				}
 			}
@@ -371,4 +427,36 @@ func (cp *CloudProvider) getCompartmentIDByNodeName(nodeName string) (string, er
 	}
 	cp.logger.Debug("CompartmentID annotation is not present")
 	return "", errors.New("compartmentID annotation missing in the node. Would retry")
+}
+
+func (cp *CloudProvider) getOpenShiftTagNamespaceByInstance(ctx context.Context, instanceID string) string {
+	instance, err := cp.client.Compute().GetInstance(ctx, instanceID)
+	if err != nil {
+		return ""
+	}
+
+	if instance.DefinedTags == nil {
+		return ""
+	}
+
+	for namespace := range instance.DefinedTags {
+		if strings.HasPrefix(namespace, OpenShiftTagNamesapcePrefix) {
+			return namespace
+		}
+	}
+	return ""
+}
+
+func (cp *CloudProvider) checkOpenShiftISCSIBootVolumeTagByVnic(ctx context.Context, vnic *core.Vnic, namespace string) bool {
+	if vnic.DefinedTags == nil {
+		return false
+	}
+
+	if tags, namespaceExists := vnic.DefinedTags[namespace]; namespaceExists {
+		// Check if the boot volume type key exists and its value is ISCSI
+		if bootVolume, keyExists := tags[OpenShiftBootVolumeType]; keyExists && bootVolume == OpenShiftBootVolumeISCSI {
+			return true
+		}
+	}
+	return false
 }
