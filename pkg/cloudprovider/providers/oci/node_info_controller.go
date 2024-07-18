@@ -41,10 +41,9 @@ import (
 
 // metadata labeling for placement info
 const (
-	FaultDomainLabel             = "oci.oraclecloud.com/fault-domain"
-	CompartmentIDAnnotation      = "oci.oraclecloud.com/compartment-id"
-	OpenShiftNodeIdentifierLabel = "node.openshift.io/os_id"
-	timeout                      = 10 * time.Second
+	FaultDomainLabel        = "oci.oraclecloud.com/fault-domain"
+	CompartmentIDAnnotation = "oci.oraclecloud.com/compartment-id"
+	timeout                 = 10 * time.Second
 )
 
 // NodeInfoController helps compute workers in the cluster

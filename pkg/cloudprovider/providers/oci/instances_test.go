@@ -344,8 +344,8 @@ func (MockComputeClient) GetPrimaryVNICForInstance(ctx context.Context, compartm
 	return instanceVnics[instanceID], nil
 }
 
-func (c *MockComputeClient) GetSecondaryVNICForInstance(ctx context.Context, compartmentID, instanceID string) (*core.Vnic, error) {
-	return instanceVnics[instanceID], nil
+func (c *MockComputeClient) GetSecondaryVNICsForInstance(ctx context.Context, compartmentID, instanceID string) ([]*core.Vnic, error) {
+	return []*core.Vnic{instanceVnics[instanceID]}, nil
 }
 
 func (MockComputeClient) FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {

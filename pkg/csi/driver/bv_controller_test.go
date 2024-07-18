@@ -568,7 +568,7 @@ func (c *MockComputeClient) GetPrimaryVNICForInstance(ctx context.Context, compa
 	return nil, nil
 }
 
-func (c *MockComputeClient) GetSecondaryVNICForInstance(ctx context.Context, compartmentID, instanceID string) (*core.Vnic, error) {
+func (c *MockComputeClient) GetSecondaryVNICsForInstance(ctx context.Context, compartmentID, instanceID string) ([]*core.Vnic, error) {
 	return nil, nil
 }
 

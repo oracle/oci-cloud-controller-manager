@@ -35,7 +35,7 @@ type ComputeInterface interface {
 
 	GetPrimaryVNICForInstance(ctx context.Context, compartmentID, instanceID string) (*core.Vnic, error)
 
-	GetSecondaryVNICForInstance(ctx context.Context, compartmentID, instanceID string) (*core.Vnic, error)
+	GetSecondaryVNICsForInstance(ctx context.Context, compartmentID, instanceID string) ([]*core.Vnic, error)
 
 	VolumeAttachmentInterface
 }
@@ -185,9 +185,9 @@ func (c *client) GetPrimaryVNICForInstance(ctx context.Context, compartmentID, i
 	return nil, errors.WithStack(errNotFound)
 }
 
-func (c *client) GetSecondaryVNICForInstance(ctx context.Context, compartmentID, instanceID string) (*core.Vnic, error) {
+func (c *client) GetSecondaryVNICsForInstance(ctx context.Context, compartmentID, instanceID string) ([]*core.Vnic, error) {
 	logger := c.logger.With("instanceID", instanceID, "compartmentID", compartmentID)
-
+	secondaryVnics := []*core.Vnic{}
 	var page *string
 	for {
 		resp, err := c.listVNICAttachments(ctx, core.ListVnicAttachmentsRequest{
@@ -222,7 +222,7 @@ func (c *client) GetSecondaryVNICForInstance(ctx context.Context, compartmentID,
 			}
 
 			if !*vnic.IsPrimary {
-				return vnic, nil
+				secondaryVnics = append(secondaryVnics, vnic)
 			}
 		}
 
@@ -231,7 +231,7 @@ func (c *client) GetSecondaryVNICForInstance(ctx context.Context, compartmentID,
 		}
 	}
 
-	return nil, errors.WithStack(errNotFound)
+	return secondaryVnics, nil
 }
 
 func (c *client) GetInstanceByNodeName(ctx context.Context, compartmentID, vcnID, nodeName string) (*core.Instance, error) {

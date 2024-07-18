@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"k8s.io/apimachinery/pkg/labels"
@@ -27,6 +28,12 @@ import (
 	api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	cloudprovider "k8s.io/cloud-provider"
+)
+
+const (
+	OpenShiftTagNamesapcePrefix = "openshift-"
+	OpenShiftBootVolumeType     = "boot-volume-type"
+	OpenShiftBootVolumeISCSI    = "ISCSI"
 )
 
 var _ cloudprovider.Instances = &CloudProvider{}
@@ -97,33 +104,38 @@ func (cp *CloudProvider) extractNodeAddresses(ctx context.Context, instanceID st
 		addresses = append(addresses, api.NodeAddress{Type: api.NodeExternalIP, Address: ip.String()})
 	}
 
-	useSecondaryVnic, err := cp.checkOpenShiftNodesSecondaryVnicByInstance(instanceID)
-	if useSecondaryVnic {
-		secondaryVnic, err := cp.client.Compute().GetSecondaryVNICForInstance(ctx, compartmentID, instanceID)
+	OpenShiftTagNamesapce := cp.getOpenShiftTagNamespaceByInstance(ctx, instanceID)
+
+	if OpenShiftTagNamesapce != "" {
+		secondaryVnics, err := cp.client.Compute().GetSecondaryVNICsForInstance(ctx, compartmentID, instanceID)
 		if err != nil {
-			return nil, errors.Wrap(err, "GetSecondaryVNICForInstance")
+			return nil, err
 		}
 
-		if secondaryVnic == nil {
+		if secondaryVnics == nil || len(secondaryVnics) == 0 {
 			return addresses, nil
 		}
+		for _, secondaryVnic := range secondaryVnics {
+			if cp.checkOpenShiftISCSIBootVolumeTagByVnic(ctx, secondaryVnic, OpenShiftTagNamesapce) {
+				if (secondaryVnic.IsPrimary == nil || !*secondaryVnic.IsPrimary) && secondaryVnic.PrivateIp != nil && *secondaryVnic.PrivateIp != "" {
+					ip := net.ParseIP(*secondaryVnic.PrivateIp)
+					if ip == nil {
+						return nil, fmt.Errorf("instance has invalid private address: %q", *secondaryVnic.PrivateIp)
+					}
+					addresses = append(addresses, api.NodeAddress{Type: api.NodeInternalIP, Address: ip.String()})
+				}
 
-		if (secondaryVnic.IsPrimary == nil || !*secondaryVnic.IsPrimary) && secondaryVnic.PrivateIp != nil && *secondaryVnic.PrivateIp != "" {
-			ip := net.ParseIP(*secondaryVnic.PrivateIp)
-			if ip == nil {
-				return nil, fmt.Errorf("instance has invalid private address: %q", *secondaryVnic.PrivateIp)
+				if (secondaryVnic.IsPrimary == nil || !*secondaryVnic.IsPrimary) && secondaryVnic.PublicIp != nil && *secondaryVnic.PublicIp != "" {
+					ip := net.ParseIP(*secondaryVnic.PublicIp)
+					if ip == nil {
+						return nil, errors.Errorf("instance has invalid public address: %q", *secondaryVnic.PublicIp)
+					}
+					addresses = append(addresses, api.NodeAddress{Type: api.NodeExternalIP, Address: ip.String()})
+				}
 			}
-			addresses = append(addresses, api.NodeAddress{Type: api.NodeInternalIP, Address: ip.String()})
-		}
-
-		if (secondaryVnic.IsPrimary == nil || !*secondaryVnic.IsPrimary) && secondaryVnic.PublicIp != nil && *secondaryVnic.PublicIp != "" {
-			ip := net.ParseIP(*secondaryVnic.PublicIp)
-			if ip == nil {
-				return nil, errors.Errorf("instance has invalid public address: %q", *secondaryVnic.PublicIp)
-			}
-			addresses = append(addresses, api.NodeAddress{Type: api.NodeExternalIP, Address: ip.String()})
 		}
 	}
+
 	// Changing this can have wide reaching impact.
 	//
 	// if vnic.HostnameLabel != nil && *vnic.HostnameLabel != "" {
@@ -340,32 +352,32 @@ func (cp *CloudProvider) getCompartmentIDByNodeName(nodeName string) (string, er
 	return "", errors.New("compartmentID annotation missing in the node. Would retry")
 }
 
-func (cp *CloudProvider) checkOpenShiftNodesSecondaryVnicByInstance(instanceID string) (bool, error) {
-	var SecondaryVnicUsageInstances = []string{"BM.Standard3.64"}
-	nodeList, err := cp.NodeLister.List(labels.Everything())
+func (cp *CloudProvider) getOpenShiftTagNamespaceByInstance(ctx context.Context, instanceID string) string {
+	instance, err := cp.client.Compute().GetInstance(ctx, instanceID)
 	if err != nil {
-		return false, errors.Wrap(err, "error listing all the nodes using node informer")
+		return ""
 	}
-	for _, node := range nodeList {
-		providerID, err := MapProviderIDToInstanceID(node.Spec.ProviderID)
-		if err != nil {
-			return false, errors.New("Failed to map providerID to instanceID.")
-		}
-		if providerID == instanceID {
-			if _, ok := node.Labels[OpenShiftNodeIdentifierLabel]; ok {
-				if instanceType, ok := node.Labels[api.LabelInstanceTypeStable]; ok && contains(SecondaryVnicUsageInstances, instanceType) {
-					return true, nil
-				}
-			}
+
+	if instance.DefinedTags == nil {
+		return ""
+	}
+
+	for namespace := range instance.DefinedTags {
+		if strings.HasPrefix(namespace, OpenShiftTagNamesapcePrefix) {
+			return namespace
 		}
 	}
-	return false, errors.New("Failed to check OpenShift node using node lables. Returning false")
+	return ""
 }
 
-// contains is a utility method to check if a string is part of a slice
-func contains(s []string, e string) bool {
-	for _, a := range s {
-		if a == e {
+func (cp *CloudProvider) checkOpenShiftISCSIBootVolumeTagByVnic(ctx context.Context, vnic *core.Vnic, namespace string) bool {
+	if vnic.DefinedTags == nil {
+		return false
+	}
+
+	if tags, namespaceExists := vnic.DefinedTags[namespace]; namespaceExists {
+		// Check if the boot volume type key exists and its value is ISCSI
+		if bootVolume, keyExists := tags[OpenShiftBootVolumeType]; keyExists && bootVolume == OpenShiftBootVolumeISCSI {
 			return true
 		}
 	}
