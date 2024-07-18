@@ -97,29 +97,32 @@ func (cp *CloudProvider) extractNodeAddresses(ctx context.Context, instanceID st
 		addresses = append(addresses, api.NodeAddress{Type: api.NodeExternalIP, Address: ip.String()})
 	}
 
-	secondaryVnic, err := cp.client.Compute().GetSecondaryVNICForInstance(ctx, compartmentID, instanceID)
-	if err != nil {
-		return nil, errors.Wrap(err, "GetSecondaryVNICForInstance")
-	}
-
-	if secondaryVnic == nil {
-		return addresses, nil
-	}
-
-	if (secondaryVnic.IsPrimary == nil || !*secondaryVnic.IsPrimary) && secondaryVnic.PrivateIp != nil && *secondaryVnic.PrivateIp != "" {
-		ip := net.ParseIP(*secondaryVnic.PrivateIp)
-		if ip == nil {
-			return nil, fmt.Errorf("instance has invalid private address: %q", *secondaryVnic.PrivateIp)
+	useSecondaryVnic, err := cp.checkOpenShiftNodesSecondaryVnicByInstance(instanceID)
+	if useSecondaryVnic {
+		secondaryVnic, err := cp.client.Compute().GetSecondaryVNICForInstance(ctx, compartmentID, instanceID)
+		if err != nil {
+			return nil, errors.Wrap(err, "GetSecondaryVNICForInstance")
 		}
-		addresses = append(addresses, api.NodeAddress{Type: api.NodeInternalIP, Address: ip.String()})
-	}
 
-	if (secondaryVnic.IsPrimary == nil || !*secondaryVnic.IsPrimary) && secondaryVnic.PublicIp != nil && *secondaryVnic.PublicIp != "" {
-		ip := net.ParseIP(*secondaryVnic.PublicIp)
-		if ip == nil {
-			return nil, errors.Errorf("instance has invalid public address: %q", *secondaryVnic.PublicIp)
+		if secondaryVnic == nil {
+			return addresses, nil
 		}
-		addresses = append(addresses, api.NodeAddress{Type: api.NodeExternalIP, Address: ip.String()})
+
+		if (secondaryVnic.IsPrimary == nil || !*secondaryVnic.IsPrimary) && secondaryVnic.PrivateIp != nil && *secondaryVnic.PrivateIp != "" {
+			ip := net.ParseIP(*secondaryVnic.PrivateIp)
+			if ip == nil {
+				return nil, fmt.Errorf("instance has invalid private address: %q", *secondaryVnic.PrivateIp)
+			}
+			addresses = append(addresses, api.NodeAddress{Type: api.NodeInternalIP, Address: ip.String()})
+		}
+
+		if (secondaryVnic.IsPrimary == nil || !*secondaryVnic.IsPrimary) && secondaryVnic.PublicIp != nil && *secondaryVnic.PublicIp != "" {
+			ip := net.ParseIP(*secondaryVnic.PublicIp)
+			if ip == nil {
+				return nil, errors.Errorf("instance has invalid public address: %q", *secondaryVnic.PublicIp)
+			}
+			addresses = append(addresses, api.NodeAddress{Type: api.NodeExternalIP, Address: ip.String()})
+		}
 	}
 	// Changing this can have wide reaching impact.
 	//
@@ -306,4 +309,36 @@ func (cp *CloudProvider) getCompartmentIDByNodeName(nodeName string) (string, er
 	}
 	cp.logger.Debug("CompartmentID annotation is not present")
 	return "", errors.New("compartmentID annotation missing in the node. Would retry")
+}
+
+func (cp *CloudProvider) checkOpenShiftNodesSecondaryVnicByInstance(instanceID string) (bool, error) {
+	var SecondaryVnicUsageInstances = []string{"BM.Standard3.64"}
+	nodeList, err := cp.NodeLister.List(labels.Everything())
+	if err != nil {
+		return false, errors.Wrap(err, "error listing all the nodes using node informer")
+	}
+	for _, node := range nodeList {
+		providerID, err := MapProviderIDToInstanceID(node.Spec.ProviderID)
+		if err != nil {
+			return false, errors.New("Failed to map providerID to instanceID.")
+		}
+		if providerID == instanceID {
+			if _, ok := node.Labels[OpenShiftNodeIdentifierLabel]; ok {
+				if instanceType, ok := node.Labels[api.LabelInstanceTypeStable]; ok && contains(SecondaryVnicUsageInstances, instanceType) {
+					return true, nil
+				}
+			}
+		}
+	}
+	return false, errors.New("Failed to check OpenShift node using node lables. Returning false")
+}
+
+// contains is a utility method to check if a string is part of a slice
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }
