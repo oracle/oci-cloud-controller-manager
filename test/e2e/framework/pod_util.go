@@ -107,7 +107,7 @@ func (j *PVCTestJig) CheckMountOptions(namespace string, podName string, expecte
 		}
 		return true, nil
 	}); pollErr != nil {
-		Failf("NFS mount with Mount Options failed in pod '%v'", podName)
+		Failf("NFS mount with Mount Options failed in pod '%v' with error '%v'", podName, pollErr.Error())
 	}
 }
 
