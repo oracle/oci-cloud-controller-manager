@@ -25,12 +25,14 @@ import (
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/oracle/oci-go-sdk/v65/filestorage"
 	"github.com/oracle/oci-go-sdk/v65/identity"
+
 	"go.uber.org/zap"
+	authv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/sig-storage-lib-external-provisioner/v8/controller"
+	"sigs.k8s.io/sig-storage-lib-external-provisioner/v9/controller"
 )
 
 var (
@@ -52,6 +54,11 @@ var (
 // MockBlockStorageClient mocks BlockStorage client implementation
 type MockBlockStorageClient struct {
 	VolumeState core.VolumeLifecycleStateEnum
+}
+
+// AwaitVolumeCloneAvailableOrTimeout implements client.BlockStorageInterface.
+func (c *MockBlockStorageClient) AwaitVolumeCloneAvailableOrTimeout(ctx context.Context, id string) (*core.Volume, error) {
+	return &core.Volume{}, nil
 }
 
 func (c *MockBlockStorageClient) AwaitVolumeAvailableORTimeout(ctx context.Context, id string) (*core.Volume, error) {
@@ -81,6 +88,31 @@ func (c *MockBlockStorageClient) UpdateVolume(ctx context.Context, volumeId stri
 // DeleteVolume mocks the BlockStorage DeleteVolume implementation
 func (c *MockBlockStorageClient) DeleteVolume(ctx context.Context, id string) error {
 	return nil
+}
+
+func (c *MockBlockStorageClient) AwaitVolumeBackupAvailableOrTimeout(ctx context.Context, id string) (*core.VolumeBackup, error) {
+	return &core.VolumeBackup{}, nil
+}
+
+func (c *MockBlockStorageClient) CreateVolumeBackup(ctx context.Context, details core.CreateVolumeBackupDetails) (*core.VolumeBackup, error) {
+	id := "oc1.volumebackup1.xxxx"
+	return &core.VolumeBackup{
+		Id: &id,
+	}, nil
+}
+
+func (c *MockBlockStorageClient) DeleteVolumeBackup(ctx context.Context, id string) error {
+	return nil
+}
+
+func (c *MockBlockStorageClient) GetVolumeBackup(ctx context.Context, id string) (*core.VolumeBackup, error) {
+	return &core.VolumeBackup{
+		Id: &id,
+	}, nil
+}
+
+func (c *MockBlockStorageClient) GetVolumeBackupsByName(ctx context.Context, snapshotName, compartmentID string) ([]core.VolumeBackup, error) {
+	return []core.VolumeBackup{}, nil
 }
 
 // MockFileStorageClient mocks FileStorage client implementation.
@@ -195,6 +227,10 @@ func (c *MockFileStorageClient) AwaitMountTargetActive(ctx context.Context, logg
 
 type MockComputeClient struct{}
 
+func (c *MockComputeClient) ListInstancesByCompartmentAndAD(ctx context.Context, compartmentId, availabilityDomain string) (response []core.Instance, err error) {
+	return nil, nil
+}
+
 // GetInstance gets information about the specified instance.
 func (c *MockComputeClient) GetInstance(ctx context.Context, id string) (*core.Instance, error) {
 	return nil, nil
@@ -218,7 +254,7 @@ func (c *MockComputeClient) FindVolumeAttachment(ctx context.Context, compartmen
 	return nil, nil
 }
 
-func (MockComputeClient) AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool) (core.VolumeAttachment, error) {
+func (c *MockComputeClient) AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool) (core.VolumeAttachment, error) {
 	return nil, nil
 }
 
@@ -244,12 +280,32 @@ func (c *MockComputeClient) FindActiveVolumeAttachment(ctx context.Context, comp
 type MockVirtualNetworkClient struct {
 }
 
+func (c *MockVirtualNetworkClient) CreateNetworkSecurityGroup(ctx context.Context, compartmentId, vcnId, displayName, lbId string) (*core.NetworkSecurityGroup, error) {
+	return nil, nil
+}
+
+func (c *MockVirtualNetworkClient) UpdateNetworkSecurityGroup(ctx context.Context, id, etag string, freeformTags map[string]string) (*core.NetworkSecurityGroup, error) {
+	return nil, nil
+}
+
+func (c *MockVirtualNetworkClient) GetNetworkSecurityGroup(ctx context.Context, id string) (*core.NetworkSecurityGroup, *string, error) {
+	return nil, nil, nil
+}
+
+func (c *MockVirtualNetworkClient) ListNetworkSecurityGroups(ctx context.Context, displayName, compartmentId, vcnId string) ([]core.NetworkSecurityGroup, error) {
+	return nil, nil
+}
+
+func (c *MockVirtualNetworkClient) DeleteNetworkSecurityGroup(ctx context.Context, id, etag string) (*string, error) {
+	return nil, nil
+}
+
 func (c *MockVirtualNetworkClient) IsRegionalSubnet(ctx context.Context, id string) (bool, error) {
 	return false, nil
 }
 
-// GetPrivateIP mocks the VirtualNetwork GetPrivateIp implementation
-func (c *MockVirtualNetworkClient) GetPrivateIP(ctx context.Context, id string) (*core.PrivateIp, error) {
+// GetPrivateIp mocks the VirtualNetwork GetPrivateIp implementation
+func (c *MockVirtualNetworkClient) GetPrivateIp(ctx context.Context, id string) (*core.PrivateIp, error) {
 	return &core.PrivateIp{IpAddress: &privateIP}, nil
 }
 
@@ -307,7 +363,7 @@ func (p *MockProvisionerClient) Networking() client.NetworkingInterface {
 }
 
 // Networking mocks client VirtualNetwork implementation.
-func (p *MockProvisionerClient) LoadBalancer(string) client.GenericLoadBalancerInterface {
+func (p *MockProvisionerClient) LoadBalancer(*zap.SugaredLogger, string, string, *authv1.TokenRequest) client.GenericLoadBalancerInterface {
 	return &MockLoadBalancerClient{}
 }
 
@@ -346,7 +402,7 @@ func (c *MockLoadBalancerClient) ListWorkRequests(ctx context.Context, compartme
 	return nil, nil
 }
 
-func (c *MockLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details *client.GenericCreateLoadBalancerDetails) (string, error) {
+func (c *MockLoadBalancerClient) CreateLoadBalancer(ctx context.Context, details *client.GenericCreateLoadBalancerDetails, serviceUid *string) (string, error) {
 	return "", nil
 }
 
@@ -404,6 +460,26 @@ func (c *MockLoadBalancerClient) AwaitWorkRequest(ctx context.Context, id string
 
 func (c *MockLoadBalancerClient) UpdateNetworkSecurityGroups(context.Context, string, []string) (string, error) {
 	return "", nil
+}
+
+func (c *MockLoadBalancerClient) UpdateLoadBalancer(ctx context.Context, lbID string, details *client.GenericUpdateLoadBalancerDetails) (string, error) {
+	return "", nil
+}
+
+func (c *MockVirtualNetworkClient) AddNetworkSecurityGroupSecurityRules(ctx context.Context, id string, details core.AddNetworkSecurityGroupSecurityRulesDetails) (*core.AddNetworkSecurityGroupSecurityRulesResponse, error) {
+	return nil, nil
+}
+
+func (c *MockVirtualNetworkClient) RemoveNetworkSecurityGroupSecurityRules(ctx context.Context, id string, details core.RemoveNetworkSecurityGroupSecurityRulesDetails) (*core.RemoveNetworkSecurityGroupSecurityRulesResponse, error) {
+	return nil, nil
+}
+
+func (c *MockVirtualNetworkClient) ListNetworkSecurityGroupSecurityRules(ctx context.Context, id string, direction core.ListNetworkSecurityGroupSecurityRulesDirectionEnum) ([]core.SecurityRule, error) {
+	return nil, nil
+}
+
+func (c *MockVirtualNetworkClient) UpdateNetworkSecurityGroupSecurityRules(ctx context.Context, id string, details core.UpdateNetworkSecurityGroupSecurityRulesDetails) (*core.UpdateNetworkSecurityGroupSecurityRulesResponse, error) {
+	return nil, nil
 }
 
 // NewClientProvisioner creates an OCI client from the given configuration.
@@ -465,7 +541,7 @@ func TestCreateVolumeFromBackup(t *testing.T) {
 			},
 			Spec: v1.PersistentVolumeClaimSpec{
 				StorageClassName: common.String("oci"),
-				Resources: v1.ResourceRequirements{
+				Resources: v1.VolumeResourceRequirements{
 					Requests: v1.ResourceList{
 						v1.ResourceName(v1.ResourceStorage): resource.MustParse("50Gi"),
 					},
@@ -568,7 +644,7 @@ func createPVC(size string) *v1.PersistentVolumeClaim {
 		ObjectMeta: metav1.ObjectMeta{},
 		Spec: v1.PersistentVolumeClaimSpec{
 			StorageClassName: common.String("oci"),
-			Resources: v1.ResourceRequirements{
+			Resources: v1.VolumeResourceRequirements{
 				Requests: v1.ResourceList{
 					v1.ResourceName(v1.ResourceStorage): resource.MustParse(size),
 				},

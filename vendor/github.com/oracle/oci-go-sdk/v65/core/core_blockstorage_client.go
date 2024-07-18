@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -9,6 +9,8 @@
 // documentation for the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
 // Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
 // Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
+// The required permissions are documented in the
+// Details for the Core Services (https://docs.cloud.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
 //
 
 package core
@@ -21,7 +23,7 @@ import (
 	"net/http"
 )
 
-//BlockstorageClient a client for Blockstorage
+// BlockstorageClient a client for Blockstorage
 type BlockstorageClient struct {
 	common.BaseClient
 	config *common.ConfigurationProvider
@@ -30,6 +32,9 @@ type BlockstorageClient struct {
 // NewBlockstorageClientWithConfigurationProvider Creates a new default Blockstorage client with the given configuration provider.
 // the configuration provider will be used for the default signer as well as reading the region
 func NewBlockstorageClientWithConfigurationProvider(configProvider common.ConfigurationProvider) (client BlockstorageClient, err error) {
+	if enabled := common.CheckForEnabledServices("core"); !enabled {
+		return client, fmt.Errorf("the Developer Tool configuration disabled this service, this behavior is controlled by OciSdkEnabledServicesMap variables. Please check if your local developer-tool-configuration.json file configured the service you're targeting or contact the cloud provider on the availability of this service")
+	}
 	provider, err := auth.GetGenericConfigurationProvider(configProvider)
 	if err != nil {
 		return client, err
@@ -43,7 +48,8 @@ func NewBlockstorageClientWithConfigurationProvider(configProvider common.Config
 
 // NewBlockstorageClientWithOboToken Creates a new default Blockstorage client with the given configuration provider.
 // The obotoken will be added to default headers and signed; the configuration provider will be used for the signer
-//  as well as reading the region
+//
+//	as well as reading the region
 func NewBlockstorageClientWithOboToken(configProvider common.ConfigurationProvider, oboToken string) (client BlockstorageClient, err error) {
 	baseClient, err := common.NewClientWithOboToken(configProvider, oboToken)
 	if err != nil {
@@ -80,7 +86,7 @@ func (client *BlockstorageClient) setConfigurationProvider(configProvider common
 	region, _ := configProvider.Region()
 	client.SetRegion(region)
 	if client.Host == "" {
-		return fmt.Errorf("Invalid region or Host. Endpoint cannot be constructed without endpointServiceName or serviceEndpointTemplate for a dotted region")
+		return fmt.Errorf("invalid region or Host. Endpoint cannot be constructed without endpointServiceName or serviceEndpointTemplate for a dotted region")
 	}
 	client.config = &configProvider
 	return nil
@@ -95,7 +101,7 @@ func (client *BlockstorageClient) ConfigurationProvider() *common.ConfigurationP
 // For information about moving resources between compartments,
 // see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/iaas/Content/Identity/Tasks/managingcompartments.htm#moveRes).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/ChangeBootVolumeBackupCompartment.go.html to see an example of how to use ChangeBootVolumeBackupCompartment API.
 func (client BlockstorageClient) ChangeBootVolumeBackupCompartment(ctx context.Context, request ChangeBootVolumeBackupCompartmentRequest) (response ChangeBootVolumeBackupCompartmentResponse, err error) {
@@ -154,7 +160,7 @@ func (client BlockstorageClient) changeBootVolumeBackupCompartment(ctx context.C
 // For information about moving resources between compartments,
 // see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/iaas/Content/Identity/Tasks/managingcompartments.htm#moveRes).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/ChangeBootVolumeCompartment.go.html to see an example of how to use ChangeBootVolumeCompartment API.
 func (client BlockstorageClient) ChangeBootVolumeCompartment(ctx context.Context, request ChangeBootVolumeCompartmentRequest) (response ChangeBootVolumeCompartmentResponse, err error) {
@@ -213,7 +219,7 @@ func (client BlockstorageClient) changeBootVolumeCompartment(ctx context.Context
 // For information about moving resources between compartments,
 // see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/iaas/Content/Identity/Tasks/managingcompartments.htm#moveRes).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/ChangeVolumeBackupCompartment.go.html to see an example of how to use ChangeVolumeBackupCompartment API.
 func (client BlockstorageClient) ChangeVolumeBackupCompartment(ctx context.Context, request ChangeVolumeBackupCompartmentRequest) (response ChangeVolumeBackupCompartmentResponse, err error) {
@@ -272,7 +278,7 @@ func (client BlockstorageClient) changeVolumeBackupCompartment(ctx context.Conte
 // For information about moving resources between compartments,
 // see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/iaas/Content/Identity/Tasks/managingcompartments.htm#moveRes).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/ChangeVolumeCompartment.go.html to see an example of how to use ChangeVolumeCompartment API.
 func (client BlockstorageClient) ChangeVolumeCompartment(ctx context.Context, request ChangeVolumeCompartmentRequest) (response ChangeVolumeCompartmentResponse, err error) {
@@ -331,7 +337,7 @@ func (client BlockstorageClient) changeVolumeCompartment(ctx context.Context, re
 // For information about moving resources between compartments,
 // see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/iaas/Content/Identity/Tasks/managingcompartments.htm#moveRes).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/ChangeVolumeGroupBackupCompartment.go.html to see an example of how to use ChangeVolumeGroupBackupCompartment API.
 func (client BlockstorageClient) ChangeVolumeGroupBackupCompartment(ctx context.Context, request ChangeVolumeGroupBackupCompartmentRequest) (response ChangeVolumeGroupBackupCompartmentResponse, err error) {
@@ -390,7 +396,7 @@ func (client BlockstorageClient) changeVolumeGroupBackupCompartment(ctx context.
 // For information about moving resources between compartments,
 // see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/iaas/Content/Identity/Tasks/managingcompartments.htm#moveRes).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/ChangeVolumeGroupCompartment.go.html to see an example of how to use ChangeVolumeGroupCompartment API.
 func (client BlockstorageClient) ChangeVolumeGroupCompartment(ctx context.Context, request ChangeVolumeGroupCompartmentRequest) (response ChangeVolumeGroupCompartmentResponse, err error) {
@@ -448,7 +454,7 @@ func (client BlockstorageClient) changeVolumeGroupCompartment(ctx context.Contex
 // CopyBootVolumeBackup Creates a boot volume backup copy in specified region. For general information about volume backups,
 // see Overview of Boot Volume Backups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/bootvolumebackups.htm)
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/CopyBootVolumeBackup.go.html to see an example of how to use CopyBootVolumeBackup API.
 func (client BlockstorageClient) CopyBootVolumeBackup(ctx context.Context, request CopyBootVolumeBackupRequest) (response CopyBootVolumeBackupResponse, err error) {
@@ -511,7 +517,7 @@ func (client BlockstorageClient) copyBootVolumeBackup(ctx context.Context, reque
 // CopyVolumeBackup Creates a volume backup copy in specified region. For general information about volume backups,
 // see Overview of Block Volume Service Backups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/blockvolumebackups.htm)
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/CopyVolumeBackup.go.html to see an example of how to use CopyVolumeBackup API.
 func (client BlockstorageClient) CopyVolumeBackup(ctx context.Context, request CopyVolumeBackupRequest) (response CopyVolumeBackupResponse, err error) {
@@ -572,9 +578,9 @@ func (client BlockstorageClient) copyVolumeBackup(ctx context.Context, request c
 }
 
 // CopyVolumeGroupBackup Creates a volume group backup copy in specified region. For general information about volume group backups,
-// see Overview of Block Volume Service Backups (https://docs.cloud.oracle.com/Content/Block/Concepts/blockvolumebackups.htm)
+// see Overview of Block Volume Backups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/blockvolumebackups.htm).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/CopyVolumeGroupBackup.go.html to see an example of how to use CopyVolumeGroupBackup API.
 func (client BlockstorageClient) CopyVolumeGroupBackup(ctx context.Context, request CopyVolumeGroupBackupRequest) (response CopyVolumeGroupBackupResponse, err error) {
@@ -639,7 +645,7 @@ func (client BlockstorageClient) copyVolumeGroupBackup(ctx context.Context, requ
 // You may optionally specify a *display name* for the volume, which is simply a friendly name or
 // description. It does not have to be unique, and you can change it. Avoid entering confidential information.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/CreateBootVolume.go.html to see an example of how to use CreateBootVolume API.
 func (client BlockstorageClient) CreateBootVolume(ctx context.Context, request CreateBootVolumeRequest) (response CreateBootVolumeResponse, err error) {
@@ -705,7 +711,7 @@ func (client BlockstorageClient) createBootVolume(ctx context.Context, request c
 // When the data is imaged, it goes into a CREATING state.
 // After the backup is fully uploaded to the cloud, it goes into an AVAILABLE state.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/CreateBootVolumeBackup.go.html to see an example of how to use CreateBootVolumeBackup API.
 func (client BlockstorageClient) CreateBootVolumeBackup(ctx context.Context, request CreateBootVolumeBackupRequest) (response CreateBootVolumeBackupResponse, err error) {
@@ -778,7 +784,7 @@ func (client BlockstorageClient) createBootVolumeBackup(ctx context.Context, req
 // You may optionally specify a *display name* for the volume, which is simply a friendly name or
 // description. It does not have to be unique, and you can change it. Avoid entering confidential information.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/CreateVolume.go.html to see an example of how to use CreateVolume API.
 func (client BlockstorageClient) CreateVolume(ctx context.Context, request CreateVolumeRequest) (response CreateVolumeResponse, err error) {
@@ -844,7 +850,7 @@ func (client BlockstorageClient) createVolume(ctx context.Context, request commo
 // When the data is imaged, it goes into a CREATING state.
 // After the backup is fully uploaded to the cloud, it goes into an AVAILABLE state.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/CreateVolumeBackup.go.html to see an example of how to use CreateVolumeBackup API.
 func (client BlockstorageClient) CreateVolumeBackup(ctx context.Context, request CreateVolumeBackupRequest) (response CreateVolumeBackupResponse, err error) {
@@ -908,7 +914,7 @@ func (client BlockstorageClient) createVolumeBackup(ctx context.Context, request
 // For more information about Oracle defined backup policies and user defined backup policies,
 // see Policy-Based Backups (https://docs.cloud.oracle.com/iaas/Content/Block/Tasks/schedulingvolumebackups.htm).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/CreateVolumeBackupPolicy.go.html to see an example of how to use CreateVolumeBackupPolicy API.
 func (client BlockstorageClient) CreateVolumeBackupPolicy(ctx context.Context, request CreateVolumeBackupPolicyRequest) (response CreateVolumeBackupPolicyResponse, err error) {
@@ -972,7 +978,7 @@ func (client BlockstorageClient) createVolumeBackupPolicy(ctx context.Context, r
 // only have one backup policy assigned to it. If this operation is used for a volume that already
 // has a different backup policy assigned, the prior backup policy will be silently unassigned.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/CreateVolumeBackupPolicyAssignment.go.html to see an example of how to use CreateVolumeBackupPolicyAssignment API.
 func (client BlockstorageClient) CreateVolumeBackupPolicyAssignment(ctx context.Context, request CreateVolumeBackupPolicyAssignmentRequest) (response CreateVolumeBackupPolicyAssignmentResponse, err error) {
@@ -1034,7 +1040,7 @@ func (client BlockstorageClient) createVolumeBackupPolicyAssignment(ctx context.
 // description. It does not have to be unique, and you can change it. Avoid entering confidential information.
 // For more information, see Volume Groups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/volumegroups.htm).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/CreateVolumeGroup.go.html to see an example of how to use CreateVolumeGroup API.
 func (client BlockstorageClient) CreateVolumeGroup(ctx context.Context, request CreateVolumeGroupRequest) (response CreateVolumeGroupResponse, err error) {
@@ -1097,7 +1103,7 @@ func (client BlockstorageClient) createVolumeGroup(ctx context.Context, request 
 // CreateVolumeGroupBackup Creates a new backup volume group of the specified volume group.
 // For more information, see Volume Groups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/volumegroups.htm).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/CreateVolumeGroupBackup.go.html to see an example of how to use CreateVolumeGroupBackup API.
 func (client BlockstorageClient) CreateVolumeGroupBackup(ctx context.Context, request CreateVolumeGroupBackupRequest) (response CreateVolumeGroupBackupResponse, err error) {
@@ -1162,7 +1168,7 @@ func (client BlockstorageClient) createVolumeGroupBackup(ctx context.Context, re
 // Disconnecting From a Boot Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Tasks/deletingbootvolume.htm).
 // **Warning:** All data on the boot volume will be permanently lost when the boot volume is deleted.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/DeleteBootVolume.go.html to see an example of how to use DeleteBootVolume API.
 func (client BlockstorageClient) DeleteBootVolume(ctx context.Context, request DeleteBootVolumeRequest) (response DeleteBootVolumeResponse, err error) {
@@ -1219,7 +1225,7 @@ func (client BlockstorageClient) deleteBootVolume(ctx context.Context, request c
 
 // DeleteBootVolumeBackup Deletes a boot volume backup.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/DeleteBootVolumeBackup.go.html to see an example of how to use DeleteBootVolumeBackup API.
 func (client BlockstorageClient) DeleteBootVolumeBackup(ctx context.Context, request DeleteBootVolumeBackupRequest) (response DeleteBootVolumeBackupResponse, err error) {
@@ -1274,9 +1280,9 @@ func (client BlockstorageClient) deleteBootVolumeBackup(ctx context.Context, req
 	return response, err
 }
 
-// DeleteBootVolumeKmsKey Removes the specified boot volume's assigned Key Management encryption key.
+// DeleteBootVolumeKmsKey Removes the specified boot volume's assigned Vault Service encryption key.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/DeleteBootVolumeKmsKey.go.html to see an example of how to use DeleteBootVolumeKmsKey API.
 func (client BlockstorageClient) DeleteBootVolumeKmsKey(ctx context.Context, request DeleteBootVolumeKmsKeyRequest) (response DeleteBootVolumeKmsKeyResponse, err error) {
@@ -1336,7 +1342,7 @@ func (client BlockstorageClient) deleteBootVolumeKmsKey(ctx context.Context, req
 // Disconnecting From a Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Tasks/disconnectingfromavolume.htm).
 // **Warning:** All data on the volume will be permanently lost when the volume is deleted.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/DeleteVolume.go.html to see an example of how to use DeleteVolume API.
 func (client BlockstorageClient) DeleteVolume(ctx context.Context, request DeleteVolumeRequest) (response DeleteVolumeResponse, err error) {
@@ -1393,7 +1399,7 @@ func (client BlockstorageClient) deleteVolume(ctx context.Context, request commo
 
 // DeleteVolumeBackup Deletes a volume backup.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/DeleteVolumeBackup.go.html to see an example of how to use DeleteVolumeBackup API.
 func (client BlockstorageClient) DeleteVolumeBackup(ctx context.Context, request DeleteVolumeBackupRequest) (response DeleteVolumeBackupResponse, err error) {
@@ -1449,11 +1455,12 @@ func (client BlockstorageClient) deleteVolumeBackup(ctx context.Context, request
 }
 
 // DeleteVolumeBackupPolicy Deletes a user defined backup policy.
-//  For more information about user defined backup policies,
-//  see Policy-Based Backups (https://docs.cloud.oracle.com/iaas/Content/Block/Tasks/schedulingvolumebackups.htm#UserDefinedBackupPolicies).
-//  Avoid entering confidential information.
 //
-// See also
+//	For more information about user defined backup policies,
+//	see Policy-Based Backups (https://docs.cloud.oracle.com/iaas/Content/Block/Tasks/schedulingvolumebackups.htm#UserDefinedBackupPolicies).
+//	Avoid entering confidential information.
+//
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/DeleteVolumeBackupPolicy.go.html to see an example of how to use DeleteVolumeBackupPolicy API.
 func (client BlockstorageClient) DeleteVolumeBackupPolicy(ctx context.Context, request DeleteVolumeBackupPolicyRequest) (response DeleteVolumeBackupPolicyResponse, err error) {
@@ -1510,7 +1517,7 @@ func (client BlockstorageClient) deleteVolumeBackupPolicy(ctx context.Context, r
 
 // DeleteVolumeBackupPolicyAssignment Deletes a volume backup policy assignment.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/DeleteVolumeBackupPolicyAssignment.go.html to see an example of how to use DeleteVolumeBackupPolicyAssignment API.
 func (client BlockstorageClient) DeleteVolumeBackupPolicyAssignment(ctx context.Context, request DeleteVolumeBackupPolicyAssignmentRequest) (response DeleteVolumeBackupPolicyAssignmentResponse, err error) {
@@ -1568,7 +1575,7 @@ func (client BlockstorageClient) deleteVolumeBackupPolicyAssignment(ctx context.
 // DeleteVolumeGroup Deletes the specified volume group. Individual volumes are not deleted, only the volume group is deleted.
 // For more information, see Volume Groups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/volumegroups.htm).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/DeleteVolumeGroup.go.html to see an example of how to use DeleteVolumeGroup API.
 func (client BlockstorageClient) DeleteVolumeGroup(ctx context.Context, request DeleteVolumeGroupRequest) (response DeleteVolumeGroupResponse, err error) {
@@ -1626,7 +1633,7 @@ func (client BlockstorageClient) deleteVolumeGroup(ctx context.Context, request 
 // DeleteVolumeGroupBackup Deletes a volume group backup. This operation deletes all the backups in
 // the volume group. For more information, see Volume Groups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/volumegroups.htm).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/DeleteVolumeGroupBackup.go.html to see an example of how to use DeleteVolumeGroupBackup API.
 func (client BlockstorageClient) DeleteVolumeGroupBackup(ctx context.Context, request DeleteVolumeGroupBackupRequest) (response DeleteVolumeGroupBackupResponse, err error) {
@@ -1681,9 +1688,9 @@ func (client BlockstorageClient) deleteVolumeGroupBackup(ctx context.Context, re
 	return response, err
 }
 
-// DeleteVolumeKmsKey Removes the specified volume's assigned Key Management encryption key.
+// DeleteVolumeKmsKey Removes the specified volume's assigned Vault service encryption key.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/DeleteVolumeKmsKey.go.html to see an example of how to use DeleteVolumeKmsKey API.
 func (client BlockstorageClient) DeleteVolumeKmsKey(ctx context.Context, request DeleteVolumeKmsKeyRequest) (response DeleteVolumeKmsKeyResponse, err error) {
@@ -1740,7 +1747,7 @@ func (client BlockstorageClient) deleteVolumeKmsKey(ctx context.Context, request
 
 // GetBlockVolumeReplica Gets information for the specified block volume replica.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/GetBlockVolumeReplica.go.html to see an example of how to use GetBlockVolumeReplica API.
 func (client BlockstorageClient) GetBlockVolumeReplica(ctx context.Context, request GetBlockVolumeReplicaRequest) (response GetBlockVolumeReplicaResponse, err error) {
@@ -1797,7 +1804,7 @@ func (client BlockstorageClient) getBlockVolumeReplica(ctx context.Context, requ
 
 // GetBootVolume Gets information for the specified boot volume.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/GetBootVolume.go.html to see an example of how to use GetBootVolume API.
 func (client BlockstorageClient) GetBootVolume(ctx context.Context, request GetBootVolumeRequest) (response GetBootVolumeResponse, err error) {
@@ -1854,7 +1861,7 @@ func (client BlockstorageClient) getBootVolume(ctx context.Context, request comm
 
 // GetBootVolumeBackup Gets information for the specified boot volume backup.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/GetBootVolumeBackup.go.html to see an example of how to use GetBootVolumeBackup API.
 func (client BlockstorageClient) GetBootVolumeBackup(ctx context.Context, request GetBootVolumeBackupRequest) (response GetBootVolumeBackupResponse, err error) {
@@ -1909,9 +1916,9 @@ func (client BlockstorageClient) getBootVolumeBackup(ctx context.Context, reques
 	return response, err
 }
 
-// GetBootVolumeKmsKey Gets the Key Management encryption key assigned to the specified boot volume.
+// GetBootVolumeKmsKey Gets the Vault service encryption key assigned to the specified boot volume.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/GetBootVolumeKmsKey.go.html to see an example of how to use GetBootVolumeKmsKey API.
 func (client BlockstorageClient) GetBootVolumeKmsKey(ctx context.Context, request GetBootVolumeKmsKeyRequest) (response GetBootVolumeKmsKeyResponse, err error) {
@@ -1968,7 +1975,7 @@ func (client BlockstorageClient) getBootVolumeKmsKey(ctx context.Context, reques
 
 // GetBootVolumeReplica Gets information for the specified boot volume replica.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/GetBootVolumeReplica.go.html to see an example of how to use GetBootVolumeReplica API.
 func (client BlockstorageClient) GetBootVolumeReplica(ctx context.Context, request GetBootVolumeReplicaRequest) (response GetBootVolumeReplicaResponse, err error) {
@@ -2025,7 +2032,7 @@ func (client BlockstorageClient) getBootVolumeReplica(ctx context.Context, reque
 
 // GetVolume Gets information for the specified volume.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/GetVolume.go.html to see an example of how to use GetVolume API.
 func (client BlockstorageClient) GetVolume(ctx context.Context, request GetVolumeRequest) (response GetVolumeResponse, err error) {
@@ -2082,7 +2089,7 @@ func (client BlockstorageClient) getVolume(ctx context.Context, request common.O
 
 // GetVolumeBackup Gets information for the specified volume backup.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/GetVolumeBackup.go.html to see an example of how to use GetVolumeBackup API.
 func (client BlockstorageClient) GetVolumeBackup(ctx context.Context, request GetVolumeBackupRequest) (response GetVolumeBackupResponse, err error) {
@@ -2139,7 +2146,7 @@ func (client BlockstorageClient) getVolumeBackup(ctx context.Context, request co
 
 // GetVolumeBackupPolicy Gets information for the specified volume backup policy.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/GetVolumeBackupPolicy.go.html to see an example of how to use GetVolumeBackupPolicy API.
 func (client BlockstorageClient) GetVolumeBackupPolicy(ctx context.Context, request GetVolumeBackupPolicyRequest) (response GetVolumeBackupPolicyResponse, err error) {
@@ -2198,7 +2205,7 @@ func (client BlockstorageClient) getVolumeBackupPolicy(ctx context.Context, requ
 // `assetId` query parameter is required, and the returned list will contain at most
 // one item, since volume can only have one volume backup policy assigned at a time.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/GetVolumeBackupPolicyAssetAssignment.go.html to see an example of how to use GetVolumeBackupPolicyAssetAssignment API.
 func (client BlockstorageClient) GetVolumeBackupPolicyAssetAssignment(ctx context.Context, request GetVolumeBackupPolicyAssetAssignmentRequest) (response GetVolumeBackupPolicyAssetAssignmentResponse, err error) {
@@ -2255,7 +2262,7 @@ func (client BlockstorageClient) getVolumeBackupPolicyAssetAssignment(ctx contex
 
 // GetVolumeBackupPolicyAssignment Gets information for the specified volume backup policy assignment.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/GetVolumeBackupPolicyAssignment.go.html to see an example of how to use GetVolumeBackupPolicyAssignment API.
 func (client BlockstorageClient) GetVolumeBackupPolicyAssignment(ctx context.Context, request GetVolumeBackupPolicyAssignmentRequest) (response GetVolumeBackupPolicyAssignmentResponse, err error) {
@@ -2312,7 +2319,7 @@ func (client BlockstorageClient) getVolumeBackupPolicyAssignment(ctx context.Con
 
 // GetVolumeGroup Gets information for the specified volume group. For more information, see Volume Groups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/volumegroups.htm).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/GetVolumeGroup.go.html to see an example of how to use GetVolumeGroup API.
 func (client BlockstorageClient) GetVolumeGroup(ctx context.Context, request GetVolumeGroupRequest) (response GetVolumeGroupResponse, err error) {
@@ -2369,7 +2376,7 @@ func (client BlockstorageClient) getVolumeGroup(ctx context.Context, request com
 
 // GetVolumeGroupBackup Gets information for the specified volume group backup. For more information, see Volume Groups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/volumegroups.htm).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/GetVolumeGroupBackup.go.html to see an example of how to use GetVolumeGroupBackup API.
 func (client BlockstorageClient) GetVolumeGroupBackup(ctx context.Context, request GetVolumeGroupBackupRequest) (response GetVolumeGroupBackupResponse, err error) {
@@ -2426,7 +2433,7 @@ func (client BlockstorageClient) getVolumeGroupBackup(ctx context.Context, reque
 
 // GetVolumeGroupReplica Gets information for the specified volume group replica.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/GetVolumeGroupReplica.go.html to see an example of how to use GetVolumeGroupReplica API.
 func (client BlockstorageClient) GetVolumeGroupReplica(ctx context.Context, request GetVolumeGroupReplicaRequest) (response GetVolumeGroupReplicaResponse, err error) {
@@ -2481,9 +2488,9 @@ func (client BlockstorageClient) getVolumeGroupReplica(ctx context.Context, requ
 	return response, err
 }
 
-// GetVolumeKmsKey Gets the Key Management encryption key assigned to the specified volume.
+// GetVolumeKmsKey Gets the Vault service encryption key assigned to the specified volume.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/GetVolumeKmsKey.go.html to see an example of how to use GetVolumeKmsKey API.
 func (client BlockstorageClient) GetVolumeKmsKey(ctx context.Context, request GetVolumeKmsKeyRequest) (response GetVolumeKmsKeyResponse, err error) {
@@ -2540,7 +2547,7 @@ func (client BlockstorageClient) getVolumeKmsKey(ctx context.Context, request co
 
 // ListBlockVolumeReplicas Lists the block volume replicas in the specified compartment and availability domain.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/ListBlockVolumeReplicas.go.html to see an example of how to use ListBlockVolumeReplicas API.
 func (client BlockstorageClient) ListBlockVolumeReplicas(ctx context.Context, request ListBlockVolumeReplicasRequest) (response ListBlockVolumeReplicasResponse, err error) {
@@ -2597,7 +2604,7 @@ func (client BlockstorageClient) listBlockVolumeReplicas(ctx context.Context, re
 
 // ListBootVolumeBackups Lists the boot volume backups in the specified compartment. You can filter the results by boot volume.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/ListBootVolumeBackups.go.html to see an example of how to use ListBootVolumeBackups API.
 func (client BlockstorageClient) ListBootVolumeBackups(ctx context.Context, request ListBootVolumeBackupsRequest) (response ListBootVolumeBackupsResponse, err error) {
@@ -2654,7 +2661,7 @@ func (client BlockstorageClient) listBootVolumeBackups(ctx context.Context, requ
 
 // ListBootVolumeReplicas Lists the boot volume replicas in the specified compartment and availability domain.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/ListBootVolumeReplicas.go.html to see an example of how to use ListBootVolumeReplicas API.
 func (client BlockstorageClient) ListBootVolumeReplicas(ctx context.Context, request ListBootVolumeReplicasRequest) (response ListBootVolumeReplicasResponse, err error) {
@@ -2711,7 +2718,7 @@ func (client BlockstorageClient) listBootVolumeReplicas(ctx context.Context, req
 
 // ListBootVolumes Lists the boot volumes in the specified compartment and availability domain.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/ListBootVolumes.go.html to see an example of how to use ListBootVolumes API.
 func (client BlockstorageClient) ListBootVolumes(ctx context.Context, request ListBootVolumesRequest) (response ListBootVolumesResponse, err error) {
@@ -2770,7 +2777,7 @@ func (client BlockstorageClient) listBootVolumes(ctx context.Context, request co
 // For more information about Oracle defined backup policies and user defined backup policies,
 // see Policy-Based Backups (https://docs.cloud.oracle.com/iaas/Content/Block/Tasks/schedulingvolumebackups.htm).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/ListVolumeBackupPolicies.go.html to see an example of how to use ListVolumeBackupPolicies API.
 func (client BlockstorageClient) ListVolumeBackupPolicies(ctx context.Context, request ListVolumeBackupPoliciesRequest) (response ListVolumeBackupPoliciesResponse, err error) {
@@ -2827,7 +2834,7 @@ func (client BlockstorageClient) listVolumeBackupPolicies(ctx context.Context, r
 
 // ListVolumeBackups Lists the volume backups in the specified compartment. You can filter the results by volume.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/ListVolumeBackups.go.html to see an example of how to use ListVolumeBackups API.
 func (client BlockstorageClient) ListVolumeBackups(ctx context.Context, request ListVolumeBackupsRequest) (response ListVolumeBackupsResponse, err error) {
@@ -2885,7 +2892,7 @@ func (client BlockstorageClient) listVolumeBackups(ctx context.Context, request 
 // ListVolumeGroupBackups Lists the volume group backups in the specified compartment. You can filter the results by volume group.
 // For more information, see Volume Groups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/volumegroups.htm).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/ListVolumeGroupBackups.go.html to see an example of how to use ListVolumeGroupBackups API.
 func (client BlockstorageClient) ListVolumeGroupBackups(ctx context.Context, request ListVolumeGroupBackupsRequest) (response ListVolumeGroupBackupsResponse, err error) {
@@ -2943,7 +2950,7 @@ func (client BlockstorageClient) listVolumeGroupBackups(ctx context.Context, req
 // ListVolumeGroupReplicas Lists the volume group replicas in the specified compartment. You can filter the results by volume group.
 // For more information, see Volume Group Replication (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/volumegroupreplication.htm).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/ListVolumeGroupReplicas.go.html to see an example of how to use ListVolumeGroupReplicas API.
 func (client BlockstorageClient) ListVolumeGroupReplicas(ctx context.Context, request ListVolumeGroupReplicasRequest) (response ListVolumeGroupReplicasResponse, err error) {
@@ -3001,7 +3008,7 @@ func (client BlockstorageClient) listVolumeGroupReplicas(ctx context.Context, re
 // ListVolumeGroups Lists the volume groups in the specified compartment and availability domain.
 // For more information, see Volume Groups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/volumegroups.htm).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/ListVolumeGroups.go.html to see an example of how to use ListVolumeGroups API.
 func (client BlockstorageClient) ListVolumeGroups(ctx context.Context, request ListVolumeGroupsRequest) (response ListVolumeGroupsResponse, err error) {
@@ -3058,7 +3065,7 @@ func (client BlockstorageClient) listVolumeGroups(ctx context.Context, request c
 
 // ListVolumes Lists the volumes in the specified compartment and availability domain.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/ListVolumes.go.html to see an example of how to use ListVolumes API.
 func (client BlockstorageClient) ListVolumes(ctx context.Context, request ListVolumesRequest) (response ListVolumesResponse, err error) {
@@ -3115,7 +3122,7 @@ func (client BlockstorageClient) listVolumes(ctx context.Context, request common
 
 // UpdateBootVolume Updates the specified boot volume's display name, defined tags, and free-form tags.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/UpdateBootVolume.go.html to see an example of how to use UpdateBootVolume API.
 func (client BlockstorageClient) UpdateBootVolume(ctx context.Context, request UpdateBootVolumeRequest) (response UpdateBootVolumeResponse, err error) {
@@ -3173,7 +3180,7 @@ func (client BlockstorageClient) updateBootVolume(ctx context.Context, request c
 // UpdateBootVolumeBackup Updates the display name for the specified boot volume backup.
 // Avoid entering confidential information.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/UpdateBootVolumeBackup.go.html to see an example of how to use UpdateBootVolumeBackup API.
 func (client BlockstorageClient) UpdateBootVolumeBackup(ctx context.Context, request UpdateBootVolumeBackupRequest) (response UpdateBootVolumeBackupResponse, err error) {
@@ -3223,9 +3230,9 @@ func (client BlockstorageClient) updateBootVolumeBackup(ctx context.Context, req
 	return response, err
 }
 
-// UpdateBootVolumeKmsKey Updates the specified volume with a new Key Management master encryption key.
+// UpdateBootVolumeKmsKey Updates the specified volume with a new Vault service master encryption key.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/UpdateBootVolumeKmsKey.go.html to see an example of how to use UpdateBootVolumeKmsKey API.
 func (client BlockstorageClient) UpdateBootVolumeKmsKey(ctx context.Context, request UpdateBootVolumeKmsKeyRequest) (response UpdateBootVolumeKmsKeyResponse, err error) {
@@ -3283,7 +3290,7 @@ func (client BlockstorageClient) updateBootVolumeKmsKey(ctx context.Context, req
 // UpdateVolume Updates the specified volume's display name.
 // Avoid entering confidential information.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/UpdateVolume.go.html to see an example of how to use UpdateVolume API.
 func (client BlockstorageClient) UpdateVolume(ctx context.Context, request UpdateVolumeRequest) (response UpdateVolumeResponse, err error) {
@@ -3341,7 +3348,7 @@ func (client BlockstorageClient) updateVolume(ctx context.Context, request commo
 // UpdateVolumeBackup Updates the display name for the specified volume backup.
 // Avoid entering confidential information.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/UpdateVolumeBackup.go.html to see an example of how to use UpdateVolumeBackup API.
 func (client BlockstorageClient) UpdateVolumeBackup(ctx context.Context, request UpdateVolumeBackupRequest) (response UpdateVolumeBackupResponse, err error) {
@@ -3392,11 +3399,12 @@ func (client BlockstorageClient) updateVolumeBackup(ctx context.Context, request
 }
 
 // UpdateVolumeBackupPolicy Updates a user defined backup policy.
-//  For more information about user defined backup policies,
-//  see Policy-Based Backups (https://docs.cloud.oracle.com/iaas/Content/Block/Tasks/schedulingvolumebackups.htm#UserDefinedBackupPolicies).
-//  Avoid entering confidential information.
 //
-// See also
+//	For more information about user defined backup policies,
+//	see Policy-Based Backups (https://docs.cloud.oracle.com/iaas/Content/Block/Tasks/schedulingvolumebackups.htm#UserDefinedBackupPolicies).
+//	Avoid entering confidential information.
+//
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/UpdateVolumeBackupPolicy.go.html to see an example of how to use UpdateVolumeBackupPolicy API.
 func (client BlockstorageClient) UpdateVolumeBackupPolicy(ctx context.Context, request UpdateVolumeBackupPolicyRequest) (response UpdateVolumeBackupPolicyResponse, err error) {
@@ -3462,7 +3470,7 @@ func (client BlockstorageClient) updateVolumeBackupPolicy(ctx context.Context, r
 // Avoid entering confidential information.
 // For more information, see Volume Groups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/volumegroups.htm).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/UpdateVolumeGroup.go.html to see an example of how to use UpdateVolumeGroup API.
 func (client BlockstorageClient) UpdateVolumeGroup(ctx context.Context, request UpdateVolumeGroupRequest) (response UpdateVolumeGroupResponse, err error) {
@@ -3519,7 +3527,7 @@ func (client BlockstorageClient) updateVolumeGroup(ctx context.Context, request 
 
 // UpdateVolumeGroupBackup Updates the display name for the specified volume group backup. For more information, see Volume Groups (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/volumegroups.htm).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/UpdateVolumeGroupBackup.go.html to see an example of how to use UpdateVolumeGroupBackup API.
 func (client BlockstorageClient) UpdateVolumeGroupBackup(ctx context.Context, request UpdateVolumeGroupBackupRequest) (response UpdateVolumeGroupBackupResponse, err error) {
@@ -3571,7 +3579,7 @@ func (client BlockstorageClient) updateVolumeGroupBackup(ctx context.Context, re
 
 // UpdateVolumeKmsKey Updates the specified volume with a new Key Management master encryption key.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/core/UpdateVolumeKmsKey.go.html to see an example of how to use UpdateVolumeKmsKey API.
 func (client BlockstorageClient) UpdateVolumeKmsKey(ctx context.Context, request UpdateVolumeKmsKeyRequest) (response UpdateVolumeKmsKeyResponse, err error) {

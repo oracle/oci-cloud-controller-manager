@@ -50,7 +50,7 @@ func (cp *CloudProvider) getCompartmentIDByInstanceID(instanceID string) (string
 		return "", errors.Wrap(err, "error listing all the nodes using node informer")
 	}
 	for _, node := range nodeList {
-		providerID, err := MapProviderIDToInstanceID(node.Spec.ProviderID)
+		providerID, err := MapProviderIDToResourceID(node.Spec.ProviderID)
 		if err != nil {
 			return "", errors.New("Failed to map providerID to instanceID")
 		}
@@ -174,9 +174,9 @@ func (cp *CloudProvider) NodeAddresses(ctx context.Context, name types.NodeName)
 func (cp *CloudProvider) NodeAddressesByProviderID(ctx context.Context, providerID string) ([]api.NodeAddress, error) {
 	cp.logger.With("instanceID", providerID).Debug("Getting node addresses by provider id")
 
-	instanceID, err := MapProviderIDToInstanceID(providerID)
+	instanceID, err := MapProviderIDToResourceID(providerID)
 	if err != nil {
-		return nil, errors.Wrap(err, "MapProviderIDToInstanceID")
+		return nil, errors.Wrap(err, "MapProviderIDToResourceID")
 	}
 	return cp.extractNodeAddresses(ctx, instanceID)
 
@@ -223,9 +223,9 @@ func (cp *CloudProvider) InstanceType(ctx context.Context, name types.NodeName) 
 func (cp *CloudProvider) InstanceTypeByProviderID(ctx context.Context, providerID string) (string, error) {
 	cp.logger.With("instanceID", providerID).Debug("Getting instance type by provider id")
 
-	instanceID, err := MapProviderIDToInstanceID(providerID)
+	instanceID, err := MapProviderIDToResourceID(providerID)
 	if err != nil {
-		return "", errors.Wrap(err, "MapProviderIDToInstanceID")
+		return "", errors.Wrap(err, "MapProviderIDToResourceID")
 	}
 	item, exists, err := cp.instanceCache.GetByKey(instanceID)
 	if err != nil {
@@ -264,13 +264,14 @@ func (cp *CloudProvider) CurrentNodeName(ctx context.Context, hostname string) (
 func (cp *CloudProvider) InstanceExistsByProviderID(ctx context.Context, providerID string) (bool, error) {
 	//Please do not try to optimise it by using InstanceCache because we prefer correctness over efficiency here
 	cp.logger.With("instanceID", providerID).Debug("Checking instance exists by provider id")
-	instanceID, err := MapProviderIDToInstanceID(providerID)
+	instanceID, err := MapProviderIDToResourceID(providerID)
 	if err != nil {
 		return false, err
 	}
 	instance, err := cp.client.Compute().GetInstance(ctx, instanceID)
 	if client.IsNotFound(err) {
-		return false, nil
+		return cp.checkForAuthorizationError(ctx, providerID)
+
 	}
 	if err != nil {
 		return false, err
@@ -279,11 +280,39 @@ func (cp *CloudProvider) InstanceExistsByProviderID(ctx context.Context, provide
 	return !client.IsInstanceInTerminalState(instance), nil
 }
 
+func (cp *CloudProvider) checkForAuthorizationError(ctx context.Context, instanceId string) (bool, error) {
+	cp.logger.With("instanceId", instanceId).Info("Received 404 for an instance, listing instances to check for authorization errors")
+	compartmentId, err := cp.getCompartmentIDByInstanceID(instanceId)
+	if err != nil {
+		return false, err
+	}
+	// to eliminate AD specific issues, list all ADs and make AD specific requests
+	availabilityDomains, err := cp.client.Identity().ListAvailabilityDomains(ctx, compartmentId)
+	for _, availabilityDomain := range availabilityDomains {
+		instances, err := cp.client.Compute().ListInstancesByCompartmentAndAD(ctx, compartmentId, *availabilityDomain.Name)
+		// if we are getting errors for ListInstances the issue can be authorization or other issues
+		// so to be safe we return the error back as we can't list instances in the compartment
+		if err != nil {
+			cp.logger.With("instanceId", instanceId).Info("Received error when listing instances to check for authorization errors")
+			return false, err
+		}
+
+		for _, instance := range instances {
+			if *instance.Id == instanceId {
+				// Can only happen if changes are done in policy in-between requests
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
+}
+
 // InstanceShutdownByProviderID returns true if the instance is shutdown in cloudprovider.
 func (cp *CloudProvider) InstanceShutdownByProviderID(ctx context.Context, providerID string) (bool, error) {
 	//Please do not try to optimise it by using InstanceCache because we prefer correctness over efficiency here
 	cp.logger.With("instanceID", providerID).Debug("Checking instance is stopped by provider id")
-	instanceID, err := MapProviderIDToInstanceID(providerID)
+	instanceID, err := MapProviderIDToResourceID(providerID)
 	if err != nil {
 		return false, err
 	}

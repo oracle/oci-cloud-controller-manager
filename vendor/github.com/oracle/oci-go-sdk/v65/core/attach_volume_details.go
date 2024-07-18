@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -9,6 +9,8 @@
 // documentation for the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
 // Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
 // Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
+// The required permissions are documented in the
+// Details for the Core Services (https://docs.cloud.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
 //
 
 package core
@@ -48,12 +50,12 @@ type AttachVolumeDetails interface {
 
 type attachvolumedetails struct {
 	JsonData    []byte
-	InstanceId  *string `mandatory:"true" json:"instanceId"`
-	VolumeId    *string `mandatory:"true" json:"volumeId"`
 	Device      *string `mandatory:"false" json:"device"`
 	DisplayName *string `mandatory:"false" json:"displayName"`
 	IsReadOnly  *bool   `mandatory:"false" json:"isReadOnly"`
 	IsShareable *bool   `mandatory:"false" json:"isShareable"`
+	InstanceId  *string `mandatory:"true" json:"instanceId"`
+	VolumeId    *string `mandatory:"true" json:"volumeId"`
 	Type        string  `json:"type"`
 }
 
@@ -105,38 +107,39 @@ func (m *attachvolumedetails) UnmarshalPolymorphicJSON(data []byte) (interface{}
 		err = json.Unmarshal(data, &mm)
 		return mm, err
 	default:
+		common.Logf("Recieved unsupported enum value for AttachVolumeDetails: %s.", m.Type)
 		return *m, nil
 	}
 }
 
-//GetInstanceId returns InstanceId
-func (m attachvolumedetails) GetInstanceId() *string {
-	return m.InstanceId
-}
-
-//GetVolumeId returns VolumeId
-func (m attachvolumedetails) GetVolumeId() *string {
-	return m.VolumeId
-}
-
-//GetDevice returns Device
+// GetDevice returns Device
 func (m attachvolumedetails) GetDevice() *string {
 	return m.Device
 }
 
-//GetDisplayName returns DisplayName
+// GetDisplayName returns DisplayName
 func (m attachvolumedetails) GetDisplayName() *string {
 	return m.DisplayName
 }
 
-//GetIsReadOnly returns IsReadOnly
+// GetIsReadOnly returns IsReadOnly
 func (m attachvolumedetails) GetIsReadOnly() *bool {
 	return m.IsReadOnly
 }
 
-//GetIsShareable returns IsShareable
+// GetIsShareable returns IsShareable
 func (m attachvolumedetails) GetIsShareable() *bool {
 	return m.IsShareable
+}
+
+// GetInstanceId returns InstanceId
+func (m attachvolumedetails) GetInstanceId() *string {
+	return m.InstanceId
+}
+
+// GetVolumeId returns VolumeId
+func (m attachvolumedetails) GetVolumeId() *string {
+	return m.VolumeId
 }
 
 func (m attachvolumedetails) String() string {

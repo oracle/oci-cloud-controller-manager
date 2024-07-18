@@ -16,15 +16,21 @@ package oci
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 	"strconv"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
+	authv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
 	k8sports "k8s.io/kubernetes/pkg/cluster/ports"
+	"k8s.io/utils/pointer"
 
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/metrics"
@@ -48,6 +54,8 @@ const (
 	NetworkLoadBalancingPolicyFiveTuple  = "FIVE_TUPLE"
 )
 
+var LbOperationAlreadyExists = errors.New("An operation for the service is already in progress.")
+
 // DefaultLoadBalancerBEProtocol defines the default protocol for load
 // balancer listeners created by the CCM.
 const DefaultLoadBalancerBEProtocol = "TCP"
@@ -55,6 +63,21 @@ const DefaultLoadBalancerBEProtocol = "TCP"
 // DefaultNetworkLoadBalancerListenerProtocol defines the default protocol for network load
 // balancer listeners created by the CCM.
 const DefaultNetworkLoadBalancerListenerProtocol = "TCP"
+
+// MaxNsgPerVnic is the maximum number of NSGs that can be attached to a vnic
+// https://docs.oracle.com/en-us/iaas/Content/General/Concepts/servicelimits.htm#nsg_limits
+const MaxNsgPerVnic = 5
+
+const (
+	OkeSystemTagNamesapce = "orcl-containerengine"
+	// MaxDefinedTagPerLB is the maximum number of defined tags that be can be associated with the resource
+	//https://docs.oracle.com/en-us/iaas/Content/Tagging/Concepts/taggingoverview.htm#limits
+	MaxDefinedTagPerLB              = 64
+	resourceTrackingFeatureFlagName = "CPO_ENABLE_RESOURCE_ATTRIBUTION"
+)
+
+var MaxDefinedTagPerLBErr = fmt.Errorf("max limit of defined tags for lb is reached. skip adding tags. sending metric")
+var enableOkeSystemTags = false
 
 const (
 	// Fallback value if annotation on service is not set
@@ -72,7 +95,13 @@ const (
 	lbLifecycleStateActive           = "ACTIVE"
 	lbMaximumNetworkSecurityGroupIds = 5
 	excludeBackendFromLBLabel        = "node.kubernetes.io/exclude-from-external-load-balancers"
+
+	// Service Account Token expiration in seconds
+	serviceAccountTokenExpiry = 21600 // 6 Hours
 )
+
+// Protects security rule addition against update by multiple LBs in parallel
+var updateRulesMutex sync.Mutex
 
 // CloudLoadBalancerProvider is an implementation of the cloud-provider struct
 type CloudLoadBalancerProvider struct {
@@ -83,16 +112,70 @@ type CloudLoadBalancerProvider struct {
 	config       *providercfg.Config
 }
 
-// TODO write a UT for this (prasrira)
-func (cp *CloudProvider) getLoadBalancerProvider(svc *v1.Service) CloudLoadBalancerProvider {
+func (cp *CloudProvider) getLoadBalancerProvider(ctx context.Context, svc *v1.Service) (CloudLoadBalancerProvider, error) {
 	lbType := getLoadBalancerType(svc)
+	name := GetLoadBalancerName(svc)
+	var serviceAccountToken *authv1.TokenRequest
+	var err error
+
+	logger := cp.logger.With("loadBalancerName", name, "loadBalancerType", lbType)
+	logger.Debug("Getting load balancer provider")
+
+	if sa, useWI := svc.Annotations[ServiceAnnotationServiceAccountName]; useWI && sa == "" { // When using Workload Identity
+		return CloudLoadBalancerProvider{}, errors.New("Error fetching service account, empty string provided via " + ServiceAnnotationServiceAccountName)
+	} else if useWI {
+		serviceAccountToken, err = cp.getServiceAccountTokenIfSet(ctx, svc)
+		if err != nil {
+			return CloudLoadBalancerProvider{}, errors.New("Unable to get service account token. Error:" + err.Error())
+		}
+	}
+
+	lbClient := cp.client.LoadBalancer(logger, lbType, cp.config.Auth.TenancyID, serviceAccountToken)
+	if lbClient == nil {
+		return CloudLoadBalancerProvider{}, errors.New(fmt.Sprintf("Error creating Workload Identity based %s Client. Perhaps you are using an OKE BASIC_CLUSTER?", lbType))
+	}
 	return CloudLoadBalancerProvider{
 		client:       cp.client,
-		lbClient:     cp.client.LoadBalancer(lbType),
+		lbClient:     lbClient,
 		logger:       cp.logger,
 		metricPusher: cp.metricPusher,
 		config:       cp.config,
+	}, nil
+}
+
+// serviceNotExistsOrDeleted returns true if service has stopped existing or has been marked as Deleted
+func (cp *CloudProvider) serviceDeletedOrDoesNotExist(ctx context.Context, svc *v1.Service) (bool, error) {
+	service, err := cp.kubeclient.CoreV1().Services(svc.Namespace).Get(ctx, svc.Name, metav1.GetOptions{})
+	if err != nil && apierrors.IsNotFound(err) {
+		return true, nil
 	}
+	if err != nil {
+		return true, errors.New("Unable to check if service still exists. Error:" + err.Error())
+	}
+	if service.DeletionTimestamp != nil {
+		return true, nil
+	}
+	return false, nil
+}
+
+var ServiceAccountTokenExpiry = int64(serviceAccountTokenExpiry)
+
+// Use Worker Identity RP based Client based on annotation: "oke.oci.oraclecloud.com/use-service-account"
+// if found.
+func (cp *CloudProvider) getServiceAccountTokenIfSet(ctx context.Context, svc *v1.Service) (*authv1.TokenRequest, error) {
+	_, err := cp.ServiceAccountLister.ServiceAccounts(svc.Namespace).Get(svc.Annotations[ServiceAnnotationServiceAccountName])
+	if err != nil {
+		return nil, err
+	}
+
+	tokenRequest := authv1.TokenRequest{Spec: authv1.TokenRequestSpec{ExpirationSeconds: &ServiceAccountTokenExpiry}}
+
+	serviceAccountTokenRequest, err := cp.kubeclient.CoreV1().ServiceAccounts(svc.Namespace).CreateToken(ctx, svc.Annotations[ServiceAnnotationServiceAccountName], &tokenRequest, metav1.CreateOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return serviceAccountTokenRequest, nil
 }
 
 // GetLoadBalancerName returns the name of the loadbalancer
@@ -105,9 +188,15 @@ func (cp *CloudProvider) GetLoadBalancerName(ctx context.Context, clusterName st
 func (cp *CloudProvider) GetLoadBalancer(ctx context.Context, clusterName string, service *v1.Service) (*v1.LoadBalancerStatus, bool, error) {
 	name := cp.GetLoadBalancerName(ctx, clusterName, service)
 	logger := cp.logger.With("loadBalancerName", name, "loadBalancerType", getLoadBalancerType(service))
+	if sa, useWI := service.Annotations[ServiceAnnotationServiceAccountName]; useWI { // When using Workload Identity
+		logger = logger.With("serviceAccount", sa, "nameSpace", service.Namespace)
+	}
 	logger.Debug("Getting load balancer")
 
-	lbProvider := cp.getLoadBalancerProvider(service)
+	lbProvider, err := cp.getLoadBalancerProvider(ctx, service)
+	if err != nil {
+		return nil, false, errors.Wrap(err, "Unable to get Load Balancer Client.")
+	}
 	lb, err := lbProvider.lbClient.GetLoadBalancerByName(ctx, cp.config.CompartmentID, name)
 	if err != nil {
 		if client.IsNotFound(err) {
@@ -181,9 +270,9 @@ func getSubnetsForNodes(ctx context.Context, nodes []*v1.Node, client client.Int
 			return nil, errors.Errorf(".spec.providerID was not present on node %q", node.Name)
 		}
 
-		id, err := MapProviderIDToInstanceID(node.Spec.ProviderID)
+		id, err := MapProviderIDToResourceID(node.Spec.ProviderID)
 		if err != nil {
-			return nil, errors.Wrap(err, "MapProviderIDToInstanceID")
+			return nil, errors.Wrap(err, "MapProviderIDToResourceID")
 		}
 
 		compartmentID, ok := node.Annotations[CompartmentIDAnnotation]
@@ -295,6 +384,11 @@ func (clb *CloudLoadBalancerProvider) createLoadBalancer(ctx context.Context, sp
 		FreeformTags:            spec.FreeformTags,
 		DefinedTags:             spec.DefinedTags,
 	}
+	// do not block creation if the defined tag limit is reached. defer LB to tracked by backfilling
+	if len(details.DefinedTags) > MaxDefinedTagPerLB {
+		logger.Warnf("the number of defined tags in the LB create request is beyond the limit. removing the resource tracking tags from the details..")
+		delete(details.DefinedTags, OkeSystemTagNamesapce)
+	}
 
 	if spec.Shape == flexible {
 		details.ShapeDetails = &client.GenericShapeDetails{
@@ -316,7 +410,8 @@ func (clb *CloudLoadBalancerProvider) createLoadBalancer(ctx context.Context, sp
 		}
 	}
 
-	wrID, err := clb.lbClient.CreateLoadBalancer(ctx, &details)
+	serviceUid := fmt.Sprintf("%s", spec.service.UID)
+	wrID, err := clb.lbClient.CreateLoadBalancer(ctx, &details, &serviceUid)
 	if err != nil {
 		return nil, "", errors.Wrap(err, "creating load balancer")
 	}
@@ -338,20 +433,18 @@ func (clb *CloudLoadBalancerProvider) createLoadBalancer(ctx context.Context, sp
 
 	logger.With("loadBalancerID", *lb.Id).Info("Load balancer created")
 	status, err := loadBalancerToStatus(lb)
+
 	if status != nil && len(status.Ingress) > 0 {
 		// If the LB is successfully provisioned then open lb/node subnet seclists egress/ingress.
-		for _, ports := range spec.Ports {
-			if err = spec.securityListManager.Update(ctx, lbSubnets, nodeSubnets, spec.SourceCIDRs, nil, ports, *spec.IsPreserveSource); err != nil {
-				return nil, "", err
-			}
+		// Security List Updates take place in a Global Critical Section
+		if err = updateSecurityListsInCriticalSection(ctx, spec, lbSubnets, nodeSubnets); err != nil {
+			return nil, "", err
 		}
 	}
-
 	if lb.Id != nil {
 		lbOCID = *lb.Id
 	}
 	return status, lbOCID, err
-
 }
 
 // getNodeFilter extracts the node filter based on load balancer type.
@@ -396,13 +489,31 @@ func filterNodes(svc *v1.Service, nodes []*v1.Node) ([]*v1.Node, error) {
 
 // EnsureLoadBalancer creates a new load balancer or updates the existing one.
 // Returns the status of the balancer (i.e it's public IP address if one exists).
-func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName string, service *v1.Service, nodes []*v1.Node) (*v1.LoadBalancerStatus, error) {
+func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName string, service *v1.Service, clusterNodes []*v1.Node) (*v1.LoadBalancerStatus, error) {
 	startTime := time.Now()
 	lbName := GetLoadBalancerName(service)
 	loadBalancerType := getLoadBalancerType(service)
-	logger := cp.logger.With("loadBalancerName", lbName, "serviceName", service.Name, "loadBalancerType", loadBalancerType)
+	logger := cp.logger.With("loadBalancerName", lbName, "serviceName", service.Name, "loadBalancerType", loadBalancerType, "serviceUid", service.UID)
+	if sa, useWI := service.Annotations[ServiceAnnotationServiceAccountName]; useWI { // When using Workload Identity
+		logger = logger.With("serviceAccount", sa, "namespace", service.Namespace)
+	}
 
-	nodes, err := filterNodes(service, nodes)
+	if deleted, err := cp.serviceDeletedOrDoesNotExist(ctx, service); deleted {
+		if err != nil {
+			logger.With(zap.Error(err)).Error("Failed to check if service exists")
+			return nil, errors.Wrap(err, "Failed to check service status")
+		}
+		logger.Info("Service already deleted or no more exists")
+		return nil, errors.New("Service already deleted or no more exists")
+	}
+	loadBalancerService := fmt.Sprintf("%s/%s", service.Namespace, service.Name)
+	if acquired := cp.lbLocks.TryAcquire(loadBalancerService); !acquired {
+		logger.Error("Could not acquire lock for Ensuring Load Balancer")
+		return nil, LbOperationAlreadyExists
+	}
+	defer cp.lbLocks.Release(loadBalancerService)
+
+	nodes, err := filterNodes(service, clusterNodes)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to filter nodes with label selector")
 		return nil, err
@@ -414,8 +525,12 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 
 	var errorType string
 	var lbMetricDimension string
+	var nsgMetricDimension string
 
-	lbProvider := cp.getLoadBalancerProvider(service)
+	lbProvider, err := cp.getLoadBalancerProvider(ctx, service)
+	if err != nil {
+		return nil, errors.Wrap(err, "Unable to get Load Balancer Client.")
+	}
 	lb, err := lbProvider.lbClient.GetLoadBalancerByName(ctx, cp.config.CompartmentID, lbName)
 	if err != nil && !client.IsNotFound(err) {
 		logger.With(zap.Error(err)).Error("Failed to get loadbalancer by name")
@@ -426,49 +541,25 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		metrics.SendMetricData(cp.metricPusher, getMetric(loadBalancerType, Update), time.Since(startTime).Seconds(), dimensionsMap)
 		return nil, err
 	}
-	exists := !client.IsNotFound(err)
+	lbExists := !client.IsNotFound(err)
 	lbOCID := ""
 	if lb != nil && lb.Id != nil {
 		lbOCID = *lb.Id
 	} else {
 		// if the LB does not exist already use the k8s service UID for reference
 		// in logs and metrics
-		lbOCID = GetLoadBalancerName(service)
+		lbOCID = lbName
 	}
 
 	logger = logger.With("loadBalancerID", lbOCID, "loadBalancerType", getLoadBalancerType(service))
 	dimensionsMap[metrics.ResourceOCIDDimension] = lbOCID
 
-	// This code block checks if we have pending work requests before processing the LoadBalancer further
+	// Checks if we have pending work requests before processing the LoadBalancer further
 	// Will error out if any in-progress work request are present for the LB
 	if lb != nil && lb.Id != nil {
-		listWorkRequestTime := time.Now()
-		lbInProgressWorkRequests, err := lbProvider.lbClient.ListWorkRequests(ctx, *lb.CompartmentId, *lb.Id)
-		logger.With("loadBalancerID", *lb.Id).Infof("time (in seconds) to list work-requests for LB %f", time.Since(listWorkRequestTime).Seconds())
+		err = cp.checkPendingLBWorkRequests(ctx, logger, lbProvider, lb, service, startTime)
 		if err != nil {
-			logger.With(zap.Error(err)).Error("Failed to list work-requests in-progress")
-			errorType = util.GetError(err)
-			lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
-			dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
-			dimensionsMap[metrics.ResourceOCIDDimension] = lbName
-			metrics.SendMetricData(cp.metricPusher, getMetric(loadBalancerType, List), time.Since(startTime).Seconds(), dimensionsMap)
 			return nil, err
-		}
-
-		for _, wr := range lbInProgressWorkRequests {
-			lbType := getLoadBalancerType(service)
-			switch lbType {
-			case NLB:
-				if wr.Status == string(networkloadbalancer.OperationStatusInProgress) || wr.Status == string(networkloadbalancer.OperationStatusAccepted) {
-					logger.With("loadBalancerID", *lb.Id).Infof("current in-progress work requests for Network Load Balancer %s", *wr.Id)
-					return nil, errors.New("Network Load Balancer has work requests in progress, will wait and retry")
-				}
-			default:
-				if *wr.LifecycleState == string(loadbalancer.WorkRequestLifecycleStateInProgress) || *wr.LifecycleState == string(loadbalancer.WorkRequestLifecycleStateAccepted) {
-					logger.With("loadBalancerID", *lb.Id).Infof("current in-progress work requests for Load Balancer %s", *wr.Id)
-					return nil, errors.New("Load Balancer has work requests in progress, will wait and retry")
-				}
-			}
 		}
 	}
 
@@ -497,7 +588,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		return nil, err
 	}
 
-	spec, err := NewLBSpec(logger, service, nodes, subnets, sslConfig, cp.securityListManagerFactory, cp.config.Tags)
+	spec, err := NewLBSpec(logger, service, nodes, subnets, sslConfig, cp.securityListManagerFactory, cp.config.Tags, lb)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to derive LBSpec")
 		errorType = util.GetError(err)
@@ -508,8 +599,151 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		return nil, err
 	}
 
-	if !exists {
+	if requiresNsgManagement(service) {
+		// Fetch existing frontend NSG and use it to manage rules
+		frontendNsgId := ""
+		backendNsgs := spec.ManagedNetworkSecurityGroup.backendNsgId
+
+		// Check if there are any NSGs which are created by CCM (and use that), but didn't get attached to LB because the LB creation failed.
+		if !lbExists {
+			frontendNsgId, _, err = cp.getFrontendNsgByName(ctx, logger, generateNsgName(service), cp.config.CompartmentID, cp.config.VCNID, fmt.Sprintf("%s", service.UID))
+			if err != nil {
+				return nil, err
+			}
+			logger.Infof("found managed NSG %s", frontendNsgId)
+			if frontendNsgId != "" {
+				spec, err = addFrontendNsgToSpec(spec, frontendNsgId)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+		if lb != nil && lb.Id != nil && lb.NetworkSecurityGroupIds != nil {
+			nsgs := lb.NetworkSecurityGroupIds
+			for _, id := range nsgs {
+				frontendNsgId, _, err = cp.getFrontendNsg(ctx, logger, id, fmt.Sprintf("%s", service.UID))
+				if err != nil {
+					errorType = util.GetError(err)
+					nsgMetricDimension = util.GetMetricDimensionForComponent(errorType, util.NSGType)
+					dimensionsMap[metrics.ComponentDimension] = nsgMetricDimension
+					metrics.SendMetricData(cp.metricPusher, getMetric(util.NSGType, Get), time.Since(startTime).Seconds(), dimensionsMap)
+				}
+				if frontendNsgId != "" {
+					spec, err = addFrontendNsgToSpec(spec, frontendNsgId)
+					if err != nil {
+						return nil, err
+					}
+					logger.With("loadBalancerID", *lb.Id).Infof("using existing frontendNsg %s", frontendNsgId)
+					break
+				}
+			}
+
+			if frontendNsgId == "" {
+				// Check if there are any CCM created NSGs which might be manually removed by customer causing a dirty LB
+				logger.Info("Check if managed NSGs present in VCN")
+				frontendNsgId, _, err = cp.getFrontendNsgByName(ctx, logger, generateNsgName(service), cp.config.CompartmentID, cp.config.VCNID, fmt.Sprintf("%s", service.UID))
+				if err != nil {
+					return nil, err
+				}
+				logger.Infof("found managed NSG %s", frontendNsgId)
+				if frontendNsgId != "" {
+					spec, err = addFrontendNsgToSpec(spec, frontendNsgId)
+					if err != nil {
+						return nil, err
+					}
+				}
+			}
+		}
+
+		// Create the NSG and add it to the LbSpec
+		if frontendNsgId == "" {
+			if len(spec.NetworkSecurityGroupIds) >= MaxNsgPerVnic {
+				return nil, fmt.Errorf("invalid number of Network Security Groups (Max: 5) including managed nsg")
+			}
+			resp, err := cp.client.Networking().CreateNetworkSecurityGroup(ctx, cp.config.CompartmentID, cp.config.VCNID, generateNsgName(service), fmt.Sprintf("%s", service.UID))
+			if err != nil {
+				logger.With(zap.Error(err)).Error("Failed to create nsg")
+				errorType = util.GetError(err)
+				nsgMetricDimension = util.GetMetricDimensionForComponent(errorType, util.NSGType)
+				dimensionsMap[metrics.ComponentDimension] = nsgMetricDimension
+				metrics.SendMetricData(cp.metricPusher, getMetric(util.NSGType, Create), time.Since(startTime).Seconds(), dimensionsMap)
+				return nil, err
+			}
+			frontendNsgId = *resp.Id
+			spec, err = addFrontendNsgToSpec(spec, frontendNsgId)
+			if err != nil {
+				return nil, err
+			}
+			logger.With("frontendNsgId", *resp.Id).
+				Info("Successfully created nsg")
+			nsgMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.NSGType)
+			dimensionsMap[metrics.ComponentDimension] = nsgMetricDimension
+			dimensionsMap[metrics.ResourceOCIDDimension] = *resp.Id
+			metrics.SendMetricData(cp.metricPusher, getMetric(util.NSGType, Create), time.Since(startTime).Seconds(), dimensionsMap)
+
+		}
+		if len(backendNsgs) > 0 {
+			for _, nsg := range backendNsgs {
+				resp, etag, err := cp.client.Networking().GetNetworkSecurityGroup(ctx, nsg)
+				if err != nil {
+					logger.With(zap.Error(err)).Error("Failed to get nsg")
+					errorType = util.GetError(err)
+					nsgMetricDimension = util.GetMetricDimensionForComponent(errorType, util.NSGType)
+					dimensionsMap[metrics.ComponentDimension] = nsgMetricDimension
+					metrics.SendMetricData(cp.metricPusher, getMetric(util.NSGType, Get), time.Since(startTime).Seconds(), dimensionsMap)
+					return nil, err
+				}
+				freeformTags := resp.FreeformTags
+				if _, ok := freeformTags["ManagedBy"]; !ok {
+					if etag != nil {
+						freeformTags["ManagedBy"] = "CCM"
+						response, err := cp.client.Networking().UpdateNetworkSecurityGroup(ctx, nsg, *etag, freeformTags)
+						if err != nil {
+							logger.With(zap.Error(err)).Errorf("Failed to update nsg %s", nsg)
+							errorType = util.GetError(err)
+							nsgMetricDimension = util.GetMetricDimensionForComponent(errorType, util.NSGType)
+							dimensionsMap[metrics.ComponentDimension] = nsgMetricDimension
+							dimensionsMap[metrics.ResourceOCIDDimension] = nsg
+							metrics.SendMetricData(cp.metricPusher, getMetric(util.NSGType, Update), time.Since(startTime).Seconds(), dimensionsMap)
+							return nil, err
+						}
+						nsgMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.NSGType)
+						dimensionsMap[metrics.ComponentDimension] = nsgMetricDimension
+						dimensionsMap[metrics.ResourceOCIDDimension] = *response.Id
+						metrics.SendMetricData(cp.metricPusher, getMetric(util.NSGType, Update), time.Since(startTime).Seconds(), dimensionsMap)
+					}
+				}
+			}
+		}
+		serviceComponents := serviceComponents{
+			frontendNsgOcid:  frontendNsgId,
+			backendNsgOcids:  backendNsgs,
+			ports:            spec.Ports,
+			sourceCIDRs:      spec.SourceCIDRs,
+			isPreserveSource: *spec.IsPreserveSource,
+			serviceUid:       fmt.Sprintf("service-uid-%s", service.UID),
+		}
+		logger.Infof("(requiresNSGmanagement) Service Components %#v", serviceComponents)
+		if err = cp.reconcileSecurityGroup(ctx, serviceComponents); err != nil {
+			return nil, err
+		}
+	}
+
+	if !lbExists {
 		lbStatus, newLBOCID, err := lbProvider.createLoadBalancer(ctx, spec)
+		if err != nil && client.IsSystemTagNotFoundOrNotAuthorisedError(logger, err) {
+			logger.Warn("LB creation failed due to error in adding system tags. sending metric & retrying without system tags")
+
+			// send resource track tagging failure metrics
+			errorType = util.SystemTagErrTypePrefix + util.GetError(err)
+			lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
+			dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
+			metrics.SendMetricData(cp.metricPusher, getMetric(loadBalancerType, Create), time.Since(startTime).Seconds(), dimensionsMap)
+
+			// retry create without resource tracking system tags
+			delete(spec.DefinedTags, OkeSystemTagNamesapce)
+			lbStatus, newLBOCID, err = lbProvider.createLoadBalancer(ctx, spec)
+		}
 		if err != nil {
 			logger.With(zap.Error(err)).Error("Failed to provision LoadBalancer")
 			errorType = util.GetError(err)
@@ -518,8 +752,8 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 			metrics.SendMetricData(cp.metricPusher, getMetric(loadBalancerType, Create), time.Since(startTime).Seconds(), dimensionsMap)
 
 		} else {
-			logger = cp.logger.With("loadBalancerName", lbName, "serviceName", service.Name, "loadBalancerID", newLBOCID, "loadBalancerType", getLoadBalancerType(service))
-			logger.Info("Successfully provisioned loadbalancer")
+			logger.With("loadBalancerID", newLBOCID).
+				Info("Successfully provisioned loadbalancer")
 			lbMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.LoadBalancerType)
 			dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
 			dimensionsMap[metrics.ResourceOCIDDimension] = newLBOCID
@@ -529,8 +763,20 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 	}
 
 	if lb.LifecycleState == nil || *lb.LifecycleState != lbLifecycleStateActive {
-		logger.With("lifecycleState", lb.LifecycleState).Infof("LB is not in %s state, will retry EnsureLoadBalancer", lbLifecycleStateActive)
-		return nil, errors.Errorf("rejecting request to update LB which is not in %s state", lbLifecycleStateActive)
+		logger := logger.With("lifecycleState", lb.LifecycleState)
+		switch loadBalancerType {
+		case NLB:
+			// This check is added here since NLBs are marked as failed in case nlb work-requests fail NLB-26239
+			if *lb.LifecycleState == string(networkloadbalancer.LifecycleStateFailed) {
+				logger.Infof("NLB is in %s state, process the Loadbalancer", *lb.LifecycleState)
+			} else {
+				return nil, errors.Errorf("NLB is in %s state, wait for NLB to move to %s", *lb.LifecycleState, lbLifecycleStateActive)
+			}
+			break
+		default:
+			logger.Infof("LB is not in %s state, will retry EnsureLoadBalancer", lbLifecycleStateActive)
+			return nil, errors.Errorf("rejecting request to update LB which is not in %s state", lbLifecycleStateActive)
+		}
 	}
 
 	// Existing load balancers cannot change subnets. This ensures that the spec matches
@@ -538,7 +784,10 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 	// was just created then these values would be equal; however, if the load balancer
 	// already existed and the default subnet ids changed, then this would ensure
 	// we are setting the security rules on the correct subnets.
-	spec.Subnets = lb.SubnetIds
+	spec, err = updateSpecWithLbSubnets(spec, lb.SubnetIds)
+	if err != nil {
+		return nil, err
+	}
 
 	// If the load balancer needs an SSL cert ensure it is present.
 	if requiresCertificate(service) {
@@ -553,16 +802,12 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		}
 	}
 
-	if len(nodes) == 0 {
-		allNodesNotReady, err := cp.checkAllBackendNodesNotReady()
-		if err != nil {
-			logger.With(zap.Error(err)).Error("Failed to check if all backend nodes are not ready")
-			return nil, err
-		}
-		if allNodesNotReady {
-			logger.Info("Not removing backends since all nodes are Not Ready")
-			return loadBalancerToStatus(lb)
-		}
+	// If network partition, do not proceed
+	isNetworkPartition, err := cp.checkForNetworkPartition(logger, clusterNodes)
+	if err != nil {
+		return nil, err
+	} else if isNetworkPartition {
+		return nil, nil
 	}
 
 	if err := lbProvider.updateLoadBalancer(ctx, lb, spec); err != nil {
@@ -644,12 +889,12 @@ func (cp *CloudProvider) getOciLoadBalancerSubnets(ctx context.Context, logger *
 		}
 	}
 
+	if subnets[0] == "" || (len(subnets) == 2 && subnets[1] == "") {
+		return nil, errors.Errorf("a subnet must be specified for creating a load balancer")
+	}
 	if internal {
 		// Public load balancers need two subnets if they are AD specific and only first subnet is used if regional. Internal load
 		// balancers will always use the first subnet.
-		if subnets[0] == "" {
-			return nil, errors.Errorf("a configuration for subnet1 must be specified for an internal load balancer")
-		}
 		return subnets[:1], nil
 	}
 
@@ -669,8 +914,8 @@ func (cp *CloudProvider) getLoadBalancerSubnets(ctx context.Context, logger *zap
 
 func (clb *CloudLoadBalancerProvider) updateLoadBalancer(ctx context.Context, lb *client.GenericLoadBalancer, spec *LBSpec) error {
 	lbID := *lb.Id
-
-	logger := clb.logger.With("loadBalancerID", lbID, "compartmentID", clb.config.CompartmentID, "loadBalancerType", getLoadBalancerType(spec.service))
+	start := time.Now()
+	logger := clb.logger.With("loadBalancerID", lbID, "compartmentID", clb.config.CompartmentID, "loadBalancerType", getLoadBalancerType(spec.service), "serviceName", spec.service.Name)
 
 	var actualPublicReservedIP *string
 
@@ -682,13 +927,6 @@ func (clb *CloudLoadBalancerProvider) updateLoadBalancer(ctx context.Context, lb
 		if ip.ReservedIp != nil && *ip.IsPublic {
 			actualPublicReservedIP = ip.IpAddress
 			break
-		}
-	}
-
-	//check if the reservedIP has changed in spec
-	if spec.LoadBalancerIP != "" || actualPublicReservedIP != nil {
-		if actualPublicReservedIP == nil || *actualPublicReservedIP != spec.LoadBalancerIP {
-			return errors.Errorf("The Load Balancer service reserved IP cannot be updated after the Load Balancer is created.")
 		}
 	}
 
@@ -709,39 +947,17 @@ func (clb *CloudLoadBalancerProvider) updateLoadBalancer(ctx context.Context, lb
 		return errors.Wrap(err, "get subnets for nodes")
 	}
 
-	// Only LB supports fixed shapes which can be changed
-	if spec.Type == LB {
-		shapeChanged := hasLoadbalancerShapeChanged(ctx, spec, lb)
-
-		if shapeChanged {
-			err = clb.updateLoadbalancerShape(ctx, lb, spec)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	nsgChanged := hasLoadBalancerNetworkSecurityGroupsChanged(ctx, lb.NetworkSecurityGroupIds, spec.NetworkSecurityGroupIds)
-	if nsgChanged {
-		err = clb.updateLoadBalancerNetworkSecurityGroups(ctx, lb, spec)
-		if err != nil {
-			return err
-		}
-	}
-
 	if len(backendSetActions) == 0 && len(listenerActions) == 0 {
 		// If there are no backendSetActions or Listener actions
 		// this function must have been called because of a failed
 		// seclist update when the load balancer was created
 		// We try to update the seclist this way to prevent replication
 		// of seclist reconciliation logic
-		for _, ports := range spec.Ports {
-			if err = spec.securityListManager.Update(ctx, lbSubnets, nodeSubnets, spec.SourceCIDRs, nil, ports, *spec.IsPreserveSource); err != nil {
-				return err
-			}
+		// Security List Updates happen in a Global Critical Section
+		if err = updateSecurityListsInCriticalSection(ctx, spec, lbSubnets, nodeSubnets); err != nil {
+			return err
 		}
 	}
-
 	actions := sortAndCombineActions(logger, backendSetActions, listenerActions)
 	for _, action := range actions {
 		switch a := action.(type) {
@@ -769,6 +985,96 @@ func (clb *CloudLoadBalancerProvider) updateLoadBalancer(ctx context.Context, lb
 			}
 		}
 	}
+
+	// Check if the customer managed LB NSGs have changed
+	nsgChanged := hasLoadBalancerNetworkSecurityGroupsChanged(ctx, lb.NetworkSecurityGroupIds, spec.NetworkSecurityGroupIds)
+	if nsgChanged {
+		err = clb.updateLoadBalancerNetworkSecurityGroups(ctx, lb, spec)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Only LB supports fixed/flexible shapes which can be changed
+	if spec.Type == LB {
+		shapeChanged := hasLoadbalancerShapeChanged(ctx, spec, lb)
+
+		if shapeChanged {
+			err = clb.updateLoadbalancerShape(ctx, lb, spec)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// Check if the reservedIP has changed in spec
+	if spec.LoadBalancerIP != "" || actualPublicReservedIP != nil {
+		if actualPublicReservedIP == nil || *actualPublicReservedIP != spec.LoadBalancerIP {
+			return errors.Errorf("The Load Balancer service reserved IP cannot be updated after the Load Balancer is created.")
+		}
+	}
+
+	dimensionsMap := make(map[string]string)
+	var errType string
+	if enableOkeSystemTags && !doesLbHaveOkeSystemTags(lb, spec) {
+		logger.Info("detected loadbalancer without oke system tags. proceeding to add")
+		err = clb.addLoadBalancerOkeSystemTags(ctx, lb, spec)
+		if err != nil {
+			// fail open if the update request fails
+			logger.With(zap.Error(err)).Warn("updateLoadBalancer didn't succeed. unable to add oke system tags")
+			errType = util.SystemTagErrTypePrefix + util.GetError(err)
+			if errors.Is(err, MaxDefinedTagPerLBErr) {
+				errType = util.ErrTagLimitReached
+			}
+			dimensionsMap[metrics.ComponentDimension] = util.GetMetricDimensionForComponent(errType, util.LoadBalancerType)
+			dimensionsMap[metrics.ResourceOCIDDimension] = *lb.Id
+			metrics.SendMetricData(clb.metricPusher, getMetric(spec.Type, Update), time.Since(start).Seconds(), dimensionsMap)
+		}
+	}
+	return nil
+}
+
+func (clb *CloudLoadBalancerProvider) updateLoadBalancerBackends(ctx context.Context, lb *client.GenericLoadBalancer, spec *LBSpec) error {
+	lbID := *lb.Id
+
+	logger := clb.logger.With("loadBalancerID", lbID, "compartmentID", clb.config.CompartmentID, "loadBalancerType", getLoadBalancerType(spec.service), "serviceName", spec.service.Name)
+
+	actualBackendSets := lb.BackendSets
+	desiredBackendSets := spec.BackendSets
+	backendSetActions := getBackendSetChanges(logger, actualBackendSets, desiredBackendSets)
+
+	lbSubnets, err := getSubnets(ctx, spec.Subnets, clb.client.Networking())
+	if err != nil {
+		return errors.Wrapf(err, "getting load balancer subnets")
+	}
+	nodeSubnets, err := getSubnetsForNodes(ctx, spec.nodes, clb.client)
+	if err != nil {
+		return errors.Wrap(err, "get subnets for nodes")
+	}
+
+	for _, action := range backendSetActions {
+		switch a := action.(type) {
+		case *BackendSetAction:
+			switch a.Type() {
+			case Update:
+				err := clb.updateBackendSet(ctx, lbID, a, lbSubnets, nodeSubnets, spec.securityListManager, spec)
+				if err != nil {
+					return errors.Wrap(err, "updating BackendSet")
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func updateSecurityListsInCriticalSection(ctx context.Context, spec *LBSpec, lbSubnets, nodeSubnets []*core.Subnet) (err error) {
+	updateRulesMutex.Lock()
+	defer updateRulesMutex.Unlock()
+	for _, ports := range spec.Ports {
+		if err = spec.securityListManager.Update(ctx, lbSubnets, nodeSubnets, spec.SourceCIDRs, nil, ports, *spec.IsPreserveSource); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -788,18 +1094,17 @@ func (clb *CloudLoadBalancerProvider) updateBackendSet(ctx context.Context, lbID
 		"loadBalancerID", lbID,
 		"loadBalancerType", getLoadBalancerType(spec.service))
 	logger.Info("Applying action on backend set")
-
 	switch action.Type() {
 	case Create:
 		err = secListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, nil, ports, *spec.IsPreserveSource)
 		if err != nil {
 			return err
 		}
-
 		workRequestID, err = clb.lbClient.CreateBackendSet(ctx, lbID, action.Name(), &bs)
 	case Update:
 		// For NLB, due to source IP preservation we need to ensure ingress rules from sourceCIDRs are added to
 		// the backends subnet's seclist as well
+
 		if err = secListManager.Update(ctx, lbSubnets, nodeSubnets, spec.SourceCIDRs, action.OldPorts, ports, *spec.IsPreserveSource); err != nil {
 			return err
 		}
@@ -809,7 +1114,6 @@ func (clb *CloudLoadBalancerProvider) updateBackendSet(ctx context.Context, lbID
 		if err != nil {
 			return err
 		}
-
 		workRequestID, err = clb.lbClient.DeleteBackendSet(ctx, lbID, action.Name())
 	}
 
@@ -840,28 +1144,24 @@ func (clb *CloudLoadBalancerProvider) updateListener(ctx context.Context, lbID s
 		"loadBalancerID", lbID,
 		"loadBalancerType", getLoadBalancerType(spec.service))
 	logger.Info("Applying action on listener")
-
 	switch action.Type() {
 	case Create:
 		err = secListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, nil, ports, *spec.IsPreserveSource)
 		if err != nil {
 			return err
 		}
-
 		workRequestID, err = clb.lbClient.CreateListener(ctx, lbID, action.Name(), &listener)
 	case Update:
 		err = secListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, nil, ports, *spec.IsPreserveSource)
 		if err != nil {
 			return err
 		}
-
 		workRequestID, err = clb.lbClient.UpdateListener(ctx, lbID, action.Name(), &listener)
 	case Delete:
 		err = secListManager.Delete(ctx, lbSubnets, nodeSubnets, ports, sourceCIDRs, *spec.IsPreserveSource)
 		if err != nil {
 			return err
 		}
-
 		workRequestID, err = clb.lbClient.DeleteListener(ctx, lbID, action.Name())
 	}
 
@@ -880,11 +1180,166 @@ func (clb *CloudLoadBalancerProvider) updateListener(ctx context.Context, lbID s
 
 // UpdateLoadBalancer updates an existing loadbalancer
 func (cp *CloudProvider) UpdateLoadBalancer(ctx context.Context, clusterName string, service *v1.Service, nodes []*v1.Node) error {
-	name := cp.GetLoadBalancerName(ctx, clusterName, service)
-	cp.logger.With("loadBalancerName", name, "loadBalancerType", getLoadBalancerType(service)).Info("Updating load balancer")
+	startTime := time.Now()
+	lbName := GetLoadBalancerName(service)
+	loadBalancerType := getLoadBalancerType(service)
+	logger := cp.logger.With("loadBalancerName", lbName, "serviceName", service.Name, "loadBalancerType", loadBalancerType, "serviceUid", service.UID)
+	if sa, useWI := service.Annotations[ServiceAnnotationServiceAccountName]; useWI { // When using Workload Identity
+		logger = logger.With("serviceAccount", sa, "namespace", service.Namespace)
+	}
 
-	_, err := cp.EnsureLoadBalancer(ctx, clusterName, service, nodes)
-	return err
+	if deleted, err := cp.serviceDeletedOrDoesNotExist(ctx, service); deleted {
+		if err != nil {
+			logger.With(zap.Error(err)).Error("Failed to check if service exists")
+			return errors.Wrap(err, "Failed to check service status")
+		}
+		logger.Info("Service already deleted or no more exists")
+		return errors.New("Service already deleted or no more exists")
+	}
+	loadBalancerService := fmt.Sprintf("%s/%s", service.Namespace, service.Name)
+	if acquired := cp.lbLocks.TryAcquire(loadBalancerService); !acquired {
+		logger.Error("Could not acquire lock for Updating Load Balancer")
+		return LbOperationAlreadyExists
+	}
+	defer cp.lbLocks.Release(loadBalancerService)
+
+	nodes, err := filterNodes(service, nodes)
+	if err != nil {
+		logger.With(zap.Error(err)).Error("Failed to filter nodes with label selector")
+		return err
+	}
+
+	logger.With("nodes", len(nodes)).Info("Ensuring load balancer")
+
+	// If network partition, do not proceed
+	isNetworkPartition, err := cp.checkForNetworkPartition(logger, nodes)
+	if err != nil {
+		return err
+	} else if isNetworkPartition {
+		return nil
+	}
+
+	dimensionsMap := make(map[string]string)
+
+	var errorType string
+	var lbMetricDimension string
+
+	lbProvider, err := cp.getLoadBalancerProvider(ctx, service)
+	if err != nil {
+		return errors.Wrap(err, "Unable to get Load Balancer Client.")
+	}
+	lb, err := lbProvider.lbClient.GetLoadBalancerByName(ctx, cp.config.CompartmentID, lbName)
+	if err != nil && !client.IsNotFound(err) {
+		logger.With(zap.Error(err)).Error("Failed to get loadbalancer by name")
+		errorType = util.GetError(err)
+		lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
+		dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
+		dimensionsMap[metrics.ResourceOCIDDimension] = lbName
+		metrics.SendMetricData(cp.metricPusher, getMetric(loadBalancerType, Update), time.Since(startTime).Seconds(), dimensionsMap)
+		return err
+	} else if client.IsNotFound(err) {
+		logger.Infof("Could not find load balancer, will not retry UpdateLoadBalancer.")
+		return nil
+	}
+
+	if lb.LifecycleState == nil || *lb.LifecycleState != lbLifecycleStateActive {
+		logger := logger.With("lifecycleState", lb.LifecycleState)
+		switch loadBalancerType {
+		case NLB:
+			// This check is added here since NLBs are marked as failed in case nlb work-requests fail NLB-26239
+			if *lb.LifecycleState == string(networkloadbalancer.LifecycleStateFailed) {
+				logger.Infof("NLB is in %s state, process the Loadbalancer", *lb.LifecycleState)
+			} else {
+				return errors.Errorf("NLB is in %s state, wait for NLB to move to %s", *lb.LifecycleState, lbLifecycleStateActive)
+			}
+			break
+		default:
+			logger.Infof("LB is not in %s state, will retry UpdateLoadBalancer", lbLifecycleStateActive)
+			return errors.Errorf("rejecting request to update LB which is not in %s state", lbLifecycleStateActive)
+		}
+	}
+
+	lbOCID := ""
+	if lb != nil && lb.Id != nil {
+		lbOCID = *lb.Id
+	} else {
+		// if the LB does not exist already use the k8s service UID for reference
+		// in logs and metrics
+		logger.Error("Load Balancer Id is empty, will retry UpdateLoadBalancer.")
+		return errors.New("Load Balancer service returned empty Id, will wait and retry")
+	}
+
+	logger = logger.With("loadBalancerID", lbOCID)
+	dimensionsMap[metrics.ResourceOCIDDimension] = lbOCID
+
+	err = cp.checkPendingLBWorkRequests(ctx, logger, lbProvider, lb, service, startTime)
+	if err != nil {
+		return err
+	}
+
+	var sslConfig *SSLConfig
+	if requiresCertificate(service) {
+		ports, err := getSSLEnabledPorts(service)
+		if err != nil {
+			logger.With(zap.Error(err)).Error("Failed to parse SSL port.")
+			errorType = util.GetError(err)
+			lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
+			dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
+			metrics.SendMetricData(cp.metricPusher, getMetric(loadBalancerType, Update), time.Since(startTime).Seconds(), dimensionsMap)
+			return err
+		}
+		secretListenerString := service.Annotations[ServiceAnnotationLoadBalancerTLSSecret]
+		secretBackendSetString := service.Annotations[ServiceAnnotationLoadBalancerTLSBackendSetSecret]
+		sslConfig = NewSSLConfig(secretListenerString, secretBackendSetString, service, ports, cp)
+	}
+
+	subnets, err := cp.getLoadBalancerSubnets(ctx, logger, service)
+	if err != nil {
+		logger.With(zap.Error(err)).Error("Failed to get Load balancer Subnets.")
+		errorType = util.GetError(err)
+		lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
+		dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
+		metrics.SendMetricData(cp.metricPusher, getMetric(loadBalancerType, Update), time.Since(startTime).Seconds(), dimensionsMap)
+		return err
+	}
+
+	spec, err := NewLBSpec(logger, service, nodes, subnets, sslConfig, cp.securityListManagerFactory, cp.config.Tags, lb)
+	if err != nil {
+		logger.With(zap.Error(err)).Error("Failed to derive LBSpec")
+		errorType = util.GetError(err)
+		lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
+		dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
+		metrics.SendMetricData(cp.metricPusher, getMetric(loadBalancerType, Update), time.Since(startTime).Seconds(), dimensionsMap)
+
+		return err
+	}
+
+	// Existing load balancers cannot change subnets. This ensures that the spec matches
+	// what the actual load balancer has listed as the subnet ids. If the load balancer
+	// was just created then these values would be equal; however, if the load balancer
+	// already existed and the default subnet ids changed, then this would ensure
+	// we are setting the security rules on the correct subnets.
+	spec, err = updateSpecWithLbSubnets(spec, lb.SubnetIds)
+	if err != nil {
+		return err
+	}
+
+	if err := lbProvider.updateLoadBalancerBackends(ctx, lb, spec); err != nil {
+		errorType = util.GetError(err)
+		lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
+		logger.With(zap.Error(err)).Error("Failed to update LoadBalancer backends")
+		dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
+		metrics.SendMetricData(cp.metricPusher, getMetric(loadBalancerType, Update), time.Since(startTime).Seconds(), dimensionsMap)
+		return err
+	}
+
+	syncTime := time.Since(startTime).Seconds()
+	logger.Info("Successfully updated loadbalancer backends")
+	lbMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.LoadBalancerType)
+	dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
+	dimensionsMap[metrics.BackendSetsCountDimension] = strconv.Itoa(len(lb.BackendSets))
+	metrics.SendMetricData(cp.metricPusher, getMetric(loadBalancerType, Update), syncTime, dimensionsMap)
+	return nil
 }
 
 // getNodesByIPs returns a slice of Nodes corresponding to the given IP addresses.
@@ -920,17 +1375,67 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 	name := cp.GetLoadBalancerName(ctx, clusterName, service)
 	loadBalancerType := getLoadBalancerType(service)
 	logger := cp.logger.With("loadBalancerName", name, "loadBalancerType", loadBalancerType)
+	if sa, useWI := service.Annotations[ServiceAnnotationServiceAccountName]; useWI { // When using Workload Identity
+		logger = logger.With("serviceAccount", sa, "nameSpace", service.Namespace)
+	}
 	logger.Debug("Attempting to delete load balancer")
+	loadBalancerService := fmt.Sprintf("%s/%s", service.Namespace, service.Name)
+	if acquired := cp.lbLocks.TryAcquire(loadBalancerService); !acquired {
+		logger.Error("Could not acquire lock for Deleting Load Balancer")
+		return LbOperationAlreadyExists
+	}
+	defer cp.lbLocks.Release(loadBalancerService)
+
 	var errorType string
 	var lbMetricDimension string
+	var nsgMetricDimension string
 
 	dimensionsMap := make(map[string]string)
+	var frontendNsgId = ""
+	uid := fmt.Sprintf("%s", service.UID)
+	var etag *string
 
-	lbProvider := cp.getLoadBalancerProvider(service)
+	securityRuleManagementMode, nsg, err := getRuleManagementMode(service)
+	if err != nil {
+		logger.With(zap.Error(err)).Error("failed to get rule management mode")
+		return errors.Wrap(err, "failed to get rule management mode")
+	}
+
+	lbProvider, err := cp.getLoadBalancerProvider(ctx, service)
+	if err != nil {
+		return errors.Wrap(err, "Unable to get Load Balancer Client.")
+	}
 	lb, err := lbProvider.lbClient.GetLoadBalancerByName(ctx, cp.config.CompartmentID, name)
 	if err != nil {
 		if client.IsNotFound(err) {
 			logger.Info("Could not find load balancer. Nothing to do.")
+			if securityRuleManagementMode == NSG {
+				displayName := generateNsgName(service)
+				nsg.frontendNsgId, etag, err = cp.getFrontendNsgByName(ctx, logger, displayName, cp.config.CompartmentID, cp.config.VCNID, uid)
+				if err != nil {
+					return errors.Wrap(err, "failed to get frontend NSG")
+				}
+				// Delete of NSG happens if NSG was created but LB creation fails
+				if nsg != nil && nsg.nsgRuleManagementMode == RuleManagementModeNsg && nsg.frontendNsgId != "" {
+					if etag != nil {
+						logger = logger.With("frontendNsgId", nsg.frontendNsgId)
+						logger.Infof("deleting frontend nsg %s", nsg.frontendNsgId)
+						nsgDeleted, err := cp.deleteNsg(ctx, logger, nsg.frontendNsgId, *etag)
+						if !nsgDeleted || err != nil {
+							logger.With(zap.Error(err)).Error("failed to delete nsg")
+							errorType = util.GetError(err)
+							nsgMetricDimension = util.GetMetricDimensionForComponent(errorType, util.NSGType)
+							dimensionsMap[metrics.ComponentDimension] = nsgMetricDimension
+							metrics.SendMetricData(cp.metricPusher, getMetric(util.NSGType, Delete), time.Since(startTime).Seconds(), dimensionsMap)
+							return err
+						}
+						nsgMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.NSGType)
+						dimensionsMap[metrics.ComponentDimension] = nsgMetricDimension
+						metrics.SendMetricData(cp.metricPusher, getMetric(util.NSGType, Delete), time.Since(startTime).Seconds(), dimensionsMap)
+						logger.Infof("Managed nsg with id %s deleted", nsg.frontendNsgId)
+					}
+				}
+			}
 			return nil
 		}
 		errorType = util.GetError(err)
@@ -945,14 +1450,29 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 	id := *lb.Id
 	dimensionsMap[metrics.ResourceOCIDDimension] = id
 	logger = logger.With("loadBalancerID", id, "loadBalancerType", getLoadBalancerType(service))
-	secListManagerMode, err := getSecurityListManagementMode(service)
-	if err != nil {
-		logger.With(zap.Error(err)).Error("failed to get seclist management mode")
-		return errors.Wrap(err, "failed to get seclist management mode")
+
+	if securityRuleManagementMode == NSG {
+		// List network security groups
+		nsgs := lb.NetworkSecurityGroupIds
+		for _, nsgId := range nsgs {
+			frontendNsgId, etag, err = cp.getFrontendNsg(ctx, logger, nsgId, uid)
+			if err != nil {
+				errorType = util.GetError(err)
+				nsgMetricDimension = util.GetMetricDimensionForComponent(errorType, util.NSGType)
+				dimensionsMap[metrics.ComponentDimension] = nsgMetricDimension
+				metrics.SendMetricData(cp.metricPusher, getMetric(util.NSGType, Get), time.Since(startTime).Seconds(), dimensionsMap)
+			}
+			if frontendNsgId != "" {
+				logger = logger.With("frontendNsgId", frontendNsgId)
+				nsg.frontendNsgId = frontendNsgId
+				break
+			}
+		}
 	}
+
 	// get annotation from load balancer spec and compare to ManagementModeNone
-	if secListManagerMode != ManagementModeNone {
-		err := cp.cleanupSecListForLoadBalancerDelete(lb, logger, ctx, service, name)
+	if securityRuleManagementMode != ManagementModeNone {
+		err := cp.cleanupSecurityRulesForLoadBalancerDelete(lb, logger, ctx, service, name, frontendNsgId)
 		if err != nil {
 			errorType = util.GetError(err)
 			lbMetricDimension = util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
@@ -962,6 +1482,7 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 			return err
 		}
 	}
+
 	logger.Info("Deleting load balancer")
 	workReqID, err := lbProvider.lbClient.DeleteLoadBalancer(ctx, id)
 	if err != nil {
@@ -988,18 +1509,44 @@ func (cp *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterN
 	lbMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.LoadBalancerType)
 	dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
 	metrics.SendMetricData(cp.metricPusher, getMetric(loadBalancerType, Delete), time.Since(startTime).Seconds(), dimensionsMap)
+
+	// Delete of NSG happens after delete of the Loadbalancer
+	if nsg != nil && nsg.nsgRuleManagementMode == RuleManagementModeNsg && nsg.frontendNsgId != "" {
+		if etag != nil {
+			logger = logger.With("frontendNsgId", nsg.frontendNsgId)
+			logger.Infof("deleting frontend nsg %s", nsg.frontendNsgId)
+			nsgDeleted, err := cp.deleteNsg(ctx, logger, nsg.frontendNsgId, *etag)
+			if !nsgDeleted || err != nil {
+				logger.With(zap.Error(err)).Error("failed to delete nsg")
+				errorType = util.GetError(err)
+				nsgMetricDimension = util.GetMetricDimensionForComponent(errorType, util.NSGType)
+				dimensionsMap[metrics.ComponentDimension] = nsgMetricDimension
+				metrics.SendMetricData(cp.metricPusher, getMetric(util.NSGType, Delete), time.Since(startTime).Seconds(), dimensionsMap)
+				return err
+			}
+			nsgMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.NSGType)
+			dimensionsMap[metrics.ComponentDimension] = nsgMetricDimension
+			metrics.SendMetricData(cp.metricPusher, getMetric(util.NSGType, Delete), time.Since(startTime).Seconds(), dimensionsMap)
+			logger.Infof("managed nsg with id %s deleted", nsg.frontendNsgId)
+		}
+	}
+
 	return nil
 }
 
-func (cp *CloudProvider) cleanupSecListForLoadBalancerDelete(lb *client.GenericLoadBalancer, logger *zap.SugaredLogger, ctx context.Context, service *v1.Service, name string) error {
+// Critical Section for Security List Updates
+func (cp *CloudProvider) cleanupSecurityRulesForLoadBalancerDelete(lb *client.GenericLoadBalancer, logger *zap.SugaredLogger, ctx context.Context, service *v1.Service, name string, frontendNsgOcid string) error {
+	updateRulesMutex.Lock()
+	defer updateRulesMutex.Unlock()
+
 	id := *lb.Id
-	nodeIPs := sets.NewString()
+	ipSet := sets.NewString()
 	for _, backendSet := range lb.BackendSets {
 		for _, backend := range backendSet.Backends {
-			nodeIPs.Insert(*backend.IpAddress)
+			ipSet.Insert(*backend.IpAddress)
 		}
 	}
-	nodes, err := cp.getNodesByIPs(nodeIPs.List())
+	nodes, err := cp.getNodesByIPs(ipSet.List())
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to fetch nodes by internal ips")
 		return errors.Wrap(err, "fetching nodes by internal ips")
@@ -1015,19 +1562,57 @@ func (cp *CloudProvider) cleanupSecListForLoadBalancerDelete(lb *client.GenericL
 		logger.With(zap.Error(err)).Error("Failed to get subnets for load balancers")
 		return errors.Wrap(err, "getting subnets for load balancers")
 	}
-	secListManagerMode, err := getSecurityListManagementMode(service)
+
+	securityRuleManagerMode, managedNsg, err := getRuleManagementMode(service)
 	if err != nil {
-		logger.With(zap.Error(err)).Error("failed to get seclist management mode")
-		return errors.Wrap(err, "failed to get seclist management mode")
+		logger.With(zap.Error(err)).Error("failed to get Security Rule management mode")
+		return errors.Wrap(err, "failed to get Security Rule management mode")
 	}
 
-	securityListManager := cp.securityListManagerFactory(
-		secListManagerMode)
+	backendNsgIds, err := getManagedBackendNSG(service)
+	if err != nil {
+		logger.With(zap.Error(err)).Error("failed to get backend Nsgs from spec")
+		return errors.Wrap(err, "failed to get backend Nsgs from spec")
+	}
+	var securityListManager securityListManager
+	if securityRuleManagerMode == NSG {
+		if managedNsg != nil {
+			if frontendNsgOcid != "" {
+				managedNsg.frontendNsgId = frontendNsgOcid
+			}
+			if len(backendNsgIds) > 0 {
+				managedNsg.backendNsgId = backendNsgIds
+			}
+		}
+	} else {
+		securityListManager = cp.securityListManagerFactory(
+			securityRuleManagerMode)
+	}
 
 	isPreserveSource, err := getPreserveSource(logger, service)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("failed to determine value for is-preserve-source")
 		return errors.Wrap(err, "failed to determine value for is-preserve-source")
+	}
+	portsNsg, err := getPorts(service)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get ports from spec")
+	}
+	sourceCIDRs, err := getLoadBalancerSourceRanges(service)
+	if securityRuleManagerMode == NSG && len(managedNsg.backendNsgId) > 0 {
+		serviceComponents := serviceComponents{
+			frontendNsgOcid:  managedNsg.frontendNsgId,
+			backendNsgOcids:  managedNsg.backendNsgId,
+			sourceCIDRs:      sourceCIDRs,
+			ports:            portsNsg,
+			isPreserveSource: isPreserveSource,
+			serviceUid:       fmt.Sprintf("service-uid-%s", service.UID),
+		}
+		logger.Infof("(ensureloadbalancer deleted) Service Components %#v", serviceComponents)
+		err = cp.removeBackendSecurityGroupRules(ctx, serviceComponents)
+		if err != nil {
+			return err
+		}
 	}
 
 	for listenerName, listener := range lb.Listeners {
@@ -1049,10 +1634,14 @@ func (cp *CloudProvider) cleanupSecListForLoadBalancerDelete(lb *client.GenericL
 			return errors.Wrapf(err, "delete security rules for listener %q on load balancer %q", listenerName, name)
 		}
 
-		if err = securityListManager.Delete(ctx, lbSubnets, nodeSubnets, ports, sourceCIDRs, isPreserveSource); err != nil {
-			logger.With(zap.Error(err)).Errorf("Failed to delete security rules for listener %q on load balancer %q", listenerName, name)
-			return errors.Wrapf(err, "delete security rules for listener %q on load balancer %q", listenerName, name)
+		logger.Infof("Security rule management mode %s", securityRuleManagerMode)
+		if securityRuleManagerMode == ManagementModeAll || securityRuleManagerMode == ManagementModeFrontend {
+			if err = securityListManager.Delete(ctx, lbSubnets, nodeSubnets, ports, sourceCIDRs, isPreserveSource); err != nil {
+				logger.With(zap.Error(err)).Errorf("Failed to delete security rules for listener %q on load balancer %q", listenerName, name)
+				return errors.Wrapf(err, "delete security rules for listener %q on load balancer %q", listenerName, name)
+			}
 		}
+
 	}
 	return nil
 }
@@ -1107,6 +1696,56 @@ func (clb *CloudLoadBalancerProvider) updateLoadBalancerNetworkSecurityGroups(ct
 	return nil
 }
 
+func doesLbHaveOkeSystemTags(lb *client.GenericLoadBalancer, spec *LBSpec) bool {
+	if lb.SystemTags == nil || spec.SystemTags == nil {
+		return false
+	}
+	if okeSystemTag, okeSystemTagNsExists := lb.SystemTags[OkeSystemTagNamesapce]; okeSystemTagNsExists {
+		return reflect.DeepEqual(okeSystemTag, spec.SystemTags[OkeSystemTagNamesapce])
+	}
+	return false
+}
+func (clb *CloudLoadBalancerProvider) addLoadBalancerOkeSystemTags(ctx context.Context, lb *client.GenericLoadBalancer, spec *LBSpec) error {
+	lbDefinedTagsRequest := make(map[string]map[string]interface{})
+
+	if spec.SystemTags == nil {
+		return fmt.Errorf("oke system tag is not found in LB spec. ignoring..")
+	}
+	if _, exists := spec.SystemTags[OkeSystemTagNamesapce]; !exists {
+		return fmt.Errorf("oke system tag namespace is not found in LB spec")
+	}
+
+	if lb.DefinedTags != nil {
+		lbDefinedTagsRequest = lb.DefinedTags
+	}
+
+	// no overwriting customer tags as customer can not have a tag namespace with prefix 'orcl-'
+	// system tags are passed as defined tags in the request
+	lbDefinedTagsRequest[OkeSystemTagNamesapce] = spec.SystemTags[OkeSystemTagNamesapce]
+
+	// update fails if the number of defined tags is more than the service limit i.e 64
+	if len(lbDefinedTagsRequest) > MaxDefinedTagPerLB {
+		return MaxDefinedTagPerLBErr
+	}
+
+	lbUpdateDetails := &client.GenericUpdateLoadBalancerDetails{
+		FreeformTags: lb.FreeformTags,
+		DefinedTags:  lbDefinedTagsRequest,
+	}
+	wrID, err := clb.lbClient.UpdateLoadBalancer(ctx, *lb.Id, lbUpdateDetails)
+	if err != nil {
+		return errors.Wrap(err, "UpdateLoadBalancer request failed")
+	}
+	_, err = clb.lbClient.AwaitWorkRequest(ctx, wrID)
+	if err != nil {
+		return errors.Wrap(err, "failed to await updateloadbalancer work request")
+	}
+
+	logger := clb.logger.With("opc-workrequest-id", wrID, "loadBalancerID", lb.Id)
+	logger.Info("UpdateLoadBalancer request to add oke system tags completed successfully")
+	return nil
+}
+
 // Given an OCI load balancer, return a LoadBalancerStatus
 func loadBalancerToStatus(lb *client.GenericLoadBalancer) (*v1.LoadBalancerStatus, error) {
 	if len(lb.IpAddresses) == 0 {
@@ -1123,14 +1762,7 @@ func loadBalancerToStatus(lb *client.GenericLoadBalancer) (*v1.LoadBalancerStatu
 	return &v1.LoadBalancerStatus{Ingress: ingress}, nil
 }
 
-func (cp *CloudProvider) checkAllBackendNodesNotReady() (bool, error) {
-	nodeList, err := cp.NodeLister.List(labels.Everything())
-	if err != nil {
-		return false, err
-	}
-	if len(nodeList) == 0 {
-		return false, nil
-	}
+func (cp *CloudProvider) checkAllBackendNodesNotReady(nodeList []*v1.Node) bool {
 	for _, node := range nodeList {
 		if _, hasExcludeBalancerLabel := node.Labels[excludeBackendFromLBLabel]; hasExcludeBalancerLabel {
 			continue
@@ -1138,11 +1770,116 @@ func (cp *CloudProvider) checkAllBackendNodesNotReady() (bool, error) {
 		for _, cond := range node.Status.Conditions {
 			if cond.Type == v1.NodeReady {
 				if cond.Status == v1.ConditionTrue {
-					return false, nil
+					return false
 				}
 				break
 			}
 		}
 	}
+	return true
+}
+
+// If CCM manages the NSG for the service, CCM to delete the NSG when the LB/NLB service is deleted
+func (cp *CloudProvider) deleteNsg(ctx context.Context, logger *zap.SugaredLogger, id, etag string) (bool, error) {
+	opcRequestId, err := cp.client.Networking().DeleteNetworkSecurityGroup(ctx, id, etag)
+	if err != nil {
+		logger.Errorf("failed to delete nsg %s OpcRequestId %s", id, pointer.StringDeref(opcRequestId, ""))
+		return false, err
+	}
+	logger.Infof("delete nsg OpcRequestId %s", pointer.StringDeref(opcRequestId, ""))
 	return true, nil
+}
+
+func (cp *CloudProvider) getFrontendNsg(ctx context.Context, logger *zap.SugaredLogger, id, uid string) (frontendNsgId string, etag *string, err error) {
+	nsg, etag, err := cp.client.Networking().GetNetworkSecurityGroup(ctx, id)
+	if err != nil || nsg == nil || etag == nil {
+		logger.Errorf("failed to get nsg %s", id)
+		return "", nil, err
+	}
+	freeFormTags := map[string]string{"CreatedBy": "CCM", "ServiceUid": uid}
+	if reflect.DeepEqual(nsg.FreeformTags, freeFormTags) {
+		nsgId := pointer.StringDeref(nsg.Id, "")
+		logger.Infof("Found managed frontend nsg %s", nsgId)
+		return nsgId, etag, nil
+	} else {
+		logger.Infof("Found attached nsgs %s but not managed", pointer.StringDeref(nsg.Id, ""))
+		return "", nil, nil
+	}
+}
+
+func (cp *CloudProvider) getFrontendNsgByName(ctx context.Context, logger *zap.SugaredLogger, displayName, compartmentId, vcnId, uid string) (frontendNsgId string, etag *string, err error) {
+	nsgs, err := cp.client.Networking().ListNetworkSecurityGroups(ctx, displayName, compartmentId, vcnId)
+	for _, nsg := range nsgs {
+		frontendNsgId, etag, err = cp.getFrontendNsg(ctx, logger, pointer.StringDeref(nsg.Id, ""), uid)
+		if err != nil {
+			return "", nil, err
+		}
+		if frontendNsgId != "" {
+			logger.Infof("found frontend NSG %s", frontendNsgId)
+			return frontendNsgId, etag, nil
+		}
+	}
+	return "", nil, nil
+}
+
+// checkPendingLBWorkRequests checks if we have pending work requests before processing the LoadBalancer further
+// Will error out if any in-progress work request are present for the LB
+func (cp *CloudProvider) checkPendingLBWorkRequests(ctx context.Context, logger *zap.SugaredLogger, lbProvider CloudLoadBalancerProvider, lb *client.GenericLoadBalancer, service *v1.Service, startTime time.Time) (err error) {
+	listWorkRequestTime := time.Now()
+	loadBalancerType := getLoadBalancerType(service)
+	lbName := GetLoadBalancerName(service)
+	dimensionsMap := make(map[string]string)
+	dimensionsMap[metrics.ResourceOCIDDimension] = *lb.Id
+
+	lbInProgressWorkRequests, err := lbProvider.lbClient.ListWorkRequests(ctx, *lb.CompartmentId, *lb.Id)
+	logger.With("loadBalancerID", *lb.Id).Infof("time (in seconds) to list work-requests for LB %f", time.Since(listWorkRequestTime).Seconds())
+	if err != nil {
+		logger.With(zap.Error(err)).Error("Failed to list work-requests in-progress")
+		errorType := util.GetError(err)
+		lbMetricDimension := util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
+		dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
+		dimensionsMap[metrics.ResourceOCIDDimension] = lbName
+		metrics.SendMetricData(cp.metricPusher, getMetric(loadBalancerType, List), time.Since(startTime).Seconds(), dimensionsMap)
+		return err
+	}
+	for _, wr := range lbInProgressWorkRequests {
+		switch loadBalancerType {
+		case NLB:
+			if wr.Status == string(networkloadbalancer.OperationStatusInProgress) || wr.Status == string(networkloadbalancer.OperationStatusAccepted) {
+				logger.With("loadBalancerID", *lb.Id).Infof("current in-progress work requests for Network Load Balancer %s", *wr.Id)
+				return errors.New("Network Load Balancer has work requests in progress, will wait and retry")
+			}
+		default:
+			if *wr.LifecycleState == string(loadbalancer.WorkRequestLifecycleStateInProgress) || *wr.LifecycleState == string(loadbalancer.WorkRequestLifecycleStateAccepted) {
+				logger.With("loadBalancerID", *lb.Id).Infof("current in-progress work requests for Load Balancer %s", *wr.Id)
+				return errors.New("Load Balancer has work requests in progress, will wait and retry")
+			}
+		}
+	}
+	return
+}
+
+// checkForNetworkPartition return true if network partition is present (all nodes are not ready) else throws an error if any
+func (cp *CloudProvider) checkForNetworkPartition(logger *zap.SugaredLogger, nodes []*v1.Node) (isNetworkPartition bool, err error) {
+	// Service controller provided empty provisioned nodes list
+	if len(nodes) == 0 {
+		// List all nodes in the cluster
+		nodeList, err := cp.NodeLister.List(labels.Everything())
+		if err != nil {
+			logger.With(zap.Error(err)).Error("Failed to check if all backend nodes are not ready, error listing nodes")
+			return false, err
+		}
+
+		if len(nodeList) == 0 {
+			logger.Info("Cluster has zero nodes, continue reconciling")
+		} else if allNodesNotReady := cp.checkAllBackendNodesNotReady(nodeList); allNodesNotReady {
+			logger.Info("Not removing backends since all nodes are Not Ready")
+			return true, nil
+		} else {
+			err = errors.Errorf("backend node status is inconsistent, will retry")
+			logger.With(zap.Error(err)).Error("Not removing backends since backend node status is inconsistent with what was observed by service controller")
+			return false, err
+		}
+	}
+	return
 }

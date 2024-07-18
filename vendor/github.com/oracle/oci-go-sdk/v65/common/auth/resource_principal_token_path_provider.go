@@ -1,12 +1,14 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 
 package auth
 
 import (
 	"fmt"
+	"github.com/oracle/oci-go-sdk/v65/common"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 const (
@@ -77,17 +79,17 @@ func (pp EnvRptPathProvider) ResourceID() (*string, error) {
 	return rpID, nil
 }
 
-//DefaultRptPathProvider path provider makes sure the behavior happens with the correct fallback.
+// DefaultRptPathProvider path provider makes sure the behavior happens with the correct fallback.
 //
-//For the path,
-//Use the contents of the OCI_RESOURCE_PRINCIPAL_RPT_PATH environment variable, if set.
-//Otherwise, use the current path: "/20180711/resourcePrincipalToken/{id}"
+// For the path,
+// Use the contents of the OCI_RESOURCE_PRINCIPAL_RPT_PATH environment variable, if set.
+// Otherwise, use the current path: "/20180711/resourcePrincipalToken/{id}"
 //
-//For the resource id,
-//Use the contents of the OCI_RESOURCE_PRINCIPAL_RPT_ID environment variable, if set.
-//Otherwise, use IMDS to get the instance id
+// For the resource id,
+// Use the contents of the OCI_RESOURCE_PRINCIPAL_RPT_ID environment variable, if set.
+// Otherwise, use IMDS to get the instance id
 //
-//This path provider is used when the caller doesn't provide a specific path provider to the resource principals signer
+// This path provider is used when the caller doesn't provide a specific path provider to the resource principals signer
 type DefaultRptPathProvider struct {
 	path       string
 	resourceID string
@@ -135,4 +137,84 @@ func getInstanceIDFromMetadata() (instanceID string, err error) {
 	}
 	bodyString := string(bodyBytes)
 	return bodyString, nil
+}
+
+// ServiceAccountTokenProvider comment
+type ServiceAccountTokenProvider interface {
+	ServiceAccountToken() (string, error)
+}
+
+// DefaultServiceAccountTokenProvider is supplied by user when instantiating
+// OkeWorkloadIdentityConfigurationProvider
+type DefaultServiceAccountTokenProvider struct {
+	tokenPath string `mandatory:"false"`
+}
+
+// NewDefaultServiceAccountTokenProvider returns a new instance of defaultServiceAccountTokenProvider
+func NewDefaultServiceAccountTokenProvider() DefaultServiceAccountTokenProvider {
+	return DefaultServiceAccountTokenProvider{
+		tokenPath: KubernetesServiceAccountTokenPath,
+	}
+}
+
+// WithSaTokenPath Builder method to override the to SA ken path
+func (d DefaultServiceAccountTokenProvider) WithSaTokenPath(tokenPath string) DefaultServiceAccountTokenProvider {
+	d.tokenPath = tokenPath
+	return d
+}
+
+// ServiceAccountToken returns a service account token
+func (d DefaultServiceAccountTokenProvider) ServiceAccountToken() (string, error) {
+	saTokenString, err := ioutil.ReadFile(d.tokenPath)
+	if err != nil {
+		common.Logf("error %s", err)
+		return "", fmt.Errorf("error reading service account token: %s", err)
+	}
+	isSaTokenValid, err := isValidSaToken(string(saTokenString))
+	if !isSaTokenValid {
+		common.Logf("error %s", err)
+		return "", fmt.Errorf("error validating service account token: %s", err)
+	}
+	return string(saTokenString), err
+}
+
+// SuppliedServiceAccountTokenProvider is supplied by user when instantiating
+// OkeWorkloadIdentityConfigurationProviderWithServiceAccountTokenProvider
+type SuppliedServiceAccountTokenProvider struct {
+	tokenString string `mandatory:"false"`
+}
+
+// NewSuppliedServiceAccountTokenProvider returns a new instance of defaultServiceAccountTokenProvider
+func NewSuppliedServiceAccountTokenProvider(tokenString string) SuppliedServiceAccountTokenProvider {
+	return SuppliedServiceAccountTokenProvider{tokenString: tokenString}
+}
+
+// ServiceAccountToken returns a service account token
+func (d SuppliedServiceAccountTokenProvider) ServiceAccountToken() (string, error) {
+	isSaTokenValid, err := isValidSaToken(d.tokenString)
+	if !isSaTokenValid {
+		common.Logf("error %s", err)
+		return "", fmt.Errorf("error validating service account token %s", err)
+	}
+	return d.tokenString, nil
+}
+
+// isValidSaToken returns true is a saTokenString provides a valid service account token
+func isValidSaToken(saTokenString string) (bool, error) {
+	var jwtToken *jwtToken
+	var err error
+	if jwtToken, err = parseJwt(saTokenString); err != nil {
+		return false, fmt.Errorf("failed to parse the default service token string \"%s\": %s", saTokenString, err.Error())
+	}
+	now := time.Now().Unix() + int64(bufferTimeBeforeTokenExpiration.Seconds())
+	if jwtToken.payload["exp"] == nil {
+		return false, fmt.Errorf("service token doesn't have an `exp` field")
+	}
+	expiredAt := int64(jwtToken.payload["exp"].(float64))
+	expired := expiredAt <= now
+	if expired {
+		return false, fmt.Errorf("service token expired at: %v", time.Unix(expiredAt, 0).Format("15:04:05.000"))
+	}
+
+	return true, nil
 }

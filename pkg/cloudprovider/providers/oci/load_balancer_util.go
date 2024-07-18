@@ -63,6 +63,8 @@ const (
 	Delete = "delete"
 	// List the resource
 	List = "list"
+	// Get the resource
+	Get = "get"
 )
 
 const nonAlphanumericRegexExpression = "[^a-zA-Z0-9]+"
@@ -156,6 +158,16 @@ func toInt64(i *int64) int64 {
 	return *i
 }
 
+// contains is a utility method to check if a string is part of a slice
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
+
 func getHealthCheckerChanges(actual *client.GenericHealthChecker, desired *client.GenericHealthChecker) []string {
 
 	var healthCheckerChanges []string
@@ -203,6 +215,10 @@ func getHealthCheckerChanges(actual *client.GenericHealthChecker, desired *clien
 		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:Protocol", toString(&actual.Protocol), toString(&desired.Protocol)))
 	}
 
+	if toBool(actual.IsForcePlainText) != toBool(desired.IsForcePlainText) {
+		healthCheckerChanges = append(healthCheckerChanges, fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:IsForcePlainText", toBool(actual.IsForcePlainText), toBool(desired.IsForcePlainText)))
+	}
+
 	return healthCheckerChanges
 }
 
@@ -222,6 +238,10 @@ func hasBackendSetChanged(logger *zap.SugaredLogger, actual client.GenericBacken
 
 	if toString(actual.Policy) != toString(desired.Policy) {
 		backendSetChanges = append(backendSetChanges, fmt.Sprintf(changeFmtStr, "BackEndSet:Policy", toString(actual.Policy), toString(desired.Policy)))
+	}
+
+	if toBool(actual.IsPreserveSource) != toBool(desired.IsPreserveSource) {
+		backendSetChanges = append(backendSetChanges, fmt.Sprintf(changeFmtStr, "BackEndSet:IsPreserveSource", toBool(actual.IsPreserveSource), toBool(desired.IsPreserveSource)))
 	}
 
 	nameFormat := "%s:%d"
@@ -266,6 +286,7 @@ func healthCheckerToDetails(hc *client.GenericHealthChecker) *client.GenericHeal
 	}
 	return &client.GenericHealthChecker{
 		Protocol:         hc.Protocol,
+		IsForcePlainText: hc.IsForcePlainText,
 		IntervalInMillis: hc.IntervalInMillis,
 		Port:             hc.Port,
 		//ResponseBodyRegex: hc.ResponseBodyRegex,
@@ -462,7 +483,7 @@ func getListenerChanges(logger *zap.SugaredLogger, actual map[string]client.Gene
 	//sanitizedDesiredListeners convert the listener name HTTP-xxxx to TCP-xxx such that in sortAndCombineAction can
 	//place BackendSet create before Listener Create and Listener delete before BackendSet delete. Also it would help
 	//not to delete and create Listener if customer edit the service and add oci-load-balancer-backend-protocol: "HTTP"
-	// and vice versa. It would help to only update the listener in case of protocol change. Refer OKE-10793 for details.
+	// and vice versa. It would help to only update the listener in case of protocol change.
 	sanitizedDesiredListeners := make(map[string]client.GenericListener)
 	for name, desiredListener := range desired {
 		sanitizedDesiredListeners[getSanitizedName(name)] = desiredListener
@@ -533,10 +554,6 @@ func hasLoadbalancerShapeChanged(ctx context.Context, spec *LBSpec, lb *client.G
 // hasLoadBalancerNetworkSecurityGroupsChanged checks for the difference in actual NSGs
 // associated to LoadBalancer with Desired NSGs provided in service annotation
 func hasLoadBalancerNetworkSecurityGroupsChanged(ctx context.Context, actualNetworkSecurityGroup, desiredNetworkSecurityGroup []string) bool {
-	if len(desiredNetworkSecurityGroup) != len(actualNetworkSecurityGroup) {
-		return true
-	}
-
 	return !DeepEqualLists(actualNetworkSecurityGroup, desiredNetworkSecurityGroup)
 }
 
@@ -587,6 +604,18 @@ func GetLoadBalancerName(service *api.Service) string {
 		// https://docs.oracle.com/en-us/iaas/api/#/en/networkloadbalancer/20200501/datatypes/UpdateNetworkLoadBalancerDetails
 		// https://docs.us-phoenix-1.oraclecloud.com/api/#/en/loadbalancer/20170115/requests/UpdateLoadBalancerDetails
 		name = name[:1024]
+	}
+	return name
+}
+
+// generateNsgName gets the name of the NSG based on the service
+func generateNsgName(service *api.Service) string {
+	var name string
+	name = fmt.Sprintf("%s/%s/%s/nsg", service.Namespace, service.Name, service.UID)
+	if len(name) > 255 {
+		// 255 is the max length for display name
+		//https://docs.oracle.com/en-us/iaas/api/#/en/iaas/20160918/NetworkSecurityGroup/
+		name = name[:255]
 	}
 	return name
 }
@@ -670,11 +699,20 @@ func sortAndCombineActions(logger *zap.SugaredLogger, backendSetActions []Action
 			return true
 		}
 	})
+
+	sort.SliceStable(actions, func(i, j int) bool {
+		a1 := actions[i]
+		a2 := actions[j]
+		if a1.Type() != a2.Type() {
+			return a1.Type() == Delete
+		}
+		return false
+	})
 	return actions
 }
 
-func getMetric(lbtype string, metricType string) string {
-	if lbtype == LB {
+func getMetric(resourceType string, metricType string) string {
+	if resourceType == LB {
 		switch metricType {
 		case Create:
 			return metrics.LBProvision
@@ -684,7 +722,7 @@ func getMetric(lbtype string, metricType string) string {
 			return metrics.LBDelete
 		}
 	}
-	if lbtype == NLB {
+	if resourceType == NLB {
 		switch metricType {
 		case Create:
 			return metrics.NLBProvision
@@ -692,6 +730,17 @@ func getMetric(lbtype string, metricType string) string {
 			return metrics.NLBUpdate
 		case Delete:
 			return metrics.NLBDelete
+		}
+	}
+
+	if resourceType == NSG {
+		switch metricType {
+		case Create:
+			return metrics.NSGProvision
+		case Update:
+			return metrics.NSGUpdate
+		case Delete:
+			return metrics.NSGDelete
 		}
 	}
 	return ""

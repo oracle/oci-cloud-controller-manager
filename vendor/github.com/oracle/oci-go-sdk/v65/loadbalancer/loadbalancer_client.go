@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -18,7 +18,7 @@ import (
 	"net/http"
 )
 
-//LoadBalancerClient a client for LoadBalancer
+// LoadBalancerClient a client for LoadBalancer
 type LoadBalancerClient struct {
 	common.BaseClient
 	config *common.ConfigurationProvider
@@ -27,6 +27,9 @@ type LoadBalancerClient struct {
 // NewLoadBalancerClientWithConfigurationProvider Creates a new default LoadBalancer client with the given configuration provider.
 // the configuration provider will be used for the default signer as well as reading the region
 func NewLoadBalancerClientWithConfigurationProvider(configProvider common.ConfigurationProvider) (client LoadBalancerClient, err error) {
+	if enabled := common.CheckForEnabledServices("loadbalancer"); !enabled {
+		return client, fmt.Errorf("the Developer Tool configuration disabled this service, this behavior is controlled by OciSdkEnabledServicesMap variables. Please check if your local developer-tool-configuration.json file configured the service you're targeting or contact the cloud provider on the availability of this service")
+	}
 	provider, err := auth.GetGenericConfigurationProvider(configProvider)
 	if err != nil {
 		return client, err
@@ -40,7 +43,8 @@ func NewLoadBalancerClientWithConfigurationProvider(configProvider common.Config
 
 // NewLoadBalancerClientWithOboToken Creates a new default LoadBalancer client with the given configuration provider.
 // The obotoken will be added to default headers and signed; the configuration provider will be used for the signer
-//  as well as reading the region
+//
+//	as well as reading the region
 func NewLoadBalancerClientWithOboToken(configProvider common.ConfigurationProvider, oboToken string) (client LoadBalancerClient, err error) {
 	baseClient, err := common.NewClientWithOboToken(configProvider, oboToken)
 	if err != nil {
@@ -77,7 +81,7 @@ func (client *LoadBalancerClient) setConfigurationProvider(configProvider common
 	region, _ := configProvider.Region()
 	client.SetRegion(region)
 	if client.Host == "" {
-		return fmt.Errorf("Invalid region or Host. Endpoint cannot be constructed without endpointServiceName or serviceEndpointTemplate for a dotted region")
+		return fmt.Errorf("invalid region or Host. Endpoint cannot be constructed without endpointServiceName or serviceEndpointTemplate for a dotted region")
 	}
 	client.config = &configProvider
 	return nil
@@ -91,7 +95,7 @@ func (client *LoadBalancerClient) ConfigurationProvider() *common.ConfigurationP
 // ChangeLoadBalancerCompartment Moves a load balancer into a different compartment within the same tenancy. For information about moving resources
 // between compartments, see Moving Resources to a Different Compartment (https://docs.cloud.oracle.com/iaas/Content/Identity/Tasks/managingcompartments.htm#moveRes).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/ChangeLoadBalancerCompartment.go.html to see an example of how to use ChangeLoadBalancerCompartment API.
 func (client LoadBalancerClient) ChangeLoadBalancerCompartment(ctx context.Context, request ChangeLoadBalancerCompartmentRequest) (response ChangeLoadBalancerCompartmentResponse, err error) {
@@ -153,7 +157,7 @@ func (client LoadBalancerClient) changeLoadBalancerCompartment(ctx context.Conte
 
 // CreateBackend Adds a backend server to a backend set.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/CreateBackend.go.html to see an example of how to use CreateBackend API.
 func (client LoadBalancerClient) CreateBackend(ctx context.Context, request CreateBackendRequest) (response CreateBackendResponse, err error) {
@@ -215,7 +219,7 @@ func (client LoadBalancerClient) createBackend(ctx context.Context, request comm
 
 // CreateBackendSet Adds a backend set to a load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/CreateBackendSet.go.html to see an example of how to use CreateBackendSet API.
 func (client LoadBalancerClient) CreateBackendSet(ctx context.Context, request CreateBackendSetRequest) (response CreateBackendSetResponse, err error) {
@@ -277,7 +281,7 @@ func (client LoadBalancerClient) createBackendSet(ctx context.Context, request c
 
 // CreateCertificate Creates an asynchronous request to add an SSL certificate bundle.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/CreateCertificate.go.html to see an example of how to use CreateCertificate API.
 func (client LoadBalancerClient) CreateCertificate(ctx context.Context, request CreateCertificateRequest) (response CreateCertificateResponse, err error) {
@@ -340,7 +344,7 @@ func (client LoadBalancerClient) createCertificate(ctx context.Context, request 
 // CreateHostname Adds a hostname resource to the specified load balancer. For more information, see
 // Managing Request Routing (https://docs.cloud.oracle.com/Content/Balance/Tasks/managingrequest.htm).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/CreateHostname.go.html to see an example of how to use CreateHostname API.
 func (client LoadBalancerClient) CreateHostname(ctx context.Context, request CreateHostnameRequest) (response CreateHostnameResponse, err error) {
@@ -402,7 +406,7 @@ func (client LoadBalancerClient) createHostname(ctx context.Context, request com
 
 // CreateListener Adds a listener to a load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/CreateListener.go.html to see an example of how to use CreateListener API.
 func (client LoadBalancerClient) CreateListener(ctx context.Context, request CreateListenerRequest) (response CreateListenerResponse, err error) {
@@ -484,7 +488,7 @@ func (client LoadBalancerClient) createListener(ctx context.Context, request com
 // When you create a load balancer, the system assigns an IP address.
 // To get the IP address, use the GetLoadBalancer operation.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/CreateLoadBalancer.go.html to see an example of how to use CreateLoadBalancer API.
 func (client LoadBalancerClient) CreateLoadBalancer(ctx context.Context, request CreateLoadBalancerRequest) (response CreateLoadBalancerResponse, err error) {
@@ -547,7 +551,7 @@ func (client LoadBalancerClient) createLoadBalancer(ctx context.Context, request
 // CreatePathRouteSet Adds a path route set to a load balancer. For more information, see
 // Managing Request Routing (https://docs.cloud.oracle.com/Content/Balance/Tasks/managingrequest.htm).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/CreatePathRouteSet.go.html to see an example of how to use CreatePathRouteSet API.
 func (client LoadBalancerClient) CreatePathRouteSet(ctx context.Context, request CreatePathRouteSetRequest) (response CreatePathRouteSetResponse, err error) {
@@ -610,7 +614,7 @@ func (client LoadBalancerClient) createPathRouteSet(ctx context.Context, request
 // CreateRoutingPolicy Adds a routing policy to a load balancer. For more information, see
 // Managing Request Routing (https://docs.cloud.oracle.com/Content/Balance/Tasks/managingrequest.htm).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/CreateRoutingPolicy.go.html to see an example of how to use CreateRoutingPolicy API.
 func (client LoadBalancerClient) CreateRoutingPolicy(ctx context.Context, request CreateRoutingPolicyRequest) (response CreateRoutingPolicyResponse, err error) {
@@ -673,7 +677,7 @@ func (client LoadBalancerClient) createRoutingPolicy(ctx context.Context, reques
 // CreateRuleSet Creates a new rule set associated with the specified load balancer. For more information, see
 // Managing Rule Sets (https://docs.cloud.oracle.com/Content/Balance/Tasks/managingrulesets.htm).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/CreateRuleSet.go.html to see an example of how to use CreateRuleSet API.
 func (client LoadBalancerClient) CreateRuleSet(ctx context.Context, request CreateRuleSetRequest) (response CreateRuleSetResponse, err error) {
@@ -685,6 +689,11 @@ func (client LoadBalancerClient) CreateRuleSet(ctx context.Context, request Crea
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.createRuleSet, policy)
 	if err != nil {
 		if ociResponse != nil {
@@ -730,7 +739,7 @@ func (client LoadBalancerClient) createRuleSet(ctx context.Context, request comm
 
 // CreateSSLCipherSuite Creates a custom SSL cipher suite.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/CreateSSLCipherSuite.go.html to see an example of how to use CreateSSLCipherSuite API.
 func (client LoadBalancerClient) CreateSSLCipherSuite(ctx context.Context, request CreateSSLCipherSuiteRequest) (response CreateSSLCipherSuiteResponse, err error) {
@@ -792,7 +801,7 @@ func (client LoadBalancerClient) createSSLCipherSuite(ctx context.Context, reque
 
 // DeleteBackend Removes a backend server from a given load balancer and backend set.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/DeleteBackend.go.html to see an example of how to use DeleteBackend API.
 func (client LoadBalancerClient) DeleteBackend(ctx context.Context, request DeleteBackendRequest) (response DeleteBackendResponse, err error) {
@@ -850,7 +859,7 @@ func (client LoadBalancerClient) deleteBackend(ctx context.Context, request comm
 // DeleteBackendSet Deletes the specified backend set. Note that deleting a backend set removes its backend servers from the load balancer.
 // Before you can delete a backend set, you must remove it from any active listeners.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/DeleteBackendSet.go.html to see an example of how to use DeleteBackendSet API.
 func (client LoadBalancerClient) DeleteBackendSet(ctx context.Context, request DeleteBackendSetRequest) (response DeleteBackendSetResponse, err error) {
@@ -907,7 +916,7 @@ func (client LoadBalancerClient) deleteBackendSet(ctx context.Context, request c
 
 // DeleteCertificate Deletes an SSL certificate bundle from a load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/DeleteCertificate.go.html to see an example of how to use DeleteCertificate API.
 func (client LoadBalancerClient) DeleteCertificate(ctx context.Context, request DeleteCertificateRequest) (response DeleteCertificateResponse, err error) {
@@ -964,7 +973,7 @@ func (client LoadBalancerClient) deleteCertificate(ctx context.Context, request 
 
 // DeleteHostname Deletes a hostname resource from the specified load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/DeleteHostname.go.html to see an example of how to use DeleteHostname API.
 func (client LoadBalancerClient) DeleteHostname(ctx context.Context, request DeleteHostnameRequest) (response DeleteHostnameResponse, err error) {
@@ -1021,7 +1030,7 @@ func (client LoadBalancerClient) deleteHostname(ctx context.Context, request com
 
 // DeleteListener Deletes a listener from a load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/DeleteListener.go.html to see an example of how to use DeleteListener API.
 func (client LoadBalancerClient) DeleteListener(ctx context.Context, request DeleteListenerRequest) (response DeleteListenerResponse, err error) {
@@ -1078,7 +1087,7 @@ func (client LoadBalancerClient) deleteListener(ctx context.Context, request com
 
 // DeleteLoadBalancer Stops a load balancer and removes it from service.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/DeleteLoadBalancer.go.html to see an example of how to use DeleteLoadBalancer API.
 func (client LoadBalancerClient) DeleteLoadBalancer(ctx context.Context, request DeleteLoadBalancerRequest) (response DeleteLoadBalancerResponse, err error) {
@@ -1137,7 +1146,7 @@ func (client LoadBalancerClient) deleteLoadBalancer(ctx context.Context, request
 // To delete a path route rule from a path route set, use the
 // UpdatePathRouteSet operation.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/DeletePathRouteSet.go.html to see an example of how to use DeletePathRouteSet API.
 func (client LoadBalancerClient) DeletePathRouteSet(ctx context.Context, request DeletePathRouteSetRequest) (response DeletePathRouteSetResponse, err error) {
@@ -1196,7 +1205,7 @@ func (client LoadBalancerClient) deletePathRouteSet(ctx context.Context, request
 // To delete a routing rule from a routing policy, use the
 // UpdateRoutingPolicy operation.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/DeleteRoutingPolicy.go.html to see an example of how to use DeleteRoutingPolicy API.
 func (client LoadBalancerClient) DeleteRoutingPolicy(ctx context.Context, request DeleteRoutingPolicyRequest) (response DeleteRoutingPolicyResponse, err error) {
@@ -1255,7 +1264,7 @@ func (client LoadBalancerClient) deleteRoutingPolicy(ctx context.Context, reques
 // To delete a rule from a rule set, use the
 // UpdateRuleSet operation.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/DeleteRuleSet.go.html to see an example of how to use DeleteRuleSet API.
 func (client LoadBalancerClient) DeleteRuleSet(ctx context.Context, request DeleteRuleSetRequest) (response DeleteRuleSetResponse, err error) {
@@ -1312,7 +1321,7 @@ func (client LoadBalancerClient) deleteRuleSet(ctx context.Context, request comm
 
 // DeleteSSLCipherSuite Deletes an SSL cipher suite from a load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/DeleteSSLCipherSuite.go.html to see an example of how to use DeleteSSLCipherSuite API.
 func (client LoadBalancerClient) DeleteSSLCipherSuite(ctx context.Context, request DeleteSSLCipherSuiteRequest) (response DeleteSSLCipherSuiteResponse, err error) {
@@ -1369,7 +1378,7 @@ func (client LoadBalancerClient) deleteSSLCipherSuite(ctx context.Context, reque
 
 // GetBackend Gets the specified backend server's configuration information.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/GetBackend.go.html to see an example of how to use GetBackend API.
 func (client LoadBalancerClient) GetBackend(ctx context.Context, request GetBackendRequest) (response GetBackendResponse, err error) {
@@ -1426,7 +1435,7 @@ func (client LoadBalancerClient) getBackend(ctx context.Context, request common.
 
 // GetBackendHealth Gets the current health status of the specified backend server.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/GetBackendHealth.go.html to see an example of how to use GetBackendHealth API.
 func (client LoadBalancerClient) GetBackendHealth(ctx context.Context, request GetBackendHealthRequest) (response GetBackendHealthResponse, err error) {
@@ -1483,7 +1492,7 @@ func (client LoadBalancerClient) getBackendHealth(ctx context.Context, request c
 
 // GetBackendSet Gets the specified backend set's configuration information.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/GetBackendSet.go.html to see an example of how to use GetBackendSet API.
 func (client LoadBalancerClient) GetBackendSet(ctx context.Context, request GetBackendSetRequest) (response GetBackendSetResponse, err error) {
@@ -1540,7 +1549,7 @@ func (client LoadBalancerClient) getBackendSet(ctx context.Context, request comm
 
 // GetBackendSetHealth Gets the health status for the specified backend set.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/GetBackendSetHealth.go.html to see an example of how to use GetBackendSetHealth API.
 func (client LoadBalancerClient) GetBackendSetHealth(ctx context.Context, request GetBackendSetHealthRequest) (response GetBackendSetHealthResponse, err error) {
@@ -1597,7 +1606,7 @@ func (client LoadBalancerClient) getBackendSetHealth(ctx context.Context, reques
 
 // GetHealthChecker Gets the health check policy information for a given load balancer and backend set.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/GetHealthChecker.go.html to see an example of how to use GetHealthChecker API.
 func (client LoadBalancerClient) GetHealthChecker(ctx context.Context, request GetHealthCheckerRequest) (response GetHealthCheckerResponse, err error) {
@@ -1654,7 +1663,7 @@ func (client LoadBalancerClient) getHealthChecker(ctx context.Context, request c
 
 // GetHostname Gets the specified hostname resource's configuration information.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/GetHostname.go.html to see an example of how to use GetHostname API.
 func (client LoadBalancerClient) GetHostname(ctx context.Context, request GetHostnameRequest) (response GetHostnameResponse, err error) {
@@ -1711,7 +1720,7 @@ func (client LoadBalancerClient) getHostname(ctx context.Context, request common
 
 // GetLoadBalancer Gets the specified load balancer's configuration information.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/GetLoadBalancer.go.html to see an example of how to use GetLoadBalancer API.
 func (client LoadBalancerClient) GetLoadBalancer(ctx context.Context, request GetLoadBalancerRequest) (response GetLoadBalancerResponse, err error) {
@@ -1768,7 +1777,7 @@ func (client LoadBalancerClient) getLoadBalancer(ctx context.Context, request co
 
 // GetLoadBalancerHealth Gets the health status for the specified load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/GetLoadBalancerHealth.go.html to see an example of how to use GetLoadBalancerHealth API.
 func (client LoadBalancerClient) GetLoadBalancerHealth(ctx context.Context, request GetLoadBalancerHealthRequest) (response GetLoadBalancerHealthResponse, err error) {
@@ -1825,7 +1834,7 @@ func (client LoadBalancerClient) getLoadBalancerHealth(ctx context.Context, requ
 
 // GetPathRouteSet Gets the specified path route set's configuration information.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/GetPathRouteSet.go.html to see an example of how to use GetPathRouteSet API.
 func (client LoadBalancerClient) GetPathRouteSet(ctx context.Context, request GetPathRouteSetRequest) (response GetPathRouteSetResponse, err error) {
@@ -1882,7 +1891,7 @@ func (client LoadBalancerClient) getPathRouteSet(ctx context.Context, request co
 
 // GetRoutingPolicy Gets the specified routing policy.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/GetRoutingPolicy.go.html to see an example of how to use GetRoutingPolicy API.
 func (client LoadBalancerClient) GetRoutingPolicy(ctx context.Context, request GetRoutingPolicyRequest) (response GetRoutingPolicyResponse, err error) {
@@ -1939,7 +1948,7 @@ func (client LoadBalancerClient) getRoutingPolicy(ctx context.Context, request c
 
 // GetRuleSet Gets the specified set of rules.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/GetRuleSet.go.html to see an example of how to use GetRuleSet API.
 func (client LoadBalancerClient) GetRuleSet(ctx context.Context, request GetRuleSetRequest) (response GetRuleSetResponse, err error) {
@@ -1996,7 +2005,7 @@ func (client LoadBalancerClient) getRuleSet(ctx context.Context, request common.
 
 // GetSSLCipherSuite Gets the specified SSL cipher suite's configuration information.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/GetSSLCipherSuite.go.html to see an example of how to use GetSSLCipherSuite API.
 func (client LoadBalancerClient) GetSSLCipherSuite(ctx context.Context, request GetSSLCipherSuiteRequest) (response GetSSLCipherSuiteResponse, err error) {
@@ -2053,7 +2062,7 @@ func (client LoadBalancerClient) getSSLCipherSuite(ctx context.Context, request 
 
 // GetWorkRequest Gets the details of a work request.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/GetWorkRequest.go.html to see an example of how to use GetWorkRequest API.
 func (client LoadBalancerClient) GetWorkRequest(ctx context.Context, request GetWorkRequestRequest) (response GetWorkRequestResponse, err error) {
@@ -2110,7 +2119,7 @@ func (client LoadBalancerClient) getWorkRequest(ctx context.Context, request com
 
 // ListBackendSets Lists all backend sets associated with a given load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/ListBackendSets.go.html to see an example of how to use ListBackendSets API.
 func (client LoadBalancerClient) ListBackendSets(ctx context.Context, request ListBackendSetsRequest) (response ListBackendSetsResponse, err error) {
@@ -2167,7 +2176,7 @@ func (client LoadBalancerClient) listBackendSets(ctx context.Context, request co
 
 // ListBackends Lists the backend servers for a given load balancer and backend set.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/ListBackends.go.html to see an example of how to use ListBackends API.
 func (client LoadBalancerClient) ListBackends(ctx context.Context, request ListBackendsRequest) (response ListBackendsResponse, err error) {
@@ -2224,7 +2233,7 @@ func (client LoadBalancerClient) listBackends(ctx context.Context, request commo
 
 // ListCertificates Lists all SSL certificates bundles associated with a given load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/ListCertificates.go.html to see an example of how to use ListCertificates API.
 func (client LoadBalancerClient) ListCertificates(ctx context.Context, request ListCertificatesRequest) (response ListCertificatesResponse, err error) {
@@ -2281,7 +2290,7 @@ func (client LoadBalancerClient) listCertificates(ctx context.Context, request c
 
 // ListHostnames Lists all hostname resources associated with the specified load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/ListHostnames.go.html to see an example of how to use ListHostnames API.
 func (client LoadBalancerClient) ListHostnames(ctx context.Context, request ListHostnamesRequest) (response ListHostnamesResponse, err error) {
@@ -2343,7 +2352,7 @@ func (client LoadBalancerClient) listHostnames(ctx context.Context, request comm
 // *  Request header rules
 // *  Response header rules
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/ListListenerRules.go.html to see an example of how to use ListListenerRules API.
 func (client LoadBalancerClient) ListListenerRules(ctx context.Context, request ListListenerRulesRequest) (response ListListenerRulesResponse, err error) {
@@ -2400,7 +2409,7 @@ func (client LoadBalancerClient) listListenerRules(ctx context.Context, request 
 
 // ListLoadBalancerHealths Lists the summary health statuses for all load balancers in the specified compartment.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/ListLoadBalancerHealths.go.html to see an example of how to use ListLoadBalancerHealths API.
 func (client LoadBalancerClient) ListLoadBalancerHealths(ctx context.Context, request ListLoadBalancerHealthsRequest) (response ListLoadBalancerHealthsResponse, err error) {
@@ -2457,7 +2466,7 @@ func (client LoadBalancerClient) listLoadBalancerHealths(ctx context.Context, re
 
 // ListLoadBalancers Lists all load balancers in the specified compartment.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/ListLoadBalancers.go.html to see an example of how to use ListLoadBalancers API.
 func (client LoadBalancerClient) ListLoadBalancers(ctx context.Context, request ListLoadBalancersRequest) (response ListLoadBalancersResponse, err error) {
@@ -2514,7 +2523,7 @@ func (client LoadBalancerClient) listLoadBalancers(ctx context.Context, request 
 
 // ListPathRouteSets Lists all path route sets associated with the specified load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/ListPathRouteSets.go.html to see an example of how to use ListPathRouteSets API.
 func (client LoadBalancerClient) ListPathRouteSets(ctx context.Context, request ListPathRouteSetsRequest) (response ListPathRouteSetsResponse, err error) {
@@ -2571,7 +2580,7 @@ func (client LoadBalancerClient) listPathRouteSets(ctx context.Context, request 
 
 // ListPolicies Lists the available load balancer policies.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/ListPolicies.go.html to see an example of how to use ListPolicies API.
 func (client LoadBalancerClient) ListPolicies(ctx context.Context, request ListPoliciesRequest) (response ListPoliciesResponse, err error) {
@@ -2628,7 +2637,7 @@ func (client LoadBalancerClient) listPolicies(ctx context.Context, request commo
 
 // ListProtocols Lists all supported traffic protocols.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/ListProtocols.go.html to see an example of how to use ListProtocols API.
 func (client LoadBalancerClient) ListProtocols(ctx context.Context, request ListProtocolsRequest) (response ListProtocolsResponse, err error) {
@@ -2685,7 +2694,7 @@ func (client LoadBalancerClient) listProtocols(ctx context.Context, request comm
 
 // ListRoutingPolicies Lists all routing policies associated with the specified load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/ListRoutingPolicies.go.html to see an example of how to use ListRoutingPolicies API.
 func (client LoadBalancerClient) ListRoutingPolicies(ctx context.Context, request ListRoutingPoliciesRequest) (response ListRoutingPoliciesResponse, err error) {
@@ -2742,7 +2751,7 @@ func (client LoadBalancerClient) listRoutingPolicies(ctx context.Context, reques
 
 // ListRuleSets Lists all rule sets associated with the specified load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/ListRuleSets.go.html to see an example of how to use ListRuleSets API.
 func (client LoadBalancerClient) ListRuleSets(ctx context.Context, request ListRuleSetsRequest) (response ListRuleSetsResponse, err error) {
@@ -2799,7 +2808,7 @@ func (client LoadBalancerClient) listRuleSets(ctx context.Context, request commo
 
 // ListSSLCipherSuites Lists all SSL cipher suites associated with the specified load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/ListSSLCipherSuites.go.html to see an example of how to use ListSSLCipherSuites API.
 func (client LoadBalancerClient) ListSSLCipherSuites(ctx context.Context, request ListSSLCipherSuitesRequest) (response ListSSLCipherSuitesResponse, err error) {
@@ -2856,7 +2865,7 @@ func (client LoadBalancerClient) listSSLCipherSuites(ctx context.Context, reques
 
 // ListShapes Lists the valid load balancer shapes.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/ListShapes.go.html to see an example of how to use ListShapes API.
 func (client LoadBalancerClient) ListShapes(ctx context.Context, request ListShapesRequest) (response ListShapesResponse, err error) {
@@ -2913,7 +2922,7 @@ func (client LoadBalancerClient) listShapes(ctx context.Context, request common.
 
 // ListWorkRequests Lists the work requests for a given load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/ListWorkRequests.go.html to see an example of how to use ListWorkRequests API.
 func (client LoadBalancerClient) ListWorkRequests(ctx context.Context, request ListWorkRequestsRequest) (response ListWorkRequestsResponse, err error) {
@@ -2970,7 +2979,7 @@ func (client LoadBalancerClient) listWorkRequests(ctx context.Context, request c
 
 // UpdateBackend Updates the configuration of a backend server within the specified backend set.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/UpdateBackend.go.html to see an example of how to use UpdateBackend API.
 func (client LoadBalancerClient) UpdateBackend(ctx context.Context, request UpdateBackendRequest) (response UpdateBackendResponse, err error) {
@@ -3032,7 +3041,7 @@ func (client LoadBalancerClient) updateBackend(ctx context.Context, request comm
 
 // UpdateBackendSet Updates a backend set.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/UpdateBackendSet.go.html to see an example of how to use UpdateBackendSet API.
 func (client LoadBalancerClient) UpdateBackendSet(ctx context.Context, request UpdateBackendSetRequest) (response UpdateBackendSetResponse, err error) {
@@ -3094,7 +3103,7 @@ func (client LoadBalancerClient) updateBackendSet(ctx context.Context, request c
 
 // UpdateHealthChecker Updates the health check policy for a given load balancer and backend set.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/UpdateHealthChecker.go.html to see an example of how to use UpdateHealthChecker API.
 func (client LoadBalancerClient) UpdateHealthChecker(ctx context.Context, request UpdateHealthCheckerRequest) (response UpdateHealthCheckerResponse, err error) {
@@ -3157,7 +3166,7 @@ func (client LoadBalancerClient) updateHealthChecker(ctx context.Context, reques
 // UpdateHostname Overwrites an existing hostname resource on the specified load balancer. Use this operation to change a
 // virtual hostname.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/UpdateHostname.go.html to see an example of how to use UpdateHostname API.
 func (client LoadBalancerClient) UpdateHostname(ctx context.Context, request UpdateHostnameRequest) (response UpdateHostnameResponse, err error) {
@@ -3169,6 +3178,11 @@ func (client LoadBalancerClient) UpdateHostname(ctx context.Context, request Upd
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.updateHostname, policy)
 	if err != nil {
 		if ociResponse != nil {
@@ -3214,7 +3228,7 @@ func (client LoadBalancerClient) updateHostname(ctx context.Context, request com
 
 // UpdateListener Updates a listener for a given load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/UpdateListener.go.html to see an example of how to use UpdateListener API.
 func (client LoadBalancerClient) UpdateListener(ctx context.Context, request UpdateListenerRequest) (response UpdateListenerResponse, err error) {
@@ -3276,7 +3290,7 @@ func (client LoadBalancerClient) updateListener(ctx context.Context, request com
 
 // UpdateLoadBalancer Updates a load balancer's configuration.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/UpdateLoadBalancer.go.html to see an example of how to use UpdateLoadBalancer API.
 func (client LoadBalancerClient) UpdateLoadBalancer(ctx context.Context, request UpdateLoadBalancerRequest) (response UpdateLoadBalancerResponse, err error) {
@@ -3343,7 +3357,7 @@ func (client LoadBalancerClient) updateLoadBalancer(ctx context.Context, request
 // start accepting larger bandwidth and when reshaping to a smaller one, the LB will be accepting smaller
 // bandwidth.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/UpdateLoadBalancerShape.go.html to see an example of how to use UpdateLoadBalancerShape API.
 func (client LoadBalancerClient) UpdateLoadBalancerShape(ctx context.Context, request UpdateLoadBalancerShapeRequest) (response UpdateLoadBalancerShapeResponse, err error) {
@@ -3405,7 +3419,7 @@ func (client LoadBalancerClient) updateLoadBalancerShape(ctx context.Context, re
 
 // UpdateNetworkSecurityGroups Updates the network security groups associated with the specified load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/UpdateNetworkSecurityGroups.go.html to see an example of how to use UpdateNetworkSecurityGroups API.
 func (client LoadBalancerClient) UpdateNetworkSecurityGroups(ctx context.Context, request UpdateNetworkSecurityGroupsRequest) (response UpdateNetworkSecurityGroupsResponse, err error) {
@@ -3471,7 +3485,7 @@ func (client LoadBalancerClient) updateNetworkSecurityGroups(ctx context.Context
 // UpdatePathRouteSetDetails object must include
 // both the new path route rule to add and the existing path route rules to retain.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/UpdatePathRouteSet.go.html to see an example of how to use UpdatePathRouteSet API.
 func (client LoadBalancerClient) UpdatePathRouteSet(ctx context.Context, request UpdatePathRouteSetRequest) (response UpdatePathRouteSetResponse, err error) {
@@ -3535,7 +3549,7 @@ func (client LoadBalancerClient) updatePathRouteSet(ctx context.Context, request
 // routing policy rules in a routing policy.
 // To add a new routing rule to a routing policy, the body must include both the new routing rule to add and the existing rules to retain.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/UpdateRoutingPolicy.go.html to see an example of how to use UpdateRoutingPolicy API.
 func (client LoadBalancerClient) UpdateRoutingPolicy(ctx context.Context, request UpdateRoutingPolicyRequest) (response UpdateRoutingPolicyResponse, err error) {
@@ -3599,7 +3613,7 @@ func (client LoadBalancerClient) updateRoutingPolicy(ctx context.Context, reques
 // the rules in a rule set.
 // To add a new rule to a set, the body must include both the new rule to add and the existing rules to retain.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/UpdateRuleSet.go.html to see an example of how to use UpdateRuleSet API.
 func (client LoadBalancerClient) UpdateRuleSet(ctx context.Context, request UpdateRuleSetRequest) (response UpdateRuleSetResponse, err error) {
@@ -3611,6 +3625,11 @@ func (client LoadBalancerClient) UpdateRuleSet(ctx context.Context, request Upda
 	if request.RetryPolicy() != nil {
 		policy = *request.RetryPolicy()
 	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
 	ociResponse, err = common.Retry(ctx, request, client.updateRuleSet, policy)
 	if err != nil {
 		if ociResponse != nil {
@@ -3656,7 +3675,7 @@ func (client LoadBalancerClient) updateRuleSet(ctx context.Context, request comm
 
 // UpdateSSLCipherSuite Updates an existing SSL cipher suite for the specified load balancer.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/loadbalancer/UpdateSSLCipherSuite.go.html to see an example of how to use UpdateSSLCipherSuite API.
 func (client LoadBalancerClient) UpdateSSLCipherSuite(ctx context.Context, request UpdateSSLCipherSuiteRequest) (response UpdateSSLCipherSuiteResponse, err error) {

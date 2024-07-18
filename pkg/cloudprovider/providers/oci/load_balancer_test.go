@@ -17,12 +17,19 @@ package oci
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
+	"strconv"
+	"strings"
 	"testing"
+	"time"
 
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/informers"
+	testclient "k8s.io/client-go/kubernetes/fake"
 
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
@@ -732,6 +739,127 @@ func TestCloudProvider_GetLoadBalancer(t *testing.T) {
 	}
 }
 
+func TestCloudProvider_getLoadBalancerProvider(t *testing.T) {
+
+	kc := NewSimpleClientset(
+		&v1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "sa", Namespace: "ns",
+			},
+		})
+
+	factory := informers.NewSharedInformerFactoryWithOptions(kc, time.Second, informers.WithNamespace("ns"))
+	serviceAccountInformer := factory.Core().V1().ServiceAccounts()
+	go serviceAccountInformer.Informer().Run(wait.NeverStop)
+
+	time.Sleep(time.Second)
+
+	cp := &CloudProvider{
+		client:               MockOCIClient{},
+		kubeclient:           kc,
+		ServiceAccountLister: serviceAccountInformer.Lister(),
+		config:               &providercfg.Config{CompartmentID: "testCompartment"},
+		logger:               zap.S(),
+	}
+
+	tests := map[string]struct {
+		service    *v1.Service
+		wantErr    bool
+		wantLbType string
+		cp         *CloudProvider
+	}{
+		"Get Load Balancer Provider type LB with Workload Identity RP": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "testservice-lb",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationServiceAccountName: `sa`,
+					},
+				},
+			},
+			wantErr:    false,
+			wantLbType: "*oci.MockLoadBalancerClient",
+			cp:         cp,
+		},
+		"Get Load Balancer Provider type NLB with Workload Identity RP": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "testservice-nlb",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:   "nlb",
+						ServiceAnnotationServiceAccountName: `sa`,
+					},
+				},
+			},
+			wantErr:    false,
+			wantLbType: "*oci.MockNetworkLoadBalancerClient",
+			cp:         cp,
+		},
+		"Fail to Get Load Balancer Provider type LB with Workload Identity RP when SA does not exist": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "testservice-get-sa-error",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationServiceAccountName: `sa-does-not-exist`,
+					},
+				},
+			},
+			wantErr: true,
+			cp:      cp,
+		},
+		"Get Load Balancer Provider type LB": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "testservice-lb-2",
+					UID:       "test-uid",
+				},
+			},
+			wantErr:    false,
+			wantLbType: "*oci.MockLoadBalancerClient",
+			cp:         cp,
+		},
+		"Get Load Balancer Provider type NLB": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "testservice-nlb-2",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			wantErr:    false,
+			wantLbType: "*oci.MockNetworkLoadBalancerClient",
+			cp:         cp,
+		},
+	}
+
+	t.Parallel()
+	for name, tt := range tests {
+		name, tt := name, tt
+		t.Run(name, func(t *testing.T) {
+			got, _ := tt.cp.getLoadBalancerProvider(context.Background(), tt.service)
+
+			if !tt.wantErr {
+				if reflect.DeepEqual(got, CloudLoadBalancerProvider{}) {
+					t.Errorf("GetLoadBalancerProvider() didn't expect an empty provider")
+				}
+				if fmt.Sprintf("%T", got.lbClient) != tt.wantLbType {
+					t.Errorf("GetLoadBalancerProvider() got LB of type = %T, want %T", got.lbClient, tt.wantLbType)
+				}
+			}
+		})
+	}
+}
+
 func TestUpdateLoadBalancerNetworkSecurityGroups(t *testing.T) {
 	var tests = map[string]struct {
 		spec         *LBSpec
@@ -867,6 +995,21 @@ func TestCloudProvider_EnsureLoadBalancerDeleted(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "Security List Management mode 'NSG' - no err",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSecurityRuleManagementMode: "NSG",
+					},
+				},
+			},
+			err:     "",
+			wantErr: false,
+		},
+		{
 			name: "no management mode provided in annotation - no err",
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
@@ -901,11 +1044,134 @@ func TestCloudProvider_EnsureLoadBalancerDeleted(t *testing.T) {
 		logger:        zap.S(),
 		instanceCache: &mockInstanceCache{},
 		metricPusher:  nil,
+		kubeclient: testclient.NewSimpleClientset(
+			&v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "testservice", Namespace: "kube-system",
+				},
+			}),
+		lbLocks: NewLoadBalancerLocks(),
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := cp.EnsureLoadBalancerDeleted(context.Background(), "test", tt.service); (err != nil) != tt.wantErr {
 				t.Errorf("EnsureLoadBalancerDeleted() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_addLoadBalancerOkeSystemTags(t *testing.T) {
+	tests := map[string]struct {
+		//config  *providercfg.Config
+		lb      *client.GenericLoadBalancer
+		spec    *LBSpec
+		wantErr error
+	}{
+		"expect an error when spec system tag is nil": {
+			lb: &client.GenericLoadBalancer{
+				Id: common.String("ocid1.loadbalancer."),
+			},
+			spec:    &LBSpec{},
+			wantErr: errors.New("oke system tag is not found in LB spec. ignoring.."),
+		},
+		"expect an error when spec system tag is empty map": {
+			lb: &client.GenericLoadBalancer{
+				Id: common.String("ocid1.loadbalancer."),
+			},
+			spec: &LBSpec{
+				SystemTags: map[string]map[string]interface{}{},
+			},
+			wantErr: errors.New("oke system tag namespace is not found in LB spec"),
+		},
+		"expect an error when defined tags are limits are reached": {
+			lb: &client.GenericLoadBalancer{
+				Id:          common.String("defined tag limit of 64 reached"),
+				DefinedTags: make(map[string]map[string]interface{}),
+			},
+			spec: &LBSpec{
+				SystemTags: map[string]map[string]interface{}{"orcl-containerengine": {"Cluster": "val"}},
+			},
+			wantErr: errors.New("max limit of defined tags for lb is reached. skip adding tags. sending metric"),
+		},
+		"expect an error when updateLoadBalancer work request fails": {
+			lb: &client.GenericLoadBalancer{
+				Id:           common.String("work request fail"),
+				FreeformTags: map[string]string{"key": "val"},
+				DefinedTags:  map[string]map[string]interface{}{"ns1": {"key1": "val1"}},
+			},
+			spec: &LBSpec{
+				SystemTags: map[string]map[string]interface{}{"orcl-containerengine": {"Cluster": "val"}},
+			},
+			wantErr: errors.New("UpdateLoadBalancer request failed: internal server error"),
+		},
+	}
+
+	for name, testcase := range tests {
+		clb := &CloudLoadBalancerProvider{
+			lbClient: &MockLoadBalancerClient{},
+			logger:   zap.S(),
+			//config:   testcase.config,
+		}
+		t.Run(name, func(t *testing.T) {
+			if strings.Contains(name, "limit") {
+				// add 64 defined tags
+				for i := 1; i <= 64; i++ {
+					testcase.lb.DefinedTags["ns"+strconv.Itoa(i)] = map[string]interface{}{"key": strconv.Itoa(i)}
+				}
+			}
+			err := clb.addLoadBalancerOkeSystemTags(context.Background(), testcase.lb, testcase.spec)
+			t.Logf(err.Error())
+			if !assertError(err, testcase.wantErr) {
+				t.Errorf("Expected error = %v, but got %v", testcase.wantErr, err)
+				return
+			}
+		})
+	}
+}
+
+func Test_doesLbHaveResourceTrackingSystemTags(t *testing.T) {
+	tests := map[string]struct {
+		lb   *client.GenericLoadBalancer
+		spec *LBSpec
+		want bool
+	}{
+		"base case": {
+			lb: &client.GenericLoadBalancer{
+				DefinedTags: map[string]map[string]interface{}{"ns": {"key": "val"}},
+				SystemTags:  map[string]map[string]interface{}{"orcl-containerengine": {"Cluster": "val"}},
+			},
+			spec: &LBSpec{
+				SystemTags: map[string]map[string]interface{}{"orcl-containerengine": {"Cluster": "val"}},
+			},
+			want: true,
+		},
+		"system tag exists for different ns in lb": {
+			lb: &client.GenericLoadBalancer{
+				DefinedTags: map[string]map[string]interface{}{"ns": {"key": "val"}},
+				SystemTags:  map[string]map[string]interface{}{"orcl-free-tier": {"Cluster": "val"}},
+			},
+			spec: &LBSpec{
+				SystemTags: map[string]map[string]interface{}{"orcl-containerengine": {"Cluster": "val"}},
+			},
+			want: false,
+		},
+		"resource tracking system tag doesnt exists in lb": {
+			lb: &client.GenericLoadBalancer{
+				DefinedTags: map[string]map[string]interface{}{"ns": {"key": "val"}},
+			},
+			spec: &LBSpec{
+				SystemTags: map[string]map[string]interface{}{"orcl-containerengine": {"Cluster": "val"}},
+			},
+			want: false,
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			actual := doesLbHaveOkeSystemTags(test.lb, test.spec)
+			t.Logf("expected %v but got %v", test.want, actual)
+			if test.want != actual {
+				t.Errorf("expected %v but got %v", test.want, actual)
 			}
 		})
 	}

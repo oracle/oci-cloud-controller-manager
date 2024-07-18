@@ -1,5 +1,7 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
+
+//lint:file-ignore SA1019 older versions of staticcheck (those compatible with Golang 1.17) falsely flag x509.IsEncryptedPEMBlock and x509.DecryptPEMBlock.
 
 package common
 
@@ -37,24 +39,24 @@ func Uint(value uint) *uint {
 	return &value
 }
 
-//Float32 returns a pointer to the provided float32
+// Float32 returns a pointer to the provided float32
 func Float32(value float32) *float32 {
 	return &value
 }
 
-//Float64 returns a pointer to the provided float64
+// Float64 returns a pointer to the provided float64
 func Float64(value float64) *float64 {
 	return &value
 }
 
-//Bool returns a pointer to the provided bool
+// Bool returns a pointer to the provided bool
 func Bool(value bool) *bool {
 	return &value
 }
 
-//PointerString prints the values of pointers in a struct
-//Producing a human friendly string for an struct with pointers.
-//useful when debugging the values of a struct
+// PointerString prints the values of pointers in a struct
+// Producing a human friendly string for an struct with pointers.
+// useful when debugging the values of a struct
 func PointerString(datastruct interface{}) (representation string) {
 	val := reflect.ValueOf(datastruct)
 	typ := reflect.TypeOf(datastruct)
@@ -123,7 +125,7 @@ var timeTypePtr = reflect.TypeOf(&SDKTime{})
 var sdkDateType = reflect.TypeOf(SDKDate{})
 var sdkDateTypePtr = reflect.TypeOf(&SDKDate{})
 
-//Formats for sdk supported time representations
+// Formats for sdk supported time representations
 const sdkTimeFormat = time.RFC3339Nano
 const rfc1123OptionalLeadingDigitsInDay = "Mon, _2 Jan 2006 15:04:05 MST"
 const sdkDateFormat = "2006-01-02"
@@ -148,7 +150,7 @@ func tryParsing(data []byte, layouts ...string) (tm time.Time, err error) {
 			return
 		}
 	}
-	err = fmt.Errorf("Could not parse time: %s with formats: %s", datestring, layouts[:])
+	err = fmt.Errorf("could not parse time: %s with formats: %s", datestring, layouts[:])
 	return
 }
 
@@ -286,7 +288,6 @@ func makeACopy(original []string) []string {
 
 // IsEnvVarFalse is used for checking if an environment variable is explicitly set to false, otherwise would set it true by default
 func IsEnvVarFalse(envVarKey string) bool {
-	return false
 	val, existed := os.LookupEnv(envVarKey)
 	return existed && strings.ToLower(val) == "false"
 }

@@ -4,7 +4,6 @@
 implementation (or out-of-tree cloud-provider) for [Oracle Cloud
 Infrastucture][1] (OCI).
 
-[![wercker status](https://app.wercker.com/status/17a52304e0309d138ad41f7ae9f9ea49/s/master "wercker status")](https://app.wercker.com/project/byKey/17a52304e0309d138ad41f7ae9f9ea49)
 [![Go Report Card](https://goreportcard.com/badge/github.com/oracle/oci-cloud-controller-manager)](https://goreportcard.com/report/github.com/oracle/oci-cloud-controller-manager)
 
 ## Introduction
@@ -30,12 +29,17 @@ cloud-provider specific code out of the Kubernetes codebase.
 | v1.19.12  | v1.19                  | v1.21                  |
 | v1.22.0   | v1.22                  | -                      |
 | v1.23.0   | v1.23                  | -                      |
-| v1.24.0   | v1.24                  | -                      |
+| v1.24.2   | v1.24                  | -                      |
+| v1.25.2   | v1.25                  | -                      |
+| v1.26.4   | v1.26                  | -                      |
+| v1.27.3   | v1.27                  | -                      |
+| v1.28.1   | v1.28                  | -                      |
+| v1.29.0   | v1.29                  | -                      |
 
 
 
 Note: 
-Versions older than v0.13.0 are no longer supported, new features / bug fixes will be available in v0.13.0 and later. 
+Versions older than v1.27.3 are no longer supported, new features / bug fixes will be available in v1.27.3 and later. 
 
 ## Implementation
  Currently `oci-cloud-controller-manager` implements:
@@ -161,21 +165,15 @@ If you think you've found a bug, please [raise an issue][3].
 
 ## Contributing
 
-`oci-cloud-controller-manager` is an open source project. See [CONTRIBUTING](CONTRIBUTING.md) for
-details.
+This project welcomes contributions from the community. Before submitting a pull request, please [review our contribution guide](./CONTRIBUTING.md)
 
-Oracle gratefully acknowledges the contributions to this project that have been made
-by the community.
+## Security
 
-## Upcoming Releases
-
-| Release               | Expected Release Date |
-|-----------------------|-----------------------|
-| Support for K8s v1.24 | August 2022           |
+Please consult the [security guide](./SECURITY.md) for our responsible security vulnerability disclosure process
 
 ## License
 
-Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+Copyright (c) 2017, 2023 Oracle and/or its affiliates. All rights reserved.
 
 `oci-cloud-controller-manager` is licensed under the Apache License 2.0.
 

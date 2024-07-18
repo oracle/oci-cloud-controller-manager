@@ -1,10 +1,10 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
 // Identity and Access Management Service API
 //
-// APIs for managing users, groups, compartments, policies, and identity domains.
+// Use the Identity and Access Management Service API to manage users, groups, identity domains, compartments, policies, tagging, and limits. For information about managing users, groups, compartments, and policies, see Identity and Access Management (without identity domains) (https://docs.cloud.oracle.com/iaas/Content/Identity/Concepts/overview.htm). For information about tagging and service limits, see Tagging (https://docs.cloud.oracle.com/iaas/Content/Tagging/Concepts/taggingoverview.htm) and Service Limits (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/servicelimits.htm). For information about creating, modifying, and deleting identity domains, see Identity and Access Management (with identity domains) (https://docs.cloud.oracle.com/iaas/Content/Identity/home.htm).
 //
 
 package identity
@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-//IdentityClient a client for Identity
+// IdentityClient a client for Identity
 type IdentityClient struct {
 	common.BaseClient
 	config *common.ConfigurationProvider
@@ -27,6 +27,9 @@ type IdentityClient struct {
 // NewIdentityClientWithConfigurationProvider Creates a new default Identity client with the given configuration provider.
 // the configuration provider will be used for the default signer as well as reading the region
 func NewIdentityClientWithConfigurationProvider(configProvider common.ConfigurationProvider) (client IdentityClient, err error) {
+	if enabled := common.CheckForEnabledServices("identity"); !enabled {
+		return client, fmt.Errorf("the Developer Tool configuration disabled this service, this behavior is controlled by OciSdkEnabledServicesMap variables. Please check if your local developer-tool-configuration.json file configured the service you're targeting or contact the cloud provider on the availability of this service")
+	}
 	provider, err := auth.GetGenericConfigurationProvider(configProvider)
 	if err != nil {
 		return client, err
@@ -40,7 +43,8 @@ func NewIdentityClientWithConfigurationProvider(configProvider common.Configurat
 
 // NewIdentityClientWithOboToken Creates a new default Identity client with the given configuration provider.
 // The obotoken will be added to default headers and signed; the configuration provider will be used for the signer
-//  as well as reading the region
+//
+//	as well as reading the region
 func NewIdentityClientWithOboToken(configProvider common.ConfigurationProvider, oboToken string) (client IdentityClient, err error) {
 	baseClient, err := common.NewClientWithOboToken(configProvider, oboToken)
 	if err != nil {
@@ -77,7 +81,7 @@ func (client *IdentityClient) setConfigurationProvider(configProvider common.Con
 	region, _ := configProvider.Region()
 	client.SetRegion(region)
 	if client.Host == "" {
-		return fmt.Errorf("Invalid region or Host. Endpoint cannot be constructed without endpointServiceName or serviceEndpointTemplate for a dotted region")
+		return fmt.Errorf("invalid region or Host. Endpoint cannot be constructed without endpointServiceName or serviceEndpointTemplate for a dotted region")
 	}
 	client.config = &configProvider
 	return nil
@@ -94,7 +98,7 @@ func (client *IdentityClient) ConfigurationProvider() *common.ConfigurationProvi
 // To track the progress of the request, submitting an HTTP GET on the /iamWorkRequests/{iamWorkRequestsId} endpoint retrieves
 // the operation's status.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ActivateDomain.go.html to see an example of how to use ActivateDomain API.
 // A default retry strategy applies to this operation ActivateDomain()
@@ -158,7 +162,7 @@ func (client IdentityClient) activateDomain(ctx context.Context, request common.
 
 // ActivateMfaTotpDevice Activates the specified MFA TOTP device for the user. Activation requires manual interaction with the Console.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ActivateMfaTotpDevice.go.html to see an example of how to use ActivateMfaTotpDevice API.
 // A default retry strategy applies to this operation ActivateMfaTotpDevice()
@@ -220,11 +224,139 @@ func (client IdentityClient) activateMfaTotpDevice(ctx context.Context, request 
 	return response, err
 }
 
+// AddTagDefaultLock Add a resource lock to a tag default.
+//
+// # See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/AddTagDefaultLock.go.html to see an example of how to use AddTagDefaultLock API.
+// A default retry strategy applies to this operation AddTagDefaultLock()
+func (client IdentityClient) AddTagDefaultLock(ctx context.Context, request AddTagDefaultLockRequest) (response AddTagDefaultLockResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.DefaultRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.addTagDefaultLock, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = AddTagDefaultLockResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = AddTagDefaultLockResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(AddTagDefaultLockResponse); ok {
+		common.EcContext.UpdateEndOfWindow(time.Duration(240 * time.Second))
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into AddTagDefaultLockResponse")
+	}
+	return
+}
+
+// addTagDefaultLock implements the OCIOperation interface (enables retrying operations)
+func (client IdentityClient) addTagDefaultLock(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/tagDefaults/{tagDefaultId}/actions/addLock", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response AddTagDefaultLockResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		apiReferenceLink := "https://docs.oracle.com/iaas/api/#/en/identity/20160918/TagDefault/AddTagDefaultLock"
+		err = common.PostProcessServiceError(err, "Identity", "AddTagDefaultLock", apiReferenceLink)
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// AddTagNamespaceLock Add a resource lock to a tag namespace.
+//
+// # See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/AddTagNamespaceLock.go.html to see an example of how to use AddTagNamespaceLock API.
+// A default retry strategy applies to this operation AddTagNamespaceLock()
+func (client IdentityClient) AddTagNamespaceLock(ctx context.Context, request AddTagNamespaceLockRequest) (response AddTagNamespaceLockResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.DefaultRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.addTagNamespaceLock, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = AddTagNamespaceLockResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = AddTagNamespaceLockResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(AddTagNamespaceLockResponse); ok {
+		common.EcContext.UpdateEndOfWindow(time.Duration(240 * time.Second))
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into AddTagNamespaceLockResponse")
+	}
+	return
+}
+
+// addTagNamespaceLock implements the OCIOperation interface (enables retrying operations)
+func (client IdentityClient) addTagNamespaceLock(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/tagNamespaces/{tagNamespaceId}/actions/addLock", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response AddTagNamespaceLockResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		apiReferenceLink := "https://docs.oracle.com/iaas/api/#/en/identity/20160918/TagNamespace/AddTagNamespaceLock"
+		err = common.PostProcessServiceError(err, "Identity", "AddTagNamespaceLock", apiReferenceLink)
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // AddUserToGroup Adds the specified user to the specified group and returns a `UserGroupMembership` object with its own OCID.
 // After you send your request, the new object's `lifecycleState` will temporarily be CREATING. Before using the
 // object, first make sure its `lifecycleState` has changed to ACTIVE.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/AddUserToGroup.go.html to see an example of how to use AddUserToGroup API.
 // A default retry strategy applies to this operation AddUserToGroup()
@@ -291,7 +423,7 @@ func (client IdentityClient) addUserToGroup(ctx context.Context, request common.
 // referencing the same tag in a compartment lower down the hierarchy. This set of tag defaults
 // includes all tag defaults from the current compartment back to the root compartment.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/AssembleEffectiveTagSet.go.html to see an example of how to use AssembleEffectiveTagSet API.
 // A default retry strategy applies to this operation AssembleEffectiveTagSet()
@@ -353,7 +485,7 @@ func (client IdentityClient) assembleEffectiveTagSet(ctx context.Context, reques
 // WorkRequest. Use the GetWorkRequest
 // API to monitor the status of the bulk action.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/BulkDeleteResources.go.html to see an example of how to use BulkDeleteResources API.
 // A default retry strategy applies to this operation BulkDeleteResources()
@@ -418,11 +550,11 @@ func (client IdentityClient) bulkDeleteResources(ctx context.Context, request co
 // BulkDeleteTags Deletes the specified tag key definitions. This operation triggers a process that removes the
 // tags from all resources in your tenancy. The tag key definitions must be within the same tag namespace.
 // The following actions happen immediately:
+//   - If the tag is a cost-tracking tag, the tag no longer counts against your
+//     10 cost-tracking tags limit, even if you do not disable the tag before running this operation.
+//   - If the tag is used with dynamic groups, the rules that contain the tag are no longer
+//     evaluated against the tag.
 //
-//   * If the tag is a cost-tracking tag, the tag no longer counts against your
-//   10 cost-tracking tags limit, even if you do not disable the tag before running this operation.
-//   * If the tag is used with dynamic groups, the rules that contain the tag are no longer
-//   evaluated against the tag.
 // After you start this operation, the state of the tag changes to DELETING, and tag removal
 // from resources begins. This process can take up to 48 hours depending on the number of resources that
 // are tagged and the regions in which those resources reside.
@@ -432,7 +564,7 @@ func (client IdentityClient) bulkDeleteResources(ctx context.Context, request co
 // In order to delete tags, you must first retire the tags. Use UpdateTag
 // to retire a tag.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/BulkDeleteTags.go.html to see an example of how to use BulkDeleteTags API.
 // A default retry strategy applies to this operation BulkDeleteTags()
@@ -496,17 +628,18 @@ func (client IdentityClient) bulkDeleteTags(ctx context.Context, request common.
 
 // BulkEditTags Edits the specified list of tag key definitions for the selected resources.
 // This operation triggers a process that edits the tags on all selected resources. The possible actions are:
-//   * Add a defined tag when the tag does not already exist on the resource.
-//   * Update the value for a defined tag when the tag is present on the resource.
-//   * Add a defined tag when it does not already exist on the resource or update the value for a defined tag when the tag is present on the resource.
-//   * Remove a defined tag from a resource. The tag is removed from the resource regardless of the tag value.
+//   - Add a defined tag when the tag does not already exist on the resource.
+//   - Update the value for a defined tag when the tag is present on the resource.
+//   - Add a defined tag when it does not already exist on the resource or update the value for a defined tag when the tag is present on the resource.
+//   - Remove a defined tag from a resource. The tag is removed from the resource regardless of the tag value.
+//
 // See BulkEditOperationDetails for more information.
 // The edits can include a combination of operations and tag sets.
 // However, multiple operations cannot apply to one key definition in the same request.
 // For example, if one request adds `tag set-1` to a resource and sets a tag value to `tag set-2`,
 // `tag set-1` and `tag set-2` cannot have any common tag definitions.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/BulkEditTags.go.html to see an example of how to use BulkEditTags API.
 // A default retry strategy applies to this operation BulkEditTags()
@@ -574,7 +707,7 @@ func (client IdentityClient) bulkEditTags(ctx context.Context, request common.OC
 // compartments. This operation creates a WorkRequest.
 // Use the GetWorkRequest API to monitor the status of the bulk action.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/BulkMoveResources.go.html to see an example of how to use BulkMoveResources API.
 // A default retry strategy applies to this operation BulkMoveResources()
@@ -639,9 +772,10 @@ func (client IdentityClient) bulkMoveResources(ctx context.Context, request comm
 // CascadeDeleteTagNamespace Deletes the specified tag namespace. This operation triggers a process that removes all of the tags
 // defined in the specified tag namespace from all resources in your tenancy and then deletes the tag namespace.
 // After you start the delete operation:
-//   * New tag key definitions cannot be created under the namespace.
-//   * The state of the tag namespace changes to DELETING.
-//   * Tag removal from the resources begins.
+//   - New tag key definitions cannot be created under the namespace.
+//   - The state of the tag namespace changes to DELETING.
+//   - Tag removal from the resources begins.
+//
 // This process can take up to 48 hours depending on the number of tag definitions in the namespace, the number of resources
 // that are tagged, and the locations of the regions in which those resources reside.
 // After all tags are removed, the state changes to DELETED. You cannot restore a deleted tag namespace. After the deleted tag namespace
@@ -650,7 +784,7 @@ func (client IdentityClient) bulkMoveResources(ctx context.Context, request comm
 // To delete a tag namespace, you must first retire it. Use UpdateTagNamespace
 // to retire a tag namespace.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/CascadeDeleteTagNamespace.go.html to see an example of how to use CascadeDeleteTagNamespace API.
 // A default retry strategy applies to this operation CascadeDeleteTagNamespace()
@@ -716,7 +850,7 @@ func (client IdentityClient) cascadeDeleteTagNamespace(ctx context.Context, requ
 // To track the progress of the request, submitting an HTTP GET on the /iamWorkRequests/{iamWorkRequestsId} endpoint retrieves
 // the operation's status.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ChangeDomainCompartment.go.html to see an example of how to use ChangeDomainCompartment API.
 // A default retry strategy applies to this operation ChangeDomainCompartment()
@@ -786,7 +920,7 @@ func (client IdentityClient) changeDomainCompartment(ctx context.Context, reques
 // To track the progress of the request, submitting an HTTP GET on the /iamWorkRequests/{iamWorkRequestsId} endpoint retrieves
 // the operation's status.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ChangeDomainLicenseType.go.html to see an example of how to use ChangeDomainLicenseType API.
 // A default retry strategy applies to this operation ChangeDomainLicenseType()
@@ -853,7 +987,7 @@ func (client IdentityClient) changeDomainLicenseType(ctx context.Context, reques
 // For more information about IAM policies, see Details for IAM (https://docs.cloud.oracle.com/Content/Identity/policyreference/iampolicyreference.htm).
 // Moving a tag namespace moves all the tag key definitions contained in the tag namespace.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ChangeTagNamespaceCompartment.go.html to see an example of how to use ChangeTagNamespaceCompartment API.
 // A default retry strategy applies to this operation ChangeTagNamespaceCompartment()
@@ -924,7 +1058,7 @@ func (client IdentityClient) changeTagNamespaceCompartment(ctx context.Context, 
 // does not need to write a policy to give users this ability. To compare, administrators who have permission to the
 // tenancy can use this operation to create an auth token for any user, including themselves.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/CreateAuthToken.go.html to see an example of how to use CreateAuthToken API.
 // A default retry strategy applies to this operation CreateAuthToken()
@@ -1000,7 +1134,7 @@ func (client IdentityClient) createAuthToken(ctx context.Context, request common
 // After you send your request, the new object's `lifecycleState` will temporarily be CREATING. Before using the
 // object, first make sure its `lifecycleState` has changed to ACTIVE.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/CreateCompartment.go.html to see an example of how to use CreateCompartment API.
 // A default retry strategy applies to this operation CreateCompartment()
@@ -1072,7 +1206,7 @@ func (client IdentityClient) createCompartment(ctx context.Context, request comm
 // does not need to write a policy to give users this ability. To compare, administrators who have permission to the
 // tenancy can use this operation to create a secret key for any user, including themselves.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/CreateCustomerSecretKey.go.html to see an example of how to use CreateCustomerSecretKey API.
 // A default retry strategy applies to this operation CreateCustomerSecretKey()
@@ -1136,7 +1270,7 @@ func (client IdentityClient) createCustomerSecretKey(ctx context.Context, reques
 
 // CreateDbCredential Creates a new DB credential for the specified user.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/CreateDbCredential.go.html to see an example of how to use CreateDbCredential API.
 // A default retry strategy applies to this operation CreateDbCredential()
@@ -1205,7 +1339,7 @@ func (client IdentityClient) createDbCredential(ctx context.Context, request com
 // the operation's status.
 // After creating an `identity domain`, first make sure its `lifecycleState` changes from CREATING to ACTIVE before you use it.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/CreateDomain.go.html to see an example of how to use CreateDomain API.
 // A default retry strategy applies to this operation CreateDomain()
@@ -1282,7 +1416,7 @@ func (client IdentityClient) createDomain(ctx context.Context, request common.OC
 // After you send your request, the new object's `lifecycleState` will temporarily be CREATING. Before using the
 // object, first make sure its `lifecycleState` has changed to ACTIVE.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/CreateDynamicGroup.go.html to see an example of how to use CreateDynamicGroup API.
 // A default retry strategy applies to this operation CreateDynamicGroup()
@@ -1361,7 +1495,7 @@ func (client IdentityClient) createDynamicGroup(ctx context.Context, request com
 // See AddUserToGroup and
 // CreatePolicy.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/CreateGroup.go.html to see an example of how to use CreateGroup API.
 // A default retry strategy applies to this operation CreateGroup()
@@ -1439,7 +1573,7 @@ func (client IdentityClient) createGroup(ctx context.Context, request common.OCI
 // be CREATING. Before using the object, first make sure its `lifecycleState` has
 // changed to ACTIVE.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/CreateIdentityProvider.go.html to see an example of how to use CreateIdentityProvider API.
 // A default retry strategy applies to this operation CreateIdentityProvider()
@@ -1505,7 +1639,7 @@ func (client IdentityClient) createIdentityProvider(ctx context.Context, request
 // Creates a single mapping between an IdP group and an IAM Service
 // Group.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/CreateIdpGroupMapping.go.html to see an example of how to use CreateIdpGroupMapping API.
 // A default retry strategy applies to this operation CreateIdpGroupMapping()
@@ -1569,7 +1703,7 @@ func (client IdentityClient) createIdpGroupMapping(ctx context.Context, request 
 
 // CreateMfaTotpDevice Creates a new MFA TOTP device for the user. A user can have one MFA TOTP device.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/CreateMfaTotpDevice.go.html to see an example of how to use CreateMfaTotpDevice API.
 // A default retry strategy applies to this operation CreateMfaTotpDevice()
@@ -1648,7 +1782,7 @@ func (client IdentityClient) createMfaTotpDevice(ctx context.Context, request co
 // After your network resource is created, you can use it in policy to restrict access to only requests made from an allowed
 // IP address specified in your network source. For more information, see Managing Network Sources (https://docs.cloud.oracle.com/Content/Identity/Tasks/managingnetworksources.htm).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/CreateNetworkSource.go.html to see an example of how to use CreateNetworkSource API.
 // A default retry strategy applies to this operation CreateNetworkSource()
@@ -1712,7 +1846,7 @@ func (client IdentityClient) createNetworkSource(ctx context.Context, request co
 
 // CreateOAuthClientCredential Creates Oauth token for the user
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/CreateOAuthClientCredential.go.html to see an example of how to use CreateOAuthClientCredential API.
 // A default retry strategy applies to this operation CreateOAuthClientCredential()
@@ -1787,7 +1921,7 @@ func (client IdentityClient) createOAuthClientCredential(ctx context.Context, re
 // **Note:** The user's Console login is the unique name you specified when you created the user
 // (see CreateUser).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/CreateOrResetUIPassword.go.html to see an example of how to use CreateOrResetUIPassword API.
 // A default retry strategy applies to this operation CreateOrResetUIPassword()
@@ -1862,7 +1996,7 @@ func (client IdentityClient) createOrResetUIPassword(ctx context.Context, reques
 // object, first make sure its `lifecycleState` has changed to ACTIVE.
 // New policies take effect typically within 10 seconds.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/CreatePolicy.go.html to see an example of how to use CreatePolicy API.
 // A default retry strategy applies to this operation CreatePolicy()
@@ -1926,7 +2060,7 @@ func (client IdentityClient) createPolicy(ctx context.Context, request common.OC
 
 // CreateRegionSubscription Creates a subscription to a region for a tenancy.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/CreateRegionSubscription.go.html to see an example of how to use CreateRegionSubscription API.
 // A default retry strategy applies to this operation CreateRegionSubscription()
@@ -1993,7 +2127,7 @@ func (client IdentityClient) createRegionSubscription(ctx context.Context, reque
 // have to be unique, and you can change it anytime with
 // UpdateSmtpCredential.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/CreateSmtpCredential.go.html to see an example of how to use CreateSmtpCredential API.
 // A default retry strategy applies to this operation CreateSmtpCredential()
@@ -2065,7 +2199,7 @@ func (client IdentityClient) createSmtpCredential(ctx context.Context, request c
 // does not need to write a policy to give users this ability. To compare, administrators who have permission to the
 // tenancy can use this operation to create a Swift password for any user, including themselves.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/CreateSwiftPassword.go.html to see an example of how to use CreateSwiftPassword API.
 // A default retry strategy applies to this operation CreateSwiftPassword()
@@ -2145,7 +2279,7 @@ func (client IdentityClient) createSwiftPassword(ctx context.Context, request co
 // * If a `validator` is set, the user applying the tag to a resource must select from a list
 // of values that you supply with EnumTagDefinitionValidator.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/CreateTag.go.html to see an example of how to use CreateTag API.
 // A default retry strategy applies to this operation CreateTag()
@@ -2214,7 +2348,7 @@ func (client IdentityClient) createTag(ctx context.Context, request common.OCIRe
 // * If the `isRequired` flag is set to "true", the value is set during resource creation.
 // * If the `isRequired` flag is set to "false", the value you enter is set during resource creation.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/CreateTagDefault.go.html to see an example of how to use CreateTagDefault API.
 // A default retry strategy applies to this operation CreateTagDefault()
@@ -2288,7 +2422,7 @@ func (client IdentityClient) createTagDefault(ctx context.Context, request commo
 // It does not have to be unique, and you can change it with
 // UpdateTagNamespace.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/CreateTagNamespace.go.html to see an example of how to use CreateTagNamespace API.
 // A default retry strategy applies to this operation CreateTagNamespace()
@@ -2380,7 +2514,7 @@ func (client IdentityClient) createTagNamespace(ctx context.Context, request com
 // UploadApiKey).
 // **Important:** Make sure to inform the new user which compartment(s) they have access to.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/CreateUser.go.html to see an example of how to use CreateUser API.
 // A default retry strategy applies to this operation CreateUser()
@@ -2450,7 +2584,7 @@ func (client IdentityClient) createUser(ctx context.Context, request common.OCIR
 // To track the progress of the request, submitting an HTTP GET on the /iamWorkRequests/{iamWorkRequestsId} endpoint retrieves
 // the operation's status.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/DeactivateDomain.go.html to see an example of how to use DeactivateDomain API.
 // A default retry strategy applies to this operation DeactivateDomain()
@@ -2518,7 +2652,7 @@ func (client IdentityClient) deactivateDomain(ctx context.Context, request commo
 // To compare, administrators who have permission to the tenancy can use this operation to delete
 // a key for any user, including themselves.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/DeleteApiKey.go.html to see an example of how to use DeleteApiKey API.
 // A default retry strategy applies to this operation DeleteApiKey()
@@ -2576,7 +2710,7 @@ func (client IdentityClient) deleteApiKey(ctx context.Context, request common.OC
 
 // DeleteAuthToken Deletes the specified auth token for the specified user.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/DeleteAuthToken.go.html to see an example of how to use DeleteAuthToken API.
 // A default retry strategy applies to this operation DeleteAuthToken()
@@ -2634,7 +2768,7 @@ func (client IdentityClient) deleteAuthToken(ctx context.Context, request common
 
 // DeleteCompartment Deletes the specified compartment. The compartment must be empty.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/DeleteCompartment.go.html to see an example of how to use DeleteCompartment API.
 // A default retry strategy applies to this operation DeleteCompartment()
@@ -2692,7 +2826,7 @@ func (client IdentityClient) deleteCompartment(ctx context.Context, request comm
 
 // DeleteCustomerSecretKey Deletes the specified secret key for the specified user.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/DeleteCustomerSecretKey.go.html to see an example of how to use DeleteCustomerSecretKey API.
 // A default retry strategy applies to this operation DeleteCustomerSecretKey()
@@ -2750,7 +2884,7 @@ func (client IdentityClient) deleteCustomerSecretKey(ctx context.Context, reques
 
 // DeleteDbCredential Deletes the specified DB credential for the specified user.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/DeleteDbCredential.go.html to see an example of how to use DeleteDbCredential API.
 // A default retry strategy applies to this operation DeleteDbCredential()
@@ -2814,7 +2948,7 @@ func (client IdentityClient) deleteDbCredential(ctx context.Context, request com
 // To track the progress of the request, submitting an HTTP GET on the /iamWorkRequests/{iamWorkRequestsId} endpoint retrieves
 // the operation's status.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/DeleteDomain.go.html to see an example of how to use DeleteDomain API.
 // A default retry strategy applies to this operation DeleteDomain()
@@ -2872,7 +3006,7 @@ func (client IdentityClient) deleteDomain(ctx context.Context, request common.OC
 
 // DeleteDynamicGroup Deletes the specified dynamic group.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/DeleteDynamicGroup.go.html to see an example of how to use DeleteDynamicGroup API.
 // A default retry strategy applies to this operation DeleteDynamicGroup()
@@ -2930,7 +3064,7 @@ func (client IdentityClient) deleteDynamicGroup(ctx context.Context, request com
 
 // DeleteGroup Deletes the specified group. The group must be empty.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/DeleteGroup.go.html to see an example of how to use DeleteGroup API.
 // A default retry strategy applies to this operation DeleteGroup()
@@ -2990,7 +3124,7 @@ func (client IdentityClient) deleteGroup(ctx context.Context, request common.OCI
 // Deletes the specified identity provider. The identity provider must not have
 // any group mappings (see IdpGroupMapping).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/DeleteIdentityProvider.go.html to see an example of how to use DeleteIdentityProvider API.
 // A default retry strategy applies to this operation DeleteIdentityProvider()
@@ -3049,7 +3183,7 @@ func (client IdentityClient) deleteIdentityProvider(ctx context.Context, request
 // DeleteIdpGroupMapping **Deprecated.** For more information, see Deprecated IAM Service APIs (https://docs.cloud.oracle.com/Content/Identity/Reference/deprecatediamapis.htm).
 // Deletes the specified group mapping.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/DeleteIdpGroupMapping.go.html to see an example of how to use DeleteIdpGroupMapping API.
 // A default retry strategy applies to this operation DeleteIdpGroupMapping()
@@ -3107,7 +3241,7 @@ func (client IdentityClient) deleteIdpGroupMapping(ctx context.Context, request 
 
 // DeleteMfaTotpDevice Deletes the specified MFA TOTP device for the specified user.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/DeleteMfaTotpDevice.go.html to see an example of how to use DeleteMfaTotpDevice API.
 // A default retry strategy applies to this operation DeleteMfaTotpDevice()
@@ -3165,7 +3299,7 @@ func (client IdentityClient) deleteMfaTotpDevice(ctx context.Context, request co
 
 // DeleteNetworkSource Deletes the specified network source.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/DeleteNetworkSource.go.html to see an example of how to use DeleteNetworkSource API.
 // A default retry strategy applies to this operation DeleteNetworkSource()
@@ -3223,7 +3357,7 @@ func (client IdentityClient) deleteNetworkSource(ctx context.Context, request co
 
 // DeleteOAuthClientCredential Delete Oauth token for the user
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/DeleteOAuthClientCredential.go.html to see an example of how to use DeleteOAuthClientCredential API.
 // A default retry strategy applies to this operation DeleteOAuthClientCredential()
@@ -3281,7 +3415,7 @@ func (client IdentityClient) deleteOAuthClientCredential(ctx context.Context, re
 
 // DeletePolicy Deletes the specified policy. The deletion takes effect typically within 10 seconds.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/DeletePolicy.go.html to see an example of how to use DeletePolicy API.
 // A default retry strategy applies to this operation DeletePolicy()
@@ -3339,7 +3473,7 @@ func (client IdentityClient) deletePolicy(ctx context.Context, request common.OC
 
 // DeleteSmtpCredential Deletes the specified SMTP credential for the specified user.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/DeleteSmtpCredential.go.html to see an example of how to use DeleteSmtpCredential API.
 // A default retry strategy applies to this operation DeleteSmtpCredential()
@@ -3398,7 +3532,7 @@ func (client IdentityClient) deleteSmtpCredential(ctx context.Context, request c
 // DeleteSwiftPassword **Deprecated. Use DeleteAuthToken instead.**
 // Deletes the specified Swift password for the specified user.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/DeleteSwiftPassword.go.html to see an example of how to use DeleteSwiftPassword API.
 // A default retry strategy applies to this operation DeleteSwiftPassword()
@@ -3457,11 +3591,11 @@ func (client IdentityClient) deleteSwiftPassword(ctx context.Context, request co
 // DeleteTag Deletes the specified tag definition. This operation triggers a process that removes the
 // tag from all resources in your tenancy.
 // These things happen immediately:
+//   - If the tag was a cost-tracking tag, it no longer counts against your 10 cost-tracking
+//     tags limit, whether you first disabled it or not.
+//   - If the tag was used with dynamic groups, none of the rules that contain the tag will
+//     be evaluated against the tag.
 //
-//   * If the tag was a cost-tracking tag, it no longer counts against your 10 cost-tracking
-//   tags limit, whether you first disabled it or not.
-//   * If the tag was used with dynamic groups, none of the rules that contain the tag will
-//   be evaluated against the tag.
 // When you start the delete operation, the state of the tag changes to DELETING and tag removal
 // from resources begins. This can take up to 48 hours depending on the number of resources that
 // were tagged as well as the regions in which those resources reside.
@@ -3471,7 +3605,7 @@ func (client IdentityClient) deleteSwiftPassword(ctx context.Context, request co
 // To delete a tag, you must first retire it. Use UpdateTag
 // to retire a tag.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/DeleteTag.go.html to see an example of how to use DeleteTag API.
 // A default retry strategy applies to this operation DeleteTag()
@@ -3529,7 +3663,7 @@ func (client IdentityClient) deleteTag(ctx context.Context, request common.OCIRe
 
 // DeleteTagDefault Deletes the the specified tag default.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/DeleteTagDefault.go.html to see an example of how to use DeleteTagDefault API.
 // A default retry strategy applies to this operation DeleteTagDefault()
@@ -3591,7 +3725,7 @@ func (client IdentityClient) deleteTagDefault(ctx context.Context, request commo
 // the tag definitions contained within that namespace.
 // Use DeleteTag to delete a tag definition.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/DeleteTagNamespace.go.html to see an example of how to use DeleteTagNamespace API.
 // A default retry strategy applies to this operation DeleteTagNamespace()
@@ -3649,7 +3783,7 @@ func (client IdentityClient) deleteTagNamespace(ctx context.Context, request com
 
 // DeleteUser Deletes the specified user. The user must not be in any groups.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/DeleteUser.go.html to see an example of how to use DeleteUser API.
 // A default retry strategy applies to this operation DeleteUser()
@@ -3714,7 +3848,7 @@ func (client IdentityClient) deleteUser(ctx context.Context, request common.OCIR
 // To track the progress of the request, submitting an HTTP GET on the /iamWorkRequests/{iamWorkRequestsId} endpoint retrieves
 // the operation's status.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/EnableReplicationToRegion.go.html to see an example of how to use EnableReplicationToRegion API.
 // A default retry strategy applies to this operation EnableReplicationToRegion()
@@ -3778,7 +3912,7 @@ func (client IdentityClient) enableReplicationToRegion(ctx context.Context, requ
 
 // GenerateTotpSeed Generate seed for the MFA TOTP device.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/GenerateTotpSeed.go.html to see an example of how to use GenerateTotpSeed API.
 // A default retry strategy applies to this operation GenerateTotpSeed()
@@ -3835,10 +3969,10 @@ func (client IdentityClient) generateTotpSeed(ctx context.Context, request commo
 	return response, err
 }
 
-// GetAuthenticationPolicy Gets the authentication policy for the given tenancy. You must specify your tenant’s OCID as the value for
+// GetAuthenticationPolicy Gets the authentication policy for the given tenancy. You must specify your tenant's OCID as the value for
 // the compartment ID (remember that the tenancy is simply the root compartment).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/GetAuthenticationPolicy.go.html to see an example of how to use GetAuthenticationPolicy API.
 // A default retry strategy applies to this operation GetAuthenticationPolicy()
@@ -3902,7 +4036,7 @@ func (client IdentityClient) getAuthenticationPolicy(ctx context.Context, reques
 // call the ListInstances operation in the Cloud Compute
 // Service or the ListVolumes operation in Cloud Block Storage.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/GetCompartment.go.html to see an example of how to use GetCompartment API.
 // A default retry strategy applies to this operation GetCompartment()
@@ -3960,7 +4094,7 @@ func (client IdentityClient) getCompartment(ctx context.Context, request common.
 
 // GetDomain (For tenancies that support identity domains) Gets the specified identity domain's information.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/GetDomain.go.html to see an example of how to use GetDomain API.
 // A default retry strategy applies to this operation GetDomain()
@@ -4018,7 +4152,7 @@ func (client IdentityClient) getDomain(ctx context.Context, request common.OCIRe
 
 // GetDynamicGroup Gets the specified dynamic group's information.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/GetDynamicGroup.go.html to see an example of how to use GetDynamicGroup API.
 // A default retry strategy applies to this operation GetDynamicGroup()
@@ -4079,7 +4213,7 @@ func (client IdentityClient) getDynamicGroup(ctx context.Context, request common
 // ListUserGroupMemberships and
 // provide the group's OCID as a query parameter in the request.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/GetGroup.go.html to see an example of how to use GetGroup API.
 // A default retry strategy applies to this operation GetGroup()
@@ -4137,7 +4271,7 @@ func (client IdentityClient) getGroup(ctx context.Context, request common.OCIReq
 
 // GetIamWorkRequest Gets the details of a specified IAM work request. The workRequestID is returned in the opc-workrequest-id header for any asynchronous operation in the Identity and Access Management service.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/GetIamWorkRequest.go.html to see an example of how to use GetIamWorkRequest API.
 // A default retry strategy applies to this operation GetIamWorkRequest()
@@ -4196,7 +4330,7 @@ func (client IdentityClient) getIamWorkRequest(ctx context.Context, request comm
 // GetIdentityProvider **Deprecated.** For more information, see Deprecated IAM Service APIs (https://docs.cloud.oracle.com/Content/Identity/Reference/deprecatediamapis.htm).
 // Gets the specified identity provider's information.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/GetIdentityProvider.go.html to see an example of how to use GetIdentityProvider API.
 // A default retry strategy applies to this operation GetIdentityProvider()
@@ -4255,7 +4389,7 @@ func (client IdentityClient) getIdentityProvider(ctx context.Context, request co
 // GetIdpGroupMapping **Deprecated.** For more information, see Deprecated IAM Service APIs (https://docs.cloud.oracle.com/Content/Identity/Reference/deprecatediamapis.htm).
 // Gets the specified group mapping.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/GetIdpGroupMapping.go.html to see an example of how to use GetIdpGroupMapping API.
 // A default retry strategy applies to this operation GetIdpGroupMapping()
@@ -4313,7 +4447,7 @@ func (client IdentityClient) getIdpGroupMapping(ctx context.Context, request com
 
 // GetMfaTotpDevice Get the specified MFA TOTP device for the specified user.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/GetMfaTotpDevice.go.html to see an example of how to use GetMfaTotpDevice API.
 // A default retry strategy applies to this operation GetMfaTotpDevice()
@@ -4371,7 +4505,7 @@ func (client IdentityClient) getMfaTotpDevice(ctx context.Context, request commo
 
 // GetNetworkSource Gets the specified network source's information.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/GetNetworkSource.go.html to see an example of how to use GetNetworkSource API.
 // A default retry strategy applies to this operation GetNetworkSource()
@@ -4429,7 +4563,7 @@ func (client IdentityClient) getNetworkSource(ctx context.Context, request commo
 
 // GetPolicy Gets the specified policy's information.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/GetPolicy.go.html to see an example of how to use GetPolicy API.
 // A default retry strategy applies to this operation GetPolicy()
@@ -4487,7 +4621,7 @@ func (client IdentityClient) getPolicy(ctx context.Context, request common.OCIRe
 
 // GetStandardTagTemplate Retrieve the standard tag namespace template given the standard tag namespace name.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/GetStandardTagTemplate.go.html to see an example of how to use GetStandardTagTemplate API.
 // A default retry strategy applies to this operation GetStandardTagTemplate()
@@ -4545,7 +4679,7 @@ func (client IdentityClient) getStandardTagTemplate(ctx context.Context, request
 
 // GetTag Gets the specified tag's information.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/GetTag.go.html to see an example of how to use GetTag API.
 // A default retry strategy applies to this operation GetTag()
@@ -4603,7 +4737,7 @@ func (client IdentityClient) getTag(ctx context.Context, request common.OCIReque
 
 // GetTagDefault Retrieves the specified tag default.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/GetTagDefault.go.html to see an example of how to use GetTagDefault API.
 // A default retry strategy applies to this operation GetTagDefault()
@@ -4661,7 +4795,7 @@ func (client IdentityClient) getTagDefault(ctx context.Context, request common.O
 
 // GetTagNamespace Gets the specified tag namespace's information.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/GetTagNamespace.go.html to see an example of how to use GetTagNamespace API.
 // A default retry strategy applies to this operation GetTagNamespace()
@@ -4720,7 +4854,7 @@ func (client IdentityClient) getTagNamespace(ctx context.Context, request common
 // GetTaggingWorkRequest Gets details on a specified work request. The workRequestID is returned in the opc-workrequest-id header
 // for any asynchronous operation in tagging service.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/GetTaggingWorkRequest.go.html to see an example of how to use GetTaggingWorkRequest API.
 // A default retry strategy applies to this operation GetTaggingWorkRequest()
@@ -4778,7 +4912,7 @@ func (client IdentityClient) getTaggingWorkRequest(ctx context.Context, request 
 
 // GetTenancy Get the specified tenancy's information.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/GetTenancy.go.html to see an example of how to use GetTenancy API.
 // A default retry strategy applies to this operation GetTenancy()
@@ -4836,7 +4970,7 @@ func (client IdentityClient) getTenancy(ctx context.Context, request common.OCIR
 
 // GetUser Gets the specified user's information.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/GetUser.go.html to see an example of how to use GetUser API.
 // A default retry strategy applies to this operation GetUser()
@@ -4894,7 +5028,7 @@ func (client IdentityClient) getUser(ctx context.Context, request common.OCIRequ
 
 // GetUserGroupMembership Gets the specified UserGroupMembership's information.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/GetUserGroupMembership.go.html to see an example of how to use GetUserGroupMembership API.
 // A default retry strategy applies to this operation GetUserGroupMembership()
@@ -4953,7 +5087,7 @@ func (client IdentityClient) getUserGroupMembership(ctx context.Context, request
 // GetUserUIPasswordInformation Gets the specified user's console password information. The returned object contains the user's OCID,
 // but not the password itself. The actual password is returned only when created or reset.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/GetUserUIPasswordInformation.go.html to see an example of how to use GetUserUIPasswordInformation API.
 // A default retry strategy applies to this operation GetUserUIPasswordInformation()
@@ -5012,7 +5146,7 @@ func (client IdentityClient) getUserUIPasswordInformation(ctx context.Context, r
 // GetWorkRequest Gets details on a specified work request. The workRequestID is returned in the opc-workrequest-id header
 // for any asynchronous operation in the compartment service.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/GetWorkRequest.go.html to see an example of how to use GetWorkRequest API.
 // A default retry strategy applies to this operation GetWorkRequest()
@@ -5071,7 +5205,7 @@ func (client IdentityClient) getWorkRequest(ctx context.Context, request common.
 // ImportStandardTags OCI will release Tag Namespaces that our customers can import.
 // These Tag Namespaces will provide Tags for our customers and Partners to provide consistency and enable data reporting.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ImportStandardTags.go.html to see an example of how to use ImportStandardTags API.
 // A default retry strategy applies to this operation ImportStandardTags()
@@ -5138,7 +5272,7 @@ func (client IdentityClient) importStandardTags(ctx context.Context, request com
 // If `currentLicenseTypeName` is provided, then the request returns license types that the identity domain with the specified license
 // type name can change to. Otherwise, the request returns all valid license types currently supported.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListAllowedDomainLicenseTypes.go.html to see an example of how to use ListAllowedDomainLicenseTypes API.
 // A default retry strategy applies to this operation ListAllowedDomainLicenseTypes()
@@ -5198,7 +5332,7 @@ func (client IdentityClient) listAllowedDomainLicenseTypes(ctx context.Context, 
 // Every user has permission to use this API call for *their own user ID*.  An administrator in your
 // organization does not need to write a policy to give users this ability.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListApiKeys.go.html to see an example of how to use ListApiKeys API.
 // A default retry strategy applies to this operation ListApiKeys()
@@ -5257,7 +5391,7 @@ func (client IdentityClient) listApiKeys(ctx context.Context, request common.OCI
 // ListAuthTokens Lists the auth tokens for the specified user. The returned object contains the token's OCID, but not
 // the token itself. The actual token is returned only upon creation.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListAuthTokens.go.html to see an example of how to use ListAuthTokens API.
 // A default retry strategy applies to this operation ListAuthTokens()
@@ -5319,7 +5453,7 @@ func (client IdentityClient) listAuthTokens(ctx context.Context, request common.
 // Note that the order of the results returned can change if availability domains are added or removed; therefore, do not
 // create a dependency on the list order.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListAvailabilityDomains.go.html to see an example of how to use ListAvailabilityDomains API.
 // A default retry strategy applies to this operation ListAvailabilityDomains()
@@ -5383,7 +5517,7 @@ func (client IdentityClient) listAvailabilityDomains(ctx context.Context, reques
 // require an OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) to identify a specific resource, but some resource-types,
 // such as buckets, require you to provide other identifying information.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListBulkActionResourceTypes.go.html to see an example of how to use ListBulkActionResourceTypes API.
 // A default retry strategy applies to this operation ListBulkActionResourceTypes()
@@ -5441,7 +5575,7 @@ func (client IdentityClient) listBulkActionResourceTypes(ctx context.Context, re
 
 // ListBulkEditTagsResourceTypes Lists the resource types that support bulk tag editing.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListBulkEditTagsResourceTypes.go.html to see an example of how to use ListBulkEditTagsResourceTypes API.
 // A default retry strategy applies to this operation ListBulkEditTagsResourceTypes()
@@ -5512,7 +5646,7 @@ func (client IdentityClient) listBulkEditTagsResourceTypes(ctx context.Context, 
 // set the parameter `compartmentIdInSubtree` to true and `accessLevel` to ANY.
 // See Where to Get the Tenancy's OCID and User's OCID (https://docs.cloud.oracle.com/Content/API/Concepts/apisigningkey.htm#five).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListCompartments.go.html to see an example of how to use ListCompartments API.
 // A default retry strategy applies to this operation ListCompartments()
@@ -5571,7 +5705,7 @@ func (client IdentityClient) listCompartments(ctx context.Context, request commo
 // ListCostTrackingTags Lists all the tags enabled for cost-tracking in the specified tenancy. For information about
 // cost-tracking tags, see Using Cost-tracking Tags (https://docs.cloud.oracle.com/Content/Tagging/Tasks/usingcosttrackingtags.htm).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListCostTrackingTags.go.html to see an example of how to use ListCostTrackingTags API.
 // A default retry strategy applies to this operation ListCostTrackingTags()
@@ -5630,7 +5764,7 @@ func (client IdentityClient) listCostTrackingTags(ctx context.Context, request c
 // ListCustomerSecretKeys Lists the secret keys for the specified user. The returned object contains the secret key's OCID, but not
 // the secret key itself. The actual secret key is returned only upon creation.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListCustomerSecretKeys.go.html to see an example of how to use ListCustomerSecretKeys API.
 // A default retry strategy applies to this operation ListCustomerSecretKeys()
@@ -5688,7 +5822,7 @@ func (client IdentityClient) listCustomerSecretKeys(ctx context.Context, request
 
 // ListDbCredentials Lists the DB credentials for the specified user. The returned object contains the credential's OCID
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListDbCredentials.go.html to see an example of how to use ListDbCredentials API.
 // A default retry strategy applies to this operation ListDbCredentials()
@@ -5746,7 +5880,7 @@ func (client IdentityClient) listDbCredentials(ctx context.Context, request comm
 
 // ListDomains (For tenancies that support identity domains) Lists all identity domains within a tenancy.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListDomains.go.html to see an example of how to use ListDomains API.
 // A default retry strategy applies to this operation ListDomains()
@@ -5806,7 +5940,7 @@ func (client IdentityClient) listDomains(ctx context.Context, request common.OCI
 // the compartment ID (remember that the tenancy is simply the root compartment).
 // See Where to Get the Tenancy's OCID and User's OCID (https://docs.cloud.oracle.com/Content/API/Concepts/apisigningkey.htm#five).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListDynamicGroups.go.html to see an example of how to use ListDynamicGroups API.
 // A default retry strategy applies to this operation ListDynamicGroups()
@@ -5866,7 +6000,7 @@ func (client IdentityClient) listDynamicGroups(ctx context.Context, request comm
 // of your compartments as the value for the compartment ID (remember that the tenancy is simply the root compartment).
 // See Where to Get the Tenancy's OCID and User's OCID (https://docs.cloud.oracle.com/Content/API/Concepts/apisigningkey.htm#five).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListFaultDomains.go.html to see an example of how to use ListFaultDomains API.
 // A default retry strategy applies to this operation ListFaultDomains()
@@ -5926,7 +6060,7 @@ func (client IdentityClient) listFaultDomains(ctx context.Context, request commo
 // the compartment ID (remember that the tenancy is simply the root compartment).
 // See Where to Get the Tenancy's OCID and User's OCID (https://docs.cloud.oracle.com/Content/API/Concepts/apisigningkey.htm#five).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListGroups.go.html to see an example of how to use ListGroups API.
 // A default retry strategy applies to this operation ListGroups()
@@ -5984,7 +6118,7 @@ func (client IdentityClient) listGroups(ctx context.Context, request common.OCIR
 
 // ListIamWorkRequestErrors Gets error details for a specified IAM work request. The workRequestID is returned in the opc-workrequest-id header for any asynchronous operation in the Identity and Access Management service.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListIamWorkRequestErrors.go.html to see an example of how to use ListIamWorkRequestErrors API.
 // A default retry strategy applies to this operation ListIamWorkRequestErrors()
@@ -6042,7 +6176,7 @@ func (client IdentityClient) listIamWorkRequestErrors(ctx context.Context, reque
 
 // ListIamWorkRequestLogs Gets logs for a specified IAM work request. The workRequestID is returned in the opc-workrequest-id header for any asynchronous operation in the Identity and Access Management service.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListIamWorkRequestLogs.go.html to see an example of how to use ListIamWorkRequestLogs API.
 // A default retry strategy applies to this operation ListIamWorkRequestLogs()
@@ -6100,7 +6234,7 @@ func (client IdentityClient) listIamWorkRequestLogs(ctx context.Context, request
 
 // ListIamWorkRequests Lists the IAM work requests in compartment. The workRequestID is returned in the opc-workrequest-id header for any asynchronous operation in the Identity and Access Management service.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListIamWorkRequests.go.html to see an example of how to use ListIamWorkRequests API.
 // A default retry strategy applies to this operation ListIamWorkRequests()
@@ -6159,7 +6293,7 @@ func (client IdentityClient) listIamWorkRequests(ctx context.Context, request co
 // ListIdentityProviderGroups **Deprecated.** For more information, see Deprecated IAM Service APIs (https://docs.cloud.oracle.com/Content/Identity/Reference/deprecatediamapis.htm).
 // Lists the identity provider groups.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListIdentityProviderGroups.go.html to see an example of how to use ListIdentityProviderGroups API.
 // A default retry strategy applies to this operation ListIdentityProviderGroups()
@@ -6215,10 +6349,10 @@ func (client IdentityClient) listIdentityProviderGroups(ctx context.Context, req
 	return response, err
 }
 
-//listidentityprovider allows to unmarshal list of polymorphic IdentityProvider
+// listidentityprovider allows to unmarshal list of polymorphic IdentityProvider
 type listidentityprovider []identityprovider
 
-//UnmarshalPolymorphicJSON unmarshals polymorphic json list of items
+// UnmarshalPolymorphicJSON unmarshals polymorphic json list of items
 func (m *listidentityprovider) UnmarshalPolymorphicJSON(data []byte) (interface{}, error) {
 	res := make([]IdentityProvider, len(*m))
 	for i, v := range *m {
@@ -6237,7 +6371,7 @@ func (m *listidentityprovider) UnmarshalPolymorphicJSON(data []byte) (interface{
 // compartment ID (remember that the tenancy is simply the root compartment).
 // See Where to Get the Tenancy's OCID and User's OCID (https://docs.cloud.oracle.com/Content/API/Concepts/apisigningkey.htm#five).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListIdentityProviders.go.html to see an example of how to use ListIdentityProviders API.
 // A default retry strategy applies to this operation ListIdentityProviders()
@@ -6296,7 +6430,7 @@ func (client IdentityClient) listIdentityProviders(ctx context.Context, request 
 // ListIdpGroupMappings **Deprecated.** For more information, see Deprecated IAM Service APIs (https://docs.cloud.oracle.com/Content/Identity/Reference/deprecatediamapis.htm).
 // Lists the group mappings for the specified identity provider.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListIdpGroupMappings.go.html to see an example of how to use ListIdpGroupMappings API.
 // A default retry strategy applies to this operation ListIdpGroupMappings()
@@ -6355,7 +6489,7 @@ func (client IdentityClient) listIdpGroupMappings(ctx context.Context, request c
 // ListMfaTotpDevices Lists the MFA TOTP devices for the specified user. The returned object contains the device's OCID, but not
 // the seed. The seed is returned only upon creation or when the IAM service regenerates the MFA seed for the device.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListMfaTotpDevices.go.html to see an example of how to use ListMfaTotpDevices API.
 // A default retry strategy applies to this operation ListMfaTotpDevices()
@@ -6415,7 +6549,7 @@ func (client IdentityClient) listMfaTotpDevices(ctx context.Context, request com
 // the compartment ID (remember that the tenancy is simply the root compartment).
 // See Where to Get the Tenancy's OCID and User's OCID (https://docs.cloud.oracle.com/Content/API/Concepts/apisigningkey.htm#five).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListNetworkSources.go.html to see an example of how to use ListNetworkSources API.
 // A default retry strategy applies to this operation ListNetworkSources()
@@ -6473,7 +6607,7 @@ func (client IdentityClient) listNetworkSources(ctx context.Context, request com
 
 // ListOAuthClientCredentials List of Oauth tokens for the user
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListOAuthClientCredentials.go.html to see an example of how to use ListOAuthClientCredentials API.
 // A default retry strategy applies to this operation ListOAuthClientCredentials()
@@ -6534,7 +6668,7 @@ func (client IdentityClient) listOAuthClientCredentials(ctx context.Context, req
 // To determine which policies apply to a particular group or compartment, you must view the individual
 // statements inside all your policies. There isn't a way to automatically obtain that information via the API.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListPolicies.go.html to see an example of how to use ListPolicies API.
 // A default retry strategy applies to this operation ListPolicies()
@@ -6592,7 +6726,7 @@ func (client IdentityClient) listPolicies(ctx context.Context, request common.OC
 
 // ListRegionSubscriptions Lists the region subscriptions for the specified tenancy.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListRegionSubscriptions.go.html to see an example of how to use ListRegionSubscriptions API.
 // A default retry strategy applies to this operation ListRegionSubscriptions()
@@ -6650,7 +6784,7 @@ func (client IdentityClient) listRegionSubscriptions(ctx context.Context, reques
 
 // ListRegions Lists all the regions offered by Oracle Cloud Infrastructure.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListRegions.go.html to see an example of how to use ListRegions API.
 // A default retry strategy applies to this operation ListRegions()
@@ -6699,7 +6833,7 @@ func (client IdentityClient) listRegions(ctx context.Context) (common.OCIRespons
 // ListSmtpCredentials Lists the SMTP credentials for the specified user. The returned object contains the credential's OCID,
 // the SMTP user name but not the SMTP password. The SMTP password is returned only upon creation.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListSmtpCredentials.go.html to see an example of how to use ListSmtpCredentials API.
 // A default retry strategy applies to this operation ListSmtpCredentials()
@@ -6757,7 +6891,7 @@ func (client IdentityClient) listSmtpCredentials(ctx context.Context, request co
 
 // ListStandardTagNamespaces Lists available standard tag namespaces that users can create.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListStandardTagNamespaces.go.html to see an example of how to use ListStandardTagNamespaces API.
 // A default retry strategy applies to this operation ListStandardTagNamespaces()
@@ -6817,7 +6951,7 @@ func (client IdentityClient) listStandardTagNamespaces(ctx context.Context, requ
 // Lists the Swift passwords for the specified user. The returned object contains the password's OCID, but not
 // the password itself. The actual password is returned only upon creation.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListSwiftPasswords.go.html to see an example of how to use ListSwiftPasswords API.
 // A default retry strategy applies to this operation ListSwiftPasswords()
@@ -6875,7 +7009,7 @@ func (client IdentityClient) listSwiftPasswords(ctx context.Context, request com
 
 // ListTagDefaults Lists the tag defaults for tag definitions in the specified compartment.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListTagDefaults.go.html to see an example of how to use ListTagDefaults API.
 // A default retry strategy applies to this operation ListTagDefaults()
@@ -6933,7 +7067,7 @@ func (client IdentityClient) listTagDefaults(ctx context.Context, request common
 
 // ListTagNamespaces Lists the tag namespaces in the specified compartment.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListTagNamespaces.go.html to see an example of how to use ListTagNamespaces API.
 // A default retry strategy applies to this operation ListTagNamespaces()
@@ -6991,7 +7125,7 @@ func (client IdentityClient) listTagNamespaces(ctx context.Context, request comm
 
 // ListTaggingWorkRequestErrors Gets the errors for a work request.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListTaggingWorkRequestErrors.go.html to see an example of how to use ListTaggingWorkRequestErrors API.
 // A default retry strategy applies to this operation ListTaggingWorkRequestErrors()
@@ -7049,7 +7183,7 @@ func (client IdentityClient) listTaggingWorkRequestErrors(ctx context.Context, r
 
 // ListTaggingWorkRequestLogs Gets the logs for a work request.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListTaggingWorkRequestLogs.go.html to see an example of how to use ListTaggingWorkRequestLogs API.
 // A default retry strategy applies to this operation ListTaggingWorkRequestLogs()
@@ -7107,7 +7241,7 @@ func (client IdentityClient) listTaggingWorkRequestLogs(ctx context.Context, req
 
 // ListTaggingWorkRequests Lists the tagging work requests in compartment.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListTaggingWorkRequests.go.html to see an example of how to use ListTaggingWorkRequests API.
 // A default retry strategy applies to this operation ListTaggingWorkRequests()
@@ -7165,7 +7299,7 @@ func (client IdentityClient) listTaggingWorkRequests(ctx context.Context, reques
 
 // ListTags Lists the tag definitions in the specified tag namespace.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListTags.go.html to see an example of how to use ListTags API.
 // A default retry strategy applies to this operation ListTags()
@@ -7231,7 +7365,7 @@ func (client IdentityClient) listTags(ctx context.Context, request common.OCIReq
 // If the answer is no, the response is an empty list.
 // - Although`userId` and `groupId` are not individually required, you must set one of them.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListUserGroupMemberships.go.html to see an example of how to use ListUserGroupMemberships API.
 // A default retry strategy applies to this operation ListUserGroupMemberships()
@@ -7291,7 +7425,7 @@ func (client IdentityClient) listUserGroupMemberships(ctx context.Context, reque
 // compartment ID (remember that the tenancy is simply the root compartment).
 // See Where to Get the Tenancy's OCID and User's OCID (https://docs.cloud.oracle.com/Content/API/Concepts/apisigningkey.htm#five).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListUsers.go.html to see an example of how to use ListUsers API.
 // A default retry strategy applies to this operation ListUsers()
@@ -7349,7 +7483,7 @@ func (client IdentityClient) listUsers(ctx context.Context, request common.OCIRe
 
 // ListWorkRequests Lists the work requests in compartment.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ListWorkRequests.go.html to see an example of how to use ListWorkRequests API.
 // A default retry strategy applies to this operation ListWorkRequests()
@@ -7413,7 +7547,7 @@ func (client IdentityClient) listWorkRequests(ctx context.Context, request commo
 // are aware of the implications for the compartment contents before you move it. For more
 // information, see Moving a Compartment (https://docs.cloud.oracle.com/Content/Identity/compartments/managingcompartments.htm#MoveCompartment).
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/MoveCompartment.go.html to see an example of how to use MoveCompartment API.
 // A default retry strategy applies to this operation MoveCompartment()
@@ -7477,7 +7611,7 @@ func (client IdentityClient) moveCompartment(ctx context.Context, request common
 
 // RecoverCompartment Recover the compartment from DELETED state to ACTIVE state.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/RecoverCompartment.go.html to see an example of how to use RecoverCompartment API.
 // A default retry strategy applies to this operation RecoverCompartment()
@@ -7534,9 +7668,137 @@ func (client IdentityClient) recoverCompartment(ctx context.Context, request com
 	return response, err
 }
 
+// RemoveTagDefaultLock Remove a resource lock from a tag default.
+//
+// # See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/RemoveTagDefaultLock.go.html to see an example of how to use RemoveTagDefaultLock API.
+// A default retry strategy applies to this operation RemoveTagDefaultLock()
+func (client IdentityClient) RemoveTagDefaultLock(ctx context.Context, request RemoveTagDefaultLockRequest) (response RemoveTagDefaultLockResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.DefaultRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.removeTagDefaultLock, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = RemoveTagDefaultLockResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = RemoveTagDefaultLockResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(RemoveTagDefaultLockResponse); ok {
+		common.EcContext.UpdateEndOfWindow(time.Duration(240 * time.Second))
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into RemoveTagDefaultLockResponse")
+	}
+	return
+}
+
+// removeTagDefaultLock implements the OCIOperation interface (enables retrying operations)
+func (client IdentityClient) removeTagDefaultLock(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/tagDefaults/{tagDefaultId}/actions/removeLock", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response RemoveTagDefaultLockResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		apiReferenceLink := "https://docs.oracle.com/iaas/api/#/en/identity/20160918/TagDefault/RemoveTagDefaultLock"
+		err = common.PostProcessServiceError(err, "Identity", "RemoveTagDefaultLock", apiReferenceLink)
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
+// RemoveTagNamespaceLock Remove a resource lock from a tag namespace.
+//
+// # See also
+//
+// Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/RemoveTagNamespaceLock.go.html to see an example of how to use RemoveTagNamespaceLock API.
+// A default retry strategy applies to this operation RemoveTagNamespaceLock()
+func (client IdentityClient) RemoveTagNamespaceLock(ctx context.Context, request RemoveTagNamespaceLockRequest) (response RemoveTagNamespaceLockResponse, err error) {
+	var ociResponse common.OCIResponse
+	policy := common.DefaultRetryPolicy()
+	if client.RetryPolicy() != nil {
+		policy = *client.RetryPolicy()
+	}
+	if request.RetryPolicy() != nil {
+		policy = *request.RetryPolicy()
+	}
+
+	if !(request.OpcRetryToken != nil && *request.OpcRetryToken != "") {
+		request.OpcRetryToken = common.String(common.RetryToken())
+	}
+
+	ociResponse, err = common.Retry(ctx, request, client.removeTagNamespaceLock, policy)
+	if err != nil {
+		if ociResponse != nil {
+			if httpResponse := ociResponse.HTTPResponse(); httpResponse != nil {
+				opcRequestId := httpResponse.Header.Get("opc-request-id")
+				response = RemoveTagNamespaceLockResponse{RawResponse: httpResponse, OpcRequestId: &opcRequestId}
+			} else {
+				response = RemoveTagNamespaceLockResponse{}
+			}
+		}
+		return
+	}
+	if convertedResponse, ok := ociResponse.(RemoveTagNamespaceLockResponse); ok {
+		common.EcContext.UpdateEndOfWindow(time.Duration(240 * time.Second))
+		response = convertedResponse
+	} else {
+		err = fmt.Errorf("failed to convert OCIResponse into RemoveTagNamespaceLockResponse")
+	}
+	return
+}
+
+// removeTagNamespaceLock implements the OCIOperation interface (enables retrying operations)
+func (client IdentityClient) removeTagNamespaceLock(ctx context.Context, request common.OCIRequest, binaryReqBody *common.OCIReadSeekCloser, extraHeaders map[string]string) (common.OCIResponse, error) {
+
+	httpRequest, err := request.HTTPRequest(http.MethodPost, "/tagNamespaces/{tagNamespaceId}/actions/removeLock", binaryReqBody, extraHeaders)
+	if err != nil {
+		return nil, err
+	}
+
+	var response RemoveTagNamespaceLockResponse
+	var httpResponse *http.Response
+	httpResponse, err = client.Call(ctx, &httpRequest)
+	defer common.CloseBodyIfValid(httpResponse)
+	response.RawResponse = httpResponse
+	if err != nil {
+		apiReferenceLink := "https://docs.oracle.com/iaas/api/#/en/identity/20160918/TagNamespace/RemoveTagNamespaceLock"
+		err = common.PostProcessServiceError(err, "Identity", "RemoveTagNamespaceLock", apiReferenceLink)
+		return response, err
+	}
+
+	err = common.UnmarshalResponse(httpResponse, &response)
+	return response, err
+}
+
 // RemoveUserFromGroup Removes a user from a group by deleting the corresponding `UserGroupMembership`.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/RemoveUserFromGroup.go.html to see an example of how to use RemoveUserFromGroup API.
 // A default retry strategy applies to this operation RemoveUserFromGroup()
@@ -7594,7 +7856,7 @@ func (client IdentityClient) removeUserFromGroup(ctx context.Context, request co
 
 // ResetIdpScimClient Resets the OAuth2 client credentials for the SCIM client associated with this identity provider.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/ResetIdpScimClient.go.html to see an example of how to use ResetIdpScimClient API.
 // A default retry strategy applies to this operation ResetIdpScimClient()
@@ -7653,7 +7915,7 @@ func (client IdentityClient) resetIdpScimClient(ctx context.Context, request com
 
 // UpdateAuthToken Updates the specified auth token's description.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/UpdateAuthToken.go.html to see an example of how to use UpdateAuthToken API.
 // A default retry strategy applies to this operation UpdateAuthToken()
@@ -7712,7 +7974,7 @@ func (client IdentityClient) updateAuthToken(ctx context.Context, request common
 
 // UpdateAuthenticationPolicy Updates authentication policy for the specified tenancy.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/UpdateAuthenticationPolicy.go.html to see an example of how to use UpdateAuthenticationPolicy API.
 // A default retry strategy applies to this operation UpdateAuthenticationPolicy()
@@ -7771,7 +8033,7 @@ func (client IdentityClient) updateAuthenticationPolicy(ctx context.Context, req
 
 // UpdateCompartment Updates the specified compartment's description or name. You can't update the root compartment.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/UpdateCompartment.go.html to see an example of how to use UpdateCompartment API.
 // A default retry strategy applies to this operation UpdateCompartment()
@@ -7830,7 +8092,7 @@ func (client IdentityClient) updateCompartment(ctx context.Context, request comm
 
 // UpdateCustomerSecretKey Updates the specified secret key's description.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/UpdateCustomerSecretKey.go.html to see an example of how to use UpdateCustomerSecretKey API.
 // A default retry strategy applies to this operation UpdateCustomerSecretKey()
@@ -7891,7 +8153,7 @@ func (client IdentityClient) updateCustomerSecretKey(ctx context.Context, reques
 // To track the progress of the request, submitting an HTTP GET on the /iamWorkRequests/{iamWorkRequestsId} endpoint retrieves
 // the operation's status.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/UpdateDomain.go.html to see an example of how to use UpdateDomain API.
 // A default retry strategy applies to this operation UpdateDomain()
@@ -7950,7 +8212,7 @@ func (client IdentityClient) updateDomain(ctx context.Context, request common.OC
 
 // UpdateDynamicGroup Updates the specified dynamic group.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/UpdateDynamicGroup.go.html to see an example of how to use UpdateDynamicGroup API.
 // A default retry strategy applies to this operation UpdateDynamicGroup()
@@ -8009,7 +8271,7 @@ func (client IdentityClient) updateDynamicGroup(ctx context.Context, request com
 
 // UpdateGroup Updates the specified group.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/UpdateGroup.go.html to see an example of how to use UpdateGroup API.
 // A default retry strategy applies to this operation UpdateGroup()
@@ -8069,7 +8331,7 @@ func (client IdentityClient) updateGroup(ctx context.Context, request common.OCI
 // UpdateIdentityProvider **Deprecated.** For more information, see Deprecated IAM Service APIs (https://docs.cloud.oracle.com/Content/Identity/Reference/deprecatediamapis.htm).
 // Updates the specified identity provider.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/UpdateIdentityProvider.go.html to see an example of how to use UpdateIdentityProvider API.
 // A default retry strategy applies to this operation UpdateIdentityProvider()
@@ -8129,7 +8391,7 @@ func (client IdentityClient) updateIdentityProvider(ctx context.Context, request
 // UpdateIdpGroupMapping **Deprecated.** For more information, see Deprecated IAM Service APIs (https://docs.cloud.oracle.com/Content/Identity/Reference/deprecatediamapis.htm).
 // Updates the specified group mapping.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/UpdateIdpGroupMapping.go.html to see an example of how to use UpdateIdpGroupMapping API.
 // A default retry strategy applies to this operation UpdateIdpGroupMapping()
@@ -8188,7 +8450,7 @@ func (client IdentityClient) updateIdpGroupMapping(ctx context.Context, request 
 
 // UpdateNetworkSource Updates the specified network source.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/UpdateNetworkSource.go.html to see an example of how to use UpdateNetworkSource API.
 // A default retry strategy applies to this operation UpdateNetworkSource()
@@ -8247,7 +8509,7 @@ func (client IdentityClient) updateNetworkSource(ctx context.Context, request co
 
 // UpdateOAuthClientCredential Updates Oauth token for the user
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/UpdateOAuthClientCredential.go.html to see an example of how to use UpdateOAuthClientCredential API.
 // A default retry strategy applies to this operation UpdateOAuthClientCredential()
@@ -8307,7 +8569,7 @@ func (client IdentityClient) updateOAuthClientCredential(ctx context.Context, re
 // UpdatePolicy Updates the specified policy. You can update the description or the policy statements themselves.
 // Policy changes take effect typically within 10 seconds.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/UpdatePolicy.go.html to see an example of how to use UpdatePolicy API.
 // A default retry strategy applies to this operation UpdatePolicy()
@@ -8366,7 +8628,7 @@ func (client IdentityClient) updatePolicy(ctx context.Context, request common.OC
 
 // UpdateSmtpCredential Updates the specified SMTP credential's description.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/UpdateSmtpCredential.go.html to see an example of how to use UpdateSmtpCredential API.
 // A default retry strategy applies to this operation UpdateSmtpCredential()
@@ -8426,7 +8688,7 @@ func (client IdentityClient) updateSmtpCredential(ctx context.Context, request c
 // UpdateSwiftPassword **Deprecated. Use UpdateAuthToken instead.**
 // Updates the specified Swift password's description.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/UpdateSwiftPassword.go.html to see an example of how to use UpdateSwiftPassword API.
 // A default retry strategy applies to this operation UpdateSwiftPassword()
@@ -8492,7 +8754,7 @@ func (client IdentityClient) updateSwiftPassword(ctx context.Context, request co
 // You cannot remove list values that appear in a TagDefault. To remove a list value that
 // appears in a TagDefault, first update the TagDefault to use a different value.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/UpdateTag.go.html to see an example of how to use UpdateTag API.
 // A default retry strategy applies to this operation UpdateTag()
@@ -8555,7 +8817,7 @@ func (client IdentityClient) updateTag(ctx context.Context, request common.OCIRe
 // * If the `isRequired` flag is set to "true", the value is set during resource creation.
 // * If the `isRequired` flag is set to "false", the value you enter is set during resource creation.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/UpdateTagDefault.go.html to see an example of how to use UpdateTagDefault API.
 // A default retry strategy applies to this operation UpdateTagDefault()
@@ -8620,7 +8882,7 @@ func (client IdentityClient) updateTagDefault(ctx context.Context, request commo
 // Retiring Key Definitions and Namespace Definitions (https://docs.cloud.oracle.com/Content/Tagging/Tasks/managingtagsandtagnamespaces.htm#retiringkeys).
 // You can't add a namespace with the same name as a retired namespace in the same tenancy.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/UpdateTagNamespace.go.html to see an example of how to use UpdateTagNamespace API.
 // A default retry strategy applies to this operation UpdateTagNamespace()
@@ -8679,7 +8941,7 @@ func (client IdentityClient) updateTagNamespace(ctx context.Context, request com
 
 // UpdateUser Updates the description of the specified user.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/UpdateUser.go.html to see an example of how to use UpdateUser API.
 // A default retry strategy applies to this operation UpdateUser()
@@ -8738,7 +9000,7 @@ func (client IdentityClient) updateUser(ctx context.Context, request common.OCIR
 
 // UpdateUserCapabilities Updates the capabilities of the specified user.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/UpdateUserCapabilities.go.html to see an example of how to use UpdateUserCapabilities API.
 // A default retry strategy applies to this operation UpdateUserCapabilities()
@@ -8797,7 +9059,7 @@ func (client IdentityClient) updateUserCapabilities(ctx context.Context, request
 
 // UpdateUserState Updates the state of the specified user.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/UpdateUserState.go.html to see an example of how to use UpdateUserState API.
 // A default retry strategy applies to this operation UpdateUserState()
@@ -8867,7 +9129,7 @@ func (client IdentityClient) updateUserState(ctx context.Context, request common
 // After you send your request, the new object's `lifecycleState` will temporarily be CREATING. Before using
 // the object, first make sure its `lifecycleState` has changed to ACTIVE.
 //
-// See also
+// # See also
 //
 // Click https://docs.cloud.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/identity/UploadApiKey.go.html to see an example of how to use UploadApiKey API.
 // A default retry strategy applies to this operation UploadApiKey()

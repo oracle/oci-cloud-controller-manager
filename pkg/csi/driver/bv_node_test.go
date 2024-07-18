@@ -1,6 +1,22 @@
+// Copyright 2020 Oracle and/or its affiliates. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package driver
 
-import "testing"
+import (
+	"testing"
+)
 
 func Test_getDevicePathAndAttachmentType(t *testing.T) {
 	type args struct {
@@ -39,6 +55,13 @@ func Test_getDevicePathAndAttachmentType(t *testing.T) {
 			args{path: []string{"/dev/disk/by-path/ip-169.254.2.19:3260-iscsi-iqn.2015-12.com.oracleiaas:d0ee92cb-5220-423e-b029-07ae2b2ff08f-lun-1"}},
 			"iscsi",
 			"/dev/disk/by-path/ip-169.254.2.19:3260-iscsi-iqn.2015-12.com.oracleiaas:d0ee92cb-5220-423e-b029-07ae2b2ff08f-lun-1",
+			false,
+		},
+		{
+			"Testing UHP volume multidevice path",
+			args{path: []string{"/dev/mapper/mpathd"}},
+			"iscsi",
+			"/dev/mapper/mpathd",
 			false,
 		},
 	}

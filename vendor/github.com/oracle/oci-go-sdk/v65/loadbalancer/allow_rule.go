@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -24,9 +24,9 @@ import (
 // *  If you add access control rules, the load balancer denies any traffic that does not match the rules.
 // *  Maximum of two match conditions can be specified in a rule.
 // *  You can specify this rule only with the following `RuleCondition` combinations:
-//     *  `SOURCE_IP_ADDRESS`
-//     *  `SOURCE_VCN_ID`
-//     *  `SOURCE_VCN_ID", "SOURCE_VCN_IP_ADDRESS`
+//   - `SOURCE_IP_ADDRESS`
+//   - `SOURCE_VCN_ID`
+//   - `SOURCE_VCN_ID", "SOURCE_VCN_IP_ADDRESS`
 type AllowRule struct {
 	Conditions []RuleCondition `mandatory:"true" json:"conditions"`
 
@@ -91,6 +91,5 @@ func (m *AllowRule) UnmarshalJSON(data []byte) (e error) {
 			m.Conditions[i] = nil
 		}
 	}
-
 	return
 }

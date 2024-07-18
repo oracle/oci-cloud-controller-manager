@@ -48,7 +48,10 @@ export CMEK_KMS_KEY=""
 # CCM E2E tests require two NSGs to run successfully. Please create two NSGs in the cluster's VCN and set NSG_OCIDS
 # NSG_OCIDS example ocid1.networksecuritygroup.relm.region.aa...aa,ocid1.networksecuritygroup.relm.region.aa...aa
 # Mandatory
-export NSG_OCIDS=""
+export NSG_OCIDS=","
+
+# NSG Network security group created in cluster's VCN for backend management, this NSG will have to be attached to the nodes manually for tests to pass
+export BACKEND_NSG_OCIDS=""
 
 # FSS VOLUME HANDLE in the format filesystem_ocid:mountTargetIP:export_path
 # Make sure fss volume handle is in the same subnet as your nodes
@@ -70,3 +73,10 @@ export FSS_VOLUME_HANDLE=""
 export MNT_TARGET_ID=""
 export MNT_TARGET_SUBNET_ID=""
 export MNT_TARGET_COMPARTMENT_ID=""
+
+export STATIC_SNAPSHOT_COMPARTMENT_ID=""
+
+# Whether to run UHP E2Es or not, requires Volume Management Plugin enabled on the node and 16+ cores
+# Check the following doc for the exact requirements:
+# https://docs.oracle.com/en-us/iaas/Content/Block/Concepts/blockvolumeperformance.htm#shapes_block_details
+export RUN_UHP_E2E="false"

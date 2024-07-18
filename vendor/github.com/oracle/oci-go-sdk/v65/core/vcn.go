@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -9,6 +9,8 @@
 // documentation for the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
 // Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
 // Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
+// The required permissions are documented in the
+// Details for the Core Services (https://docs.cloud.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
 //
 
 package core
@@ -42,10 +44,10 @@ type Vcn struct {
 	// The VCN's current state.
 	LifecycleState VcnLifecycleStateEnum `mandatory:"true" json:"lifecycleState"`
 
-	// The list of BYOIPv6 CIDR blocks required to create a VCN that uses BYOIPv6 ranges.
+	// The list of BYOIPv6 prefixes required to create a VCN that uses BYOIPv6 ranges.
 	Byoipv6CidrBlocks []string `mandatory:"false" json:"byoipv6CidrBlocks"`
 
-	// For an IPv6-enabled VCN, this is the list of Private IPv6 CIDR blocks for the VCN's IP address space.
+	// For an IPv6-enabled VCN, this is the list of Private IPv6 prefixes for the VCN's IP address space.
 	Ipv6PrivateCidrBlocks []string `mandatory:"false" json:"ipv6PrivateCidrBlocks"`
 
 	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) for the VCN's default set of DHCP options.
@@ -68,7 +70,7 @@ type Vcn struct {
 
 	// A DNS label for the VCN, used in conjunction with the VNIC's hostname and
 	// subnet's DNS label to form a fully qualified domain name (FQDN) for each VNIC
-	// within this subnet (for example, `bminstance-1.subnet123.vcn1.oraclevcn.com`).
+	// within this subnet (for example, `bminstance1.subnet123.vcn1.oraclevcn.com`).
 	// Must be an alphanumeric string that begins with a letter.
 	// The value cannot be changed.
 	// The absence of this parameter means the Internet and VCN Resolver will
@@ -83,8 +85,8 @@ type Vcn struct {
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 
-	// For an IPv6-enabled VCN, this is the list of IPv6 CIDR blocks for the VCN's IP address space.
-	// The CIDRs are provided by Oracle and the sizes are always /56.
+	// For an IPv6-enabled VCN, this is the list of IPv6 prefixes for the VCN's IP address space.
+	// The prefixes are provided by Oracle and the sizes are always /56.
 	Ipv6CidrBlocks []string `mandatory:"false" json:"ipv6CidrBlocks"`
 
 	// The date and time the VCN was created, in the format defined by RFC3339 (https://tools.ietf.org/html/rfc3339).

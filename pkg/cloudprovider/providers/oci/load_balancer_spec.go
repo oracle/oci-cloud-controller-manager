@@ -29,6 +29,7 @@ import (
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
 	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/pkg/errors"
 	helper "k8s.io/cloud-provider/service/helpers"
@@ -37,6 +38,7 @@ import (
 const (
 	LB                        = "lb"
 	NLB                       = "nlb"
+	NSG                       = "NSG"
 	LBHealthCheckIntervalMin  = 1000
 	LBHealthCheckIntervalMax  = 1800000
 	NLBHealthCheckIntervalMin = 10000
@@ -145,6 +147,18 @@ const (
 	// ServiceAnnotationLoadBalancerNodeFilter is a service annotation to select specific nodes as your backend in the LB
 	// based on label selector.
 	ServiceAnnotationLoadBalancerNodeFilter = "oci.oraclecloud.com/node-label-selector"
+
+	// ServiceAnnotationServiceAccountName is a service annotation to select Service Account to be used to
+	// exchange for Workload Identity Token which can then be used for LB/NLB Client to communicate to OCI LB/NLB API.
+	ServiceAnnotationServiceAccountName = "oci.oraclecloud.com/workload-service-account"
+
+	// ServiceAnnotationLoadBalancerSecurityRuleManagementMode is a Service annotation for
+	// specifying the security rule management mode ("SL-All", "SL-Frontend", "NSG", "None") that configures how security lists are managed by the CCM
+	ServiceAnnotationLoadBalancerSecurityRuleManagementMode = "oci.oraclecloud.com/security-rule-management-mode"
+
+	// ServiceAnnotationBackendSecurityRuleManagement is a service annotation to denote management of backend Network Security Group(s)
+	// ingress / egress security rules for a given kubernetes service could be either LB or NLB
+	ServiceAnnotationBackendSecurityRuleManagement = "oci.oraclecloud.com/oci-backend-network-security-group"
 )
 
 // NLB specific annotations
@@ -241,12 +255,26 @@ type SSLConfig struct {
 	sslSecretReader
 }
 
+type ManagedNetworkSecurityGroup struct {
+	nsgRuleManagementMode string
+	frontendNsgId         string
+	backendNsgId          []string
+}
+
 func requiresCertificate(svc *v1.Service) bool {
 	if svc.Annotations[ServiceAnnotationLoadBalancerType] == NLB {
 		return false
 	}
 	_, ok := svc.Annotations[ServiceAnnotationLoadBalancerSSLPorts]
 	return ok
+}
+
+func requiresNsgManagement(svc *v1.Service) bool {
+	manageNSG := strings.ToLower(svc.Annotations[ServiceAnnotationLoadBalancerSecurityRuleManagementMode])
+	if manageNSG == "nsg" {
+		return true
+	}
+	return false
 }
 
 // NewSSLConfig constructs a new SSLConfig.
@@ -271,31 +299,33 @@ func NewSSLConfig(secretListenerString string, secretBackendSetString string, se
 // LBSpec holds the data required to build a OCI load balancer from a
 // kubernetes service.
 type LBSpec struct {
-	Type                    string
-	Name                    string
-	Shape                   string
-	FlexMin                 *int
-	FlexMax                 *int
-	Subnets                 []string
-	Internal                bool
-	Listeners               map[string]client.GenericListener
-	BackendSets             map[string]client.GenericBackendSetDetails
-	LoadBalancerIP          string
-	IsPreserveSource        *bool
-	Ports                   map[string]portSpec
-	SourceCIDRs             []string
-	SSLConfig               *SSLConfig
-	securityListManager     securityListManager
-	NetworkSecurityGroupIds []string
-	FreeformTags            map[string]string
-	DefinedTags             map[string]map[string]interface{}
+	Type                        string
+	Name                        string
+	Shape                       string
+	FlexMin                     *int
+	FlexMax                     *int
+	Subnets                     []string
+	Internal                    bool
+	Listeners                   map[string]client.GenericListener
+	BackendSets                 map[string]client.GenericBackendSetDetails
+	LoadBalancerIP              string
+	IsPreserveSource            *bool
+	Ports                       map[string]portSpec
+	SourceCIDRs                 []string
+	SSLConfig                   *SSLConfig
+	securityListManager         securityListManager
+	ManagedNetworkSecurityGroup *ManagedNetworkSecurityGroup
+	NetworkSecurityGroupIds     []string
+	FreeformTags                map[string]string
+	DefinedTags                 map[string]map[string]interface{}
+	SystemTags                  map[string]map[string]interface{}
 
 	service *v1.Service
 	nodes   []*v1.Node
 }
 
 // NewLBSpec creates a LB Spec from a Kubernetes service and a slice of nodes.
-func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, subnets []string, sslConfig *SSLConfig, secListFactory securityListManagerFactory, initialLBTags *config.InitialTags) (*LBSpec, error) {
+func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, subnets []string, sslConfig *SSLConfig, secListFactory securityListManagerFactory, initialLBTags *config.InitialTags, existingLB *client.GenericLoadBalancer) (*LBSpec, error) {
 	if err := validateService(svc); err != nil {
 		return nil, errors.Wrap(err, "invalid service")
 	}
@@ -305,7 +335,7 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sub
 		return nil, err
 	}
 
-	shape, flexShapeMinMbps, flexShapeMaxMbps, err := getLBShape(svc)
+	shape, flexShapeMinMbps, flexShapeMaxMbps, err := getLBShape(svc, existingLB)
 	if err != nil {
 		return nil, err
 	}
@@ -349,51 +379,66 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sub
 	if err != nil {
 		return nil, err
 	}
+	// merge lbtags with common tags if present
+	if enableOkeSystemTags && util.IsCommonTagPresent(initialLBTags) {
+		lbTags = util.MergeTagConfig(lbTags, initialLBTags.Common)
+	}
 
-	secListManagerMode, err := getSecurityListManagementMode(svc)
+	ruleManagementMode, managedNsg, err := getRuleManagementMode(svc)
 	if err != nil {
 		return nil, err
+	}
+
+	backendNsgOcids, err := getManagedBackendNSG(svc)
+	if err != nil {
+		return nil, err
+	}
+
+	if managedNsg != nil && ruleManagementMode == RuleManagementModeNsg && len(backendNsgOcids) != 0 {
+		managedNsg.backendNsgId = backendNsgOcids
 	}
 
 	lbType := getLoadBalancerType(svc)
 
 	return &LBSpec{
-		Type:                    lbType,
-		Name:                    GetLoadBalancerName(svc),
-		Shape:                   shape,
-		FlexMin:                 flexShapeMinMbps,
-		FlexMax:                 flexShapeMaxMbps,
-		Internal:                internal,
-		Subnets:                 subnets,
-		Listeners:               listeners,
-		BackendSets:             backendSets,
-		LoadBalancerIP:          loadbalancerIP,
-		IsPreserveSource:        &isPreserveSource,
-		Ports:                   ports,
-		SSLConfig:               sslConfig,
-		SourceCIDRs:             sourceCIDRs,
-		NetworkSecurityGroupIds: networkSecurityGroupIds,
-		service:                 svc,
-		nodes:                   nodes,
-		securityListManager:     secListFactory(secListManagerMode),
-		FreeformTags:            lbTags.FreeformTags,
-		DefinedTags:             lbTags.DefinedTags,
+		Type:                        lbType,
+		Name:                        GetLoadBalancerName(svc),
+		Shape:                       shape,
+		FlexMin:                     flexShapeMinMbps,
+		FlexMax:                     flexShapeMaxMbps,
+		Internal:                    internal,
+		Subnets:                     subnets,
+		Listeners:                   listeners,
+		BackendSets:                 backendSets,
+		LoadBalancerIP:              loadbalancerIP,
+		IsPreserveSource:            &isPreserveSource,
+		Ports:                       ports,
+		SSLConfig:                   sslConfig,
+		SourceCIDRs:                 sourceCIDRs,
+		NetworkSecurityGroupIds:     networkSecurityGroupIds,
+		ManagedNetworkSecurityGroup: managedNsg,
+		service:                     svc,
+		nodes:                       nodes,
+		securityListManager:         secListFactory(ruleManagementMode),
+		FreeformTags:                lbTags.FreeformTags,
+		DefinedTags:                 lbTags.DefinedTags,
+		SystemTags:                  getResourceTrackingSysTagsFromConfig(logger, initialLBTags),
 	}, nil
 }
 
 func getSecurityListManagementMode(svc *v1.Service) (string, error) {
 	lbType := getLoadBalancerType(svc)
+	logger := *zap.L().Sugar()
 	knownSecListModes := map[string]struct{}{
 		ManagementModeAll:      struct{}{},
 		ManagementModeNone:     struct{}{},
 		ManagementModeFrontend: struct{}{},
 	}
-
+	annotationExists := false
+	var annotationValue string
 	switch lbType {
 	case NLB:
 		{
-			annotationExists := false
-			var annotationValue string
 			annotationValue, annotationExists = svc.Annotations[ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode]
 			if !annotationExists {
 				return ManagementModeNone, nil
@@ -404,8 +449,84 @@ func getSecurityListManagementMode(svc *v1.Service) (string, error) {
 			return svc.Annotations[ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode], nil
 		}
 	default:
+		annotationValue, annotationExists = svc.Annotations[ServiceAnnotationLoadBalancerSecurityListManagementMode]
+		if !annotationExists {
+			return ManagementModeAll, nil
+		}
+		if _, ok := knownSecListModes[annotationValue]; !ok {
+			logger.Infof("invalid value: %s provided for annotation: %s; using default All", annotationValue, ServiceAnnotationLoadBalancerSecurityListManagementMode)
+			return ManagementModeAll, nil
+		}
 		return svc.Annotations[ServiceAnnotationLoadBalancerSecurityListManagementMode], nil
 	}
+}
+
+func getRuleManagementMode(svc *v1.Service) (string, *ManagedNetworkSecurityGroup, error) {
+
+	knownRuleManagementModes := map[string]struct{}{
+		RuleManagementModeSlAll:      struct{}{},
+		RuleManagementModeSlFrontend: struct{}{},
+		RuleManagementModeNsg:        struct{}{},
+		ManagementModeNone:           struct{}{},
+	}
+
+	nsg := ManagedNetworkSecurityGroup{
+		nsgRuleManagementMode: ManagementModeNone,
+		frontendNsgId:         "",
+		backendNsgId:          []string{},
+	}
+
+	annotationExists := false
+	var annotationValue string
+	annotationValue, annotationExists = svc.Annotations[ServiceAnnotationLoadBalancerSecurityRuleManagementMode]
+	if !annotationExists {
+		secListMode, err := getSecurityListManagementMode(svc)
+		return secListMode, &nsg, err
+	}
+
+	if strings.ToLower(annotationValue) == strings.ToLower(RuleManagementModeSlAll) {
+		return ManagementModeAll, &nsg, nil
+	}
+	if strings.ToLower(annotationValue) == strings.ToLower(RuleManagementModeSlFrontend) {
+		return ManagementModeFrontend, &nsg, nil
+	}
+
+	if strings.ToLower(annotationValue) == strings.ToLower(RuleManagementModeNsg) {
+		nsg = ManagedNetworkSecurityGroup{
+			nsgRuleManagementMode: RuleManagementModeNsg,
+			frontendNsgId:         "",
+			backendNsgId:          []string{},
+		}
+		return RuleManagementModeNsg, &nsg, nil
+	}
+
+	if _, ok := knownRuleManagementModes[annotationValue]; !ok {
+		return ManagementModeNone, &nsg, fmt.Errorf("invalid value: %s provided for annotation: %s", annotationValue, ServiceAnnotationLoadBalancerSecurityRuleManagementMode)
+	}
+
+	return ManagementModeNone, &nsg, nil
+}
+
+func getManagedBackendNSG(svc *v1.Service) ([]string, error) {
+	backendNsgList := make([]string, 0)
+	var networkSecurityGroupIds string
+	var nsgAnnotationString string
+	var ok bool
+	networkSecurityGroupIds, ok = svc.Annotations[ServiceAnnotationBackendSecurityRuleManagement]
+	nsgAnnotationString = ServiceAnnotationBackendSecurityRuleManagement
+	if !ok || networkSecurityGroupIds == "" {
+		return backendNsgList, nil
+	}
+	numOfNsgIds := 0
+	for _, nsgOCID := range RemoveDuplicatesFromList(strings.Split(strings.ReplaceAll(networkSecurityGroupIds, " ", ""), ",")) {
+		numOfNsgIds++
+		if nsgOCID != "" {
+			backendNsgList = append(backendNsgList, nsgOCID)
+			continue
+		}
+		return nil, fmt.Errorf("invalid NetworkSecurityGroups OCID: [%s] provided for annotation: %s", networkSecurityGroupIds, nsgAnnotationString)
+	}
+	return backendNsgList, nil
 }
 
 // Certificates builds a map of required SSL certificates.
@@ -522,23 +643,8 @@ func getBackendSetName(protocol string, port int) string {
 
 func getPorts(svc *v1.Service) (map[string]portSpec, error) {
 	ports := make(map[string]portSpec)
-	portsMap := make(map[int][]string)
-	mixedProtocolsPortSet := make(map[int]bool)
-	for _, servicePort := range svc.Spec.Ports {
-		portsMap[int(servicePort.Port)] = append(portsMap[int(servicePort.Port)], string(servicePort.Protocol))
-	}
-	for _, servicePort := range svc.Spec.Ports {
-		port := int(servicePort.Port)
-		backendSetName := ""
-		if len(portsMap[port]) > 1 {
-			if mixedProtocolsPortSet[port] {
-				continue
-			}
-			backendSetName = getBackendSetName(ProtocolTypeMixed, port)
-			mixedProtocolsPortSet[port] = true
-		} else {
-			backendSetName = getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
-		}
+
+	for backendSetName, servicePort := range getBackendSetNamePortMap(svc) {
 		healthChecker, err := getHealthChecker(svc)
 		if err != nil {
 			return nil, err
@@ -560,7 +666,7 @@ func getBackends(logger *zap.SugaredLogger, nodes []*v1.Node, nodePort int32) []
 			logger.Warnf("Node %q has an empty Internal IP address.", node.Name)
 			continue
 		}
-		instanceID, err := MapProviderIDToInstanceID(node.Spec.ProviderID)
+		instanceID, err := MapProviderIDToResourceID(node.Spec.ProviderID)
 		if err != nil {
 			logger.Warnf("Node %q has an empty ProviderID.", node.Name)
 			continue
@@ -582,23 +688,8 @@ func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node
 	if err != nil {
 		return nil, err
 	}
-	portsMap := make(map[int][]string)
-	mixedProtocolsPortSet := make(map[int]bool)
-	for _, servicePort := range svc.Spec.Ports {
-		portsMap[int(servicePort.Port)] = append(portsMap[int(servicePort.Port)], string(servicePort.Protocol))
-	}
-	for _, servicePort := range svc.Spec.Ports {
-		port := int(servicePort.Port)
-		backendSetName := ""
-		if len(portsMap[port]) > 1 {
-			if mixedProtocolsPortSet[port] {
-				continue
-			}
-			backendSetName = getBackendSetName(ProtocolTypeMixed, port)
-			mixedProtocolsPortSet[port] = true
-		} else {
-			backendSetName = getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
-		}
+
+	for backendSetName, servicePort := range getBackendSetNamePortMap(svc) {
 		var secretName string
 		if sslCfg != nil && len(sslCfg.BackendSetSSLSecretName) != 0 {
 			secretName = sslCfg.BackendSetSSLSecretName
@@ -612,7 +703,7 @@ func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node
 			Backends:         getBackends(logger, nodes, servicePort.NodePort),
 			HealthChecker:    healthChecker,
 			IsPreserveSource: &isPreserveSource,
-			SslConfiguration: getSSLConfiguration(sslCfg, secretName, port),
+			SslConfiguration: getSSLConfiguration(sslCfg, secretName, int(servicePort.Port)),
 		}
 	}
 	return backendSets, nil
@@ -635,10 +726,20 @@ func getHealthChecker(svc *v1.Service) (*client.GenericHealthChecker, error) {
 		return nil, err
 	}
 
+	// Default healthcheck protocol is set to HTTP
+	isForcePlainText := false
+
+	// HTTP healthcheck for HTTPS backends
+	_, ok := svc.Annotations[ServiceAnnotationLoadBalancerTLSBackendSetSecret]
+	if ok {
+		isForcePlainText = true
+	}
+
 	checkPath, checkPort := helper.GetServiceHealthCheckPathPort(svc)
 	if checkPath != "" {
 		return &client.GenericHealthChecker{
 			Protocol:         lbNodesHealthCheckProto,
+			IsForcePlainText: common.Bool(isForcePlainText),
 			UrlPath:          &checkPath,
 			Port:             common.Int(int(checkPort)),
 			Retries:          &retries,
@@ -650,6 +751,7 @@ func getHealthChecker(svc *v1.Service) (*client.GenericHealthChecker, error) {
 
 	return &client.GenericHealthChecker{
 		Protocol:         lbNodesHealthCheckProto,
+		IsForcePlainText: common.Bool(isForcePlainText),
 		UrlPath:          common.String(lbNodesHealthCheckPath),
 		Port:             common.Int(lbNodesHealthCheckPort),
 		Retries:          &retries,
@@ -983,11 +1085,23 @@ func isInternalLB(svc *v1.Service) (bool, error) {
 	return false, nil
 }
 
-func getLBShape(svc *v1.Service) (string, *int, *int, error) {
+func getLBShape(svc *v1.Service, existingLB *client.GenericLoadBalancer) (string, *int, *int, error) {
 	if getLoadBalancerType(svc) == NLB {
 		return flexible, nil, nil, nil
 	}
 	shape := lbDefaultShape
+	var flexMinS, flexMaxS string
+	// If existing LB is already flexible, retain the configuration done one the LB.
+	// If min and max bandwith annotations are present, they take precedence over
+	// what it configured on the LB.
+	// This handles the situation where customers convert to flexible shape outside of K8s
+	// but don't update the K8s service manifest
+	if existingLB != nil && *existingLB.ShapeName == flexible {
+		shape = flexible
+		flexMinS = strconv.Itoa(*existingLB.ShapeDetails.MinimumBandwidthInMbps)
+		flexMaxS = strconv.Itoa(*existingLB.ShapeDetails.MaximumBandwidthInMbps)
+	}
+
 	if s, ok := svc.Annotations[ServiceAnnotationLoadBalancerShape]; ok {
 		shape = s
 	}
@@ -1006,9 +1120,6 @@ func getLBShape(svc *v1.Service) (string, *int, *int, error) {
 		return shape, nil, nil, nil
 	}
 
-	var flexMinS, flexMaxS string
-	var flexShapeMinMbps, flexShapeMaxMbps int
-
 	if fmin, ok := svc.Annotations[ServiceAnnotationLoadBalancerShapeFlexMin]; ok {
 		flexMinS = fmin
 	}
@@ -1025,10 +1136,12 @@ func getLBShape(svc *v1.Service) (string, *int, *int, error) {
 		)
 	}
 
+	var flexShapeMinMbps, flexShapeMaxMbps int
 	flexShapeMinMbps, err := parseFlexibleShapeBandwidth(flexMinS, ServiceAnnotationLoadBalancerShapeFlexMin)
 	if err != nil {
 		return "", nil, nil, err
 	}
+
 	flexShapeMaxMbps, err = parseFlexibleShapeBandwidth(flexMaxS, ServiceAnnotationLoadBalancerShapeFlexMax)
 	if err != nil {
 		return "", nil, nil, err
@@ -1180,6 +1293,7 @@ func getLoadBalancerTags(svc *v1.Service, initialTags *config.InitialTags) (*con
 	if initialTags == nil || initialTags.LoadBalancer == nil {
 		return &config.TagConfig{}, nil
 	}
+
 	// return initial tags
 	return initialTags.LoadBalancer, nil
 }
@@ -1192,4 +1306,69 @@ func getLoadBalancerType(svc *v1.Service) string {
 	default:
 		return LB
 	}
+}
+
+func getBackendSetNamePortMap(service *v1.Service) map[string]v1.ServicePort {
+	backendSetPortMap := make(map[string]v1.ServicePort)
+
+	portsMap := make(map[int][]string)
+	for _, servicePort := range service.Spec.Ports {
+		portsMap[int(servicePort.Port)] = append(portsMap[int(servicePort.Port)], string(servicePort.Protocol))
+	}
+
+	mixedProtocolsPortSet := make(map[int]bool)
+	for _, servicePort := range service.Spec.Ports {
+		port := int(servicePort.Port)
+		backendSetName := ""
+		if len(portsMap[port]) > 1 {
+			if mixedProtocolsPortSet[port] {
+				continue
+			}
+			backendSetName = getBackendSetName(ProtocolTypeMixed, port)
+			mixedProtocolsPortSet[port] = true
+		} else {
+			backendSetName = getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
+		}
+		backendSetPortMap[backendSetName] = servicePort
+	}
+
+	return backendSetPortMap
+}
+
+func addFrontendNsgToSpec(spec *LBSpec, frontendNsgId string) (*LBSpec, error) {
+	if spec == nil {
+		return nil, errors.New("service spec is empty")
+	}
+	if !contains(spec.NetworkSecurityGroupIds, frontendNsgId) {
+		spec.NetworkSecurityGroupIds = append(spec.NetworkSecurityGroupIds, frontendNsgId)
+	}
+	return spec, nil
+}
+
+func updateSpecWithLbSubnets(spec *LBSpec, lbSubnetId []string) (*LBSpec, error) {
+	if spec == nil {
+		return nil, errors.New("service spec is empty")
+	}
+	spec.Subnets = lbSubnetId
+
+	return spec, nil
+}
+
+// getResourceTrackingSysTagsFromConfig reads resource tracking tags from config
+// which are specified under common tags
+func getResourceTrackingSysTagsFromConfig(logger *zap.SugaredLogger, initialTags *config.InitialTags) (resourceTrackingTags map[string]map[string]interface{}) {
+	resourceTrackingTags = make(map[string]map[string]interface{})
+	// TODO: Fix the double negative
+	if !(util.IsCommonTagPresent(initialTags) && initialTags.Common.DefinedTags != nil) {
+		logger.Error("oke resource tracking system tags are not present in cloud-config.yaml")
+		return nil
+	}
+
+	if tag, exists := initialTags.Common.DefinedTags[OkeSystemTagNamesapce]; exists {
+		resourceTrackingTags[OkeSystemTagNamesapce] = tag
+		return
+	}
+
+	logger.Error("tag config doesn't consist resource tracking tags")
+	return nil
 }

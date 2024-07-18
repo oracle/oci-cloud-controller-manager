@@ -1,10 +1,10 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
 // Identity and Access Management Service API
 //
-// APIs for managing users, groups, compartments, policies, and identity domains.
+// Use the Identity and Access Management Service API to manage users, groups, identity domains, compartments, policies, tagging, and limits. For information about managing users, groups, compartments, and policies, see Identity and Access Management (without identity domains) (https://docs.cloud.oracle.com/iaas/Content/Identity/Concepts/overview.htm). For information about tagging and service limits, see Tagging (https://docs.cloud.oracle.com/iaas/Content/Tagging/Concepts/taggingoverview.htm) and Service Limits (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/servicelimits.htm). For information about creating, modifying, and deleting identity domains, see Identity and Access Management (with identity domains) (https://docs.cloud.oracle.com/iaas/Content/Identity/home.htm).
 //
 
 package identity
@@ -50,12 +50,12 @@ type CreateIdentityProviderDetails interface {
 
 type createidentityproviderdetails struct {
 	JsonData      []byte
+	FreeformTags  map[string]string                            `mandatory:"false" json:"freeformTags"`
+	DefinedTags   map[string]map[string]interface{}            `mandatory:"false" json:"definedTags"`
 	CompartmentId *string                                      `mandatory:"true" json:"compartmentId"`
 	Name          *string                                      `mandatory:"true" json:"name"`
 	Description   *string                                      `mandatory:"true" json:"description"`
 	ProductType   CreateIdentityProviderDetailsProductTypeEnum `mandatory:"true" json:"productType"`
-	FreeformTags  map[string]string                            `mandatory:"false" json:"freeformTags"`
-	DefinedTags   map[string]map[string]interface{}            `mandatory:"false" json:"definedTags"`
 	Protocol      string                                       `json:"protocol"`
 }
 
@@ -95,38 +95,39 @@ func (m *createidentityproviderdetails) UnmarshalPolymorphicJSON(data []byte) (i
 		err = json.Unmarshal(data, &mm)
 		return mm, err
 	default:
+		common.Logf("Recieved unsupported enum value for CreateIdentityProviderDetails: %s.", m.Protocol)
 		return *m, nil
 	}
 }
 
-//GetCompartmentId returns CompartmentId
-func (m createidentityproviderdetails) GetCompartmentId() *string {
-	return m.CompartmentId
-}
-
-//GetName returns Name
-func (m createidentityproviderdetails) GetName() *string {
-	return m.Name
-}
-
-//GetDescription returns Description
-func (m createidentityproviderdetails) GetDescription() *string {
-	return m.Description
-}
-
-//GetProductType returns ProductType
-func (m createidentityproviderdetails) GetProductType() CreateIdentityProviderDetailsProductTypeEnum {
-	return m.ProductType
-}
-
-//GetFreeformTags returns FreeformTags
+// GetFreeformTags returns FreeformTags
 func (m createidentityproviderdetails) GetFreeformTags() map[string]string {
 	return m.FreeformTags
 }
 
-//GetDefinedTags returns DefinedTags
+// GetDefinedTags returns DefinedTags
 func (m createidentityproviderdetails) GetDefinedTags() map[string]map[string]interface{} {
 	return m.DefinedTags
+}
+
+// GetCompartmentId returns CompartmentId
+func (m createidentityproviderdetails) GetCompartmentId() *string {
+	return m.CompartmentId
+}
+
+// GetName returns Name
+func (m createidentityproviderdetails) GetName() *string {
+	return m.Name
+}
+
+// GetDescription returns Description
+func (m createidentityproviderdetails) GetDescription() *string {
+	return m.Description
+}
+
+// GetProductType returns ProductType
+func (m createidentityproviderdetails) GetProductType() CreateIdentityProviderDetailsProductTypeEnum {
+	return m.ProductType
 }
 
 func (m createidentityproviderdetails) String() string {

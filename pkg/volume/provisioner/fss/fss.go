@@ -29,7 +29,7 @@ import (
 	"go.uber.org/zap"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/sig-storage-lib-external-provisioner/v8/controller"
+	"sigs.k8s.io/sig-storage-lib-external-provisioner/v9/controller"
 )
 
 const (
@@ -188,7 +188,7 @@ func (fsp *filesystemProvisioner) Provision(options controller.ProvisionOptions,
 	{
 		id := target.PrivateIpIds[rand.Int()%len(target.PrivateIpIds)]
 		logger = logger.With("privateIPID", id)
-		privateIP, err := fsp.client.Networking().GetPrivateIP(ctx, id)
+		privateIP, err := fsp.client.Networking().GetPrivateIp(ctx, id)
 		if err != nil {
 			logger.With(zap.Error(err)).Error("Failed to retrieve IP address for mount target")
 			return nil, err

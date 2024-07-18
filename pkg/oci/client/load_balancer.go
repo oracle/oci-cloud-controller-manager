@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/oracle/oci-go-sdk/v65/common"
+	"github.com/oracle/oci-go-sdk/v65/common/utils"
 	"github.com/oracle/oci-go-sdk/v65/loadbalancer"
 	"github.com/pkg/errors"
 )
@@ -38,7 +39,7 @@ type loadbalancerClientStruct struct {
 }
 
 type GenericLoadBalancerInterface interface {
-	CreateLoadBalancer(ctx context.Context, details *GenericCreateLoadBalancerDetails) (string, error)
+	CreateLoadBalancer(ctx context.Context, details *GenericCreateLoadBalancerDetails, serviceUid *string) (string, error)
 
 	GetLoadBalancer(ctx context.Context, id string) (*GenericLoadBalancer, error)
 	GetLoadBalancerByName(ctx context.Context, compartmentID, name string) (*GenericLoadBalancer, error)
@@ -60,6 +61,7 @@ type GenericLoadBalancerInterface interface {
 
 	AwaitWorkRequest(ctx context.Context, id string) (*GenericWorkRequest, error)
 	ListWorkRequests(ctx context.Context, compartmentId, lbId string) ([]*GenericWorkRequest, error)
+	UpdateLoadBalancer(ctx context.Context, lbID string, details *GenericUpdateLoadBalancerDetails) (string, error)
 }
 
 func (c *loadbalancerClientStruct) GetLoadBalancer(ctx context.Context, id string) (*GenericLoadBalancer, error) {
@@ -110,11 +112,10 @@ func (c *loadbalancerClientStruct) GetLoadBalancerByName(ctx context.Context, co
 	return nil, errors.WithStack(errNotFound)
 }
 
-func (c *loadbalancerClientStruct) CreateLoadBalancer(ctx context.Context, details *GenericCreateLoadBalancerDetails) (string, error) {
+func (c *loadbalancerClientStruct) CreateLoadBalancer(ctx context.Context, details *GenericCreateLoadBalancerDetails, serviceUid *string) (string, error) {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return "", RateLimitError(true, "CreateLoadBalancer")
 	}
-
 	resp, err := c.loadbalancer.CreateLoadBalancer(ctx, loadbalancer.CreateLoadBalancerRequest{
 		CreateLoadBalancerDetails: loadbalancer.CreateLoadBalancerDetails{
 			CompartmentId:           details.CompartmentId,
@@ -132,6 +133,7 @@ func (c *loadbalancerClientStruct) CreateLoadBalancer(ctx context.Context, detai
 			DefinedTags:             details.DefinedTags,
 		},
 		RequestMetadata: c.requestMetadata,
+		OpcRetryToken:   serviceUid,
 	})
 	incRequestCounter(err, createVerb, loadBalancerResource)
 
@@ -267,6 +269,7 @@ func (c *loadbalancerClientStruct) CreateBackendSet(ctx context.Context, lbID st
 			Backends: c.genericBackendDetailsToBackendDetails(details.Backends),
 			HealthChecker: &loadbalancer.HealthCheckerDetails{
 				Protocol:         &details.HealthChecker.Protocol,
+				IsForcePlainText: details.HealthChecker.IsForcePlainText,
 				Port:             details.HealthChecker.Port,
 				UrlPath:          details.HealthChecker.UrlPath,
 				Retries:          details.HealthChecker.Retries,
@@ -305,6 +308,7 @@ func (c *loadbalancerClientStruct) UpdateBackendSet(ctx context.Context, lbID st
 			Backends: c.genericBackendDetailsToBackendDetails(details.Backends),
 			HealthChecker: &loadbalancer.HealthCheckerDetails{
 				Protocol:         &details.HealthChecker.Protocol,
+				IsForcePlainText: details.HealthChecker.IsForcePlainText,
 				Port:             details.HealthChecker.Port,
 				UrlPath:          details.HealthChecker.UrlPath,
 				Retries:          details.HealthChecker.Retries,
@@ -421,7 +425,7 @@ func (c *loadbalancerClientStruct) AwaitWorkRequest(ctx context.Context, id stri
 	var wr *loadbalancer.WorkRequest
 	contextWithTimeout, cancel := context.WithTimeout(ctx, defaultSynchronousAPIPollContextTimeout)
 	defer cancel()
-	requestId, _ := generateRandUUID()
+	requestId := utils.GenerateOpcRequestID()
 	logger := zap.L().Sugar()
 	logger = logger.With("opc-workrequest-id", id,
 		"request-id", requestId,
@@ -440,6 +444,7 @@ func (c *loadbalancerClientStruct) AwaitWorkRequest(ctx context.Context, id stri
 		}
 		switch twr.LifecycleState {
 		case loadbalancer.WorkRequestLifecycleStateSucceeded:
+			logger.Info("Workrequest succeeded")
 			wr = twr
 			return true, nil
 		case loadbalancer.WorkRequestLifecycleStateFailed:
@@ -511,6 +516,25 @@ func (c *loadbalancerClientStruct) UpdateNetworkSecurityGroups(ctx context.Conte
 	return *resp.OpcWorkRequestId, nil
 }
 
+func (c *loadbalancerClientStruct) UpdateLoadBalancer(ctx context.Context, lbID string, details *GenericUpdateLoadBalancerDetails) (string, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return "", RateLimitError(true, "UpdateLoadBalancer")
+	}
+
+	resp, err := c.loadbalancer.UpdateLoadBalancer(ctx, loadbalancer.UpdateLoadBalancerRequest{
+		UpdateLoadBalancerDetails: loadbalancer.UpdateLoadBalancerDetails{
+			FreeformTags: details.FreeformTags,
+			DefinedTags:  details.DefinedTags,
+		},
+		LoadBalancerId:  &lbID,
+		RequestMetadata: c.requestMetadata,
+	})
+	incRequestCounter(err, updateVerb, loadBalancerResource)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	return *resp.OpcWorkRequestId, nil
+}
 func (c *loadbalancerClientStruct) loadbalancerToGenericLoadbalancer(lb *loadbalancer.LoadBalancer) *GenericLoadBalancer {
 	if lb == nil {
 		return nil
@@ -532,6 +556,7 @@ func (c *loadbalancerClientStruct) loadbalancerToGenericLoadbalancer(lb *loadbal
 		BackendSets:             c.backendSetsToGenericBackendSetDetails(lb.BackendSets),
 		FreeformTags:            lb.FreeformTags,
 		DefinedTags:             lb.DefinedTags,
+		SystemTags:              lb.SystemTags,
 	}
 }
 
@@ -650,6 +675,7 @@ func (c *loadbalancerClientStruct) backendSetsToGenericBackendSetDetails(backend
 		backendDetailsStruct := GenericBackendSetDetails{
 			HealthChecker: &GenericHealthChecker{
 				Protocol:         *v.HealthChecker.Protocol,
+				IsForcePlainText: v.HealthChecker.IsForcePlainText,
 				Port:             v.HealthChecker.Port,
 				UrlPath:          v.HealthChecker.UrlPath,
 				Retries:          v.HealthChecker.Retries,
@@ -682,6 +708,7 @@ func (c *loadbalancerClientStruct) genericBackendSetDetailsToBackendSets(backend
 		backendSetDetailsStruct := loadbalancer.BackendSetDetails{
 			HealthChecker: &loadbalancer.HealthCheckerDetails{
 				Protocol:         &v.HealthChecker.Protocol,
+				IsForcePlainText: v.HealthChecker.IsForcePlainText,
 				Port:             v.HealthChecker.Port,
 				UrlPath:          v.HealthChecker.UrlPath,
 				Retries:          v.HealthChecker.Retries,

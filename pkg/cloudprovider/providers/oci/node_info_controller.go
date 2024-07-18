@@ -235,7 +235,7 @@ func getInstanceByNode(cacheNode *v1.Node, nic *NodeInfoController, logger *zap.
 		}
 	}
 
-	instanceID, err := MapProviderIDToInstanceID(providerID)
+	instanceID, err := MapProviderIDToResourceID(providerID)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to map providerID to instanceID")
 		return nil, err

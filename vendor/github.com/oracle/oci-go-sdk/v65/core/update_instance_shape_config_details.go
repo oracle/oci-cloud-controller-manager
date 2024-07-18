@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -9,6 +9,8 @@
 // documentation for the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
 // Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
 // Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
+// The required permissions are documented in the
+// Details for the Core Services (https://docs.cloud.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
 //
 
 package core
@@ -31,6 +33,11 @@ type UpdateInstanceShapeConfigDetails struct {
 	// The total number of OCPUs available to the instance.
 	Ocpus *float32 `mandatory:"false" json:"ocpus"`
 
+	// The total number of VCPUs available to the instance. This can be used instead of OCPUs,
+	// in which case the actual number of OCPUs will be calculated based on this value
+	// and the actual hardware. This must be a multiple of 2.
+	Vcpus *int `mandatory:"false" json:"vcpus"`
+
 	// The total amount of memory available to the instance, in gigabytes.
 	MemoryInGBs *float32 `mandatory:"false" json:"memoryInGBs"`
 
@@ -41,6 +48,9 @@ type UpdateInstanceShapeConfigDetails struct {
 	// - `BASELINE_1_2` - baseline usage is 1/2 of an OCPU.
 	// - `BASELINE_1_1` - baseline usage is an entire OCPU. This represents a non-burstable instance.
 	BaselineOcpuUtilization UpdateInstanceShapeConfigDetailsBaselineOcpuUtilizationEnum `mandatory:"false" json:"baselineOcpuUtilization,omitempty"`
+
+	// The number of NVMe drives to be used for storage. A single drive has 6.8 TB available.
+	Nvmes *int `mandatory:"false" json:"nvmes"`
 }
 
 func (m UpdateInstanceShapeConfigDetails) String() string {

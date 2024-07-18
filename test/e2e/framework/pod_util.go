@@ -180,7 +180,7 @@ func (j *PVCTestJig) CheckVolumeDirectoryOwnership(namespace string, pvcParam *v
 	j.checkFileOwnership(namespace, podName, "/usr/share/nginx/html/out.txt")
 }
 
-//CheckExpandedVolumeReadWrite checks a pvc expanded pod with a dymincally provisioned volume
+// CheckExpandedVolumeReadWrite checks a pvc expanded pod with a dymincally provisioned volume
 func (j *PVCTestJig) CheckExpandedVolumeReadWrite(namespace string, podName string) {
 	pattern := "ReadWriteTest"
 	text := fmt.Sprintf("hello expanded pvc pod %s", pattern)
@@ -199,7 +199,7 @@ func (j *PVCTestJig) CheckExpandedVolumeReadWrite(namespace string, podName stri
 
 }
 
-//CheckUsableVolumeSizeInsidePod checks a pvc expanded pod with a dymincally provisioned volume
+// CheckUsableVolumeSizeInsidePod checks a pvc expanded pod with a dymincally provisioned volume
 func (j *PVCTestJig) CheckUsableVolumeSizeInsidePod(namespace string, podName string, capacity string) {
 
 	command := fmt.Sprintf("df -BG | grep '/data'")
@@ -211,17 +211,18 @@ func (j *PVCTestJig) CheckUsableVolumeSizeInsidePod(namespace string, podName st
 			return false, nil
 		}
 		if strings.Fields(strings.TrimSpace(stdout))[1] != capacity {
+			Logf("Expected capacity: %v, got capacity: %v", capacity, strings.Fields(strings.TrimSpace(stdout))[1])
 			return false, nil
 		} else {
 			return true, nil
 		}
 	}); pollErr != nil {
-		Failf("Write Test failed in pod '%v' after expanding pvc", podName)
+		Failf("Check Usable Volume Size Inside Pod Test failed in pod '%v' after expanding pvc", podName)
 	}
 
 }
 
-//CheckFilesystemTypeOfVolumeInsidePod Checks the volume is provisioned with FsType as requested
+// CheckFilesystemTypeOfVolumeInsidePod Checks the volume is provisioned with FsType as requested
 func (j *PVCTestJig) CheckFilesystemTypeOfVolumeInsidePod(namespace string, podName string, expectedFsType string) {
 	command := fmt.Sprintf("df -Th | grep '/data'")
 	stdout, err := RunHostCmd(namespace, podName, command)
@@ -298,7 +299,7 @@ func (j *PVCTestJig) CreateAndAwaitNginxPodOrFail(ns string, pvc *v1.PersistentV
 
 // WaitForPodNotFoundInNamespace waits default amount of time for the specified pod to be terminated.
 // If the pod Get api returns IsNotFound then the wait stops and nil is returned. If the Get api returns
-//an error other than "not found" then that error is returned and the wait stops.
+// an error other than "not found" then that error is returned and the wait stops.
 func (j *PVCTestJig) waitTimeoutForPodNotFoundInNamespace(podName, namespace string, timeout time.Duration) error {
 	return wait.PollImmediate(Poll, timeout, j.podNotFound(podName, namespace))
 }
@@ -358,4 +359,13 @@ func (j *PVCTestJig) podNotFound(podName, namespace string) wait.ConditionFunc {
 		}
 		return false, nil
 	}
+}
+
+func (j *PVCTestJig) GetNodeHostnameFromPod(podName, namespace string) string {
+	pod, err := j.KubeClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		Failf("Failed to get pod %q: %v", podName, err)
+	}
+	hostName := pod.Labels[NodeHostnameLabel]
+	return hostName
 }

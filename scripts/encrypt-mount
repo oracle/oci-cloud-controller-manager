@@ -1,0 +1,2 @@
+#!/bin/sh
+chroot /host /usr/bin/bash -c 'export SYSTEMCTL_FORCE_BUS=1; mount $0' "$*"

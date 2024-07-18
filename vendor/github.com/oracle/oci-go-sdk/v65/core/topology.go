@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -9,6 +9,8 @@
 // documentation for the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
 // Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
 // Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
+// The required permissions are documented in the
+// Details for the Core Services (https://docs.cloud.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
 //
 
 package core
@@ -29,16 +31,22 @@ type Topology interface {
 	// Lists relationships between entities in the virtual network topology.
 	GetRelationships() []TopologyEntityRelationship
 
+	// Lists entities that are limited during ingestion.
+	// The values for the items in the list are the entity type names of the limitedEntities.
+	// Example: `vcn`
+	GetLimitedEntities() []string
+
 	// Records when the virtual network topology was created, in RFC3339 (https://tools.ietf.org/html/rfc3339) format for date and time.
 	GetTimeCreated() *common.SDKTime
 }
 
 type topology struct {
-	JsonData      []byte
-	Entities      []interface{}   `mandatory:"true" json:"entities"`
-	Relationships json.RawMessage `mandatory:"true" json:"relationships"`
-	TimeCreated   *common.SDKTime `mandatory:"true" json:"timeCreated"`
-	Type          string          `json:"type"`
+	JsonData        []byte
+	Entities        []interface{}   `mandatory:"true" json:"entities"`
+	Relationships   json.RawMessage `mandatory:"true" json:"relationships"`
+	LimitedEntities []string        `mandatory:"true" json:"limitedEntities"`
+	TimeCreated     *common.SDKTime `mandatory:"true" json:"timeCreated"`
+	Type            string          `json:"type"`
 }
 
 // UnmarshalJSON unmarshals json
@@ -54,6 +62,7 @@ func (m *topology) UnmarshalJSON(data []byte) error {
 	}
 	m.Entities = s.Model.Entities
 	m.Relationships = s.Model.Relationships
+	m.LimitedEntities = s.Model.LimitedEntities
 	m.TimeCreated = s.Model.TimeCreated
 	m.Type = s.Model.Type
 
@@ -82,21 +91,27 @@ func (m *topology) UnmarshalPolymorphicJSON(data []byte) (interface{}, error) {
 		err = json.Unmarshal(data, &mm)
 		return mm, err
 	default:
+		common.Logf("Recieved unsupported enum value for Topology: %s.", m.Type)
 		return *m, nil
 	}
 }
 
-//GetEntities returns Entities
+// GetEntities returns Entities
 func (m topology) GetEntities() []interface{} {
 	return m.Entities
 }
 
-//GetRelationships returns Relationships
+// GetRelationships returns Relationships
 func (m topology) GetRelationships() json.RawMessage {
 	return m.Relationships
 }
 
-//GetTimeCreated returns TimeCreated
+// GetLimitedEntities returns LimitedEntities
+func (m topology) GetLimitedEntities() []string {
+	return m.LimitedEntities
+}
+
+// GetTimeCreated returns TimeCreated
 func (m topology) GetTimeCreated() *common.SDKTime {
 	return m.TimeCreated
 }
@@ -125,18 +140,21 @@ const (
 	TopologyTypeNetworking TopologyTypeEnum = "NETWORKING"
 	TopologyTypeVcn        TopologyTypeEnum = "VCN"
 	TopologyTypeSubnet     TopologyTypeEnum = "SUBNET"
+	TopologyTypePath       TopologyTypeEnum = "PATH"
 )
 
 var mappingTopologyTypeEnum = map[string]TopologyTypeEnum{
 	"NETWORKING": TopologyTypeNetworking,
 	"VCN":        TopologyTypeVcn,
 	"SUBNET":     TopologyTypeSubnet,
+	"PATH":       TopologyTypePath,
 }
 
 var mappingTopologyTypeEnumLowerCase = map[string]TopologyTypeEnum{
 	"networking": TopologyTypeNetworking,
 	"vcn":        TopologyTypeVcn,
 	"subnet":     TopologyTypeSubnet,
+	"path":       TopologyTypePath,
 }
 
 // GetTopologyTypeEnumValues Enumerates the set of values for TopologyTypeEnum
@@ -154,6 +172,7 @@ func GetTopologyTypeEnumStringValues() []string {
 		"NETWORKING",
 		"VCN",
 		"SUBNET",
+		"PATH",
 	}
 }
 

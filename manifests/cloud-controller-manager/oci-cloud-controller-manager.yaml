@@ -42,12 +42,13 @@ spec:
             path: /etc/kubernetes
       containers:
         - name: oci-cloud-controller-manager
-          image: ghcr.io/oracle/cloud-provider-oci:latest
+          image: ghcr.io/oracle/cloud-provider-oci:v1.29.0
           command: ["/usr/local/bin/oci-cloud-controller-manager"]
           args:
             - --cloud-config=/etc/oci/cloud-provider.yaml
             - --cloud-provider=oci
-            - --leader-elect-resource-lock=configmapsleases
+            - --leader-elect-resource-lock=leases
+            - --concurrent-service-syncs=3
             - --v=2
           volumeMounts:
             - name: cfg

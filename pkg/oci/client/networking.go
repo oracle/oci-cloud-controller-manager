@@ -21,6 +21,7 @@ import (
 
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/pkg/errors"
+	"k8s.io/utils/pointer"
 )
 
 // NetworkingInterface defines the subset of the OCI compute API utilised by the CCM.
@@ -34,9 +35,20 @@ type NetworkingInterface interface {
 	GetSecurityList(ctx context.Context, id string) (core.GetSecurityListResponse, error)
 	UpdateSecurityList(ctx context.Context, id string, etag string, ingressRules []core.IngressSecurityRule, egressRules []core.EgressSecurityRule) (core.UpdateSecurityListResponse, error)
 
-	GetPrivateIP(ctx context.Context, id string) (*core.PrivateIp, error)
+	GetPrivateIp(ctx context.Context, id string) (*core.PrivateIp, error)
 
 	GetPublicIpByIpAddress(ctx context.Context, id string) (*core.PublicIp, error)
+
+	CreateNetworkSecurityGroup(ctx context.Context, compartmentId, vcnId, displayName, serviceUid string) (*core.NetworkSecurityGroup, error)
+	GetNetworkSecurityGroup(ctx context.Context, id string) (*core.NetworkSecurityGroup, *string, error)
+	ListNetworkSecurityGroups(ctx context.Context, displayName, compartmentId, vcnId string) ([]core.NetworkSecurityGroup, error)
+	UpdateNetworkSecurityGroup(ctx context.Context, id, etag string, freeformTags map[string]string) (*core.NetworkSecurityGroup, error)
+	DeleteNetworkSecurityGroup(ctx context.Context, id, etag string) (*string, error)
+
+	AddNetworkSecurityGroupSecurityRules(ctx context.Context, id string, details core.AddNetworkSecurityGroupSecurityRulesDetails) (*core.AddNetworkSecurityGroupSecurityRulesResponse, error)
+	RemoveNetworkSecurityGroupSecurityRules(ctx context.Context, id string, details core.RemoveNetworkSecurityGroupSecurityRulesDetails) (*core.RemoveNetworkSecurityGroupSecurityRulesResponse, error)
+	ListNetworkSecurityGroupSecurityRules(ctx context.Context, id string, direction core.ListNetworkSecurityGroupSecurityRulesDirectionEnum) ([]core.SecurityRule, error)
+	UpdateNetworkSecurityGroupSecurityRules(ctx context.Context, id string, details core.UpdateNetworkSecurityGroupSecurityRulesDetails) (*core.UpdateNetworkSecurityGroupSecurityRulesResponse, error)
 }
 
 func (c *client) GetVNIC(ctx context.Context, id string) (*core.Vnic, error) {
@@ -51,6 +63,7 @@ func (c *client) GetVNIC(ctx context.Context, id string) (*core.Vnic, error) {
 	incRequestCounter(err, getVerb, vnicResource)
 
 	if err != nil {
+		c.logger.With(id).Infof("GetVNIC failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
 		return nil, errors.WithStack(err)
 	}
 
@@ -77,6 +90,7 @@ func (c *client) GetSubnet(ctx context.Context, id string) (*core.Subnet, error)
 	incRequestCounter(err, getVerb, subnetResource)
 
 	if err != nil {
+		c.logger.With(id).Infof("GetSubnet failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
 		return nil, errors.WithStack(err)
 	}
 
@@ -123,6 +137,7 @@ func (c *client) GetVcn(ctx context.Context, id string) (*core.Vcn, error) {
 	incRequestCounter(err, getVerb, vcnResource)
 
 	if err != nil {
+		c.logger.With(id).Infof("GetVcn failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
 		return nil, errors.WithStack(err)
 	}
 
@@ -166,7 +181,7 @@ func subnetCacheKeyFn(obj interface{}) (string, error) {
 	return *obj.(*core.Subnet).Id, nil
 }
 
-func (c *client) GetPrivateIP(ctx context.Context, id string) (*core.PrivateIp, error) {
+func (c *client) GetPrivateIp(ctx context.Context, id string) (*core.PrivateIp, error) {
 	if !c.rateLimiter.Reader.TryAccept() {
 		return nil, RateLimitError(false, "GetPrivateIp")
 	}
@@ -178,6 +193,7 @@ func (c *client) GetPrivateIP(ctx context.Context, id string) (*core.PrivateIp, 
 	incRequestCounter(err, getVerb, privateIPResource)
 
 	if err != nil {
+		c.logger.With(id).Infof("GetPrivateIp failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
 		return nil, errors.WithStack(err)
 	}
 
@@ -196,8 +212,216 @@ func (c *client) GetPublicIpByIpAddress(ctx context.Context, ip string) (*core.P
 	})
 	incRequestCounter(err, getVerb, publicReservedIPResource)
 	if err != nil {
+		c.logger.With(ip).Infof("GetPublicIpByIpAddress failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
 		return nil, errors.WithStack(err)
 	}
 
 	return &resp.PublicIp, nil
+}
+
+func (c *client) CreateNetworkSecurityGroup(ctx context.Context, compartmentId, vcnId, displayName, serviceUid string) (*core.NetworkSecurityGroup, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return nil, RateLimitError(false, "CreateNetworkSecurityGroup")
+	}
+	requestMetadata := getDefaultRequestMetadata(c.requestMetadata)
+
+	resp, err := c.network.CreateNetworkSecurityGroup(ctx, core.CreateNetworkSecurityGroupRequest{
+		CreateNetworkSecurityGroupDetails: core.CreateNetworkSecurityGroupDetails{
+			CompartmentId: &compartmentId,
+			VcnId:         &vcnId,
+			DisplayName:   &displayName,
+			FreeformTags:  map[string]string{"CreatedBy": "CCM", "ServiceUid": serviceUid},
+		},
+		OpcRetryToken:   &serviceUid,
+		RequestMetadata: requestMetadata,
+	})
+
+	incRequestCounter(err, createVerb, nsgResource)
+	if err != nil {
+		c.logger.With(serviceUid).Infof("CreateNetworkSecurityGroup failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		return nil, errors.WithStack(err)
+	}
+
+	return &resp.NetworkSecurityGroup, nil
+}
+
+func (c *client) GetNetworkSecurityGroup(ctx context.Context, id string) (*core.NetworkSecurityGroup, *string, error) {
+	if !c.rateLimiter.Reader.TryAccept() {
+		return nil, nil, RateLimitError(false, "GetNSG")
+	}
+
+	resp, err := c.network.GetNetworkSecurityGroup(ctx, core.GetNetworkSecurityGroupRequest{
+		NetworkSecurityGroupId: &id,
+		RequestMetadata:        c.requestMetadata,
+	})
+	incRequestCounter(err, getVerb, nsgResource)
+
+	if err != nil {
+		c.logger.With(id).Infof("GetNetworkSecurityGroup failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		return nil, nil, errors.WithStack(err)
+	}
+
+	return &resp.NetworkSecurityGroup, resp.Etag, nil
+}
+
+func (c *client) ListNetworkSecurityGroups(ctx context.Context, displayName, compartmentId, vcnId string) ([]core.NetworkSecurityGroup, error) {
+	var page *string
+	nsgList := make([]core.NetworkSecurityGroup, 0)
+	for {
+		if !c.rateLimiter.Reader.TryAccept() {
+			return nil, RateLimitError(false, "ListNSG")
+		}
+
+		resp, err := c.network.ListNetworkSecurityGroups(ctx, core.ListNetworkSecurityGroupsRequest{
+			CompartmentId:   &compartmentId,
+			VcnId:           &vcnId,
+			Page:            page,
+			DisplayName:     &displayName,
+			SortBy:          core.ListNetworkSecurityGroupsSortByTimecreated,
+			SortOrder:       core.ListNetworkSecurityGroupsSortOrderDesc,
+			RequestMetadata: c.requestMetadata,
+		})
+		incRequestCounter(err, listVerb, nsgResource)
+
+		if err != nil {
+			c.logger.With(displayName).Infof("ListNetworkSecurityGroups failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+			return nil, errors.WithStack(err)
+		}
+		nsgList = append(nsgList, resp.Items...)
+		if page = resp.OpcNextPage; resp.OpcNextPage == nil {
+			break
+		}
+	}
+
+	return nsgList, nil
+}
+
+func (c *client) UpdateNetworkSecurityGroup(ctx context.Context, id string, etag string, freeformTags map[string]string) (*core.NetworkSecurityGroup, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return nil, RateLimitError(false, "UpdateNSG")
+	}
+
+	resp, err := c.network.UpdateNetworkSecurityGroup(ctx, core.UpdateNetworkSecurityGroupRequest{
+		NetworkSecurityGroupId: &id,
+		UpdateNetworkSecurityGroupDetails: core.UpdateNetworkSecurityGroupDetails{
+			FreeformTags: freeformTags,
+		},
+		IfMatch:         &etag,
+		RequestMetadata: c.requestMetadata,
+	})
+	incRequestCounter(err, updateVerb, nsgResource)
+
+	if err != nil {
+		c.logger.With(id).Infof("UpdateNetworkSecurityGroup failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		return nil, errors.WithStack(err)
+	}
+
+	return &resp.NetworkSecurityGroup, nil
+}
+
+func (c *client) DeleteNetworkSecurityGroup(ctx context.Context, id, etag string) (*string, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return nil, RateLimitError(false, "DeleteNetworkSecurityGroup")
+	}
+	requestMetadata := getDefaultRequestMetadata(c.requestMetadata)
+
+	resp, err := c.network.DeleteNetworkSecurityGroup(ctx, core.DeleteNetworkSecurityGroupRequest{
+		NetworkSecurityGroupId: &id,
+		IfMatch:                &etag,
+		RequestMetadata:        requestMetadata,
+	})
+
+	incRequestCounter(err, deleteVerb, nsgResource)
+	if err != nil {
+		c.logger.With(id).Infof("DeleteNetworkSecurityGroup failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		return nil, errors.WithStack(err)
+	}
+
+	return resp.OpcRequestId, nil
+}
+
+func (c *client) AddNetworkSecurityGroupSecurityRules(ctx context.Context, id string, details core.AddNetworkSecurityGroupSecurityRulesDetails) (*core.AddNetworkSecurityGroupSecurityRulesResponse, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return nil, RateLimitError(false, "AddNSGRules")
+	}
+
+	resp, err := c.network.AddNetworkSecurityGroupSecurityRules(ctx, core.AddNetworkSecurityGroupSecurityRulesRequest{
+		NetworkSecurityGroupId:                      &id,
+		AddNetworkSecurityGroupSecurityRulesDetails: details,
+		RequestMetadata:                             c.requestMetadata,
+	})
+	incRequestCounter(err, createVerb, nsgRuleResource)
+
+	if err != nil {
+		c.logger.With(id).Infof("AddNetworkSecurityGroupSecurityRules failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		return nil, errors.WithStack(err)
+	}
+	return &resp, nil
+}
+
+func (c *client) RemoveNetworkSecurityGroupSecurityRules(ctx context.Context, id string, details core.RemoveNetworkSecurityGroupSecurityRulesDetails) (*core.RemoveNetworkSecurityGroupSecurityRulesResponse, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return nil, RateLimitError(false, "RemoveNSGRules")
+	}
+
+	resp, err := c.network.RemoveNetworkSecurityGroupSecurityRules(ctx, core.RemoveNetworkSecurityGroupSecurityRulesRequest{
+		NetworkSecurityGroupId:                         &id,
+		RemoveNetworkSecurityGroupSecurityRulesDetails: details,
+		RequestMetadata:                                c.requestMetadata,
+	})
+	incRequestCounter(err, deleteVerb, nsgRuleResource)
+
+	if err != nil {
+		c.logger.With(id).Infof("RemoveNetworkSecurityGroupSecurityRules failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		return nil, errors.WithStack(err)
+	}
+	return &resp, nil
+}
+
+func (c *client) ListNetworkSecurityGroupSecurityRules(ctx context.Context, id string, direction core.ListNetworkSecurityGroupSecurityRulesDirectionEnum) ([]core.SecurityRule, error) {
+	var page *string
+	nsgRules := make([]core.SecurityRule, 0)
+	for {
+		if !c.rateLimiter.Reader.TryAccept() {
+			return nil, RateLimitError(false, "ListNetworkSecurityGroupSecurityRules")
+		}
+		resp, err := c.network.ListNetworkSecurityGroupSecurityRules(ctx, core.ListNetworkSecurityGroupSecurityRulesRequest{
+			NetworkSecurityGroupId: &id,
+			Direction:              direction,
+			Page:                   page,
+			RequestMetadata:        c.requestMetadata,
+		})
+		incRequestCounter(err, listVerb, nsgRuleResource)
+
+		if err != nil {
+			c.logger.With(id).Infof("ListNetworkSecurityGroupSecurityRules failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+			return nil, errors.WithStack(err)
+		}
+		for _, rule := range resp.Items {
+			nsgRules = append(nsgRules, rule)
+		}
+		if page = resp.OpcNextPage; resp.OpcNextPage == nil {
+			break
+		}
+	}
+	return nsgRules, nil
+}
+
+func (c *client) UpdateNetworkSecurityGroupSecurityRules(ctx context.Context, id string, details core.UpdateNetworkSecurityGroupSecurityRulesDetails) (*core.UpdateNetworkSecurityGroupSecurityRulesResponse, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return nil, RateLimitError(false, "UpdateNSGSecurityRules")
+	}
+
+	resp, err := c.network.UpdateNetworkSecurityGroupSecurityRules(ctx, core.UpdateNetworkSecurityGroupSecurityRulesRequest{
+		NetworkSecurityGroupId:                         &id,
+		UpdateNetworkSecurityGroupSecurityRulesDetails: details,
+		RequestMetadata:                                c.requestMetadata,
+	})
+	incRequestCounter(err, updateVerb, nsgRuleResource)
+
+	if err != nil {
+		c.logger.With(id).Infof("UpdateNetworkSecurityGroupSecurityRules failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		return nil, errors.WithStack(err)
+	}
+	return &resp, nil
 }

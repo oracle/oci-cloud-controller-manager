@@ -55,8 +55,10 @@ const (
 	exportResource              resource = "export"
 	privateIPResource           resource = "private_ip"
 	availabilityDomainResource  resource = "availability_domain"
-	nsgResource                 resource = "load_balancer_network_security_groups"
+	nsgResource                 resource = "network_security_groups"
+	nsgRuleResource             resource = "network_security_group_rules"
 	publicReservedIPResource    resource = "public_reserved_ip"
+	volumeBackupResource        resource = "volumeBackup"
 )
 
 type verb string

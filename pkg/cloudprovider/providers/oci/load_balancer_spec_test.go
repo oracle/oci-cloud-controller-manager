@@ -65,6 +65,7 @@ func (ssr mockSSLSecretReader) readSSLSecret(ns, name string) (sslSecret *certif
 }
 
 func TestNewLBSpecSuccess(t *testing.T) {
+	enableOkeSystemTags = true
 	testCases := map[string]struct {
 		defaultSubnetOne string
 		defaultSubnetTwo string
@@ -113,6 +114,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -133,7 +135,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
 		},
 		"defaults-nlb-cluster-policy": {
@@ -175,6 +178,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -195,7 +199,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
 		},
 		"defaults-nlb-local-policy": {
@@ -238,6 +243,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -258,7 +264,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
 		},
 		"internal with default subnet": {
@@ -302,6 +309,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -322,7 +330,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
 		},
 		"internal with overridden regional subnet1": {
@@ -367,6 +376,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -387,7 +397,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
 		},
 		"internal with overridden regional subnet2": {
@@ -432,6 +443,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -452,7 +464,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
 		},
 		"internal with no default subnets provide subnet1 via annotation": {
@@ -495,6 +508,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -515,7 +529,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
 		},
 		"use default subnet in case of no subnet overrides via annotation": {
@@ -557,6 +572,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -577,7 +593,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
 		},
 		"no default subnets provide subnet1 via annotation as regional-subnet": {
@@ -619,6 +636,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -639,7 +657,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
 		},
 		"no default subnets provide subnet2 via annotation": {
@@ -649,7 +668,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					Name:      "testservice",
 					UID:       "test-uid",
 					Annotations: map[string]string{
-						ServiceAnnotationLoadBalancerSubnet2: "annotation-two",
+						ServiceAnnotationLoadBalancerSubnet2: "regional-subnet",
 					},
 				},
 				Spec: v1.ServiceSpec{
@@ -667,7 +686,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Type:     "lb",
 				Shape:    "100Mbps",
 				Internal: false,
-				Subnets:  []string{"", "annotation-two"},
+				Subnets:  []string{"regional-subnet"},
 				Listeners: map[string]client.GenericListener{
 					"TCP-80": client.GenericListener{
 						Name:                  common.String("TCP-80"),
@@ -681,6 +700,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -701,7 +721,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
 		},
 		"override default subnet via subnet1 annotation as regional subnet": {
@@ -745,6 +766,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -765,7 +787,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
 		},
 		"override default subnet via subnet2 annotation as regional subnet": {
@@ -809,6 +832,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -829,7 +853,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
 		},
 		"override default subnet via subnet1 and subnet2 annotation": {
@@ -874,6 +899,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -894,7 +920,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
 		},
 		//"security list manager annotation":
@@ -939,6 +966,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -959,7 +987,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
 		},
 		"custom idle connection timeout": {
@@ -1006,6 +1035,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -1026,7 +1056,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
 		},
 		"custom proxy protocol version w/o timeout for multiple listeners": {
@@ -1088,6 +1119,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -1102,6 +1134,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -1126,7 +1159,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
 		},
 		"custom proxy protocol version and timeout": {
@@ -1175,6 +1209,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -1195,7 +1230,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
 		},
 		"protocol annotation set to http": {
@@ -1241,6 +1277,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -1261,7 +1298,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
 		},
 		"protocol annotation set to tcp": {
@@ -1307,6 +1345,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -1327,7 +1366,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
 		},
 		"protocol annotation empty": {
@@ -1373,6 +1413,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -1393,7 +1434,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
 		},
 		"LBSpec returned with proper SSLConfiguration": {
@@ -1440,6 +1482,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -1465,7 +1508,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 				SSLConfig: &SSLConfig{
 					Ports:                   sets.NewInt(443),
 					ListenerSSLSecretName:   listenerSecret,
@@ -1521,6 +1565,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(1),
@@ -1541,7 +1586,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
 		},
 		"flex shape": {
@@ -1589,6 +1635,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -1609,7 +1656,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
 		},
 		"valid loadbalancer policy": {
@@ -1654,6 +1702,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -1674,7 +1723,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
 		},
 		"default loadbalancer policy": {
@@ -1718,6 +1768,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -1738,7 +1789,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
 		},
 		"load balancer with reserved ip": {
@@ -1783,6 +1835,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -1803,8 +1856,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
-				LoadBalancerIP:      "10.0.0.0",
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				LoadBalancerIP:              "10.0.0.0",
 			},
 		},
 		"defaults with tags": {
@@ -1856,6 +1910,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -1876,9 +1931,162 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
-				FreeformTags:        map[string]string{"cluster": "resource", "unique": "tag"},
-				DefinedTags:         map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}},
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				FreeformTags:                map[string]string{"cluster": "resource", "unique": "tag"},
+				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}},
+			},
+		},
+		"merge default tags with common tags": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInitialFreeformTagsOverride: `{"cluster":"resource", "unique":"tag"}`,
+						ServiceAnnotationLoadBalancerInitialDefinedTagsOverride:  `{"namespace":{"key":"value", "owner":"team"}, "namespace2": {"cost": "staging"}}`,
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			clusterTags: &providercfg.InitialTags{
+				LoadBalancer: &providercfg.TagConfig{
+					DefinedTags: map[string]map[string]interface{}{"namespace": {"cluster": "name", "owner": "cluster"}},
+				},
+				Common: &providercfg.TagConfig{
+					DefinedTags: map[string]map[string]interface{}{"namespace": {"cluster": "CommonCluster", "owner": "CommonClusterOwner"}},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Type:     "lb",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"one", "two"},
+				Listeners: map[string]client.GenericListener{
+					"TCP-80": {
+						Name:                  common.String("TCP-80"),
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]client.GenericBackendSetDetails{
+					"TCP-80": {
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
+						},
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
+					},
+				},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				FreeformTags:                map[string]string{"cluster": "resource", "unique": "tag"},
+				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"cluster": "CommonCluster", "owner": "CommonClusterOwner"}, "namespace2": {"cost": "staging"}},
+			},
+		},
+		"merge intial lb tags with common tags": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			clusterTags: &providercfg.InitialTags{
+				LoadBalancer: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"cluster": "testname", "project": "pre-prod"},
+					DefinedTags:  map[string]map[string]interface{}{"namespace": {"cluster": "name", "owner": "cluster"}},
+				},
+				Common: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"access": "developers"},
+					DefinedTags:  map[string]map[string]interface{}{"namespace": {"cluster": "CommonCluster", "owner": "CommonClusterOwner"}, "cost": {"unit": "shared", "env": "pre-prod"}},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Type:     "lb",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"one", "two"},
+				Listeners: map[string]client.GenericListener{
+					"TCP-80": {
+						Name:                  common.String("TCP-80"),
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]client.GenericBackendSetDetails{
+					"TCP-80": {
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
+						},
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
+					},
+				},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				FreeformTags:                map[string]string{"cluster": "testname", "project": "pre-prod", "access": "developers"},
+				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"cluster": "CommonCluster", "owner": "CommonClusterOwner"}, "cost": {"unit": "shared", "env": "pre-prod"}},
 			},
 		},
 	}
@@ -1906,11 +2114,710 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			slManagerFactory := func(mode string) securityListManager {
 				return newSecurityListManagerNOOP()
 			}
-			result, err := NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, tc.sslConfig, slManagerFactory, tc.clusterTags)
+			result, err := NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, tc.sslConfig, slManagerFactory, tc.clusterTags, nil)
 			if err != nil {
 				t.Error(err)
 			}
 
+			if !reflect.DeepEqual(result, tc.expected) {
+				t.Errorf("Expected load balancer spec\n%+v\nbut got\n%+v", tc.expected, result)
+			}
+		})
+	}
+}
+
+func TestNewLBSpecForTags(t *testing.T) {
+	enableOkeSystemTags = true
+	tests := map[string]struct {
+		defaultSubnetOne string
+		defaultSubnetTwo string
+		nodes            []*v1.Node
+		virtualPods      []*v1.Pod
+		service          *v1.Service
+		sslConfig        *SSLConfig
+		expected         *LBSpec
+		clusterTags      *providercfg.InitialTags
+		featureEnabled   bool
+	}{
+		"no resource & cluster level tags but common tags from config": {
+			defaultSubnetOne: "one",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			clusterTags: &providercfg.InitialTags{
+				LoadBalancer: &providercfg.TagConfig{
+					DefinedTags: map[string]map[string]interface{}{"namespace": {"cluster": "name", "owner": "cluster"}},
+				},
+				Common: &providercfg.TagConfig{
+					DefinedTags: map[string]map[string]interface{}{"namespace": {"cluster": "CommonCluster", "owner": "CommonClusterOwner"}},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Type:     "lb",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"one"},
+				Listeners: map[string]client.GenericListener{
+					"TCP-80": {
+						Name:                  common.String("TCP-80"),
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]client.GenericBackendSetDetails{
+					"TCP-80": {
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
+						},
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
+					},
+				},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				FreeformTags:                map[string]string{},
+				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"cluster": "CommonCluster", "owner": "CommonClusterOwner"}},
+			},
+			featureEnabled: true,
+		},
+		"no resource or cluster level tags and no common tags": {
+			defaultSubnetOne: "one",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			clusterTags: &providercfg.InitialTags{},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Type:     "lb",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"one"},
+				Listeners: map[string]client.GenericListener{
+					"TCP-80": {
+						Name:                  common.String("TCP-80"),
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]client.GenericBackendSetDetails{
+					"TCP-80": {
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
+						},
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
+					},
+				},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+			},
+			featureEnabled: true,
+		},
+		"resource level tags with common tags from config": {
+			defaultSubnetOne: "one",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                               "nlb",
+						ServiceAnnotationNetworkLoadBalancerInitialFreeformTagsOverride: `{"cluster":"resource", "unique":"tag"}`,
+						ServiceAnnotationNetworkLoadBalancerInitialDefinedTagsOverride:  `{"namespace":{"key":"value", "owner":"team"}}`,
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			clusterTags: &providercfg.InitialTags{
+				Common: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"name": "development_cluster"},
+					DefinedTags:  map[string]map[string]interface{}{"namespace2": {"owner2": "team2", "key2": "value2"}},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "kube-system/testservice/test-uid",
+				Type:     "nlb",
+				Shape:    "flexible",
+				Internal: false,
+				Subnets:  []string{"one"},
+				Listeners: map[string]client.GenericListener{
+					"TCP-80": {
+						Name:                  common.String("TCP-80"),
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]client.GenericBackendSetDetails{
+					"TCP-80": {
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
+						},
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("FIVE_TUPLE"),
+					},
+				},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				FreeformTags:                map[string]string{"cluster": "resource", "unique": "tag", "name": "development_cluster"},
+				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}, "namespace2": {"owner2": "team2", "key2": "value2"}},
+			},
+			featureEnabled: true,
+		},
+		"resource level defined tags and common defined tags from config with same key": {
+			defaultSubnetOne: "one",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerInitialFreeformTagsOverride: `{"cluster":"resource", "unique":"tag"}`,
+						ServiceAnnotationLoadBalancerInitialDefinedTagsOverride:  `{"namespace":{"key":"value", "owner":"team"}}`,
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			clusterTags: &providercfg.InitialTags{
+				Common: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"name": "development_cluster"},
+					DefinedTags:  map[string]map[string]interface{}{"namespace": {"owner2": "team2", "key2": "value2"}},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Type:     "lb",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"one"},
+				Listeners: map[string]client.GenericListener{
+					"TCP-80": {
+						Name:                  common.String("TCP-80"),
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]client.GenericBackendSetDetails{
+					"TCP-80": {
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
+						},
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
+					},
+				},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				FreeformTags:                map[string]string{"cluster": "resource", "unique": "tag", "name": "development_cluster"},
+				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"owner2": "team2", "key2": "value2"}},
+			},
+			featureEnabled: true,
+		},
+		"cluster level tags and common tags": {
+			defaultSubnetOne: "one",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			clusterTags: &providercfg.InitialTags{
+				LoadBalancer: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"lbname": "development_cluster_loadbalancer"},
+					DefinedTags:  map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}},
+				},
+				Common: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"name": "development_cluster"},
+					DefinedTags:  map[string]map[string]interface{}{"namespace2": {"owner2": "team2", "key2": "value2"}},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Type:     "lb",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"one"},
+				Listeners: map[string]client.GenericListener{
+					"TCP-80": {
+						Name:                  common.String("TCP-80"),
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]client.GenericBackendSetDetails{
+					"TCP-80": {
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
+						},
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
+					},
+				},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				FreeformTags:                map[string]string{"lbname": "development_cluster_loadbalancer", "name": "development_cluster"},
+				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}, "namespace2": {"owner2": "team2", "key2": "value2"}},
+			},
+			featureEnabled: true,
+		},
+		"cluster level defined tags and common defined tags with same key": {
+			defaultSubnetOne: "one",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			clusterTags: &providercfg.InitialTags{
+				LoadBalancer: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"lbname": "development_cluster_loadbalancer"},
+					DefinedTags:  map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}},
+				},
+				Common: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"name": "development_cluster"},
+					DefinedTags:  map[string]map[string]interface{}{"namespace": {"owner2": "team2", "key2": "value2"}},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Type:     "lb",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"one"},
+				Listeners: map[string]client.GenericListener{
+					"TCP-80": {
+						Name:                  common.String("TCP-80"),
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]client.GenericBackendSetDetails{
+					"TCP-80": {
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
+						},
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
+					},
+				},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				FreeformTags:                map[string]string{"lbname": "development_cluster_loadbalancer", "name": "development_cluster"},
+				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"owner2": "team2", "key2": "value2"}},
+			},
+			featureEnabled: true,
+		},
+		"cluster level tags with no common tags": {
+			defaultSubnetOne: "one",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			clusterTags: &providercfg.InitialTags{
+				LoadBalancer: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"lbname": "development_cluster_loadbalancer"},
+					DefinedTags:  map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Type:     "lb",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"one"},
+				Listeners: map[string]client.GenericListener{
+					"TCP-80": {
+						Name:                  common.String("TCP-80"),
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]client.GenericBackendSetDetails{
+					"TCP-80": {
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
+						},
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
+					},
+				},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				FreeformTags:                map[string]string{"lbname": "development_cluster_loadbalancer"},
+				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}},
+			},
+			featureEnabled: true,
+		},
+		"no cluster or level tags but common tags from config": {
+			defaultSubnetOne: "one",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			clusterTags: &providercfg.InitialTags{
+				Common: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"lbname": "development_cluster_loadbalancer"},
+					DefinedTags:  map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Type:     "lb",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"one"},
+				Listeners: map[string]client.GenericListener{
+					"TCP-80": {
+						Name:                  common.String("TCP-80"),
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]client.GenericBackendSetDetails{
+					"TCP-80": {
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
+						},
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
+					},
+				},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				FreeformTags:                map[string]string{"lbname": "development_cluster_loadbalancer"},
+				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}},
+			},
+			featureEnabled: true,
+		},
+		"when the feature is disabled": {
+			defaultSubnetOne: "one",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			clusterTags: &providercfg.InitialTags{
+				Common: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"lbname": "development_cluster_loadbalancer"},
+					DefinedTags:  map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Type:     "lb",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"one"},
+				Listeners: map[string]client.GenericListener{
+					"TCP-80": {
+						Name:                  common.String("TCP-80"),
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]client.GenericBackendSetDetails{
+					"TCP-80": {
+						Backends: []client.GenericBackend{},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
+						},
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
+					},
+				},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+			},
+			featureEnabled: false,
+		},
+	}
+	cp := &CloudProvider{
+		client: MockOCIClient{},
+		config: &providercfg.Config{CompartmentID: "testCompartment"},
+	}
+
+	for name, tc := range tests {
+		logger := zap.L()
+		enableOkeSystemTags = tc.featureEnabled
+		t.Run(name, func(t *testing.T) {
+			// we expect the service to be unchanged
+			tc.expected.service = tc.service
+			cp.config = &providercfg.Config{
+				LoadBalancer: &providercfg.LoadBalancerConfig{
+					Subnet1: tc.defaultSubnetOne,
+					Subnet2: tc.defaultSubnetTwo,
+				},
+			}
+			subnets, err := cp.getLoadBalancerSubnets(context.Background(), logger.Sugar(), tc.service)
+			if err != nil {
+				t.Error(err)
+			}
+			slManagerFactory := func(mode string) securityListManager {
+				return newSecurityListManagerNOOP()
+			}
+
+			result, err := NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, tc.sslConfig, slManagerFactory, tc.clusterTags, nil)
+			if err != nil {
+				t.Error(err)
+			}
 			if !reflect.DeepEqual(result, tc.expected) {
 				t.Errorf("Expected load balancer spec\n%+v\nbut got\n%+v", tc.expected, result)
 			}
@@ -1968,6 +2875,7 @@ func TestNewLBSpecSingleAD(t *testing.T) {
 						Backends: []client.GenericBackend{},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
 							Port:             common.Int(10256),
 							UrlPath:          common.String("/healthz"),
 							Retries:          common.Int(3),
@@ -1988,7 +2896,8 @@ func TestNewLBSpecSingleAD(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager: newSecurityListManagerNOOP(),
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 			},
 		},
 	}
@@ -2016,7 +2925,7 @@ func TestNewLBSpecSingleAD(t *testing.T) {
 			slManagerFactory := func(mode string) securityListManager {
 				return newSecurityListManagerNOOP()
 			}
-			result, err := NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, nil, slManagerFactory, tc.clusterTags)
+			result, err := NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, nil, slManagerFactory, tc.clusterTags, nil)
 			if err != nil {
 				t.Error(err)
 			}
@@ -2039,6 +2948,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 		clusterTags    *providercfg.InitialTags
 	}{
 		"unsupported udp protocol": {
+			defaultSubnetOne: "one",
 			service: &v1.Service{
 				Spec: v1.ServiceSpec{
 					Ports: []v1.ServicePort{
@@ -2049,6 +2959,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 			expectedErrMsg: "invalid service: OCI load balancers do not support UDP",
 		},
 		"unsupported session affinity": {
+			defaultSubnetOne: "one",
 			service: &v1.Service{
 				Spec: v1.ServiceSpec{
 					SessionAffinity: v1.ServiceAffinityClientIP,
@@ -2118,7 +3029,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 					//add security list mananger in spec
 				},
 			},
-			expectedErrMsg: "a configuration for subnet1 must be specified for an internal load balancer",
+			expectedErrMsg: "a subnet must be specified for creating a load balancer",
 		},
 		"internal lb with empty subnet1 annotation": {
 			service: &v1.Service{
@@ -2128,7 +3039,6 @@ func TestNewLBSpecFailure(t *testing.T) {
 					UID:       "test-uid",
 					Annotations: map[string]string{
 						ServiceAnnotationLoadBalancerInternal: "true",
-						ServiceAnnotationLoadBalancerSubnet1:  "",
 					},
 				},
 				Spec: v1.ServiceSpec{
@@ -2137,7 +3047,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 					//add security list mananger in spec
 				},
 			},
-			expectedErrMsg: "a configuration for subnet1 must be specified for an internal load balancer",
+			expectedErrMsg: "a subnet must be specified for creating a load balancer",
 		},
 		"non boolean internal lb": {
 			service: &v1.Service{
@@ -2220,6 +3130,8 @@ func TestNewLBSpecFailure(t *testing.T) {
 			expectedErrMsg: `loadbalancer policy "not-valid-loadbalancer-policy" is not valid`,
 		},
 		"invalid loadBalancerIP format": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
 			service: &v1.Service{
 				Spec: v1.ServiceSpec{
 					LoadBalancerIP:  "non-ip-format",
@@ -2269,6 +3181,108 @@ func TestNewLBSpecFailure(t *testing.T) {
 			},
 			expectedErrMsg: "failed to parse defined tags annotation: invalid character 'w' looking for beginning of value",
 		},
+		"empty subnets": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace:   "kube-system",
+					Name:        "testservice",
+					UID:         "test-uid",
+					Annotations: map[string]string{},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{Protocol: v1.ProtocolTCP},
+					},
+				},
+			},
+			expectedErrMsg: "a subnet must be specified for creating a load balancer",
+		},
+		"empty strings for subnets": {
+			defaultSubnetOne: "",
+			defaultSubnetTwo: "",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace:   "kube-system",
+					Name:        "testservice",
+					UID:         "test-uid",
+					Annotations: map[string]string{},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{Protocol: v1.ProtocolTCP},
+					},
+				},
+			},
+			expectedErrMsg: "a subnet must be specified for creating a load balancer",
+		},
+		"empty string for subnet1 annotation": {
+			defaultSubnetOne: "",
+			defaultSubnetTwo: "",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSubnet1: "",
+						ServiceAnnotationLoadBalancerSubnet2: "annotation-two",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{Protocol: v1.ProtocolTCP},
+					},
+				},
+			},
+			expectedErrMsg: "a subnet must be specified for creating a load balancer",
+		},
+		"default string for cloud config subnet2": {
+			defaultSubnetOne: "",
+			defaultSubnetTwo: "random",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSubnet1: "",
+						ServiceAnnotationLoadBalancerSubnet2: "",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{Protocol: v1.ProtocolTCP},
+					},
+				},
+			},
+			expectedErrMsg: "a subnet must be specified for creating a load balancer",
+		},
+		"regional string for subnet2 annotation": {
+			defaultSubnetOne: "",
+			defaultSubnetTwo: "",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSubnet1: "",
+						ServiceAnnotationLoadBalancerSubnet2: "",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{Protocol: v1.ProtocolTCP},
+					},
+				},
+			},
+			expectedErrMsg: "a subnet must be specified for creating a load balancer",
+		},
 	}
 
 	cp := &CloudProvider{
@@ -2290,7 +3304,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 				slManagerFactory := func(mode string) securityListManager {
 					return newSecurityListManagerNOOP()
 				}
-				_, err = NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, nil, slManagerFactory, tc.clusterTags)
+				_, err = NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, nil, slManagerFactory, tc.clusterTags, nil)
 			}
 			if err == nil || err.Error() != tc.expectedErrMsg {
 				t.Errorf("Expected error with message %q but got %q", tc.expectedErrMsg, err)
@@ -2551,15 +3565,60 @@ func TestRequiresCertificate(t *testing.T) {
 				ServiceAnnotationLoadBalancerSSLPorts: "443",
 			},
 		},
-		"Does not container the Load Balancer SSL Ports Annotation": {
+		"Does not contain the Load Balancer SSL Ports Annotation": {
 			expected:    false,
 			annotations: make(map[string]string, 0),
+		},
+		"Always false for NLBs": {
+			expected: false,
+			annotations: map[string]string{
+				ServiceAnnotationLoadBalancerSSLPorts: "443",
+				ServiceAnnotationLoadBalancerType:     "nlb",
+			},
 		},
 	}
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			result := requiresCertificate(&v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: tc.annotations,
+				},
+			})
+			if result != tc.expected {
+				t.Error("Did not get the correct result")
+			}
+		})
+	}
+}
+
+func TestRequiresFrontendNsg(t *testing.T) {
+	testCases := map[string]struct {
+		expected    bool
+		annotations map[string]string
+	}{
+		"Contains annotation for NSG Rule management": {
+			expected: true,
+			annotations: map[string]string{
+				ServiceAnnotationLoadBalancerSecurityRuleManagementMode: "NSG",
+			},
+		},
+		"Does not contain annotation for NSG Rule management": {
+			expected:    false,
+			annotations: make(map[string]string, 0),
+		},
+		"Contains annotation (NLB) for NSG Rule management": {
+			expected: true,
+			annotations: map[string]string{
+				ServiceAnnotationLoadBalancerSecurityRuleManagementMode: "NSG",
+				ServiceAnnotationLoadBalancerType:                       "nlb",
+			},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			result := requiresNsgManagement(&v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: tc.annotations,
 				},
@@ -3564,6 +4623,7 @@ func Test_getHealthChecker(t *testing.T) {
 			},
 			expected: &client.GenericHealthChecker{
 				Protocol:         "HTTP",
+				IsForcePlainText: common.Bool(false),
 				Port:             common.Int(10256),
 				UrlPath:          common.String("/healthz"),
 				Retries:          common.Int(3),
@@ -3585,6 +4645,7 @@ func Test_getHealthChecker(t *testing.T) {
 			},
 			expected: &client.GenericHealthChecker{
 				Protocol:         "HTTP",
+				IsForcePlainText: common.Bool(false),
 				Port:             common.Int(10256),
 				UrlPath:          common.String("/healthz"),
 				Retries:          common.Int(4),
@@ -3604,6 +4665,7 @@ func Test_getHealthChecker(t *testing.T) {
 			},
 			expected: &client.GenericHealthChecker{
 				Protocol:         "HTTP",
+				IsForcePlainText: common.Bool(false),
 				Port:             common.Int(10256),
 				UrlPath:          common.String("/healthz"),
 				Retries:          common.Int(3),
@@ -3626,6 +4688,7 @@ func Test_getHealthChecker(t *testing.T) {
 			},
 			expected: &client.GenericHealthChecker{
 				Protocol:         "HTTP",
+				IsForcePlainText: common.Bool(false),
 				Port:             common.Int(10256),
 				UrlPath:          common.String("/healthz"),
 				Retries:          common.Int(4),
@@ -3680,6 +4743,27 @@ func Test_getHealthChecker(t *testing.T) {
 			},
 			expected: nil,
 			err:      fmt.Errorf("invalid value for health check interval, should be between %v and %v", NLBHealthCheckIntervalMin, NLBHealthCheckIntervalMax),
+		},
+		"http healthcheck for https backends": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                "lb",
+						ServiceAnnotationLoadBalancerTLSBackendSetSecret: "testSecret",
+					},
+				},
+			},
+			expected: &client.GenericHealthChecker{
+				Protocol:         "HTTP",
+				IsForcePlainText: common.Bool(true),
+				Port:             common.Int(10256),
+				UrlPath:          common.String("/healthz"),
+				Retries:          common.Int(3),
+				TimeoutInMillis:  common.Int(3000),
+				IntervalInMillis: common.Int(10000),
+				ReturnCode:       common.Int(http.StatusOK),
+			},
+			err: nil,
 		},
 	}
 
@@ -3775,13 +4859,23 @@ func Test_getSecurityListManagementMode(t *testing.T) {
 		service  *v1.Service
 		expected string
 	}{
-		"defaults": {
+		"defaults - lb": {
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{},
 				},
 			},
-			expected: "",
+			expected: "All",
+		},
+		"defaults - nlb": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			expected: "None",
 		},
 		"lb mode None": {
 			service: &v1.Service{
@@ -3865,6 +4959,376 @@ func Test_getSecurityListManagementMode(t *testing.T) {
 			}
 			if !reflect.DeepEqual(result, tc.expected) {
 				t.Errorf("Expected Security List Mode \n%+v\nbut got\n%+v", tc.expected, result)
+			}
+		})
+	}
+}
+
+func Test_getRuleManagementMode(t *testing.T) {
+	testCases := map[string]struct {
+		service  *v1.Service
+		expected string
+		nsg      *ManagedNetworkSecurityGroup
+		error    error
+	}{
+		"defaults": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+			expected: "All",
+			nsg: &ManagedNetworkSecurityGroup{
+				nsgRuleManagementMode: ManagementModeNone,
+				frontendNsgId:         "",
+				backendNsgId:          []string{},
+			},
+		},
+		"defaults - nlb": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			expected: "None",
+			nsg: &ManagedNetworkSecurityGroup{
+				nsgRuleManagementMode: ManagementModeNone,
+				frontendNsgId:         "",
+				backendNsgId:          []string{},
+			},
+		},
+		"lb mode None": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSecurityRuleManagementMode: "None",
+					},
+				},
+			},
+			expected: "None",
+			nsg: &ManagedNetworkSecurityGroup{
+				nsgRuleManagementMode: ManagementModeNone,
+				frontendNsgId:         "",
+				backendNsgId:          []string{},
+			},
+		},
+		"lb mode all": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSecurityRuleManagementMode: "SL-All",
+					},
+				},
+			},
+			expected: "All",
+			nsg: &ManagedNetworkSecurityGroup{
+				nsgRuleManagementMode: ManagementModeNone,
+				frontendNsgId:         "",
+				backendNsgId:          []string{},
+			},
+		},
+		"lb mode frontend": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSecurityRuleManagementMode: "SL-Frontend",
+					},
+				},
+			},
+			expected: "Frontend",
+			nsg: &ManagedNetworkSecurityGroup{
+				nsgRuleManagementMode: ManagementModeNone,
+				frontendNsgId:         "",
+				backendNsgId:          []string{},
+			},
+		},
+		"lb mode nsg frontend": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSecurityRuleManagementMode: "NSG",
+					},
+				},
+			},
+			expected: "NSG",
+			nsg: &ManagedNetworkSecurityGroup{
+				nsgRuleManagementMode: "NSG",
+				frontendNsgId:         "",
+				backendNsgId:          []string{},
+			},
+		},
+		"defaults-nlb": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			expected: "None",
+			nsg: &ManagedNetworkSecurityGroup{
+				nsgRuleManagementMode: ManagementModeNone,
+				frontendNsgId:         "",
+				backendNsgId:          []string{},
+			},
+		},
+		"nlb mode None": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                       "nlb",
+						ServiceAnnotationLoadBalancerSecurityRuleManagementMode: "None",
+					},
+				},
+			},
+			expected: "None",
+			nsg: &ManagedNetworkSecurityGroup{
+				nsgRuleManagementMode: ManagementModeNone,
+				frontendNsgId:         "",
+				backendNsgId:          []string{},
+			},
+		},
+		"nlb mode all": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                       "nlb",
+						ServiceAnnotationLoadBalancerSecurityRuleManagementMode: "SL-All",
+					},
+				},
+			},
+			expected: "All",
+			nsg: &ManagedNetworkSecurityGroup{
+				nsgRuleManagementMode: ManagementModeNone,
+				frontendNsgId:         "",
+				backendNsgId:          []string{},
+			},
+		},
+		"nlb mode frontend": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                       "nlb",
+						ServiceAnnotationLoadBalancerSecurityRuleManagementMode: "SL-Frontend",
+					},
+				},
+			},
+			expected: "Frontend",
+			nsg: &ManagedNetworkSecurityGroup{
+				nsgRuleManagementMode: ManagementModeNone,
+				frontendNsgId:         "",
+				backendNsgId:          []string{},
+			},
+		},
+		"nlb mode nsg": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                       "nlb",
+						ServiceAnnotationLoadBalancerSecurityRuleManagementMode: "NSG",
+					},
+				},
+			},
+			expected: "NSG",
+			nsg: &ManagedNetworkSecurityGroup{
+				nsgRuleManagementMode: "NSG",
+				frontendNsgId:         "",
+				backendNsgId:          []string{},
+			},
+		},
+		"lb mode precedence": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSecurityListManagementMode: "All",
+						ServiceAnnotationLoadBalancerSecurityRuleManagementMode: "NSG",
+					},
+				},
+			},
+			expected: "NSG",
+			nsg: &ManagedNetworkSecurityGroup{
+				nsgRuleManagementMode: "NSG",
+				frontendNsgId:         "",
+				backendNsgId:          []string{},
+			},
+		},
+		"nlb mode precedence": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                              "nlb",
+						ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode: "All",
+						ServiceAnnotationLoadBalancerSecurityRuleManagementMode:        "NSG",
+					},
+				},
+			},
+			expected: "NSG",
+			nsg: &ManagedNetworkSecurityGroup{
+				nsgRuleManagementMode: "NSG",
+				frontendNsgId:         "",
+				backendNsgId:          []string{},
+			},
+		},
+		"case does not matter nsg": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                              "nlb",
+						ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode: "All",
+						ServiceAnnotationLoadBalancerSecurityRuleManagementMode:        "nsg",
+					},
+				},
+			},
+			expected: "NSG",
+			nsg: &ManagedNetworkSecurityGroup{
+				nsgRuleManagementMode: "NSG",
+				frontendNsgId:         "",
+				backendNsgId:          []string{},
+			},
+		},
+		"case does not matter sl-all": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                              "nlb",
+						ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode: "All",
+						ServiceAnnotationLoadBalancerSecurityRuleManagementMode:        "sl-all",
+					},
+				},
+			},
+			expected: "All",
+			nsg: &ManagedNetworkSecurityGroup{
+				nsgRuleManagementMode: ManagementModeNone,
+				frontendNsgId:         "",
+				backendNsgId:          []string{},
+			},
+		},
+		"case does not matter sl-frontend": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                              "nlb",
+						ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode: "All",
+						ServiceAnnotationLoadBalancerSecurityRuleManagementMode:        "sl-frontend",
+					},
+				},
+			},
+			expected: "Frontend",
+			nsg: &ManagedNetworkSecurityGroup{
+				nsgRuleManagementMode: ManagementModeNone,
+				frontendNsgId:         "",
+				backendNsgId:          []string{},
+			},
+		},
+		"invalid values should return none": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                              "nlb",
+						ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode: "random",
+						ServiceAnnotationLoadBalancerSecurityRuleManagementMode:        "random",
+					},
+				},
+			},
+			expected: "None",
+			nsg: &ManagedNetworkSecurityGroup{
+				nsgRuleManagementMode: ManagementModeNone,
+				frontendNsgId:         "",
+				backendNsgId:          []string{},
+			},
+			error: fmt.Errorf("invalid value: %s provided for annotation: oci.oraclecloud.com/security-rule-management-mode",
+				"random"),
+		},
+	}
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			result, nsg, err := getRuleManagementMode(tc.service)
+			if err != nil {
+				if !reflect.DeepEqual(err, tc.error) {
+					t.Errorf("Expected Security List Mode \n%+v\nbut got\n%+v", tc.error, err)
+				}
+			}
+			if !reflect.DeepEqual(result, tc.expected) {
+				t.Errorf("Expected Security List Mode \n%+v\nbut got\n%+v", tc.expected, result)
+			}
+			if !reflect.DeepEqual(nsg, tc.nsg) {
+				t.Errorf("Expected Nsg values \n%+v\nbut got\n%+v", tc.nsg, nsg)
+			}
+		})
+	}
+}
+
+func Test_getBackendNetworkSecurityGroups(t *testing.T) {
+	testCases := map[string]struct {
+		service *v1.Service
+		nsgList []string
+		err     error
+	}{
+		"empty ServiceAnnotationLoadBalancerNetworkSecurityGroups annotation": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationBackendSecurityRuleManagement: "",
+					},
+				},
+			},
+			nsgList: []string{},
+			err:     nil,
+		},
+		"no ServiceAnnotationBackendSecurityRuleManagement annotation": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+			nsgList: []string{},
+			err:     nil,
+		},
+		"ServiceAnnotationBackendSecurityRuleManagement update annotation": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationBackendSecurityRuleManagement: "ocid1.networksecuritygroup.oc1.iad.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					},
+				},
+			},
+			nsgList: []string{"ocid1.networksecuritygroup.oc1.iad.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+			err:     nil,
+		},
+		"ServiceAnnotationBackendSecurityRuleManagement more than 5": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationBackendSecurityRuleManagement: "ocid1,ocid2,ocid3,ocid4,ocid5,ocid6",
+					},
+				},
+			},
+			nsgList: []string{"ocid1", "ocid2", "ocid3", "ocid4", "ocid5", "ocid6"},
+			err:     nil,
+		},
+		"ServiceAnnotationBackendSecurityRuleManagement duplicate NSG OCIDS": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationBackendSecurityRuleManagement: "ocid1,ocid2, ocid1",
+					},
+				},
+			},
+			nsgList: []string{"ocid1", "ocid2"},
+			err:     nil,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			nsgList, err := getManagedBackendNSG(tc.service)
+			if err != nil && err.Error() != tc.err.Error() {
+				t.Errorf("Expected  NSG List error\n%+v\nbut got\n%+v", tc.err, err)
+			}
+			if !reflect.DeepEqual(nsgList, tc.nsgList) {
+				t.Errorf("Expected NSG List\n%+v\nbut got\n%+v", tc.nsgList, nsgList)
 			}
 		})
 	}
@@ -4325,6 +5789,672 @@ func Test_getPreserveSourceDestination(t *testing.T) {
 				t.Errorf("Expected  \n%+v\nbut got\n%+v", tc.expectedBool, enable)
 			}
 
+		})
+	}
+}
+
+var getLBShapeTestCases = []struct {
+	name                 string
+	existingLb           *client.GenericLoadBalancer
+	service              *v1.Service
+	expectedShape        string
+	expectedMinBandwidth int
+	expectedMaxBandwidth int
+	expectedError        error
+}{
+	{
+		"default spec, no existing LB",
+		nil,
+		&v1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace:   "kube-system",
+				Name:        "testservice",
+				UID:         "test-uid",
+				Annotations: map[string]string{},
+			},
+		},
+		"100Mbps",
+		0,
+		0,
+		nil,
+	},
+	{
+		"flexible spec, no existing LB",
+		nil,
+		&v1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "kube-system",
+				Name:      "testservice",
+				UID:       "test-uid",
+				Annotations: map[string]string{
+					ServiceAnnotationLoadBalancerShape:        "flexible",
+					ServiceAnnotationLoadBalancerShapeFlexMin: "1",
+					ServiceAnnotationLoadBalancerShapeFlexMax: "10000000",
+				},
+			},
+		},
+		"flexible",
+		10,
+		8192,
+		nil,
+	},
+	{
+		"default shape in spec, existing LB converted to flexible",
+		&client.GenericLoadBalancer{
+			ShapeName: common.String("flexible"),
+			ShapeDetails: &client.GenericShapeDetails{
+				MinimumBandwidthInMbps: common.Int(12),
+				MaximumBandwidthInMbps: common.Int(13),
+			},
+		},
+		&v1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace:   "kube-system",
+				Name:        "testservice",
+				UID:         "test-uid",
+				Annotations: map[string]string{},
+			},
+		},
+		"flexible",
+		12,
+		13,
+		nil,
+	},
+	{
+		"bad flexible spec",
+		nil,
+		&v1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "kube-system",
+				Name:      "testservice",
+				UID:       "test-uid",
+				Annotations: map[string]string{
+					ServiceAnnotationLoadBalancerShape:        "flexible",
+					ServiceAnnotationLoadBalancerShapeFlexMin: "1AB",
+					ServiceAnnotationLoadBalancerShapeFlexMax: "2AB",
+				},
+			},
+		},
+		"",
+		10,
+		8192,
+		errors.New("invalid format for service.beta.kubernetes.io/oci-load-balancer-shape-flex-min annotation : 1AB"),
+	},
+	{
+		"bad flexible max bandwidth",
+		nil,
+		&v1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "kube-system",
+				Name:      "testservice",
+				UID:       "test-uid",
+				Annotations: map[string]string{
+					ServiceAnnotationLoadBalancerShape:        "flexible",
+					ServiceAnnotationLoadBalancerShapeFlexMin: "10",
+					ServiceAnnotationLoadBalancerShapeFlexMax: "2AB",
+				},
+			},
+		},
+		"",
+		10,
+		0,
+		errors.New("invalid format for service.beta.kubernetes.io/oci-load-balancer-shape-flex-max annotation : 2AB"),
+	},
+	{
+		"flexible max bandwidth lower than min bandwidth",
+		nil,
+		&v1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "kube-system",
+				Name:      "testservice",
+				UID:       "test-uid",
+				Annotations: map[string]string{
+					ServiceAnnotationLoadBalancerShape:        "flexible",
+					ServiceAnnotationLoadBalancerShapeFlexMin: "100",
+					ServiceAnnotationLoadBalancerShapeFlexMax: "10",
+				},
+			},
+		},
+		"flexible",
+		100,
+		100,
+		nil,
+	},
+	{
+		"bad flexible min and max bandwidth",
+		nil,
+		&v1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "kube-system",
+				Name:      "testservice",
+				UID:       "test-uid",
+				Annotations: map[string]string{
+					ServiceAnnotationLoadBalancerShape:        "flexible",
+					ServiceAnnotationLoadBalancerShapeFlexMin: "100000",
+					ServiceAnnotationLoadBalancerShapeFlexMax: "1",
+				},
+			},
+		},
+		"flexible",
+		8192,
+		8192,
+		nil,
+	},
+	{
+		"existing LB converted to flex outside of OKE",
+		&client.GenericLoadBalancer{
+			ShapeName: common.String("flexible"),
+			ShapeDetails: &client.GenericShapeDetails{
+				MinimumBandwidthInMbps: common.Int(10),
+				MaximumBandwidthInMbps: common.Int(100),
+			},
+		},
+		&v1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace:   "kube-system",
+				Name:        "testservice",
+				UID:         "test-uid",
+				Annotations: map[string]string{},
+			},
+		},
+		"flexible",
+		10,
+		100,
+		nil,
+	},
+	{
+		"existing LB converted to flex outside of OKE, but dynamic shape annotation still present",
+		&client.GenericLoadBalancer{
+			ShapeName: common.String("flexible"),
+			ShapeDetails: &client.GenericShapeDetails{
+				MinimumBandwidthInMbps: common.Int(10),
+				MaximumBandwidthInMbps: common.Int(100),
+			},
+		},
+		&v1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "kube-system",
+				Name:      "testservice",
+				UID:       "test-uid",
+				Annotations: map[string]string{
+					ServiceAnnotationLoadBalancerShape: "100Mbps",
+				},
+			},
+		},
+		"100Mbps",
+		0,
+		0,
+		nil,
+	},
+	{
+		"existing LB converted to flex outside of OKE, but flexible annotations have different value",
+		&client.GenericLoadBalancer{
+			ShapeName: common.String("flexible"),
+			ShapeDetails: &client.GenericShapeDetails{
+				MinimumBandwidthInMbps: common.Int(10),
+				MaximumBandwidthInMbps: common.Int(100),
+			},
+		},
+		&v1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "kube-system",
+				Name:      "testservice",
+				UID:       "test-uid",
+				Annotations: map[string]string{
+					ServiceAnnotationLoadBalancerShape:        "flexible",
+					ServiceAnnotationLoadBalancerShapeFlexMin: "100",
+					ServiceAnnotationLoadBalancerShapeFlexMax: "200",
+				},
+			},
+		},
+		"flexible",
+		100,
+		200,
+		nil,
+	},
+}
+
+func Test_getLBShape(t *testing.T) {
+	for _, tc := range getLBShapeTestCases {
+		actualShapeName, minBandwidth, maxBandwidth, err := getLBShape(tc.service, tc.existingLb)
+		if actualShapeName != tc.expectedShape {
+			t.Errorf("Expected  \n%+v\nbut got\n%+v", tc.expectedShape, actualShapeName)
+		}
+		if minBandwidth != nil && *minBandwidth != tc.expectedMinBandwidth {
+			t.Errorf("Expected  \n%+v\nbut got\n%+v", tc.expectedMinBandwidth, minBandwidth)
+		}
+		if maxBandwidth != nil && *maxBandwidth != tc.expectedMaxBandwidth {
+			t.Errorf("Expected  \n%+v\nbut got\n%+v", tc.expectedMaxBandwidth, maxBandwidth)
+		}
+		if err != nil && err.Error() != tc.expectedError.Error() {
+			t.Errorf("Expected \n%+v\nbut got\n%+v", tc.expectedError, err)
+		}
+	}
+}
+
+func Test_getBackendSetNamePortMap(t *testing.T) {
+	testCases := map[string]struct {
+		in  *v1.Service
+		out map[string]v1.ServicePort
+	}{
+		"single port": {
+			in: &v1.Service{
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     80,
+						},
+					},
+				},
+			},
+			out: map[string]v1.ServicePort{
+				"TCP-80": {
+					Protocol: v1.ProtocolTCP,
+					Port:     80,
+				},
+			},
+		},
+		"multiple ports": {
+			in: &v1.Service{
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     80,
+						},
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     81,
+						},
+					},
+				},
+			},
+			out: map[string]v1.ServicePort{
+				"TCP-80": {
+					Protocol: v1.ProtocolTCP,
+					Port:     80,
+				},
+				"TCP-81": {
+					Protocol: v1.ProtocolTCP,
+					Port:     81,
+				},
+			},
+		},
+		"multiple ports with different protocols": {
+			in: &v1.Service{
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     80,
+						},
+						{
+							Protocol: v1.ProtocolUDP,
+							Port:     81,
+						},
+					},
+				},
+			},
+			out: map[string]v1.ServicePort{
+				"TCP-80": {
+					Protocol: v1.ProtocolTCP,
+					Port:     80,
+				},
+				"UDP-81": {
+					Protocol: v1.ProtocolUDP,
+					Port:     81,
+				},
+			},
+		},
+		"multiple ports with mixed protocols": {
+			in: &v1.Service{
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     80,
+						},
+						{
+							Protocol: v1.ProtocolUDP,
+							Port:     81,
+						},
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     82,
+						},
+						{
+							Protocol: v1.ProtocolUDP,
+							Port:     82,
+						},
+					},
+				},
+			},
+			out: map[string]v1.ServicePort{
+				"TCP-80": {
+					Protocol: v1.ProtocolTCP,
+					Port:     80,
+				},
+				"UDP-81": {
+					Protocol: v1.ProtocolUDP,
+					Port:     81,
+				},
+				"TCP_AND_UDP-82": {
+					Protocol: v1.ProtocolTCP,
+					Port:     82,
+				},
+			},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			got := getBackendSetNamePortMap(tc.in)
+			if !reflect.DeepEqual(got, tc.out) {
+				t.Errorf("Expected \n%+v\nbut got\n%+v", tc.out, got)
+			}
+		})
+	}
+}
+
+func Test_getOciLoadBalancerSubnets(t *testing.T) {
+	testCases := map[string]struct {
+		defaultSubnetOne string
+		defaultSubnetTwo string
+		service          *v1.Service
+		expectedErrMsg   string
+		subnets          []string
+	}{
+		"empty subnets": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+			expectedErrMsg: "a subnet must be specified for creating a load balancer",
+		},
+		"empty strings for subnets": {
+			defaultSubnetOne: "",
+			defaultSubnetTwo: "",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+			expectedErrMsg: "a subnet must be specified for creating a load balancer",
+		},
+		"empty string for subnet1 annotation": {
+			defaultSubnetOne: "",
+			defaultSubnetTwo: "",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSubnet1: "",
+						ServiceAnnotationLoadBalancerSubnet2: "annotation-two",
+					},
+				},
+			},
+			expectedErrMsg: "a subnet must be specified for creating a load balancer",
+		},
+		"default string for cloud config subnet2": {
+			defaultSubnetOne: "",
+			defaultSubnetTwo: "random",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSubnet1: "",
+						ServiceAnnotationLoadBalancerSubnet2: "",
+					},
+				},
+			},
+			expectedErrMsg: "a subnet must be specified for creating a load balancer",
+		},
+		"regional string for subnet2 annotation": {
+			defaultSubnetOne: "",
+			defaultSubnetTwo: "",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSubnet1: "",
+						ServiceAnnotationLoadBalancerSubnet2: "",
+					},
+				},
+			},
+			expectedErrMsg: "a subnet must be specified for creating a load balancer",
+		},
+		"subnets passed via cloud config": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+			subnets: []string{"one", "two"},
+		},
+		"subnets passed via annotation": {
+			defaultSubnetOne: "",
+			defaultSubnetTwo: "",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSubnet1: "annotation-one",
+						ServiceAnnotationLoadBalancerSubnet2: "annotation-two",
+					},
+				},
+			},
+			subnets: []string{"annotation-one", "annotation-two"},
+		},
+		"regional subnet passed via subnet1 annotation": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSubnet1: "regional-subnet",
+						ServiceAnnotationLoadBalancerSubnet2: "annotation-two",
+					},
+				},
+			},
+			subnets: []string{"regional-subnet"},
+		},
+		"regional subnet passed via subnet2 annotation": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerSubnet1: "annotation-one",
+						ServiceAnnotationLoadBalancerSubnet2: "regional-subnet",
+					},
+				},
+			},
+			subnets: []string{"regional-subnet"},
+		},
+	}
+	cp := &CloudProvider{
+		client: MockOCIClient{},
+		config: &providercfg.Config{CompartmentID: "testCompartment"},
+	}
+
+	for name, tc := range testCases {
+		logger := zap.L()
+		t.Run(name, func(t *testing.T) {
+			cp.config = &providercfg.Config{
+				LoadBalancer: &providercfg.LoadBalancerConfig{
+					Subnet1: tc.defaultSubnetOne,
+					Subnet2: tc.defaultSubnetTwo,
+				},
+			}
+			subnets, err := cp.getOciLoadBalancerSubnets(context.Background(), logger.Sugar(), tc.service)
+			if !reflect.DeepEqual(subnets, tc.subnets) {
+				t.Errorf("Expected \n%+v\nbut got\n%+v", tc.subnets, subnets)
+			}
+			if err != nil && err.Error() != tc.expectedErrMsg {
+				t.Errorf("Expected error with message %q but got %q", tc.expectedErrMsg, err)
+			}
+		})
+	}
+}
+
+func Test_getNetworkLoadbalancerSubnets(t *testing.T) {
+	testCases := map[string]struct {
+		defaultSubnetOne string
+		defaultSubnetTwo string
+		service          *v1.Service
+		expectedErrMsg   string
+		subnets          []string
+	}{
+		"empty subnets": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			expectedErrMsg: "a subnet must be specified for a network load balancer",
+		},
+		"empty strings for subnets": {
+			defaultSubnetOne: "",
+			defaultSubnetTwo: "",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			expectedErrMsg: "a subnet must be specified for a network load balancer",
+		},
+		"empty string for nlb subnet annotation": {
+			defaultSubnetOne: "",
+			defaultSubnetTwo: "",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:          "nlb",
+						ServiceAnnotationNetworkLoadBalancerSubnet: "",
+					},
+				},
+			},
+			expectedErrMsg: "a subnet must be specified for a network load balancer",
+		},
+		"default string for cloud config subnet2": {
+			defaultSubnetOne: "",
+			defaultSubnetTwo: "random",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			expectedErrMsg: "a subnet must be specified for a network load balancer",
+		},
+		"subnet for nlb annotation": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:          "nlb",
+						ServiceAnnotationNetworkLoadBalancerSubnet: "annotation-one",
+					},
+				},
+			},
+			subnets: []string{"annotation-one"},
+		},
+		"subnets passed via cloud config": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			subnets: []string{"one"},
+		},
+		"subnets passed via annotation": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			subnets: []string{"one"},
+		},
+	}
+	cp := &CloudProvider{
+		client: MockOCIClient{},
+		config: &providercfg.Config{CompartmentID: "testCompartment"},
+	}
+
+	for name, tc := range testCases {
+		logger := zap.L()
+		t.Run(name, func(t *testing.T) {
+			cp.config = &providercfg.Config{
+				LoadBalancer: &providercfg.LoadBalancerConfig{
+					Subnet1: tc.defaultSubnetOne,
+					Subnet2: tc.defaultSubnetTwo,
+				},
+			}
+			subnets, err := cp.getNetworkLoadbalancerSubnets(context.Background(), logger.Sugar(), tc.service)
+			if !reflect.DeepEqual(subnets, tc.subnets) {
+				t.Errorf("Expected \n%+v\nbut got\n%+v", tc.subnets, subnets)
+			}
+			if err != nil && err.Error() != tc.expectedErrMsg {
+				t.Errorf("Expected error with message %q but got %q", tc.expectedErrMsg, err)
+			}
+		})
+	}
+}
+
+func Test_getResourceTrackingSysTagsFromConfig(t *testing.T) {
+	tests := map[string]struct {
+		initialTags *providercfg.InitialTags
+		wantTag     map[string]map[string]interface{}
+	}{
+		"expect an empty system tag when has no common tags": {
+			initialTags: &providercfg.InitialTags{},
+			wantTag:     nil,
+		},
+		"expect an empty system tag when resource tracking tags are not in common tags": {
+			initialTags: &providercfg.InitialTags{
+				LoadBalancer: &providercfg.TagConfig{
+					DefinedTags: map[string]map[string]interface{}{"ns": {"key": "val"}},
+				},
+				Common: &providercfg.TagConfig{
+					DefinedTags: map[string]map[string]interface{}{"orcl-not-a-tracking-tag": {"Cluster": "ocid1.cluster.aa..."}},
+				},
+			},
+			wantTag: nil,
+		},
+		"extract tracking system tag from config": {
+			initialTags: &providercfg.InitialTags{
+				LoadBalancer: &providercfg.TagConfig{
+					DefinedTags: map[string]map[string]interface{}{"ns": {"key": "val"}},
+				},
+				Common: &providercfg.TagConfig{
+					FreeformTags: map[string]string{"Cluster": "ocid1.cluster.aa..."},
+					DefinedTags:  map[string]map[string]interface{}{"orcl-containerengine": {"Cluster": "ocid1.cluster.aa..."}},
+				},
+			},
+			wantTag: map[string]map[string]interface{}{"orcl-containerengine": {"Cluster": "ocid1.cluster.aa..."}},
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			tag := getResourceTrackingSysTagsFromConfig(zap.S(), test.initialTags)
+			t.Logf("%#v", tag)
+			if !reflect.DeepEqual(test.wantTag, tag) {
+				t.Errorf("wanted %v but got %v", test.wantTag, tag)
+			}
 		})
 	}
 }

@@ -15,6 +15,11 @@
 package disk
 
 import (
+	"context"
+	"os"
+	"time"
+
+	"github.com/oracle/oci-go-sdk/v65/core"
 	"go.uber.org/zap"
 	"k8s.io/mount-utils"
 	"k8s.io/utils/exec"
@@ -30,13 +35,18 @@ type pvMounter struct {
 	logger       *zap.SugaredLogger
 }
 
-//NewFromPVDisk creates a new PV handler from PVDisk.
+// NewFromPVDisk creates a new PV handler from PVDisk.
 func NewFromPVDisk(logger *zap.SugaredLogger) Interface {
 	return &pvMounter{
 		runner:  exec.New(),
 		mounter: mount.New(mountCommand),
 		logger:  logger,
 	}
+}
+
+func (c *pvMounter) WaitForVolumeLoginOrTimeout(ctx context.Context, multipathDevice []core.MultipathDevice) error {
+	c.logger.Info("Attachment type paravirtualized. WaitForVolumeLoginOrTimeout() not needed for paravirtualized attachment")
+	return nil
 }
 
 func (c *pvMounter) AddToDB() error {
@@ -93,7 +103,37 @@ func (c *pvMounter) UnmountPath(path string) error {
 	return UnmountPath(c.logger, path, c.mounter)
 }
 
+func (c *pvMounter) Rescan(devicePath string) error {
+	return Rescan(c.logger, devicePath)
+}
+
 func (c *pvMounter) Resize(devicePath string, volumePath string) (bool, error) {
 	resizefs := mount.NewResizeFs(c.runner)
 	return resizefs.Resize(devicePath, volumePath)
+}
+
+func (c *pvMounter) GetDiskFormat(disk string) (string, error) {
+	return getDiskFormat(c.runner, disk, c.logger)
+}
+
+func waitForPathToExist(path string, maxRetries int) bool {
+	for i := 0; i < maxRetries; i++ {
+		var err error
+		_, err = os.Stat(path)
+		if err == nil {
+			return true
+		}
+		if err != nil && !os.IsNotExist(err) {
+			return false
+		}
+		if i == maxRetries-1 {
+			break
+		}
+		time.Sleep(waitForPathDelay)
+	}
+	return false
+}
+
+func (c *pvMounter) WaitForPathToExist(path string, maxRetries int) bool {
+	return waitForPathToExist(path, maxRetries)
 }

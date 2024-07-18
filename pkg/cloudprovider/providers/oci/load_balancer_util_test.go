@@ -239,6 +239,117 @@ func TestSortAndCombineActions(t *testing.T) {
 				},
 			},
 		},
+		// Update port 8080 - lexicographic priority
+		// Change ports 80 - 443 - Creates create delete sequence for listener and backendset - lexicographically decreased port
+		// Change ports 6443 - 9443 - Creates create delete sequence for listener and backendset - lexicographically increased port
+		"create+delete+update": {
+			backendSetActions: []Action{
+				&BackendSetAction{
+					name:       "TCP-8080",
+					actionType: Update,
+					BackendSet: client.GenericBackendSetDetails{},
+				},
+				&BackendSetAction{
+					name:       "TCP-9443",
+					actionType: Create,
+					BackendSet: client.GenericBackendSetDetails{},
+				},
+				&BackendSetAction{
+					name:       "TCP-6443",
+					actionType: Delete,
+					BackendSet: client.GenericBackendSetDetails{},
+				},
+				&BackendSetAction{
+					name:       "TCP-80",
+					actionType: Delete,
+					BackendSet: client.GenericBackendSetDetails{},
+				},
+				&BackendSetAction{
+					name:       "TCP-443",
+					actionType: Create,
+					BackendSet: client.GenericBackendSetDetails{},
+				},
+			},
+			listenerActions: []Action{
+				&ListenerAction{
+					name:       "TCP-80",
+					actionType: Delete,
+					Listener:   client.GenericListener{},
+				},
+				&ListenerAction{
+					name:       "TCP-9443",
+					actionType: Create,
+					Listener:   client.GenericListener{},
+				},
+				&ListenerAction{
+					name:       "TCP-443",
+					actionType: Create,
+					Listener:   client.GenericListener{},
+				},
+				&ListenerAction{
+					name:       "TCP-8080",
+					actionType: Update,
+					Listener:   client.GenericListener{},
+				},
+				&ListenerAction{
+					name:       "TCP-6443",
+					actionType: Delete,
+					Listener:   client.GenericListener{},
+				},
+			},
+			expected: []Action{
+				&ListenerAction{
+					name:       "TCP-6443",
+					actionType: Delete,
+					Listener:   client.GenericListener{},
+				},
+				&BackendSetAction{
+					name:       "TCP-6443",
+					actionType: Delete,
+					BackendSet: client.GenericBackendSetDetails{},
+				},
+				&ListenerAction{
+					name:       "TCP-80",
+					actionType: Delete,
+					Listener:   client.GenericListener{},
+				},
+				&BackendSetAction{
+					name:       "TCP-80",
+					actionType: Delete,
+					BackendSet: client.GenericBackendSetDetails{},
+				},
+				&BackendSetAction{
+					name:       "TCP-443",
+					actionType: Create,
+					BackendSet: client.GenericBackendSetDetails{},
+				},
+				&ListenerAction{
+					name:       "TCP-443",
+					actionType: Create,
+					Listener:   client.GenericListener{},
+				},
+				&ListenerAction{
+					name:       "TCP-8080",
+					actionType: Update,
+					Listener:   client.GenericListener{},
+				},
+				&BackendSetAction{
+					name:       "TCP-8080",
+					actionType: Update,
+					BackendSet: client.GenericBackendSetDetails{},
+				},
+				&BackendSetAction{
+					name:       "TCP-9443",
+					actionType: Create,
+					BackendSet: client.GenericBackendSetDetails{},
+				},
+				&ListenerAction{
+					name:       "TCP-9443",
+					actionType: Create,
+					Listener:   client.GenericListener{},
+				},
+			},
+		},
 	}
 
 	for name, tc := range testCases {
@@ -1649,6 +1760,78 @@ func TestHasBackendSetChanged(t *testing.T) {
 			},
 			expected: true,
 		},
+		{
+			name: "Set IsPreserveSource",
+			desired: client.GenericBackendSetDetails{
+				IsPreserveSource: nil,
+				Policy:           common.String("policy"),
+				Backends: []client.GenericBackend{
+					{
+						IpAddress: common.String("0.0.0.0"),
+						Port:      common.Int(20),
+					},
+				},
+			},
+			actual: client.GenericBackendSetDetails{
+				IsPreserveSource: common.Bool(true),
+				Policy:           common.String("policy"),
+				Backends: []client.GenericBackend{
+					{
+						IpAddress: common.String("0.0.0.0"),
+						Port:      common.Int(20),
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "IsPreserveSource change",
+			desired: client.GenericBackendSetDetails{
+				IsPreserveSource: common.Bool(true),
+				Policy:           common.String("policy"),
+				Backends: []client.GenericBackend{
+					{
+						IpAddress: common.String("0.0.0.0"),
+						Port:      common.Int(20),
+					},
+				},
+			},
+			actual: client.GenericBackendSetDetails{
+				IsPreserveSource: common.Bool(false),
+				Policy:           common.String("policy"),
+				Backends: []client.GenericBackend{
+					{
+						IpAddress: common.String("0.0.0.0"),
+						Port:      common.Int(20),
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "no change - IsPreserveSource set",
+			desired: client.GenericBackendSetDetails{
+				IsPreserveSource: common.Bool(true),
+				Policy:           common.String("policy"),
+				Backends: []client.GenericBackend{
+					{
+						IpAddress: common.String("0.0.0.0"),
+						Port:      common.Int(20),
+					},
+				},
+			},
+			actual: client.GenericBackendSetDetails{
+				IsPreserveSource: common.Bool(true),
+				Policy:           common.String("policy"),
+				Backends: []client.GenericBackend{
+					{
+						IpAddress: common.String("0.0.0.0"),
+						Port:      common.Int(20),
+					},
+				},
+			},
+			expected: false,
+		},
 	}
 
 	for _, tt := range testCases {
@@ -1676,17 +1859,19 @@ func TestGetHealthCheckerChanges(t *testing.T) {
 				ResponseBodyRegex: common.String("desired"),
 				Retries:           common.Int(3),
 				ReturnCode:        common.Int(200),
-				TimeoutInMillis:   common.Int(200),
+				TimeoutInMillis:   common.Int(300),
 				UrlPath:           common.String("/desired"),
 				Protocol:          "HTTP",
+				IsForcePlainText:  common.Bool(false),
 			},
 			actual: client.GenericHealthChecker{
 				Port:              common.Int(25),
 				ResponseBodyRegex: common.String("actual"),
 				Retries:           common.Int(2),
-				TimeoutInMillis:   common.Int(300),
+				TimeoutInMillis:   common.Int(200),
 				UrlPath:           common.String("/actual"),
 				Protocol:          "TCP",
+				IsForcePlainText:  common.Bool(true),
 			},
 			expected: []string{
 				fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:Port", 25, 20),
@@ -1694,8 +1879,9 @@ func TestGetHealthCheckerChanges(t *testing.T) {
 				fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:Retries", 2, 3),
 				fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:ReturnCode", 0, 200),
 				fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:TimeoutInMillis", 200, 300),
-				fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:UrlPath", "actual", "desired"),
-				fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:UrlPath", "TCP", "HTTP"),
+				fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:UrlPath", "/actual", "/desired"),
+				fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:Protocol", "TCP", "HTTP"),
+				fmt.Sprintf(changeFmtStr, "BackendSet:HealthChecker:IsForcePlainText", true, false),
 			},
 		},
 	}
@@ -1703,9 +1889,6 @@ func TestGetHealthCheckerChanges(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			changes := getHealthCheckerChanges(&tt.actual, &tt.desired)
-			if len(changes) == len(tt.expected) {
-				return
-			}
 			if !reflect.DeepEqual(changes, tt.expected) {
 				t.Errorf("expected HealthCheckerChanges\n%+v\nbut got\n%+v", tt.expected, changes)
 			}
@@ -1885,6 +2068,12 @@ func TestHasLoadBalancerNetworkSecurityGroupsChanged(t *testing.T) {
 			name:                        "Has Changes",
 			actualNetworkSecurityGroup:  []string{"ocid1"},
 			desiredNetworkSecurityGroup: []string{"ocid1, ocid2"},
+			expected:                    true,
+		},
+		{
+			name:                        "Has Changes",
+			actualNetworkSecurityGroup:  []string{"ocid1"},
+			desiredNetworkSecurityGroup: []string{"ocid3"},
 			expected:                    true,
 		},
 	}

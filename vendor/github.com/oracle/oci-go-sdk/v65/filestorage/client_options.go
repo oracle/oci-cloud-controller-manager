@@ -1,10 +1,11 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
 // File Storage API
 //
-// API for the File Storage service. Use this API to manage file systems, mount targets, and snapshots. For more information, see Overview of File Storage (https://docs.cloud.oracle.com/iaas/Content/File/Concepts/filestorageoverview.htm).
+// Use the File Storage service API to manage file systems, mount targets, and snapshots.
+// For more information, see Overview of File Storage (https://docs.cloud.oracle.com/iaas/Content/File/Concepts/filestorageoverview.htm).
 //
 
 package filestorage
@@ -35,7 +36,7 @@ type ClientOptions struct {
 	RequirePrivilegedSourcePort *bool `mandatory:"false" json:"requirePrivilegedSourcePort"`
 
 	// Type of access to grant clients using the file system
-	// through this export. If unspecified defaults to `READ_ONLY`.
+	// through this export. If unspecified defaults to `READ_WRITE`.
 	Access ClientOptionsAccessEnum `mandatory:"false" json:"access,omitempty"`
 
 	// Used when clients accessing the file system through this export
@@ -55,6 +56,13 @@ type ClientOptions struct {
 	// identitySquash for more details.) If unspecified defaults
 	// to `65534`.
 	AnonymousGid *int64 `mandatory:"false" json:"anonymousGid"`
+
+	// Whether or not to enable anonymous access to the file system through this export in cases where a user isn't found in the LDAP server used for ID mapping.
+	// If true, and the user is not found in the LDAP directory, the operation uses the Squash UID and Squash GID.
+	IsAnonymousAccessAllowed *bool `mandatory:"false" json:"isAnonymousAccessAllowed"`
+
+	// Array of allowed NFS authentication types.
+	AllowedAuth []ClientOptionsAllowedAuthEnum `mandatory:"false" json:"allowedAuth,omitempty"`
 }
 
 func (m ClientOptions) String() string {
@@ -73,6 +81,12 @@ func (m ClientOptions) ValidateEnumValue() (bool, error) {
 	if _, ok := GetMappingClientOptionsIdentitySquashEnum(string(m.IdentitySquash)); !ok && m.IdentitySquash != "" {
 		errMessage = append(errMessage, fmt.Sprintf("unsupported enum value for IdentitySquash: %s. Supported values are: %s.", m.IdentitySquash, strings.Join(GetClientOptionsIdentitySquashEnumStringValues(), ",")))
 	}
+	for _, val := range m.AllowedAuth {
+		if _, ok := GetMappingClientOptionsAllowedAuthEnum(string(val)); !ok && val != "" {
+			errMessage = append(errMessage, fmt.Sprintf("unsupported enum value for AllowedAuth: %s. Supported values are: %s.", val, strings.Join(GetClientOptionsAllowedAuthEnumStringValues(), ",")))
+		}
+	}
+
 	if len(errMessage) > 0 {
 		return true, fmt.Errorf(strings.Join(errMessage, "\n"))
 	}
@@ -164,5 +178,55 @@ func GetClientOptionsIdentitySquashEnumStringValues() []string {
 // GetMappingClientOptionsIdentitySquashEnum performs case Insensitive comparison on enum value and return the desired enum
 func GetMappingClientOptionsIdentitySquashEnum(val string) (ClientOptionsIdentitySquashEnum, bool) {
 	enum, ok := mappingClientOptionsIdentitySquashEnumLowerCase[strings.ToLower(val)]
+	return enum, ok
+}
+
+// ClientOptionsAllowedAuthEnum Enum with underlying type: string
+type ClientOptionsAllowedAuthEnum string
+
+// Set of constants representing the allowable values for ClientOptionsAllowedAuthEnum
+const (
+	ClientOptionsAllowedAuthSys   ClientOptionsAllowedAuthEnum = "SYS"
+	ClientOptionsAllowedAuthKrb5  ClientOptionsAllowedAuthEnum = "KRB5"
+	ClientOptionsAllowedAuthKrb5i ClientOptionsAllowedAuthEnum = "KRB5I"
+	ClientOptionsAllowedAuthKrb5p ClientOptionsAllowedAuthEnum = "KRB5P"
+)
+
+var mappingClientOptionsAllowedAuthEnum = map[string]ClientOptionsAllowedAuthEnum{
+	"SYS":   ClientOptionsAllowedAuthSys,
+	"KRB5":  ClientOptionsAllowedAuthKrb5,
+	"KRB5I": ClientOptionsAllowedAuthKrb5i,
+	"KRB5P": ClientOptionsAllowedAuthKrb5p,
+}
+
+var mappingClientOptionsAllowedAuthEnumLowerCase = map[string]ClientOptionsAllowedAuthEnum{
+	"sys":   ClientOptionsAllowedAuthSys,
+	"krb5":  ClientOptionsAllowedAuthKrb5,
+	"krb5i": ClientOptionsAllowedAuthKrb5i,
+	"krb5p": ClientOptionsAllowedAuthKrb5p,
+}
+
+// GetClientOptionsAllowedAuthEnumValues Enumerates the set of values for ClientOptionsAllowedAuthEnum
+func GetClientOptionsAllowedAuthEnumValues() []ClientOptionsAllowedAuthEnum {
+	values := make([]ClientOptionsAllowedAuthEnum, 0)
+	for _, v := range mappingClientOptionsAllowedAuthEnum {
+		values = append(values, v)
+	}
+	return values
+}
+
+// GetClientOptionsAllowedAuthEnumStringValues Enumerates the set of values in String for ClientOptionsAllowedAuthEnum
+func GetClientOptionsAllowedAuthEnumStringValues() []string {
+	return []string{
+		"SYS",
+		"KRB5",
+		"KRB5I",
+		"KRB5P",
+	}
+}
+
+// GetMappingClientOptionsAllowedAuthEnum performs case Insensitive comparison on enum value and return the desired enum
+func GetMappingClientOptionsAllowedAuthEnum(val string) (ClientOptionsAllowedAuthEnum, bool) {
+	enum, ok := mappingClientOptionsAllowedAuthEnumLowerCase[strings.ToLower(val)]
 	return enum, ok
 }

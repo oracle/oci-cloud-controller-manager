@@ -117,7 +117,7 @@ spec:
                   fieldPath: spec.nodeName
             - name: PATH
               value: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/host/usr/bin:/host/sbin
-          image: ghcr.io/oracle/cloud-provider-oci:latest
+          image: ghcr.io/oracle/cloud-provider-oci:v1.29.0
           securityContext:
             privileged: true
           volumeMounts:
@@ -131,6 +131,7 @@ spec:
             - mountPath: /dev
               name: device-dir
             - mountPath: /host
+              mountPropagation: HostToContainer
               name: host-root
             - mountPath: /sbin/iscsiadm
               name: chroot-iscsiadm
@@ -151,7 +152,7 @@ spec:
           args:
             - --csi-address=/csi/csi.sock
             - --kubelet-registration-path=/var/lib/kubelet/plugins/blockvolume.csi.oraclecloud.com/csi.sock
-          image: k8s.gcr.io/sig-storage/csi-node-driver-registrar:v2.5.1
+          image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.5.1
           securityContext:
             privileged: true
           lifecycle:
@@ -170,7 +171,7 @@ spec:
           args:
             - --csi-address=/fss/csi.sock
             - --kubelet-registration-path=/var/lib/kubelet/plugins/fss.csi.oraclecloud.com/csi.sock
-          image: k8s.gcr.io/sig-storage/csi-node-driver-registrar:v2.5.0
+          image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.5.0
           securityContext:
             privileged: true
           lifecycle:

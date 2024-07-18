@@ -1,15 +1,17 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 
 package common
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"strings"
+	"syscall"
 
 	"github.com/sony/gobreaker"
 )
@@ -56,11 +58,27 @@ type ServiceErrorRichInfo interface {
 	GetErrorTroubleshootingLink() string
 }
 
+// ServiceErrorLocalizationMessage models all potential errors generated the service call and has localized error message info
+type ServiceErrorLocalizationMessage interface {
+	ServiceErrorRichInfo
+	// The original error message string as sent by the service
+	GetOriginalMessage() string
+
+	// The values to be substituted into the originalMessageTemplate, expressed as a string-to-string map.
+	GetMessageArgument() map[string]string
+
+	// Template in ICU MessageFormat for the human-readable error string in English, but without the values replaced
+	GetOriginalMessageTemplate() string
+}
+
 type servicefailure struct {
-	StatusCode   int
-	Code         string `json:"code,omitempty"`
-	Message      string `json:"message,omitempty"`
-	OpcRequestID string `json:"opc-request-id"`
+	StatusCode              int
+	Code                    string            `json:"code,omitempty"`
+	Message                 string            `json:"message,omitempty"`
+	OriginalMessage         string            `json:"originalMessage"`
+	OriginalMessageTemplate string            `json:"originalMessageTemplate"`
+	MessageArgument         map[string]string `json:"messageArguments"`
+	OpcRequestID            string            `json:"opc-request-id"`
 	// debugging information
 	TargetService string  `json:"target-service"`
 	OperationName string  `json:"operation-name"`
@@ -118,9 +136,6 @@ func PostProcessServiceError(err error, service string, method string, apiRefere
 	serviceFailure = err.(servicefailure)
 	serviceFailure.OperationName = method
 	serviceFailure.TargetService = service
-	if serviceFailure.StatusCode == 401 && serviceFailure.Code == "NotAuthenticated" {
-		serviceFailure.TargetService = "Identity"
-	}
 	serviceFailure.ErrorTroubleshootingLink = fmt.Sprintf("https://docs.oracle.com/iaas/Content/API/References/apierrors.htm#apierrors_%v__%v_%s", serviceFailure.StatusCode, serviceFailure.StatusCode, strings.ToLower(serviceFailure.Code))
 	serviceFailure.OperationReferenceLink = apiReferenceLink
 	return serviceFailure
@@ -152,6 +167,18 @@ func (se servicefailure) GetHTTPStatusCode() int {
 
 func (se servicefailure) GetMessage() string {
 	return se.Message
+}
+
+func (se servicefailure) GetOriginalMessage() string {
+	return se.OriginalMessage
+}
+
+func (se servicefailure) GetOriginalMessageTemplate() string {
+	return se.OriginalMessageTemplate
+}
+
+func (se servicefailure) GetMessageArgument() map[string]string {
+	return se.MessageArgument
 }
 
 func (se servicefailure) GetCode() string {
@@ -204,6 +231,13 @@ func IsServiceErrorRichInfo(err error) (failure ServiceErrorRichInfo, ok bool) {
 	return
 }
 
+// IsServiceErrorLocalizationMessage returns false if the error is not service side, otherwise true
+// additionally it returns an interface representing the ServiceErrorOriginalMessage
+func IsServiceErrorLocalizationMessage(err error) (failure ServiceErrorLocalizationMessage, ok bool) {
+	failure, ok = err.(ServiceErrorLocalizationMessage)
+	return
+}
+
 type deadlineExceededByBackoffError struct{}
 
 func (deadlineExceededByBackoffError) Error() string {
@@ -223,21 +257,34 @@ type NonSeekableRequestRetryFailure struct {
 
 func (ne NonSeekableRequestRetryFailure) Error() string {
 	if ne.err == nil {
-		return fmt.Sprintf("Unable to perform Retry on this request body type, which did not implement seek() interface")
+		return "Unable to perform Retry on this request body type, which did not implement seek() interface"
 	}
 	return fmt.Sprintf("%s. Unable to perform Retry on this request body type, which did not implement seek() interface", ne.err.Error())
 }
 
 // IsNetworkError validates if an error is a net.Error and check if it's temporary or timeout
 func IsNetworkError(err error) bool {
-	if r, ok := err.(net.Error); ok && (r.Temporary() || r.Timeout()) {
+	if err == nil {
+		return false
+	}
+
+	if errors.Is(err, syscall.ECONNRESET) {
 		return true
 	}
+
+	if r, ok := err.(net.Error); ok && (r.Timeout() || strings.Contains(err.Error(), "net/http: HTTP/1.x transport connection broken")) {
+		return true
+	}
+
 	return false
 }
 
 // IsCircuitBreakerError validates if an error's text is Open state ErrOpenState or HalfOpen state ErrTooManyRequests
 func IsCircuitBreakerError(err error) bool {
+	if err == nil {
+		return false
+	}
+
 	if err.Error() == gobreaker.ErrOpenState.Error() || err.Error() == gobreaker.ErrTooManyRequests.Error() {
 		return true
 	}
@@ -247,7 +294,7 @@ func IsCircuitBreakerError(err error) bool {
 func getCircuitBreakerError(request *http.Request, err error, cbr *OciCircuitBreaker) error {
 	cbErr := fmt.Errorf("%s, so this request was not sent to the %s service.\n\n The circuit breaker was opened because the %s service failed too many times recently. "+
 		"Because the circuit breaker has been opened, requests within a %.2f second window of when the circuit breaker opened will not be sent to the %s service.\n\n"+
-		"URL which circuit breaker prevented request to - %s \n Circuit Breaker Info \n Name - %s \n State - %s \n\n Errors from %s service which opened the circuit breaker:\n\n%s \n",
+		"URL which circuit breaker prevented request to - %s \n Circuit Breaker Info \n Name - %s \n State - %s \n\n Errors from %s service which opened the circuit breaker:\n\n%s",
 		err, cbr.Cbst.serviceName, cbr.Cbst.serviceName, cbr.Cbst.openStateWindow.Seconds(), cbr.Cbst.serviceName, request.URL.Host+request.URL.Path, cbr.Cbst.name, cbr.Cb.State().String(), cbr.Cbst.serviceName, cbr.GetHistory())
 	return cbErr
 }

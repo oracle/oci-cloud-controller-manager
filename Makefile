@@ -38,7 +38,7 @@ else
     VERSION   ?= ${VERSION}
 endif
 
-RELEASE = v1.25.0
+RELEASE = v1.29.0
 
 GOOS ?= linux
 ARCH ?= amd64
@@ -188,14 +188,7 @@ version:
 build-local: build
 
 .PHONY: test-local
-test-local: build-dirs
-	@docker run --rm \
-		   --privileged \
-			 -w $(DOCKER_REPO_ROOT) \
-			 -v $(PWD):$(DOCKER_REPO_ROOT) \
-			 -e COMPONENT="$(COMPONENT)" \
-			 -e GOPATH=/go/ \
-			odo-docker-signed-local.artifactory.oci.oraclecorp.com/odx-oke/oke/k8-manager-base:go1.18.3-1.0.10 \
+test-local: build \
 			make coverage image
 
 .PHONY: run-ccm-e2e-tests-local

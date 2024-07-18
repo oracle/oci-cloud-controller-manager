@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -9,6 +9,8 @@
 // documentation for the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
 // Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
 // Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
+// The required permissions are documented in the
+// Details for the Core Services (https://docs.cloud.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
 //
 
 package core
@@ -36,10 +38,10 @@ type CreateVcnDetails struct {
 	// **Important:** Do *not* specify a value for `cidrBlock`. Use this parameter instead.
 	CidrBlocks []string `mandatory:"false" json:"cidrBlocks"`
 
-	// The list of one or more ULA or Private IPv6 CIDR blocks for the vcn that meets the following criteria:
+	// The list of one or more ULA or Private IPv6 prefixes for the VCN that meets the following criteria:
 	// - The CIDR blocks must be valid.
-	// - Multiple CIDR blocks must not overlap each other or the on-premises network CIDR block.
-	// - The number of CIDR blocks must not exceed the limit of IPv6 CIDR blocks allowed to a vcn.
+	// - Multiple CIDR blocks must not overlap each other or the on-premises network prefix.
+	// - The number of CIDR blocks must not exceed the limit of IPv6 prefixes allowed to a VCN.
 	// **Important:** Do *not* specify a value for `ipv6CidrBlock`. Use this parameter instead.
 	Ipv6PrivateCidrBlocks []string `mandatory:"false" json:"ipv6PrivateCidrBlocks"`
 
@@ -47,7 +49,7 @@ type CreateVcnDetails struct {
 	// size for an IPv6 enabled VCN.
 	IsOracleGuaAllocationEnabled *bool `mandatory:"false" json:"isOracleGuaAllocationEnabled"`
 
-	// The list of BYOIPv6 OCIDs and BYOIPv6 CIDR blocks required to create a VCN that uses BYOIPv6 ranges.
+	// The list of BYOIPv6 OCIDs and BYOIPv6 prefixes required to create a VCN that uses BYOIPv6 address ranges.
 	Byoipv6CidrDetails []Byoipv6CidrDetails `mandatory:"false" json:"byoipv6CidrDetails"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a
@@ -61,7 +63,7 @@ type CreateVcnDetails struct {
 
 	// A DNS label for the VCN, used in conjunction with the VNIC's hostname and
 	// subnet's DNS label to form a fully qualified domain name (FQDN) for each VNIC
-	// within this subnet (for example, `bminstance-1.subnet123.vcn1.oraclevcn.com`).
+	// within this subnet (for example, `bminstance1.subnet123.vcn1.oraclevcn.com`).
 	// Not required to be unique, but it's a best practice to set unique DNS labels
 	// for VCNs in your tenancy. Must be an alphanumeric string that begins with a letter.
 	// The value cannot be changed.

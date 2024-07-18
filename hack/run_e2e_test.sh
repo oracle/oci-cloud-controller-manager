@@ -21,14 +21,18 @@ function check-env () {
     fi
 }
 
-check-env "CLUSTER_KUBECONFIG"    $CLUSTER_KUBECONFIG
-check-env "CLOUD_CONFIG"          $CLOUD_CONFIG
-check-env "ADLOCATION"      $ADLOCATION
-check-env "NSG_OCIDS"       $NSG_OCIDS
-check-env "FSS_VOLUME_HANDLE"       $FSS_VOLUME_HANDLE
+check-env "CLUSTER_KUBECONFIG"        $CLUSTER_KUBECONFIG
+check-env "CLOUD_CONFIG"              $CLOUD_CONFIG
+check-env "ADLOCATION"                $ADLOCATION
+check-env "NSG_OCIDS"                 $NSG_OCIDS
+check-env "BACKEND_NSG_OCIDS"         $BACKEND_NSG_OCIDS
+check-env "FSS_VOLUME_HANDLE"         $FSS_VOLUME_HANDLE
 check-env "MNT_TARGET_ID"             $MNT_TARGET_ID
 check-env "MNT_TARGET_SUBNET_ID"      $MNT_TARGET_SUBNET_ID
 check-env "MNT_TARGET_COMPARTMENT_ID" $MNT_TARGET_COMPARTMENT_ID
+check-env "ENABLE_PARALLEL_RUN"       $ENABLE_PARALLEL_RUN
+check-env "RUN_UHP_E2E"               $RUN_UHP_E2E
+
 
 function set_image_pull_repo_and_delete_namespace_flag () {
     if [ -z "$IMAGE_PULL_REPO" ]; then
@@ -39,21 +43,54 @@ function set_image_pull_repo_and_delete_namespace_flag () {
 }
 
 function run_e2e_tests_existing_cluster() {
-    ginkgo -v -progress --trace "${FOCUS_OPT}" "${FOCUS_FP_OPT}"  \
-        test/e2e/cloud-provider-oci -- \
-        --cluster-kubeconfig=${CLUSTER_KUBECONFIG} \
-        --cloud-config=${CLOUD_CONFIG} \
-        --adlocation=${ADLOCATION} \
-        --delete-namespace=${DELETE_NAMESPACE} \
-        --image-pull-repo=${IMAGE_PULL_REPO} \
-        --cmek-kms-key=${CMEK_KMS_KEY} \
-        --mnt-target-id=${MNT_TARGET_ID} \
-        --mnt-target-subnet-id=${MNT_TARGET_SUBNET_ID} \
-        --mnt-target-compartment-id=${MNT_TARGET_COMPARTMENT_ID} \
-        --nsg-ocids=${NSG_OCIDS} \
-        --reserved-ip=${RESERVED_IP} \
-        --architecture=${ARCHITECTURE} \
-        --volume-handle=${FSS_VOLUME_HANDLE}
+    if [[ -z "${E2E_NODE_COUNT}" ]]; then
+        E2E_NODE_COUNT=1
+    fi
+
+    if [ "$ENABLE_PARALLEL_RUN" == "true" ] || [ "$ENABLE_PARALLEL_RUN" == "TRUE" ]; then
+        ginkgo -v -p -progress --trace "${FOCUS_OPT}" "${FOCUS_FP_OPT}"  \
+                    test/e2e/cloud-provider-oci -- \
+                    --cluster-kubeconfig=${CLUSTER_KUBECONFIG} \
+                    --cloud-config=${CLOUD_CONFIG} \
+                    --adlocation=${ADLOCATION} \
+                    --delete-namespace=${DELETE_NAMESPACE} \
+                    --image-pull-repo=${IMAGE_PULL_REPO} \
+                    --cmek-kms-key=${CMEK_KMS_KEY} \
+                    --mnt-target-id=${MNT_TARGET_ID} \
+                    --mnt-target-subnet-id=${MNT_TARGET_SUBNET_ID} \
+                    --mnt-target-compartment-id=${MNT_TARGET_COMPARTMENT_ID} \
+                    --nsg-ocids=${NSG_OCIDS} \
+                    --backend-nsg-ocids=${BACKEND_NSG_OCIDS} \
+                    --reserved-ip=${RESERVED_IP} \
+                    --architecture=${ARCHITECTURE} \
+                    --volume-handle=${FSS_VOLUME_HANDLE} \
+                    --static-snapshot-compartment-id=${STATIC_SNAPSHOT_COMPARTMENT_ID} \
+                    --enable-parallel-run=${ENABLE_PARALLEL_RUN} \
+                    --run-uhp-e2e=${RUN_UHP_E2E} \
+                    --add-oke-system-tags="false"
+    else
+        ginkgo -v -progress --trace -nodes=${E2E_NODE_COUNT} "${FOCUS_OPT}" "${FOCUS_FP_OPT}"  \
+            ginkgo -v -p -progress --trace "${FOCUS_OPT}" "${FOCUS_FP_OPT}"  \
+                    test/e2e/cloud-provider-oci -- \
+                    --cluster-kubeconfig=${CLUSTER_KUBECONFIG} \
+                    --cloud-config=${CLOUD_CONFIG} \
+                    --adlocation=${ADLOCATION} \
+                    --delete-namespace=${DELETE_NAMESPACE} \
+                    --image-pull-repo=${IMAGE_PULL_REPO} \
+                    --cmek-kms-key=${CMEK_KMS_KEY} \
+                    --mnt-target-id=${MNT_TARGET_ID} \
+                    --mnt-target-subnet-id=${MNT_TARGET_SUBNET_ID} \
+                    --mnt-target-compartment-id=${MNT_TARGET_COMPARTMENT_ID} \
+                    --nsg-ocids=${NSG_OCIDS} \
+                    --backend-nsg-ocids=${BACKEND_NSG_OCIDS} \
+                    --reserved-ip=${RESERVED_IP} \
+                    --architecture=${ARCHITECTURE} \
+                    --volume-handle=${FSS_VOLUME_HANDLE} \
+                    --static-snapshot-compartment-id=${STATIC_SNAPSHOT_COMPARTMENT_ID} \
+                    --enable-parallel-run=${ENABLE_PARALLEL_RUN} \
+                    --run-uhp-e2e=${RUN_UHP_E2E} \
+                    --add-oke-system-tags="false"
+    fi
     retval=$?
     return $retval
 }

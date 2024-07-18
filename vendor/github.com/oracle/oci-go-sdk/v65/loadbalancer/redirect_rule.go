@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -21,12 +21,12 @@ import (
 // object is configured for a particular listener and a designated path.
 // The default response code is `302 Found`.
 // **NOTES:**
-// *  This rule applies only to HTTP listeners.
-// *  You can specify this rule only with the RuleCondition
-//    type `PATH`.
-// *  A listener can have only one RedirectRule object for a given original path. The
-//   PathMatchCondition `attributeValue` specifies the
-//   original path.
+//   - This rule applies only to HTTP listeners.
+//   - You can specify this rule only with the RuleCondition
+//     type `PATH`.
+//   - A listener can have only one RedirectRule object for a given original path. The
+//     PathMatchCondition `attributeValue` specifies the
+//     original path.
 type RedirectRule struct {
 	Conditions []RuleCondition `mandatory:"true" json:"conditions"`
 
@@ -104,6 +104,5 @@ func (m *RedirectRule) UnmarshalJSON(data []byte) (e error) {
 			m.Conditions[i] = nil
 		}
 	}
-
 	return
 }

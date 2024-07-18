@@ -1,3 +1,17 @@
+// Copyright 2018 Oracle and/or its affiliates. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package framework
 
 import (
@@ -23,6 +37,7 @@ const (
 
 	JobCompletionTimeout       = 5 * time.Minute
 	deploymentAvailableTimeout = 5 * time.Minute
+	CloneAvailableTimeout      = 10 * time.Minute
 
 	DefaultClusterKubeconfig = "/tmp/clusterkubeconfig"
 	DefaultCloudConfig       = "/tmp/cloudconfig"
@@ -34,38 +49,48 @@ const (
 	ClassOCILowCost    = "oci-bv-low"
 	ClassOCIBalanced   = "oci-bal"
 	ClassOCIHigh       = "oci-bv-high"
+	ClassOCIUHP        = "oci-uhp"
 	ClassOCIKMS        = "oci-kms"
 	ClassOCIExt3       = "oci-ext3"
 	ClassOCIXfs        = "oci-xfs"
 	ClassFssDynamic    = "oci-file-storage-test"
 	FssProvisionerType = "fss.csi.oraclecloud.com"
+	ClassSnapshot      = "oci-snapshot-sc"
 	MinVolumeBlock     = "50Gi"
 	MaxVolumeBlock     = "100Gi"
 	VolumeFss          = "1Gi"
+
+	VSClassDefault    = "oci-snapclass"
+	NodeHostnameLabel = "kubernetes.io/hostname"
 )
 
 var (
-	compartment1             string
-	adlocation               string
-	clusterkubeconfig        string // path to kubeconfig file
-	deleteNamespace          bool   // whether or not to delete test namespaces
-	cloudConfigFile          string // path to cloud provider config file
-	nodePortTest             bool   // whether or not to test the connectivity of node ports.
-	ccmSeclistID             string // The ocid of the loadbalancer subnet seclist. Optional.
-	k8sSeclistID             string // The ocid of the k8s worker subnet seclist. Optional.
-	mntTargetOCID            string // Mount Target ID is specified to identify the mount target to be attached to the volumes. Optional.
-	mntTargetSubnetOCID      string // mntTargetSubnetOCID is required for testing MT creation in FSS dynamic
-	mntTargetCompartmentOCID string // mntTargetCompartmentOCID is required for testing MT cross compartment creation in FSS dynamic
-	nginx                    string // Image for nginx
-	agnhost                  string // Image for agnhost
-	busyBoxImage             string // Image for busyBoxImage
-	centos                   string // Image for centos
-	imagePullRepo            string // Repo to pull images from. Will pull public images if not specified.
-	cmekKMSKey               string //KMS key for CMEK testing
-	nsgOCIDS                 string // Testing CCM NSG feature
-	reservedIP               string // Testing public reserved IP feature
-	architecture             string
-	volumeHandle             string // The FSS mount volume handle
+	compartment1                  string
+	adlocation                    string
+	clusterkubeconfig             string // path to kubeconfig file
+	deleteNamespace               bool   // whether or not to delete test namespaces
+	cloudConfigFile               string // path to cloud provider config file
+	nodePortTest                  bool   // whether or not to test the connectivity of node ports.
+	ccmSeclistID                  string // The ocid of the loadbalancer subnet seclist. Optional.
+	k8sSeclistID                  string // The ocid of the k8s worker subnet seclist. Optional.
+	mntTargetOCID                 string // Mount Target ID is specified to identify the mount target to be attached to the volumes. Optional.
+	mntTargetSubnetOCID           string // mntTargetSubnetOCID is required for testing MT creation in FSS dynamic
+	mntTargetCompartmentOCID      string // mntTargetCompartmentOCID is required for testing MT cross compartment creation in FSS dynamic
+	nginx                         string // Image for nginx
+	agnhost                       string // Image for agnhost
+	busyBoxImage                  string // Image for busyBoxImage
+	centos                        string // Image for centos
+	imagePullRepo                 string // Repo to pull images from. Will pull public images if not specified.
+	cmekKMSKey                    string // KMS key for CMEK testing
+	nsgOCIDS                      string // Testing CCM NSG feature
+	backendNsgIds                 string // Testing Rule management Backend NSG feature
+	reservedIP                    string // Testing public reserved IP feature
+	architecture                  string
+	volumeHandle                  string // The FSS mount volume handle
+	staticSnapshotCompartmentOCID string // Compartment ID for cross compartment snapshot test
+	runUhpE2E                     bool   // Whether to run UHP E2Es, requires Volume Management Plugin enabled on the node and 16+ cores (check blockvolumeperformance public doc for the exact requirements)
+	enableParallelRun			  bool
+	addOkeSystemTags              bool
 )
 
 func init() {
@@ -90,8 +115,14 @@ func init() {
 	flag.StringVar(&imagePullRepo, "image-pull-repo", "", "Repo to pull images from. Will pull public images if not specified.")
 	flag.StringVar(&cmekKMSKey, "cmek-kms-key", "", "KMS key to be used for CMEK testing")
 	flag.StringVar(&nsgOCIDS, "nsg-ocids", "", "NSG OCIDs to be used to associate to LB")
+	flag.StringVar(&backendNsgIds, "backend-nsg-ocids", "", "backend NSG Ids associated with backends of LB")
 	flag.StringVar(&reservedIP, "reserved-ip", "", "Public reservedIP to be used for testing loadbalancer with reservedIP")
 	flag.StringVar(&architecture, "architecture", "", "CPU architecture to be used for testing.")
+
+	flag.StringVar(&staticSnapshotCompartmentOCID, "static-snapshot-compartment-id", "", "Compartment ID for cross compartment snapshot test")
+	flag.BoolVar(&runUhpE2E, "run-uhp-e2e", false, "Run UHP E2Es as well")
+	flag.BoolVar(&enableParallelRun, "enable-parallel-run", true, "Enables parallel running of test suite")
+	flag.BoolVar(&addOkeSystemTags, "add-oke-system-tags", false, "Adds oke system tags to new and existing loadbalancers and storage resources")
 }
 
 // Framework is the context of the text execution.
@@ -116,10 +147,16 @@ type Framework struct {
 	MntTargetCompartmentOcid string
 	CMEKKMSKey               string
 	NsgOCIDS                 string
+	BackendNsgOcid           string
 	ReservedIP               string
 	Architecture             string
 
 	VolumeHandle string
+
+	// Compartment ID for cross compartment snapshot test
+	StaticSnapshotCompartmentOcid string
+	RunUhpE2E                     bool
+	AddOkeSystemTags        bool
 }
 
 // New creates a new a framework that holds the context of the test
@@ -134,14 +171,17 @@ func NewWithConfig() *Framework {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	f := &Framework{
-		AdLocation:               adlocation,
-		MntTargetOcid:            mntTargetOCID,
-		MntTargetSubnetOcid:      mntTargetSubnetOCID,
-		MntTargetCompartmentOcid: mntTargetCompartmentOCID,
-		CMEKKMSKey:               cmekKMSKey,
-		NsgOCIDS:                 nsgOCIDS,
-		ReservedIP:               reservedIP,
-		VolumeHandle:             volumeHandle,
+		AdLocation:                    adlocation,
+		MntTargetOcid:                 mntTargetOCID,
+		MntTargetSubnetOcid:           mntTargetSubnetOCID,
+		MntTargetCompartmentOcid:      mntTargetCompartmentOCID,
+		CMEKKMSKey:                    cmekKMSKey,
+		NsgOCIDS:                      nsgOCIDS,
+		ReservedIP:                    reservedIP,
+		VolumeHandle:                  volumeHandle,
+		StaticSnapshotCompartmentOcid: staticSnapshotCompartmentOCID,
+		RunUhpE2E:                     runUhpE2E,
+		AddOkeSystemTags:              addOkeSystemTags,
 	}
 
 	f.CloudConfigPath = cloudConfigFile
@@ -174,10 +214,16 @@ func (f *Framework) Initialize() {
 	Logf("OCI Mount Target Compartment OCID: %s", f.MntTargetCompartmentOcid)
 	f.VolumeHandle = volumeHandle
 	Logf("FSS Volume Handle is : %s", f.VolumeHandle)
+	f.StaticSnapshotCompartmentOcid = staticSnapshotCompartmentOCID
+	Logf("Static Snapshot Compartment OCID: %s", f.StaticSnapshotCompartmentOcid)
+	f.RunUhpE2E = runUhpE2E
+	Logf("Run Uhp E2Es as well: %v", f.RunUhpE2E)
 	f.CMEKKMSKey = cmekKMSKey
 	Logf("CMEK KMS Key: %s", f.CMEKKMSKey)
 	f.NsgOCIDS = nsgOCIDS
 	Logf("NSG OCIDS: %s", f.NsgOCIDS)
+	f.BackendNsgOcid = backendNsgIds
+	Logf("Backend NSG OCIDS: %s", f.BackendNsgOcid)
 	f.ReservedIP = reservedIP
 	Logf("Reserved IP: %s", f.ReservedIP)
 	f.Architecture = architecture
@@ -213,4 +259,18 @@ func (f *Framework) setImages() {
 		nginx = Nginx
 		centos = Centos
 	}
+}
+
+func (f *CloudProviderFramework) GetCompartmentId(setupF Framework) string {
+	compartmentId := ""
+	if setupF.Compartment1 != "" {
+		compartmentId = setupF.Compartment1
+	} else if f.CloudProviderConfig.CompartmentID != "" {
+		compartmentId = f.CloudProviderConfig.CompartmentID
+	} else if f.CloudProviderConfig.Auth.CompartmentID != "" {
+		compartmentId = f.CloudProviderConfig.Auth.CompartmentID
+	} else {
+		Failf("Compartment Id undefined.")
+	}
+	return compartmentId
 }

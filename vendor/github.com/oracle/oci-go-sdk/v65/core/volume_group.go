@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -9,6 +9,8 @@
 // documentation for the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
 // Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
 // Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
+// The required permissions are documented in the
+// Details for the Core Services (https://docs.cloud.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
 //
 
 package core
@@ -136,10 +138,7 @@ func (m *VolumeGroup) UnmarshalJSON(data []byte) (e error) {
 	m.IsHydrated = model.IsHydrated
 
 	m.VolumeGroupReplicas = make([]VolumeGroupReplicaInfo, len(model.VolumeGroupReplicas))
-	for i, n := range model.VolumeGroupReplicas {
-		m.VolumeGroupReplicas[i] = n
-	}
-
+	copy(m.VolumeGroupReplicas, model.VolumeGroupReplicas)
 	m.AvailabilityDomain = model.AvailabilityDomain
 
 	m.CompartmentId = model.CompartmentId
@@ -155,10 +154,7 @@ func (m *VolumeGroup) UnmarshalJSON(data []byte) (e error) {
 	m.TimeCreated = model.TimeCreated
 
 	m.VolumeIds = make([]string, len(model.VolumeIds))
-	for i, n := range model.VolumeIds {
-		m.VolumeIds[i] = n
-	}
-
+	copy(m.VolumeIds, model.VolumeIds)
 	return
 }
 
@@ -167,27 +163,30 @@ type VolumeGroupLifecycleStateEnum string
 
 // Set of constants representing the allowable values for VolumeGroupLifecycleStateEnum
 const (
-	VolumeGroupLifecycleStateProvisioning VolumeGroupLifecycleStateEnum = "PROVISIONING"
-	VolumeGroupLifecycleStateAvailable    VolumeGroupLifecycleStateEnum = "AVAILABLE"
-	VolumeGroupLifecycleStateTerminating  VolumeGroupLifecycleStateEnum = "TERMINATING"
-	VolumeGroupLifecycleStateTerminated   VolumeGroupLifecycleStateEnum = "TERMINATED"
-	VolumeGroupLifecycleStateFaulty       VolumeGroupLifecycleStateEnum = "FAULTY"
+	VolumeGroupLifecycleStateProvisioning  VolumeGroupLifecycleStateEnum = "PROVISIONING"
+	VolumeGroupLifecycleStateAvailable     VolumeGroupLifecycleStateEnum = "AVAILABLE"
+	VolumeGroupLifecycleStateTerminating   VolumeGroupLifecycleStateEnum = "TERMINATING"
+	VolumeGroupLifecycleStateTerminated    VolumeGroupLifecycleStateEnum = "TERMINATED"
+	VolumeGroupLifecycleStateFaulty        VolumeGroupLifecycleStateEnum = "FAULTY"
+	VolumeGroupLifecycleStateUpdatePending VolumeGroupLifecycleStateEnum = "UPDATE_PENDING"
 )
 
 var mappingVolumeGroupLifecycleStateEnum = map[string]VolumeGroupLifecycleStateEnum{
-	"PROVISIONING": VolumeGroupLifecycleStateProvisioning,
-	"AVAILABLE":    VolumeGroupLifecycleStateAvailable,
-	"TERMINATING":  VolumeGroupLifecycleStateTerminating,
-	"TERMINATED":   VolumeGroupLifecycleStateTerminated,
-	"FAULTY":       VolumeGroupLifecycleStateFaulty,
+	"PROVISIONING":   VolumeGroupLifecycleStateProvisioning,
+	"AVAILABLE":      VolumeGroupLifecycleStateAvailable,
+	"TERMINATING":    VolumeGroupLifecycleStateTerminating,
+	"TERMINATED":     VolumeGroupLifecycleStateTerminated,
+	"FAULTY":         VolumeGroupLifecycleStateFaulty,
+	"UPDATE_PENDING": VolumeGroupLifecycleStateUpdatePending,
 }
 
 var mappingVolumeGroupLifecycleStateEnumLowerCase = map[string]VolumeGroupLifecycleStateEnum{
-	"provisioning": VolumeGroupLifecycleStateProvisioning,
-	"available":    VolumeGroupLifecycleStateAvailable,
-	"terminating":  VolumeGroupLifecycleStateTerminating,
-	"terminated":   VolumeGroupLifecycleStateTerminated,
-	"faulty":       VolumeGroupLifecycleStateFaulty,
+	"provisioning":   VolumeGroupLifecycleStateProvisioning,
+	"available":      VolumeGroupLifecycleStateAvailable,
+	"terminating":    VolumeGroupLifecycleStateTerminating,
+	"terminated":     VolumeGroupLifecycleStateTerminated,
+	"faulty":         VolumeGroupLifecycleStateFaulty,
+	"update_pending": VolumeGroupLifecycleStateUpdatePending,
 }
 
 // GetVolumeGroupLifecycleStateEnumValues Enumerates the set of values for VolumeGroupLifecycleStateEnum
@@ -207,6 +206,7 @@ func GetVolumeGroupLifecycleStateEnumStringValues() []string {
 		"TERMINATING",
 		"TERMINATED",
 		"FAULTY",
+		"UPDATE_PENDING",
 	}
 }
 

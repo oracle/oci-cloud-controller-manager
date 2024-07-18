@@ -1,10 +1,10 @@
-// Copyright (c) 2016, 2018, 2022, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
 // Identity and Access Management Service API
 //
-// APIs for managing users, groups, compartments, policies, and identity domains.
+// Use the Identity and Access Management Service API to manage users, groups, identity domains, compartments, policies, tagging, and limits. For information about managing users, groups, compartments, and policies, see Identity and Access Management (without identity domains) (https://docs.cloud.oracle.com/iaas/Content/Identity/Concepts/overview.htm). For information about tagging and service limits, see Tagging (https://docs.cloud.oracle.com/iaas/Content/Tagging/Concepts/taggingoverview.htm) and Service Limits (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/servicelimits.htm). For information about creating, modifying, and deleting identity domains, see Identity and Access Management (with identity domains) (https://docs.cloud.oracle.com/iaas/Content/Identity/home.htm).
 //
 
 package identity
@@ -78,6 +78,9 @@ type IdentityProvider interface {
 
 type identityprovider struct {
 	JsonData       []byte
+	InactiveStatus *int64                             `mandatory:"false" json:"inactiveStatus"`
+	FreeformTags   map[string]string                  `mandatory:"false" json:"freeformTags"`
+	DefinedTags    map[string]map[string]interface{}  `mandatory:"false" json:"definedTags"`
 	Id             *string                            `mandatory:"true" json:"id"`
 	CompartmentId  *string                            `mandatory:"true" json:"compartmentId"`
 	Name           *string                            `mandatory:"true" json:"name"`
@@ -85,9 +88,6 @@ type identityprovider struct {
 	ProductType    *string                            `mandatory:"true" json:"productType"`
 	TimeCreated    *common.SDKTime                    `mandatory:"true" json:"timeCreated"`
 	LifecycleState IdentityProviderLifecycleStateEnum `mandatory:"true" json:"lifecycleState"`
-	InactiveStatus *int64                             `mandatory:"false" json:"inactiveStatus"`
-	FreeformTags   map[string]string                  `mandatory:"false" json:"freeformTags"`
-	DefinedTags    map[string]map[string]interface{}  `mandatory:"false" json:"definedTags"`
 	Protocol       string                             `json:"protocol"`
 }
 
@@ -131,58 +131,59 @@ func (m *identityprovider) UnmarshalPolymorphicJSON(data []byte) (interface{}, e
 		err = json.Unmarshal(data, &mm)
 		return mm, err
 	default:
+		common.Logf("Recieved unsupported enum value for IdentityProvider: %s.", m.Protocol)
 		return *m, nil
 	}
 }
 
-//GetId returns Id
-func (m identityprovider) GetId() *string {
-	return m.Id
-}
-
-//GetCompartmentId returns CompartmentId
-func (m identityprovider) GetCompartmentId() *string {
-	return m.CompartmentId
-}
-
-//GetName returns Name
-func (m identityprovider) GetName() *string {
-	return m.Name
-}
-
-//GetDescription returns Description
-func (m identityprovider) GetDescription() *string {
-	return m.Description
-}
-
-//GetProductType returns ProductType
-func (m identityprovider) GetProductType() *string {
-	return m.ProductType
-}
-
-//GetTimeCreated returns TimeCreated
-func (m identityprovider) GetTimeCreated() *common.SDKTime {
-	return m.TimeCreated
-}
-
-//GetLifecycleState returns LifecycleState
-func (m identityprovider) GetLifecycleState() IdentityProviderLifecycleStateEnum {
-	return m.LifecycleState
-}
-
-//GetInactiveStatus returns InactiveStatus
+// GetInactiveStatus returns InactiveStatus
 func (m identityprovider) GetInactiveStatus() *int64 {
 	return m.InactiveStatus
 }
 
-//GetFreeformTags returns FreeformTags
+// GetFreeformTags returns FreeformTags
 func (m identityprovider) GetFreeformTags() map[string]string {
 	return m.FreeformTags
 }
 
-//GetDefinedTags returns DefinedTags
+// GetDefinedTags returns DefinedTags
 func (m identityprovider) GetDefinedTags() map[string]map[string]interface{} {
 	return m.DefinedTags
+}
+
+// GetId returns Id
+func (m identityprovider) GetId() *string {
+	return m.Id
+}
+
+// GetCompartmentId returns CompartmentId
+func (m identityprovider) GetCompartmentId() *string {
+	return m.CompartmentId
+}
+
+// GetName returns Name
+func (m identityprovider) GetName() *string {
+	return m.Name
+}
+
+// GetDescription returns Description
+func (m identityprovider) GetDescription() *string {
+	return m.Description
+}
+
+// GetProductType returns ProductType
+func (m identityprovider) GetProductType() *string {
+	return m.ProductType
+}
+
+// GetTimeCreated returns TimeCreated
+func (m identityprovider) GetTimeCreated() *common.SDKTime {
+	return m.TimeCreated
+}
+
+// GetLifecycleState returns LifecycleState
+func (m identityprovider) GetLifecycleState() IdentityProviderLifecycleStateEnum {
+	return m.LifecycleState
 }
 
 func (m identityprovider) String() string {

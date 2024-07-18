@@ -16,14 +16,17 @@ package client
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
 	"time"
 
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-const attachmentPollInterval = 5 * time.Second
+const attachmentPollInterval = 10 * time.Second
 
 // VolumeAttachmentInterface defines the interface to the OCI volume attachement
 // API.
@@ -70,6 +73,12 @@ func (c *client) FindVolumeAttachment(ctx context.Context, compartmentID, volume
 		})
 		incRequestCounter(err, listVerb, volumeAttachmentResource)
 
+		if resp.OpcRequestId != nil {
+			c.logger.With("service", "compute", "verb", listVerb, "resource", volumeAttachmentResource).
+				With("volumeID", volumeID, "OpcRequestId", *(resp.OpcRequestId)).With("statusCode", util.GetHttpStatusCode(err)).
+				Info("OPC Request ID recorded for ListVolumeAttachments call.")
+		}
+
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -103,6 +112,13 @@ func (c *client) GetVolumeAttachment(ctx context.Context, id string) (core.Volum
 		RequestMetadata:    c.requestMetadata,
 	})
 	incRequestCounter(err, getVerb, volumeAttachmentResource)
+
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "compute", "verb", getVerb, "resource", volumeAttachmentResource).
+			With("volumeAttachedId", id, "OpcRequestId", *(resp.OpcRequestId)).With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for GetVolumeAttachment call.")
+	}
+
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -114,14 +130,28 @@ func (c *client) AttachVolume(ctx context.Context, instanceID, volumeID string) 
 	if !c.rateLimiter.Writer.TryAccept() {
 		return nil, RateLimitError(false, "")
 	}
+
+	device, err := c.getDevicePath(ctx, instanceID)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
 	resp, err := c.compute.AttachVolume(ctx, core.AttachVolumeRequest{
 		AttachVolumeDetails: core.AttachIScsiVolumeDetails{
 			InstanceId: &instanceID,
 			VolumeId:   &volumeID,
+			Device:     device,
 		},
 		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, createVerb, volumeAttachmentResource)
+
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "compute", "verb", createVerb, "resource", volumeAttachmentResource).
+			With("volumeID", volumeID, "instanceID", instanceID, "OpcRequestId", *(resp.OpcRequestId)).With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for AttachVolume call.")
+	}
+
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -129,12 +159,8 @@ func (c *client) AttachVolume(ctx context.Context, instanceID, volumeID string) 
 	return resp.VolumeAttachment, nil
 }
 
-func (c *client) AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool) (core.VolumeAttachment, error) {
-	if !c.rateLimiter.Writer.TryAccept() {
-		return nil, RateLimitError(false, "")
-	}
-	//in case of paraviryalized attachment, the only unique way to identity the disk as device is if we use consistent
-	//device path https://docs.cloud.oracle.com/en-us/iaas/Content/Block/References/consistentdevicepaths.htm. here we
+func (c *client) getDevicePath(ctx context.Context, instanceID string) (*string, error) {
+	//https://docs.cloud.oracle.com/en-us/iaas/Content/Block/References/consistentdevicepaths.htm. here we
 	//are getting first available consistent device using ListInstanceDevices using that device in time of attachment
 	limit := 1
 	isAvailable := true
@@ -143,12 +169,41 @@ func (c *client) AttachParavirtualizedVolume(ctx context.Context, instanceID, vo
 		Limit:       &limit,
 		IsAvailable: &isAvailable,
 	})
+
 	incRequestCounter(err, listVerb, instanceResource)
+
+	if listInstanceDevicesResp.OpcRequestId != nil {
+		c.logger.With("service", "compute", "verb", listVerb, "resource", instanceResource).
+			With("instanceID", instanceID, "OpcRequestId", *(listInstanceDevicesResp.OpcRequestId)).
+			With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for ListInstanceDevices call.")
+	}
+
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	device := listInstanceDevicesResp.Items[0].Name
+	//When more than 32 pods get scheduled at same time on same node, some attach operations will reach this condition where no device is left
+	if len(listInstanceDevicesResp.Items) == 0 {
+		c.logger.With("service", "compute", "verb", listVerb, "resource", instanceResource).
+			With("instanceID", instanceID).Warn("No consistent device paths available for worker node.")
+		return nil, fmt.Errorf("Max number of volumes are already attached to instance %s. Please schedule workload on different node.",  instanceID)
+	}
+	//Picks device path from available path randomly so that 2 volume attachments don't get same path when operations happen concurrently resulting in failure of one of them.
+	device := listInstanceDevicesResp.Items[rand.Intn(len(listInstanceDevicesResp.Items))].Name
+
+	return device, nil
+}
+
+func (c *client) AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool) (core.VolumeAttachment, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return nil, RateLimitError(false, "")
+	}
+
+	device, err := c.getDevicePath(ctx, instanceID)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
 
 	resp, err := c.compute.AttachVolume(ctx, core.AttachVolumeRequest{
 		AttachVolumeDetails: core.AttachParavirtualizedVolumeDetails{
@@ -159,7 +214,16 @@ func (c *client) AttachParavirtualizedVolume(ctx context.Context, instanceID, vo
 		},
 		RequestMetadata: c.requestMetadata,
 	})
+
 	incRequestCounter(err, createVerb, volumeAttachmentResource)
+
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "compute", "verb", createVerb, "resource", instanceResource).
+			With("volumeID", volumeID, "instanceID", instanceID, "OpcRequestId", *(resp.OpcRequestId)).
+			With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for AttachVolume call.")
+	}
+
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -194,10 +258,17 @@ func (c *client) DetachVolume(ctx context.Context, id string) error {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return RateLimitError(false, "DetachVolume")
 	}
-	_, err := c.compute.DetachVolume(ctx, core.DetachVolumeRequest{
+	resp, err := c.compute.DetachVolume(ctx, core.DetachVolumeRequest{
 		VolumeAttachmentId: &id,
 		RequestMetadata:    c.requestMetadata,
 	})
+
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "compute", "verb", deleteVerb, "resource", volumeAttachmentResource).
+			With("volumeAttachedId", id, "OpcRequestId", *(resp.OpcRequestId)).With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for DetachVolume call.")
+	}
+
 	incRequestCounter(err, deleteVerb, volumeAttachmentResource)
 	if err != nil {
 		return errors.WithStack(err)
@@ -239,6 +310,13 @@ func (c *client) FindActiveVolumeAttachment(ctx context.Context, compartmentID, 
 			Page:            page,
 			RequestMetadata: c.requestMetadata,
 		})
+
+		if resp.OpcRequestId != nil {
+			c.logger.With("service", "compute", "verb", listVerb, "resource", volumeAttachmentResource).
+				With("volumeID", volumeID, "OpcRequestId", *(resp.OpcRequestId)).With("statusCode", util.GetHttpStatusCode(err)).
+				Info("OPC Request ID recorded for ListVolumeAttachments call.")
+		}
+
 		incRequestCounter(err, listVerb, volumeAttachmentResource)
 
 		if err != nil {
