@@ -20,6 +20,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -67,9 +68,11 @@ const (
 
 	InTransitEncryptionPackageName = "oci-fss-utils"
 	FIPS_ENABLED_FILE_PATH         = "/host/proc/sys/crypto/fips_enabled"
-	FINDMNT_COMMAND                = "findmnt"
 	CAT_COMMAND                    = "cat"
 	RPM_COMMAND                    = "rpm-host"
+
+	// For Raw Block Volumes, the name of the bind-mounted file inside StagingTargetPath
+	RawBlockStagingFile = "mountfile"
 )
 
 // Util interface
@@ -244,6 +247,37 @@ func GetKubeClient(logger *zap.SugaredLogger, master, kubeconfig string) *kubern
 	return kubeClientSet
 }
 
+// Get the staging target filepath inside the given stagingTargetPath, to be used for raw block volume support
+func GetStagingTargetPathForBlock(stagingTargetPath string) string {
+	stagingTargetPathFile := filepath.Join(stagingTargetPath, RawBlockStagingFile)
+	return stagingTargetPathFile
+}
+
+// Creates a file on the specified path after creating the containing directory
+func CreateFilePath(logger *zap.SugaredLogger, path string) error {
+	pathDir := filepath.Dir(path)
+
+	err := os.MkdirAll(pathDir, 0750)
+	if err != nil {
+		logger.With(zap.Error(err)).Fatal("failed to create surrounding directory")
+		return err
+	}
+
+	file, fileErr := os.OpenFile(path, os.O_CREATE, 0640)
+	if fileErr != nil && !os.IsExist(fileErr) {
+		logger.With(zap.Error(err)).Fatal("failed to create/open the target file")
+		return fileErr
+	}
+
+	fileErr = file.Close()
+	if fileErr != nil {
+		logger.With(zap.Error(err)).Fatal("failed to close the target file")
+		return fileErr
+	}
+
+	return nil
+}
+
 func MaxOfInt(a, b int64) int64 {
 	if a > b {
 		return a
@@ -404,18 +438,6 @@ func IsInTransitEncryptionPackageInstalled() (bool, error) {
 		return false, nil
 	}
 	return false, nil
-}
-
-func FindMount(target string) ([]string, error) {
-	mountArgs := []string{"-n", "-o", "SOURCE", "-T", target}
-	command := exec.Command(FINDMNT_COMMAND, mountArgs...)
-	output, err := command.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("findmnt failed: %v\narguments: %s\nOutput: %v\n", err, mountArgs, string(output))
-	}
-
-	sources := strings.Fields(string(output))
-	return sources, nil
 }
 
 func GetBlockSizeBytes(logger *zap.SugaredLogger, devicePath string) (int64, error) {

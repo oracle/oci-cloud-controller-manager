@@ -288,7 +288,7 @@ func (d OCIFlexvolumeDriver) Attach(logger *zap.SugaredLogger, opts flexvolume.O
 	}
 	// volume not attached to any instance, proceed with volume attachment
 	logger.With("volumeID", volumeOCID, "instanceID", *instance.Id).Info("Attaching volume to instance")
-	attachment, err = c.Compute().AttachVolume(ctx, *instance.Id, volumeOCID)
+	attachment, err = c.Compute().AttachVolume(ctx, *instance.Id, volumeOCID, false)
 	if err != nil {
 		errorType = util.GetError(err)
 		fvdMetricDimension = util.GetMetricDimensionForComponent(errorType, util.FVDStorageType)

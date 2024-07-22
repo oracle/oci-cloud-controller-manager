@@ -109,6 +109,8 @@ type Interface interface {
 	GetDiskFormat(devicePath string) (string, error)
 
 	WaitForPathToExist(path string, maxRetries int) bool
+
+	UnmountDeviceBindAndDelete(path string) error
 }
 
 // iSCSIMounter implements Interface.
@@ -245,6 +247,57 @@ func GetDiskPathFromMountPath(logger *zap.SugaredLogger, mountPath string) ([]st
 		return nil, err
 	}
 	logger.Infof("diskByPaths is %v", diskByPaths)
+	return diskByPaths, nil
+}
+
+// GetDiskPathFromBindDeviceFilePath retrieves the disk paths for the specified mount path.
+func GetDiskPathFromBindDeviceFilePath(logger *zap.SugaredLogger, mountPath string) ([]string, error) {
+	logger.With(mountPath).Info("Roger, Inside GetDiskPathFromBindDeviceFilePath")
+
+	// Get the block device for the given mount path
+	devices, err := FindMount(mountPath)
+
+	if err != nil {
+		logger.With(zap.Error(err)).Warn("Unable to get block device for mount path")
+		return nil, err
+	}
+
+	var sanitizedDevices []string
+	for _, dev := range devices {
+		sanitizedDevice := strings.TrimPrefix(dev, "devtmpfs[")
+		sanitizedDevice = strings.TrimSuffix(sanitizedDevice, "]")
+		// Remove extra slashes
+		sanitizedDevice = strings.TrimPrefix(sanitizedDevice, "/dev/")
+		sanitizedDevice = filepath.Clean(sanitizedDevice) // Fix extra slashes
+		sanitizedDevices = append(sanitizedDevices, sanitizedDevice)
+	}
+
+	if len(sanitizedDevices) != 1 {
+		logger.Warn("Found multiple or no block devices for the mount path")
+		return nil, errors.New("did not find exactly a single block device on " + mountPath)
+	}
+
+	deviceName := sanitizedDevices[0]
+	logger.With("Roger DeviceName", deviceName).Info("Found block device for mount path")
+
+	// Convert the device name to the correct path format
+	devicePath := filepath.Join("/dev", deviceName)
+
+	// Create a mount.MountPoint struct
+	mountPoint := mount.MountPoint{
+		Path:   mountPath,
+		Device: devicePath,
+	}
+
+	logger.With("Roger MountPoint", mountPoint).Info("Roger, Inside GetDiskPathFromBindDeviceFilePath")
+
+	// Use the device path to get diskByPaths
+	diskByPaths, err := diskByPathsForMountPoint(mountPoint)
+	if err != nil {
+		logger.With(zap.Error(err)).Warn("Unable to find diskByPaths for device")
+		return nil, err
+	}
+
 	return diskByPaths, nil
 }
 
@@ -402,6 +455,10 @@ func formatAndMount(source string, target string, fstype string, options []strin
 
 func (c *iSCSIMounter) GetDiskFormat(disk string) (string, error) {
 	return getDiskFormat(c.runner, disk, c.logger)
+}
+
+func (c *iSCSIMounter) UnmountDeviceBindAndDelete(path string) error {
+	return UnmountFileAndDelete(c.logger, path, c.mounter)
 }
 
 func (c *iSCSIMounter) Mount(source string, target string, fstype string, options []string) error {

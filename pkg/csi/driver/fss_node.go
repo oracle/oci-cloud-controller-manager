@@ -365,7 +365,7 @@ func (d FSSNodeDriver) unmountAndCleanup(logger *zap.SugaredLogger, targetPath s
 		return nil
 	}
 
-	sources, err := csi_util.FindMount(targetPath)
+	sources, err := disk.FindMount(targetPath)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Find Mount failed for target path")
 		return status.Error(codes.Internal, "Find Mount failed for target path")

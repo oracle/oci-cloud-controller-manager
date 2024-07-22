@@ -34,6 +34,7 @@ const (
 	EncryptedUmountCommand      = "encrypt-umount"
 
 	EncryptionMountCommand = "encrypt-mount"
+	FINDMNT_COMMAND        = "findmnt"
 )
 
 func MountWithEncrypt(logger *zap.SugaredLogger, source string, target string, fstype string, options []string) error {
@@ -115,6 +116,18 @@ func UnmountPath(logger *zap.SugaredLogger, mountPath string, mounter mount.Inte
 		return WaitForDirectoryDeletion(logger, mountPath)
 	}
 	return fmt.Errorf("Failed to unmount path %v", mountPath)
+}
+
+func UnmountFileAndDelete(logger *zap.SugaredLogger, mountPath string, mounter mount.Interface) error {
+	if err := mounter.Unmount(mountPath); err != nil {
+		logger.With(zap.Error(err)).Warn("Failed to unmount the block device")
+		return err
+	}
+	if err := os.Remove(mountPath); err != nil {
+		logger.Warn("Failed to delete the mountpath for the block device")
+		return err
+	}
+	return nil
 }
 
 func WaitForDirectoryDeletion(logger *zap.SugaredLogger, mountPath string) error {
@@ -215,4 +228,16 @@ func deviceOpened(pathname string, logger *zap.SugaredLogger) (bool, error) {
 		return false, nil
 	}
 	return hostUtil.DeviceOpened(pathname)
+}
+
+func FindMount(target string) ([]string, error) {
+	mountArgs := []string{"-n", "-o", "SOURCE", "-T", target}
+	command := exec.Command(FINDMNT_COMMAND, mountArgs...)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("findmnt failed: %v\narguments: %s\nOutput: %v\n", err, mountArgs, string(output))
+	}
+
+	sources := strings.Fields(string(output))
+	return sources, nil
 }

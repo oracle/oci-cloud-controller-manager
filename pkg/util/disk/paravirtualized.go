@@ -137,3 +137,7 @@ func waitForPathToExist(path string, maxRetries int) bool {
 func (c *pvMounter) WaitForPathToExist(path string, maxRetries int) bool {
 	return waitForPathToExist(path, maxRetries)
 }
+
+func (c *pvMounter) UnmountDeviceBindAndDelete(path string) error {
+	return UnmountFileAndDelete(c.logger, path, c.mounter)
+}
