@@ -306,7 +306,7 @@ func (d BlockVolumeNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.N
 
 	if rbvCheckErr != nil {
 		logger.With(zap.Error(rbvCheckErr)).Error("failed to check if it is a device file.")
-		return nil, status.Errorf(codes.Internal, rbvCheckErr.Error())
+		isRawBlockVolume = false
 	}
 
 	var diskPath []string
