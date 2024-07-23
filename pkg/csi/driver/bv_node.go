@@ -855,6 +855,14 @@ func (d BlockVolumeNodeDriver) NodeExpandVolume(ctx context.Context, req *csi.No
 
 	logger := d.logger.With("volumeID", req.VolumeId, "volumePath", req.VolumePath)
 
+	hostUtil := hostutil.NewHostUtil()
+	isRawBlockVolume, rbvCheckErr := hostUtil.PathIsDevice(req.VolumePath)
+
+	if rbvCheckErr != nil {
+		logger.With(zap.Error(rbvCheckErr)).Error("failed to check if it is a device file.")
+		return nil, status.Error(codes.Internal, rbvCheckErr.Error())
+	}
+
 	if acquired := d.volumeLocks.TryAcquire(req.VolumeId); !acquired {
 		logger.Error("Could not acquire lock for NodeExpandVolume.")
 		return nil, status.Errorf(codes.Aborted, volumeOperationAlreadyExistsFmt, req.VolumeId)
@@ -870,15 +878,41 @@ func (d BlockVolumeNodeDriver) NodeExpandVolume(ctx context.Context, req *csi.No
 		return nil, status.Errorf(codes.OutOfRange, "invalid capacity range: %v", err)
 	}
 
-	diskPath, err := disk.GetDiskPathFromMountPath(d.logger, volumePath)
-	if err != nil {
-		// do a clean exit in case of mount point not found
-		if err == disk.ErrMountPointNotFound {
-			logger.With(zap.Error(err)).With("volumePath", volumePath).Warn("unable to fetch mount point")
-			return &csi.NodeExpandVolumeResponse{}, nil
+	var diskPath []string
+
+	if !isRawBlockVolume {
+
+		diskPath, err = disk.GetDiskPathFromMountPath(d.logger, volumePath)
+		if err != nil {
+			if err == disk.ErrMountPointNotFound {
+				// Not a mounted directory. Check if it is a raw block volume with the staging path passed down
+				stagingTargetPath := csi_util.GetStagingTargetPathForBlock(volumePath)
+				isDevice, pathErr := hostUtil.PathIsDevice(stagingTargetPath)
+				if pathErr != nil {
+					logger.With(zap.Error(pathErr)).Errorf("couldn't check if volumePath has a device file %s", stagingTargetPath)
+					return nil, status.Error(codes.Internal, pathErr.Error())
+				}
+				// If yes, change the volumePath accordingly
+				if isDevice {
+					isRawBlockVolume = true
+					volumePath = stagingTargetPath
+				} else {
+					logger.With(zap.Error(err)).With("volumePath", volumePath).Warn("unable to fetch mount point")
+					return &csi.NodeExpandVolumeResponse{}, nil
+				}
+			} else {
+				logger.With(zap.Error(err)).With("volumePath", volumePath).Error("unable to get diskPath from mount path")
+				return nil, status.Error(codes.Internal, err.Error())
+			}
 		}
-		logger.With(zap.Error(err)).With("volumePath", volumePath).Error("unable to get diskPath from mount path")
-		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	if isRawBlockVolume {
+		diskPath, err = disk.GetDiskPathFromBindDeviceFilePath(d.logger, volumePath)
+		if err != nil {
+			logger.With(zap.Error(err)).Errorf("unable to get disk paths from volumePath %s", volumePath)
+			return nil, status.Error(codes.Internal, err.Error())
+		}
 	}
 
 	attachmentType, devicePath, err := getDevicePathAndAttachmentType(diskPath)
@@ -912,8 +946,10 @@ func (d BlockVolumeNodeDriver) NodeExpandVolume(ctx context.Context, req *csi.No
 	}
 	logger.With("devicePath", devicePath).Debug("Rescan completed")
 
-	if _, err := mountHandler.Resize(devicePath, volumePath); err != nil {
-		return nil, status.Errorf(codes.Internal, "Failed to resize volume %q (%q):  %v", volumeID, devicePath, err)
+	if !isRawBlockVolume {
+		if _, err := mountHandler.Resize(devicePath, volumePath); err != nil {
+			return nil, status.Errorf(codes.Internal, "Failed to resize volume %q (%q):  %v", volumeID, devicePath, err)
+		}
 	}
 
 	allocatedSizeBytes, err := csi_util.GetBlockSizeBytes(logger, devicePath)
