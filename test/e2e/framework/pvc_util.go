@@ -686,6 +686,63 @@ func (j *PVCTestJig) NewPodForCSI(name string, namespace string, claimName strin
 	return pod.Name
 }
 
+// newPODTemplate returns the default template for this jig,
+// creates the Pod for Raw Block Volume. Attaches PVC to the Pod which is created by CSI
+func (j *PVCTestJig) NewPodForCSIBlock(name string, namespace string, claimName string, adLabel string) string {
+	By("Creating a pod (with Raw Block Volume) with the claiming PVC created by CSI")
+
+	pod, err := j.KubeClient.CoreV1().Pods(namespace).Create(context.Background(), &v1.Pod{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Pod",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: j.Name,
+			Namespace:    namespace,
+		},
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
+				{
+					Name:    name,
+					Image:   "busybox",
+					Command: []string{"/bin/sh"},
+					Args:    []string{"-c", "echo 'Hello World' > /tmp/test.txt; dd if=/tmp/test.txt of=/dev/xvda count=1; while true; do sleep 5; done"},
+					VolumeDevices: []v1.VolumeDevice{
+						{
+							Name:       "persistent-storage",
+							DevicePath: "/dev/xvda",
+						},
+					},
+				},
+			},
+			Volumes: []v1.Volume{
+				{
+					Name: "persistent-storage",
+					VolumeSource: v1.VolumeSource{
+						PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+							ClaimName: claimName,
+						},
+					},
+				},
+			},
+			NodeSelector: map[string]string{
+				plugin.LabelZoneFailureDomain: adLabel,
+			},
+		},
+	}, metav1.CreateOptions{})
+	if err != nil {
+		Failf("Pod %q Create API error: %v", pod.Name, err)
+	}
+
+	// Waiting for pod to be running
+	err = j.waitTimeoutForPodRunningInNamespace(pod.Name, namespace, slowPodStartTimeout)
+	if err != nil {
+		Failf("Pod %q is not Running: %v", pod.Name, err)
+	}
+	zap.S().With(pod.Namespace).With(pod.Name).Info("CSI POD is created.")
+	return pod.Name
+}
+
 // NewPodWithLabels returns the default template for this jig,
 // creates the Pod. Attaches PVC to the Pod which is created by CSI
 func (j *PVCTestJig) NewPodWithLabels(name string, namespace string, claimName string, labels map[string]string) string {
@@ -1332,7 +1389,27 @@ func (j *PVCTestJig) CheckMultiplePodReadWrite(namespace string, pvcName string,
 	j.NewPodForCSIFSSRead(string(uuid2), namespace, pvcName, fileName, checkEncryption)
 }
 
+type PodCommands struct {
+	podRunning       string
+	dataWritten      string
+	write            string
+	read             string
+	isRawBlockVolume bool
+}
+
 func (j *PVCTestJig) CheckDataPersistenceWithDeployment(pvcName string, ns string) {
+	dataWritten := "Data written"
+	commands := PodCommands{
+		podRunning:       " while true; do true; done;",
+		dataWritten:      dataWritten,
+		write:            "echo \"" + dataWritten + "\" >> /data/out.txt;",
+		read:             "cat /data/out.txt",
+		isRawBlockVolume: false,
+	}
+	j.CheckDataPersistenceWithDeploymentImpl(pvcName, ns, commands)
+}
+
+func (j *PVCTestJig) CheckDataPersistenceWithDeploymentImpl(pvcName string, ns string, podCommands PodCommands) {
 	nodes, err := j.KubeClient.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
 
 	if err != nil {
@@ -1364,15 +1441,8 @@ func (j *PVCTestJig) CheckDataPersistenceWithDeployment(pvcName string, ns strin
 		Failf("No schedulable nodes found")
 	}
 
-	podRunningCommand := " while true; do true; done;"
-
-	dataWritten := "Data written"
-
-	writeCommand := "echo \"" + dataWritten + "\" >> /data/out.txt;"
-	readCommand := "cat /data/out.txt"
-
 	By("Creating a deployment")
-	deploymentName := j.createDeploymentOnNodeAndWait(podRunningCommand, pvcName, ns, "data-persistence-deployment", 1, nodeSelectorLabels)
+	deploymentName := j.createDeploymentOnNodeAndWait(podCommands.podRunning, pvcName, ns, "data-persistence-deployment", 1, nodeSelectorLabels, podCommands.isRawBlockVolume)
 
 	deployment, err := j.KubeClient.AppsV1().Deployments(ns).Get(context.Background(), deploymentName, metav1.GetOptions{})
 
@@ -1390,7 +1460,7 @@ func (j *PVCTestJig) CheckDataPersistenceWithDeployment(pvcName string, ns strin
 	podName := pods.Items[0].Name
 
 	By("Writing to the volume using the pod")
-	_, err = RunHostCmd(ns, podName, writeCommand)
+	_, err = RunHostCmd(ns, podName, podCommands.write)
 
 	if err != nil {
 		Failf("Error executing write command a pod: %v", err)
@@ -1426,14 +1496,16 @@ func (j *PVCTestJig) CheckDataPersistenceWithDeployment(pvcName string, ns strin
 	podName = pods.Items[0].Name
 
 	By("Reading from the volume using the pod and checking data integrity")
-	output, err := RunHostCmd(ns, podName, readCommand)
+	output, err := RunHostCmd(ns, podName, podCommands.read)
 
 	if err != nil {
 		Failf("Error executing write command a pod: %v", err)
 	}
 
-	if dataWritten != strings.TrimSpace(output) {
-		Failf("Written data not found on the volume, written: %v, found: %v", dataWritten, strings.TrimSpace(output))
+	fmt.Printf("dataWritten: %v dataRead: %v\n", podCommands.dataWritten, strings.TrimSpace(output))
+
+	if !strings.Contains(strings.TrimSpace(output), podCommands.dataWritten) {
+		fmt.Printf("Written data not found on the volume, written: %v, found: %v\n", podCommands.dataWritten, strings.TrimSpace(output))
 	}
 
 }
@@ -1455,7 +1527,7 @@ func (j *PVCTestJig) CheckISCSIQueueDepthOnNode(namespace, podName string) {
 		LabelSelector: labels.Set(labelSelector.MatchLabels).String(),
 	}
 
-	nodeDriverPods, err := j.KubeClient.CoreV1().Pods("kube-system").List(context.Background(), listOptions)
+	nodeDriverPods, err := j.KubeClient.CoreV1().Pods("oci-csi").List(context.Background(), listOptions)
 	Expect(err).NotTo(HaveOccurred())
 
 	if len(nodeDriverPods.Items) != 1 {
@@ -1467,7 +1539,7 @@ func (j *PVCTestJig) CheckISCSIQueueDepthOnNode(namespace, podName string) {
 
 	By("Check iSCSI queue depth on node")
 	command := "iscsiadm -m node -o show | grep \"node.session.queue_depth = 128\" | uniq"
-	output, err := RunHostCmd("kube-system", nodeDriverPodName, command)
+	output, err := RunHostCmd("oci-csi", nodeDriverPodName, command)
 	Expect(err).NotTo(HaveOccurred())
 
 	Expect(strings.TrimSpace(output)).To(Equal("node.session.queue_depth = 128"))

@@ -319,6 +319,8 @@ func (f *CloudProviderFramework) AfterEach() {
 		}
 	}
 
+	time.Sleep(30 * time.Second)
+
 	for _, volId := range f.VolumeIds {
 		By(fmt.Sprintf("Deleting volumes %q", volId))
 		err := f.ClientSet.CoreV1().PersistentVolumes().Delete(context.Background(), volId, metav1.DeleteOptions{})

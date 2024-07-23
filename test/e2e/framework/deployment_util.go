@@ -16,15 +16,46 @@ package framework
 
 import (
 	"context"
+	"time"
+
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/pointer"
-	"time"
 )
 
-func (j *PVCTestJig) createDeploymentOnNodeAndWait(command string, pvcName string, ns string, name string, replicas int32, nodeSelectorLabels map[string]string) string {
+func (j *PVCTestJig) createDeploymentOnNodeAndWait(command string, pvcName string, ns string, name string, replicas int32, nodeSelectorLabels map[string]string, isRawBlockVolume bool) string {
+
+	var container v1.Container
+
+	if isRawBlockVolume {
+		container = v1.Container{
+			Name:    name,
+			Image:   "busybox",
+			Command: []string{"/bin/sh"},
+			Args:    []string{"-c", command},
+			VolumeDevices: []v1.VolumeDevice{
+				{
+					Name:       "persistent-storage",
+					DevicePath: "/dev/xvda",
+				},
+			},
+		}
+	} else {
+		container = v1.Container{
+			Name:    name,
+			Image:   centos,
+			Command: []string{"/bin/sh"},
+			Args:    []string{"-c", command},
+			VolumeMounts: []v1.VolumeMount{
+				{
+					Name:      "persistent-storage",
+					MountPath: "/data",
+				},
+			},
+		}
+	}
 
 	deployment, err := j.KubeClient.AppsV1().Deployments(ns).Create(context.Background(), &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -45,18 +76,7 @@ func (j *PVCTestJig) createDeploymentOnNodeAndWait(command string, pvcName strin
 				},
 				Spec: v1.PodSpec{
 					Containers: []v1.Container{
-						{
-							Name:    name,
-							Image:   centos,
-							Command: []string{"/bin/sh"},
-							Args:    []string{"-c", command},
-							VolumeMounts: []v1.VolumeMount{
-								{
-									Name:      "persistent-storage",
-									MountPath: "/data",
-								},
-							},
-						},
+						container,
 					},
 					Volumes: []v1.Volume{
 						{

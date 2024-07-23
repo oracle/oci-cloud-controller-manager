@@ -199,6 +199,35 @@ func (j *PVCTestJig) CheckExpandedVolumeReadWrite(namespace string, podName stri
 
 }
 
+func (j *PVCTestJig) CheckDataPersistenceForRawBlockVolumeWithDeployment(pvcName string, ns string) {
+	dataWritten := "Hello CSI Tester for RBV"
+	commands := PodCommands{
+		podRunning:       " while true; do true; done;",
+		dataWritten:      dataWritten,
+		write:            "echo \"" + dataWritten + "\" > /tmp/test.txt; dd if=/tmp/test.txt of=/dev/xvda count=1;",
+		read:             "dd if=/dev/xvda bs=512 count=1",
+		isRawBlockVolume: true,
+	}
+	j.CheckDataPersistenceWithDeploymentImpl(pvcName, ns, commands)
+}
+
+// CheckExpandedRawBlockVolumeReadWrite checks a pvc expanded pod with a dymincally provisioned raw block volume
+func (j *PVCTestJig) CheckExpandedRawBlockVolumeReadWrite(namespace string, podName string) {
+	text := fmt.Sprintf("Hello New World")
+	command := fmt.Sprintf("echo '%s' > /tmp/test.txt; dd if=/tmp/test.txt of=/dev/xvda count=1; dd if=/dev/xvda bs=512 count=1", text)
+
+	if pollErr := wait.PollImmediate(K8sResourcePoll, DefaultTimeout, func() (bool, error) {
+		stdout, err := RunHostCmd(namespace, podName, command)
+		if err != nil {
+			Logf("got err: %v, retry until timeout", err)
+			return false, nil
+		}
+		return strings.Contains(stdout, text), nil
+	}); pollErr != nil {
+		Failf("Write Test failed in pod '%v' after expanding pvc", podName)
+	}
+}
+
 // CheckUsableVolumeSizeInsidePod checks a pvc expanded pod with a dymincally provisioned volume
 func (j *PVCTestJig) CheckUsableVolumeSizeInsidePod(namespace string, podName string, capacity string) {
 
