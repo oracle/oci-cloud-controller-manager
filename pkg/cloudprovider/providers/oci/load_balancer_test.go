@@ -675,7 +675,7 @@ func TestGetSubnetsForNodes(t *testing.T) {
 			nodes: []*v1.Node{
 				{
 					Spec: v1.NodeSpec{
-						ProviderID: "ipv6-gua-ipv4-instance",
+						ProviderID: "ocid1.ipv6-gua-ipv4-instance",
 					},
 					ObjectMeta: metav1.ObjectMeta{
 						Annotations: map[string]string{
