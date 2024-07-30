@@ -129,42 +129,7 @@ var (
 			HostnameLabel: common.String("no-vcn-dns-label"),
 			SubnetId:      common.String("subnetwithnovcndnslabel"),
 		},
-		"ipv6-instance": {
-			HostnameLabel: common.String("no-vcn-dns-label"),
-			SubnetId:      common.String("IPv6-subnet"),
-			Ipv6Addresses: []string{"2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
-		},
-		"ipv6-instance-ula": {
-			HostnameLabel: common.String("no-vcn-dns-label"),
-			SubnetId:      common.String("IPv6-subnet"),
-			Ipv6Addresses: []string{"fc00:0000:0000:0000:0000:0000:0000:0000"},
-		},
-		"ipv6-instance-2": {
-			PrivateIp:     common.String("10.0.0.1"),
-			PublicIp:      common.String("0.0.0.1"),
-			HostnameLabel: common.String("no-vcn-dns-label"),
-			SubnetId:      common.String("IPv6-subnet"),
-			Ipv6Addresses: []string{"2001:0db8:85a3:0000:0000:8a2e:0370:idfe"},
-		},
-		"instance-id-ipv4-ipv6": {
-			PrivateIp:     common.String("10.0.0.1"),
-			PublicIp:      common.String("0.0.0.1"),
-			HostnameLabel: common.String("no-vcn-dns-label"),
-			SubnetId:      common.String("IPv4-IPv6-subnet"),
-			Ipv6Addresses: []string{"2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
-		},
-		"instance-id-ipv6": {
-			HostnameLabel: common.String("no-vcn-dns-label"),
-			SubnetId:      common.String("ipv6-instance"),
-			Ipv6Addresses: []string{"2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
-		},
-		"instance-id-ipv4": {
-			PrivateIp:     common.String("10.0.0.1"),
-			PublicIp:      common.String("0.0.0.1"),
-			HostnameLabel: common.String("no-vcn-dns-label"),
-			SubnetId:      common.String("subnetwithnovcndnslabel"),
-		},
-		"ipv6-gua-ipv4-instance": {
+		"ocid1.ipv6-gua-ipv4-instance": {
 			PrivateIp:     common.String("10.0.0.1"),
 			HostnameLabel: common.String("no-vcn-dns-label"),
 			SubnetId:      common.String("ipv6-gua-ipv4-instance"),
@@ -236,6 +201,7 @@ var (
 			CompartmentId: common.String("instance-id-ipv6"),
 		},
 		"ipv6-gua-ipv4-instance": {
+			Id:            common.String("ocid1.ipv6-gua-ipv4-instance"),
 			CompartmentId: common.String("ipv6-gua-ipv4-instance"),
 		},
 	}
@@ -409,39 +375,6 @@ var (
 						Type:    "InternalIP",
 					},
 				},
-			},
-		},
-		"virtualNodeDefault": {
-			ObjectMeta: metav1.ObjectMeta{
-				Annotations: map[string]string{
-					VirtualNodePoolIdAnnotation: "vnpId",
-				},
-				Name: "virtualNodeDefault",
-			},
-			Spec: v1.NodeSpec{
-				ProviderID: "ocid1.virtualnode.oc1.iad.default",
-			},
-		},
-		"virtualNodeZoneTest": {
-			ObjectMeta: metav1.ObjectMeta{
-				Annotations: map[string]string{
-					VirtualNodePoolIdAnnotation: "vnpId",
-				},
-				Name: "virtualNodeZoneTest",
-			},
-			Spec: v1.NodeSpec{
-				ProviderID: "ocid1.virtualnode.oc1.iad.zonetest",
-			},
-		},
-		"virtualNodeNonCache": {
-			ObjectMeta: metav1.ObjectMeta{
-				Annotations: map[string]string{
-					VirtualNodePoolIdAnnotation: "vnpId",
-				},
-				Name: "virtualNodeNonCache",
-			},
-			Spec: v1.NodeSpec{
-				ProviderID: "ocid1.virtualnode.oc1.iad.noncache",
 			},
 		},
 		"ipv6-node": {
