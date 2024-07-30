@@ -855,13 +855,19 @@ func (d *BlockVolumeControllerDriver) ControllerUnpublishVolume(ctx context.Cont
 	multipath := false
 
 	if attachedVolume.GetIsMultipath() != nil {
+		var cancel context.CancelFunc
+		// this will not override parent context, it will evaluate to min(parent context timeout, current time + 90 seconds)
+		ctx, cancel = context.WithTimeout(ctx, 90*time.Second)
+		defer cancel()
 		multipath = *attachedVolume.GetIsMultipath()
-	}
-
-	// sleeping to ensure block volume plugin logs out of iscsi connections on nodes before delete
-	if multipath {
-		log.Info("Waiting for 90 seconds to ensure block volume plugin logs out of iscsi connections on nodes")
-		time.Sleep(90 * time.Second)
+		if multipath {
+			log.With("instanceID", *attachedVolume.GetInstanceId()).Info("Waiting for UHP Volume to logout")
+			err = d.client.Compute().WaitForUHPVolumeLoggedOut(ctx, *attachedVolume.GetId())
+			if err != nil {
+				log.With("service", "compute", "verb", "get", "resource", "volumeAttachment", "statusCode", util.GetHttpStatusCode(err)).
+					With("instanceID", *attachedVolume.GetInstanceId()).Warnf("timed out waiting for UHP volume logout, will not wait further or retry, will mark detach success: %s", err.Error())
+			}
+		}
 	}
 
 	log.Info("Un-publishing Volume Completed")

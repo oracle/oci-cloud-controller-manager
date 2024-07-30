@@ -155,6 +155,15 @@ var (
 			Id:                 common.String("volume-attachment-stuck-in-attaching-state"),
 			InstanceId:         common.String("sample-provider-id"),
 		},
+		"uhp-volume-attachment-stuck-in-logged-in-state": {
+			DisplayName:        common.String("uhp-volume-attachment-stuck-in-logged-in-state"),
+			LifecycleState:     core.VolumeAttachmentLifecycleStateDetached,
+			AvailabilityDomain: common.String("NWuj:PHX-AD-2"),
+			Id:                 common.String("uhp-volume-attachment-stuck-in-logged-in-state"),
+			InstanceId:         common.String("sample-provider-id"),
+			IscsiLoginState:    core.VolumeAttachmentIscsiLoginStateLoginSucceeded,
+			IsMultipath:        common.Bool(true),
+		},
 	}
 
 	subnets = map[string]*core.Subnet{
@@ -747,6 +756,21 @@ func (c *MockComputeClient) WaitForVolumeDetached(ctx context.Context, attachmen
 	return nil
 }
 
+func (c *MockComputeClient) WaitForUHPVolumeLoggedOut(ctx context.Context, attachmentID string) error {
+	if err := wait.PollImmediateUntil(testPollInterval, func() (done bool, err error) {
+		va := volume_attachments[attachmentID]
+
+		if va.GetIscsiLoginState() == core.VolumeAttachmentIscsiLoginStateLogoutSucceeded {
+			return true, nil
+		}
+		return false, nil
+	}, ctx.Done()); err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
 func (p *MockProvisionerClient) Compute() client.ComputeInterface {
 	return &MockComputeClient{}
 }
@@ -1181,6 +1205,17 @@ func TestControllerDriver_ControllerUnpublishVolume(t *testing.T) {
 			},
 			want:    nil,
 			wantErr: errors.New("context deadline exceeded"),
+		},
+		{
+			name: "Unpublish should not fail on UHP Volume logout timeout",
+			args: args{
+				req: &csi.ControllerUnpublishVolumeRequest{
+					VolumeId: "uhp-volume-attachment-stuck-in-logged-in-state",
+					NodeId:   "sample-node-id",
+				},
+			},
+			want:    &csi.ControllerUnpublishVolumeResponse{},
+			wantErr: nil,
 		},
 	}
 	for _, tt := range tests {
