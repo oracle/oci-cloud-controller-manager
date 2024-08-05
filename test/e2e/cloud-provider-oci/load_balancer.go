@@ -532,15 +532,12 @@ var _ = Describe("Node Local Routing [Slow]", func() {
 	}{
 		{
 			"lb",
-			map[string]string{
-				cloudprovider.ServiceAnnotationLoadBalancerInternal: "true",
-			},
+			map[string]string{},
 		},
 		{
 			"nlb",
 			map[string]string{
 				cloudprovider.ServiceAnnotationLoadBalancerType:                              "nlb",
-				cloudprovider.ServiceAnnotationNetworkLoadBalancerInternal:                   "true",
 				cloudprovider.ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode: "All",
 			},
 		},
