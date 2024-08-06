@@ -31,7 +31,7 @@ const attachmentPollInterval = 10 * time.Second
 type VolumeAttachmentInterface interface {
 	// FindVolumeAttachment searches for a volume attachment in either the state
 	// ATTACHING or ATTACHED and returns the first volume attachment found.
-	FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error)
+	FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string, instanceId string) (core.VolumeAttachment, error)
 
 	// AttachVolume attaches a block storage volume to the specified instance.
 	// See https://docs.us-phoenix-1.oraclecloud.com/api/#/en/iaas/20160918/VolumeAttachment/AttachVolume
@@ -56,7 +56,7 @@ type VolumeAttachmentInterface interface {
 
 var _ VolumeAttachmentInterface = &client{}
 
-func (c *client) FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
+func (c *client) FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string, instanceID string) (core.VolumeAttachment, error) {
 	var page *string
 	for {
 		if !c.rateLimiter.Reader.TryAccept() {
@@ -82,13 +82,15 @@ func (c *client) FindVolumeAttachment(ctx context.Context, compartmentID, volume
 		}
 
 		for _, attachment := range resp.Items {
-			state := attachment.GetLifecycleState()
-			if state == core.VolumeAttachmentLifecycleStateAttaching ||
-				state == core.VolumeAttachmentLifecycleStateAttached {
-				return attachment, nil
-			}
-			if state == core.VolumeAttachmentLifecycleStateDetaching {
-				return attachment, errors.WithStack(errNotFound)
+			if instanceID == *attachment.GetInstanceId() {
+				state := attachment.GetLifecycleState()
+				if state == core.VolumeAttachmentLifecycleStateAttaching ||
+					state == core.VolumeAttachmentLifecycleStateAttached {
+					return attachment, nil
+				}
+				if state == core.VolumeAttachmentLifecycleStateDetaching {
+					return attachment, errors.WithStack(errNotFound)
+				}
 			}
 		}
 

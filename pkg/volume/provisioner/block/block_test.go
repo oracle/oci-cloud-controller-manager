@@ -241,7 +241,7 @@ func (c *MockComputeClient) GetPrimaryVNICForInstance(ctx context.Context, compa
 	return nil, nil
 }
 
-func (c *MockComputeClient) FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
+func (c *MockComputeClient) FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string, instanceID string) (core.VolumeAttachment, error) {
 	return nil, nil
 }
 

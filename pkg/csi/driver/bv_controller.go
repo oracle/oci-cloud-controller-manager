@@ -791,6 +791,7 @@ func (d *BlockVolumeControllerDriver) ControllerUnpublishVolume(ctx context.Cont
 	dimensionsMap[metrics.ResourceOCIDDimension] = req.VolumeId
 
 	compartmentID, err := util.LookupNodeCompartment(d.KubeClient, req.NodeId)
+
 	if err != nil {
 		if k8sapierrors.IsNotFound(err) {
 			log.Infof("Node with nodeID %s is not found, volume is likely already detached", req.NodeId)
@@ -806,8 +807,17 @@ func (d *BlockVolumeControllerDriver) ControllerUnpublishVolume(ctx context.Cont
 		metrics.SendMetricData(d.metricPusher, metrics.PVDetach, time.Since(startTime).Seconds(), dimensionsMap)
 		return nil, status.Errorf(codes.Unknown, "failed to get compartmentID from node annotation:: error : %s", err)
 	}
+
 	log = log.With("compartmentID", compartmentID)
-	attachedVolume, err := d.client.Compute().FindVolumeAttachment(ctx, compartmentID, req.VolumeId)
+
+	instanceID, err := d.util.LookupNodeID(d.KubeClient, req.NodeId)
+
+	if err != nil {
+		log.With(zap.Error(err)).Errorf("failed to get instanceID from node : %s", req.NodeId)
+	}
+
+	attachedVolume, err := d.client.Compute().FindVolumeAttachment(ctx, compartmentID, req.VolumeId, instanceID)
+
 	if attachedVolume != nil && attachedVolume.GetId() != nil {
 		log = log.With("volumeAttachedId", *attachedVolume.GetId())
 	}
