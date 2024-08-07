@@ -171,6 +171,7 @@ func (cp *CloudProvider) getNodeIpFamily(instanceId string) ([]string, error) {
 			if _, ok := node.Labels[IPv6NodeIPFamilyLabel]; ok {
 				nodeIpFamily = append(nodeIpFamily, IPv6)
 			}
+			break
 		}
 	}
 	if len(nodeIpFamily) != 0 {
