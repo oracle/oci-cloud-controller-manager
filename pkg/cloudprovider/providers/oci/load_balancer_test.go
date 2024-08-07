@@ -671,6 +671,34 @@ func TestGetSubnetsForNodes(t *testing.T) {
 			subnets: []*core.Subnet{subnets["IPv6-subnet"]},
 			err:     nil,
 		},
+		"Private IPv4 and GUA IPv6": {
+			nodes: []*v1.Node{
+				{
+					Spec: v1.NodeSpec{
+						ProviderID: "ipv6-gua-ipv4-instance",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							CompartmentIDAnnotation: "compID1",
+						},
+					},
+					Status: v1.NodeStatus{
+						Addresses: []v1.NodeAddress{
+							{
+								Type:    v1.NodeExternalIP,
+								Address: "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
+							},
+							{
+								Type:    v1.NodeInternalIP,
+								Address: "10.0.0.1",
+							},
+						},
+					},
+				},
+			},
+			subnets: []*core.Subnet{subnets["ipv6-gua-ipv4-instance"]},
+			err:     nil,
+		},
 	}
 	client := MockOCIClient{}
 	for name, tc := range testCases {

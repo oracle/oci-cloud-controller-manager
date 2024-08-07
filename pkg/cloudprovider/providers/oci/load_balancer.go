@@ -256,8 +256,14 @@ func getSubnetsForNodes(ctx context.Context, nodes []*v1.Node, networkClient cli
 	)
 
 	for _, node := range nodes {
-		ipSet.Insert(NodeInternalIP(node))
-		ipSet.Insert(NodeExternalIp(node))
+		ip := NodeInternalIP(node)
+		if ip.V6 == "" {
+			externalIP := NodeExternalIp(node)
+			if externalIP.V6 != "" {
+				ip.V6 = externalIP.V6
+			}
+		}
+		ipSet.Insert(ip)
 	}
 
 	for _, node := range nodes {
