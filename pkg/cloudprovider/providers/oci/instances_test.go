@@ -164,6 +164,12 @@ var (
 			HostnameLabel: common.String("no-vcn-dns-label"),
 			SubnetId:      common.String("subnetwithnovcndnslabel"),
 		},
+		"ipv6-gua-ipv4-instance": {
+			PrivateIp:     common.String("10.0.0.1"),
+			HostnameLabel: common.String("no-vcn-dns-label"),
+			SubnetId:      common.String("ipv6-gua-ipv4-instance"),
+			Ipv6Addresses: []string{"2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
+		},
 	}
 
 	instances = map[string]*core.Instance{
@@ -228,6 +234,9 @@ var (
 		"instance-id-ipv6": {
 			Id:            common.String("ocid1.instance-id-ipv6"),
 			CompartmentId: common.String("instance-id-ipv6"),
+		},
+		"ipv6-gua-ipv4-instance": {
+			CompartmentId: common.String("ipv6-gua-ipv4-instance"),
 		},
 	}
 	subnets = map[string]*core.Subnet{
@@ -297,7 +306,14 @@ var (
 			AvailabilityDomain: nil,
 			CidrBlock:          common.String("10.0.0.0/16"),
 			Ipv6CidrBlocks:     []string{},
-			Ipv6CidrBlock:      common.String("IPv6Cidr"),
+		},
+		"ipv6-gua-ipv4-instance": {
+			Id:                 common.String("ipv6-gua-ipv4-instance"),
+			DnsLabel:           common.String("subnetwithnovcndnslabel"),
+			VcnId:              common.String("vcnwithoutdnslabel"),
+			AvailabilityDomain: nil,
+			CidrBlock:          common.String("10.0.0.0/16"),
+			Ipv6CidrBlocks:     []string{"2001:0db8:85a3::8a2e:0370:7334/64"},
 		},
 	}
 
