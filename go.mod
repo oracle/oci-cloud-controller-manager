@@ -42,7 +42,7 @@ require (
 	github.com/go-logr/zapr v1.2.4 // indirect
 	github.com/golang/protobuf v1.5.4
 	github.com/kubernetes-csi/csi-lib-utils v0.17.0
-	github.com/kubernetes-csi/external-snapshotter/client/v6 v6.3.0
+	github.com/kubernetes-csi/external-snapshotter/client/v6 v6.3.4
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.30.0
 	github.com/oracle/oci-go-sdk/v65 v65.77.0
