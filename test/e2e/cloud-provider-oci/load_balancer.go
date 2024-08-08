@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -699,11 +700,11 @@ var _ = Describe("IpMode [Slow]", func() {
 		},
 	}
 	Context("[cloudprovider][ccm][lb][ipMode]", func() {
-		It("should work from pods", func() {
+		It("traffic should work from pods via load balancer", func() {
 			for _, test := range esippTestsArray {
 				By("Running test for: " + test.lbType)
 				namespace := f.Namespace.Name
-				serviceName := "external-local-" + test.lbType
+				serviceName := "internal-local-" + test.lbType
 				jig := sharedfw.NewServiceTestJig(cs, serviceName)
 				nodes := jig.GetNodes(sharedfw.MaxNodesForEndpointsTests)
 
@@ -713,6 +714,10 @@ var _ = Describe("IpMode [Slow]", func() {
 					jig.ChangeServiceType(svc.Namespace, svc.Name, v1.ServiceTypeClusterIP, loadBalancerCreateTimeout)
 					Expect(cs.CoreV1().Services(svc.Namespace).Delete(context.Background(), svc.Name, metav1.DeleteOptions{})).NotTo(HaveOccurred())
 				}()
+
+				if *svc.Status.LoadBalancer.Ingress[0].IPMode != v1.LoadBalancerIPModeProxy {
+					sharedfw.Failf("IpMode on the service is '%v', expected 'Proxy'", *svc.Status.LoadBalancer.Ingress[0].IPMode)
+				}
 
 				ingressIP := sharedfw.GetIngressPoint(&svc.Status.LoadBalancer.Ingress[0])
 				port := strconv.Itoa(int(svc.Spec.Ports[0].Port))
@@ -753,8 +758,9 @@ var _ = Describe("IpMode [Slow]", func() {
 	})
 })
 
-// Test for ESIPP (External Source IP Preservation) via NLB
-var _ = Describe("ESIPP [Slow]", func() {
+// Test for ESIPP (External Source IP Preservation) via NLB using new ipMode="Proxy".
+// Source and destination pods need to be on different nodes for this test so the test will be skipped id there are less than 2 nodes.
+var _ = Describe("ESIPP - IpMode Proxy [Slow]", func() {
 
 	baseName := "esipp-internal"
 	f := sharedfw.NewDefaultFramework(baseName)
@@ -782,15 +788,25 @@ var _ = Describe("ESIPP [Slow]", func() {
 		},
 	}
 	Context("[cloudprovider][ccm][lb][esipp]", func() {
-		It("should work from pods", func() {
+		It("should preserve source IP of pod with ipMode Proxy", func() {
 			for _, test := range esippTestsArray {
 				By("Running test for: " + test.lbType)
 				namespace := f.Namespace.Name
-				serviceName := "external-local-" + test.lbType
+				serviceName := "internal-local-" + test.lbType
 				jig := sharedfw.NewServiceTestJig(cs, serviceName)
 				nodes := jig.GetNodes(sharedfw.MaxNodesForEndpointsTests)
+				// Can not run the test if the cluster has less than 2 nodes
+				if len(nodes.Items) < 2 {
+					// We can decide to scale the nodepool as well. We already do so for [node-local] test.
+					Skip("Skipping test since cluster has less than 2 nodes")
+				}
 
-				svc := jig.CreateOnlyLocalLoadBalancerService(namespace, serviceName, loadBalancerCreateTimeout, true, test.CreationAnnotations, func(s *v1.Service) {
+				By("creating a pod to be part of the service " + serviceName)
+				jig.RunOrFail(namespace, func(s *v1.ReplicationController) {
+					nodeName := nodes.Items[0].Name
+					s.Spec.Template.Spec.NodeName = nodeName
+				})
+				svc := jig.CreateOnlyLocalLoadBalancerService(namespace, serviceName, loadBalancerCreateTimeout, false, test.CreationAnnotations, func(s *v1.Service) {
 					s.Spec.Ports = []v1.ServicePort{v1.ServicePort{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
 						v1.ServicePort{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
 				})
@@ -800,11 +816,15 @@ var _ = Describe("ESIPP [Slow]", func() {
 					Expect(cs.CoreV1().Services(svc.Namespace).Delete(context.Background(), svc.Name, metav1.DeleteOptions{})).NotTo(HaveOccurred())
 				}()
 
+				if *svc.Status.LoadBalancer.Ingress[0].IPMode != v1.LoadBalancerIPModeProxy {
+					sharedfw.Failf("IpMode on the service is '%v', expected 'Proxy'", *svc.Status.LoadBalancer.Ingress[0].IPMode)
+				}
+
 				ingressIP := sharedfw.GetIngressPoint(&svc.Status.LoadBalancer.Ingress[0])
 				port := strconv.Itoa(int(svc.Spec.Ports[0].Port))
 				ipPort := net.JoinHostPort(ingressIP, port)
 				path := fmt.Sprintf("%s/clientip", ipPort)
-				nodeName := nodes.Items[0].Name
+				nodeName := nodes.Items[1].Name
 				podName := "execpod-sourceip"
 
 				By(fmt.Sprintf("Creating %v on node %v", podName, nodeName))
@@ -821,18 +841,20 @@ var _ = Describe("ESIPP [Slow]", func() {
 				sharedfw.Logf("Waiting up to %v wget %v", sharedfw.KubeProxyLagTimeout, path)
 				cmd := fmt.Sprintf(`wget -T 30 -qO- %v`, path)
 
-				var srcIP string
-				By(fmt.Sprintf("Hitting external lb %v from pod %v on node %v", ingressIP, podName, nodeName))
-				if pollErr := wait.PollImmediate(sharedfw.K8sResourcePoll, sharedfw.LoadBalancerCreateTimeoutDefault, func() (bool, error) {
+				var srcIP, expectedIP string
+				By(fmt.Sprintf("Hitting external lb %v from pod %v (%v) on node %v", ingressIP, podName, execPod.Status.PodIP, nodeName))
+				if pollErr := wait.PollImmediate(sharedfw.K8sResourcePoll, 5*time.Minute, func() (bool, error) {
+					expectedIP = execPod.Spec.NodeName // Node IP
+
 					stdout, err := sharedfw.RunHostCmd(execPod.Namespace, execPod.Name, cmd)
 					if err != nil {
 						sharedfw.Logf("got err: %v, retry until timeout", err)
 						return false, nil
 					}
 					srcIP = strings.TrimSpace(strings.Split(stdout, ":")[0])
-					return srcIP == execPod.Status.PodIP, nil
+					return srcIP == expectedIP, nil
 				}); pollErr != nil {
-					sharedfw.Failf("Source IP not preserved from %v, expected '%v' got '%v'", podName, execPod.Status.PodIP, srcIP)
+					sharedfw.Failf("Source IP not preserved from %v, expected '%v' got '%v'", podName, expectedIP, srcIP)
 				}
 			}
 		})
