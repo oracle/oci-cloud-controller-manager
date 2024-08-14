@@ -57,6 +57,10 @@ type VolumeAttachmentInterface interface {
 var _ VolumeAttachmentInterface = &client{}
 
 func (c *client) FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string, instanceID string) (core.VolumeAttachment, error) {
+
+	c.logger.With("isntanceID", instanceID).
+		Info("Roger, beginning FindVolumeAttachment")
+
 	var page *string
 	for {
 		if !c.rateLimiter.Reader.TryAccept() {
@@ -82,6 +86,8 @@ func (c *client) FindVolumeAttachment(ctx context.Context, compartmentID, volume
 		}
 
 		for _, attachment := range resp.Items {
+			c.logger.With("attachment-instanceID", *attachment.GetInstanceId(), "attachment-lifecyclestate", attachment.GetLifecycleState()).
+				Info("Roger Iterating the ListVolumeAttachment Response")
 			if instanceID == *attachment.GetInstanceId() {
 				state := attachment.GetLifecycleState()
 				if state == core.VolumeAttachmentLifecycleStateAttaching ||

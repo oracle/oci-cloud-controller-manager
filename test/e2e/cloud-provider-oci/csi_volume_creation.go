@@ -29,7 +29,7 @@ import (
 
 var _ = Describe("CSI Volume Creation", func() {
 	f := framework.NewDefaultFramework("csi-basic")
-	Context("[cloudprovider][storage][csi][filesystem]", func() {
+	Context("[cloudprovider][storage][csi][filesystem][rajat-test]", func() {
 		It("Create PVC and POD for CSI.", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-provisioner-e2e-tests")
 
@@ -339,7 +339,7 @@ var _ = Describe("CSI Volume Expansion iSCSI", func() {
 
 var _ = Describe("CSI Volume Performance Level", func() {
 	f := framework.NewBackupFramework("csi-perf-level")
-	Context("[cloudprovider][storage][csi][perf][iSCSI]", func() {
+	Context("[cloudprovider][storage][csi][perf][iSCSI][filesystem]", func() {
 		It("Create CSI block volume with Performance Level as Low Cost", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-perf-iscsi-lowcost")
 
@@ -383,7 +383,7 @@ var _ = Describe("CSI Volume Performance Level", func() {
 			_ = f.DeleteStorageClass(framework.ClassOCIHigh)
 		})
 	})
-	Context("[cloudprovider][storage][csi][perf][paravirtualized]", func() {
+	Context("[cloudprovider][storage][csi][perf][paravirtualized][filesystem]", func() {
 		It("Create CSI block volume with Performance Level as Low Cost", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-perf-paravirtual-lowcost")
 
@@ -556,6 +556,37 @@ var _ = Describe("CSI Raw Block Volume Performance Level", func() {
 			time.Sleep(60 * time.Second) //waiting for pod to up and running
 			pvcJig.CheckVolumePerformanceLevel(f.BlockStorageClient, pvc.Namespace, pvc.Name, csi_util.HigherPerformanceOption)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+			_ = f.DeleteStorageClass(framework.ClassOCIHigh)
+		})
+	})
+
+	Context("[cloudprovider][storage][csi][perf][static]", func() {
+		It("High Performance Static Provisioning CSI", func() {
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-perf-static-high")
+
+			scName := f.CreateStorageClassOrFail(framework.ClassOCIHigh, "blockvolume.csi.oraclecloud.com",
+				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI, csi_util.VpusPerGB: "20"},
+				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
+
+			compartmentId := ""
+			if setupF.Compartment1 != "" {
+				compartmentId = setupF.Compartment1
+			} else if f.CloudProviderConfig.CompartmentID != "" {
+				compartmentId = f.CloudProviderConfig.CompartmentID
+			} else if f.CloudProviderConfig.Auth.CompartmentID != "" {
+				compartmentId = f.CloudProviderConfig.Auth.CompartmentID
+			} else {
+				framework.Failf("Compartment Id undefined.")
+			}
+			pvc, volumeId := pvcJig.CreateAndAwaitStaticPVCOrFailCSI(f.BlockStorageClient, f.Namespace.Name, framework.MinVolumeBlock, csi_util.HigherPerformanceOption, scName, setupF.AdLocation, compartmentId, nil, v1.PersistentVolumeBlock, v1.ReadWriteOnce, v1.ClaimPending)
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+			podName := pvcJig.NewPodForCSIBlock("app4", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+
+			time.Sleep(60 * time.Second) //waiting for pod to up and running
+
+			pvcJig.CheckVolumeCapacity("50Gi", pvc.Name, f.Namespace.Name)
+			pvcJig.CheckISCSIQueueDepthOnNode(pvc.Namespace, podName)
+			f.VolumeIds = append(f.VolumeIds, volumeId)
 			_ = f.DeleteStorageClass(framework.ClassOCIHigh)
 		})
 	})

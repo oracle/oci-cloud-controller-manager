@@ -814,7 +814,12 @@ func (d *BlockVolumeControllerDriver) ControllerUnpublishVolume(ctx context.Cont
 
 	if err != nil {
 		log.With(zap.Error(err)).Errorf("failed to get instanceID from node : %s", req.NodeId)
+		return &csi.ControllerUnpublishVolumeResponse{}, nil
 	}
+
+	instanceID = client.MapProviderIDToResourceID(instanceID)
+
+	log.Infof("Node with nodeID translates to instance ID : %s", instanceID)
 
 	attachedVolume, err := d.client.Compute().FindVolumeAttachment(ctx, compartmentID, req.VolumeId, instanceID)
 

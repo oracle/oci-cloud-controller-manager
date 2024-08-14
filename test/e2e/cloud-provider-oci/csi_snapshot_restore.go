@@ -26,22 +26,22 @@ import (
 )
 
 const (
-	WriteCommand 	 					= "echo 'Hello World' > /usr/share/nginx/html/testdata.txt; while true; do echo $(date -u) >> /data/out.txt; sleep 5; done"
-	KeepAliveCommand 					= "while true; do echo 'hello world' >> /usr/share/nginx/html/out.txt; sleep 5; done"
-	BVDriverName						= "blockvolume.csi.oraclecloud.com"
-	BindingModeWaitForFirstConsumer 	= "WaitForFirstConsumer"
-	ReclaimPolicyDelete					= "Delete"
-	ReclaimPolicyRetain					= "Retain"
+	WriteCommand                    = "echo 'Hello World' > /usr/share/nginx/html/testdata.txt; while true; do echo $(date -u) >> /data/out.txt; sleep 5; done"
+	KeepAliveCommand                = "while true; do echo 'hello world' >> /usr/share/nginx/html/out.txt; sleep 5; done"
+	BVDriverName                    = "blockvolume.csi.oraclecloud.com"
+	BindingModeWaitForFirstConsumer = "WaitForFirstConsumer"
+	ReclaimPolicyDelete             = "Delete"
+	ReclaimPolicyRetain             = "Retain"
 )
 
 var _ = Describe("Snapshot Creation and Restore", func() {
 	f := framework.NewBackupFramework("snapshot-restore")
 
 	Context("[cloudprovider][storage][csi][snapshot][restore]", func() {
-		tests := []struct{
-			attachmentType 	string
-			backupType     	string
-			fsType 			string
+		tests := []struct {
+			attachmentType string
+			backupType     string
+			fsType         string
 		}{
 			{framework.AttachmentTypeParavirtualized, framework.BackupTypeIncremental, ""},
 			{framework.AttachmentTypeParavirtualized, framework.BackupTypeFull, ""},
@@ -57,7 +57,7 @@ var _ = Describe("Snapshot Creation and Restore", func() {
 				testName += " with " + entry.fsType + " fsType"
 			}
 			It(testName, func() {
-				scParams  := map[string]string{framework.AttachmentType: entry.attachmentType}
+				scParams := map[string]string{framework.AttachmentType: entry.attachmentType}
 				vscParams := map[string]string{framework.BackupType: entry.backupType}
 				scParams[framework.FstypeKey] = entry.fsType
 				testSnapshotAndRestore(f, scParams, vscParams)
@@ -65,7 +65,7 @@ var _ = Describe("Snapshot Creation and Restore", func() {
 		}
 		It("FS should get expanded when a PVC is restored with a lesser size backup (iscsi)", func() {
 			checkOrInstallCRDs(f)
-			scParams  := map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI}
+			scParams := map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI}
 			vscParams := map[string]string{framework.BackupType: framework.BackupTypeFull}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-snapshot-restore-e2e-tests")
 			pvcJig.InitialiseSnapClient(f.SnapClientSet)
@@ -78,7 +78,7 @@ var _ = Describe("Snapshot Creation and Restore", func() {
 			time.Sleep(60 * time.Second) //waiting for pod to up and running
 
 			vscName := f.CreateVolumeSnapshotClassOrFail(framework.VSClassDefault, BVDriverName, vscParams, ReclaimPolicyDelete)
-			vs  := pvcJig.CreateAndAwaitVolumeSnapshotOrFail(f.Namespace.Name, vscName, pvc.Name, nil)
+			vs := pvcJig.CreateAndAwaitVolumeSnapshotOrFail(f.Namespace.Name, vscName, pvc.Name, nil)
 
 			pvcRestore := pvcJig.CreateAndAwaitPVCOrFailSnapshotSource(f.Namespace.Name, framework.MaxVolumeBlock, scName, vs.Name, v1.ClaimPending, nil)
 			podRestoreName := pvcJig.NewPodForCSI("pod-restored", f.Namespace.Name, pvcRestore.Name, setupF.AdLabel)
@@ -93,7 +93,7 @@ var _ = Describe("Snapshot Creation and Restore", func() {
 		})
 		It("FS should get expanded when a PVC is restored with a lesser size backup (paravirtualized)", func() {
 			checkOrInstallCRDs(f)
-			scParams  := map[string]string{framework.AttachmentType: framework.AttachmentTypeParavirtualized}
+			scParams := map[string]string{framework.AttachmentType: framework.AttachmentTypeParavirtualized}
 			vscParams := map[string]string{framework.BackupType: framework.BackupTypeFull}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-snapshot-restore-e2e-tests")
 			pvcJig.InitialiseSnapClient(f.SnapClientSet)
@@ -106,7 +106,7 @@ var _ = Describe("Snapshot Creation and Restore", func() {
 			time.Sleep(60 * time.Second) //waiting for pod to up and running
 
 			vscName := f.CreateVolumeSnapshotClassOrFail(framework.VSClassDefault, BVDriverName, vscParams, ReclaimPolicyDelete)
-			vs  := pvcJig.CreateAndAwaitVolumeSnapshotOrFail(f.Namespace.Name, vscName, pvc.Name, nil)
+			vs := pvcJig.CreateAndAwaitVolumeSnapshotOrFail(f.Namespace.Name, vscName, pvc.Name, nil)
 
 			pvcRestore := pvcJig.CreateAndAwaitPVCOrFailSnapshotSource(f.Namespace.Name, framework.MaxVolumeBlock, scName, vs.Name, v1.ClaimPending, nil)
 			podRestoreName := pvcJig.NewPodForCSI("pod-restored", f.Namespace.Name, pvcRestore.Name, setupF.AdLabel)
@@ -121,7 +121,7 @@ var _ = Describe("Snapshot Creation and Restore", func() {
 		})
 		It("Should be able to create and restore a snapshot from a backup(static case)", func() {
 			checkOrInstallCRDs(f)
-			scParams  := map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI}
+			scParams := map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI}
 			vscParams := map[string]string{framework.BackupType: framework.BackupTypeFull}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-snapshot-restore-e2e-tests")
 			pvcJig.InitialiseSnapClient(f.SnapClientSet)
@@ -131,7 +131,7 @@ var _ = Describe("Snapshot Creation and Restore", func() {
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
 			_ = pvcJig.CreateAndAwaitNginxPodOrFail(f.Namespace.Name, pvc, WriteCommand)
 			vscName := f.CreateVolumeSnapshotClassOrFail(framework.VSClassDefault, BVDriverName, vscParams, ReclaimPolicyDelete)
-			vs  := pvcJig.CreateAndAwaitVolumeSnapshotOrFail(f.Namespace.Name, vscName, pvc.Name, nil)
+			vs := pvcJig.CreateAndAwaitVolumeSnapshotOrFail(f.Namespace.Name, vscName, pvc.Name, nil)
 
 			//Waiting for volume snapshot content to be created and status field to be populated
 			time.Sleep(1 * time.Minute)
@@ -157,13 +157,13 @@ var _ = Describe("Snapshot Creation and Restore", func() {
 		})
 		It("Should be able to create a snapshot and restore from a backup in another compartment", func() {
 			checkOrInstallCRDs(f)
-			scParams  := map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI}
+			scParams := map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-snapshot-restore-e2e-tests")
 			pvcJig.InitialiseSnapClient(f.SnapClientSet)
 
 			volId := pvcJig.CreateVolume(f.BlockStorageClient, setupF.AdLocation, setupF.StaticSnapshotCompartmentOcid, "test-volume", 10)
 			//wait for volume to become available
-			time.Sleep(15*time.Second)
+			time.Sleep(15 * time.Second)
 
 			backupOCID := pvcJig.CreateVolumeBackup(f.BlockStorageClient, setupF.AdLabel, setupF.StaticSnapshotCompartmentOcid, *volId, "test-backup")
 
@@ -179,7 +179,7 @@ var _ = Describe("Snapshot Creation and Restore", func() {
 			pvcJig.CreateAndAwaitNginxPodOrFail(f.Namespace.Name, pvcRestore, KeepAliveCommand)
 
 			//wait for volume to be restored before starting cleanup
-			time.Sleep(30*time.Second)
+			time.Sleep(30 * time.Second)
 
 			//cleanup
 			pvcJig.DeleteVolume(f.BlockStorageClient, *volId)
@@ -201,7 +201,7 @@ var _ = Describe("Volume Snapshot Deletion Tests", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-snapshot-restore-e2e-tests")
 			pvcJig.InitialiseSnapClient(f.SnapClientSet)
 
-			scParams  := map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI}
+			scParams := map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI}
 			vscParams := map[string]string{framework.BackupType: framework.BackupTypeFull}
 
 			scName := f.CreateStorageClassOrFail(framework.ClassSnapshot, BVDriverName, scParams, pvcJig.Labels, BindingModeWaitForFirstConsumer, true, ReclaimPolicyDelete, nil)
@@ -210,7 +210,7 @@ var _ = Describe("Volume Snapshot Deletion Tests", func() {
 			_ = pvcJig.CreateAndAwaitNginxPodOrFail(f.Namespace.Name, pvc, WriteCommand)
 
 			vscName := f.CreateVolumeSnapshotClassOrFail(framework.VSClassDefault, BVDriverName, vscParams, ReclaimPolicyDelete)
-			vs  := pvcJig.CreateAndAwaitVolumeSnapshotOrFail(f.Namespace.Name, vscName, pvc.Name, nil)
+			vs := pvcJig.CreateAndAwaitVolumeSnapshotOrFail(f.Namespace.Name, vscName, pvc.Name, nil)
 
 			//Waiting for volume snapshot content to be created and status field to be populated
 			time.Sleep(1 * time.Minute)
@@ -238,7 +238,7 @@ var _ = Describe("Volume Snapshot Deletion Tests", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-snapshot-restore-e2e-tests")
 			pvcJig.InitialiseSnapClient(f.SnapClientSet)
 
-			scParams  := map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI}
+			scParams := map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI}
 			vscParams := map[string]string{framework.BackupType: framework.BackupTypeFull}
 
 			scName := f.CreateStorageClassOrFail(framework.ClassSnapshot, BVDriverName, scParams, pvcJig.Labels, BindingModeWaitForFirstConsumer, true, ReclaimPolicyDelete, nil)
@@ -247,7 +247,7 @@ var _ = Describe("Volume Snapshot Deletion Tests", func() {
 			_ = pvcJig.CreateAndAwaitNginxPodOrFail(f.Namespace.Name, pvc, WriteCommand)
 
 			vscName := f.CreateVolumeSnapshotClassOrFail(framework.VSClassDefault, BVDriverName, vscParams, ReclaimPolicyRetain)
-			vs  := pvcJig.CreateAndAwaitVolumeSnapshotOrFail(f.Namespace.Name, vscName, pvc.Name, nil)
+			vs := pvcJig.CreateAndAwaitVolumeSnapshotOrFail(f.Namespace.Name, vscName, pvc.Name, nil)
 
 			//Waiting for volume snapshot content to be created and status field to be populated
 			time.Sleep(1 * time.Minute)
@@ -298,10 +298,12 @@ func testSnapshotAndRestore(f *framework.CloudProviderFramework, scParams map[st
 	time.Sleep(30 * time.Second)
 
 	vscName := f.CreateVolumeSnapshotClassOrFail(framework.VSClassDefault, BVDriverName, vscParams, ReclaimPolicyDelete)
-	vs  := pvcJig.CreateAndAwaitVolumeSnapshotOrFail(f.Namespace.Name, vscName, pvc.Name, nil)
+	vs := pvcJig.CreateAndAwaitVolumeSnapshotOrFail(f.Namespace.Name, vscName, pvc.Name, nil)
 
 	pvcRestore := pvcJig.CreateAndAwaitPVCOrFailSnapshotSource(f.Namespace.Name, framework.MinVolumeBlock, scName, vs.Name, v1.ClaimPending, nil)
 	podRestoreName := pvcJig.CreateAndAwaitNginxPodOrFail(f.Namespace.Name, pvcRestore, KeepAliveCommand)
+
+	time.Sleep(600 * time.Second)
 
 	pvcJig.CheckFileExists(f.Namespace.Name, podRestoreName, "/usr/share/nginx/html", "testdata.txt")
 
@@ -315,7 +317,7 @@ func checkOrInstallCRDs(f *framework.CloudProviderFramework) {
 
 	_, err = f.CRDClientSet.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), "volumesnapshots.snapshot.storage.k8s.io", metav1.GetOptions{})
 	if err != nil {
-		if setupF.EnableCreateCluster == false{
+		if setupF.EnableCreateCluster == false {
 			Skip("Skipping test because VolumeSnapshot CRD is not present")
 		} else {
 			framework.RunKubectl("create", "-f", "https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/v6.2.0/client/config/crd/snapshot.storage.k8s.io_volumesnapshots.yaml")
@@ -324,7 +326,7 @@ func checkOrInstallCRDs(f *framework.CloudProviderFramework) {
 
 	_, err = f.CRDClientSet.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), "volumesnapshotclasses.snapshot.storage.k8s.io", metav1.GetOptions{})
 	if err != nil {
-		if setupF.EnableCreateCluster == false{
+		if setupF.EnableCreateCluster == false {
 			Skip("Skipping test because VolumeSnapshotClass CRD is not present")
 		} else {
 			framework.RunKubectl("create", "-f", "https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/v6.2.0/client/config/crd/snapshot.storage.k8s.io_volumesnapshotclasses.yaml")
@@ -333,7 +335,7 @@ func checkOrInstallCRDs(f *framework.CloudProviderFramework) {
 
 	_, err = f.CRDClientSet.ApiextensionsV1().CustomResourceDefinitions().Get(context.TODO(), "volumesnapshotcontents.snapshot.storage.k8s.io", metav1.GetOptions{})
 	if err != nil {
-		if setupF.EnableCreateCluster == false{
+		if setupF.EnableCreateCluster == false {
 			Skip("Skipping test because VolumeSnapshotContent CRD is not present")
 		} else {
 			framework.RunKubectl("create", "-f", "https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/v6.2.0/client/config/crd/snapshot.storage.k8s.io_volumesnapshotcontents.yaml")
