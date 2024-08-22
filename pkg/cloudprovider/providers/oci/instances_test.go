@@ -17,6 +17,7 @@ package oci
 import (
 	"context"
 	"errors"
+	"net/http"
 	"reflect"
 	"testing"
 
@@ -1200,7 +1201,19 @@ func (MockBlockStorageClient) CreateVolume(ctx context.Context, details core.Cre
 	return nil, nil
 }
 
+var updateVolumeErrors = map[string]error{
+	"work-request-fails": errors.New("UpdateVolume request failed: internal server error"),
+	"api-returns-too-many-requests": mockServiceError{
+		StatusCode: http.StatusTooManyRequests,
+		Code:       client.HTTP429TooManyRequestsCode,
+		Message:    "Too many requests",
+	},
+}
+
 func (c MockBlockStorageClient) UpdateVolume(ctx context.Context, volumeId string, details core.UpdateVolumeDetails) (*core.Volume, error) {
+	if err, ok := updateVolumeErrors[volumeId]; ok {
+		return nil, err
+	}
 	return nil, nil
 }
 
@@ -1891,4 +1904,30 @@ func (s *mockEndpointSliceNamespaceLister) Get(name string) (ret *v1discovery.En
 		return es, nil
 	}
 	return nil, errors.New("get endpointSlice error")
+}
+
+type mockServiceError struct {
+	StatusCode   int
+	Code         string
+	Message      string
+	OpcRequestID string
+}
+
+func (m mockServiceError) GetHTTPStatusCode() int {
+	return m.StatusCode
+}
+
+func (m mockServiceError) GetMessage() string {
+	return m.Message
+}
+
+func (m mockServiceError) GetCode() string {
+	return m.Code
+}
+
+func (m mockServiceError) GetOpcRequestID() string {
+	return m.OpcRequestID
+}
+func (m mockServiceError) Error() string {
+	return m.Message
 }

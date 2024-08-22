@@ -20,7 +20,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	api "k8s.io/api/core/v1"
@@ -28,7 +27,21 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	listersv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/utils/net"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
 )
+
+const (
+	OkeSystemTagNamesapce = "orcl-containerengine"
+	// MaxDefinedTagPerResource is the maximum number of defined tags that be can be associated with the resource
+	//https://docs.oracle.com/en-us/iaas/Content/Tagging/Concepts/taggingoverview.htm#limits
+	MaxDefinedTagPerResource        = 64
+	resourceTrackingFeatureFlagName = "CPO_ENABLE_RESOURCE_ATTRIBUTION"
+)
+
+var MaxDefinedTagErrMessage = "max limit of defined tags for %s is reached. skip adding tags. sending metric"
 
 // Protects Load Balancers against multiple updates in parallel
 type loadBalancerLocks struct {
@@ -151,4 +164,23 @@ func GetIsFeatureEnabledFromEnv(logger *zap.SugaredLogger, featureName string, d
 		}
 	}
 	return enableFeature
+}
+
+// getResourceTrackingSystemTagsFromConfig reads resource tracking tags from config
+// which are specified under common tags
+func getResourceTrackingSystemTagsFromConfig(logger *zap.SugaredLogger, initialTags *config.InitialTags) (resourceTrackingTags map[string]map[string]interface{}) {
+	resourceTrackingTags = make(map[string]map[string]interface{})
+	// TODO: Fix the double negative
+	if !(util.IsCommonTagPresent(initialTags) && initialTags.Common.DefinedTags != nil) {
+		logger.Warn("oke resource tracking system tags are not present in cloud-config.yaml")
+		return nil
+	}
+
+	if tag, exists := initialTags.Common.DefinedTags[OkeSystemTagNamesapce]; exists {
+		resourceTrackingTags[OkeSystemTagNamesapce] = tag
+		return
+	}
+
+	logger.Warn("tag config doesn't consist resource tracking tags")
+	return nil
 }

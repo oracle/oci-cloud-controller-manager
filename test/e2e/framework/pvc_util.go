@@ -1759,3 +1759,15 @@ func (j *PVCTestJig) CreateSecret(secretName, saName, saNamespace string) error 
 	fmt.Printf("Secret %s created in namespace %s\n", secretName, saNamespace)
 	return nil
 }
+
+func (j *PVCTestJig) GetOcidFromPV(pv v1.PersistentVolume) string {
+	pvSource := pv.Spec.PersistentVolumeSource
+
+	if pvSource.CSI != nil {
+		return pvSource.CSI.VolumeHandle
+	}
+	if pvSource.FlexVolume != nil {
+		return pv.Name
+	}
+	return ""
+}
