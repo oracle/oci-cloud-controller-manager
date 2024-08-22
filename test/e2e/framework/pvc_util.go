@@ -1748,7 +1748,7 @@ func (j *PVCTestJig) newSecretTemplate(secretName, namespace, saName string) *v1
 	return secret
 }
 
-func (j *PVCTestJig) CreateSecret(secretName , saName , saNamespace string) error {
+func (j *PVCTestJig) CreateSecret(secretName, saName, saNamespace string) error {
 
 	secret := j.newSecretTemplate(secretName, saNamespace, saName)
 
@@ -1758,4 +1758,16 @@ func (j *PVCTestJig) CreateSecret(secretName , saName , saNamespace string) erro
 	}
 	fmt.Printf("Secret %s created in namespace %s\n", secretName, saNamespace)
 	return nil
+}
+
+func (j *PVCTestJig) GetOcidFromPV(pv v1.PersistentVolume) string {
+	pvSource := pv.Spec.PersistentVolumeSource
+
+	if pvSource.CSI != nil {
+		return pvSource.CSI.VolumeHandle
+	}
+	if pvSource.FlexVolume != nil {
+		return pv.Name
+	}
+	return ""
 }
