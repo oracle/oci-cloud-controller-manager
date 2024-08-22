@@ -71,15 +71,6 @@ const DefaultNetworkLoadBalancerListenerProtocol = "TCP"
 // https://docs.oracle.com/en-us/iaas/Content/General/Concepts/servicelimits.htm#nsg_limits
 const MaxNsgPerVnic = 5
 
-const (
-	OkeSystemTagNamesapce = "orcl-containerengine"
-	// MaxDefinedTagPerLB is the maximum number of defined tags that be can be associated with the resource
-	//https://docs.oracle.com/en-us/iaas/Content/Tagging/Concepts/taggingoverview.htm#limits
-	MaxDefinedTagPerLB              = 64
-	resourceTrackingFeatureFlagName = "CPO_ENABLE_RESOURCE_ATTRIBUTION"
-)
-
-var MaxDefinedTagPerLBErr = fmt.Errorf("max limit of defined tags for lb is reached. skip adding tags. sending metric")
 var enableOkeSystemTags = false
 
 const (
@@ -416,7 +407,7 @@ func (clb *CloudLoadBalancerProvider) createLoadBalancer(ctx context.Context, sp
 		IpVersion:               spec.IpVersions.LbEndpointIpVersion,
 	}
 	// do not block creation if the defined tag limit is reached. defer LB to tracked by backfilling
-	if len(details.DefinedTags) > MaxDefinedTagPerLB {
+	if len(details.DefinedTags) > MaxDefinedTagPerResource {
 		logger.Warnf("the number of defined tags in the LB create request is beyond the limit. removing the resource tracking tags from the details")
 		delete(details.DefinedTags, OkeSystemTagNamesapce)
 	}
@@ -1140,7 +1131,7 @@ func (clb *CloudLoadBalancerProvider) updateLoadBalancer(ctx context.Context, lb
 			// fail open if the update request fails
 			logger.With(zap.Error(err)).Warn("updateLoadBalancer didn't succeed. unable to add oke system tags")
 			errType = util.SystemTagErrTypePrefix + util.GetError(err)
-			if errors.Is(err, MaxDefinedTagPerLBErr) {
+			if errors.Is(err, fmt.Errorf(MaxDefinedTagErrMessage, spec.Type)) {
 				errType = util.ErrTagLimitReached
 			}
 			dimensionsMap[metrics.ComponentDimension] = util.GetMetricDimensionForComponent(errType, util.LoadBalancerType)
@@ -1920,8 +1911,8 @@ func (clb *CloudLoadBalancerProvider) addLoadBalancerOkeSystemTags(ctx context.C
 	lbDefinedTagsRequest[OkeSystemTagNamesapce] = spec.SystemTags[OkeSystemTagNamesapce]
 
 	// update fails if the number of defined tags is more than the service limit i.e 64
-	if len(lbDefinedTagsRequest) > MaxDefinedTagPerLB {
-		return MaxDefinedTagPerLBErr
+	if len(lbDefinedTagsRequest) > MaxDefinedTagPerResource {
+		return fmt.Errorf(MaxDefinedTagErrMessage, spec.Type)
 	}
 
 	lbUpdateDetails := &client.GenericUpdateLoadBalancerDetails{

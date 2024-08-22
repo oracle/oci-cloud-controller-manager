@@ -100,7 +100,7 @@ func NewCloudProvider(config *providercfg.Config) (cloudprovider.Interface, erro
 
 	rateLimiter := client.NewRateLimiter(logger.Sugar(), config.RateLimiter)
 
-	c, err := client.New(logger.Sugar(), cp, &rateLimiter)
+	c, err := client.New(logger.Sugar(), cp, &rateLimiter, config.Auth.TenancyID)
 	if err != nil {
 		return nil, err
 	}
@@ -165,6 +165,7 @@ func init() {
 // Initialize passes a Kubernetes clientBuilder interface to the cloud provider.
 func (cp *CloudProvider) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, stop <-chan struct{}) {
 	var err error
+	//var sbcStopChannel = make(chan struct{})
 	cp.kubeclient, err = clientBuilder.Client("cloud-controller-manager")
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("failed to create kubeclient: %v", err))
@@ -198,6 +199,23 @@ func (cp *CloudProvider) Initialize(clientBuilder cloudprovider.ControllerClient
 	cp.NodeLister = nodeInformer.Lister()
 
 	cp.ServiceAccountLister = serviceAccountInformer.Lister()
+
+	/* StorageBackfillController not applicable for Open Source CCM
+	enableStorageBackfillController := GetIsFeatureEnabledFromEnv(cp.logger, resourceTrackingFeatureFlagName, false)
+	if enableStorageBackfillController {
+		cp.logger.Info("Starting storage backfill controller")
+
+		storageBackfillController := NewStorageBackfillController(
+			cp.kubeclient,
+			cp.client,
+			cp.logger,
+			cp.metricPusher,
+			cp.config,
+			pvInformer.Lister(),
+		)
+		go storageBackfillController.Run(sbcStopChannel)
+	}
+	*/
 
 	cp.securityListManagerFactory = func(mode string) securityListManager {
 		if cp.config.LoadBalancer.Disabled {

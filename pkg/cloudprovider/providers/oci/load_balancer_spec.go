@@ -462,7 +462,7 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, provisionedNodes []*v
 		IpVersions:                  ipVersions,
 		FreeformTags:                lbTags.FreeformTags,
 		DefinedTags:                 lbTags.DefinedTags,
-		SystemTags:                  getResourceTrackingSysTagsFromConfig(logger, initialLBTags),
+		SystemTags:                  getResourceTrackingSystemTagsFromConfig(logger, initialLBTags),
 		ingressIpMode:               ingressIpMode,
 	}, nil
 }
@@ -1528,25 +1528,6 @@ func updateSpecWithLbSubnets(spec *LBSpec, lbSubnetId []string) (*LBSpec, error)
 	spec.Subnets = lbSubnetId
 
 	return spec, nil
-}
-
-// getResourceTrackingSysTagsFromConfig reads resource tracking tags from config
-// which are specified under common tags
-func getResourceTrackingSysTagsFromConfig(logger *zap.SugaredLogger, initialTags *config.InitialTags) (resourceTrackingTags map[string]map[string]interface{}) {
-	resourceTrackingTags = make(map[string]map[string]interface{})
-	// TODO: Fix the double negative
-	if !(util.IsCommonTagPresent(initialTags) && initialTags.Common.DefinedTags != nil) {
-		logger.Error("oke resource tracking system tags are not present in cloud-config.yaml")
-		return nil
-	}
-
-	if tag, exists := initialTags.Common.DefinedTags[OkeSystemTagNamesapce]; exists {
-		resourceTrackingTags[OkeSystemTagNamesapce] = tag
-		return
-	}
-
-	logger.Error("tag config doesn't consist resource tracking tags")
-	return nil
 }
 
 // getIpFamilies gets ip families based on the field set in the spec

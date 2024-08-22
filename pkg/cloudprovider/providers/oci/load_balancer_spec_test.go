@@ -10064,7 +10064,7 @@ func Test_getResourceTrackingSysTagsFromConfig(t *testing.T) {
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			tag := getResourceTrackingSysTagsFromConfig(zap.S(), test.initialTags)
+			tag := getResourceTrackingSystemTagsFromConfig(zap.S(), test.initialTags)
 			t.Logf("%#v", tag)
 			if !reflect.DeepEqual(test.wantTag, tag) {
 				t.Errorf("wanted %v but got %v", test.wantTag, tag)
