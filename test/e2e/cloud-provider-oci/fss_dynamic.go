@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	defaultExportOptionsJsonString = "[{\"source\":\"10.0.0.0/16\",\"requirePrivilegedSourcePort\":true,\"access\":\"READ_WRITE\",\"identitySquash\":\"NONE\",\"anonymousUid\":0,\"anonymousGid\":0},{\"source\":\"2603:c020:4015:2100::/56\",\"requirePrivilegedSourcePort\":false,\"access\":\"READ_WRITE\",\"identitySquash\":\"NONE\"},{\"source\":\"2603:c020:11:1500::/56\",\"requirePrivilegedSourcePort\":false,\"access\":\"READ_WRITE\",\"identitySquash\":\"NONE\"}]"
+	defaultExportOptionsJsonString = "[{\"source\":\"10.0.0.0/16\",\"requirePrivilegedSourcePort\":false,\"access\":\"READ_WRITE\",\"identitySquash\":\"NONE\",\"anonymousUid\":0,\"anonymousGid\":0},{\"source\":\"2603:c020:4015:2100::/56\",\"requirePrivilegedSourcePort\":false,\"access\":\"READ_WRITE\",\"identitySquash\":\"NONE\"},{\"source\":\"2603:c020:11:1500::/56\",\"requirePrivilegedSourcePort\":false,\"access\":\"READ_WRITE\",\"identitySquash\":\"NONE\"}]"
 )
 
 var _ = Describe("Dynamic FSS test in cluster compartment", func() {
@@ -681,6 +681,23 @@ var _ = Describe("Dynamic FSS test with immediate binding mode", func() {
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, framework.FssProvisionerType, scParameters, pvcJig.Labels, "Immediate", false, "Delete", nil)
 			f.StorageClasses = append(f.StorageClasses, scName)
 			pvcObject := pvcJig.CreateAndAwaitPVCOrFailDynamicFSS(f.Namespace.Name, "50Gi", scName, v1.ClaimBound, nil)
+			pvcJig.CheckSinglePodReadWrite(f.Namespace.Name, pvcObject.Name, false, []string{})
+		})
+	})
+})
+
+var _ = Describe("Dynamic FSS test with ReadWriteOnce access mode", func() {
+	f := framework.NewDefaultFramework("fss-dynamic")
+
+	Context("[cloudprovider][storage][csi][fss][mtexist][rwo]", func() {
+		It("Create PVC and POD for CSI-FSS with RWO AccessMode ", func() {
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetOcid": setupF.MntTargetOcid, "exportOptions": defaultExportOptionsJsonString}
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-rwo-fss-dyn-e2e-test")
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, framework.FssProvisionerType, scParameters, pvcJig.Labels, "Immediate", false, "Delete", nil)
+			f.StorageClasses = append(f.StorageClasses, scName)
+			pvcObject := pvcJig.CreateAndAwaitPVCOrFailDynamicFSS(f.Namespace.Name, "50Gi", scName, v1.ClaimBound, func(pvc *v1.PersistentVolumeClaim) {
+				pvc.Spec.AccessModes = []v1.PersistentVolumeAccessMode{"ReadWriteOnce"}
+			})
 			pvcJig.CheckSinglePodReadWrite(f.Namespace.Name, pvcObject.Name, false, []string{})
 		})
 	})

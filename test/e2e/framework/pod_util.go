@@ -369,3 +369,17 @@ func (j *PVCTestJig) GetNodeHostnameFromPod(podName, namespace string) string {
 	hostName := pod.Labels[NodeHostnameLabel]
 	return hostName
 }
+
+func (j *PVCTestJig) CheckVolumeOwnership(namespace, podName, mountPath, expectedOwner string) {
+	cmd := "ls -l " + mountPath + " | awk 'NR==2 { print $4 }'"
+	cmdOutput, err := RunHostCmd(namespace, podName, cmd)
+	if err != nil {
+		Failf("Failed to check volume ownership in pod %q: %v", podName, err)
+	}
+	cmdOutput = strings.ReplaceAll(cmdOutput, "\n", "")
+	if cmdOutput == expectedOwner {
+		Logf("Verified volume group owner for PV in pod %q is %v", podName, cmdOutput)
+	} else {
+		Failf("Actual Volume group ownership: %v and expected ownership: %v is not matching", cmdOutput, expectedOwner)
+	}
+}
