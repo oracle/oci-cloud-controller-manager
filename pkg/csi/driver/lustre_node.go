@@ -17,6 +17,7 @@ import (
 )
 
 const (
+	mountPath        = "mount"
 	SetupLnet        = "setupLnet"
 	LustreSubnetCidr = "lustreSubnetCidr"
 )

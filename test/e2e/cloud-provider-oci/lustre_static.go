@@ -44,14 +44,14 @@ var _ = Describe("Lustre Static", func() {
 
 			//FSS
 			fssPVCJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-e2e-test")
-			fssPV := fssPVCJig.CreatePVorFailFSS(f.Namespace.Name, setupF.VolumeHandle, "false", []string{})
+			fssPV := fssPVCJig.CreatePVorFailFSS(f.Namespace.Name, setupF.VolumeHandle, "false", "ReadWriteMany", "", []string{})
 			fssPVC := fssPVCJig.CreateAndAwaitPVCOrFailStaticFSS(f.Namespace.Name, fssPV.Name, "50Gi", nil)
 			f.VolumeIds = append(f.VolumeIds, fssPVC.Spec.VolumeName)
 
 			//LUSTRE
 			lusterPVCJig := framework.NewPVCTestJig(f.ClientSet, "csi-lustre-e2e-test")
 			pvVolumeAttributes := map[string]string{"lustreSubnetCidr": setupF.LustreSubnetCidr, "setupLnet": "true"}
- 			lustrePV := lusterPVCJig.CreatePVorFailLustre(f.Namespace.Name, setupF.LustreVolumeHandle, []string{}, pvVolumeAttributes)
+			lustrePV := lusterPVCJig.CreatePVorFailLustre(f.Namespace.Name, setupF.LustreVolumeHandle, []string{}, pvVolumeAttributes)
 			lustrePVC := lusterPVCJig.CreateAndAwaitPVCOrFailStaticLustre(f.Namespace.Name, lustrePV.Name, "50Gi", nil)
 			f.VolumeIds = append(f.VolumeIds, lustrePVC.Spec.VolumeName)
 
