@@ -536,15 +536,16 @@ func (j *PVCTestJig) pvAddMountOptions(pv *v1.PersistentVolume,
 // newPVTemplateFSS returns the default template for this jig, but
 // does not actually create the PV.  The default PV has the same name
 // as the jig
-func (j *PVCTestJig) newPVTemplateFSS(namespace, volumeHandle, enableIntransitEncrypt string, mountOptions []string) *v1.PersistentVolume {
+func (j *PVCTestJig) newPVTemplateFSS(namespace, volumeHandle, enableIntransitEncrypt, accessMode, fsType string, mountOptions []string) *v1.PersistentVolume {
 	pv := j.CreatePVTemplate(namespace, "fss.csi.oraclecloud.com", "", "Retain")
 	pv = j.pvAddVolumeMode(pv, v1.PersistentVolumeFilesystem)
-	pv = j.pvAddAccessMode(pv, "ReadWriteMany")
+	pv = j.pvAddAccessMode(pv, v1.PersistentVolumeAccessMode(accessMode))
 	pv = j.pvAddMountOptions(pv, mountOptions)
 	pv = j.pvAddPersistentVolumeSource(pv, v1.PersistentVolumeSource{
 		CSI: &v1.CSIPersistentVolumeSource{
 			Driver:       driver.FSSDriverName,
 			VolumeHandle: volumeHandle,
+			FSType:       fsType,
 			VolumeAttributes: map[string]string{
 				"encryptInTransit": enableIntransitEncrypt,
 			},
@@ -613,8 +614,8 @@ func (j *PVCTestJig) newPVTemplateCSIHighPerf(namespace string, scName string, o
 // CreatePVForFSSorFail creates a new claim based on the jig's
 // defaults. Callers can provide a function to tweak the claim object
 // before it is created.
-func (j *PVCTestJig) CreatePVorFailFSS(namespace, volumeHandle, encryptInTransit string, mountOptions []string) *v1.PersistentVolume {
-	pv := j.newPVTemplateFSS(namespace, volumeHandle, encryptInTransit, mountOptions)
+func (j *PVCTestJig) CreatePVorFailFSS(namespace, volumeHandle, encryptInTransit, accessMode, fsType string, mountOptions []string) *v1.PersistentVolume {
+	pv := j.newPVTemplateFSS(namespace, volumeHandle, encryptInTransit, accessMode, fsType, mountOptions)
 
 	result, err := j.KubeClient.CoreV1().PersistentVolumes().Create(context.Background(), pv, metav1.CreateOptions{})
 	if err != nil {
