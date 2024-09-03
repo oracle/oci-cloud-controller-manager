@@ -880,6 +880,74 @@ func TestGetListenerChanges(t *testing.T) {
 			},
 		},
 		{
+			name: "proxy protocol version switch to true - NLB",
+			desired: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
+					Name:                  common.String("TCP-80"),
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
+					IsPpv2Enabled:         common.Bool(true),
+				},
+			},
+			actual: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
+					Name:                  common.String("TCP-80"),
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
+					IsPpv2Enabled:         common.Bool(false),
+				},
+			},
+			expected: []Action{
+				&ListenerAction{
+					name:       "TCP-80",
+					actionType: Update,
+					Listener: client.GenericListener{
+						Name:                  common.String("TCP-80"),
+						DefaultBackendSetName: common.String("TCP-80"),
+						Protocol:              common.String("TCP"),
+						Port:                  common.Int(80),
+						IsPpv2Enabled:         common.Bool(true),
+					},
+				},
+			},
+		},
+		{
+			name: "proxy protocol version change - NLB",
+			desired: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
+					Name:                  common.String("TCP-80"),
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
+					IsPpv2Enabled:         common.Bool(true),
+				},
+			},
+			actual: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
+					Name:                  common.String("TCP-80"),
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
+					IsPpv2Enabled:         nil,
+				},
+			},
+			expected: []Action{
+				&ListenerAction{
+					name:       "TCP-80",
+					actionType: Update,
+					Listener: client.GenericListener{
+						Name:                  common.String("TCP-80"),
+						DefaultBackendSetName: common.String("TCP-80"),
+						Protocol:              common.String("TCP"),
+						Port:                  common.Int(80),
+						IsPpv2Enabled:         common.Bool(true),
+					},
+				},
+			},
+		},
+		{
 			name: "ssl config change [legacy listeners]",
 			desired: map[string]client.GenericListener{
 				"TCP-80": client.GenericListener{
