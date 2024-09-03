@@ -448,6 +448,9 @@ func hasListenerChanged(logger *zap.SugaredLogger, actual client.GenericListener
 	if toString(actual.Protocol) != toString(desired.Protocol) {
 		listenerChanges = append(listenerChanges, fmt.Sprintf(changeFmtStr, "Listener:Protocol", toString(actual.Protocol), toString(desired.Protocol)))
 	}
+	if toBool(actual.IsPpv2Enabled) != toBool(desired.IsPpv2Enabled) {
+		listenerChanges = append(listenerChanges, fmt.Sprintf(changeFmtStr, "Listener:IsPpv2Enabled", toBool(actual.IsPpv2Enabled), toBool(desired.IsPpv2Enabled)))
+	}
 
 	listenerChanges = append(listenerChanges, getSSLConfigurationChanges(actual.SslConfiguration, desired.SslConfiguration)...)
 	listenerChanges = append(listenerChanges, getConnectionConfigurationChanges(actual.ConnectionConfiguration, desired.ConnectionConfiguration)...)

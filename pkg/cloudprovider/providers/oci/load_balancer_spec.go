@@ -26,6 +26,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
+	"k8s.io/utils/pointer"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
@@ -234,6 +235,9 @@ const (
 	// ServiceAnnotationNetworkLoadBalancerIsPreserveSource is a service annotation to enable/disable preserving source information
 	// on the NLB traffic. Default value when no annotation is given is to enable this for NLBs with externalTrafficPolicy=Local.
 	ServiceAnnotationNetworkLoadBalancerIsPreserveSource = "oci-network-load-balancer.oraclecloud.com/is-preserve-source"
+
+	// ServiceAnnotationNetworkLoadBalancerIsPpv2Enabled is a service annotation to enable/disable PPv2 feature for the listeners of this NLB.
+	ServiceAnnotationNetworkLoadBalancerIsPpv2Enabled = "oci-network-load-balancer.oraclecloud.com/is-ppv2-enabled"
 )
 
 // certificateData is a structure containing the data about a K8S secret required
@@ -1047,11 +1051,20 @@ func getListenersNetworkLoadBalancer(svc *v1.Service, listenerBackendIpVersion [
 	listeners := make(map[string]client.GenericListener)
 	portsMap := make(map[int][]string)
 	mixedProtocolsPortSet := make(map[int]bool)
+	var enablePpv2 *bool
 
 	requireIPv4, requireIPv6 := getRequireIpVersions(listenerBackendIpVersion)
 
 	for _, servicePort := range svc.Spec.Ports {
 		portsMap[int(servicePort.Port)] = append(portsMap[int(servicePort.Port)], string(servicePort.Protocol))
+	}
+
+	if ppv2EnabledValue, ppv2AnnotationSet := svc.Annotations[ServiceAnnotationNetworkLoadBalancerIsPpv2Enabled]; ppv2AnnotationSet {
+		if strings.ToLower(ppv2EnabledValue) == "true" {
+			enablePpv2 = pointer.Bool(true)
+		} else if strings.ToLower(ppv2EnabledValue) == "false" {
+			enablePpv2 = pointer.Bool(false)
+		}
 	}
 
 	for _, servicePort := range svc.Spec.Ports {
@@ -1081,8 +1094,9 @@ func getListenersNetworkLoadBalancer(svc *v1.Service, listenerBackendIpVersion [
 		}
 
 		genericListener := client.GenericListener{
-			Protocol: &protocol,
-			Port:     &port,
+			Protocol:      &protocol,
+			Port:          &port,
+			IsPpv2Enabled: enablePpv2,
 		}
 		if requireIPv4 {
 			genericListener.Name = common.String(listenerName)
