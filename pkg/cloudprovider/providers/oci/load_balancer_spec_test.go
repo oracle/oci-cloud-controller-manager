@@ -17,6 +17,7 @@ package oci
 import (
 	"context"
 	"fmt"
+	"k8s.io/utils/pointer"
 	"net/http"
 	"reflect"
 	"testing"
@@ -9037,6 +9038,89 @@ func Test_getListenersNetworkLoadBalancer(t *testing.T) {
 					DefaultBackendSetName: common.String(testThreeBackendSetNameIPv6),
 					Protocol:              &testThreeProtocol,
 					Port:                  &testThreePort,
+				},
+			},
+			err: nil,
+		},
+		"NLB_with_Ppv2_Enabled": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+						},
+						{
+							Protocol: v1.ProtocolUDP,
+							Port:     int32(68),
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                 "nlb",
+						ServiceAnnotationNetworkLoadBalancerIsPpv2Enabled: "true",
+					},
+				},
+			},
+			listenerBackendIpVersion: []string{IPv4},
+			wantListeners: map[string]client.GenericListener{
+				"TCP-67": {
+					Name:                  &testTwoListenerNameOne,
+					DefaultBackendSetName: common.String(testTwoBackendSetNameOne),
+					Protocol:              &testTwoProtocolOne,
+					Port:                  &testTwoPortOne,
+					IsPpv2Enabled:         pointer.Bool(true),
+				},
+				"UDP-68": {
+					Name:                  &testTwoListenerNameTwo,
+					DefaultBackendSetName: common.String(testTwoBackendSetNameTwo),
+					Protocol:              &testTwoProtocolTwo,
+					Port:                  &testTwoPortTwo,
+					IsPpv2Enabled:         pointer.Bool(true),
+				},
+			},
+			err: nil,
+		},
+
+		"NLB_with_Ppv2_Disabled": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+						},
+						{
+							Protocol: v1.ProtocolUDP,
+							Port:     int32(68),
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                 "nlb",
+						ServiceAnnotationNetworkLoadBalancerIsPpv2Enabled: "xyz",
+					},
+				},
+			},
+			listenerBackendIpVersion: []string{IPv4},
+			wantListeners: map[string]client.GenericListener{
+				"TCP-67": {
+					Name:                  &testTwoListenerNameOne,
+					DefaultBackendSetName: common.String(testTwoBackendSetNameOne),
+					Protocol:              &testTwoProtocolOne,
+					Port:                  &testTwoPortOne,
+					IsPpv2Enabled:         pointer.Bool(true),
+				},
+				"UDP-68": {
+					Name:                  &testTwoListenerNameTwo,
+					DefaultBackendSetName: common.String(testTwoBackendSetNameTwo),
+					Protocol:              &testTwoProtocolTwo,
+					Port:                  &testTwoPortTwo,
+					IsPpv2Enabled:         pointer.Bool(false),
 				},
 			},
 			err: nil,

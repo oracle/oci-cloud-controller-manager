@@ -867,6 +867,40 @@ func (f *CloudProviderFramework) VerifyHealthCheckConfig(loadBalancerId string, 
 	return gerrors.Errorf("Timeout waiting for Health check config to be as expected.")
 }
 
+func (f *CloudProviderFramework) VerifyProxyProtocolV2(loadBalancerId string, lbtype string, expectPpv2 bool) error {
+	for start := time.Now(); time.Since(start) < 5*time.Minute; time.Sleep(5 * time.Second) {
+		loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), lbtype, "", nil).GetLoadBalancer(context.TODO(), loadBalancerId)
+		if err != nil {
+			return err
+		}
+		success := testProxyProtocolV2(loadBalancer, lbtype, expectPpv2)
+		if err != nil {
+			return err
+		}
+		if success {
+			Logf("Proxy Protocol matches expected config.")
+			return nil
+		}
+		Logf("Proxy Protocol did not match expected - will retry")
+	}
+	return gerrors.Errorf("Timeout waiting for Proxy Protocol to be as expected.")
+}
+
+func testProxyProtocolV2(loadBalancer *client.GenericLoadBalancer, lbtype string, expectPpv2 bool) (expected bool) {
+	for _, l := range loadBalancer.Listeners {
+		if lbtype == "nlb" {
+			if expectPpv2 != *l.IsPpv2Enabled {
+				return false
+			}
+		} else {
+			if expectPpv2 != (*l.ConnectionConfiguration.BackendTcpProxyProtocolVersion == 2) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 // WaitForLoadBalancerNSGChange polls for validating the associated NSGs
 // to be the same as the spec
 func (f *CloudProviderFramework) WaitForLoadBalancerNSGChange(lb *client.GenericLoadBalancer, nsgIds []string, lbtype string) error {

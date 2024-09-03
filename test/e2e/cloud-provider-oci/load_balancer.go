@@ -1123,7 +1123,7 @@ var _ = Describe("LB Properties", func() {
 	baseName := "lb-properties"
 	f := sharedfw.NewDefaultFramework(baseName)
 
-	Context("[cloudprovider][ccm][lb]", func() {
+	Context("[cloudprovider][ccm][lb][properties]", func() {
 
 		healthCheckTestArray := []struct {
 			lbType              string
@@ -1191,7 +1191,12 @@ var _ = Describe("LB Properties", func() {
 					s.Spec.Ports = []v1.ServicePort{{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
 						{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
 					s.ObjectMeta.Annotations = test.CreationAnnotations
-					s.ObjectMeta.Annotations[cloudprovider.ServiceAnnotationLoadBalancerInternal] = "true"
+					if test.lbType == "lb" {
+						s.ObjectMeta.Annotations[cloudprovider.ServiceAnnotationLoadBalancerInternal] = "true"
+					}
+					if test.lbType == "nlb" {
+						s.ObjectMeta.Annotations[cloudprovider.ServiceAnnotationNetworkLoadBalancerInternal] = "true"
+					}
 				})
 
 				svcPort := int(tcpService.Spec.Ports[0].Port)
@@ -1229,6 +1234,12 @@ var _ = Describe("LB Properties", func() {
 				By("changing TCP service health check config")
 				tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
 					s.ObjectMeta.Annotations = test.UpdatedAnnotations
+					if test.lbType == "lb" {
+						s.ObjectMeta.Annotations[cloudprovider.ServiceAnnotationLoadBalancerInternal] = "true"
+					}
+					if test.lbType == "nlb" {
+						s.ObjectMeta.Annotations[cloudprovider.ServiceAnnotationNetworkLoadBalancerInternal] = "true"
+					}
 				})
 
 				By("waiting upto 5m0s to verify health check config after modification to initial")
@@ -1238,6 +1249,12 @@ var _ = Describe("LB Properties", func() {
 				By("changing TCP service health check config - remove annotations")
 				tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
 					s.ObjectMeta.Annotations = test.RemovedAnnotations
+					if test.lbType == "lb" {
+						s.ObjectMeta.Annotations[cloudprovider.ServiceAnnotationLoadBalancerInternal] = "true"
+					}
+					if test.lbType == "nlb" {
+						s.ObjectMeta.Annotations[cloudprovider.ServiceAnnotationNetworkLoadBalancerInternal] = "true"
+					}
 				})
 
 				By("waiting upto 5m0s to verify health check config should fall back to default after removing annotations")
@@ -1492,8 +1509,8 @@ var _ = Describe("LB Properties", func() {
 			{
 				"nlb",
 				map[string]string{
-					cloudprovider.ServiceAnnotationLoadBalancerInternal: "true",
-					cloudprovider.ServiceAnnotationLoadBalancerType:     "nlb",
+					cloudprovider.ServiceAnnotationNetworkLoadBalancerInternal: "true",
+					cloudprovider.ServiceAnnotationLoadBalancerType:            "nlb",
 				},
 				cloudprovider.ServiceAnnotationNetworkLoadBalancerNetworkSecurityGroups,
 			},
@@ -1544,7 +1561,6 @@ var _ = Describe("LB Properties", func() {
 					s.Spec.Ports = []v1.ServicePort{{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
 						{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
 					s.ObjectMeta.Annotations = test.Annotations
-					s.ObjectMeta.Annotations[cloudprovider.ServiceAnnotationLoadBalancerInternal] = "true"
 				})
 
 				svcPort := int(tcpService.Spec.Ports[0].Port)
@@ -1587,6 +1603,12 @@ var _ = Describe("LB Properties", func() {
 					test.Annotations[test.nsgAnnotation] = nsgIds
 					tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
 						s.ObjectMeta.Annotations = test.Annotations
+						if test.lbtype == "lb" {
+							s.ObjectMeta.Annotations[cloudprovider.ServiceAnnotationLoadBalancerInternal] = "true"
+						}
+						if test.lbtype == "nlb" {
+							s.ObjectMeta.Annotations[cloudprovider.ServiceAnnotationNetworkLoadBalancerInternal] = "true"
+						}
 					})
 					err = f.WaitForLoadBalancerNSGChange(loadBalancer, t.resultantNsgIds, test.lbtype)
 					sharedfw.ExpectNoError(err)
@@ -1662,7 +1684,12 @@ var _ = Describe("LB Properties", func() {
 					s.Spec.Ports = []v1.ServicePort{{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
 						{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
 					s.ObjectMeta.Annotations = test.CreationAnnotations
-					s.ObjectMeta.Annotations[cloudprovider.ServiceAnnotationLoadBalancerInternal] = "true"
+					if test.lbType == "lb" {
+						s.ObjectMeta.Annotations[cloudprovider.ServiceAnnotationLoadBalancerInternal] = "true"
+					}
+					if test.lbType == "nlb" {
+						s.ObjectMeta.Annotations[cloudprovider.ServiceAnnotationNetworkLoadBalancerInternal] = "true"
+					}
 				})
 
 				svcPort := int(tcpService.Spec.Ports[0].Port)
