@@ -246,6 +246,11 @@ const (
 	ServiceAnnotationNetworkLoadBalancerIsPpv2Enabled = "oci-network-load-balancer.oraclecloud.com/is-ppv2-enabled"
 )
 
+const (
+	ProtocolGrpc              = "GRPC"
+	DefaultCipherSuiteForGRPC = "oci-default-http2-ssl-cipher-suite-v1"
+)
+
 // certificateData is a structure containing the data about a K8S secret required
 // to store SSL information required for BackendSets and Listeners
 type certificateData struct {
@@ -1032,10 +1037,10 @@ func getListenersOciLoadBalancer(svc *v1.Service, sslCfg *SSLConfig) (map[string
 			if p == "" {
 				p = DefaultLoadBalancerBEProtocol
 			}
-			if strings.EqualFold(p, "HTTP") || strings.EqualFold(p, "TCP") {
+			if strings.EqualFold(p, "HTTP") || strings.EqualFold(p, "TCP") || strings.EqualFold(p, "GRPC") {
 				protocol = p
 			} else {
-				return nil, fmt.Errorf("invalid backend protocol %q requested for load balancer listener. Only 'HTTP' and 'TCP' protocols supported", p)
+				return nil, fmt.Errorf("invalid backend protocol %q requested for load balancer listener. Only 'HTTP', 'TCP' and 'GRPC' protocols supported", p)
 			}
 		}
 		port := int(servicePort.Port)
@@ -1049,6 +1054,15 @@ func getListenersOciLoadBalancer(svc *v1.Service, sslCfg *SSLConfig) (map[string
 			sslConfiguration, err = getSSLConfiguration(sslCfg, secretName, port, listenerCipherSuiteAnnotation)
 			if err != nil {
 				return nil, err
+			}
+		}
+		if strings.EqualFold(protocol, "GRPC") {
+			protocol = ProtocolGrpc
+			if sslConfiguration == nil {
+				return nil, fmt.Errorf("SSL configuration cannot be empty for GRPC protocol")
+			}
+			if sslConfiguration.CipherSuiteName == nil {
+				sslConfiguration.CipherSuiteName = common.String(DefaultCipherSuiteForGRPC)
 			}
 		}
 		name := getListenerName(protocol, port)
