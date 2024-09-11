@@ -1555,6 +1555,22 @@ func TestHasListenerChanged(t *testing.T) {
 
 			expected: false,
 		},
+		{
+			name: "GRPC protocol",
+			desired: client.GenericListener{
+				Name:                  common.String("TCP-443"),
+				DefaultBackendSetName: common.String("TCP-443"),
+				Port:                  common.Int(443),
+				Protocol:              common.String("TCP"),
+			},
+			actual: client.GenericListener{
+				Name:                  common.String("GRPC-443"),
+				DefaultBackendSetName: common.String("TCP-443"),
+				Port:                  common.Int(443),
+				Protocol:              common.String("GRPC"),
+			},
+			expected: true,
+		},
 	}
 
 	for _, tt := range testCases {

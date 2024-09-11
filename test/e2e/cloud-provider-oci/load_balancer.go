@@ -1217,6 +1217,104 @@ var _ = Describe("Listener only enabled TLS", func() {
 	})
 })
 
+var _ = Describe("GRPC Listeners only enabled TLS", func() {
+
+	baseName := "listener-service"
+	f := sharedfw.NewDefaultFramework(baseName)
+
+	Context("[cloudprovider][ccm][lb][grpc]", func() {
+		It("should be possible to create a GRPC listener for LB [Canary]", func() {
+			serviceName := "listener-grpc-lb-test"
+			ns := f.Namespace.Name
+
+			jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
+
+			sslSecretName := "ssl-certificate-secret"
+			_, err := f.ClientSet.CoreV1().Secrets(ns).Create(context.Background(), &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: ns,
+					Name:      sslSecretName,
+				},
+				Data: map[string][]byte{
+					cloudprovider.SSLCAFileName:          []byte(sharedfw.SSLCAData),
+					cloudprovider.SSLCertificateFileName: []byte(sharedfw.SSLCertificateData),
+					cloudprovider.SSLPrivateKeyFileName:  []byte(sharedfw.SSLPrivateData),
+					cloudprovider.SSLPassphrase:          []byte(sharedfw.SSLPassphrase),
+				},
+			}, metav1.CreateOptions{})
+			sharedfw.ExpectNoError(err)
+			loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
+			if nodes := sharedfw.GetReadySchedulableNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
+				loadBalancerCreateTimeout = sharedfw.LoadBalancerCreateTimeoutLarge
+			}
+
+			requestedIP := ""
+
+			tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
+				s.Spec.Type = v1.ServiceTypeLoadBalancer
+				s.Spec.LoadBalancerIP = requestedIP
+				s.Spec.Ports = []v1.ServicePort{v1.ServicePort{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
+					v1.ServicePort{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
+				s.ObjectMeta.Annotations = map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerSSLPorts:   "80,443",
+					cloudprovider.ServiceAnnotationLoadBalancerTLSSecret:  sslSecretName,
+					cloudprovider.ServiceAnnotationLoadBalancerInternal:   "true",
+					cloudprovider.ServiceAnnotationLoadBalancerBEProtocol: "GRPC",
+				}
+			})
+
+			svcPort := int(tcpService.Spec.Ports[0].Port)
+
+			By("waiting for the TCP service to have a load balancer")
+			// Wait for the load balancer to be created asynchronously
+			tcpService = jig.WaitForLoadBalancerOrFail(ns, tcpService.Name, loadBalancerCreateTimeout)
+			jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
+			tcpNodePort := int(tcpService.Spec.Ports[0].NodePort)
+			sharedfw.Logf("TCP node port: %d", tcpNodePort)
+
+			if requestedIP != "" && sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]) != requestedIP {
+				sharedfw.Failf("unexpected TCP Status.LoadBalancer.Ingress (expected %s, got %s)", requestedIP, sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]))
+			}
+			tcpIngressIP := sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0])
+			sharedfw.Logf("TCP load balancer: %s", tcpIngressIP)
+
+			By("Validate that GRPC Listener is created")
+			lbName := cloudprovider.GetLoadBalancerName(tcpService)
+			sharedfw.Logf("LB Name is %s", lbName)
+			ctx := context.TODO()
+			compartmentId := ""
+			if setupF.Compartment1 != "" {
+				compartmentId = setupF.Compartment1
+			} else if f.CloudProviderConfig.CompartmentID != "" {
+				compartmentId = f.CloudProviderConfig.CompartmentID
+			} else if f.CloudProviderConfig.Auth.CompartmentID != "" {
+				compartmentId = f.CloudProviderConfig.Auth.CompartmentID
+			} else {
+				sharedfw.Failf("Compartment Id undefined.")
+			}
+			loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), cloudprovider.LB, "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
+			sharedfw.ExpectNoError(err)
+			protocol := *loadBalancer.Listeners["GRPC-443"].Protocol
+			Expect(protocol == cloudprovider.ProtocolGrpc).To(BeTrue())
+
+			By("changing TCP service back to type=ClusterIP")
+			tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+				s.Spec.Type = v1.ServiceTypeClusterIP
+				s.Spec.Ports[0].NodePort = 0
+				s.Spec.Ports[1].NodePort = 0
+			})
+
+			// Wait for the load balancer to be destroyed asynchronously
+			tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
+			jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
+
+			err = f.ClientSet.CoreV1().Secrets(ns).Delete(context.Background(), sslSecretName, metav1.DeleteOptions{})
+			sharedfw.ExpectNoError(err)
+		})
+	})
+})
+
 var _ = Describe("End to end enabled TLS - different certificates", func() {
 	baseName := "e2e-diff-certs"
 	f := sharedfw.NewDefaultFramework(baseName)
