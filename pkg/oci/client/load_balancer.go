@@ -821,9 +821,13 @@ func (c *loadbalancerClientStruct) genericBackendDetailsToBackendDetails(details
 
 	for _, backends := range details {
 		backendDetails = append(backendDetails, loadbalancer.BackendDetails{
-			IpAddress: backends.IpAddress,
-			Port:      backends.Port,
-			Weight:    backends.Weight,
+			IpAddress:      backends.IpAddress,
+			Port:           backends.Port,
+			Weight:         backends.Weight,
+			Backup:         backends.Backup,
+			Drain:          backends.Drain,
+			Offline:        backends.Offline,
+			MaxConnections: backends.MaxConnections,
 		})
 	}
 	return backendDetails
@@ -834,9 +838,13 @@ func backendDetailsToGenericBackendDetails(details []loadbalancer.Backend) []Gen
 
 	for _, backends := range details {
 		genericBackendDetails = append(genericBackendDetails, GenericBackend{
-			IpAddress: backends.IpAddress,
-			Port:      backends.Port,
-			Weight:    backends.Weight,
+			IpAddress:      backends.IpAddress,
+			Port:           backends.Port,
+			Weight:         backends.Weight,
+			Backup:         backends.Backup,
+			Drain:          backends.Drain,
+			Offline:        backends.Offline,
+			MaxConnections: backends.MaxConnections,
 		})
 	}
 	return genericBackendDetails
@@ -855,6 +863,7 @@ func genericSslConfigurationToSslConfiguration(details *GenericSslConfigurationD
 		ServerOrderPreference:          loadbalancer.SslConfigurationDetailsServerOrderPreferenceEnum(details.ServerOrderPreference),
 		CipherSuiteName:                details.CipherSuiteName,
 		Protocols:                      details.Protocols,
+		HasSessionResumption:           details.HasSessionResumption,
 	}
 }
 
@@ -871,6 +880,7 @@ func sslConfigurationToGenericSslConfiguration(details *loadbalancer.SslConfigur
 		ServerOrderPreference:          string(details.ServerOrderPreference),
 		CipherSuiteName:                details.CipherSuiteName,
 		Protocols:                      details.Protocols,
+		HasSessionResumption:           details.HasSessionResumption,
 	}
 }
 

@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -26,10 +27,10 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	gerrors "github.com/pkg/errors"
-
 	cloudprovider "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	gerrors "github.com/pkg/errors"
+
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
@@ -98,6 +99,9 @@ const (
 
 	// OCI LB NSG Update Timeout
 	OCILBNSGUpdateTimeout = 5 * time.Minute
+
+	// SSL config update timeout
+	OCISSLConfigUpdateTimeout = 10 * time.Minute
 )
 
 // This should match whatever the default/configured range is
@@ -263,10 +267,10 @@ func (j *ServiceTestJig) CreateOnlyLocalLoadBalancerService(namespace, serviceNa
 		// We need to turn affinity off for our LB distribution tests
 		svc.Spec.SessionAffinity = v1.ServiceAffinityNone
 		svc.Spec.ExternalTrafficPolicy = v1.ServiceExternalTrafficPolicyTypeLocal
+		svc.ObjectMeta.Annotations = creationAnnotations
 		if tweak != nil {
 			tweak(svc)
 		}
-		svc.ObjectMeta.Annotations = creationAnnotations
 	})
 
 	if createPod {
@@ -697,6 +701,40 @@ func (j *ServiceTestJig) RunOrFail(namespace string, tweak func(rc *v1.Replicati
 	return result
 }
 
+// UpdateReplicationControllerOrFail - updates the given replication controller and waits for the desired Pods
+func (j *ServiceTestJig) UpdateReplicationControllerOrFail(namespace, name string, update func(controller *v1.ReplicationController)) *v1.ReplicationController {
+	rc, err := j.updateReplicationController(namespace, name, update)
+	if err != nil {
+		Failf(err.Error())
+	}
+	pods, err := j.waitForPodsCreated(namespace, int(*(rc.Spec.Replicas)))
+	if err != nil {
+		Failf("Failed to create pods: %v", err)
+	}
+	if err := j.waitForPodsReady(namespace, pods); err != nil {
+		Failf("Failed waiting for pods to be running: %v", err)
+	}
+	return rc
+}
+
+func (j *ServiceTestJig) updateReplicationController(namespace, name string, update func(controller *v1.ReplicationController)) (*v1.ReplicationController, error) {
+	for i := 0; i < 3; i++ {
+		rc, err := j.Client.CoreV1().ReplicationControllers(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get Replication Controller %q: %v", name, err)
+		}
+		update(rc)
+		rc, err = j.Client.CoreV1().ReplicationControllers(namespace).Update(context.Background(), rc, metav1.UpdateOptions{})
+		if err == nil {
+			return rc, nil
+		}
+		if !errors.IsConflict(err) && !errors.IsServerTimeout(err) {
+			return nil, fmt.Errorf("Failed to update Replication Controller %q: %v", name, err)
+		}
+	}
+	return nil, fmt.Errorf("Too many retries updating Replication Controller %q", name)
+}
+
 func (j *ServiceTestJig) waitForPdbReady(namespace string) error {
 	timeout := 2 * time.Minute
 	for start := time.Now(); time.Since(start) < timeout; time.Sleep(2 * time.Second) {
@@ -916,6 +954,21 @@ func (f *CloudProviderFramework) WaitForLoadBalancerNSGChange(lb *client.Generic
 	}
 	if err := wait.Poll(15*time.Second, OCILBNSGUpdateTimeout, condition); err != nil {
 		return fmt.Errorf("Failed to update LB NSGs, error: %s", err.Error())
+	}
+	return nil
+}
+
+// WaitForLoadBalancerSSLConfigurationChange polls for validating the associated Listener SSL config to be the same as the spec
+func (f *CloudProviderFramework) WaitForLoadBalancerSSLConfigurationChange(lb *client.GenericLoadBalancer, service *v1.Service) error {
+	condition := func() (bool, error) {
+		updatedLB, err := f.Client.LoadBalancer(zap.L().Sugar(), "lb", "", nil).GetLoadBalancer(context.TODO(), *lb.Id)
+		if err != nil {
+			return false, err
+		}
+		return ValidateSSLConfiguration(service, updatedLB)
+	}
+	if err := wait.Poll(15*time.Second, OCISSLConfigUpdateTimeout, condition); err != nil {
+		return fmt.Errorf("Failed to update SSLconfiguration, error: %s", err.Error())
 	}
 	return nil
 }
@@ -1279,6 +1332,97 @@ func testLoadBalancerPolicy(loadBalancer *client.GenericLoadBalancer, loadbalanc
 	for _, backendSet := range loadBalancer.BackendSets {
 		if *backendSet.Policy != loadbalancerPolicy {
 			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func prettifyBackendSetsMap(backendSets map[string]client.GenericBackendSetDetails) (backendSetMap map[string][]string) {
+	backendSetMap = make(map[string][]string)
+
+	for _, backendSet := range backendSets {
+		var backendsList []string
+		for _, backend := range backendSet.Backends {
+			backendsList = append(backendsList, *backend.IpAddress)
+		}
+		backendSetMap[*backendSet.Name] = backendsList
+	}
+	return
+}
+
+func prettifyIpMap(backendSets map[string]interface{}) (backends []string) {
+	for backend, _ := range backendSets {
+		backends = append(backends, backend)
+	}
+	return
+}
+
+func ValidateSSLConfiguration(tcpService *v1.Service, loadBalancer *client.GenericLoadBalancer) (bool, error) {
+	var sslConfig *cloudprovider.SSLConfig
+	sslEnabledPorts, err := cloudprovider.GetSSLEnabledPorts(tcpService)
+	if err != nil {
+
+		return false, fmt.Errorf("Unable to get SSL Enabled Ports for the service: %v", tcpService.Name)
+	}
+	secretListenerString := tcpService.Annotations[cloudprovider.ServiceAnnotationLoadBalancerTLSSecret]
+	secretBackendSetString := tcpService.Annotations[cloudprovider.ServiceAnnotationLoadBalancerTLSBackendSetSecret]
+	backendSslConfigAnnotation := tcpService.Annotations[cloudprovider.ServiceAnnotationLoadbalancerBackendSetSSLConfig]
+	listenerSslConfigAnnotation := tcpService.Annotations[cloudprovider.ServiceAnnotationLoadbalancerListenerSSLConfig]
+	sslConfig = cloudprovider.NewSSLConfig(secretListenerString, secretBackendSetString, tcpService, sslEnabledPorts, nil)
+
+	for listenername, listener := range loadBalancer.Listeners {
+		if *loadBalancer.Listeners[listenername].Port == sslEnabledPorts[0] {
+			expectedSSL, err := cloudprovider.GetSSLConfiguration(sslConfig, sslConfig.BackendSetSSLSecretName, sslEnabledPorts[0], listenerSslConfigAnnotation)
+			if err != nil {
+				return false, fmt.Errorf(err.Error())
+			}
+			fmt.Println("Listener Actual SSL Config for ", sslEnabledPorts[0], ":", *listener.SslConfiguration.CertificateName)
+			fmt.Println("Listener Expected SSL Config for ", sslEnabledPorts[0], ":", *expectedSSL.CertificateName)
+			fmt.Println("Listener Expected SSL Config for CipherSuiteName", sslEnabledPorts[0], ":", *expectedSSL.CipherSuiteName)
+			fmt.Println("Listener Expected SSL Config for Protocols", sslEnabledPorts[0], ":", strings.Join(expectedSSL.Protocols, ","))
+			if !reflect.DeepEqual(listener.SslConfiguration.CertificateName, expectedSSL.CertificateName) {
+				fmt.Errorf("Listener SSL Config Mismatch! Expected: %s, Got: %s", *listener.SslConfiguration.CertificateName, *expectedSSL.CertificateName)
+				return false, nil
+			}
+			if !reflect.DeepEqual(listener.SslConfiguration.CipherSuiteName, expectedSSL.CipherSuiteName) {
+				fmt.Errorf("Listener SSL Config Mismatch! Expected CipherSuiteName: %s, Got: %s", *expectedSSL.CipherSuiteName, *listener.SslConfiguration.CipherSuiteName)
+				return false, nil
+			}
+			if !reflect.DeepEqual(listener.SslConfiguration.Protocols, expectedSSL.Protocols) {
+				fmt.Errorf("Listener SSL Config Mismatch! Expected CipherSuite Protocols: %s, Got: %s",
+					strings.Join(expectedSSL.Protocols, ","),
+					strings.Join(listener.SslConfiguration.Protocols, ","))
+				return false, nil
+
+			}
+		}
+	}
+
+	sslConfig = cloudprovider.NewSSLConfig(secretListenerString, secretBackendSetString, tcpService, sslEnabledPorts, nil)
+	for backendSetName, backendSet := range loadBalancer.BackendSets {
+		if *loadBalancer.Listeners[backendSetName].Port == sslEnabledPorts[0] {
+			expectedSSL, err := cloudprovider.GetSSLConfiguration(sslConfig, sslConfig.BackendSetSSLSecretName, sslEnabledPorts[0], backendSslConfigAnnotation)
+			if err != nil {
+				return false, fmt.Errorf(err.Error())
+			}
+			fmt.Println("BackendSet Actual SSL Config for ", sslEnabledPorts[0], ":", *backendSet.SslConfiguration.CertificateName)
+			fmt.Println("BackendSet Expected SSL Config for ", sslEnabledPorts[0], ":", *expectedSSL.CertificateName)
+			fmt.Println("BackendSet Expected SSL Config for CipherSuiteName", sslEnabledPorts[0], ":", *expectedSSL.CipherSuiteName)
+			fmt.Println("BackendSet Expected SSL Config for Protocols", sslEnabledPorts[0], ":", strings.Join(expectedSSL.Protocols, ","))
+			if !reflect.DeepEqual(backendSet.SslConfiguration.CertificateName, expectedSSL.CertificateName) {
+				fmt.Errorf("BackendSet SSL Config Mismatch! Expected: %s, Got: %s", *expectedSSL.CertificateName, *backendSet.SslConfiguration.CertificateName)
+				return false, nil
+			}
+			if !reflect.DeepEqual(backendSet.SslConfiguration.CipherSuiteName, expectedSSL.CipherSuiteName) {
+				fmt.Errorf("BackendSet SSL Config Mismatch! Expected CipherSuiteName: %s, Got: %s", *expectedSSL.CipherSuiteName, *backendSet.SslConfiguration.CipherSuiteName)
+				return false, nil
+			}
+			if !reflect.DeepEqual(backendSet.SslConfiguration.Protocols, expectedSSL.Protocols) {
+				fmt.Errorf("BackendSet SSL Config Mismatch! Expected CipherSuite Protocols: %s, Got: %s",
+					strings.Join(expectedSSL.Protocols, ","),
+					strings.Join(backendSet.SslConfiguration.Protocols, ","))
+				return false, nil
+			}
 		}
 	}
 	return true, nil

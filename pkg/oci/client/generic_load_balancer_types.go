@@ -54,22 +54,27 @@ type GenericHealthChecker struct {
 }
 
 type GenericBackend struct {
-	Port      *int
-	Name      *string
-	IpAddress *string
-	TargetId  *string
-	Weight    *int
+	Port           *int
+	Name           *string
+	IpAddress      *string
+	TargetId       *string
+	Weight         *int
+	Backup         *bool
+	Drain          *bool
+	Offline        *bool
+	MaxConnections *int
 }
 
 type GenericSslConfigurationDetails struct {
-	VerifyDepth                    *int
-	VerifyPeerCertificate          *bool
-	TrustedCertificateAuthorityIds []string
-	CertificateIds                 []string
-	CertificateName                *string
-	ServerOrderPreference          string
-	CipherSuiteName                *string
-	Protocols                      []string
+	VerifyDepth                    *int     `json:"verifyDepth"`
+	VerifyPeerCertificate          *bool    `json:"verifyPeerCertificate"`
+	HasSessionResumption           *bool    `json:"hasSessionResumption"`
+	TrustedCertificateAuthorityIds []string `json:"trustedCertificateAuthorityIds"`
+	CertificateIds                 []string `json:"certificateIds"`
+	CertificateName                *string  `json:"certificateName"`
+	Protocols                      []string `json:"protocols"`
+	CipherSuiteName                *string  `json:"cipherSuiteName"`
+	ServerOrderPreference          string   `json:"serverOrderPreference"`
 }
 
 type GenericListener struct {

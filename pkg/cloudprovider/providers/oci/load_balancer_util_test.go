@@ -2136,6 +2136,28 @@ func TestGetSSLConfigurationChanges(t *testing.T) {
 				fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:CertificateName", false, true),
 			},
 		},
+		{
+			name: "Protocol Changed",
+			desired: client.GenericSslConfigurationDetails{
+				Protocols: []string{"TLSv1.2"},
+			},
+			actual: client.GenericSslConfigurationDetails{},
+			expected: []string{
+				fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:Protocols", "", "TLSv1.2"),
+			},
+		},
+		{
+			name: "TLS Protocol Changed",
+			desired: client.GenericSslConfigurationDetails{
+				Protocols: []string{"TLSv1.1", "TLSv1.2"},
+			},
+			actual: client.GenericSslConfigurationDetails{
+				Protocols: []string{"TLSv1.1", "TLSv1.2", "TLSv1.3"},
+			},
+			expected: []string{
+				fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:Protocols", "", "TLSv1.2"),
+			},
+		},
 	}
 
 	for _, tt := range testCases {
