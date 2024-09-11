@@ -170,6 +170,12 @@ const (
 	// ingress / egress security rules for a given kubernetes service could be either LB or NLB
 	ServiceAnnotationBackendSecurityRuleManagement = "oci.oraclecloud.com/oci-backend-network-security-group"
 
+	// ServiceAnnotationLoadbalancerListenerSSLConfig is a service annotation allows you to set the cipher suite on the listener
+	ServiceAnnotationLoadbalancerListenerSSLConfig = "oci.oraclecloud.com/oci-load-balancer-listener-ssl-config"
+
+	// ServiceAnnotationLoadbalancerBackendSetSSLConfig is a service annotation allows you to set the cipher suite on the backendSet
+	ServiceAnnotationLoadbalancerBackendSetSSLConfig = "oci.oraclecloud.com/oci-load-balancer-backendset-ssl-config"
+
 	// ServiceAnnotationIngressIpMode is a service annotation allows you to set the ".status.loadBalancer.ingress.ipMode" for a Service
 	// with type set to LoadBalancer.
 	// https://kubernetes.io/docs/concepts/services-networking/service/#load-balancer-ip-mode:~:text=Specifying%20IPMode%20of%20load%20balancer%20status
@@ -771,8 +777,14 @@ func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, provisionedNodes
 
 	for backendSetName, servicePort := range getBackendSetNamePortMap(svc) {
 		var secretName string
-		if sslCfg != nil && len(sslCfg.BackendSetSSLSecretName) != 0 {
+		var sslConfiguration *client.GenericSslConfigurationDetails
+		if sslCfg != nil && len(sslCfg.BackendSetSSLSecretName) != 0 && getLoadBalancerType(svc) == LB {
 			secretName = sslCfg.BackendSetSSLSecretName
+			backendSetSSLConfig, _ := svc.Annotations[ServiceAnnotationLoadbalancerBackendSetSSLConfig]
+			sslConfiguration, err = getSSLConfiguration(sslCfg, secretName, int(servicePort.Port), backendSetSSLConfig)
+			if err != nil {
+				return nil, err
+			}
 		}
 		healthChecker, err := getHealthChecker(svc)
 		if err != nil {
@@ -785,7 +797,7 @@ func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, provisionedNodes
 			Policy:           &loadbalancerPolicy,
 			HealthChecker:    healthChecker,
 			IsPreserveSource: &isPreserveSource,
-			SslConfiguration: getSSLConfiguration(sslCfg, secretName, int(servicePort.Port)),
+			SslConfiguration: sslConfiguration,
 		}
 
 		if strings.Contains(backendSetName, IPv6) && contains(listenerBackendIpVersion, IPv6) {
@@ -945,18 +957,39 @@ func getHealthCheckTimeout(svc *v1.Service) (int, error) {
 	}
 	return timeoutInMillis, nil
 }
-func GetSSLConfiguration(cfg *SSLConfig, name string, port int) *client.GenericSslConfigurationDetails {
-	return getSSLConfiguration(cfg, name, port)
-}
-func getSSLConfiguration(cfg *SSLConfig, name string, port int) *client.GenericSslConfigurationDetails {
-	if cfg == nil || !cfg.Ports.Has(port) || len(name) == 0 {
-		return nil
+
+func GetSSLConfiguration(cfg *SSLConfig, name string, port int, sslConfigAnnotation string) (*client.GenericSslConfigurationDetails, error) {
+	sslConfig, err := getSSLConfiguration(cfg, name, port, sslConfigAnnotation)
+	if err != nil {
+		return nil, err
 	}
-	return &client.GenericSslConfigurationDetails{
+	return sslConfig, nil
+}
+
+func getSSLConfiguration(cfg *SSLConfig, name string, port int, lbSslConfigurationAnnotation string) (*client.GenericSslConfigurationDetails, error) {
+	if cfg == nil || !cfg.Ports.Has(port) || len(name) == 0 {
+		return nil, nil
+	}
+	// TODO: fast-follow to pass the sslconfiguration object directly to loadbalancer
+	var extractCipherSuite *client.GenericSslConfigurationDetails
+
+	if lbSslConfigurationAnnotation != "" {
+		err := json.Unmarshal([]byte(lbSslConfigurationAnnotation), &extractCipherSuite)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to parse SSL Configuration annotation")
+		}
+	}
+	genericSSLConfigurationDetails := &client.GenericSslConfigurationDetails{
 		CertificateName:       &name,
 		VerifyDepth:           common.Int(0),
 		VerifyPeerCertificate: common.Bool(false),
 	}
+	if extractCipherSuite != nil {
+		genericSSLConfigurationDetails.CipherSuiteName = extractCipherSuite.CipherSuiteName
+		genericSSLConfigurationDetails.Protocols = extractCipherSuite.Protocols
+	}
+
+	return genericSSLConfigurationDetails, nil
 }
 
 func getListenersOciLoadBalancer(svc *v1.Service, sslCfg *SSLConfig) (map[string]client.GenericListener, error) {
@@ -1006,11 +1039,18 @@ func getListenersOciLoadBalancer(svc *v1.Service, sslCfg *SSLConfig) (map[string
 			}
 		}
 		port := int(servicePort.Port)
+
 		var secretName string
+		var err error
+		var sslConfiguration *client.GenericSslConfigurationDetails
 		if sslCfg != nil && len(sslCfg.ListenerSSLSecretName) != 0 {
 			secretName = sslCfg.ListenerSSLSecretName
+			listenerCipherSuiteAnnotation, _ := svc.Annotations[ServiceAnnotationLoadbalancerListenerSSLConfig]
+			sslConfiguration, err = getSSLConfiguration(sslCfg, secretName, port, listenerCipherSuiteAnnotation)
+			if err != nil {
+				return nil, err
+			}
 		}
-		sslConfiguration := getSSLConfiguration(sslCfg, secretName, port)
 		name := getListenerName(protocol, port)
 
 		listener := client.GenericListener{

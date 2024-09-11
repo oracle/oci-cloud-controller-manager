@@ -18,17 +18,17 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 
-	"github.com/oracle/oci-cloud-controller-manager/pkg/metrics"
-
 	"go.uber.org/zap"
 	api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 
+	"github.com/oracle/oci-cloud-controller-manager/pkg/metrics"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/v65/loadbalancer"
 )
@@ -250,6 +250,7 @@ func hasBackendSetChanged(logger *zap.SugaredLogger, actual client.GenericBacken
 		backendSetChanges = append(backendSetChanges, fmt.Sprintf(changeFmtStr, "BackEndSet:IsPreserveSource", toBool(actual.IsPreserveSource), toBool(desired.IsPreserveSource)))
 	}
 
+	backendSetChanges = append(backendSetChanges, getSSLConfigurationChanges(actual.SslConfiguration, desired.SslConfiguration)...)
 	nameFormat := "%s:%d"
 
 	desiredSet := sets.NewString()
@@ -308,9 +309,15 @@ func sslConfigurationToDetails(sc *client.GenericSslConfigurationDetails) *clien
 		return nil
 	}
 	return &client.GenericSslConfigurationDetails{
-		CertificateName:       sc.CertificateName,
-		VerifyDepth:           sc.VerifyDepth,
-		VerifyPeerCertificate: sc.VerifyPeerCertificate,
+		VerifyDepth:                    sc.VerifyDepth,
+		VerifyPeerCertificate:          sc.VerifyPeerCertificate,
+		HasSessionResumption:           sc.HasSessionResumption,
+		TrustedCertificateAuthorityIds: sc.TrustedCertificateAuthorityIds,
+		CertificateIds:                 sc.CertificateIds,
+		CertificateName:                sc.CertificateName,
+		Protocols:                      sc.Protocols,
+		CipherSuiteName:                sc.CipherSuiteName,
+		ServerOrderPreference:          sc.ServerOrderPreference,
 	}
 }
 
@@ -320,10 +327,10 @@ func backendsToBackendDetails(bs []client.GenericBackend) []client.GenericBacken
 		backends[i] = client.GenericBackend{
 			IpAddress: backend.IpAddress,
 			Port:      backend.Port,
-			//Backup:    backend.Backup,
-			//Drain:     backend.Drain,
-			//Offline:   backend.Offline,
-			Weight: backend.Weight,
+			Backup:    backend.Backup,
+			Drain:     backend.Drain,
+			Offline:   backend.Offline,
+			Weight:    backend.Weight,
 		}
 	}
 	return backends
@@ -433,6 +440,13 @@ func getSSLConfigurationChanges(actual *client.GenericSslConfigurationDetails, d
 	if toBool(actual.VerifyPeerCertificate) != toBool(desired.VerifyPeerCertificate) {
 		sslConfigurationChanges = append(sslConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:VerifyPeerCertificate", toBool(actual.VerifyPeerCertificate), toBool(desired.VerifyPeerCertificate)))
 	}
+	if toString(actual.CipherSuiteName) != toString(desired.CipherSuiteName) {
+		sslConfigurationChanges = append(sslConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:CipherSuiteName", toString(actual.CipherSuiteName), toString(desired.CipherSuiteName)))
+	}
+	if !reflect.DeepEqual(actual.Protocols, desired.Protocols) {
+		sslConfigurationChanges = append(sslConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:Protocols", strings.Join(actual.Protocols, ","), strings.Join(desired.Protocols, ",")))
+	}
+
 	return sslConfigurationChanges
 }
 
@@ -651,6 +665,12 @@ func validateProtocols(servicePorts []api.ServicePort, lbType string, secListMgm
 		}
 	}
 	return nil
+}
+
+// GetSSLEnabledPorts returns a list of port numbers for which we need to enable
+// SSL on the corresponding listener.
+func GetSSLEnabledPorts(svc *api.Service) ([]int, error) {
+	return getSSLEnabledPorts(svc)
 }
 
 // getSSLEnabledPorts returns a list of port numbers for which we need to enable

@@ -16,6 +16,7 @@ package oci
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"k8s.io/utils/pointer"
 	"net/http"
@@ -4574,7 +4575,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			}
 
 			if !reflect.DeepEqual(result, tc.expected) {
-				t.Errorf("Expected load balancer spec\n%+v\nbut got\n%+v", tc.expected, result)
+				results, _ := json.Marshal(result)
+				expected, _ := json.Marshal(tc.expected)
+				t.Errorf("Expected load balancer spec failed want: %s \n got: %s \n", expected, results)
 			}
 		})
 	}
@@ -8162,6 +8165,7 @@ func Test_getListeners(t *testing.T) {
 		service                  *v1.Service
 		listenerBackendIpVersion []string
 		name                     string
+		sslConfig                *SSLConfig
 		want                     map[string]client.GenericListener
 	}{
 		{
@@ -8180,6 +8184,7 @@ func Test_getListeners(t *testing.T) {
 				},
 			},
 			listenerBackendIpVersion: []string{IPv4},
+			sslConfig:                nil,
 			want: map[string]client.GenericListener{
 				"TCP-80": {
 					Name:                  common.String("TCP-80"),
@@ -8207,6 +8212,7 @@ func Test_getListeners(t *testing.T) {
 				},
 			},
 			listenerBackendIpVersion: []string{IPv4},
+			sslConfig:                nil,
 			want: map[string]client.GenericListener{
 				"TCP-80": {
 					Name:                  common.String("TCP-80"),
@@ -8217,13 +8223,85 @@ func Test_getListeners(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "ssl configuration and cipher suite",
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.Protocol("TCP"),
+							Port:     int32(443),
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadbalancerListenerSSLConfig: `{"cipherSuiteName":"oci-default-http2-ssl-cipher-suite-v1", "protocols":["TLSv1.2"]}`,
+						ServiceAnnotationLoadBalancerSSLPorts:          "443",
+					},
+				},
+			},
+			listenerBackendIpVersion: []string{IPv4},
+			sslConfig: &SSLConfig{
+				Ports:                   sets.NewInt(443),
+				ListenerSSLSecretName:   listenerSecret,
+				BackendSetSSLSecretName: backendSecret,
+			},
+			want: map[string]client.GenericListener{
+				"TCP-443": {
+					Name:                  common.String("TCP-443"),
+					Port:                  common.Int(443),
+					Protocol:              common.String("TCP"),
+					DefaultBackendSetName: common.String("TCP-443"),
+					SslConfiguration: &client.GenericSslConfigurationDetails{
+						CertificateName:       &listenerSecret,
+						VerifyDepth:           common.Int(0),
+						VerifyPeerCertificate: common.Bool(false),
+						CipherSuiteName:       common.String("oci-default-http2-ssl-cipher-suite-v1"),
+						Protocols:             []string{"TLSv1.2"},
+					},
+				},
+			},
+		},
+		{
+			name: "Listeners with ssl configuration information",
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadbalancerListenerSSLConfig: `{"cipherSuiteName":"oci-default-http2-ssl-cipher-suite-v1", "protocols":["TLSv1.2"]}`,
+					},
+				},
+			},
+			listenerBackendIpVersion: []string{IPv4},
+			sslConfig:                nil,
+			want: map[string]client.GenericListener{
+				"TCP-80": {
+					Name:                  common.String("TCP-80"),
+					Port:                  common.Int(80),
+					Protocol:              common.String("TCP"),
+					DefaultBackendSetName: common.String("TCP-80"),
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := tt.service
-			if got, _ := getListeners(svc, nil, tt.listenerBackendIpVersion); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("getListeners() = %+v, \n want %+v", got, tt.want)
-
+			if got, err := getListeners(svc, tt.sslConfig, tt.listenerBackendIpVersion); !reflect.DeepEqual(got, tt.want) {
+				if err != nil {
+					t.Errorf("Err %v", err.Error())
+				}
+				got, _ := json.Marshal(got)
+				want, _ := json.Marshal(tt.want)
+				t.Errorf("getListeners() failed want: %s \n got: %s \n", want, got)
 			}
 		})
 	}
@@ -10894,6 +10972,328 @@ func Test_getBackendSets(t *testing.T) {
 			},
 			err: nil,
 		},
+		"IpFamilies IPv4 BackendSet cipher suite configuration": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+							NodePort: 36667,
+						},
+					},
+					IPFamilies: []v1.IPFamily{v1.IPFamily(IPv4)},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadbalancerBackendSetSSLConfig: `{"CipherSuiteName":"oci-default-http2-ssl-cipher-suite-v1", "Protocols": ["TLSv1.2"]}`,
+						ServiceAnnotationLoadBalancerTLSBackendSetSecret: "example",
+					},
+				},
+			},
+			provisionedNodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "2001:0000:130F:0000:0000:09C0:876A:130B",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "2001:0000:130F:0000:0000:09C0:876A:1300",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "10.0.0.1",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "10.0.0.2",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
+			virtualPods: []*v1.Pod{},
+			sslCfg: &SSLConfig{
+				Ports:                   sets.NewInt(67),
+				ListenerSSLSecretName:   listenerSecret,
+				BackendSetSSLSecretName: backendSecret,
+			},
+			listenerBackendIpVersion: []string{IPv4},
+			wantBackendSets: map[string]client.GenericBackendSetDetails{
+				"TCP-67": {
+					Name:   &testThreeBackendSetNameIPv4,
+					Policy: common.String("FIVE_TUPLE"),
+					HealthChecker: &client.GenericHealthChecker{
+						Protocol:         "HTTP",
+						IsForcePlainText: common.Bool(true),
+						Port:             common.Int(10256),
+						UrlPath:          common.String("/healthz"),
+						Retries:          common.Int(3),
+						TimeoutInMillis:  common.Int(3000),
+						IntervalInMillis: common.Int(10000),
+						ReturnCode:       common.Int(http.StatusOK),
+					},
+					Backends: []client.GenericBackend{
+						{IpAddress: common.String("10.0.0.1"), Port: common.Int(36667), Weight: common.Int(1), TargetId: &testNodeString},
+						{IpAddress: common.String("10.0.0.2"), Port: common.Int(36667), Weight: common.Int(1), TargetId: &testNodeString},
+					},
+					SessionPersistenceConfiguration: nil,
+					SslConfiguration: &client.GenericSslConfigurationDetails{
+						VerifyDepth:           common.Int(0),
+						VerifyPeerCertificate: common.Bool(false),
+						CertificateName:       common.String(backendSecret),
+						CipherSuiteName:       common.String("oci-default-http2-ssl-cipher-suite-v1"),
+						Protocols:             []string{"TLSv1.2"},
+					},
+					IpVersion:        GenericIpVersion(client.GenericIPv4),
+					IsPreserveSource: common.Bool(false),
+				},
+			},
+			err: nil,
+		},
+		"IpFamilies IPv4 BackendSet protocols is null ": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+							NodePort: 36667,
+						},
+					},
+					IPFamilies: []v1.IPFamily{v1.IPFamily(IPv4)},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadbalancerBackendSetSSLConfig: `{"cipherSuiteName":"oci-default-http2-ssl-cipher-suite-v1", "protocols": ["TLSv1.2"]}`,
+						ServiceAnnotationLoadBalancerTLSBackendSetSecret: "example",
+					},
+				},
+			},
+			provisionedNodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "2001:0000:130F:0000:0000:09C0:876A:130B",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "2001:0000:130F:0000:0000:09C0:876A:1300",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "10.0.0.1",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "10.0.0.2",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
+			virtualPods: []*v1.Pod{},
+			sslCfg: &SSLConfig{
+				Ports:                   sets.NewInt(67),
+				ListenerSSLSecretName:   listenerSecret,
+				BackendSetSSLSecretName: backendSecret,
+			},
+			listenerBackendIpVersion: []string{IPv4},
+			wantBackendSets: map[string]client.GenericBackendSetDetails{
+				"TCP-67": {
+					Name:   &testThreeBackendSetNameIPv4,
+					Policy: common.String("FIVE_TUPLE"),
+					HealthChecker: &client.GenericHealthChecker{
+						Protocol:         "HTTP",
+						IsForcePlainText: common.Bool(true),
+						Port:             common.Int(10256),
+						UrlPath:          common.String("/healthz"),
+						Retries:          common.Int(3),
+						TimeoutInMillis:  common.Int(3000),
+						IntervalInMillis: common.Int(10000),
+						ReturnCode:       common.Int(http.StatusOK),
+					},
+					Backends: []client.GenericBackend{
+						{IpAddress: common.String("10.0.0.1"), Port: common.Int(36667), Weight: common.Int(1), TargetId: &testNodeString},
+						{IpAddress: common.String("10.0.0.2"), Port: common.Int(36667), Weight: common.Int(1), TargetId: &testNodeString},
+					},
+					SessionPersistenceConfiguration: nil,
+					SslConfiguration: &client.GenericSslConfigurationDetails{
+						VerifyDepth:           common.Int(0),
+						VerifyPeerCertificate: common.Bool(false),
+						CertificateName:       common.String(backendSecret),
+						CipherSuiteName:       common.String("oci-default-http2-ssl-cipher-suite-v1"),
+						Protocols:             []string{"TLSv1.2"},
+					},
+					IpVersion:        GenericIpVersion(client.GenericIPv4),
+					IsPreserveSource: common.Bool(false),
+				},
+			},
+			err: nil,
+		},
 	}
 	for name, tc := range testCases {
 		logger := zap.L()
@@ -10927,7 +11327,14 @@ func Test_getBackendSets(t *testing.T) {
 						t.Errorf("Expected backendSetDetails backends \n%+v\nbut got backendSetDetails backends \n%+v", backendSetDetails.Backends, gotBackendSet.Backends)
 					}
 					if !reflect.DeepEqual(backendSetDetails.HealthChecker, gotBackendSet.HealthChecker) {
-						t.Errorf("Expected backendSetDetails HealthChecker \n%+v\nbut got backendSetDetails HealthChecker \n%+v", backendSetDetails.HealthChecker, gotBackendSet.HealthChecker)
+						want, _ := json.Marshal(backendSetDetails.HealthChecker)
+						got, _ := json.Marshal(gotBackendSet.HealthChecker)
+						t.Errorf("backendSetDetails HealthChecker failed want: %s \n got: %s \n", want, got)
+					}
+					if !reflect.DeepEqual(backendSetDetails.SslConfiguration, gotBackendSet.SslConfiguration) {
+						want, _ := json.Marshal(backendSetDetails.SslConfiguration)
+						got, _ := json.Marshal(gotBackendSet.SslConfiguration)
+						t.Errorf("backendSetDetails SslConfiguration failed want: %s \n got: %s \n", want, got)
 					}
 				}
 			}
