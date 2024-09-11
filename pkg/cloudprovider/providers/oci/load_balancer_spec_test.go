@@ -4543,6 +4543,162 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 			},
 		},
+		"GRPC listeners": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerBEProtocol: "GRPC",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(443),
+						},
+					},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Type:     "lb",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"one", "two"},
+				Listeners: map[string]client.GenericListener{
+					fmt.Sprintf("GRPC-443"): {
+						Name:                  common.String("GRPC-443"),
+						DefaultBackendSetName: common.String("TCP-443"),
+						Port:                  common.Int(443),
+						Protocol:              common.String("GRPC"),
+						SslConfiguration: &client.GenericSslConfigurationDetails{
+							CertificateName:       &listenerSecret,
+							VerifyDepth:           common.Int(0),
+							VerifyPeerCertificate: common.Bool(false),
+							CipherSuiteName:       common.String(DefaultCipherSuiteForGRPC),
+						},
+					},
+				},
+				BackendSets: map[string]client.GenericBackendSetDetails{
+					"TCP-443": {
+						Name:     common.String("TCP-443"),
+						Backends: []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
+						},
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
+						SslConfiguration: &client.GenericSslConfigurationDetails{
+							CertificateName:       &backendSecret,
+							VerifyDepth:           common.Int(0),
+							VerifyPeerCertificate: common.Bool(false),
+						},
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+					},
+				},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-443": {
+						ListenerPort:      443,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager: newSecurityListManagerNOOP(),
+				SSLConfig: &SSLConfig{
+					Ports:                   sets.NewInt(443),
+					ListenerSSLSecretName:   listenerSecret,
+					BackendSetSSLSecretName: backendSecret,
+				},
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
+			},
+			sslConfig: &SSLConfig{
+				Ports:                   sets.NewInt(443),
+				ListenerSSLSecretName:   listenerSecret,
+				BackendSetSSLSecretName: backendSecret,
+			},
+		},
 	}
 
 	cp := &CloudProvider{
@@ -4577,7 +4733,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			if !reflect.DeepEqual(result, tc.expected) {
 				results, _ := json.Marshal(result)
 				expected, _ := json.Marshal(tc.expected)
-				t.Errorf("Expected load balancer spec failed want: %s \n got: %s \n", expected, results)
+				t.Errorf("Expected load balancer spec failed\nExpected: %s\nResults: %s\n", expected, results)
 			}
 		})
 	}
@@ -8265,6 +8421,132 @@ func Test_getListeners(t *testing.T) {
 		},
 		{
 			name: "Listeners with ssl configuration information",
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadbalancerListenerSSLConfig: `{"cipherSuiteName":"oci-default-http2-ssl-cipher-suite-v1", "protocols":["TLSv1.2"]}`,
+					},
+				},
+			},
+			listenerBackendIpVersion: []string{IPv4},
+			sslConfig:                nil,
+			want: map[string]client.GenericListener{
+				"TCP-80": {
+					Name:                  common.String("TCP-80"),
+					Port:                  common.Int(80),
+					Protocol:              common.String("TCP"),
+					DefaultBackendSetName: common.String("TCP-80"),
+				},
+			},
+		},
+		{
+			name: "grpc protocol no ssl",
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.Protocol("GRPC"),
+							Port:     int32(80),
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+			sslConfig:                nil,
+			listenerBackendIpVersion: []string{IPv4},
+			want:                     nil,
+		},
+		{
+			name: "grpc protocol with ssl configuration and smart default cipher suite",
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.Protocol("TCP"),
+							Port:     int32(443),
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerBEProtocol: ProtocolGrpc,
+					},
+				},
+			},
+			listenerBackendIpVersion: []string{IPv4},
+			sslConfig: &SSLConfig{
+				Ports:                   sets.NewInt(443),
+				ListenerSSLSecretName:   listenerSecret,
+				BackendSetSSLSecretName: backendSecret,
+			},
+			want: map[string]client.GenericListener{
+				"GRPC-443": {
+					Name:                  common.String("GRPC-443"),
+					Port:                  common.Int(443),
+					Protocol:              common.String("GRPC"),
+					DefaultBackendSetName: common.String("TCP-443"),
+					SslConfiguration: &client.GenericSslConfigurationDetails{
+						CertificateName:       &listenerSecret,
+						VerifyDepth:           common.Int(0),
+						VerifyPeerCertificate: common.Bool(false),
+						CipherSuiteName:       common.String(DefaultCipherSuiteForGRPC),
+					},
+				},
+			},
+		},
+		{
+			name: "grpc protocol with ssl configuration and cipher suite",
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.Protocol("TCP"),
+							Port:     int32(443),
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerBEProtocol:        ProtocolGrpc,
+						ServiceAnnotationLoadbalancerListenerSSLConfig: `{"cipherSuiteName":"oci-default-http2-ssl-cipher-suite-v1", "protocols":["TLSv1.2"]}`,
+						ServiceAnnotationLoadBalancerSSLPorts:          "443",
+					},
+				},
+			},
+			listenerBackendIpVersion: []string{IPv4},
+			sslConfig: &SSLConfig{
+				Ports:                   sets.NewInt(443),
+				ListenerSSLSecretName:   listenerSecret,
+				BackendSetSSLSecretName: backendSecret,
+			},
+			want: map[string]client.GenericListener{
+				"GRPC-443": {
+					Name:                  common.String("GRPC-443"),
+					Port:                  common.Int(443),
+					Protocol:              common.String("GRPC"),
+					DefaultBackendSetName: common.String("TCP-443"),
+					SslConfiguration: &client.GenericSslConfigurationDetails{
+						CertificateName:       &listenerSecret,
+						VerifyDepth:           common.Int(0),
+						VerifyPeerCertificate: common.Bool(false),
+						CipherSuiteName:       common.String("oci-default-http2-ssl-cipher-suite-v1"),
+						Protocols:             []string{"TLSv1.2"},
+					},
+				},
+			},
+		},
+		{
+			name: "Listeners with cipher suites",
 			service: &v1.Service{
 				Spec: v1.ServiceSpec{
 					Ports: []v1.ServicePort{
