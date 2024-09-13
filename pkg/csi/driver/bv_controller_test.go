@@ -449,6 +449,9 @@ func (c *MockVirtualNetworkClient) UpdateNetworkSecurityGroupSecurityRules(ctx c
 
 // GetPrivateIp mocks the VirtualNetwork GetPrivateIp implementation
 func (c *MockVirtualNetworkClient) GetPrivateIp(ctx context.Context, id string) (*core.PrivateIp, error) {
+	if id == "private-ip-fetch-error" {
+		return nil, errors.New("private IP fetch failed")
+	}
 	privateIpAddress := "10.0.20.1"
 	return &core.PrivateIp{
 		IpAddress: &privateIpAddress,
