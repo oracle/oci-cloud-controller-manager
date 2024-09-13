@@ -55,6 +55,13 @@ var (
 			AvailabilityDomain: common.String("NWuj:PHX-AD-2"),
 			Id:                 common.String("mount-target-stuck-creating"),
 		},
+		"private-ip-fetch-error": {
+			DisplayName:        common.String("private-ip-fetch-error"),
+			LifecycleState:     fss.MountTargetLifecycleStateActive,
+			AvailabilityDomain: common.String("NWuj:PHX-AD-2"),
+			Id:                 common.String("private-ip-fetch-error"),
+			PrivateIpIds:       []string{"private-ip-fetch-error"},
+		},
 	}
 
 	fileSystems = map[string]*fss.FileSystem{
@@ -360,18 +367,7 @@ func (c *MockFileStorageClient) AwaitMountTargetActive(ctx context.Context, logg
 	}, ctx.Done()); err != nil {
 		return nil, err
 	}
-	idMt := "oc1.mounttarget.xxxx"
-	ad := "zkJl:US-ASHBURN-AD-1"
-	privateIpIds := []string{"10.0.20.1"}
-	displayName := "mountTarget"
-	idEx := "oc1.export.xxxx"
-	return &filestorage.MountTarget{
-		Id:                 &idMt,
-		AvailabilityDomain: &ad,
-		DisplayName:        &displayName,
-		PrivateIpIds:       privateIpIds,
-		ExportSetId:        &idEx,
-	}, nil
+	return mt, nil
 }
 
 // CreateMountTarget mocks the FileStorage CreateMountTarget implementation.
@@ -544,6 +540,24 @@ func TestFSSControllerDriver_CreateVolume(t *testing.T) {
 			},
 			want:    nil,
 			wantErr: errors.New("Neither Mount Target Ocid nor Mount Target Subnet Ocid provided in storage class"),
+		},
+		{
+			name:   "Error during mount target IP fetch",
+			fields: fields{},
+			args: args{
+				ctx: context.Background(),
+				req: &csi.CreateVolumeRequest{
+					Name:       "private-ip-fetch-error",
+					Parameters: map[string]string{"availabilityDomain": "US-ASHBURN-AD-1", "mountTargetSubnetOcid": "oc1.subnet.xxxx"},
+					VolumeCapabilities: []*csi.VolumeCapability{{
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+						},
+					}},
+				},
+			},
+			want:    nil,
+			wantErr: errors.New("Failed to get mount target privateIp ip from ip id"),
 		},
 		{
 			name:   "Time out during file system idempotency check",
