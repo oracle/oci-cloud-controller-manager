@@ -27,6 +27,7 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/metrics"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
+	"github.com/oracle/oci-go-sdk/v65/core"
 	fss "github.com/oracle/oci-go-sdk/v65/filestorage"
 	authv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -462,19 +463,21 @@ func (d *FSSControllerDriver) getOrCreateMountTarget(ctx context.Context, storag
 	var ipType string
 	// TODO: Uncomment after SDK Supports Ipv6 - 10 lines
 	//if len(activeMountTarget.MountTargetIpv6Ids) > 0 {
-	//	ipType = "ipv6"
 	//	// Ipv6 Mount Target
+	//	var ipv6IpObject *core.Ipv6
+	//	ipType = "ipv6"
 	//	mountTargetIpId = activeMountTarget.MountTargetIpv6Ids[0]
 	//	log.With("mountTargetIpId", mountTargetIpId).Infof("Getting Ipv6 IP of mount target")
-	//	if ipv6IpObject, err := networkingClient.GetIpv6(ctx, mountTargetIpId); err == nil {
+	//	if ipv6IpObject, err = networkingClient.GetIpv6(ctx, mountTargetIpId); err == nil {
 	//		mountTargetIp = *ipv6IpObject.IpAddress
 	//	}
 	//} else {
 	// Ipv4 Mount Target
+	var privateIpObject *core.PrivateIp
 	mountTargetIpId = activeMountTarget.PrivateIpIds[0]
 	ipType = "privateIp"
 	log.With("mountTargetIpId", mountTargetIpId).Infof("Getting private IP of mount target")
-	if privateIpObject, err := networkingClient.GetPrivateIp(ctx, mountTargetIpId); err == nil {
+	if privateIpObject, err = networkingClient.GetPrivateIp(ctx, mountTargetIpId); err == nil {
 		mountTargetIp = *privateIpObject.IpAddress
 	}
 	//}

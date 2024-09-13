@@ -241,14 +241,14 @@ func (c *client) GetPrivateIp(ctx context.Context, id string) (*core.PrivateIp, 
 		RequestMetadata: c.requestMetadata,
 	})
 	if resp.OpcRequestId != nil {
-		c.logger.With("service", "Networking", "verb", getVerb).
+		c.logger.With("service", "Networking", "verb", getVerb, "mountTargetIpId", id).
 			With("OpcRequestId", *(resp.OpcRequestId)).With("statusCode", util.GetHttpStatusCode(err)).
-			Info("OPC Request ID recorded for GetIpv6GetPrivateIp call.")
+			Info("OPC Request ID recorded for GetPrivateIp call.")
 	}
 	incRequestCounter(err, getVerb, privateIPResource)
 
 	if err != nil {
-		c.logger.With(id).Infof("GetPrivateIp failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		c.logger.With("mountTargetIpId", id).Infof("GetPrivateIp failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
 		return nil, errors.WithStack(err)
 	}
 
