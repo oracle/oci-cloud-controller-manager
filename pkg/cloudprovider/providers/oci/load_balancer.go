@@ -1242,6 +1242,7 @@ func (clb *CloudLoadBalancerProvider) updateBackendSet(ctx context.Context, lbID
 		// For NLB, due to source IP preservation we need to ensure ingress rules from sourceCIDRs are added to
 		// the backends subnet's seclist as well
 		sc.actualPorts = action.OldPorts
+		sc.sourceCIDRs = spec.SourceCIDRs
 		if err = secListManager.Update(ctx, sc); err != nil {
 			return err
 		}
