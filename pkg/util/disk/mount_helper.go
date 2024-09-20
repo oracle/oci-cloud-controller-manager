@@ -39,6 +39,7 @@ const (
 
 	EncryptionMountCommand = "encrypt-mount"
 	UnmountCommand         = "umount"
+	FindMountCommand       = "findmnt"
 )
 
 func MountWithEncrypt(logger *zap.SugaredLogger, source string, target string, fstype string, options []string) error {
@@ -232,4 +233,16 @@ func UnmountWithForce(targetPath string) error {
 		return status.Errorf(codes.Internal, err.Error())
 	}
 	return nil
+}
+
+func FindMount(target string) ([]string, error) {
+	mountArgs := []string{"-n", "-o", "SOURCE", "-T", target}
+	command := exec.Command(FindMountCommand, mountArgs...)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("findmnt failed: %v\narguments: %s\nOutput: %v\n", err, mountArgs, string(output))
+	}
+
+	sources := strings.Fields(string(output))
+	return sources, nil
 }

@@ -252,6 +252,54 @@ func GetDiskPathFromMountPath(logger *zap.SugaredLogger, mountPath string) ([]st
 	return diskByPaths, nil
 }
 
+// Looping through sanitizedDevice - "sanitizedDevice": "/sdc"
+// Finding device name - "deviceName": "/sdc"
+// Finding disk by path - "diskByPaths": ["/dev/disk/by-path/ip-<ip>-iscsi-iqn.2015-12.com.oracleiaas:uniqfier-lun-2"]
+
+// Gets the diskPath for a bind-mounted device file
+func GetDiskPathFromBindDeviceFilePath(logger *zap.SugaredLogger, mountPath string) ([]string, error) {
+	// Get the block device for the given mount path
+	devices, err := FindMount(mountPath)
+
+	if err != nil {
+		logger.With(zap.Error(err)).Warnf("Unable to get block device for mount path: %s", mountPath)
+		return nil, err
+	}
+
+	var sanitizedDevices []string
+	for _, dev := range devices {
+		sanitizedDevice := strings.TrimPrefix(dev, "devtmpfs[")
+		sanitizedDevice = strings.TrimSuffix(sanitizedDevice, "]")
+		sanitizedDevice = filepath.Clean(sanitizedDevice) // Fix extra slashes
+		sanitizedDevices = append(sanitizedDevices, sanitizedDevice)
+	}
+
+	if len(sanitizedDevices) != 1 {
+		logger.Warn("Found multiple or no block devices for the mount path")
+		return nil, fmt.Errorf("did not find exactly a single block device on %s, found devices: %v", mountPath, sanitizedDevices)
+	}
+
+	deviceName := sanitizedDevices[0]
+
+	// Convert the device name to the correct path format
+	devicePath := filepath.Join("/dev", deviceName)
+
+	// Create a mount.MountPoint struct
+	mountPoint := mount.MountPoint{
+		Path:   mountPath,
+		Device: devicePath,
+	}
+
+	// Use the device path to get diskByPaths
+	diskByPaths, err := diskByPathsForMountPoint(mountPoint)
+	if err != nil {
+		logger.With(zap.Error(err)).Warn("Unable to find diskByPaths for device")
+		return nil, err
+	}
+
+	return diskByPaths, nil
+}
+
 // getISCSIAdmPath gets the absolute path to the iscsiadm executable on the
 // $PATH.
 func (c *iSCSIMounter) getISCSIAdmPath() (string, error) {

@@ -954,21 +954,94 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 			wantErr: errors.New("required in PreferredTopologies or allowedTopologies"),
 		},
 		{
-			name:   "Error for unsupported volumeMode Block",
+			name: "No error when a volume is created in block mode",
+			args: args{
+				ctx: context.TODO(),
+				req: &csi.CreateVolumeRequest{
+					Name: "volume-in-available-state",
+					VolumeCapabilities: []*csi.VolumeCapability{
+						{
+							AccessMode: &csi.VolumeCapability_AccessMode{
+								Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+							},
+							AccessType: &csi.VolumeCapability_Block{
+								Block: &csi.VolumeCapability_BlockVolume{},
+							},
+						},
+					},
+					Parameters: map[string]string{
+						"vpusPerGB": "10",
+					},
+					CapacityRange: &csi.CapacityRange{
+						RequiredBytes: int64(50000),
+					},
+					AccessibilityRequirements: &csi.TopologyRequirement{
+						Requisite: []*csi.Topology{
+							{
+								Segments: map[string]string{
+									kubeAPI.LabelZoneFailureDomain: "PHX-AD-2",
+								},
+							}, {
+								Segments: map[string]string{
+									kubeAPI.LabelZoneFailureDomain: "PHX-AD-2",
+								},
+							},
+						},
+					},
+				},
+			},
+			want: &csi.CreateVolumeResponse{
+				Volume: &csi.Volume{
+					VolumeId:      "volume-in-available-state",
+					CapacityBytes: int64(52428800000),
+					AccessibleTopology: []*csi.Topology{
+						{
+							Segments: map[string]string{
+								kubeAPI.LabelTopologyZone: "PHX-AD-2",
+							},
+						},
+						{
+							Segments: map[string]string{
+								kubeAPI.LabelZoneFailureDomain: "PHX-AD-2",
+							},
+						},
+					},
+					VolumeContext: map[string]string{
+						"needResize":      "false",
+						"newSize":         "",
+						"vpusPerGB":       "10",
+						"attachment-type": "",
+					},
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name:   "Error for support of Block volumeMode in Ultra High Performance Volumes (vpusPerGB >= 30)",
 			fields: fields{},
 			args: args{
 				ctx: nil,
 				req: &csi.CreateVolumeRequest{
 					Name: "ut-volume",
-					VolumeCapabilities: []*csi.VolumeCapability{{
-						AccessType: &csi.VolumeCapability_Block{
-							Block: &csi.VolumeCapability_BlockVolume{},
-						},
-					}},
+					VolumeCapabilities: []*csi.VolumeCapability{
+						{
+							AccessMode: &csi.VolumeCapability_AccessMode{
+								Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+							},
+							AccessType: &csi.VolumeCapability_Block{
+								Block: &csi.VolumeCapability_BlockVolume{},
+							},
+						}},
+					Parameters: map[string]string{
+						"vpusPerGB": "40",
+					},
+					CapacityRange: &csi.CapacityRange{
+						RequiredBytes: int64(csi_util.MaximumVolumeSizeInBytes),
+					},
 				},
 			},
 			want:    nil,
-			wantErr: errors.New("driver does not support Block volumeMode. Please use Filesystem mode"),
+			wantErr: errors.New("failed to support Block volumeMode for Ultra High Performance Volumes (vpusPerGB >= 30)"),
 		},
 		{
 			name:   "Create Volume times out waiting for volume to become available",
