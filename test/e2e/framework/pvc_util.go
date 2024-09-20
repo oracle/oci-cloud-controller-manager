@@ -242,11 +242,15 @@ func (j *PVCTestJig) NewPVCTemplateDynamicFSS(namespace, volumeSize, scName stri
 // newPVCTemplateSnapshotRestore returns the default template for this jig, but
 // does not actually create the PVC.  The default PVC has the same name
 // as the jig
-func (j *PVCTestJig) newPVCTemplateSnapshotSource(namespace, volumeSize, scName string, vsName string) *v1.PersistentVolumeClaim {
+func (j *PVCTestJig) newPVCTemplateSnapshotSource(namespace, volumeSize, scName string, vsName string, isRawBlockVolume bool) *v1.PersistentVolumeClaim {
 	pvc := j.CreatePVCTemplate(namespace, volumeSize)
 	pvc = j.pvcAddAccessMode(pvc, v1.ReadWriteOnce)
 	pvc = j.pvcAddStorageClassName(pvc, scName)
 	pvc = j.pvcAddDataSource(pvc, vsName)
+
+	if isRawBlockVolume {
+		pvc = j.pvcAddVolumeMode(pvc, v1.PersistentVolumeBlock)
+	}
 	return pvc
 }
 
@@ -346,9 +350,9 @@ func (j *PVCTestJig) CreatePVCorFailDynamicFSS(namespace, volumeSize string, scN
 // CreatePVCorFailSnapshotSource creates a new claim based on the jig's
 // defaults. Callers can provide a function to tweak the claim object
 // before it is created.
-func (j *PVCTestJig) CreatePVCorFailSnapshotSource(namespace, volumeSize string, scName string, vsName string,
+func (j *PVCTestJig) CreatePVCorFailSnapshotSource(namespace, volumeSize string, scName string, vsName string, isRawBlockVolume bool,
 	tweak func(pvc *v1.PersistentVolumeClaim)) *v1.PersistentVolumeClaim {
-	pvc := j.newPVCTemplateSnapshotSource(namespace, volumeSize, scName, vsName)
+	pvc := j.newPVCTemplateSnapshotSource(namespace, volumeSize, scName, vsName, isRawBlockVolume)
 	return j.CheckPVCorFail(pvc, tweak, namespace, volumeSize)
 }
 
@@ -439,8 +443,8 @@ func (j *PVCTestJig) CreateAndAwaitPVCOrFailDynamicFSS(namespace, volumeSize, sc
 // its dependant resources. Callers can provide a function to tweak the
 // PVC object before it is created.
 func (j *PVCTestJig) CreateAndAwaitPVCOrFailSnapshotSource(namespace, volumeSize, scName string,
-	vsName string, phase v1.PersistentVolumeClaimPhase, tweak func(pvc *v1.PersistentVolumeClaim)) *v1.PersistentVolumeClaim {
-	pvc := j.CreatePVCorFailSnapshotSource(namespace, volumeSize, scName, vsName, tweak)
+	vsName string, phase v1.PersistentVolumeClaimPhase, isRawBlockVolume bool, tweak func(pvc *v1.PersistentVolumeClaim)) *v1.PersistentVolumeClaim {
+	pvc := j.CreatePVCorFailSnapshotSource(namespace, volumeSize, scName, vsName, isRawBlockVolume, tweak)
 	return j.CheckAndAwaitPVCOrFail(pvc, namespace, phase)
 }
 
@@ -695,10 +699,76 @@ func (j *PVCTestJig) DeleteVolume(bs ocicore.BlockstorageClient, volId string) {
 	}
 }
 
-// newPODTemplate returns the default template for this jig,
-// creates the Pod. Attaches PVC to the Pod which is created by CSI
-func (j *PVCTestJig) NewPodForCSI(name string, namespace string, claimName string, adLabel string) string {
+// NewPodForCSI creates a pod with the specified volume mode, using the CentOS image for both cases.
+func (j *PVCTestJig) NewPodForCSI(name string, namespace string, claimName string, adLabel string, volumeMode v1.PersistentVolumeMode) string {
+
+	if volumeMode == "" {
+		volumeMode = v1.PersistentVolumeFilesystem
+	}
+
 	By("Creating a pod with the claiming PVC created by CSI")
+
+	var containers []v1.Container
+	var volumes []v1.Volume
+	var args []string
+
+	// Determine Args and configuration based on volumeMode
+	switch volumeMode {
+	case v1.PersistentVolumeFilesystem:
+		args = []string{"-c", "echo 'Hello World' > /data/testdata.txt; while true; do echo $(date -u) >> /data/out.txt; sleep 5; done"}
+		containers = []v1.Container{
+			{
+				Name:    name,
+				Image:   centos,
+				Command: []string{"/bin/sh"},
+				Args:    args,
+				VolumeMounts: []v1.VolumeMount{
+					{
+						Name:      "persistent-storage",
+						MountPath: "/data",
+					},
+				},
+			},
+		}
+		volumes = []v1.Volume{
+			{
+				Name: "persistent-storage",
+				VolumeSource: v1.VolumeSource{
+					PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+						ClaimName: claimName,
+					},
+				},
+			},
+		}
+	case v1.PersistentVolumeBlock:
+		args = []string{"-c", "echo 'Hello World' > /tmp/test.txt; dd if=/tmp/test.txt of=/dev/xvda count=1; while true; do sleep 5; done"}
+		containers = []v1.Container{
+			{
+				Name:    name,
+				Image:   centos,
+				Command: []string{"/bin/sh"},
+				Args:    args,
+				VolumeDevices: []v1.VolumeDevice{
+					{
+						Name:       "persistent-storage",
+						DevicePath: "/dev/xvda",
+					},
+				},
+			},
+		}
+		volumes = []v1.Volume{
+			{
+				Name: "persistent-storage",
+				VolumeSource: v1.VolumeSource{
+					PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+						ClaimName: claimName,
+					},
+				},
+			},
+		}
+	default:
+		Failf("Unsupported volumeMode: %s", volumeMode)
+	}
 
 	pod, err := j.KubeClient.CoreV1().Pods(namespace).Create(context.Background(), &v1.Pod{
 		TypeMeta: metav1.TypeMeta{
@@ -710,30 +780,8 @@ func (j *PVCTestJig) NewPodForCSI(name string, namespace string, claimName strin
 			Namespace:    namespace,
 		},
 		Spec: v1.PodSpec{
-			Containers: []v1.Container{
-				{
-					Name:    name,
-					Image:   centos,
-					Command: []string{"/bin/sh"},
-					Args:    []string{"-c", "echo 'Hello World' > /data/testdata.txt; while true; do echo $(date -u) >> /data/out.txt; sleep 5; done"},
-					VolumeMounts: []v1.VolumeMount{
-						{
-							Name:      "persistent-storage",
-							MountPath: "/data",
-						},
-					},
-				},
-			},
-			Volumes: []v1.Volume{
-				{
-					Name: "persistent-storage",
-					VolumeSource: v1.VolumeSource{
-						PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
-							ClaimName: claimName,
-						},
-					},
-				},
-			},
+			Containers: containers,
+			Volumes:    volumes,
 			NodeSelector: map[string]string{
 				plugin.LabelZoneFailureDomain: adLabel,
 			},
@@ -807,8 +855,36 @@ func (j *PVCTestJig) NewPodWithLabels(name string, namespace string, claimName s
 	return pod.Name
 }
 
-func (j *PVCTestJig) NewPodForCSIClone(name string, namespace string, claimName string, adLabel string) string {
+// NewPodForCSIClone creates a pod with the specified volume type (filesystem or block).
+func (j *PVCTestJig) NewPodForCSIClone(name string, namespace string, claimName string, adLabel string, volumeType v1.PersistentVolumeMode) string {
+	if volumeType == "" {
+		volumeType = v1.PersistentVolumeFilesystem
+	}
+
 	By("Creating a pod with the claiming PVC created by CSI")
+
+	// Define the container spec based on volume type
+	container := v1.Container{
+		Name:  name,
+		Image: nginx,
+		VolumeMounts: []v1.VolumeMount{
+			{
+				Name:      "persistent-storage",
+				MountPath: "/data",
+			},
+		},
+	}
+
+	// Define volume devices for block volume mode
+	if volumeType == v1.PersistentVolumeBlock {
+		container.VolumeMounts = nil
+		container.VolumeDevices = []v1.VolumeDevice{
+			{
+				Name:       "persistent-storage",
+				DevicePath: "/dev/xvda",
+			},
+		}
+	}
 
 	pod, err := j.KubeClient.CoreV1().Pods(namespace).Create(context.Background(), &v1.Pod{
 		TypeMeta: metav1.TypeMeta{
@@ -820,18 +896,7 @@ func (j *PVCTestJig) NewPodForCSIClone(name string, namespace string, claimName 
 			Namespace:    namespace,
 		},
 		Spec: v1.PodSpec{
-			Containers: []v1.Container{
-				{
-					Name:  name,
-					Image: nginx,
-					VolumeMounts: []v1.VolumeMount{
-						{
-							Name:      "persistent-storage",
-							MountPath: "/data",
-						},
-					},
-				},
-			},
+			Containers: []v1.Container{container},
 			Volumes: []v1.Volume{
 				{
 					Name: "persistent-storage",
@@ -1403,7 +1468,39 @@ func (j *PVCTestJig) CheckMultiplePodReadWrite(namespace string, pvcName string,
 	j.NewPodForCSIFSSRead(string(uuid2), namespace, pvcName, fileName, checkEncryption)
 }
 
+type PodCommands struct {
+	podRunning       string
+	dataWritten      string
+	write            string
+	read             string
+	isRawBlockVolume bool
+}
+
 func (j *PVCTestJig) CheckDataPersistenceWithDeployment(pvcName string, ns string) {
+	dataWritten := "Data written"
+	commands := PodCommands{
+		podRunning:       " while true; do true; done;",
+		dataWritten:      dataWritten,
+		write:            "echo \"" + dataWritten + "\" >> /data/out.txt;",
+		read:             "cat /data/out.txt",
+		isRawBlockVolume: false,
+	}
+	j.CheckDataPersistenceWithDeploymentImpl(pvcName, ns, commands)
+}
+
+func (j *PVCTestJig) CheckDataPersistenceForRawBlockVolumeWithDeployment(pvcName string, ns string) {
+	dataWritten := "Hello CSI Tester for RBV"
+	commands := PodCommands{
+		podRunning:       " while true; do true; done;",
+		dataWritten:      dataWritten,
+		write:            "echo \"" + dataWritten + "\" > /tmp/test.txt; dd if=/tmp/test.txt of=/dev/xvda count=1;",
+		read:             "dd if=/dev/xvda bs=512 count=1",
+		isRawBlockVolume: true,
+	}
+	j.CheckDataPersistenceWithDeploymentImpl(pvcName, ns, commands)
+}
+
+func (j *PVCTestJig) CheckDataPersistenceWithDeploymentImpl(pvcName string, ns string, podCommands PodCommands) {
 	nodes, err := j.KubeClient.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
 
 	if err != nil {
@@ -1437,13 +1534,8 @@ func (j *PVCTestJig) CheckDataPersistenceWithDeployment(pvcName string, ns strin
 
 	podRunningCommand := " while true; do true; done;"
 
-	dataWritten := "Data written"
-
-	writeCommand := "echo \"" + dataWritten + "\" >> /data/out.txt;"
-	readCommand := "cat /data/out.txt"
-
 	By("Creating a deployment")
-	deploymentName := j.createDeploymentOnNodeAndWait(podRunningCommand, pvcName, ns, "data-persistence-deployment", 1, nodeSelectorLabels)
+	deploymentName := j.createDeploymentOnNodeAndWait(podRunningCommand, pvcName, ns, "data-persistence-deployment", 1, nodeSelectorLabels, podCommands.isRawBlockVolume)
 
 	deployment, err := j.KubeClient.AppsV1().Deployments(ns).Get(context.Background(), deploymentName, metav1.GetOptions{})
 
@@ -1461,7 +1553,7 @@ func (j *PVCTestJig) CheckDataPersistenceWithDeployment(pvcName string, ns strin
 	podName := pods.Items[0].Name
 
 	By("Writing to the volume using the pod")
-	_, err = RunHostCmd(ns, podName, writeCommand)
+	_, err = RunHostCmd(ns, podName, podCommands.write)
 
 	if err != nil {
 		Failf("Error executing write command a pod: %v", err)
@@ -1497,14 +1589,14 @@ func (j *PVCTestJig) CheckDataPersistenceWithDeployment(pvcName string, ns strin
 	podName = pods.Items[0].Name
 
 	By("Reading from the volume using the pod and checking data integrity")
-	output, err := RunHostCmd(ns, podName, readCommand)
+	output, err := RunHostCmd(ns, podName, podCommands.read)
 
 	if err != nil {
 		Failf("Error executing write command a pod: %v", err)
 	}
 
-	if dataWritten != strings.TrimSpace(output) {
-		Failf("Written data not found on the volume, written: %v, found: %v", dataWritten, strings.TrimSpace(output))
+	if !strings.Contains(strings.TrimSpace(output), podCommands.dataWritten) {
+		Failf("Written data not found on the volume, written: %v, found: %v\n", podCommands.dataWritten, strings.TrimSpace(output))
 	}
 
 }

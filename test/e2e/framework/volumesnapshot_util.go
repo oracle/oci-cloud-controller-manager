@@ -17,11 +17,11 @@ package framework
 import (
 	"context"
 	"fmt"
-	ocicore "github.com/oracle/oci-go-sdk/v65/core"
 	"time"
 
 	snapshot "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
 	. "github.com/onsi/ginkgo"
+	ocicore "github.com/oracle/oci-go-sdk/v65/core"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -197,14 +197,14 @@ func (j *PVCTestJig) GetBackupIDFromSnapshot(vsName string, ns string) string {
 
 // CreateVolumeSnapshotContentOrFail creates a new volume snapshot content based on the jig's defaults.
 func (j *PVCTestJig) CreateVolumeSnapshotContentOrFail(name string, driverType string,
-	backupOCID string, deletionPolicy string, vsName string, ns string) string {
+	backupOCID string, deletionPolicy string, vsName string, ns string, volumeMode v1.PersistentVolumeMode) string {
 
 	snapshotDeletionPolicy := snapshot.VolumeSnapshotContentDelete
 	if deletionPolicy == "Retain" {
 		snapshotDeletionPolicy = snapshot.VolumeSnapshotContentRetain
 	}
 
-	contentTemp := j.NewVolumeSnapshotContentTemplate(name, backupOCID, driverType, snapshotDeletionPolicy, vsName, ns)
+	contentTemp := j.NewVolumeSnapshotContentTemplate(name, backupOCID, driverType, volumeMode, snapshotDeletionPolicy, vsName, ns)
 
 	content, err := j.SnapClient.SnapshotV1().VolumeSnapshotContents().Create(context.Background(), contentTemp, metav1.CreateOptions{})
 	if err != nil {
@@ -221,7 +221,7 @@ func (j *PVCTestJig) CreateVolumeSnapshotContentOrFail(name string, driverType s
 // does not actually create the storage content. The default storage content has the same name
 // as the jig
 func (j *PVCTestJig) NewVolumeSnapshotContentTemplate(name string, backupOCID string,
-	driverType string, deletionPolicy snapshot.DeletionPolicy, vsName string, ns string) *snapshot.VolumeSnapshotContent {
+	driverType string, volumeMode v1.PersistentVolumeMode, deletionPolicy snapshot.DeletionPolicy, vsName string, ns string) *snapshot.VolumeSnapshotContent {
 	return &snapshot.VolumeSnapshotContent{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "VolumeSnapshotContent",
@@ -236,6 +236,7 @@ func (j *PVCTestJig) NewVolumeSnapshotContentTemplate(name string, backupOCID st
 			Source: snapshot.VolumeSnapshotContentSource{
 				SnapshotHandle: &backupOCID,
 			},
+			SourceVolumeMode: &volumeMode,
 			VolumeSnapshotRef: v1.ObjectReference{
 				Name:      vsName,
 				Namespace: ns,
@@ -319,9 +320,10 @@ func (j *PVCTestJig) CheckVSContentExists(pvName string) bool {
 func (j *PVCTestJig) CreateVolumeBackup(bs ocicore.BlockstorageClient, adLabel string, compartmentId string, volumeId string, backupName string) *string {
 	request := ocicore.CreateVolumeBackupRequest{
 		CreateVolumeBackupDetails: ocicore.CreateVolumeBackupDetails{
-			VolumeId:    &volumeId,
-			DisplayName: &backupName,
-			Type:        ocicore.CreateVolumeBackupDetailsTypeFull,
+			VolumeId:      &volumeId,
+			//CompartmentId: &compartmentId,
+			DisplayName:   &backupName,
+			Type:          ocicore.CreateVolumeBackupDetailsTypeFull,
 		},
 	}
 
