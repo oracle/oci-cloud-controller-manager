@@ -36,11 +36,12 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	ocicore "github.com/oracle/oci-go-sdk/v65/core"
+
 	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/csi/driver"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
-	ocicore "github.com/oracle/oci-go-sdk/v65/core"
 )
 
 const (
@@ -87,7 +88,7 @@ func (j *PVCTestJig) CreatePVCTemplate(namespace, volumeSize string) *v1.Persist
 			Labels:       j.Labels,
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
-			Resources: v1.ResourceRequirements{
+			Resources: v1.VolumeResourceRequirements{
 				Requests: v1.ResourceList{
 					v1.ResourceStorage: resource.MustParse(volumeSize),
 				},
@@ -100,7 +101,7 @@ func (j *PVCTestJig) pvcAddLabelSelector(pvc *v1.PersistentVolumeClaim, adLabel 
 	if pvc != nil {
 		pvc.Spec.Selector = &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				plugin.LabelZoneFailureDomain: adLabel,
+				v1.LabelTopologyZone: adLabel,
 			},
 		}
 	}
@@ -834,7 +835,7 @@ func (j *PVCTestJig) NewPodForCSIClone(name string, namespace string, claimName 
 				},
 			},
 			NodeSelector: map[string]string{
-				plugin.LabelZoneFailureDomain: adLabel,
+				v1.LabelTopologyZone: adLabel,
 			},
 		},
 	}, metav1.CreateOptions{})
@@ -889,7 +890,7 @@ func (j *PVCTestJig) NewPodForCSIWithoutWait(name string, namespace string, clai
 				},
 			},
 			NodeSelector: map[string]string{
-				plugin.LabelZoneFailureDomain: adLabel,
+				v1.LabelTopologyZone: adLabel,
 			},
 		},
 	}, metav1.CreateOptions{})
@@ -964,7 +965,7 @@ func (j *PVCTestJig) NewPodForCSIFSSWrite(name string, namespace string, claimNa
 // NewPodForCSIFSSRead returns the CSI Fss read pod template for this jig,
 // creates the Pod. Attaches PVC to the Pod which is created by CSI Fss. It does not have a node selector unlike the default pod template.
 // It does a grep on the file with string matchString and goes to completion with an exit code either 0 or 1.
-func (j *PVCTestJig) NewPodForCSIFSSRead(matchString string, namespace string, claimName string, fileName string, encryptionEnabled bool) {
+func (j *PVCTestJig) NewPodForCSIFSSRead(matchString string, namespace string, claimName string, fileName string, encryptionEnabled bool) string {
 	By("Creating a pod with the claiming PVC created by CSI")
 
 	nodeSelectorMap := make(map[string]string)
@@ -1020,6 +1021,8 @@ func (j *PVCTestJig) NewPodForCSIFSSRead(matchString string, namespace string, c
 		Failf("Pod %q failed: %v", pod.Name, err)
 	}
 	zap.S().With(pod.Namespace).With(pod.Name).Info("CSI Fss read POD is created.")
+
+	return pod.Name
 }
 
 // WaitForPVCPhase waits for a PersistentVolumeClaim to be in a specific phase or until timeout occurs, whichever comes first.
@@ -1332,7 +1335,7 @@ func (j *PVCTestJig) CheckEncryptionType(namespace, podName string) {
 	}
 }
 
-func (j *PVCTestJig) CheckSinglePodReadWrite(namespace string, pvcName string, checkEncryption bool, expectedMountOptions []string) {
+func (j *PVCTestJig) CheckSinglePodReadWrite(namespace string, pvcName string, checkEncryption bool, expectedMountOptions []string) (string, string) {
 
 	By("Creating Pod that can create and write to the file")
 	uid := uuid.NewUUID()
@@ -1352,8 +1355,9 @@ func (j *PVCTestJig) CheckSinglePodReadWrite(namespace string, pvcName string, c
 	j.CheckMountOptions(namespace, podName, "/data", expectedMountOptions)
 
 	By("Creating Pod that can read contents of existing file")
-	j.NewPodForCSIFSSRead(string(uid), namespace, pvcName, fileName, checkEncryption)
+	readPodName := j.NewPodForCSIFSSRead(string(uid), namespace, pvcName, fileName, checkEncryption)
 
+	return podName, readPodName
 }
 
 func (j *PVCTestJig) CheckMultiplePodReadWrite(namespace string, pvcName string, checkEncryption bool) {
@@ -1686,7 +1690,7 @@ func (j *PVCTestJig) VerifyMultipathEnabled(ctx context.Context, client ocicore.
 
 	isMultipath := vaList.Items[0].GetIsMultipath()
 
-	if *isMultipath {
+	if isMultipath != nil && *isMultipath {
 		Logf("Verified that the given volume is attached with multipath enabled")
 	} else {
 		Failf("No volume attachments found for volume %v", volumeId)

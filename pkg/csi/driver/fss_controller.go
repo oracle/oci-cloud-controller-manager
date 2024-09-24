@@ -27,6 +27,7 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
 	fss "github.com/oracle/oci-go-sdk/v65/filestorage"
+
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -785,6 +786,10 @@ func (d *FSSControllerDriver) ControllerPublishVolume(ctx context.Context, reque
 
 func (d *FSSControllerDriver) ControllerUnpublishVolume(ctx context.Context, request *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
+}
+
+func (d *FSSControllerDriver) ControllerModifyVolume(ctx context.Context, request *csi.ControllerModifyVolumeRequest) (*csi.ControllerModifyVolumeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "ControllerModifyVolume is not supported yet")
 }
 
 func (d *FSSControllerDriver) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {

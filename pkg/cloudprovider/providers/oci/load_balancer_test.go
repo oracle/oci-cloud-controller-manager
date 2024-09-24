@@ -19,6 +19,8 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -1054,6 +1056,122 @@ func TestCloudProvider_EnsureLoadBalancerDeleted(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := cp.EnsureLoadBalancerDeleted(context.Background(), "test", tt.service); (err != nil) != tt.wantErr {
 				t.Errorf("EnsureLoadBalancerDeleted() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_addLoadBalancerOkeSystemTags(t *testing.T) {
+	tests := map[string]struct {
+		//config  *providercfg.Config
+		lb      *client.GenericLoadBalancer
+		spec    *LBSpec
+		wantErr error
+	}{
+		"expect an error when spec system tag is nil": {
+			lb: &client.GenericLoadBalancer{
+				Id: common.String("ocid1.loadbalancer."),
+			},
+			spec:    &LBSpec{},
+			wantErr: errors.New("oke system tag is not found in LB spec. ignoring.."),
+		},
+		"expect an error when spec system tag is empty map": {
+			lb: &client.GenericLoadBalancer{
+				Id: common.String("ocid1.loadbalancer."),
+			},
+			spec: &LBSpec{
+				SystemTags: map[string]map[string]interface{}{},
+			},
+			wantErr: errors.New("oke system tag namespace is not found in LB spec"),
+		},
+		"expect an error when defined tags are limits are reached": {
+			lb: &client.GenericLoadBalancer{
+				Id:          common.String("defined tag limit of 64 reached"),
+				DefinedTags: make(map[string]map[string]interface{}),
+			},
+			spec: &LBSpec{
+				SystemTags: map[string]map[string]interface{}{"orcl-containerengine": {"Cluster": "val"}},
+			},
+			wantErr: errors.New("max limit of defined tags for lb is reached. skip adding tags. sending metric"),
+		},
+		"expect an error when updateLoadBalancer work request fails": {
+			lb: &client.GenericLoadBalancer{
+				Id:           common.String("work request fail"),
+				FreeformTags: map[string]string{"key": "val"},
+				DefinedTags:  map[string]map[string]interface{}{"ns1": {"key1": "val1"}},
+			},
+			spec: &LBSpec{
+				SystemTags: map[string]map[string]interface{}{"orcl-containerengine": {"Cluster": "val"}},
+			},
+			wantErr: errors.New("UpdateLoadBalancer request failed: internal server error"),
+		},
+	}
+
+	for name, testcase := range tests {
+		clb := &CloudLoadBalancerProvider{
+			lbClient: &MockLoadBalancerClient{},
+			logger:   zap.S(),
+			//config:   testcase.config,
+		}
+		t.Run(name, func(t *testing.T) {
+			if strings.Contains(name, "limit") {
+				// add 64 defined tags
+				for i := 1; i <= 64; i++ {
+					testcase.lb.DefinedTags["ns"+strconv.Itoa(i)] = map[string]interface{}{"key": strconv.Itoa(i)}
+				}
+			}
+			err := clb.addLoadBalancerOkeSystemTags(context.Background(), testcase.lb, testcase.spec)
+			t.Logf(err.Error())
+			if !assertError(err, testcase.wantErr) {
+				t.Errorf("Expected error = %v, but got %v", testcase.wantErr, err)
+				return
+			}
+		})
+	}
+}
+
+func Test_doesLbHaveResourceTrackingSystemTags(t *testing.T) {
+	tests := map[string]struct {
+		lb   *client.GenericLoadBalancer
+		spec *LBSpec
+		want bool
+	}{
+		"base case": {
+			lb: &client.GenericLoadBalancer{
+				DefinedTags: map[string]map[string]interface{}{"ns": {"key": "val"}},
+				SystemTags:  map[string]map[string]interface{}{"orcl-containerengine": {"Cluster": "val"}},
+			},
+			spec: &LBSpec{
+				SystemTags: map[string]map[string]interface{}{"orcl-containerengine": {"Cluster": "val"}},
+			},
+			want: true,
+		},
+		"system tag exists for different ns in lb": {
+			lb: &client.GenericLoadBalancer{
+				DefinedTags: map[string]map[string]interface{}{"ns": {"key": "val"}},
+				SystemTags:  map[string]map[string]interface{}{"orcl-free-tier": {"Cluster": "val"}},
+			},
+			spec: &LBSpec{
+				SystemTags: map[string]map[string]interface{}{"orcl-containerengine": {"Cluster": "val"}},
+			},
+			want: false,
+		},
+		"resource tracking system tag doesnt exists in lb": {
+			lb: &client.GenericLoadBalancer{
+				DefinedTags: map[string]map[string]interface{}{"ns": {"key": "val"}},
+			},
+			spec: &LBSpec{
+				SystemTags: map[string]map[string]interface{}{"orcl-containerengine": {"Cluster": "val"}},
+			},
+			want: false,
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			actual := doesLbHaveOkeSystemTags(test.lb, test.spec)
+			t.Logf("expected %v but got %v", test.want, actual)
+			if test.want != actual {
+				t.Errorf("expected %v but got %v", test.want, actual)
 			}
 		})
 	}
