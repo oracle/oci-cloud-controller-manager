@@ -171,6 +171,11 @@ type identityClient interface {
 	ListAvailabilityDomains(ctx context.Context, request identity.ListAvailabilityDomainsRequest) (identity.ListAvailabilityDomainsResponse, error)
 }
 
+// TODO: Uncomment when compartments is available in OCI Go-SDK
+//type compartmentClient interface {
+//	ListAvailabilityDomains(ctx context.Context, request compartments.ListAvailabilityDomainsRequest) (compartments.ListAvailabilityDomainsResponse, error)
+//}
+
 type client struct {
 	compute             computeClient
 	network             virtualNetworkClient
@@ -179,6 +184,7 @@ type client struct {
 	filestorage         filestorageClient
 	bs                  blockstorageClient
 	identity            identityClient
+	//compartment 		compartmentClient
 
 	requestMetadata common.RequestMetadata
 	rateLimiter     RateLimiter
@@ -240,6 +246,17 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 		return nil, errors.Wrap(err, "configuring identity service client custom transport")
 	}
 
+	// TODO: Uncomment when compartments is available in OCI Go-SDK
+	//compartment, err := compartments.NewCompartmentsClientWithConfigurationProvider(cp)
+	//if err != nil {
+	//	return nil, errors.Wrap(err, "NewCompartmentsClientWithConfigurationProvider")
+	//}
+	//
+	//err = configureCustomTransport(logger, &compartment.BaseClient)
+	//if err != nil {
+	//	return nil, errors.Wrap(err, "configuring compartment service client custom transport")
+	//}
+
 	bs, err := core.NewBlockstorageClientWithConfigurationProvider(cp)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewBlockstorageClientWithConfigurationProvider")
@@ -283,6 +300,7 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 		networkloadbalancer: &networkloadbalancer,
 		bs:                  &bs,
 		filestorage:         &fss,
+		//compartment:     	 &compartment,
 
 		rateLimiter:     *opRateLimiter,
 		requestMetadata: requestMetadata,
@@ -415,12 +433,26 @@ func (c *client) Identity(ociClientConfig *OCIClientConfig) IdentityInterface {
 			return nil
 		}
 
+		// TODO: Uncomment when compartments is available in OCI Go-SDK
+		//compartment, err := compartments.NewCompartmentsClientWithConfigurationProvider(configProvider)
+		//if err != nil {
+		//	c.logger.Errorf("Failed to create Compartments workload identity client  %v", err)
+		//	return nil
+		//}
+		//
+		//err = configureCustomTransport(c.logger, &compartment.BaseClient)
+		//if err != nil {
+		//	c.logger.Error("Failed configure custom transport for Compartments Client %v", err)
+		//	return nil
+		//}
+
 		return &client{
-			identity:        &identity,
-			requestMetadata: c.requestMetadata,
-			rateLimiter:     c.rateLimiter,
-			subnetCache:     cache.NewTTLStore(subnetCacheKeyFn, time.Duration(24)*time.Hour),
-			logger:          c.logger,
+			//compartment: 	     &compartment,
+			identity:            &identity,
+			requestMetadata:     c.requestMetadata,
+			rateLimiter:         c.rateLimiter,
+			subnetCache:         cache.NewTTLStore(subnetCacheKeyFn, time.Duration(24)*time.Hour),
+			logger:              c.logger,
 		}
 	}
 	return c

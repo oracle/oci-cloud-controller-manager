@@ -17,6 +17,7 @@ package driver
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -783,13 +784,19 @@ type MockIdentityClient struct {
 	common.BaseClient
 }
 
-func (client MockIdentityClient) ListAvailabilityDomains(ctx context.Context, compartmentID string) ([]identity.AvailabilityDomain, error) {
+func (mockClient MockIdentityClient) ListAvailabilityDomains(ctx context.Context, compartmentID string) ([]identity.AvailabilityDomain, error) {
 	return nil, nil
 }
 
 // ListAvailabilityDomains mocks the client ListAvailabilityDomains implementation
-func (client MockIdentityClient) GetAvailabilityDomainByName(ctx context.Context, compartmentID, name string) (*identity.AvailabilityDomain, error) {
-	ad1 := "AD1"
+func (mockClient MockIdentityClient) GetAvailabilityDomainByName(ctx context.Context, compartmentID, name string) (*identity.AvailabilityDomain, error) {
+	var ad1 string
+
+	if client.IsIpv6SingleStackCluster() {
+		ad1 = "AD1-compartments-response"
+	} else {
+		ad1 = "AD1"
+	}
 	return &identity.AvailabilityDomain{Name: &ad1}, nil
 }
 
@@ -2110,6 +2117,93 @@ func TestGetBVTags(t *testing.T) {
 				t.Errorf("Expected tagconfig %v but got %v", testcase.expectedTagConfig, actualTagConfig)
 			}
 
+		})
+	}
+}
+
+func TestClient_GetAvailabilityDomainByName(t *testing.T) {
+	tests := []struct {
+		name       string
+		ipFamilies string
+		want       *identity.AvailabilityDomain
+		wantErr    error
+	}{
+		{
+			name:       "Dual stack IPv4 preferred (identity client usage)",
+			ipFamilies: "IPv4,IPv6",
+			want: &identity.AvailabilityDomain{
+				Name: common.String("AD1"), // Default to AD1 since only exact IPv6 triggers change
+			},
+			wantErr: nil,
+		},
+		{
+			name:       "Dual stack IPv6 preferred (identity client usage)",
+			ipFamilies: "IPv6,IPv4",
+			want: &identity.AvailabilityDomain{
+				Name: common.String("AD1"), // Default to AD1 since only exact IPv6 triggers change
+			},
+			wantErr: nil,
+		},
+		{
+			name:       "IPv4 only (defaults to AD1)",
+			ipFamilies: "IPv4",
+			want: &identity.AvailabilityDomain{
+				Name: common.String("AD1"),
+			},
+			wantErr: nil,
+		},
+		{
+			name:       "IPv6 only",
+			ipFamilies: "IPv6",
+			want: &identity.AvailabilityDomain{
+				Name: common.String("AD1-compartments-response"), // Specific to IPv6
+			},
+			wantErr: nil,
+		},
+		{
+			name:       "Empty IP families (defaults to AD1)",
+			ipFamilies: "",
+			want: &identity.AvailabilityDomain{
+				Name: common.String("AD1"),
+			},
+			wantErr: nil,
+		},
+		{
+			name:       "Invalid IP families (defaults to AD1)",
+			ipFamilies: "Invalid",
+			want: &identity.AvailabilityDomain{
+				Name: common.String("AD1"), // Invalid defaults to AD1
+			},
+			wantErr: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set the environment variable for IP families
+			os.Setenv(client.ClusterIpFamilyEnv, tt.ipFamilies)
+			defer os.Unsetenv(client.ClusterIpFamilyEnv)
+
+			ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+			defer cancel()
+
+			client := NewClientProvisioner(nil, &MockBlockStorageClient{}, nil)
+			got, err := client.Identity(nil).GetAvailabilityDomainByName(ctx, "ocid1.compartment.abcd", "AD-1")
+
+			// Check if the error matches what we expect
+			if tt.wantErr == nil && err != nil {
+				t.Errorf("got error %q, want none", err)
+			}
+			if tt.wantErr != nil && err == nil {
+				t.Errorf("want error %q, got none", tt.wantErr)
+			} else if tt.wantErr != nil && err != nil && !strings.Contains(err.Error(), tt.wantErr.Error()) {
+				t.Errorf("want error %q to include %q", err, tt.wantErr)
+			}
+
+			// Check if the result matches what we expect
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("client.Identity().GetAvailabilityDomainByName() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }

@@ -16,6 +16,7 @@ package client
 
 import (
 	"net/http"
+	"os"
 	"strings"
 
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
@@ -100,4 +101,12 @@ func NewRateLimiter(logger *zap.SugaredLogger, config *providercfg.RateLimiterCo
 		config.RateLimitBucketWrite)
 
 	return rateLimiter
+}
+
+func IsIpv6SingleStackCluster() bool {
+	clusterIpFamily, ok := os.LookupEnv(ClusterIpFamilyEnv)
+	if ok && strings.EqualFold(clusterIpFamily, Ipv6Stack) {
+		return true
+	}
+	return false
 }
