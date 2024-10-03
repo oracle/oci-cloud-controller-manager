@@ -242,7 +242,7 @@ func (s *CloudProvider) addNetworkSecurityGroupSecurityRules(ctx context.Context
 			*nsgId,
 			core.AddNetworkSecurityGroupSecurityRulesDetails{SecurityRules: securityRuleToAddSecurityRuleDetails(rulesInBatches[i])})
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to add security rules for nsg: %s OpcRequestId: %s", *nsgId, pointer.StringDeref(response.OpcRequestId, ""))
+			return nil, errors.Wrapf(err, "failed to add security rules for nsg: %s", *nsgId)
 		}
 		s.logger.Infof("AddNetworkSecurityGroupSecurityRules OpcRequestId %s", pointer.StringDeref(response.OpcRequestId, ""))
 	}
@@ -258,7 +258,7 @@ func (s *CloudProvider) removeNetworkSecurityGroupSecurityRules(ctx context.Cont
 		response, err = s.client.Networking(nil).RemoveNetworkSecurityGroupSecurityRules(ctx, *nsgId,
 			core.RemoveNetworkSecurityGroupSecurityRulesDetails{SecurityRuleIds: rulesInBatches[i]})
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to remove security rules for nsg: %s OpcRequestId: %s", *nsgId, pointer.StringDeref(response.OpcRequestId, ""))
+			return nil, errors.Wrapf(err, "failed to remove security rules for nsg: %s", *nsgId)
 		}
 		s.logger.Infof("RemoveNetworkSecurityGroupSecurityRules OpcRequestId %s", pointer.StringDeref(response.OpcRequestId, ""))
 	}
