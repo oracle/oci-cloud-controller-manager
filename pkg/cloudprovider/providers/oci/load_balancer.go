@@ -1994,7 +1994,7 @@ func (cp *CloudProvider) checkAllBackendNodesNotReady(nodeList []*v1.Node) bool 
 func (cp *CloudProvider) deleteNsg(ctx context.Context, logger *zap.SugaredLogger, id, etag string) (bool, error) {
 	opcRequestId, err := cp.client.Networking(nil).DeleteNetworkSecurityGroup(ctx, id, etag)
 	if err != nil {
-		logger.Errorf("failed to delete nsg %s OpcRequestId %s", id, pointer.StringDeref(opcRequestId, ""))
+		logger.Errorf("failed to delete nsg %s", id)
 		return false, err
 	}
 	logger.Infof("delete nsg OpcRequestId %s", pointer.StringDeref(opcRequestId, ""))

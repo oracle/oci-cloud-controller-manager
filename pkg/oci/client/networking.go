@@ -478,7 +478,7 @@ func (c *client) AddNetworkSecurityGroupSecurityRules(ctx context.Context, id st
 
 	if err != nil {
 		c.logger.With(id).Infof("AddNetworkSecurityGroupSecurityRules failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
-		return nil, errors.WithStack(err)
+		return &resp, errors.WithStack(err)
 	}
 	return &resp, nil
 }
@@ -497,7 +497,7 @@ func (c *client) RemoveNetworkSecurityGroupSecurityRules(ctx context.Context, id
 
 	if err != nil {
 		c.logger.With(id).Infof("RemoveNetworkSecurityGroupSecurityRules failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
-		return nil, errors.WithStack(err)
+		return &resp, errors.WithStack(err)
 	}
 	return &resp, nil
 }
@@ -519,7 +519,7 @@ func (c *client) ListNetworkSecurityGroupSecurityRules(ctx context.Context, id s
 
 		if err != nil {
 			c.logger.With(id).Infof("ListNetworkSecurityGroupSecurityRules failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
-			return nil, errors.WithStack(err)
+			return []core.SecurityRule{}, errors.WithStack(err)
 		}
 		for _, rule := range resp.Items {
 			nsgRules = append(nsgRules, rule)
@@ -545,7 +545,7 @@ func (c *client) UpdateNetworkSecurityGroupSecurityRules(ctx context.Context, id
 
 	if err != nil {
 		c.logger.With(id).Infof("UpdateNetworkSecurityGroupSecurityRules failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
-		return nil, errors.WithStack(err)
+		return &resp, errors.WithStack(err)
 	}
 	return &resp, nil
 }
