@@ -22,7 +22,6 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -40,23 +39,10 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 )
 
-var once sync.Once
 var _ = Describe("Service [Slow]", func() {
 
 	baseName := "service"
-	var tcpService *v1.Service
-	var jig *sharedfw.ServiceTestJig
 	f := sharedfw.NewDefaultFramework(baseName)
-
-	JustAfterEach(func() {
-		if tcpService == nil || jig == nil {
-			return
-		}
-		dp := metav1.DeletePropagationBackground // Default after k8s v1.20
-		jig.Client.CoreV1().Services(f.Namespace.Name).Delete(context.Background(), tcpService.Name, metav1.DeleteOptions{
-			PropagationPolicy: &dp,
-		})
-	})
 
 	testDefinedTags := map[string]map[string]interface{}{"oke-tag": {"oke-tagging": "ccm-test-integ"}}
 	testDefinedTagsByteArray, _ := json.Marshal(testDefinedTags)
@@ -100,206 +86,214 @@ var _ = Describe("Service [Slow]", func() {
 					sharedfw.Logf("Skipping Workload Identity Principal test for LB Type (%s) because the cluster is not an OKE ENHANCED_CLUSTER", test.lbType)
 					continue
 				}
+				func() {
+					By("Running test for: " + test.lbType)
+					serviceName := "basic-" + test.lbType + "-test"
+					ns := f.Namespace.Name
 
-				By("Running test for: " + test.lbType)
-				serviceName := "basic-" + test.lbType + "-test"
-				ns := f.Namespace.Name
+					jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
 
-				jig = sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
+					nodeIP := sharedfw.PickNodeIP(jig.Client) // for later
 
-				nodeIP := sharedfw.PickNodeIP(jig.Client) // for later
-
-				loadBalancerLagTimeout := sharedfw.LoadBalancerLagTimeoutDefault
-				loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
-				if nodes := sharedfw.GetReadySchedulableNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
-					loadBalancerCreateTimeout = sharedfw.LoadBalancerCreateTimeoutLarge
-				}
-				var serviceAccount *v1.ServiceAccount
-				if sa, exists := test.CreationAnnotations[cloudprovider.ServiceAnnotationServiceAccountName]; exists {
-					// Create a service account in the same namespace as the service
-					By("creating service account \"sa\" in namespace " + ns)
-					serviceAccount = jig.CreateServiceAccountOrFail(ns, sa, nil)
-				}
-
-				// TODO(apryde): Test that LoadBalancers can receive static IP addresses
-				// (in a provider agnostic manner?). OCI does not currently
-				// support this.
-				requestedIP := ""
-
-				tcpService = jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
-					s.Spec.Type = v1.ServiceTypeLoadBalancer
-					s.Spec.LoadBalancerIP = requestedIP // will be "" if not applicable
-					s.ObjectMeta.Annotations = test.CreationAnnotations
-				})
-
-				if _, exists := test.CreationAnnotations[cloudprovider.ServiceAnnotationServiceAccountName]; exists {
-					By("setting service account \"sa\" owner reference as the TCP service " + serviceName)
-					// Set SA owner reference as the service to prevent deletion of service account before the service
-					jig.SetServiceOwnerReferenceOnServiceAccountOrFail(ns, serviceAccount, tcpService)
-				}
-
-				svcPort := int(tcpService.Spec.Ports[0].Port)
-
-				By("creating a pod to be part of the TCP service " + serviceName)
-				jig.RunOrFail(ns, nil)
-
-				// TODO(apryde): Test UDP service. OCI does not currently support this.
-
-				By("waiting for the TCP service to have a load balancer")
-				// Wait for the load balancer to be created asynchronously
-				tcpService = jig.WaitForLoadBalancerOrFail(ns, tcpService.Name, loadBalancerCreateTimeout)
-				jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
-
-				if strings.HasSuffix(test.lbType, "-wris") {
-					lbName := cloudprovider.GetLoadBalancerName(tcpService)
-					sharedfw.Logf("LB Name is %s", lbName)
-					ctx := context.TODO()
-					compartmentId := ""
-					if setupF.Compartment1 != "" {
-						compartmentId = setupF.Compartment1
-					} else if f.CloudProviderConfig.CompartmentID != "" {
-						compartmentId = f.CloudProviderConfig.CompartmentID
-					} else if f.CloudProviderConfig.Auth.CompartmentID != "" {
-						compartmentId = f.CloudProviderConfig.Auth.CompartmentID
-					} else {
-						sharedfw.Failf("Compartment Id undefined.")
+					loadBalancerLagTimeout := sharedfw.LoadBalancerLagTimeoutDefault
+					loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
+					if nodes := sharedfw.GetReadySchedulableNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
+						loadBalancerCreateTimeout = sharedfw.LoadBalancerCreateTimeoutLarge
 					}
-					lbType := strings.TrimSuffix(test.lbType, "-wris")
-					loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), lbType, "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
-					sharedfw.ExpectNoError(err)
-
-					if !reflect.DeepEqual(loadBalancer.DefinedTags, testDefinedTags) {
-						sharedfw.Failf("Defined tag mismatch! Expected: %v, Got: %v", testDefinedTags, loadBalancer.DefinedTags)
+					var serviceAccount *v1.ServiceAccount
+					if sa, exists := test.CreationAnnotations[cloudprovider.ServiceAnnotationServiceAccountName]; exists {
+						// Create a service account in the same namespace as the service
+						By("creating service account \"sa\" in namespace " + ns)
+						serviceAccount = jig.CreateServiceAccountOrFail(ns, sa, nil)
 					}
-				}
 
-				if strings.HasSuffix(test.lbType, "-wris") {
-					sharedfw.Logf("skip evaluating system tag when the principal type is Workload identity")
-				} else {
-					By("validating system tags on the loadbalancer")
-					lbName := cloudprovider.GetLoadBalancerName(tcpService)
-					sharedfw.Logf("LB Name is %s", lbName)
-					ctx := context.TODO()
-					compartmentId := ""
-					if setupF.Compartment1 != "" {
-						compartmentId = setupF.Compartment1
-					} else if f.CloudProviderConfig.CompartmentID != "" {
-						compartmentId = f.CloudProviderConfig.CompartmentID
-					} else if f.CloudProviderConfig.Auth.CompartmentID != "" {
-						compartmentId = f.CloudProviderConfig.Auth.CompartmentID
-					} else {
-						sharedfw.Failf("Compartment Id undefined.")
+					// TODO(apryde): Test that LoadBalancers can receive static IP addresses
+					// (in a provider agnostic manner?). OCI does not currently
+					// support this.
+					requestedIP := ""
+
+					tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
+						s.Spec.Type = v1.ServiceTypeLoadBalancer
+						s.Spec.LoadBalancerIP = requestedIP // will be "" if not applicable
+						s.ObjectMeta.Annotations = test.CreationAnnotations
+					})
+
+					if _, exists := test.CreationAnnotations[cloudprovider.ServiceAnnotationServiceAccountName]; exists {
+						By("setting service account \"sa\" owner reference as the TCP service " + serviceName)
+						// Set SA owner reference as the service to prevent deletion of service account before the service
+						jig.SetServiceOwnerReferenceOnServiceAccountOrFail(ns, serviceAccount, tcpService)
+						defer func() {
+							dp := metav1.DeletePropagationForeground
+							jig.Client.CoreV1().Services(f.Namespace.Name).Delete(context.Background(), tcpService.Name, metav1.DeleteOptions{
+								PropagationPolicy: &dp,
+							})
+							time.Sleep(time.Second)
+						}()
 					}
-					lbType := test.lbType
+
+					svcPort := int(tcpService.Spec.Ports[0].Port)
+
+					By("creating a pod to be part of the TCP service " + serviceName)
+					jig.RunOrFail(ns, nil)
+
+					// TODO(apryde): Test UDP service. OCI does not currently support this.
+
+					By("waiting for the TCP service to have a load balancer")
+					// Wait for the load balancer to be created asynchronously
+					tcpService = jig.WaitForLoadBalancerOrFail(ns, tcpService.Name, loadBalancerCreateTimeout)
+					jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
 					if strings.HasSuffix(test.lbType, "-wris") {
-						lbType = strings.TrimSuffix(test.lbType, "-wris")
+						lbName := cloudprovider.GetLoadBalancerName(tcpService)
+						sharedfw.Logf("LB Name is %s", lbName)
+						ctx := context.TODO()
+						compartmentId := ""
+						if setupF.Compartment1 != "" {
+							compartmentId = setupF.Compartment1
+						} else if f.CloudProviderConfig.CompartmentID != "" {
+							compartmentId = f.CloudProviderConfig.CompartmentID
+						} else if f.CloudProviderConfig.Auth.CompartmentID != "" {
+							compartmentId = f.CloudProviderConfig.Auth.CompartmentID
+						} else {
+							sharedfw.Failf("Compartment Id undefined.")
+						}
+						lbType := strings.TrimSuffix(test.lbType, "-wris")
+						loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), lbType, "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
+						sharedfw.ExpectNoError(err)
+
+						if !reflect.DeepEqual(loadBalancer.DefinedTags, testDefinedTags) {
+							sharedfw.Failf("Defined tag mismatch! Expected: %v, Got: %v", testDefinedTags, loadBalancer.DefinedTags)
+						}
 					}
-					loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), lbType, "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
-					sharedfw.ExpectNoError(err)
-					sharedfw.Logf("Loadbalancer details %v:", loadBalancer)
-					if setupF.AddOkeSystemTags && !sharedfw.HasOkeSystemTags(loadBalancer.SystemTags) {
-						sharedfw.Failf("Loadbalancer is expected to have the system tags")
+
+					if strings.HasSuffix(test.lbType, "-wris") {
+						sharedfw.Logf("skip evaluating system tag when the principal type is Workload identity")
+					} else {
+						By("validating system tags on the loadbalancer")
+						lbName := cloudprovider.GetLoadBalancerName(tcpService)
+						sharedfw.Logf("LB Name is %s", lbName)
+						ctx := context.TODO()
+						compartmentId := ""
+						if setupF.Compartment1 != "" {
+							compartmentId = setupF.Compartment1
+						} else if f.CloudProviderConfig.CompartmentID != "" {
+							compartmentId = f.CloudProviderConfig.CompartmentID
+						} else if f.CloudProviderConfig.Auth.CompartmentID != "" {
+							compartmentId = f.CloudProviderConfig.Auth.CompartmentID
+						} else {
+							sharedfw.Failf("Compartment Id undefined.")
+						}
+						lbType := test.lbType
+						if strings.HasSuffix(test.lbType, "-wris") {
+							lbType = strings.TrimSuffix(test.lbType, "-wris")
+						}
+						loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), lbType, "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
+						sharedfw.ExpectNoError(err)
+						sharedfw.Logf("Loadbalancer details %v:", loadBalancer)
+						if setupF.AddOkeSystemTags && !sharedfw.HasOkeSystemTags(loadBalancer.SystemTags) {
+							sharedfw.Failf("Loadbalancer is expected to have the system tags")
+						}
 					}
-				}
 
-				tcpNodePort := int(tcpService.Spec.Ports[0].NodePort)
-				sharedfw.Logf("TCP node port: %d", tcpNodePort)
+					tcpNodePort := int(tcpService.Spec.Ports[0].NodePort)
+					sharedfw.Logf("TCP node port: %d", tcpNodePort)
 
-				if requestedIP != "" && sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]) != requestedIP {
-					sharedfw.Failf("unexpected TCP Status.LoadBalancer.Ingress (expected %s, got %s)", requestedIP, sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]))
-				}
-				tcpIngressIP := sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0])
-				sharedfw.Logf("TCP load balancer: %s", tcpIngressIP)
+					if requestedIP != "" && sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]) != requestedIP {
+						sharedfw.Failf("unexpected TCP Status.LoadBalancer.Ingress (expected %s, got %s)", requestedIP, sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]))
+					}
+					tcpIngressIP := sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0])
+					sharedfw.Logf("TCP load balancer: %s", tcpIngressIP)
 
-				if f.NodePortTest {
-					By("hitting the TCP service's NodePort")
-					jig.TestReachableHTTP(false, nodeIP, tcpNodePort, sharedfw.KubeProxyLagTimeout)
-				}
+					if f.NodePortTest {
+						By("hitting the TCP service's NodePort")
+						jig.TestReachableHTTP(false, nodeIP, tcpNodePort, sharedfw.KubeProxyLagTimeout)
+					}
 
-				By("hitting the TCP service's LoadBalancer")
-				jig.TestReachableHTTP(false, tcpIngressIP, svcPort, loadBalancerLagTimeout)
+					By("hitting the TCP service's LoadBalancer")
+					jig.TestReachableHTTP(false, tcpIngressIP, svcPort, loadBalancerLagTimeout)
 
-				// Change the services' node ports.
+					// Change the services' node ports.
 
-				By("changing the TCP service's NodePort")
-				// Count the number of ingress/egress rules with the original port so
-				// we can check the correct number are updated.
-				numEgressRules, numIngressRules := sharedfw.CountSinglePortSecListRules(f.Client, f.CCMSecListID, f.K8SSecListID, tcpNodePort)
-				tcpService = jig.ChangeServiceNodePortOrFail(ns, tcpService.Name, tcpNodePort)
-				jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+					By("changing the TCP service's NodePort")
+					// Count the number of ingress/egress rules with the original port so
+					// we can check the correct number are updated.
+					numEgressRules, numIngressRules := sharedfw.CountSinglePortSecListRules(f.Client, f.CCMSecListID, f.K8SSecListID, tcpNodePort)
+					tcpService = jig.ChangeServiceNodePortOrFail(ns, tcpService.Name, tcpNodePort)
+					jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
 
-				tcpNodePortOld := tcpNodePort
-				tcpNodePort = int(tcpService.Spec.Ports[0].NodePort)
-				if tcpNodePort == tcpNodePortOld {
-					sharedfw.Failf("TCP Spec.Ports[0].NodePort (%d) did not change", tcpNodePort)
-				}
-				if sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]) != tcpIngressIP {
-					sharedfw.Failf("TCP Status.LoadBalancer.Ingress changed (%s -> %s) when not expected", tcpIngressIP, sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]))
-				}
+					tcpNodePortOld := tcpNodePort
+					tcpNodePort = int(tcpService.Spec.Ports[0].NodePort)
+					if tcpNodePort == tcpNodePortOld {
+						sharedfw.Failf("TCP Spec.Ports[0].NodePort (%d) did not change", tcpNodePort)
+					}
+					if sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]) != tcpIngressIP {
+						sharedfw.Failf("TCP Status.LoadBalancer.Ingress changed (%s -> %s) when not expected", tcpIngressIP, sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]))
+					}
 
-				// Check the correct number of rules are present.
-				sharedfw.WaitForSinglePortEgressRulesAfterPortChangeOrFail(f.Client, f.CCMSecListID, numEgressRules, tcpNodePortOld, tcpNodePort)
-				sharedfw.WaitForSinglePortIngressRulesAfterPortChangeOrFail(f.Client, f.K8SSecListID, numIngressRules, tcpNodePortOld, tcpNodePort)
+					// Check the correct number of rules are present.
+					sharedfw.WaitForSinglePortEgressRulesAfterPortChangeOrFail(f.Client, f.CCMSecListID, numEgressRules, tcpNodePortOld, tcpNodePort)
+					sharedfw.WaitForSinglePortIngressRulesAfterPortChangeOrFail(f.Client, f.K8SSecListID, numIngressRules, tcpNodePortOld, tcpNodePort)
 
-				sharedfw.Logf("TCP node port: %d", tcpNodePort)
+					sharedfw.Logf("TCP node port: %d", tcpNodePort)
 
-				if f.NodePortTest {
-					By("hitting the TCP service's new NodePort")
-					jig.TestReachableHTTP(false, nodeIP, tcpNodePort, sharedfw.KubeProxyLagTimeout)
+					if f.NodePortTest {
+						By("hitting the TCP service's new NodePort")
+						jig.TestReachableHTTP(false, nodeIP, tcpNodePort, sharedfw.KubeProxyLagTimeout)
 
-					By("checking the old TCP NodePort is closed")
-					jig.TestNotReachableHTTP(nodeIP, tcpNodePortOld, sharedfw.KubeProxyLagTimeout)
-				}
+						By("checking the old TCP NodePort is closed")
+						jig.TestNotReachableHTTP(nodeIP, tcpNodePortOld, sharedfw.KubeProxyLagTimeout)
+					}
 
-				By("hitting the TCP service's LoadBalancer")
-				jig.TestReachableHTTP(false, tcpIngressIP, svcPort, loadBalancerLagTimeout)
+					By("hitting the TCP service's LoadBalancer")
+					jig.TestReachableHTTP(false, tcpIngressIP, svcPort, loadBalancerLagTimeout)
 
-				// Change the services' main ports.
+					// Change the services' main ports.
 
-				By("changing the TCP service's port")
-				tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
-					s.Spec.Ports[0].Port++
-				})
-				jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
-				svcPortOld := svcPort
-				svcPort = int(tcpService.Spec.Ports[0].Port)
-				if svcPort == svcPortOld {
-					sharedfw.Failf("TCP Spec.Ports[0].Port (%d) did not change", svcPort)
-				}
-				if int(tcpService.Spec.Ports[0].NodePort) != tcpNodePort {
-					sharedfw.Failf("TCP Spec.Ports[0].NodePort (%d) changed", tcpService.Spec.Ports[0].NodePort)
-				}
-				if sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]) != tcpIngressIP {
-					sharedfw.Failf("TCP Status.LoadBalancer.Ingress changed (%s -> %s) when not expected", tcpIngressIP, sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]))
-				}
+					By("changing the TCP service's port")
+					tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+						s.Spec.Ports[0].Port++
+					})
+					jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+					svcPortOld := svcPort
+					svcPort = int(tcpService.Spec.Ports[0].Port)
+					if svcPort == svcPortOld {
+						sharedfw.Failf("TCP Spec.Ports[0].Port (%d) did not change", svcPort)
+					}
+					if int(tcpService.Spec.Ports[0].NodePort) != tcpNodePort {
+						sharedfw.Failf("TCP Spec.Ports[0].NodePort (%d) changed", tcpService.Spec.Ports[0].NodePort)
+					}
+					if sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]) != tcpIngressIP {
+						sharedfw.Failf("TCP Status.LoadBalancer.Ingress changed (%s -> %s) when not expected", tcpIngressIP, sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]))
+					}
 
-				sharedfw.Logf("service port (TCP): %d", svcPort)
-				if f.NodePortTest {
-					By("hitting the TCP service's NodePort")
-					jig.TestReachableHTTP(false, nodeIP, tcpNodePort, sharedfw.KubeProxyLagTimeout)
-				}
+					sharedfw.Logf("service port (TCP): %d", svcPort)
+					if f.NodePortTest {
+						By("hitting the TCP service's NodePort")
+						jig.TestReachableHTTP(false, nodeIP, tcpNodePort, sharedfw.KubeProxyLagTimeout)
+					}
 
-				By("hitting the TCP service's LoadBalancer")
-				jig.TestReachableHTTP(false, tcpIngressIP, svcPort, loadBalancerCreateTimeout) // this may actually recreate the LB
+					By("hitting the TCP service's LoadBalancer")
+					jig.TestReachableHTTP(false, tcpIngressIP, svcPort, loadBalancerCreateTimeout) // this may actually recreate the LB
 
-				// Change the services back to ClusterIP.
+					// Change the services back to ClusterIP.
 
-				By("changing TCP service back to type=ClusterIP")
-				tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
-					s.Spec.Type = v1.ServiceTypeClusterIP
-					s.Spec.Ports[0].NodePort = 0
-				})
-				// Wait for the load balancer to be destroyed asynchronously
-				tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
-				jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
+					By("changing TCP service back to type=ClusterIP")
+					tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+						s.Spec.Type = v1.ServiceTypeClusterIP
+						s.Spec.Ports[0].NodePort = 0
+					})
+					// Wait for the load balancer to be destroyed asynchronously
+					tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
+					jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
 
-				if f.NodePortTest {
-					By("checking the TCP NodePort is closed")
-					jig.TestNotReachableHTTP(nodeIP, tcpNodePort, sharedfw.KubeProxyLagTimeout)
-				}
+					if f.NodePortTest {
+						By("checking the TCP NodePort is closed")
+						jig.TestNotReachableHTTP(nodeIP, tcpNodePort, sharedfw.KubeProxyLagTimeout)
+					}
 
-				By("checking the TCP LoadBalancer is closed")
-				jig.TestNotReachableHTTP(tcpIngressIP, svcPort, loadBalancerLagTimeout)
+					By("checking the TCP LoadBalancer is closed")
+					jig.TestNotReachableHTTP(tcpIngressIP, svcPort, loadBalancerLagTimeout)
+				}()
 			}
 		})
 	})
@@ -2058,7 +2052,7 @@ var _ = Describe("LB Properties", func() {
 		})
 
 		reservedIpTestArray := []struct {
-			lbtype              string
+			lbType              string
 			CreationAnnotations map[string]string
 		}{
 			{
@@ -2067,6 +2061,1458 @@ var _ = Describe("LB Properties", func() {
 					cloudprovider.ServiceAnnotationLoadBalancerShape:        "flexible",
 					cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMin: "10",
 					cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMax: "10",
+				},
+			},
+			{
+				"nlb",
+				map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerType: "nlb",
+				},
+			},
+			{
+				"lb-wris",
+				map[string]string{
+					cloudprovider.ServiceAnnotationServiceAccountName:       "sa",
+					cloudprovider.ServiceAnnotationLoadBalancerShape:        "flexible",
+					cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMin: "10",
+					cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMax: "10",
+				},
+			},
+			{
+				"nlb-wris",
+				map[string]string{
+					cloudprovider.ServiceAnnotationServiceAccountName: "sa",
+					cloudprovider.ServiceAnnotationLoadBalancerType:   "nlb",
+				},
+			},
+		}
+
+		// Test Reserved IP feature
+		It("should be possible to create Service type:LoadbBalancer with public reservedIP", func() {
+			for _, test := range reservedIpTestArray {
+				if strings.HasSuffix(test.lbType, "-wris") && f.ClusterType != containerengine.ClusterTypeEnhancedCluster {
+					if sharedfw.CompareVersions(setupF.OkeClusterK8sVersion, "v1.28") < 0 {
+						sharedfw.Logf("Cluster K8s  "+setupF.OkeClusterK8sVersion+" is less than v1.28, skipping test for LB Type (%s)", test.lbType)
+						continue
+					}
+					sharedfw.Logf("Skipping Workload Identity Principal test for LB Type (%s) because the cluster is not an OKE ENHANCED_CLUSTER", test.lbType)
+					continue
+				}
+				func() {
+					By("Running test for: " + test.lbType)
+					serviceName := "e2e-" + test.lbType + "-reserved-ip"
+					ns := f.Namespace.Name
+
+					jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
+
+					loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
+					if nodes := sharedfw.GetReadySchedulableNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
+						loadBalancerCreateTimeout = sharedfw.LoadBalancerCreateTimeoutLarge
+					}
+
+					var serviceAccount *v1.ServiceAccount
+					if sa, exists := test.CreationAnnotations[cloudprovider.ServiceAnnotationServiceAccountName]; exists {
+						// Create a service account in the same namespace as the service
+						By("creating service account \"sa\" in namespace " + ns)
+						serviceAccount = jig.CreateServiceAccountOrFail(ns, sa, nil)
+					}
+
+					reservedIP := setupF.ReservedIP
+					sharedfw.Logf(reservedIP)
+					tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
+						s.Spec.Type = v1.ServiceTypeLoadBalancer
+						s.Spec.LoadBalancerIP = reservedIP
+						s.Spec.Ports = []v1.ServicePort{{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
+							{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
+						s.ObjectMeta.Annotations = test.CreationAnnotations
+					})
+
+					if _, exists := test.CreationAnnotations[cloudprovider.ServiceAnnotationServiceAccountName]; exists {
+						By("setting service account \"sa\" owner reference as the TCP service " + serviceName)
+						// Set SA owner reference as the service to prevent deletion of service account before the service
+						jig.SetServiceOwnerReferenceOnServiceAccountOrFail(ns, serviceAccount, tcpService)
+						defer func() {
+							dp := metav1.DeletePropagationForeground
+							jig.Client.CoreV1().Services(f.Namespace.Name).Delete(context.Background(), tcpService.Name, metav1.DeleteOptions{
+								PropagationPolicy: &dp,
+							})
+							time.Sleep(time.Second)
+						}()
+					}
+					svcPort := int(tcpService.Spec.Ports[0].Port)
+
+					By("creating a pod to be part of the TCP service " + serviceName)
+					jig.RunOrFail(ns, nil)
+
+					By("waiting for the TCP service to have a load balancer")
+					// Wait for the load balancer to be created asynchronously
+					tcpService = jig.WaitForLoadBalancerOrFail(ns, tcpService.Name, loadBalancerCreateTimeout)
+					jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
+					tcpIngressIP := sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0])
+					sharedfw.Logf("TCP load balancer: %s", tcpIngressIP)
+
+					By("waiting upto 5m0s to verify initial LB config")
+					lbName := cloudprovider.GetLoadBalancerName(tcpService)
+					sharedfw.Logf("LB Name is %s", lbName)
+					ctx := context.TODO()
+					compartmentId := ""
+					if setupF.Compartment1 != "" {
+						compartmentId = setupF.Compartment1
+					} else if f.CloudProviderConfig.CompartmentID != "" {
+						compartmentId = f.CloudProviderConfig.CompartmentID
+					} else if f.CloudProviderConfig.Auth.CompartmentID != "" {
+						compartmentId = f.CloudProviderConfig.Auth.CompartmentID
+					} else {
+						sharedfw.Failf("Compartment Id undefined.")
+					}
+
+					lbType := strings.TrimSuffix(test.lbType, "-wris")
+					loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), lbType, "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
+					sharedfw.ExpectNoError(err)
+					By("waiting upto 5m0s to verify whether LB has been created with public reservedIP")
+
+					reservedIPOCID, err := f.Client.Networking(nil).GetPublicIpByIpAddress(ctx, reservedIP)
+					sharedfw.Logf("Loadbalancer reserved IP OCID is: %s  Expected reserved IP OCID: %s", *loadBalancer.IpAddresses[0].ReservedIp.Id, *reservedIPOCID.Id)
+					Expect(strings.Compare(*loadBalancer.IpAddresses[0].ReservedIp.Id, *reservedIPOCID.Id) == 0).To(BeTrue())
+
+					By("changing TCP service to type=ClusterIP")
+					tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+						s.Spec.Type = v1.ServiceTypeClusterIP
+						s.Spec.Ports[0].NodePort = 0
+						s.Spec.Ports[1].NodePort = 0
+					})
+					// Wait for the load balancer to be destroyed asynchronously
+					tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
+					jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
+				}()
+			}
+		})
+		proxyProtocolTestArray := []struct {
+			lbType              string
+			CreationAnnotations map[string]string
+			UpdatedAnnotations  map[string]string
+			RemovedAnnotations  map[string]string
+			CreateInterval      int
+			UpdateInterval      int
+		}{
+			{
+				"lb",
+				map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerInternal:                       "true",
+					cloudprovider.ServiceAnnotationLoadBalancerConnectionProxyProtocolVersion: "2",
+				},
+				map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerInternal:                       "true",
+					cloudprovider.ServiceAnnotationLoadBalancerConnectionProxyProtocolVersion: "1",
+				},
+				map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerInternal: "true",
+				},
+				10000,
+				15000,
+			},
+			{
+				"nlb",
+				map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerType:                 "nlb",
+					cloudprovider.ServiceAnnotationNetworkLoadBalancerInternal:      "true",
+					cloudprovider.ServiceAnnotationNetworkLoadBalancerIsPpv2Enabled: "true",
+				},
+				map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerType:                 "nlb",
+					cloudprovider.ServiceAnnotationNetworkLoadBalancerInternal:      "true",
+					cloudprovider.ServiceAnnotationNetworkLoadBalancerIsPpv2Enabled: "false",
+				},
+				map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerType:            "nlb",
+					cloudprovider.ServiceAnnotationNetworkLoadBalancerInternal: "true",
+				},
+				10000,
+				15000,
+			},
+		}
+		It("should be possible to create Service type:LoadBalancer and mutate the Proxy Protocol Version on its Listeners", func() {
+			for _, test := range proxyProtocolTestArray {
+				By("Running test for: " + test.lbType)
+				serviceName := "e2e-" + test.lbType + "-proxy-protocol-v2"
+				ns := f.Namespace.Name
+
+				jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
+
+				loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
+				if nodes := sharedfw.GetReadySchedulableNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
+					loadBalancerCreateTimeout = sharedfw.LoadBalancerCreateTimeoutLarge
+				}
+
+				requestedIP := ""
+
+				tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
+					s.Spec.Type = v1.ServiceTypeLoadBalancer
+					s.Spec.LoadBalancerIP = requestedIP
+					s.Spec.Ports = []v1.ServicePort{{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
+						{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
+					s.ObjectMeta.Annotations = test.CreationAnnotations
+				})
+
+				svcPort := int(tcpService.Spec.Ports[0].Port)
+
+				By("creating a pod to be part of the TCP service " + serviceName)
+				jig.RunOrFail(ns, nil)
+
+				By("waiting for the TCP service to have a load balancer")
+				// Wait for the load balancer to be created asynchronously
+				tcpService = jig.WaitForLoadBalancerOrFail(ns, tcpService.Name, loadBalancerCreateTimeout)
+				jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
+				tcpIngressIP := sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0])
+				sharedfw.Logf("TCP load balancer: %s", tcpIngressIP)
+
+				By("waiting upto 5m0s to verify proxy protocol version 2 is set on the listeners")
+				lbName := cloudprovider.GetLoadBalancerName(tcpService)
+				sharedfw.Logf("LB Name is %s", lbName)
+				ctx := context.TODO()
+				compartmentId := ""
+				if setupF.Compartment1 != "" {
+					compartmentId = setupF.Compartment1
+				} else if f.CloudProviderConfig.CompartmentID != "" {
+					compartmentId = f.CloudProviderConfig.CompartmentID
+				} else if f.CloudProviderConfig.Auth.CompartmentID != "" {
+					compartmentId = f.CloudProviderConfig.Auth.CompartmentID
+				} else {
+					sharedfw.Failf("Compartment Id undefined.")
+				}
+				loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), test.lbType, "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
+				sharedfw.ExpectNoError(err)
+				err = f.VerifyProxyProtocolV2(*loadBalancer.Id, test.lbType, true)
+				sharedfw.ExpectNoError(err)
+
+				By("changing all listeners' proxy protocol version")
+				tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+					s.ObjectMeta.Annotations = test.UpdatedAnnotations
+				})
+
+				By("waiting upto 5m0s to verify all listener proxy protocol version after modification to initial")
+				err = f.VerifyProxyProtocolV2(*loadBalancer.Id, test.lbType, false)
+				sharedfw.ExpectNoError(err)
+
+				By("changing all listeners' proxy protocol version - remove annotations")
+				tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+					s.ObjectMeta.Annotations = test.RemovedAnnotations
+				})
+
+				By("waiting upto 5m0s to verify all listener proxy protocol version remains as is after removing annotations")
+				err = f.VerifyProxyProtocolV2(*loadBalancer.Id, test.lbType, false)
+				sharedfw.ExpectNoError(err)
+
+				By("changing TCP service to type=ClusterIP")
+				tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+					s.Spec.Type = v1.ServiceTypeClusterIP
+					s.Spec.Ports[0].NodePort = 0
+					s.Spec.Ports[1].NodePort = 0
+				})
+
+				// Wait for the load balancer to be destroyed asynchronously
+				tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
+				jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
+			}
+		})
+	})
+})
+
+var _ = Describe("SKE - Service [Slow]", func() {
+
+	baseName := "service"
+	f := sharedfw.NewDefaultFramework(baseName)
+	// TODO: lalitsin - Remove this when these E2Es are capable of running an a mixed cluster - via different node lables for physical and virtual nodes
+	BeforeEach(func() {
+		nodes := sharedfw.GetReadySchedulableManagedNodesOrDie(f.ClientSet)
+		if len(nodes.Items) != 0 {
+			Skip("Skipping ske test since schedule nodes exist in the cluster.")
+		}
+	})
+
+	basicTestArray := []struct {
+		lbType              string
+		CreationAnnotations map[string]string
+	}{
+		{
+			"lb",
+			map[string]string{},
+		},
+		{
+			"nlb",
+			map[string]string{
+				cloudprovider.ServiceAnnotationLoadBalancerType:                              "nlb",
+				cloudprovider.ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode: "All",
+			},
+		},
+	}
+	Context("[cloudprovider-ske][ccm][lb]", func() {
+		It("should be possible to create and mutate a Service type:LoadBalancer in an SKE cluster (change nodeport) [Canary]", func() {
+			for _, test := range basicTestArray {
+				By("Running test for: " + test.lbType)
+				serviceName := "basic-" + test.lbType + "-test"
+				ns := f.Namespace.Name
+
+				jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
+
+				loadBalancerLagTimeout := sharedfw.LoadBalancerLagTimeoutDefault
+				loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
+				if nodes := sharedfw.GetReadySchedulableVirtualNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
+					loadBalancerCreateTimeout = sharedfw.LoadBalancerCreateTimeoutLarge
+				}
+
+				tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
+					s.Spec.Type = v1.ServiceTypeLoadBalancer
+					s.ObjectMeta.Annotations = test.CreationAnnotations
+				})
+
+				svcPort := int(tcpService.Spec.Ports[0].Port)
+
+				By("creating a pod to be part of the TCP service " + serviceName)
+				jig.RunOrFail(ns, nil)
+
+				By("waiting for the TCP service to have a load balancer")
+				// Wait for the load balancer to be created asynchronously
+				tcpService = jig.WaitForLoadBalancerOrFail(ns, tcpService.Name, loadBalancerCreateTimeout)
+				jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
+				tcpNodePort := int(tcpService.Spec.Ports[0].NodePort)
+				sharedfw.Logf("TCP node port: %d", tcpNodePort)
+
+				tcpIngressIP := sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0])
+				sharedfw.Logf("TCP load balancer: %s", tcpIngressIP)
+
+				By("hitting the TCP service's LoadBalancer")
+				jig.TestReachableHTTP(false, tcpIngressIP, svcPort, loadBalancerLagTimeout)
+
+				// Change the services' node ports.
+
+				By("changing the TCP service's NodePort")
+				// Count the number of ingress/egress rules with the original port so
+				// we can check the correct number are updated.
+				numEgressRules, numIngressRules := sharedfw.CountSinglePortSecListRules(f.Client, f.CCMSecListID, f.K8SSecListID, tcpNodePort)
+				tcpService = jig.ChangeServiceNodePortOrFail(ns, tcpService.Name, tcpNodePort)
+				jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
+				tcpNodePortOld := tcpNodePort
+				tcpNodePort = int(tcpService.Spec.Ports[0].NodePort)
+				if tcpNodePort == tcpNodePortOld {
+					sharedfw.Failf("TCP Spec.Ports[0].NodePort (%d) did not change", tcpNodePort)
+				}
+				if sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]) != tcpIngressIP {
+					sharedfw.Failf("TCP Status.LoadBalancer.Ingress changed (%s -> %s) when not expected", tcpIngressIP, sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]))
+				}
+
+				// Check the correct number of rules are present.
+				sharedfw.WaitForSinglePortEgressRulesAfterPortChangeOrFail(f.Client, f.CCMSecListID, numEgressRules, tcpNodePortOld, tcpNodePort)
+				sharedfw.WaitForSinglePortIngressRulesAfterPortChangeOrFail(f.Client, f.K8SSecListID, numIngressRules, tcpNodePortOld, tcpNodePort)
+
+				By("hitting the TCP service's LoadBalancer")
+				jig.TestReachableHTTP(false, tcpIngressIP, svcPort, loadBalancerLagTimeout)
+
+				// Change the services' main ports.
+
+				By("changing the TCP service's port")
+				tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+					s.Spec.Ports[0].Port++
+				})
+				jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+				svcPortOld := svcPort
+				svcPort = int(tcpService.Spec.Ports[0].Port)
+				if svcPort == svcPortOld {
+					sharedfw.Failf("TCP Spec.Ports[0].Port (%d) did not change", svcPort)
+				}
+				if int(tcpService.Spec.Ports[0].NodePort) != tcpNodePort {
+					sharedfw.Failf("TCP Spec.Ports[0].NodePort (%d) changed", tcpService.Spec.Ports[0].NodePort)
+				}
+				if sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]) != tcpIngressIP {
+					sharedfw.Failf("TCP Status.LoadBalancer.Ingress changed (%s -> %s) when not expected", tcpIngressIP, sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]))
+				}
+
+				sharedfw.Logf("service port (TCP): %d", svcPort)
+				By("hitting the TCP service's LoadBalancer")
+				jig.TestReachableHTTP(false, tcpIngressIP, svcPort, loadBalancerCreateTimeout) // this may actually recreate the LB
+
+				// Change the services back to ClusterIP.
+
+				By("changing TCP service back to type=ClusterIP")
+				tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+					s.Spec.Type = v1.ServiceTypeClusterIP
+					s.Spec.Ports[0].NodePort = 0
+				})
+				// Wait for the load balancer to be destroyed asynchronously
+				tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
+				jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
+			}
+		})
+	})
+})
+
+var _ = Describe("SKE - scale virtual pods", func() {
+	baseName := "service"
+	f := sharedfw.NewDefaultFramework(baseName)
+	BeforeEach(func() {
+		nodes := sharedfw.GetReadySchedulableManagedNodesOrDie(f.ClientSet)
+		if len(nodes.Items) != 0 {
+			Skip("Skipping ske test since schedule nodes exist in the cluster.")
+		}
+	})
+
+	basicTestArray := []struct {
+		lbType              string
+		creationAnnotations map[string]string
+	}{
+		{
+			"lb",
+			map[string]string{},
+		},
+		{
+			"nlb",
+			map[string]string{
+				cloudprovider.ServiceAnnotationLoadBalancerType:                              "nlb",
+				cloudprovider.ServiceAnnotationNetworkLoadBalancerSecurityListManagementMode: "All",
+			},
+		},
+	}
+	Context("[cloudprovider-ske][ccm][lb]", func() {
+		It("should create and delete lb backends as virtual pods are scaled in an SKE cluster", func() {
+			for _, test := range basicTestArray {
+				By("Running test for: " + test.lbType)
+				serviceName := "scale-" + test.lbType + "-test"
+				ns := f.Namespace.Name
+
+				jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
+
+				loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
+				if nodes := sharedfw.GetReadySchedulableVirtualNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
+					loadBalancerCreateTimeout = sharedfw.LoadBalancerCreateTimeoutLarge
+				}
+
+				tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
+					s.Spec.Type = v1.ServiceTypeLoadBalancer
+					s.ObjectMeta.Annotations = test.creationAnnotations
+					s.ObjectMeta.Annotations[cloudprovider.ServiceAnnotationLoadBalancerInternal] = "true"
+				})
+
+				By("creating a virtual pod to be part of the TCP service " + serviceName)
+				rc := jig.RunOrFail(ns, nil)
+
+				virtualPodCount := *rc.Spec.Replicas
+				sharedfw.Logf("Number of virtual pods in the service: %d", virtualPodCount)
+
+				By("waiting for the TCP service to have a load balancer")
+				// Wait for the load balancer to be created asynchronously
+				tcpService = jig.WaitForLoadBalancerOrFail(ns, tcpService.Name, loadBalancerCreateTimeout)
+				jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
+				tcpIngressIP := sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0])
+				sharedfw.Logf("TCP load balancer: %s", tcpIngressIP)
+
+				lbName := cloudprovider.GetLoadBalancerName(tcpService)
+				sharedfw.Logf("LB Name is %s", lbName)
+				ctx := context.TODO()
+				compartmentId := ""
+				if setupF.Compartment1 != "" {
+					compartmentId = setupF.Compartment1
+				} else if f.CloudProviderConfig.CompartmentID != "" {
+					compartmentId = f.CloudProviderConfig.CompartmentID
+				} else if f.CloudProviderConfig.Auth.CompartmentID != "" {
+					compartmentId = f.CloudProviderConfig.Auth.CompartmentID
+				} else {
+					sharedfw.Failf("Compartment Id undefined.")
+				}
+
+				loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), test.lbType, "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
+				sharedfw.ExpectNoError(err)
+
+				By("waiting for the LB backends to match virtual pods")
+				err = f.VerifyLoadBalancerBackendSetsWithVirtualPods(tcpService, ns, *loadBalancer.Id, test.lbType)
+				sharedfw.ExpectNoError(err)
+
+				By("scaling up virtual pods")
+				sharedfw.Logf("Scaling virtual pods from %d to %d", virtualPodCount, virtualPodCount+2)
+				virtualPodCount += 2
+				jig.UpdateReplicationControllerOrFail(ns, rc.Name, func(rc *v1.ReplicationController) {
+					rc.Spec.Replicas = &virtualPodCount
+				})
+				By("waiting for the LB backends to match virtual pods")
+				err = f.VerifyLoadBalancerBackendSetsWithVirtualPods(tcpService, ns, *loadBalancer.Id, test.lbType)
+				sharedfw.ExpectNoError(err)
+
+				By("scaling down virtual pods")
+				sharedfw.Logf("Scaling virtual pods from %d to %d", virtualPodCount, virtualPodCount-1)
+				virtualPodCount -= 1
+				jig.UpdateReplicationControllerOrFail(ns, rc.Name, func(rc *v1.ReplicationController) {
+					rc.Spec.Replicas = &virtualPodCount
+				})
+
+				By("waiting for the LB backends to match virtual pods")
+				err = f.VerifyLoadBalancerBackendSetsWithVirtualPods(tcpService, ns, *loadBalancer.Id, test.lbType)
+				sharedfw.ExpectNoError(err)
+
+				By("changing TCP service back to type=ClusterIP")
+				tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+					s.Spec.Type = v1.ServiceTypeClusterIP
+					s.Spec.Ports[0].NodePort = 0
+				})
+				// Wait for the load balancer to be destroyed asynchronously
+				tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, int(tcpService.Spec.Ports[0].Port), loadBalancerCreateTimeout)
+				jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
+			}
+		})
+	})
+})
+
+var _ = Describe("SKE - End to end TLS", func() {
+	baseName := "endtoendtls-service"
+	f := sharedfw.NewDefaultFramework(baseName)
+	BeforeEach(func() {
+		nodes := sharedfw.GetReadySchedulableManagedNodesOrDie(f.ClientSet)
+		if len(nodes.Items) != 0 {
+			Skip("Skipping ske test since schedule nodes exist in the cluster.")
+		}
+	})
+	Context("[cloudprovider-ske][ccm][lb]", func() {
+		It("should be possible to create and mutate a Service type:LoadBalancer in an SKE cluster [Canary]", func() {
+			serviceName := "e2e-tls-lb-test"
+			ns := f.Namespace.Name
+
+			jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
+
+			sslSecretName := "ssl-certificate-secret"
+			_, err := f.ClientSet.CoreV1().Secrets(ns).Create(context.Background(), &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: ns,
+					Name:      sslSecretName,
+				},
+				Data: map[string][]byte{
+					cloudprovider.SSLCAFileName:          []byte(sharedfw.SSLCAData),
+					cloudprovider.SSLCertificateFileName: []byte(sharedfw.SSLCertificateData),
+					cloudprovider.SSLPrivateKeyFileName:  []byte(sharedfw.SSLPrivateData),
+					cloudprovider.SSLPassphrase:          []byte(sharedfw.SSLPassphrase),
+				},
+			}, metav1.CreateOptions{})
+			sharedfw.ExpectNoError(err)
+			loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
+			if nodes := sharedfw.GetReadySchedulableVirtualNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
+				loadBalancerCreateTimeout = sharedfw.LoadBalancerCreateTimeoutLarge
+			}
+
+			tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
+				s.Spec.Type = v1.ServiceTypeLoadBalancer
+				s.Spec.Ports = []v1.ServicePort{
+					{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
+					{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)},
+				}
+				s.ObjectMeta.Annotations = map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerSSLPorts:            "443",
+					cloudprovider.ServiceAnnotationLoadBalancerTLSSecret:           sslSecretName,
+					cloudprovider.ServiceAnnotationLoadBalancerTLSBackendSetSecret: sslSecretName,
+					cloudprovider.ServiceAnnotationLoadBalancerInternal:            "true",
+				}
+			})
+
+			svcPort := int(tcpService.Spec.Ports[0].Port)
+
+			By("creating a pod to be part of the TCP service " + serviceName)
+			jig.RunOrFail(ns, nil)
+
+			By("waiting for the TCP service to have a load balancer")
+			// Wait for the load balancer to be created asynchronously
+			tcpService = jig.WaitForLoadBalancerOrFail(ns, tcpService.Name, loadBalancerCreateTimeout)
+			jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
+			tcpIngressIP := sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0])
+			sharedfw.Logf("TCP load balancer: %s", tcpIngressIP)
+
+			By("changing TCP service back to type=ClusterIP")
+			tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+				s.Spec.Type = v1.ServiceTypeClusterIP
+				s.Spec.Ports[0].NodePort = 0
+				s.Spec.Ports[1].NodePort = 0
+			})
+
+			// Wait for the load balancer to be destroyed asynchronously
+			tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
+			jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
+
+			err = f.ClientSet.CoreV1().Secrets(ns).Delete(context.Background(), sslSecretName, metav1.DeleteOptions{})
+			sharedfw.ExpectNoError(err)
+		})
+	})
+})
+
+var _ = Describe("SKE - BackendSet only enabled TLS", func() {
+
+	baseName := "backendset-service"
+	f := sharedfw.NewDefaultFramework(baseName)
+	BeforeEach(func() {
+		nodes := sharedfw.GetReadySchedulableManagedNodesOrDie(f.ClientSet)
+		if len(nodes.Items) != 0 {
+			Skip("Skipping ske test since schedule nodes exist in the cluster.")
+		}
+	})
+
+	Context("[cloudprovider-ske][ccm][lb]", func() {
+		It("should be possible to create and mutate a Service type:LoadBalancer in an SKE cluster [Canary]", func() {
+			serviceName := "backendset-tls-lb-test"
+			ns := f.Namespace.Name
+
+			jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
+
+			sslSecretName := "ssl-certificate-secret"
+			_, err := f.ClientSet.CoreV1().Secrets(ns).Create(context.Background(), &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: ns,
+					Name:      sslSecretName,
+				},
+				Data: map[string][]byte{
+					cloudprovider.SSLCAFileName:          []byte(sharedfw.SSLCAData),
+					cloudprovider.SSLCertificateFileName: []byte(sharedfw.SSLCertificateData),
+					cloudprovider.SSLPrivateKeyFileName:  []byte(sharedfw.SSLPrivateData),
+					cloudprovider.SSLPassphrase:          []byte(sharedfw.SSLPassphrase),
+				},
+			}, metav1.CreateOptions{})
+			sharedfw.ExpectNoError(err)
+			loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
+			if nodes := sharedfw.GetReadySchedulableVirtualNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
+				loadBalancerCreateTimeout = sharedfw.LoadBalancerCreateTimeoutLarge
+			}
+
+			tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
+				s.Spec.Type = v1.ServiceTypeLoadBalancer
+				s.Spec.Ports = []v1.ServicePort{
+					{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
+					{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)},
+				}
+				s.ObjectMeta.Annotations = map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerSSLPorts:            "443",
+					cloudprovider.ServiceAnnotationLoadBalancerTLSBackendSetSecret: sslSecretName,
+					cloudprovider.ServiceAnnotationLoadBalancerInternal:            "true",
+				}
+			})
+
+			svcPort := int(tcpService.Spec.Ports[0].Port)
+
+			By("creating a pod to be part of the TCP service " + serviceName)
+			jig.RunOrFail(ns, nil)
+
+			By("waiting for the TCP service to have a load balancer")
+			// Wait for the load balancer to be created asynchronously
+			tcpService = jig.WaitForLoadBalancerOrFail(ns, tcpService.Name, loadBalancerCreateTimeout)
+			jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
+			tcpIngressIP := sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0])
+			sharedfw.Logf("TCP load balancer: %s", tcpIngressIP)
+
+			By("changing TCP service back to type=ClusterIP")
+			tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+				s.Spec.Type = v1.ServiceTypeClusterIP
+				s.Spec.Ports[0].NodePort = 0
+				s.Spec.Ports[1].NodePort = 0
+			})
+
+			// Wait for the load balancer to be destroyed asynchronously
+			tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
+			jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
+
+			err = f.ClientSet.CoreV1().Secrets(ns).Delete(context.Background(), sslSecretName, metav1.DeleteOptions{})
+			sharedfw.ExpectNoError(err)
+		})
+	})
+})
+
+var _ = Describe("SKE - Listener only enabled TLS", func() {
+
+	baseName := "listener-service"
+	f := sharedfw.NewDefaultFramework(baseName)
+	BeforeEach(func() {
+		nodes := sharedfw.GetReadySchedulableManagedNodesOrDie(f.ClientSet)
+		if len(nodes.Items) != 0 {
+			Skip("Skipping ske test since schedule nodes exist in the cluster.")
+		}
+	})
+
+	Context("[cloudprovider-ske][ccm][lb]", func() {
+		It("should be possible to create and mutate a Service type:LoadBalancer in an SKE cluster [Canary]", func() {
+			serviceName := "listener-tls-lb-test"
+			ns := f.Namespace.Name
+
+			jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
+
+			sslSecretName := "ssl-certificate-secret"
+			_, err := f.ClientSet.CoreV1().Secrets(ns).Create(context.Background(), &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: ns,
+					Name:      sslSecretName,
+				},
+				Data: map[string][]byte{
+					cloudprovider.SSLCAFileName:          []byte(sharedfw.SSLCAData),
+					cloudprovider.SSLCertificateFileName: []byte(sharedfw.SSLCertificateData),
+					cloudprovider.SSLPrivateKeyFileName:  []byte(sharedfw.SSLPrivateData),
+					cloudprovider.SSLPassphrase:          []byte(sharedfw.SSLPassphrase),
+				},
+			}, metav1.CreateOptions{})
+			sharedfw.ExpectNoError(err)
+			loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
+			if nodes := sharedfw.GetReadySchedulableVirtualNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
+				loadBalancerCreateTimeout = sharedfw.LoadBalancerCreateTimeoutLarge
+			}
+
+			tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
+				s.Spec.Type = v1.ServiceTypeLoadBalancer
+				s.Spec.Ports = []v1.ServicePort{
+					{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
+					{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)},
+				}
+				s.ObjectMeta.Annotations = map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerSSLPorts:  "443",
+					cloudprovider.ServiceAnnotationLoadBalancerTLSSecret: sslSecretName,
+					cloudprovider.ServiceAnnotationLoadBalancerInternal:  "true",
+				}
+
+			})
+
+			svcPort := int(tcpService.Spec.Ports[0].Port)
+
+			By("creating a pod to be part of the TCP service " + serviceName)
+			jig.RunOrFail(ns, nil)
+
+			By("waiting for the TCP service to have a load balancer")
+			// Wait for the load balancer to be created asynchronously
+			tcpService = jig.WaitForLoadBalancerOrFail(ns, tcpService.Name, loadBalancerCreateTimeout)
+			jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
+			tcpIngressIP := sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0])
+			sharedfw.Logf("TCP load balancer: %s", tcpIngressIP)
+
+			By("changing TCP service back to type=ClusterIP")
+			tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+				s.Spec.Type = v1.ServiceTypeClusterIP
+				s.Spec.Ports[0].NodePort = 0
+				s.Spec.Ports[1].NodePort = 0
+			})
+
+			// Wait for the load balancer to be destroyed asynchronously
+			tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
+			jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
+
+			err = f.ClientSet.CoreV1().Secrets(ns).Delete(context.Background(), sslSecretName, metav1.DeleteOptions{})
+			sharedfw.ExpectNoError(err)
+		})
+	})
+})
+
+var _ = Describe("SKE - End to end enabled TLS - different certificates", func() {
+	baseName := "e2e-diff-certs"
+	f := sharedfw.NewDefaultFramework(baseName)
+	BeforeEach(func() {
+		nodes := sharedfw.GetReadySchedulableManagedNodesOrDie(f.ClientSet)
+		if len(nodes.Items) != 0 {
+			Skip("Skipping ske test since schedule nodes exist in the cluster.")
+		}
+	})
+
+	Context("[cloudprovider-ske][ccm][lb]", func() {
+		It("should be possible to create and mutate a Service type:LoadBalancer in an SKE cluster [Canary]", func() {
+			serviceName := "e2e-diff-certs-service"
+			ns := f.Namespace.Name
+
+			jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
+
+			sslListenerSecretName := "ssl-certificate-secret-lis"
+			sslBackendSetSecretName := "ssl-certificate-secret-backendset"
+			_, err := f.ClientSet.CoreV1().Secrets(ns).Create(context.Background(), &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: ns,
+					Name:      sslListenerSecretName,
+				},
+				Data: map[string][]byte{
+					cloudprovider.SSLCAFileName:          []byte(sharedfw.SSLCAData),
+					cloudprovider.SSLCertificateFileName: []byte(sharedfw.SSLCertificateData),
+					cloudprovider.SSLPrivateKeyFileName:  []byte(sharedfw.SSLPrivateData),
+					cloudprovider.SSLPassphrase:          []byte(sharedfw.SSLPassphrase),
+				},
+			}, metav1.CreateOptions{})
+			sharedfw.ExpectNoError(err)
+			_, err = f.ClientSet.CoreV1().Secrets(ns).Create(context.Background(), &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: ns,
+					Name:      sslBackendSetSecretName,
+				},
+				Data: map[string][]byte{
+					cloudprovider.SSLCAFileName:          []byte(sharedfw.SSLCAData),
+					cloudprovider.SSLCertificateFileName: []byte(sharedfw.SSLCertificateData),
+					cloudprovider.SSLPrivateKeyFileName:  []byte(sharedfw.SSLPrivateData),
+					cloudprovider.SSLPassphrase:          []byte(sharedfw.SSLPassphrase),
+				},
+			}, metav1.CreateOptions{})
+			sharedfw.ExpectNoError(err)
+			loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
+			if nodes := sharedfw.GetReadySchedulableVirtualNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
+				loadBalancerCreateTimeout = sharedfw.LoadBalancerCreateTimeoutLarge
+			}
+
+			tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
+				s.Spec.Type = v1.ServiceTypeLoadBalancer
+				s.Spec.Ports = []v1.ServicePort{
+					{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
+					{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)},
+				}
+				s.ObjectMeta.Annotations = map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerSSLPorts:            "443",
+					cloudprovider.ServiceAnnotationLoadBalancerTLSSecret:           sslListenerSecretName,
+					cloudprovider.ServiceAnnotationLoadBalancerTLSBackendSetSecret: sslBackendSetSecretName,
+					cloudprovider.ServiceAnnotationLoadBalancerInternal:            "true",
+				}
+			})
+
+			svcPort := int(tcpService.Spec.Ports[0].Port)
+
+			By("creating a pod to be part of the TCP service " + serviceName)
+			jig.RunOrFail(ns, nil)
+
+			By("waiting for the TCP service to have a load balancer")
+			// Wait for the load balancer to be created asynchronously
+			tcpService = jig.WaitForLoadBalancerOrFail(ns, tcpService.Name, loadBalancerCreateTimeout)
+			jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
+			tcpIngressIP := sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0])
+			sharedfw.Logf("TCP load balancer: %s", tcpIngressIP)
+
+			By("changing TCP service back to type=ClusterIP")
+			tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+				s.Spec.Type = v1.ServiceTypeClusterIP
+				s.Spec.Ports[0].NodePort = 0
+				s.Spec.Ports[1].NodePort = 0
+			})
+
+			// Wait for the load balancer to be destroyed asynchronously
+			tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
+			jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
+
+			err = f.ClientSet.CoreV1().Secrets(ns).Delete(context.Background(), sslListenerSecretName, metav1.DeleteOptions{})
+			sharedfw.ExpectNoError(err)
+			err = f.ClientSet.CoreV1().Secrets(ns).Delete(context.Background(), sslBackendSetSecretName, metav1.DeleteOptions{})
+			sharedfw.ExpectNoError(err)
+		})
+	})
+})
+
+var _ = Describe("SKE - LB Properties", func() {
+	baseName := "lb-properties"
+	f := sharedfw.NewDefaultFramework(baseName)
+	BeforeEach(func() {
+		nodes := sharedfw.GetReadySchedulableManagedNodesOrDie(f.ClientSet)
+		if len(nodes.Items) != 0 {
+			Skip("Skipping ske test since scheduled nodes exist in the cluster.")
+		}
+	})
+
+	Context("[cloudprovider-ske][ccm][lb]", func() {
+
+		healthCheckTestArray := []struct {
+			lbType              string
+			CreationAnnotations map[string]string
+			UpdatedAnnotations  map[string]string
+			RemovedAnnotations  map[string]string
+			CreateInterval      int
+			UpdateInterval      int
+		}{
+			{
+				"lb",
+				map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerHealthCheckRetries:  "1",
+					cloudprovider.ServiceAnnotationLoadBalancerHealthCheckTimeout:  "1000",
+					cloudprovider.ServiceAnnotationLoadBalancerHealthCheckInterval: "4000",
+				},
+				map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerHealthCheckRetries:  "2",
+					cloudprovider.ServiceAnnotationLoadBalancerHealthCheckTimeout:  "2000",
+					cloudprovider.ServiceAnnotationLoadBalancerHealthCheckInterval: "6000",
+				},
+				map[string]string{},
+				4000,
+				6000,
+			},
+			{
+				"nlb",
+				map[string]string{
+					cloudprovider.ServiceAnnotationNetworkLoadBalancerHealthCheckRetries:  "1",
+					cloudprovider.ServiceAnnotationNetworkLoadBalancerHealthCheckTimeout:  "1000",
+					cloudprovider.ServiceAnnotationNetworkLoadBalancerHealthCheckInterval: "10000",
+					cloudprovider.ServiceAnnotationLoadBalancerType:                       "nlb",
+				},
+				map[string]string{
+					cloudprovider.ServiceAnnotationNetworkLoadBalancerHealthCheckRetries:  "2",
+					cloudprovider.ServiceAnnotationNetworkLoadBalancerHealthCheckTimeout:  "2000",
+					cloudprovider.ServiceAnnotationNetworkLoadBalancerHealthCheckInterval: "15000",
+					cloudprovider.ServiceAnnotationLoadBalancerType:                       "nlb",
+				},
+				map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerType: "nlb",
+				},
+				10000,
+				15000,
+			},
+		}
+		It("should be possible to create Service type:LoadBalancer and mutate health-check config in an SKE cluster", func() {
+			for _, test := range healthCheckTestArray {
+				By("Running test for: " + test.lbType)
+				serviceName := "e2e-" + test.lbType + "-healthcheck-config"
+				ns := f.Namespace.Name
+
+				jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
+
+				loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
+				if nodes := sharedfw.GetReadySchedulableVirtualNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
+					loadBalancerCreateTimeout = sharedfw.LoadBalancerCreateTimeoutLarge
+				}
+
+				tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
+					s.Spec.Type = v1.ServiceTypeLoadBalancer
+					s.Spec.Ports = []v1.ServicePort{{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
+						{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
+					s.ObjectMeta.Annotations = test.CreationAnnotations
+					s.ObjectMeta.Annotations[cloudprovider.ServiceAnnotationLoadBalancerInternal] = "true"
+				})
+
+				svcPort := int(tcpService.Spec.Ports[0].Port)
+
+				By("creating a pod to be part of the TCP service " + serviceName)
+				jig.RunOrFail(ns, nil)
+
+				By("waiting for the TCP service to have a load balancer")
+				// Wait for the load balancer to be created asynchronously
+				tcpService = jig.WaitForLoadBalancerOrFail(ns, tcpService.Name, loadBalancerCreateTimeout)
+				jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
+				tcpIngressIP := sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0])
+				sharedfw.Logf("TCP load balancer: %s", tcpIngressIP)
+
+				By("waiting upto 5m0s to verify initial health check config")
+				lbName := cloudprovider.GetLoadBalancerName(tcpService)
+				sharedfw.Logf("LB Name is %s", lbName)
+				ctx := context.TODO()
+				compartmentId := ""
+				if setupF.Compartment1 != "" {
+					compartmentId = setupF.Compartment1
+				} else if f.CloudProviderConfig.CompartmentID != "" {
+					compartmentId = f.CloudProviderConfig.CompartmentID
+				} else if f.CloudProviderConfig.Auth.CompartmentID != "" {
+					compartmentId = f.CloudProviderConfig.Auth.CompartmentID
+				} else {
+					sharedfw.Failf("Compartment Id undefined.")
+				}
+				loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), test.lbType, "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
+				sharedfw.ExpectNoError(err)
+				err = f.VerifyHealthCheckConfig(*loadBalancer.Id, 1, 1000, test.CreateInterval, test.lbType)
+				sharedfw.ExpectNoError(err)
+
+				By("changing TCP service health check config")
+				tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+					s.ObjectMeta.Annotations = test.UpdatedAnnotations
+				})
+
+				By("waiting upto 5m0s to verify health check config after modification to initial")
+				err = f.VerifyHealthCheckConfig(*loadBalancer.Id, 2, 2000, test.UpdateInterval, test.lbType)
+				sharedfw.ExpectNoError(err)
+
+				By("changing TCP service health check config - remove annotations")
+				tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+					s.ObjectMeta.Annotations = test.RemovedAnnotations
+				})
+
+				By("waiting upto 5m0s to verify health check config should fall back to default after removing annotations")
+				err = f.VerifyHealthCheckConfig(*loadBalancer.Id, 3, 3000, 10000, test.lbType)
+				sharedfw.ExpectNoError(err)
+
+				By("changing TCP service to type=ClusterIP")
+				tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+					s.Spec.Type = v1.ServiceTypeClusterIP
+					s.Spec.Ports[0].NodePort = 0
+					s.Spec.Ports[1].NodePort = 0
+				})
+
+				// Wait for the load balancer to be destroyed asynchronously
+				tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
+				jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
+			}
+		})
+
+		lbShapeTestArray := []struct {
+			testName     string
+			initialShape string
+			tests        []struct {
+				shape   string
+				flexMin string
+				flexMax string
+			}
+		}{
+			{
+				"Creating a fixed shape LB and convert it to a flexible LB shape",
+				"400Mbps",
+				[]struct {
+					shape   string
+					flexMin string
+					flexMax string
+				}{
+					{
+						"100Mbps",
+						"",
+						"",
+					},
+					{
+						"flexible",
+						"10",
+						"100",
+					},
+				},
+			},
+			{
+				"Create and update flexible LB",
+				"flexible",
+				[]struct {
+					shape   string
+					flexMin string
+					flexMax string
+				}{
+					{
+						"flexible",
+						"50",
+						"150",
+					},
+					// Note: We can't go back to fixed shape after converting to flexible shape.
+					// Use Min and Max values to be the same value to get fixed shape LB
+				},
+			},
+		}
+
+		It("should be possible to update shape of Service of type:LoadBalancer in an SKE cluster", func() {
+			serviceName := "e2e-lb-shape"
+			ns := f.Namespace.Name
+
+			// TODO: Implement a config validator and stop supporting
+			// different config versions
+			compartmentId := ""
+			if setupF.Compartment1 != "" {
+				compartmentId = setupF.Compartment1
+			} else if f.CloudProviderConfig.CompartmentID != "" {
+				compartmentId = f.CloudProviderConfig.CompartmentID
+			} else if f.CloudProviderConfig.Auth.CompartmentID != "" {
+				compartmentId = f.CloudProviderConfig.Auth.CompartmentID
+			} else {
+				sharedfw.Failf("Compartment Id undefined.")
+			}
+
+			jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
+
+			loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
+			if nodes := sharedfw.GetReadySchedulableVirtualNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
+				loadBalancerCreateTimeout = sharedfw.LoadBalancerCreateTimeoutLarge
+			}
+
+			// Create a service of type:ClusterIP and mutate that to create a LB
+			tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
+				s.Spec.Type = v1.ServiceTypeClusterIP
+				s.Spec.Ports = []v1.ServicePort{{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
+					{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
+
+			})
+			By("creating a pod to be part of the TCP service " + serviceName)
+			jig.RunOrFail(ns, nil)
+			for _, lbShapeTest := range lbShapeTestArray {
+				By(lbShapeTest.testName)
+				tcpService = jig.UpdateServiceOrFail(ns, jig.Name, func(s *v1.Service) {
+					s.Spec.Type = v1.ServiceTypeLoadBalancer
+					s.Spec.Ports = []v1.ServicePort{{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
+						{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
+					s.ObjectMeta.Annotations = map[string]string{
+						cloudprovider.ServiceAnnotationLoadBalancerShape: lbShapeTest.initialShape,
+						// Setting default values for Min and Max (Does not matter for fixed shape test)
+						cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMin: "10",
+						cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMax: "100",
+						cloudprovider.ServiceAnnotationLoadBalancerInternal:     "true",
+					}
+
+				})
+
+				svcPort := int(tcpService.Spec.Ports[0].Port)
+
+				By("waiting for the TCP service to have a load balancer")
+				// Wait for the load balancer to be created asynchronously
+				tcpService = jig.WaitForLoadBalancerOrFail(ns, tcpService.Name, loadBalancerCreateTimeout)
+				jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
+				tcpIngressIP := sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0])
+				sharedfw.Logf("TCP load balancer: %s", tcpIngressIP)
+
+				By("Verifying Load Balancer shape")
+				lbName := cloudprovider.GetLoadBalancerName(tcpService)
+				ctx := context.TODO()
+
+				loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), "lb", "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
+				sharedfw.ExpectNoError(err)
+				sharedfw.Logf("Actual Load Balancer Shape: %s, Expected shape: %s", *loadBalancer.ShapeName, lbShapeTest.initialShape)
+				Expect(strings.Compare(*loadBalancer.ShapeName, lbShapeTest.initialShape) == 0).To(BeTrue())
+				if lbShapeTest.initialShape == "flexible" {
+					sharedfw.Logf("Actual Load Balancer Flex Min: %d, Expected Flex Min: %d", *loadBalancer.ShapeDetails.MinimumBandwidthInMbps, 10)
+					Expect(*loadBalancer.ShapeDetails.MinimumBandwidthInMbps == 10).To(BeTrue())
+					sharedfw.Logf("Actual Load Balancer Flex Max: %d, Expected Flex Max: %d", *loadBalancer.ShapeDetails.MaximumBandwidthInMbps, 100)
+					Expect(*loadBalancer.ShapeDetails.MaximumBandwidthInMbps == 100).To(BeTrue())
+				}
+
+				// Change shape and wait for LB to update
+				for _, lbShape := range lbShapeTest.tests {
+					By("changing LB shape to " + lbShape.shape + " flexMin:" + lbShape.flexMin + " flexMax:" + lbShape.flexMax)
+					tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+						s.Annotations[cloudprovider.ServiceAnnotationLoadBalancerShape] = lbShape.shape
+						s.Annotations[cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMin] = lbShape.flexMin
+						s.Annotations[cloudprovider.ServiceAnnotationLoadBalancerShapeFlexMax] = lbShape.flexMax
+					})
+					err = f.WaitForLoadBalancerShapeChange(loadBalancer, lbShape.shape, lbShape.flexMin, lbShape.flexMax)
+					sharedfw.ExpectNoError(err)
+				}
+
+				By("changing TCP service to type=ClusterIP")
+				tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+					s.Spec.Type = v1.ServiceTypeClusterIP
+					s.Spec.Ports[0].NodePort = 0
+					s.Spec.Ports[1].NodePort = 0
+				})
+
+				// Wait for the load balancer to be destroyed asynchronously
+				tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
+				jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
+			}
+		})
+
+		It("should be possible to create Service type:LoadBalancer and mutate connection idle timeout in an SKE cluster", func() {
+			serviceName := "e2e-idle-timeout"
+			ns := f.Namespace.Name
+
+			jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
+
+			loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
+			if nodes := sharedfw.GetReadySchedulableVirtualNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
+				loadBalancerCreateTimeout = sharedfw.LoadBalancerCreateTimeoutLarge
+			}
+
+			tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
+				s.Spec.Type = v1.ServiceTypeLoadBalancer
+				s.Spec.Ports = []v1.ServicePort{{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
+					{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
+				s.ObjectMeta.Annotations = map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerConnectionIdleTimeout: "500",
+					cloudprovider.ServiceAnnotationLoadBalancerInternal:              "true",
+				}
+			})
+
+			svcPort := int(tcpService.Spec.Ports[0].Port)
+
+			By("creating a pod to be part of the TCP service " + serviceName)
+			jig.RunOrFail(ns, nil)
+
+			By("waiting for the TCP service to have a load balancer")
+			// Wait for the load balancer to be created asynchronously
+			tcpService = jig.WaitForLoadBalancerOrFail(ns, tcpService.Name, loadBalancerCreateTimeout)
+			jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
+			tcpIngressIP := sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0])
+			sharedfw.Logf("TCP load balancer: %s", tcpIngressIP)
+
+			By("waiting upto 5m0s to verify default connection idle timeout")
+			lbName := cloudprovider.GetLoadBalancerName(tcpService)
+			ctx := context.TODO()
+			compartmentId := ""
+			if setupF.Compartment1 != "" {
+				compartmentId = setupF.Compartment1
+			} else if f.CloudProviderConfig.CompartmentID != "" {
+				compartmentId = f.CloudProviderConfig.CompartmentID
+			} else if f.CloudProviderConfig.Auth.CompartmentID != "" {
+				compartmentId = f.CloudProviderConfig.Auth.CompartmentID
+			} else {
+				sharedfw.Failf("Compartment Id undefined.")
+			}
+			loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), "lb", "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
+			sharedfw.ExpectNoError(err)
+			err = f.VerifyLoadBalancerConnectionIdleTimeout(*loadBalancer.Id, 500)
+			sharedfw.ExpectNoError(err)
+
+			By("changing TCP service health check config")
+			tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+				s.ObjectMeta.Annotations = map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerConnectionIdleTimeout: "800",
+				}
+			})
+
+			By("waiting upto 5m0s to verify health check config after modification to initial")
+			err = f.VerifyLoadBalancerConnectionIdleTimeout(*loadBalancer.Id, 800)
+			sharedfw.ExpectNoError(err)
+
+			By("changing TCP service to type=ClusterIP")
+			tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+				s.Spec.Type = v1.ServiceTypeClusterIP
+				s.Spec.Ports[0].NodePort = 0
+				s.Spec.Ports[1].NodePort = 0
+			})
+
+			// Wait for the load balancer to be destroyed asynchronously
+			tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
+			jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
+
+		})
+
+		nsgTestArray := []struct {
+			lbtype        string
+			Annotations   map[string]string
+			nsgAnnotation string
+		}{
+			{
+				"lb",
+				map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerInternal: "true",
+					cloudprovider.ServiceAnnotationLoadBalancerShape:    "100Mbps",
+				},
+				cloudprovider.ServiceAnnotationLoadBalancerNetworkSecurityGroups,
+			},
+			{
+				"nlb",
+				map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerInternal: "true",
+					cloudprovider.ServiceAnnotationLoadBalancerType:     "nlb",
+				},
+				cloudprovider.ServiceAnnotationNetworkLoadBalancerNetworkSecurityGroups,
+			},
+		}
+		// Test NSG feature
+		It("should be possible to create/update/delete Service type:LoadBalancer with NSGs config in an SKE cluster", func() {
+			for _, test := range nsgTestArray {
+				By("Running test for: " + test.lbtype)
+				serviceName := "e2e-" + test.lbtype + "-nsg"
+				ns := f.Namespace.Name
+
+				jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
+
+				loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
+				if nodes := sharedfw.GetReadySchedulableVirtualNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
+					loadBalancerCreateTimeout = sharedfw.LoadBalancerCreateTimeoutLarge
+				}
+
+				nsgList := strings.Split(strings.ReplaceAll(setupF.NsgOCIDS, " ", ""), ",")
+				lbNSGTestArray := []struct {
+					testName        string
+					nsgIds          []string
+					resultantNsgIds []string
+				}{
+					{
+						"Update LB with new NsgIds provided in svc config",
+						nsgList,
+						nsgList,
+					},
+					{
+						"Update LB with empty NsgIds provided in svc config",
+						[]string{},
+						[]string{},
+					},
+					{
+						"Update LB when there are duplicate NSG OCIDS provided in svc config",
+						[]string{nsgList[0], nsgList[1], nsgList[0]},
+						[]string{nsgList[0], nsgList[1]},
+					},
+				}
+				nsgIds := nsgList[0]
+				sharedfw.Logf(nsgIds)
+				test.Annotations[test.nsgAnnotation] = nsgIds
+				tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
+					s.Spec.Type = v1.ServiceTypeLoadBalancer
+					s.Spec.Ports = []v1.ServicePort{{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
+						{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
+					s.ObjectMeta.Annotations = test.Annotations
+					s.ObjectMeta.Annotations[cloudprovider.ServiceAnnotationLoadBalancerInternal] = "true"
+				})
+
+				svcPort := int(tcpService.Spec.Ports[0].Port)
+
+				By("creating a pod to be part of the TCP service " + serviceName)
+				jig.RunOrFail(ns, nil)
+
+				By("waiting for the TCP service to have a load balancer")
+				// Wait for the load balancer to be created asynchronously
+				tcpService = jig.WaitForLoadBalancerOrFail(ns, tcpService.Name, loadBalancerCreateTimeout)
+				jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
+				tcpIngressIP := sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0])
+				sharedfw.Logf("TCP load balancer: %s", tcpIngressIP)
+
+				By("waiting upto 5m0s to verify initial LB config")
+				lbName := cloudprovider.GetLoadBalancerName(tcpService)
+				sharedfw.Logf("LB Name is %s", lbName)
+				ctx := context.TODO()
+				compartmentId := ""
+				if setupF.Compartment1 != "" {
+					compartmentId = setupF.Compartment1
+				} else if f.CloudProviderConfig.CompartmentID != "" {
+					compartmentId = f.CloudProviderConfig.CompartmentID
+				} else if f.CloudProviderConfig.Auth.CompartmentID != "" {
+					compartmentId = f.CloudProviderConfig.Auth.CompartmentID
+				} else {
+					sharedfw.Failf("Compartment Id undefined.")
+				}
+
+				loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), test.lbtype, "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
+				sharedfw.ExpectNoError(err)
+				By("waiting upto 5m0s to verify whether LB has been created with provided initial NSGs through config")
+				err = f.WaitForLoadBalancerNSGChange(loadBalancer, []string{nsgIds}, test.lbtype)
+				sharedfw.ExpectNoError(err)
+
+				for _, t := range lbNSGTestArray {
+					By(t.testName)
+					nsgIds = strings.Join(t.nsgIds, ",")
+					test.Annotations[test.nsgAnnotation] = nsgIds
+					tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+						s.ObjectMeta.Annotations = test.Annotations
+					})
+					err = f.WaitForLoadBalancerNSGChange(loadBalancer, t.resultantNsgIds, test.lbtype)
+					sharedfw.ExpectNoError(err)
+				}
+
+				By("changing TCP service back to type=ClusterIP")
+				tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+					s.Spec.Type = v1.ServiceTypeClusterIP
+					s.Spec.Ports[0].NodePort = 0
+					s.Spec.Ports[1].NodePort = 0
+				})
+
+				// Wait for the load balancer to be destroyed asynchronously
+				tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
+				jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
+			}
+		})
+
+		lbPolicyTestArray := []struct {
+			lbType              string
+			CreationAnnotations map[string]string
+			UpdatedAnnotations  map[string]string
+			PolicyAnnotation    string
+		}{
+			{
+				"lb",
+				map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerShape:  "100Mbps",
+					cloudprovider.ServiceAnnotationLoadBalancerPolicy: cloudprovider.IPHashLoadBalancerPolicy,
+				},
+				map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerPolicy: cloudprovider.LeastConnectionsLoadBalancerPolicy,
+				},
+				cloudprovider.ServiceAnnotationLoadBalancerPolicy,
+			},
+			{
+				"nlb",
+				map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerType:                 "nlb",
+					cloudprovider.ServiceAnnotationNetworkLoadBalancerBackendPolicy: cloudprovider.NetworkLoadBalancingPolicyTwoTuple,
+				},
+				map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerType:                 "nlb",
+					cloudprovider.ServiceAnnotationNetworkLoadBalancerBackendPolicy: cloudprovider.NetworkLoadBalancingPolicyThreeTuple,
+				},
+				cloudprovider.ServiceAnnotationNetworkLoadBalancerBackendPolicy,
+			},
+		}
+
+		// Test creating loadBalancer with custom loadbalancer policy and updating the policy in existing loadbalancer
+		It("should be possible to create a service type:LoadBalancer with custom loadbalancer policy and update the policy in an SKE cluster", func() {
+
+			for _, test := range lbPolicyTestArray {
+				By("Running test for: " + test.lbType)
+
+				serviceName := "e2e-" + test.lbType + "-policy"
+				ns := f.Namespace.Name
+
+				jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
+
+				loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
+				if nodes := sharedfw.GetReadySchedulableVirtualNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
+					loadBalancerCreateTimeout = sharedfw.LoadBalancerCreateTimeoutLarge
+				}
+
+				reservedIP := ""
+				sharedfw.Logf(reservedIP)
+				tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
+					s.Spec.Type = v1.ServiceTypeLoadBalancer
+					s.Spec.LoadBalancerIP = reservedIP
+					s.Spec.Ports = []v1.ServicePort{{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
+						{Name: "https", Port: 443, TargetPort: intstr.FromInt(80)}}
+					s.ObjectMeta.Annotations = test.CreationAnnotations
+					s.ObjectMeta.Annotations[cloudprovider.ServiceAnnotationLoadBalancerInternal] = "true"
+				})
+
+				svcPort := int(tcpService.Spec.Ports[0].Port)
+
+				By("creating a pod to be part of the TCP service " + serviceName)
+				jig.RunOrFail(ns, nil)
+
+				By("waiting for the TCP service to have a load balancer")
+				// Wait for the load balancer to be created asynchronously
+				tcpService = jig.WaitForLoadBalancerOrFail(ns, tcpService.Name, loadBalancerCreateTimeout)
+				jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
+				tcpIngressIP := sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0])
+				sharedfw.Logf("TCP load balancer: %s", tcpIngressIP)
+
+				By("waiting upto 5m0s to verify initial LB config")
+				lbName := cloudprovider.GetLoadBalancerName(tcpService)
+				sharedfw.Logf("LB Name is %s", lbName)
+				ctx := context.TODO()
+				compartmentId := ""
+				if setupF.Compartment1 != "" {
+					compartmentId = setupF.Compartment1
+				} else if f.CloudProviderConfig.CompartmentID != "" {
+					compartmentId = f.CloudProviderConfig.CompartmentID
+				} else if f.CloudProviderConfig.Auth.CompartmentID != "" {
+					compartmentId = f.CloudProviderConfig.Auth.CompartmentID
+				} else {
+					sharedfw.Failf("Compartment Id undefined.")
+				}
+
+				loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), test.lbType, "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
+				sharedfw.ExpectNoError(err)
+
+				err = f.VerifyLoadBalancerPolicy(*loadBalancer.Id, test.CreationAnnotations[test.PolicyAnnotation], test.lbType)
+				sharedfw.ExpectNoError(err)
+
+				By("changing TCP service loadbalancer policy")
+				tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+					s.ObjectMeta.Annotations = test.UpdatedAnnotations
+				})
+
+				By("waiting upto 5m0s to verify loadbalancer policy after modification")
+				err = f.VerifyLoadBalancerPolicy(*loadBalancer.Id, test.UpdatedAnnotations[test.PolicyAnnotation], test.lbType)
+				sharedfw.ExpectNoError(err)
+
+				By("changing TCP service to type=ClusterIP")
+				tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+					s.Spec.Type = v1.ServiceTypeClusterIP
+					s.Spec.Ports[0].NodePort = 0
+					s.Spec.Ports[1].NodePort = 0
+				})
+				// Wait for the load balancer to be destroyed asynchronously
+				tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
+				jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
+			}
+		})
+
+		reservedIpTestArray := []struct {
+			lbtype              string
+			CreationAnnotations map[string]string
+		}{
+			{
+				"lb",
+				map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerShape: "100Mbps",
 				},
 			},
 			{
@@ -2086,10 +3532,9 @@ var _ = Describe("LB Properties", func() {
 				jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
 
 				loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
-				if nodes := sharedfw.GetReadySchedulableNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
+				if nodes := sharedfw.GetReadySchedulableVirtualNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
 					loadBalancerCreateTimeout = sharedfw.LoadBalancerCreateTimeoutLarge
 				}
-
 				reservedIP := setupF.ReservedIP
 				sharedfw.Logf(reservedIP)
 
