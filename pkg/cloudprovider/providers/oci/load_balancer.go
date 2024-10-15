@@ -104,6 +104,7 @@ type CloudLoadBalancerProvider struct {
 	logger       *zap.SugaredLogger
 	metricPusher *metrics.MetricPusher
 	config       *providercfg.Config
+	ociConfig    *client.OCIClientConfig
 }
 
 type IpVersions struct {
@@ -141,6 +142,10 @@ func (cp *CloudProvider) getLoadBalancerProvider(ctx context.Context, svc *v1.Se
 		logger:       cp.logger,
 		metricPusher: cp.metricPusher,
 		config:       cp.config,
+		ociConfig: &client.OCIClientConfig{
+			SaToken:   serviceAccountToken,
+			TenancyId: cp.config.Auth.TenancyID,
+		},
 	}, nil
 }
 
@@ -425,7 +430,7 @@ func (clb *CloudLoadBalancerProvider) createLoadBalancer(ctx context.Context, sp
 	}
 
 	if spec.LoadBalancerIP != "" {
-		reservedIpOCID, err := getReservedIpOcidByIpAddress(ctx, spec.LoadBalancerIP, clb.client.Networking(nil))
+		reservedIpOCID, err := getReservedIpOcidByIpAddress(ctx, spec.LoadBalancerIP, clb.client.Networking(clb.ociConfig))
 		if err != nil {
 			return nil, "", err
 		}
