@@ -30,6 +30,7 @@ import (
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/v65/common"
+	"github.com/oracle/oci-go-sdk/v65/containerengine"
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -85,6 +86,8 @@ type CloudProviderFramework struct {
 	// NB: This can fail from the CI when external temrination (e.g. timeouts) occur.
 	cleanupHandle CleanupActionHandle
 
+	ClusterType containerengine.ClusterTypeEnum
+
 	// Backend Nsg ocids test
 	BackendNsgOcids string
 	RunUhpE2E       bool
@@ -124,6 +127,11 @@ func NewCcmFramework(baseName string, client clientset.Interface, backup bool) *
 	}
 	if k8sSeclistID != "" {
 		f.K8SSecListID = k8sSeclistID
+	}
+	if strings.ToUpper(clusterType) == "ENHANCED_CLUSTER" {
+		f.ClusterType = containerengine.ClusterTypeEnhancedCluster
+	} else {
+		f.ClusterType = containerengine.ClusterTypeBasicCluster
 	}
 	if backendNsgIds != "" {
 		f.BackendNsgOcids = backendNsgIds
