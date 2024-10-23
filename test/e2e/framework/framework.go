@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	oke "github.com/oracle/oci-go-sdk/v65/containerengine"
 	imageutils "k8s.io/kubernetes/test/utils/image"
 )
 
@@ -91,6 +92,9 @@ var (
 	runUhpE2E                     bool   // Whether to run UHP E2Es, requires Volume Management Plugin enabled on the node and 16+ cores (check blockvolumeperformance public doc for the exact requirements)
 	enableParallelRun			  bool
 	addOkeSystemTags              bool
+	clusterID                     string              // Ocid of the newly created E2E cluster
+	clusterType                   string              // Cluster type can be BASIC_CLUSTER or ENHANCED_CLUSTER (Default: BASIC_CLUSTER)
+	clusterTypeEnum               oke.ClusterTypeEnum // Enum for OKE Cluster Type
 )
 
 func init() {
@@ -123,12 +127,18 @@ func init() {
 	flag.BoolVar(&runUhpE2E, "run-uhp-e2e", false, "Run UHP E2Es as well")
 	flag.BoolVar(&enableParallelRun, "enable-parallel-run", true, "Enables parallel running of test suite")
 	flag.BoolVar(&addOkeSystemTags, "add-oke-system-tags", false, "Adds oke system tags to new and existing loadbalancers and storage resources")
+
+	flag.StringVar(&clusterType, "cluster-type", "BASIC_CLUSTER", "Cluster type can be BASIC_CLUSTER or ENHANCED_CLUSTER")
 }
 
 // Framework is the context of the text execution.
 type Framework struct {
 	// The compartment1 the cluster is running in.
 	Compartment1 string
+
+	// Cluster Type
+	ClusterType oke.ClusterTypeEnum
+
 	// Default adLocation
 	AdLocation string
 
@@ -182,6 +192,7 @@ func NewWithConfig() *Framework {
 		StaticSnapshotCompartmentOcid: staticSnapshotCompartmentOCID,
 		RunUhpE2E:                     runUhpE2E,
 		AddOkeSystemTags:              addOkeSystemTags,
+		ClusterType:                   clusterTypeEnum,
 	}
 
 	f.CloudConfigPath = cloudConfigFile
@@ -231,6 +242,13 @@ func (f *Framework) Initialize() {
 	f.Compartment1 = compartment1
 	Logf("OCI compartment1 OCID: %s", f.Compartment1)
 	f.setImages()
+	if strings.ToUpper(clusterType) == "ENHANCED_CLUSTER" {
+		clusterTypeEnum = oke.ClusterTypeEnhancedCluster
+	} else {
+		clusterTypeEnum = oke.ClusterTypeBasicCluster
+	}
+	f.ClusterType = clusterTypeEnum
+	Logf("Cluster Type: %s", f.ClusterType)
 	f.ClusterKubeconfigPath = clusterkubeconfig
 	f.CloudConfigPath = cloudConfigFile
 }
