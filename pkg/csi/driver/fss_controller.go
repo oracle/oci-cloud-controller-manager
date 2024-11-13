@@ -625,14 +625,25 @@ func extractStorageClassParameters(ctx context.Context, d *FSSControllerDriver, 
 		return log, nil, nil, status.Errorf(codes.InvalidArgument, "AvailabilityDomain not provided in storage class"), true
 	}
 
-	ad, err := identityClient.GetAvailabilityDomainByName(ctx, compartmentId, availabilityDomain)
-	if err != nil {
-		log.With(zap.Error(err)).Errorf("invalid available domain: %s or compartmentID: %s", availabilityDomain, compartmentId)
-		dimensionsMap[metrics.ComponentDimension] = util.GetMetricDimensionForComponent(util.GetError(err), util.CSIStorageType)
-		metrics.SendMetricData(d.metricPusher, metrics.FssAllProvision, time.Since(startTime).Seconds(), dimensionsMap)
-		return log, nil, nil, status.Errorf(codes.InvalidArgument, "invalid available domain: %s or compartment ID: %s, error: %s", availabilityDomain, compartmentId, err.Error()), true
+	if client.IsIpv6SingleStackCluster() {
+		if !strings.Contains(availabilityDomain,":") {
+			log.Errorf("Full AvailabilityDomain with prefix not provided in storage class for IPv6 single stack cluster.")
+			dimensionsMap[metrics.ComponentDimension] = util.GetMetricDimensionForComponent(util.ErrValidation, util.CSIStorageType)
+			metrics.SendMetricData(d.metricPusher, metrics.FssAllProvision, time.Since(startTime).Seconds(), dimensionsMap)
+			metrics.SendMetricData(d.metricPusher, metrics.MTProvision, time.Since(startTime).Seconds(), dimensionsMap)
+			return log, nil, nil, status.Errorf(codes.InvalidArgument, "Full AvailabilityDomain with prefix not provided in storage class for IPv6 single stack cluster."), true
+
+		}
+	} else {
+		ad, err := identityClient.GetAvailabilityDomainByName(ctx, compartmentId, availabilityDomain)
+		if err != nil {
+			log.With(zap.Error(err)).Errorf("invalid available domain: %s or compartmentID: %s", availabilityDomain, compartmentId)
+			dimensionsMap[metrics.ComponentDimension] = util.GetMetricDimensionForComponent(util.GetError(err), util.CSIStorageType)
+			metrics.SendMetricData(d.metricPusher, metrics.FssAllProvision, time.Since(startTime).Seconds(), dimensionsMap)
+			return log, nil, nil, status.Errorf(codes.InvalidArgument, "invalid available domain: %s or compartment ID: %s, error: %s", availabilityDomain, compartmentId, err.Error()), true
+		}
+		availabilityDomain = *ad.Name
 	}
-	availabilityDomain = *ad.Name
 	log = log.With("availabilityDomain", availabilityDomain)
 	storageClassParameters.availabilityDomain = availabilityDomain
 

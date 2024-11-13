@@ -243,6 +243,7 @@ func (d *BlockVolumeControllerDriver) CreateVolume(ctx context.Context, req *csi
 	}
 
 	availableDomainShortName := ""
+	fullAvailabilityDomainName := ""
 	volumeName := req.Name
 	dimensionsMap := make(map[string]string)
 
@@ -331,6 +332,9 @@ func (d *BlockVolumeControllerDriver) CreateVolume(ctx context.Context, req *csi
 			}
 
 			srcVolumeId = id
+			if client.IsIpv6SingleStackCluster() {
+				fullAvailabilityDomainName = availableDomainShortName
+			}
 		}
 	}
 
@@ -342,6 +346,13 @@ func (d *BlockVolumeControllerDriver) CreateVolume(ctx context.Context, req *csi
 				availableDomainShortName, _ = t.Segments[kubeAPI.LabelZoneFailureDomain]
 			}
 			log.With("AD", availableDomainShortName).Info("Using preferred topology for AD.")
+
+			fullAvailabilityDomainName, ok = t.Segments[csi_util.AvailabilityDomainLabel]
+			if ok {
+				fullAvailabilityDomainName = strings.ReplaceAll(fullAvailabilityDomainName, ".", ":")
+				log.With("fullAvailabilityDomainName", fullAvailabilityDomainName).Info("Identified full ad name from topology keys")
+			}
+
 			if len(availableDomainShortName) > 0 {
 				break
 			}
@@ -350,6 +361,7 @@ func (d *BlockVolumeControllerDriver) CreateVolume(ctx context.Context, req *csi
 
 	if availableDomainShortName == "" {
 		if req.AccessibilityRequirements != nil && req.AccessibilityRequirements.Requisite != nil {
+
 			for _, t := range req.AccessibilityRequirements.Requisite {
 				var ok bool
 				availableDomainShortName, ok = t.Segments[kubeAPI.LabelTopologyZone]
@@ -357,6 +369,13 @@ func (d *BlockVolumeControllerDriver) CreateVolume(ctx context.Context, req *csi
 					availableDomainShortName, _ = t.Segments[kubeAPI.LabelZoneFailureDomain]
 				}
 				log.With("AD", availableDomainShortName).Info("Using requisite topology for AD.")
+
+				fullAvailabilityDomainName, ok = t.Segments[csi_util.AvailabilityDomainLabel]
+				if ok {
+					fullAvailabilityDomainName = strings.ReplaceAll(fullAvailabilityDomainName, ".", ":")
+					log.With("fullAvailabilityDomainName", fullAvailabilityDomainName).Info("Identified full ad name from topology keys")
+				}
+
 				if len(availableDomainShortName) > 0 {
 					break
 				}
@@ -413,24 +432,29 @@ func (d *BlockVolumeControllerDriver) CreateVolume(ctx context.Context, req *csi
 
 	} else {
 		// Creating new volume
-		ad, err := d.client.Identity(nil).GetAvailabilityDomainByName(ctx, d.config.CompartmentID, availableDomainShortName)
-		if err != nil {
-			log.With("Compartment Id", d.config.CompartmentID, "service", "identity", "verb", "get", "resource", "AD", "statusCode", util.GetHttpStatusCode(err)).
-				With(zap.Error(err)).Error("Failed to get available domain.")
-			errorType = util.GetError(err)
-			metricDimension = util.GetMetricDimensionForComponent(errorType, metricType)
-			dimensionsMap[metrics.ComponentDimension] = metricDimension
-			metrics.SendMetricData(d.metricPusher, metric, time.Since(startTime).Seconds(), dimensionsMap)
-			return nil, status.Errorf(codes.InvalidArgument, "invalid available domain: %s or compartment ID: %s", availableDomainShortName, d.config.CompartmentID)
+		if !client.IsIpv6SingleStackCluster() {
+			ad, err := d.client.Identity(nil).GetAvailabilityDomainByName(ctx, d.config.CompartmentID, availableDomainShortName)
+			if err != nil {
+				log.With("Compartment Id", d.config.CompartmentID,
+					"service", "identity", "verb", "get", "resource", "AD", "statusCode", util.GetHttpStatusCode(err)).
+					With(zap.Error(err)).Error("Failed to get available domain.")
+				errorType = util.GetError(err)
+				metricDimension = util.GetMetricDimensionForComponent(errorType, metricType)
+				dimensionsMap[metrics.ComponentDimension] = metricDimension
+				metrics.SendMetricData(d.metricPusher, metric, time.Since(startTime).Seconds(), dimensionsMap)
+				return nil, status.Errorf(codes.InvalidArgument, "invalid available domain: %s or compartment ID: %s", availableDomainShortName, d.config.CompartmentID)
+			}
+			fullAvailabilityDomainName = *ad.Name
 		}
+
 
 		bvTags := getBVTags(log, d.config.Tags, volumeParams)
 
-		provisionedVolume, err = provision(ctx, log, d.client, volumeName, size, *ad.Name, d.config.CompartmentID, srcSnapshotId, srcVolumeId,
+		provisionedVolume, err = provision(ctx, log, d.client, volumeName, size, fullAvailabilityDomainName, d.config.CompartmentID, srcSnapshotId, srcVolumeId,
 			volumeParams.diskEncryptionKey, volumeParams.vpusPerGB, bvTags)
 
 		if err != nil && client.IsSystemTagNotFoundOrNotAuthorisedError(log, errors.Unwrap(err)) {
-			log.With("Ad name", *ad.Name, "Compartment Id", d.config.CompartmentID).With(zap.Error(err)).Warn("New volume creation failed due to oke system tags error. sending metric & retrying without oke system tags")
+			log.With("Ad name", fullAvailabilityDomainName, "Compartment Id", d.config.CompartmentID).With(zap.Error(err)).Warn("New volume creation failed due to oke system tags error. sending metric & retrying without oke system tags")
 			errorType = util.SystemTagErrTypePrefix + util.GetError(err)
 			metricDimension = util.GetMetricDimensionForComponent(errorType, metricType)
 			dimensionsMap[metrics.ComponentDimension] = metricDimension
@@ -438,11 +462,11 @@ func (d *BlockVolumeControllerDriver) CreateVolume(ctx context.Context, req *csi
 
 			// retry provision without oke system tags
 			delete(bvTags.DefinedTags, OkeSystemTagNamesapce)
-			provisionedVolume, err = provision(ctx, log, d.client, volumeName, size, *ad.Name, d.config.CompartmentID, srcSnapshotId, srcVolumeId,
+			provisionedVolume, err = provision(ctx, log, d.client, volumeName, size, fullAvailabilityDomainName, d.config.CompartmentID, srcSnapshotId, srcVolumeId,
 				volumeParams.diskEncryptionKey, volumeParams.vpusPerGB, bvTags)
 		}
 		if err != nil {
-			log.With("Ad name", *ad.Name, "Compartment Id", d.config.CompartmentID).With(zap.Error(err)).Error("New volume creation failed.")
+			log.With("Ad name", fullAvailabilityDomainName, "Compartment Id", d.config.CompartmentID).With(zap.Error(err)).Error("New volume creation failed.")
 			errorType = util.GetError(err)
 			metricDimension = util.GetMetricDimensionForComponent(errorType, metricType)
 			dimensionsMap[metrics.ComponentDimension] = metricDimension
