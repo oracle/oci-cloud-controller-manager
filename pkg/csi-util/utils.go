@@ -82,6 +82,9 @@ const (
 
 	// For Raw Block Volumes, the name of the bind-mounted file inside StagingTargetPath
 	RawBlockStagingFile = "mountfile"
+
+	AvailabilityDomainLabel = "csi-ipv6-full-ad-name"
+
 )
 
 // Util interface
@@ -120,11 +123,11 @@ func (u *Util) LookupNodeID(k kubernetes.Interface, nodeName string) (string, er
 	return n.Spec.ProviderID, nil
 }
 
-func (u *Util) LookupNodeAvailableDomain(k kubernetes.Interface, nodeID string) (string, error) {
+func (u *Util) LookupNodeAvailableDomain(k kubernetes.Interface, nodeID string) (string, string, error) {
 	n, err := k.CoreV1().Nodes().Get(context.Background(), nodeID, metav1.GetOptions{})
 	if err != nil {
 		u.Logger.With(zap.Error(err)).With("nodeId", nodeID).Error("Failed to get Node by name.")
-		return "", fmt.Errorf("failed to get node %s", nodeID)
+		return "", "",fmt.Errorf("failed to get node %s", nodeID)
 	}
 	if n.Labels != nil {
 		ad, ok := n.Labels[kubeAPI.LabelTopologyZone]
@@ -132,12 +135,13 @@ func (u *Util) LookupNodeAvailableDomain(k kubernetes.Interface, nodeID string) 
 			ad, ok = n.Labels[kubeAPI.LabelZoneFailureDomain]
 		}
 		if ok {
-			return ad, nil
+			fullAdName, _ := n.Labels[AvailabilityDomainLabel]
+			return ad, fullAdName, nil
 		}
 	}
 	errMsg := fmt.Sprintf("Did not find the label for the fault domain. Checked Topology Labels: %s, %s", kubeAPI.LabelTopologyZone, kubeAPI.LabelZoneFailureDomain)
 	u.Logger.With("nodeId", nodeID).Error(errMsg)
-	return "", fmt.Errorf(errMsg)
+	return "","", fmt.Errorf(errMsg)
 }
 
 // waitForPathToExist waits for for a given filesystem path to exist.
@@ -590,4 +594,11 @@ func IsDualStackSubnet(subnet *core.Subnet) bool {
 
 func IsValidIpFamilyPresentInClusterIpFamily(clusterIpFamily string) bool {
 	return len(clusterIpFamily) > 0 && (strings.Contains(clusterIpFamily, Ipv4Stack) || strings.Contains(clusterIpFamily, Ipv6Stack))
+}
+
+func IsIpv6SingleStackNode(nodeIpFamily *NodeIpFamily) bool {
+	if nodeIpFamily == nil {
+		return false
+	}
+	return nodeIpFamily.Ipv6Enabled == true && nodeIpFamily.Ipv4Enabled == false
 }

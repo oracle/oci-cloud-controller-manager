@@ -361,7 +361,7 @@ func (d LustreNodeDriver) NodeGetCapabilities(ctx context.Context, request *csi.
 }
 
 func (d LustreNodeDriver) NodeGetInfo(ctx context.Context, request *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
-	ad, err := d.util.LookupNodeAvailableDomain(d.KubeClient, d.nodeID)
+	ad, _ , err := d.util.LookupNodeAvailableDomain(d.KubeClient, d.nodeID)
 	if err != nil {
 		d.logger.With(zap.Error(err)).With("nodeId", d.nodeID, "availableDomain", ad).Error("Available domain of node missing.")
 	}
