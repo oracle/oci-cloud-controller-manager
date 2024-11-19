@@ -91,6 +91,8 @@ type CloudProviderFramework struct {
 	// Backend Nsg ocids test
 	BackendNsgOcids string
 	RunUhpE2E       bool
+
+	OkeClusterK8sVersion string
 }
 
 // NewDefaultFramework constructs a new e2e test CloudProviderFramework with default options.
@@ -294,6 +296,9 @@ func (f *CloudProviderFramework) BeforeEach() {
 		f.BlockStorageClient = f.createStorageClient()
 		f.ComputeClient = f.createComputeClient()
 	}
+
+	k8sVersion, _ := f.ClientSet.Discovery().ServerVersion()
+	f.OkeClusterK8sVersion = fmt.Sprintf("v%s", k8sVersion)
 }
 
 // AfterEach deletes the namespace(s).
