@@ -376,7 +376,7 @@ func (cp *CloudProvider) checkForAuthorizationError(ctx context.Context, instanc
 		return false, err
 	}
 	// to eliminate AD specific issues, list all ADs and make AD specific requests
-	availabilityDomains, err := cp.client.Identity().ListAvailabilityDomains(ctx, compartmentId)
+	availabilityDomains, err := cp.client.Identity(nil).ListAvailabilityDomains(ctx, compartmentId)
 	for _, availabilityDomain := range availabilityDomains {
 		instances, err := cp.client.Compute().ListInstancesByCompartmentAndAD(ctx, compartmentId, *availabilityDomain.Name)
 		// if we are getting errors for ListInstances the issue can be authorization or other issues
