@@ -2034,31 +2034,23 @@ func (cp *CloudProvider) getFrontendNsgByName(ctx context.Context, logger *zap.S
 func (cp *CloudProvider) checkPendingLBWorkRequests(ctx context.Context, logger *zap.SugaredLogger, lbProvider CloudLoadBalancerProvider, lb *client.GenericLoadBalancer, service *v1.Service, startTime time.Time) (err error) {
 	listWorkRequestTime := time.Now()
 	loadBalancerType := getLoadBalancerType(service)
-	lbName := GetLoadBalancerName(service)
-	dimensionsMap := make(map[string]string)
-	dimensionsMap[metrics.ResourceOCIDDimension] = *lb.Id
 
-	lbInProgressWorkRequests, err := lbProvider.lbClient.ListWorkRequests(ctx, *lb.CompartmentId, *lb.Id)
-	logger.With("loadBalancerID", *lb.Id).Infof("time (in seconds) to list work-requests for LB %f", time.Since(listWorkRequestTime).Seconds())
-	if err != nil {
-		logger.With(zap.Error(err)).Error("Failed to list work-requests in-progress")
-		errorType := util.GetError(err)
-		lbMetricDimension := util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
-		dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
-		dimensionsMap[metrics.ResourceOCIDDimension] = lbName
-		metrics.SendMetricData(cp.metricPusher, getMetric(loadBalancerType, List), time.Since(startTime).Seconds(), dimensionsMap)
-		return err
-	}
-	for _, wr := range lbInProgressWorkRequests {
-		switch loadBalancerType {
-		case NLB:
-			if wr.Status == string(networkloadbalancer.OperationStatusInProgress) || wr.Status == string(networkloadbalancer.OperationStatusAccepted) {
-				logger.With("loadBalancerID", *lb.Id).Infof("current in-progress work requests for Network Load Balancer %s", *wr.Id)
-				return errors.New("Network Load Balancer has work requests in progress, will wait and retry")
-			}
-		default:
+	switch loadBalancerType {
+	case NLB:
+		if *lb.LifecycleState == string(networkloadbalancer.LifecycleStateUpdating) {
+			logger.Info("Load Balancer is in UPDATING state, possibly a work request is in progress")
+			return errors.New("Load Balancer might have work requests in progress, will wait and retry")
+		}
+	default:
+		lbInProgressWorkRequests, err := lbProvider.lbClient.ListWorkRequests(ctx, *lb.CompartmentId, *lb.Id)
+		logger.Infof("time (in seconds) to list work-requests for LB %f", time.Since(listWorkRequestTime).Seconds())
+		if err != nil {
+			logger.With(zap.Error(err)).Error("Failed to list work-requests in-progress")
+			return err
+		}
+		for _, wr := range lbInProgressWorkRequests {
 			if *wr.LifecycleState == string(loadbalancer.WorkRequestLifecycleStateInProgress) || *wr.LifecycleState == string(loadbalancer.WorkRequestLifecycleStateAccepted) {
-				logger.With("loadBalancerID", *lb.Id).Infof("current in-progress work requests for Load Balancer %s", *wr.Id)
+				logger.Infof("current in-progress work requests for Load Balancer %s", *wr.Id)
 				return errors.New("Load Balancer has work requests in progress, will wait and retry")
 			}
 		}
