@@ -268,10 +268,12 @@ func GetDiskPathFromBindDeviceFilePath(logger *zap.SugaredLogger, mountPath stri
 
 	var sanitizedDevices []string
 	for _, dev := range devices {
-		sanitizedDevice := strings.TrimPrefix(dev, "devtmpfs[")
-		sanitizedDevice = strings.TrimSuffix(sanitizedDevice, "]")
-		sanitizedDevice = filepath.Clean(sanitizedDevice) // Fix extra slashes
-		sanitizedDevices = append(sanitizedDevices, sanitizedDevice)
+		if prefixEnd := strings.Index(dev, "["); prefixEnd != -1 {
+			sanitizedDevice := dev[prefixEnd+1:] // Start after `[`
+			sanitizedDevice = strings.TrimSuffix(sanitizedDevice, "]")
+			sanitizedDevice = filepath.Clean(sanitizedDevice) // Fix extra slashes
+			sanitizedDevices = append(sanitizedDevices, sanitizedDevice)
+		}
 	}
 
 	if len(sanitizedDevices) != 1 {
