@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	defaultExportOptionsJsonString = "[{\"source\":\"10.0.0.0/16\",\"requirePrivilegedSourcePort\":false,\"access\":\"READ_WRITE\",\"identitySquash\":\"NONE\",\"anonymousUid\":0,\"anonymousGid\":0},{\"source\":\"2603:c020:4015:2100::/56\",\"requirePrivilegedSourcePort\":false,\"access\":\"READ_WRITE\",\"identitySquash\":\"NONE\"},{\"source\":\"2603:c020:11:1500::/56\",\"requirePrivilegedSourcePort\":false,\"access\":\"READ_WRITE\",\"identitySquash\":\"NONE\"}]"
+	defaultExportOptionsJsonString = "[{\"source\":\"10.0.0.0/16\",\"requirePrivilegedSourcePort\":false,\"access\":\"READ_WRITE\",\"identitySquash\":\"NONE\",\"anonymousUid\":0,\"anonymousGid\":0}]"
 )
 
 var _ = Describe("Dynamic FSS test in cluster compartment", func() {
