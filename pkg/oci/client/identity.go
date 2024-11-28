@@ -28,6 +28,24 @@ import (
 // by the volume provisioner.
 type IdentityInterface interface {
 	GetAvailabilityDomainByName(ctx context.Context, compartmentID, name string) (*identity.AvailabilityDomain, error)
+	ListAvailabilityDomains(ctx context.Context, compartmentID string) ([]identity.AvailabilityDomain, error)
+}
+
+func (c *client) ListAvailabilityDomains(ctx context.Context, compartmentID string) ([]identity.AvailabilityDomain, error) {
+	if !c.rateLimiter.Reader.TryAccept() {
+		return nil, RateLimitError(false, "ListAvailabilityDomains")
+	}
+
+	resp, err := c.identity.ListAvailabilityDomains(ctx, identity.ListAvailabilityDomainsRequest{
+		CompartmentId:   &compartmentID,
+		RequestMetadata: c.requestMetadata,
+	})
+	incRequestCounter(err, listVerb, availabilityDomainResource)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return resp.Items, nil
 }
 
 func (c *client) GetAvailabilityDomainByName(ctx context.Context, compartmentID, name string) (*identity.AvailabilityDomain, error) {
