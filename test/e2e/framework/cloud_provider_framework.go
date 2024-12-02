@@ -21,19 +21,11 @@ import (
 	"strings"
 	"time"
 
-	ocicore "github.com/oracle/oci-go-sdk/v65/core"
-
 	snapclientset "github.com/kubernetes-csi/external-snapshotter/client/v6/clientset/versioned"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci" // register oci cloud provider
-	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-go-sdk/v65/common"
-	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-
 	v1 "k8s.io/api/core/v1"
 	crdclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -45,6 +37,14 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	cloudprovider "k8s.io/cloud-provider"
+
+	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci" // register oci cloud provider
+	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-go-sdk/v65/common"
+	"github.com/oracle/oci-go-sdk/v65/containerengine"
+	"github.com/oracle/oci-go-sdk/v65/core"
+	ocicore "github.com/oracle/oci-go-sdk/v65/core"
 )
 
 // CloudProviderFramework is used in the execution of e2e tests.
@@ -85,9 +85,13 @@ type CloudProviderFramework struct {
 	// NB: This can fail from the CI when external temrination (e.g. timeouts) occur.
 	cleanupHandle CleanupActionHandle
 
+	ClusterType containerengine.ClusterTypeEnum
+
 	// Backend Nsg ocids test
 	BackendNsgOcids string
 	RunUhpE2E       bool
+
+	OkeClusterK8sVersion string
 }
 
 // NewDefaultFramework constructs a new e2e test CloudProviderFramework with default options.
@@ -124,6 +128,11 @@ func NewCcmFramework(baseName string, client clientset.Interface, backup bool) *
 	}
 	if k8sSeclistID != "" {
 		f.K8SSecListID = k8sSeclistID
+	}
+	if strings.ToUpper(clusterType) == "ENHANCED_CLUSTER" {
+		f.ClusterType = containerengine.ClusterTypeEnhancedCluster
+	} else {
+		f.ClusterType = containerengine.ClusterTypeBasicCluster
 	}
 	if backendNsgIds != "" {
 		f.BackendNsgOcids = backendNsgIds
@@ -286,6 +295,9 @@ func (f *CloudProviderFramework) BeforeEach() {
 		f.BlockStorageClient = f.createStorageClient()
 		f.ComputeClient = f.createComputeClient()
 	}
+
+	k8sVersion, _ := f.ClientSet.Discovery().ServerVersion()
+	f.OkeClusterK8sVersion = fmt.Sprintf("v%s", k8sVersion)
 }
 
 // AfterEach deletes the namespace(s).
@@ -358,7 +370,7 @@ func createOCIClient(cloudProviderConfig *providercfg.Config) (client.Interface,
 	ociClientConfig := common.NewRawConfigurationProvider(cpc.TenancyID, cpc.UserID, cpc.Region, cpc.Fingerprint, cpc.PrivateKey, &cpc.PrivateKeyPassphrase)
 	logger := zap.L()
 	rateLimiter := client.NewRateLimiter(logger.Sugar(), cloudProviderConfig.RateLimiter)
-	ociClient, err := client.New(logger.Sugar(), ociClientConfig, &rateLimiter)
+	ociClient, err := client.New(logger.Sugar(), ociClientConfig, &rateLimiter, cloudProviderConfig.Auth.TenancyID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Couldn't create oci client from configuration: %s.", cloudConfigFile)
 	}

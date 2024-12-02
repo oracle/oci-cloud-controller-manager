@@ -34,6 +34,8 @@ type ComputeInterface interface {
 
 	GetPrimaryVNICForInstance(ctx context.Context, compartmentID, instanceID string) (*core.Vnic, error)
 
+	GetSecondaryVNICsForInstance(ctx context.Context, compartmentID, instanceID string) ([]*core.Vnic, error)
+
 	VolumeAttachmentInterface
 }
 
@@ -182,6 +184,52 @@ func (c *client) GetPrimaryVNICForInstance(ctx context.Context, compartmentID, i
 	return nil, errors.WithStack(errNotFound)
 }
 
+func (c *client) GetSecondaryVNICsForInstance(ctx context.Context, compartmentID, instanceID string) ([]*core.Vnic, error) {
+	logger := c.logger.With("instanceID", instanceID, "compartmentID", compartmentID)
+	secondaryVnics := []*core.Vnic{}
+	var page *string
+	for {
+		resp, err := c.listVNICAttachments(ctx, core.ListVnicAttachmentsRequest{
+			InstanceId:      &instanceID,
+			CompartmentId:   &compartmentID,
+			Page:            page,
+			RequestMetadata: c.requestMetadata,
+		})
+
+		if err != nil {
+			return nil, err
+		}
+
+		for _, attachment := range resp.Items {
+			if attachment.LifecycleState != core.VnicAttachmentLifecycleStateAttached {
+				logger.With("vnicAttachmentID", *attachment.Id).Info("VNIC attachment is not in attached state")
+				continue
+			}
+
+			if attachment.VnicId == nil {
+				// Should never happen but lets be extra cautious as field is non-mandatory in OCI API.
+				logger.With("vnicAttachmentID", *attachment.Id).Error("VNIC attachment is attached but has no VNIC ID")
+				continue
+			}
+
+			// TODO(apryde): Cache map[instanceID]SecondaryVNICID.
+			vnic, err := c.GetVNIC(ctx, *attachment.VnicId)
+			if err != nil {
+				return nil, err
+			}
+			if !*vnic.IsPrimary {
+				secondaryVnics = append(secondaryVnics, vnic)
+			}
+		}
+
+		if page = resp.OpcNextPage; resp.OpcNextPage == nil {
+			break
+		}
+	}
+
+	return secondaryVnics, nil
+}
+
 func (c *client) GetInstanceByNodeName(ctx context.Context, compartmentID, vcnID, nodeName string) (*core.Instance, error) {
 	// First try lookup by display name.
 	instance, err := c.getInstanceByDisplayName(ctx, compartmentID, nodeName)
@@ -192,10 +240,8 @@ func (c *client) GetInstanceByNodeName(ctx context.Context, compartmentID, vcnID
 	logger := c.logger.With("nodeName", nodeName, "compartmentID", compartmentID)
 
 	// Otherwise fall back to looking up via VNiC properties (hostname or public IP).
-	var (
-		page      *string
-		instances []*core.Instance
-	)
+	var page *string
+	instances := make(map[string]*core.Instance)
 	for {
 		resp, err := c.listVNICAttachments(ctx, core.ListVnicAttachmentsRequest{
 			CompartmentId:   &compartmentID,
@@ -234,6 +280,7 @@ func (c *client) GetInstanceByNodeName(ctx context.Context, compartmentID, vcnID
 
 			if (vnic.PublicIp != nil && *vnic.PublicIp == nodeName) ||
 				(vnic.PrivateIp != nil && *vnic.PrivateIp == nodeName) ||
+				(len(vnic.Ipv6Addresses) > 0 && vnic.Ipv6Addresses[0] == nodeName) ||
 				(vnic.HostnameLabel != nil && (*vnic.HostnameLabel != "" && strings.HasPrefix(nodeName, *vnic.HostnameLabel))) {
 				instance, err := c.GetInstance(ctx, *attachment.InstanceId)
 				if err != nil {
@@ -245,8 +292,9 @@ func (c *client) GetInstanceByNodeName(ctx context.Context, compartmentID, vcnID
 						"lifecycleState", instance.LifecycleState).Warn("Instance in a terminal state")
 					continue
 				}
-
-				instances = append(instances, instance)
+				// Instances with multiple vnics with the same host name label predix will cause the same instance to be added multiple times.
+				// Use map to maintaince unique instances.
+				instances[*instance.Id] = instance
 			}
 		}
 		if page = resp.OpcNextPage; resp.OpcNextPage == nil {
@@ -260,7 +308,10 @@ func (c *client) GetInstanceByNodeName(ctx context.Context, compartmentID, vcnID
 	if len(instances) > 1 {
 		return nil, errors.Errorf("too many instances returned for node name %q: %d", nodeName, len(instances))
 	}
-	return instances[0], nil
+	for _, instance := range instances {
+		return instance, nil
+	}
+	return nil, nil
 }
 
 // IsInstanceInTerminalState returns true if the instance is in a terminal state, false otherwise.

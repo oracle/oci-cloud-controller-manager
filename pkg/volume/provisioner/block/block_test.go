@@ -22,6 +22,7 @@ import (
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/v65/common"
+	"github.com/oracle/oci-go-sdk/v65/containerengine"
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/oracle/oci-go-sdk/v65/filestorage"
 	"github.com/oracle/oci-go-sdk/v65/identity"
@@ -246,6 +247,22 @@ func (c *MockComputeClient) GetPrimaryVNICForInstance(ctx context.Context, compa
 	return nil, nil
 }
 
+func (MockComputeClient) GetSecondaryVNICsForInstance(ctx context.Context, compartmentID, instanceID string) ([]*core.Vnic, error) {
+	return nil, nil
+}
+
+func (c *MockComputeClient) ListVnicAttachments(ctx context.Context, compartmentID, instanceID string) ([]core.VnicAttachment, error) {
+	return nil, nil
+}
+
+func (c *MockComputeClient) GetVnicAttachment(ctx context.Context, vnicAttachmentId *string) (response *core.VnicAttachment, err error) {
+	return nil, nil
+}
+
+func (c *MockComputeClient) AttachVnic(ctx context.Context, instanceID, subnetID *string, nsgIds []*string, skipSourceDestCheck *bool) (response core.VnicAttachment, err error) {
+	return core.VnicAttachment{}, nil
+}
+
 func (c *MockComputeClient) FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
 	return nil, nil
 }
@@ -270,6 +287,10 @@ func (c *MockComputeClient) WaitForVolumeDetached(ctx context.Context, attachmen
 
 func (c *MockComputeClient) FindActiveVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
 	return nil, nil
+}
+
+func (c *MockComputeClient) WaitForUHPVolumeLoggedOut(ctx context.Context, attachmentID string) error {
+	return nil
 }
 
 // MockVirtualNetworkClient mocks VirtualNetwork client implementation
@@ -305,6 +326,16 @@ func (c *MockVirtualNetworkClient) GetPrivateIp(ctx context.Context, id string) 
 	return &core.PrivateIp{IpAddress: &privateIP}, nil
 }
 
+func (c *MockVirtualNetworkClient) ListPrivateIps(ctx context.Context, id string) ([]core.PrivateIp, error) {
+	return []core.PrivateIp{}, nil
+}
+
+func (c *MockVirtualNetworkClient) CreatePrivateIp(ctx context.Context, vnicId string) (*core.PrivateIp, error) {
+	return &core.PrivateIp{}, nil
+}
+func (c *MockVirtualNetworkClient) GetIpv6(ctx context.Context, id string) (*core.Ipv6, error) {
+	return &core.Ipv6{}, nil
+}
 func (c *MockVirtualNetworkClient) GetSubnet(ctx context.Context, id string) (*core.Subnet, error) {
 	return nil, nil
 }
@@ -313,7 +344,11 @@ func (c *MockVirtualNetworkClient) GetVcn(ctx context.Context, id string) (*core
 	return &core.Vcn{}, nil
 }
 
-func (c *MockVirtualNetworkClient) GetSubnetFromCacheByIP(ip string) (*core.Subnet, error) {
+func (c *MockVirtualNetworkClient) GetVNIC(ctx context.Context, id string) (*core.Vnic, error) {
+	return &core.Vnic{}, nil
+}
+
+func (c *MockVirtualNetworkClient) GetSubnetFromCacheByIP(ip client.IpAddresses) (*core.Subnet, error) {
 	return nil, nil
 }
 
@@ -354,7 +389,7 @@ func (p *MockProvisionerClient) BlockStorage() client.BlockStorageInterface {
 }
 
 // Networking mocks client VirtualNetwork implementation.
-func (p *MockProvisionerClient) Networking() client.NetworkingInterface {
+func (p *MockProvisionerClient) Networking(ociClientConfig *client.OCIClientConfig) client.NetworkingInterface {
 	return &MockVirtualNetworkClient{}
 }
 
@@ -368,12 +403,12 @@ func (p *MockProvisionerClient) Compute() client.ComputeInterface {
 }
 
 // Identity mocks client Identity implementation
-func (p *MockProvisionerClient) Identity() client.IdentityInterface {
+func (p *MockProvisionerClient) Identity(ociClientConfig *client.OCIClientConfig) client.IdentityInterface {
 	return &MockIdentityClient{}
 }
 
 // FSS mocks client FileStorage implementation
-func (p *MockProvisionerClient) FSS() client.FileStorageInterface {
+func (p *MockProvisionerClient) FSS(ociClientConfig *client.OCIClientConfig) client.FileStorageInterface {
 	return &MockFileStorageClient{}
 }
 
@@ -475,6 +510,12 @@ func (c *MockVirtualNetworkClient) ListNetworkSecurityGroupSecurityRules(ctx con
 }
 
 func (c *MockVirtualNetworkClient) UpdateNetworkSecurityGroupSecurityRules(ctx context.Context, id string, details core.UpdateNetworkSecurityGroupSecurityRulesDetails) (*core.UpdateNetworkSecurityGroupSecurityRulesResponse, error) {
+	return nil, nil
+}
+
+type MockContainerEngineClient struct{}
+
+func (m MockContainerEngineClient) GetVirtualNode(ctx context.Context, vnId, vnpId string) (*containerengine.VirtualNode, error) {
 	return nil, nil
 }
 

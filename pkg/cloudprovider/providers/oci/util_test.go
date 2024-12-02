@@ -18,20 +18,20 @@ import (
 	"testing"
 )
 
-func TestMapProviderIDToResourceID(t *testing.T) {
+func TestMapProviderIDToInstanceID(t *testing.T) {
 	testCases := map[string]struct {
 		providerID string
 		instanceID string
 		error      bool
 	}{
 		"no cloud prefix": {
-			providerID: "testid",
-			instanceID: "testid",
+			providerID: "ocid1.testid",
+			instanceID: "ocid1.testid",
 			error:      false,
 		},
 		"cloud prefix": {
-			providerID: providerPrefix + "testid",
-			instanceID: "testid",
+			providerID: providerPrefix + "ocid1.testid",
+			instanceID: "ocid1.testid",
 			error:      false,
 		},
 		"empty string": {

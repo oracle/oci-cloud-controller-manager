@@ -48,7 +48,7 @@ function run_e2e_tests_existing_cluster() {
     fi
 
     if [ "$ENABLE_PARALLEL_RUN" == "true" ] || [ "$ENABLE_PARALLEL_RUN" == "TRUE" ]; then
-        ginkgo -v -p -progress --trace "${FOCUS_OPT}" "${FOCUS_FP_OPT}"  \
+        ginkgo -v -p -progress --trace "${FOCUS_OPT}" "${FOCUS_SKIP_OPT}" "${FOCUS_FP_OPT}"  \
                     test/e2e/cloud-provider-oci -- \
                     --cluster-kubeconfig=${CLUSTER_KUBECONFIG} \
                     --cloud-config=${CLOUD_CONFIG} \
@@ -64,12 +64,13 @@ function run_e2e_tests_existing_cluster() {
                     --reserved-ip=${RESERVED_IP} \
                     --architecture=${ARCHITECTURE} \
                     --volume-handle=${FSS_VOLUME_HANDLE} \
+                    --lustre-volume-handle=${LUSTRE_VOLUME_HANDLE} \
                     --static-snapshot-compartment-id=${STATIC_SNAPSHOT_COMPARTMENT_ID} \
                     --enable-parallel-run=${ENABLE_PARALLEL_RUN} \
                     --run-uhp-e2e=${RUN_UHP_E2E} \
                     --add-oke-system-tags="false"
     else
-        ginkgo -v -progress --trace -nodes=${E2E_NODE_COUNT} "${FOCUS_OPT}" "${FOCUS_FP_OPT}"  \
+        ginkgo -v -progress --trace -nodes=${E2E_NODE_COUNT} "${FOCUS_OPT}" "${FOCUS_SKIP_OPT}" "${FOCUS_FP_OPT}"  \
             ginkgo -v -p -progress --trace "${FOCUS_OPT}" "${FOCUS_FP_OPT}"  \
                     test/e2e/cloud-provider-oci -- \
                     --cluster-kubeconfig=${CLUSTER_KUBECONFIG} \
@@ -86,6 +87,7 @@ function run_e2e_tests_existing_cluster() {
                     --reserved-ip=${RESERVED_IP} \
                     --architecture=${ARCHITECTURE} \
                     --volume-handle=${FSS_VOLUME_HANDLE} \
+                    --lustre-volume-handle=${LUSTRE_VOLUME_HANDLE} \
                     --static-snapshot-compartment-id=${STATIC_SNAPSHOT_COMPARTMENT_ID} \
                     --enable-parallel-run=${ENABLE_PARALLEL_RUN} \
                     --run-uhp-e2e=${RUN_UHP_E2E} \
@@ -98,8 +100,11 @@ function run_e2e_tests_existing_cluster() {
 function set_focus () {
     # The FOCUS environment variable can be set with a regex to tun selected tests
     # e.g. export FOCUS="\[cloudprovider\]"
+    # e.g. export FILES="true" && export FOCUS="\[fss_\]" would run E2Es from both fss_dynamic.go and fss_static.go (FOCUS used for file regex instead)
+    # e.g. export FOCUS="\[cloudprovider\]" && export FOCUS_SKIP="\[node-update\]" would run all E2Es except ones that have "\[node-update\]" FOCUS.
     export FOCUS_OPT=""
     export FOCUS_FP_OPT=""
+    export FOCUS_SKIP_OPT=""
     if [ ! -z "${FOCUS}" ]; then
         # Because we tag our test descriptions with tags that are surrounded
         # by square brackets, we have to escape the brackets when we set the
@@ -121,8 +126,23 @@ function set_focus () {
         # e.g. export FILES="true"
         if [[ ! -z "${FILES}" && "${FILES}" == "true" ]]; then
             echo "Running focused test regex as filepath expression."
-            FOCUS_FP_OPT="-regexScansFilePath=${FILES}"
+            FOCUS_FP_OPT="-regexScansFilePath=${FOCUS}"
         fi
+    fi
+
+    # e.g. export FOCUS_SKIP="\[node-update\]" would run all E2Es except ones that have "\[node-update\]" FOCUS.
+    # If FOCUS is set as well, all E2Es with FOCUS will run except ones that are covered by SKIP_FOCUS
+    if [ ! -z "${FOCUS_SKIP}" ]; then
+        # Same for skipping tests with certain FOCUS.
+        re1='^\[.+\]$' # [ccm]
+        if [[ "${FOCUS_SKIP}" =~ $re1 ]]; then
+            echo -E "Escaping square brackes in ${FOCUS_SKIP} to work as a regex match."
+            FOCUS_SKIP=$(echo $FOCUS_SKIP|sed -e 's/\[/\\[/g' -e 's/\]/\\]/g')
+            echo -E "Modified FOCUS_SKIP value to: ${FOCUS_SKIP}"
+        fi
+
+        echo "Skipping focused tests: ${FOCUS_SKIP}"
+        FOCUS_SKIP_OPT="-skip=${FOCUS_SKIP}"
     fi
 }
 

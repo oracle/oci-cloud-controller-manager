@@ -116,25 +116,43 @@ func (c *loadbalancerClientStruct) CreateLoadBalancer(ctx context.Context, detai
 	if !c.rateLimiter.Writer.TryAccept() {
 		return "", RateLimitError(true, "CreateLoadBalancer")
 	}
+	createLoadBalancerDetails := loadbalancer.CreateLoadBalancerDetails{
+		CompartmentId:           details.CompartmentId,
+		DisplayName:             details.DisplayName,
+		SubnetIds:               details.SubnetIds,
+		ShapeName:               details.ShapeName,
+		ShapeDetails:            c.genericShapeDetailsToShapeDetails(details.ShapeDetails),
+		ReservedIps:             c.genericReservedIpToReservedIps(details.ReservedIps),
+		Certificates:            c.genericCertificatesToCertificates(details.Certificates),
+		IsPrivate:               details.IsPrivate,
+		NetworkSecurityGroupIds: details.NetworkSecurityGroupIds,
+		Listeners:               c.genericListenerDetailsToListenerDetails(details.Listeners),
+		BackendSets:             c.genericBackendSetDetailsToBackendSets(details.BackendSets),
+		FreeformTags:            details.FreeformTags,
+		DefinedTags:             details.DefinedTags,
+	}
+
+	// IpMode for OCI Load balancers can only be set at Create
+	// Existing loadbalancer cannot be updated to have IPv6 LB endpoints
+	if details.IpVersion != nil {
+		switch *details.IpVersion {
+		case GenericIPv4:
+			createLoadBalancerDetails.IpMode = loadbalancer.CreateLoadBalancerDetailsIpModeIpv4
+		case GenericIPv6:
+			// OCI LBaaS does not support SingleStack IPv6
+			createLoadBalancerDetails.IpMode = loadbalancer.CreateLoadBalancerDetailsIpModeIpv6
+		case GenericIPv4AndIPv6:
+			createLoadBalancerDetails.IpMode = loadbalancer.CreateLoadBalancerDetailsIpModeIpv6
+		}
+
+	}
+
 	resp, err := c.loadbalancer.CreateLoadBalancer(ctx, loadbalancer.CreateLoadBalancerRequest{
-		CreateLoadBalancerDetails: loadbalancer.CreateLoadBalancerDetails{
-			CompartmentId:           details.CompartmentId,
-			DisplayName:             details.DisplayName,
-			SubnetIds:               details.SubnetIds,
-			ShapeName:               details.ShapeName,
-			ShapeDetails:            c.genericShapeDetailsToShapeDetails(details.ShapeDetails),
-			ReservedIps:             c.genericReservedIpToReservedIps(details.ReservedIps),
-			Certificates:            c.genericCertificatesToCertificates(details.Certificates),
-			IsPrivate:               details.IsPrivate,
-			NetworkSecurityGroupIds: details.NetworkSecurityGroupIds,
-			Listeners:               c.genericListenerDetailsToListenerDetails(details.Listeners),
-			BackendSets:             c.genericBackendSetDetailsToBackendSets(details.BackendSets),
-			FreeformTags:            details.FreeformTags,
-			DefinedTags:             details.DefinedTags,
-		},
-		RequestMetadata: c.requestMetadata,
-		OpcRetryToken:   serviceUid,
+		CreateLoadBalancerDetails: createLoadBalancerDetails,
+		RequestMetadata:           c.requestMetadata,
+		OpcRetryToken:             serviceUid,
 	})
+
 	incRequestCounter(err, createVerb, loadBalancerResource)
 
 	if err != nil {
@@ -535,6 +553,7 @@ func (c *loadbalancerClientStruct) UpdateLoadBalancer(ctx context.Context, lbID 
 	}
 	return *resp.OpcWorkRequestId, nil
 }
+
 func (c *loadbalancerClientStruct) loadbalancerToGenericLoadbalancer(lb *loadbalancer.LoadBalancer) *GenericLoadBalancer {
 	if lb == nil {
 		return nil
@@ -802,9 +821,13 @@ func (c *loadbalancerClientStruct) genericBackendDetailsToBackendDetails(details
 
 	for _, backends := range details {
 		backendDetails = append(backendDetails, loadbalancer.BackendDetails{
-			IpAddress: backends.IpAddress,
-			Port:      backends.Port,
-			Weight:    backends.Weight,
+			IpAddress:      backends.IpAddress,
+			Port:           backends.Port,
+			Weight:         backends.Weight,
+			Backup:         backends.Backup,
+			Drain:          backends.Drain,
+			Offline:        backends.Offline,
+			MaxConnections: backends.MaxConnections,
 		})
 	}
 	return backendDetails
@@ -815,9 +838,13 @@ func backendDetailsToGenericBackendDetails(details []loadbalancer.Backend) []Gen
 
 	for _, backends := range details {
 		genericBackendDetails = append(genericBackendDetails, GenericBackend{
-			IpAddress: backends.IpAddress,
-			Port:      backends.Port,
-			Weight:    backends.Weight,
+			IpAddress:      backends.IpAddress,
+			Port:           backends.Port,
+			Weight:         backends.Weight,
+			Backup:         backends.Backup,
+			Drain:          backends.Drain,
+			Offline:        backends.Offline,
+			MaxConnections: backends.MaxConnections,
 		})
 	}
 	return genericBackendDetails
@@ -836,6 +863,7 @@ func genericSslConfigurationToSslConfiguration(details *GenericSslConfigurationD
 		ServerOrderPreference:          loadbalancer.SslConfigurationDetailsServerOrderPreferenceEnum(details.ServerOrderPreference),
 		CipherSuiteName:                details.CipherSuiteName,
 		Protocols:                      details.Protocols,
+		HasSessionResumption:           details.HasSessionResumption,
 	}
 }
 
@@ -852,7 +880,24 @@ func sslConfigurationToGenericSslConfiguration(details *loadbalancer.SslConfigur
 		ServerOrderPreference:          string(details.ServerOrderPreference),
 		CipherSuiteName:                details.CipherSuiteName,
 		Protocols:                      details.Protocols,
+		HasSessionResumption:           details.HasSessionResumption,
 	}
+}
+
+func backendTcpProxyProtocolOptionsStringArrayToEnum(options []string) []loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum {
+	ccString := make([]loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum, 0)
+	for _, option := range options {
+		ccString = append(ccString, loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum(option))
+	}
+	return ccString
+}
+
+func stringArrayToBackendTcpProxyProtocolOptionsEnum(options []loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum) []string {
+	ccString := make([]string, 0)
+	for _, option := range options {
+		ccString = append(ccString, string(option))
+	}
+	return ccString
 }
 
 func getSessionPersistenceConfiguration(details *GenericSessionPersistenceConfiguration) *loadbalancer.SessionPersistenceConfigurationDetails {

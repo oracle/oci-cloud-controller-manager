@@ -28,11 +28,11 @@ import (
 func CountSinglePortRules(oci client.Interface, nsgId string, port int, direction core.SecurityRuleDirectionEnum) int {
 	count := 0
 	if oci != nil && nsgId != "" {
-		_, _, err := oci.Networking().GetNetworkSecurityGroup(context.Background(), nsgId)
+		_, _, err := oci.Networking(nil).GetNetworkSecurityGroup(context.Background(), nsgId)
 		if err != nil {
 			Failf("Could not obtain nsg: %v", err)
 		}
-		response, err := oci.Networking().ListNetworkSecurityGroupSecurityRules(context.Background(), nsgId,
+		response, err := oci.Networking(nil).ListNetworkSecurityGroupSecurityRules(context.Background(), nsgId,
 			core.ListNetworkSecurityGroupSecurityRulesDirectionEnum(direction))
 		filteredRules := []core.SecurityRule{}
 		for _, rule := range response {

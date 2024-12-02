@@ -37,14 +37,23 @@ import (
 const defaultSynchronousAPIContextTimeout = 10 * time.Second
 const defaultSynchronousAPIPollContextTimeout = 10 * time.Minute
 
+const Ipv6Stack = "IPv6"
+const ClusterIpFamilyEnv = "CLUSTER_IP_FAMILY"
+
 // Interface of consumed OCI API functionality.
 type Interface interface {
 	Compute() ComputeInterface
 	LoadBalancer(*zap.SugaredLogger, string, string, *authv1.TokenRequest) GenericLoadBalancerInterface
-	Networking() NetworkingInterface
+	Networking(*OCIClientConfig) NetworkingInterface
 	BlockStorage() BlockStorageInterface
-	FSS() FileStorageInterface
-	Identity() IdentityInterface
+	FSS(*OCIClientConfig) FileStorageInterface
+	Identity(*OCIClientConfig) IdentityInterface
+}
+
+type OCIClientConfig struct {
+	SaToken      *authv1.TokenRequest
+	ParentRptURL string
+	TenancyId    string
 }
 
 // RateLimiter reader and writer.
@@ -73,7 +82,11 @@ type virtualNetworkClient interface {
 	UpdateSecurityList(ctx context.Context, request core.UpdateSecurityListRequest) (response core.UpdateSecurityListResponse, err error)
 
 	GetPrivateIp(ctx context.Context, request core.GetPrivateIpRequest) (response core.GetPrivateIpResponse, err error)
+	ListPrivateIps(ctx context.Context, request core.ListPrivateIpsRequest) (response core.ListPrivateIpsResponse, err error)
+	CreatePrivateIp(ctx context.Context, request core.CreatePrivateIpRequest) (response core.CreatePrivateIpResponse, err error)
+
 	GetPublicIpByIpAddress(ctx context.Context, request core.GetPublicIpByIpAddressRequest) (response core.GetPublicIpByIpAddressResponse, err error)
+	GetIpv6(ctx context.Context, request core.GetIpv6Request) (response core.GetIpv6Response, err error)
 
 	CreateNetworkSecurityGroup(ctx context.Context, request core.CreateNetworkSecurityGroupRequest) (response core.CreateNetworkSecurityGroupResponse, err error)
 	GetNetworkSecurityGroup(ctx context.Context, request core.GetNetworkSecurityGroupRequest) (response core.GetNetworkSecurityGroupResponse, err error)
@@ -158,6 +171,11 @@ type identityClient interface {
 	ListAvailabilityDomains(ctx context.Context, request identity.ListAvailabilityDomainsRequest) (identity.ListAvailabilityDomainsResponse, error)
 }
 
+// TODO: Uncomment when compartments is available in OCI Go-SDK
+//type compartmentClient interface {
+//	ListAvailabilityDomains(ctx context.Context, request compartments.ListAvailabilityDomainsRequest) (compartments.ListAvailabilityDomainsResponse, error)
+//}
+
 type client struct {
 	compute             computeClient
 	network             virtualNetworkClient
@@ -166,6 +184,7 @@ type client struct {
 	filestorage         filestorageClient
 	bs                  blockstorageClient
 	identity            identityClient
+	//compartment 		compartmentClient
 
 	requestMetadata common.RequestMetadata
 	rateLimiter     RateLimiter
@@ -175,7 +194,7 @@ type client struct {
 }
 
 // New constructs an OCI API client.
-func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimiter *RateLimiter) (Interface, error) {
+func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimiter *RateLimiter, targetTenancyID string) (Interface, error) {
 
 	compute, err := core.NewComputeClientWithConfigurationProvider(cp)
 	if err != nil {
@@ -227,6 +246,19 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 		return nil, errors.Wrap(err, "configuring identity service client custom transport")
 	}
 
+	// TODO: Uncomment when compartments is available in OCI Go-SDK
+	//compartment, err := compartments.NewCompartmentsClientWithConfigurationProvider(cp)
+	//if err != nil {
+	//	return nil, errors.Wrap(err, "NewCompartmentsClientWithConfigurationProvider")
+	//}
+	//
+	//setupBaseClient(logger, &compartment.BaseClient, signer, interceptor, "")
+	//
+	//err = configureCustomTransport(logger, &compartment.BaseClient)
+	//if err != nil {
+	//	return nil, errors.Wrap(err, "configuring compartment service client custom transport")
+	//}
+
 	bs, err := core.NewBlockstorageClientWithConfigurationProvider(cp)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewBlockstorageClientWithConfigurationProvider")
@@ -270,6 +302,7 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 		networkloadbalancer: &networkloadbalancer,
 		bs:                  &bs,
 		filestorage:         &fss,
+		//compartment:     	 &compartment,
 
 		rateLimiter:     *opRateLimiter,
 		requestMetadata: requestMetadata,
@@ -347,7 +380,33 @@ func (c *client) LoadBalancer(logger *zap.SugaredLogger, lbType string, targetTe
 	return nil
 }
 
-func (c *client) Networking() NetworkingInterface {
+func (c *client) Networking(ociClientConfig *OCIClientConfig) NetworkingInterface {
+	if ociClientConfig == nil {
+		return c
+	}
+	if ociClientConfig.SaToken != nil {
+		configProvider, err := getConfigurationProvider(c.logger, ociClientConfig.SaToken, ociClientConfig.ParentRptURL)
+
+		network, err := core.NewVirtualNetworkClientWithConfigurationProvider(configProvider)
+		if err != nil {
+			c.logger.Errorf("Failed to create Network workload identity client %v", err)
+			return nil
+		}
+
+		err = configureCustomTransport(c.logger, &network.BaseClient)
+		if err != nil {
+			c.logger.Error("Failed configure custom transport for Network Client %v", err)
+			return nil
+		}
+
+		return &client{
+			network:         &network,
+			requestMetadata: c.requestMetadata,
+			rateLimiter:     c.rateLimiter,
+			subnetCache:     cache.NewTTLStore(subnetCacheKeyFn, time.Duration(24)*time.Hour),
+			logger:          c.logger,
+		}
+	}
 	return c
 }
 
@@ -355,7 +414,51 @@ func (c *client) Compute() ComputeInterface {
 	return c
 }
 
-func (c *client) Identity() IdentityInterface {
+func (c *client) Identity(ociClientConfig *OCIClientConfig) IdentityInterface {
+
+	if ociClientConfig == nil {
+		return c
+	}
+	if ociClientConfig.SaToken != nil {
+
+		configProvider, err := getConfigurationProvider(c.logger, ociClientConfig.SaToken, ociClientConfig.ParentRptURL)
+
+		identity, err := identity.NewIdentityClientWithConfigurationProvider(configProvider)
+		if err != nil {
+			c.logger.Errorf("Failed to create Identity workload identity  %v", err)
+			return nil
+		}
+
+		err = configureCustomTransport(c.logger, &identity.BaseClient)
+		if err != nil {
+			c.logger.Error("Failed configure custom transport for Identity Client %v", err)
+			return nil
+		}
+
+		// TODO: Uncomment when compartments is available in OCI Go-SDK
+		//compartment, err := compartments.NewCompartmentsClientWithConfigurationProvider(configProvider)
+		//if err != nil {
+		//	c.logger.Errorf("Failed to create Compartments workload identity client  %v", err)
+		//	return nil
+		//}
+		//
+		//setupBaseClient(c.logger, &compartment.BaseClient, signer, interceptor, "")
+		//
+		//err = configureCustomTransport(c.logger, &compartment.BaseClient)
+		//if err != nil {
+		//	c.logger.Error("Failed configure custom transport for Compartments Client %v", err)
+		//	return nil
+		//}
+
+		return &client{
+			//compartment: 	     &compartment,
+			identity:        &identity,
+			requestMetadata: c.requestMetadata,
+			rateLimiter:     c.rateLimiter,
+			subnetCache:     cache.NewTTLStore(subnetCacheKeyFn, time.Duration(24)*time.Hour),
+			logger:          c.logger,
+		}
+	}
 	return c
 }
 
@@ -363,7 +466,34 @@ func (c *client) BlockStorage() BlockStorageInterface {
 	return c
 }
 
-func (c *client) FSS() FileStorageInterface {
+func (c *client) FSS(ociClientConfig *OCIClientConfig) FileStorageInterface {
+
+	if ociClientConfig == nil {
+		return c
+	}
+	if ociClientConfig.SaToken != nil {
+
+		configProvider, err := getConfigurationProvider(c.logger, ociClientConfig.SaToken, ociClientConfig.ParentRptURL)
+		fc, err := filestorage.NewFileStorageClientWithConfigurationProvider(configProvider)
+		if err != nil {
+			c.logger.Errorf("Failed to create FSS workload identity client %v", err)
+			return nil
+		}
+
+		err = configureCustomTransport(c.logger, &fc.BaseClient)
+		if err != nil {
+			c.logger.Errorf("Failed configure custom transport for FSS Client %v", err.Error())
+			return nil
+		}
+
+		return &client{
+			filestorage:     &fc,
+			requestMetadata: c.requestMetadata,
+			rateLimiter:     c.rateLimiter,
+			subnetCache:     cache.NewTTLStore(subnetCacheKeyFn, time.Duration(24)*time.Hour),
+			logger:          c.logger,
+		}
+	}
 	return c
 }
 
@@ -379,4 +509,23 @@ func getDefaultRequestMetadata(existingRequestMetadata common.RequestMetadata) c
 		RetryPolicy: newRetryPolicy(),
 	}
 	return requestMetadata
+}
+
+func getConfigurationProvider(logger *zap.SugaredLogger, tokenRequest *authv1.TokenRequest, rptURL string) (common.ConfigurationProvider, error) {
+
+	tokenProvider := auth.NewSuppliedServiceAccountTokenProvider(tokenRequest.Status.Token)
+	configProvider, err := auth.OkeWorkloadIdentityConfigurationProviderWithServiceAccountTokenProvider(tokenProvider)
+	if err != nil {
+		logger.Errorf("failed to get workload identity configuration provider %v", err.Error())
+		return nil, err
+	}
+
+	if rptURL != "" {
+		configProvider, err = auth.ResourcePrincipalV3ConfiguratorBuilder(configProvider).WithParentRPSTURL("").WithParentRPTURL(rptURL).Build()
+		if err != nil {
+			logger.Errorf("failed to get resource Principal configuration provider %v", err.Error())
+			return nil, err
+		}
+	}
+	return configProvider, nil
 }

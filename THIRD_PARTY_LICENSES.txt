@@ -1179,7 +1179,6 @@ SPDX:MIT
 
 == Copyright
 Copyright (c) 2013-2014 Onsi Fakhouri
-Copyright (c) 2014 Amit Kumar Gupta
 
 --------------------------------- (separator) ----------------------------------
 
@@ -1312,16 +1311,12 @@ END OF TERMS AND CONDITIONS
 
 
 == Copyright
-Copyright (c) 2012-2020 Mat Ryer, Tyler Bunnell and contributors.
-Copyright (c) 2013 The Go Authors. All rights reserved.
 Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.
 Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
 Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
 Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
 Copyright (c) 2016, 2023 Oracle and/or its affiliates.
 Copyright (c) 2016, 2023, Oracle and/or its affiliates.  All rights reserved.
-Copyright © 2012-2020 Mat Ryer, Tyler Bunnell and contributors.
-Copyright © 2013 The Go Authors. All rights reserved.
 
 == Notices
 Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.
@@ -2027,7 +2022,6 @@ go.uber.org/zap
 SPDX:MIT
 
 == Copyright
-Copyright (c) "*" Uber Technologies, Inc.")
 Copyright (c) 2016 Uber Technologies, Inc.
 Copyright (c) 2016, 2017 Uber Technologies, Inc.
 Copyright (c) 2016-2017 Uber Technologies, Inc.
@@ -2170,6 +2164,7 @@ Copyright 2020 The Go Authors. All rights reserved.
 Copyright 2021 The Go Authors. All rights reserved.
 Copyright 2022 The Go Authors. All rights reserved.
 Copyright 2023 The Go Authors. All rights reserved.
+Copyright 2024 The Go Authors. All rights reserved.
 
 == Patents
 Additional IP Rights Grant (Patents)
@@ -3067,6 +3062,7 @@ Copyright 2020 The Kubernetes Authors.
 Copyright 2021 The Kubernetes Authors.
 Copyright 2022 The Kubernetes Authors.
 Copyright 2023 The Kubernetes Authors.
+Copyright 2024 The Kubernetes Authors.
 
 --------------------------------- (separator) ----------------------------------
 
@@ -4324,5 +4320,5 @@ the Mozilla Public License, v. 2.0.
 
 
 === ATTRIBUTION-HELPER-GENERATED:
-=== Attribution helper version: {Major:0 Minor:11 GitVersion: GitCommit: GitTreeState:dirty BuildDate:1970-01-01T00:00:00Z GoVersion:go1.19.3 Compiler:gc Platform:darwin/arm64}
-=== License file based on go.mod with md5 sum:  5ba4389f9d7406b21218d714f3f79d86
+=== Attribution helper version: {Major:0 Minor:11 GitVersion:0.10.0-114-g3747dab9 GitCommit:3747dab92eb29c0dbe6409ffbb824b9ae3a04b87 GitTreeState:dirty BuildDate:2024-02-28T16:52:52Z GoVersion:go1.21.0 Compiler:gc Platform:darwin/amd64}
+=== License file based on go.mod with md5 sum:  ea9bd465882b674ff1025b18349e102f

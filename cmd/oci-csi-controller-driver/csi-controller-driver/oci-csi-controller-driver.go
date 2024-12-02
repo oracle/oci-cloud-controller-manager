@@ -15,6 +15,8 @@
 package csicontrollerdriver
 
 import (
+	"os"
+
 	"github.com/oracle/oci-cloud-controller-manager/cmd/oci-csi-controller-driver/csioptions"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/csi/driver"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/logging"
@@ -25,7 +27,7 @@ const (
 	bvCsiDriver = "BV"
 )
 
-//StartControllerDriver main function to start CSI Controller Driver
+// StartControllerDriver main function to start CSI Controller Driver
 func StartControllerDriver(csioptions csioptions.CSIOptions, csiDriver driver.CSIDriver) {
 
 	logger := logging.Logger().Sugar()
@@ -35,11 +37,16 @@ func StartControllerDriver(csioptions csioptions.CSIOptions, csiDriver driver.CS
 	var drv *driver.Driver
 	var err error
 
+	clusterIpFamily := os.Getenv("CLUSTER_IP_FAMILY")
+	if clusterIpFamily != "" {
+		logger.Infof("Using cluster ip family : %s", clusterIpFamily)
+	}
+
 	if csiDriver == bvCsiDriver {
-		controllerDriverConfig := &driver.ControllerDriverConfig{CsiEndpoint: csioptions.Endpoint, CsiKubeConfig: csioptions.Kubeconfig, CsiMaster: csioptions.Master, EnableControllerServer: true, DriverName: driver.BlockVolumeDriverName, DriverVersion: driver.BlockVolumeDriverVersion}
+		controllerDriverConfig := &driver.ControllerDriverConfig{CsiEndpoint: csioptions.Endpoint, CsiKubeConfig: csioptions.Kubeconfig, CsiMaster: csioptions.Master, EnableControllerServer: true, DriverName: driver.BlockVolumeDriverName, DriverVersion: driver.BlockVolumeDriverVersion, ClusterIpFamily: clusterIpFamily}
 		drv, err = driver.NewControllerDriver(logger, *controllerDriverConfig)
 	} else {
-		controllerDriverConfig := &driver.ControllerDriverConfig{CsiEndpoint: csioptions.FssEndpoint, CsiKubeConfig: csioptions.Kubeconfig, CsiMaster: csioptions.Master, EnableControllerServer: true, DriverName: driver.FSSDriverName, DriverVersion: driver.FSSDriverVersion}
+		controllerDriverConfig := &driver.ControllerDriverConfig{CsiEndpoint: csioptions.FssEndpoint, CsiKubeConfig: csioptions.Kubeconfig, CsiMaster: csioptions.Master, EnableControllerServer: true, DriverName: driver.FSSDriverName, DriverVersion: driver.FSSDriverVersion, ClusterIpFamily: clusterIpFamily}
 		drv, err = driver.NewControllerDriver(logger, *controllerDriverConfig)
 	}
 	if err != nil {

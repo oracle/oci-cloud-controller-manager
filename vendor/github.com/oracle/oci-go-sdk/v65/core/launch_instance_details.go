@@ -48,6 +48,10 @@ type LaunchInstanceDetails struct {
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
+	// Security Attributes for this resource. This is unique to ZPR, and helps identify which resources are allowed to be accessed by what permission controls.
+	// Example: `{"Oracle-DataSecurity-ZPR": {"MaxEgressCount": {"value":"42","mode":"audit"}}}`
+	SecurityAttributes map[string]map[string]interface{} `mandatory:"false" json:"securityAttributes"`
+
 	// A user-friendly name. Does not have to be unique, and it's changeable.
 	// Avoid entering confidential information.
 	DisplayName *string `mandatory:"false" json:"displayName"`
@@ -72,6 +76,9 @@ type LaunchInstanceDetails struct {
 	// Identity and Access Management Service API.
 	// Example: `FAULT-DOMAIN-1`
 	FaultDomain *string `mandatory:"false" json:"faultDomain"`
+
+	// The OCID of the cluster placement group of the instance.
+	ClusterPlacementGroupId *string `mandatory:"false" json:"clusterPlacementGroupId"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
 	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
@@ -178,6 +185,9 @@ type LaunchInstanceDetails struct {
 	// At least one of them is required; if you provide both, the values must match.
 	SubnetId *string `mandatory:"false" json:"subnetId"`
 
+	// Volume attachments to create as part of the launch instance operation.
+	LaunchVolumeAttachments []LaunchAttachVolumeDetails `mandatory:"false" json:"launchVolumeAttachments"`
+
 	// Whether to enable in-transit encryption for the data volume's paravirtualized attachment. This field applies to both block volumes and boot volumes. The default value is false.
 	IsPvEncryptionInTransitEnabled *bool `mandatory:"false" json:"isPvEncryptionInTransitEnabled"`
 
@@ -210,9 +220,11 @@ func (m *LaunchInstanceDetails) UnmarshalJSON(data []byte) (e error) {
 		CreateVnicDetails              *CreateVnicDetails                       `json:"createVnicDetails"`
 		DedicatedVmHostId              *string                                  `json:"dedicatedVmHostId"`
 		DefinedTags                    map[string]map[string]interface{}        `json:"definedTags"`
+		SecurityAttributes             map[string]map[string]interface{}        `json:"securityAttributes"`
 		DisplayName                    *string                                  `json:"displayName"`
 		ExtendedMetadata               map[string]interface{}                   `json:"extendedMetadata"`
 		FaultDomain                    *string                                  `json:"faultDomain"`
+		ClusterPlacementGroupId        *string                                  `json:"clusterPlacementGroupId"`
 		FreeformTags                   map[string]string                        `json:"freeformTags"`
 		ComputeClusterId               *string                                  `json:"computeClusterId"`
 		HostnameLabel                  *string                                  `json:"hostnameLabel"`
@@ -228,6 +240,7 @@ func (m *LaunchInstanceDetails) UnmarshalJSON(data []byte) (e error) {
 		ShapeConfig                    *LaunchInstanceShapeConfigDetails        `json:"shapeConfig"`
 		SourceDetails                  instancesourcedetails                    `json:"sourceDetails"`
 		SubnetId                       *string                                  `json:"subnetId"`
+		LaunchVolumeAttachments        []launchattachvolumedetails              `json:"launchVolumeAttachments"`
 		IsPvEncryptionInTransitEnabled *bool                                    `json:"isPvEncryptionInTransitEnabled"`
 		PlatformConfig                 launchinstanceplatformconfig             `json:"platformConfig"`
 		InstanceConfigurationId        *string                                  `json:"instanceConfigurationId"`
@@ -248,11 +261,15 @@ func (m *LaunchInstanceDetails) UnmarshalJSON(data []byte) (e error) {
 
 	m.DefinedTags = model.DefinedTags
 
+	m.SecurityAttributes = model.SecurityAttributes
+
 	m.DisplayName = model.DisplayName
 
 	m.ExtendedMetadata = model.ExtendedMetadata
 
 	m.FaultDomain = model.FaultDomain
+
+	m.ClusterPlacementGroupId = model.ClusterPlacementGroupId
 
 	m.FreeformTags = model.FreeformTags
 
@@ -292,6 +309,18 @@ func (m *LaunchInstanceDetails) UnmarshalJSON(data []byte) (e error) {
 
 	m.SubnetId = model.SubnetId
 
+	m.LaunchVolumeAttachments = make([]LaunchAttachVolumeDetails, len(model.LaunchVolumeAttachments))
+	for i, n := range model.LaunchVolumeAttachments {
+		nn, e = n.UnmarshalPolymorphicJSON(n.JsonData)
+		if e != nil {
+			return e
+		}
+		if nn != nil {
+			m.LaunchVolumeAttachments[i] = nn.(LaunchAttachVolumeDetails)
+		} else {
+			m.LaunchVolumeAttachments[i] = nil
+		}
+	}
 	m.IsPvEncryptionInTransitEnabled = model.IsPvEncryptionInTransitEnabled
 
 	nn, e = model.PlatformConfig.UnmarshalPolymorphicJSON(model.PlatformConfig.JsonData)

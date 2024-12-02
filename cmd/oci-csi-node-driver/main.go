@@ -37,6 +37,10 @@ func main() {
 	flag.StringVar(&nodecsioptions.Kubeconfig, "kubeconfig", "", "cluster kubeconfig")
 	flag.StringVar(&nodecsioptions.FssEndpoint, "fss-endpoint", "unix://tmp/fss/csi.sock", "FSS CSI endpoint")
 	flag.BoolVar(&nodecsioptions.EnableFssDriver, "fss-csi-driver-enabled", true, "Handle flag to enable FSS CSI driver")
+	flag.StringVar(&nodecsioptions.LustreEndpoint, "lustre-endpoint", "unix:///var/lib/kubelet/plugins/lustre.csi.oraclecloud.com/csi.sock", "Lustre CSI endpoint")
+	flag.StringVar(&nodecsioptions.LustreCsiAddress, "lustre-csi-address", "/var/lib/kubelet/plugins/lustre.csi.oraclecloud.com/csi.sock", "Path of the Lustre CSI driver socket that the node-driver-registrar will connect to.")
+	flag.StringVar(&nodecsioptions.LustreKubeletRegistrationPath, "lustre-kubelet-registration-path", "/var/lib/kubelet/plugins/lustre.csi.oraclecloud.com/csi.sock", "Path of the Lustre CSI driver socket on the Kubernetes host machine.")
+	flag.BoolVar(&nodecsioptions.OnlyEnableLustreDriver, "only-lustre-csi-driver-enabled", false, "Handle flag to enable Lustre CSI driver")
 
 	klog.InitFlags(nil)
 	flag.Set("logtostderr", "true")
@@ -65,10 +69,26 @@ func main() {
 		EnableControllerServer: false,
 	}
 
+	lustreNodeOptions := nodedriveroptions.NodeOptions{
+		Name:                   "Lustre",
+		Endpoint:               nodecsioptions.LustreEndpoint,
+		NodeID:                 nodecsioptions.NodeID,
+		Kubeconfig:             nodecsioptions.Kubeconfig,
+		Master:                 nodecsioptions.Master,
+		DriverName:             driver.LustreDriverName,
+		DriverVersion:          driver.LustreDriverVersion,
+		EnableControllerServer: false,
+	}
+
 	stopCh := signals.SetupSignalHandler()
-	go nodedriver.RunNodeDriver(blockvolumeNodeOptions, stopCh)
-	if nodecsioptions.EnableFssDriver {
-		go nodedriver.RunNodeDriver(fssNodeOptions, stopCh)
+
+	if nodecsioptions.OnlyEnableLustreDriver {
+		go nodedriver.RunNodeDriver(lustreNodeOptions, stopCh)
+	} else {
+		go nodedriver.RunNodeDriver(blockvolumeNodeOptions, stopCh)
+		if nodecsioptions.EnableFssDriver {
+			go nodedriver.RunNodeDriver(fssNodeOptions, stopCh)
+		}
 	}
 	<-stopCh
 }

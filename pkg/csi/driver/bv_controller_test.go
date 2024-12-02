@@ -17,19 +17,13 @@ package driver
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/pkg/errors"
-	"go.uber.org/zap"
-	authv1 "k8s.io/api/authentication/v1"
-	kubeAPI "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
-
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/logging"
@@ -39,6 +33,13 @@ import (
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/oracle/oci-go-sdk/v65/identity"
 	"github.com/oracle/oci-go-sdk/v65/loadbalancer"
+	"github.com/pkg/errors"
+	"go.uber.org/zap"
+	authv1 "k8s.io/api/authentication/v1"
+	kubeAPI "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/utils/pointer"
 )
 
 const (
@@ -155,6 +156,31 @@ var (
 			Id:                 common.String("volume-attachment-stuck-in-attaching-state"),
 			InstanceId:         common.String("sample-provider-id"),
 		},
+		"uhp-volume-attachment-stuck-in-logged-in-state": {
+			DisplayName:        common.String("uhp-volume-attachment-stuck-in-logged-in-state"),
+			LifecycleState:     core.VolumeAttachmentLifecycleStateDetached,
+			AvailabilityDomain: common.String("NWuj:PHX-AD-2"),
+			Id:                 common.String("uhp-volume-attachment-stuck-in-logged-in-state"),
+			InstanceId:         common.String("sample-provider-id"),
+			IscsiLoginState:    core.VolumeAttachmentIscsiLoginStateLoginSucceeded,
+			IsMultipath:        common.Bool(true),
+		},
+	}
+
+	subnets = map[string]*core.Subnet{
+		"ocid1.ipv4-subnet": &core.Subnet{
+			CidrBlock: pointer.String("10.0.0.1/24"),
+		},
+		"ocid1.ipv6-subnet": &core.Subnet{
+			CidrBlock:      pointer.String("<null>"),
+			Ipv6CidrBlock:  pointer.String("2603:c020:e:897e::/64"),
+			Ipv6CidrBlocks: []string{"2603:c020:e:897e::/64"},
+		},
+		"ocid1.dual-stack-subnet": &core.Subnet{
+			CidrBlock:      pointer.String("10.0.2.0/24"),
+			Ipv6CidrBlock:  pointer.String("2603:c020:e:897e::/64"),
+			Ipv6CidrBlocks: []string{"2603:c020:e:897e::/64"},
+		},
 	}
 )
 
@@ -168,7 +194,7 @@ func (MockOCIClient) LoadBalancer(logger *zap.SugaredLogger, lbType string, tena
 	return &MockLoadBalancerClient{}
 }
 
-func (MockOCIClient) Networking() client.NetworkingInterface {
+func (MockOCIClient) Networking(ociClientConfig *client.OCIClientConfig) client.NetworkingInterface {
 	return &MockVirtualNetworkClient{}
 }
 
@@ -176,11 +202,11 @@ func (MockOCIClient) BlockStorage() client.BlockStorageInterface {
 	return &MockBlockStorageClient{}
 }
 
-func (MockOCIClient) FSS() client.FileStorageInterface {
+func (MockOCIClient) FSS(ociClientConfig *client.OCIClientConfig) client.FileStorageInterface {
 	return &MockFileStorageClient{}
 }
 
-func (MockOCIClient) Identity() client.IdentityInterface {
+func (MockOCIClient) Identity(ociClientConfig *client.OCIClientConfig) client.IdentityInterface {
 	return &MockIdentityClient{}
 }
 
@@ -382,6 +408,10 @@ func (p *MockProvisionerClient) BlockStorage() client.BlockStorageInterface {
 type MockVirtualNetworkClient struct {
 }
 
+func (c *MockVirtualNetworkClient) GetIpv6(ctx context.Context, id string) (*core.Ipv6, error) {
+	return &core.Ipv6{}, nil
+}
+
 func (c *MockVirtualNetworkClient) CreateNetworkSecurityGroup(ctx context.Context, compartmentId, vcnId, displayName, lbID string) (*core.NetworkSecurityGroup, error) {
 	return nil, nil
 }
@@ -420,22 +450,40 @@ func (c *MockVirtualNetworkClient) UpdateNetworkSecurityGroupSecurityRules(ctx c
 
 // GetPrivateIp mocks the VirtualNetwork GetPrivateIp implementation
 func (c *MockVirtualNetworkClient) GetPrivateIp(ctx context.Context, id string) (*core.PrivateIp, error) {
+	if id == "private-ip-fetch-error" {
+		return nil, errors.New("private IP fetch failed")
+	}
 	privateIpAddress := "10.0.20.1"
 	return &core.PrivateIp{
 		IpAddress: &privateIpAddress,
 	}, nil
 }
 
-func (c *MockVirtualNetworkClient) GetSubnet(ctx context.Context, id string) (*core.Subnet, error) {
-	return nil, nil
+func (c *MockVirtualNetworkClient) CreatePrivateIp(ctx context.Context, vnicId string) (*core.PrivateIp, error) {
+	return &core.PrivateIp{}, nil
 }
 
-func (c *MockVirtualNetworkClient) GetSubnetFromCacheByIP(ip string) (*core.Subnet, error) {
+func (c *MockVirtualNetworkClient) ListPrivateIps(ctx context.Context, id string) ([]core.PrivateIp, error) {
+	return []core.PrivateIp{}, nil
+}
+
+func (c *MockVirtualNetworkClient) GetSubnet(ctx context.Context, id string) (*core.Subnet, error) {
+	if strings.EqualFold(id, "ocid1.invalid-subnet") {
+		return nil, errors.New("Internal Error.")
+	}
+	return subnets[id], nil
+}
+
+func (c *MockVirtualNetworkClient) GetSubnetFromCacheByIP(ip client.IpAddresses) (*core.Subnet, error) {
 	return nil, nil
 }
 
 func (c *MockVirtualNetworkClient) GetVcn(ctx context.Context, id string) (*core.Vcn, error) {
 	return &core.Vcn{}, nil
+}
+
+func (c *MockVirtualNetworkClient) GetVNIC(ctx context.Context, id string) (*core.Vnic, error) {
+	return &core.Vnic{}, nil
 }
 
 func (c *MockVirtualNetworkClient) GetSecurityList(ctx context.Context, id string) (core.GetSecurityListResponse, error) {
@@ -455,7 +503,7 @@ func (c *MockVirtualNetworkClient) GetPublicIpByIpAddress(ctx context.Context, i
 }
 
 // Networking mocks client VirtualNetwork implementation.
-func (p *MockProvisionerClient) Networking() client.NetworkingInterface {
+func (p *MockProvisionerClient) Networking(ociClientConfig *client.OCIClientConfig) client.NetworkingInterface {
 	return &MockVirtualNetworkClient{}
 }
 
@@ -566,6 +614,22 @@ func (c *MockComputeClient) GetInstanceByNodeName(ctx context.Context, compartme
 
 func (c *MockComputeClient) GetPrimaryVNICForInstance(ctx context.Context, compartmentID, instanceID string) (*core.Vnic, error) {
 	return nil, nil
+}
+
+func (MockComputeClient) GetSecondaryVNICsForInstance(ctx context.Context, compartmentID, instanceID string) ([]*core.Vnic, error) {
+	return nil, nil
+}
+
+func (c *MockComputeClient) ListVnicAttachments(ctx context.Context, compartmentID, instanceID string) ([]core.VnicAttachment, error) {
+	return nil, nil
+}
+
+func (c *MockComputeClient) GetVnicAttachment(ctx context.Context, vnicAttachmentId *string) (response *core.VnicAttachment, err error) {
+	return nil, nil
+}
+
+func (c *MockComputeClient) AttachVnic(ctx context.Context, instanceID, subnetID *string, nsgIds []*string, skipSourceDestCheck *bool) (response core.VnicAttachment, err error) {
+	return core.VnicAttachment{}, nil
 }
 
 func (c *MockComputeClient) FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
@@ -700,6 +764,21 @@ func (c *MockComputeClient) WaitForVolumeDetached(ctx context.Context, attachmen
 	return nil
 }
 
+func (c *MockComputeClient) WaitForUHPVolumeLoggedOut(ctx context.Context, attachmentID string) error {
+	if err := wait.PollImmediateUntil(testPollInterval, func() (done bool, err error) {
+		va := volume_attachments[attachmentID]
+
+		if va.GetIscsiLoginState() == core.VolumeAttachmentIscsiLoginStateLogoutSucceeded {
+			return true, nil
+		}
+		return false, nil
+	}, ctx.Done()); err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
 func (p *MockProvisionerClient) Compute() client.ComputeInterface {
 	return &MockComputeClient{}
 }
@@ -709,18 +788,24 @@ type MockIdentityClient struct {
 	common.BaseClient
 }
 
-func (client MockIdentityClient) ListAvailabilityDomains(ctx context.Context, compartmentID string) ([]identity.AvailabilityDomain, error) {
+func (mockClient MockIdentityClient) ListAvailabilityDomains(ctx context.Context, compartmentID string) ([]identity.AvailabilityDomain, error) {
 	return nil, nil
 }
 
 // ListAvailabilityDomains mocks the client ListAvailabilityDomains implementation
-func (client MockIdentityClient) GetAvailabilityDomainByName(ctx context.Context, compartmentID, name string) (*identity.AvailabilityDomain, error) {
-	ad1 := "AD1"
+func (mockClient MockIdentityClient) GetAvailabilityDomainByName(ctx context.Context, compartmentID, name string) (*identity.AvailabilityDomain, error) {
+	var ad1 string
+
+	if client.IsIpv6SingleStackCluster() {
+		ad1 = "AD1-compartments-response"
+	} else {
+		ad1 = "AD1"
+	}
 	return &identity.AvailabilityDomain{Name: &ad1}, nil
 }
 
 // Identity mocks client Identity implementation
-func (p *MockProvisionerClient) Identity() client.IdentityInterface {
+func (p *MockProvisionerClient) Identity(ociClientConfig *client.OCIClientConfig) client.IdentityInterface {
 	return &MockIdentityClient{}
 }
 
@@ -873,21 +958,94 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 			wantErr: errors.New("required in PreferredTopologies or allowedTopologies"),
 		},
 		{
-			name:   "Error for unsupported volumeMode Block",
+			name: "No error when a volume is created in block mode",
+			args: args{
+				ctx: context.TODO(),
+				req: &csi.CreateVolumeRequest{
+					Name: "volume-in-available-state",
+					VolumeCapabilities: []*csi.VolumeCapability{
+						{
+							AccessMode: &csi.VolumeCapability_AccessMode{
+								Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+							},
+							AccessType: &csi.VolumeCapability_Block{
+								Block: &csi.VolumeCapability_BlockVolume{},
+							},
+						},
+					},
+					Parameters: map[string]string{
+						"vpusPerGB": "10",
+					},
+					CapacityRange: &csi.CapacityRange{
+						RequiredBytes: int64(50000),
+					},
+					AccessibilityRequirements: &csi.TopologyRequirement{
+						Requisite: []*csi.Topology{
+							{
+								Segments: map[string]string{
+									kubeAPI.LabelZoneFailureDomain: "PHX-AD-2",
+								},
+							}, {
+								Segments: map[string]string{
+									kubeAPI.LabelZoneFailureDomain: "PHX-AD-2",
+								},
+							},
+						},
+					},
+				},
+			},
+			want: &csi.CreateVolumeResponse{
+				Volume: &csi.Volume{
+					VolumeId:      "volume-in-available-state",
+					CapacityBytes: int64(52428800000),
+					AccessibleTopology: []*csi.Topology{
+						{
+							Segments: map[string]string{
+								kubeAPI.LabelTopologyZone: "PHX-AD-2",
+							},
+						},
+						{
+							Segments: map[string]string{
+								kubeAPI.LabelZoneFailureDomain: "PHX-AD-2",
+							},
+						},
+					},
+					VolumeContext: map[string]string{
+						"needResize":      "false",
+						"newSize":         "",
+						"vpusPerGB":       "10",
+						"attachment-type": "",
+					},
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name:   "Error for support of Block volumeMode in Ultra High Performance Volumes (vpusPerGB >= 30)",
 			fields: fields{},
 			args: args{
 				ctx: nil,
 				req: &csi.CreateVolumeRequest{
 					Name: "ut-volume",
-					VolumeCapabilities: []*csi.VolumeCapability{{
-						AccessType: &csi.VolumeCapability_Block{
-							Block: &csi.VolumeCapability_BlockVolume{},
-						},
-					}},
+					VolumeCapabilities: []*csi.VolumeCapability{
+						{
+							AccessMode: &csi.VolumeCapability_AccessMode{
+								Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+							},
+							AccessType: &csi.VolumeCapability_Block{
+								Block: &csi.VolumeCapability_BlockVolume{},
+							},
+						}},
+					Parameters: map[string]string{
+						"vpusPerGB": "40",
+					},
+					CapacityRange: &csi.CapacityRange{
+						RequiredBytes: int64(csi_util.MaximumVolumeSizeInBytes),
+					},
 				},
 			},
 			want:    nil,
-			wantErr: errors.New("driver does not support Block volumeMode. Please use Filesystem mode"),
+			wantErr: errors.New("failed to support Block volumeMode for Ultra High Performance Volumes (vpusPerGB >= 30)"),
 		},
 		{
 			name:   "Create Volume times out waiting for volume to become available",
@@ -1134,6 +1292,17 @@ func TestControllerDriver_ControllerUnpublishVolume(t *testing.T) {
 			},
 			want:    nil,
 			wantErr: errors.New("context deadline exceeded"),
+		},
+		{
+			name: "Unpublish should not fail on UHP Volume logout timeout",
+			args: args{
+				req: &csi.ControllerUnpublishVolumeRequest{
+					VolumeId: "uhp-volume-attachment-stuck-in-logged-in-state",
+					NodeId:   "sample-node-id",
+				},
+			},
+			want:    &csi.ControllerUnpublishVolumeResponse{},
+			wantErr: nil,
 		},
 	}
 	for _, tt := range tests {
@@ -2025,6 +2194,93 @@ func TestGetBVTags(t *testing.T) {
 				t.Errorf("Expected tagconfig %v but got %v", testcase.expectedTagConfig, actualTagConfig)
 			}
 
+		})
+	}
+}
+
+func TestClient_GetAvailabilityDomainByName(t *testing.T) {
+	tests := []struct {
+		name       string
+		ipFamilies string
+		want       *identity.AvailabilityDomain
+		wantErr    error
+	}{
+		{
+			name:       "Dual stack IPv4 preferred (identity client usage)",
+			ipFamilies: "IPv4,IPv6",
+			want: &identity.AvailabilityDomain{
+				Name: common.String("AD1"), // Default to AD1 since only exact IPv6 triggers change
+			},
+			wantErr: nil,
+		},
+		{
+			name:       "Dual stack IPv6 preferred (identity client usage)",
+			ipFamilies: "IPv6,IPv4",
+			want: &identity.AvailabilityDomain{
+				Name: common.String("AD1"), // Default to AD1 since only exact IPv6 triggers change
+			},
+			wantErr: nil,
+		},
+		{
+			name:       "IPv4 only (defaults to AD1)",
+			ipFamilies: "IPv4",
+			want: &identity.AvailabilityDomain{
+				Name: common.String("AD1"),
+			},
+			wantErr: nil,
+		},
+		{
+			name:       "IPv6 only",
+			ipFamilies: "IPv6",
+			want: &identity.AvailabilityDomain{
+				Name: common.String("AD1-compartments-response"), // Specific to IPv6
+			},
+			wantErr: nil,
+		},
+		{
+			name:       "Empty IP families (defaults to AD1)",
+			ipFamilies: "",
+			want: &identity.AvailabilityDomain{
+				Name: common.String("AD1"),
+			},
+			wantErr: nil,
+		},
+		{
+			name:       "Invalid IP families (defaults to AD1)",
+			ipFamilies: "Invalid",
+			want: &identity.AvailabilityDomain{
+				Name: common.String("AD1"), // Invalid defaults to AD1
+			},
+			wantErr: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set the environment variable for IP families
+			os.Setenv(client.ClusterIpFamilyEnv, tt.ipFamilies)
+			defer os.Unsetenv(client.ClusterIpFamilyEnv)
+
+			ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+			defer cancel()
+
+			client := NewClientProvisioner(nil, &MockBlockStorageClient{}, nil)
+			got, err := client.Identity(nil).GetAvailabilityDomainByName(ctx, "ocid1.compartment.abcd", "AD-1")
+
+			// Check if the error matches what we expect
+			if tt.wantErr == nil && err != nil {
+				t.Errorf("got error %q, want none", err)
+			}
+			if tt.wantErr != nil && err == nil {
+				t.Errorf("want error %q, got none", tt.wantErr)
+			} else if tt.wantErr != nil && err != nil && !strings.Contains(err.Error(), tt.wantErr.Error()) {
+				t.Errorf("want error %q to include %q", err, tt.wantErr)
+			}
+
+			// Check if the result matches what we expect
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("client.Identity().GetAvailabilityDomainByName() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }

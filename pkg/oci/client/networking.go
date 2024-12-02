@@ -18,24 +18,30 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/pkg/errors"
 	"k8s.io/utils/pointer"
 )
 
-// NetworkingInterface defines the subset of the OCI compute API utilised by the CCM.
+// NetworkingInterface defines the subset of the OCI compute API utilised by the CCM
 type NetworkingInterface interface {
 	GetSubnet(ctx context.Context, id string) (*core.Subnet, error)
-	GetSubnetFromCacheByIP(ip string) (*core.Subnet, error)
+	GetSubnetFromCacheByIP(ip IpAddresses) (*core.Subnet, error)
 	IsRegionalSubnet(ctx context.Context, id string) (bool, error)
 
 	GetVcn(ctx context.Context, id string) (*core.Vcn, error)
+	GetVNIC(ctx context.Context, id string) (*core.Vnic, error)
 
 	GetSecurityList(ctx context.Context, id string) (core.GetSecurityListResponse, error)
 	UpdateSecurityList(ctx context.Context, id string, etag string, ingressRules []core.IngressSecurityRule, egressRules []core.EgressSecurityRule) (core.UpdateSecurityListResponse, error)
 
+	ListPrivateIps(ctx context.Context, vnicId string) ([]core.PrivateIp, error)
 	GetPrivateIp(ctx context.Context, id string) (*core.PrivateIp, error)
+	CreatePrivateIp(ctx context.Context, vnicID string) (*core.PrivateIp, error)
+	GetIpv6(ctx context.Context, id string) (*core.Ipv6, error)
 
 	GetPublicIpByIpAddress(ctx context.Context, id string) (*core.PublicIp, error)
 
@@ -49,6 +55,11 @@ type NetworkingInterface interface {
 	RemoveNetworkSecurityGroupSecurityRules(ctx context.Context, id string, details core.RemoveNetworkSecurityGroupSecurityRulesDetails) (*core.RemoveNetworkSecurityGroupSecurityRulesResponse, error)
 	ListNetworkSecurityGroupSecurityRules(ctx context.Context, id string, direction core.ListNetworkSecurityGroupSecurityRulesDirectionEnum) ([]core.SecurityRule, error)
 	UpdateNetworkSecurityGroupSecurityRules(ctx context.Context, id string, details core.UpdateNetworkSecurityGroupSecurityRulesDetails) (*core.UpdateNetworkSecurityGroupSecurityRulesResponse, error)
+}
+
+type IpAddresses struct {
+	V4 string
+	V6 string
 }
 
 func (c *client) GetVNIC(ctx context.Context, id string) (*core.Vnic, error) {
@@ -87,6 +98,11 @@ func (c *client) GetSubnet(ctx context.Context, id string) (*core.Subnet, error)
 		SubnetId:        &id,
 		RequestMetadata: c.requestMetadata,
 	})
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "Networking", "verb", getVerb).
+			With("OpcRequestId", *(resp.OpcRequestId)).With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for GetSubnet call.")
+	}
 	incRequestCounter(err, getVerb, subnetResource)
 
 	if err != nil {
@@ -101,20 +117,54 @@ func (c *client) GetSubnet(ctx context.Context, id string) (*core.Subnet, error)
 
 // GetSubnetFromCacheByIP checks to see if the given IP is contained by any subnet CIDR block in the subnet cache
 // If no hits were found then no subnet and no error will be returned (nil, nil)
-func (c *client) GetSubnetFromCacheByIP(ip string) (*core.Subnet, error) {
-	ipAddr := net.ParseIP(ip)
+func (c *client) GetSubnetFromCacheByIP(ip IpAddresses) (*core.Subnet, error) {
+	ipAddrV4 := net.ParseIP(ip.V4)
+	ipAddrV6 := net.ParseIP(ip.V6)
+
 	for _, subnetItem := range c.subnetCache.List() {
 		subnet := subnetItem.(*core.Subnet)
-		_, cidr, err := net.ParseCIDR(*subnet.CidrBlock)
-		if err != nil {
-			// This should never actually error but just in case
-			return nil, fmt.Errorf("unable to parse CIDR block %q for subnet %q: %v", *subnet.CidrBlock, *subnet.Id, err)
+		if subnet == nil {
+			continue
 		}
-
-		if cidr.Contains(ipAddr) {
-			return subnet, nil
+		if subnet.CidrBlock != nil {
+			// By design IPv4 CidrBlock is not allowed to be null or empty, so it has been hardcoded with string "<null>"
+			if !strings.Contains(*subnet.CidrBlock, "null") {
+				_, cidrV4, err := net.ParseCIDR(*subnet.CidrBlock)
+				if err != nil {
+					// This should never actually error but just in case
+					return nil, fmt.Errorf("unable to parse CIDR block %q for subnet %q: %v", *subnet.CidrBlock, *subnet.Id, err)
+				}
+				if cidrV4.Contains(ipAddrV4) {
+					return subnet, nil
+				}
+			}
+		}
+		if subnet.Ipv6CidrBlock != nil {
+			_, cidrV6, err := net.ParseCIDR(*subnet.Ipv6CidrBlock)
+			if err != nil {
+				// This should never actually error but just in case
+				return nil, fmt.Errorf("unable to parse CIDR block %q for subnet %q: %v", *subnet.Ipv6CidrBlock, *subnet.Id, err)
+			}
+			if cidrV6.Contains(ipAddrV6) {
+				return subnet, nil
+			}
+		}
+		if subnet.Ipv6CidrBlocks != nil && len(subnet.Ipv6CidrBlocks) > 0 {
+			for _, ipv6CidrBlock := range subnet.Ipv6CidrBlocks {
+				if ipv6CidrBlock != "" {
+					_, cidrV6, err := net.ParseCIDR(ipv6CidrBlock)
+					if err != nil {
+						// This should never actually error but just in case
+						return nil, fmt.Errorf("unable to parse CIDR block %q for subnet %q: %v", ipv6CidrBlock, *subnet.Id, err)
+					}
+					if cidrV6.Contains(ipAddrV6) {
+						return subnet, nil
+					}
+				}
+			}
 		}
 	}
+
 	return nil, nil
 }
 
@@ -190,10 +240,15 @@ func (c *client) GetPrivateIp(ctx context.Context, id string) (*core.PrivateIp, 
 		PrivateIpId:     &id,
 		RequestMetadata: c.requestMetadata,
 	})
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "Networking", "verb", getVerb, "mountTargetIpId", id).
+			With("OpcRequestId", *(resp.OpcRequestId)).With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for GetPrivateIp call.")
+	}
 	incRequestCounter(err, getVerb, privateIPResource)
 
 	if err != nil {
-		c.logger.With(id).Infof("GetPrivateIp failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		c.logger.With("mountTargetIpId", id).Infof("GetPrivateIp failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
 		return nil, errors.WithStack(err)
 	}
 
@@ -217,6 +272,75 @@ func (c *client) GetPublicIpByIpAddress(ctx context.Context, ip string) (*core.P
 	}
 
 	return &resp.PublicIp, nil
+}
+
+func (c *client) ListPrivateIps(ctx context.Context, vnicId string) ([]core.PrivateIp, error) {
+	privateIps := []core.PrivateIp{}
+	// Walk through all pages to get all private IPs for VNIC
+	for {
+		if !c.rateLimiter.Reader.TryAccept() {
+			return nil, RateLimitError(false, "ListPrivateIp")
+		}
+
+		resp, err := c.network.ListPrivateIps(ctx, core.ListPrivateIpsRequest{
+			VnicId:          &vnicId,
+			RequestMetadata: c.requestMetadata,
+		})
+		incRequestCounter(err, listVerb, privateIPResource)
+		if err != nil {
+			c.logger.With(vnicId).Infof("ListPrivateIps failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+			return nil, errors.WithStack(err)
+		}
+		privateIps = append(privateIps, resp.Items...)
+		if page := resp.OpcNextPage; page == nil {
+			break
+		}
+	}
+
+	return privateIps, nil
+}
+
+func (c *client) CreatePrivateIp(ctx context.Context, vnicId string) (*core.PrivateIp, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return nil, RateLimitError(false, "CreatePrivateIp")
+	}
+	requestMetadata := getDefaultRequestMetadata(c.requestMetadata)
+	resp, err := c.network.CreatePrivateIp(ctx, core.CreatePrivateIpRequest{
+		CreatePrivateIpDetails: core.CreatePrivateIpDetails{
+			VnicId: &vnicId,
+		},
+		RequestMetadata: requestMetadata,
+	})
+	incRequestCounter(err, createVerb, privateIPResource)
+	if err != nil {
+		c.logger.With(vnicId).Infof("CreatePrivateIp failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		return nil, errors.WithStack(err)
+	}
+
+	return &resp.PrivateIp, nil
+}
+
+func (c *client) GetIpv6(ctx context.Context, id string) (*core.Ipv6, error) {
+	if !c.rateLimiter.Reader.TryAccept() {
+		return nil, RateLimitError(false, "GetIpv6")
+	}
+	resp, err := c.network.GetIpv6(ctx, core.GetIpv6Request{
+		Ipv6Id:          &id,
+		RequestMetadata: c.requestMetadata,
+	})
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "Networking", "verb", getVerb).
+			With("OpcRequestId", *(resp.OpcRequestId)).With("statusCode", util.GetHttpStatusCode(err)).
+			Info("OPC Request ID recorded for GetIpv6 call.")
+	}
+	incRequestCounter(err, getVerb, ipv6IPResource)
+
+	if err != nil {
+		c.logger.With(id).Infof("GetIpv6 failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		return nil, errors.WithStack(err)
+	}
+
+	return &resp.Ipv6, nil
 }
 
 func (c *client) CreateNetworkSecurityGroup(ctx context.Context, compartmentId, vcnId, displayName, serviceUid string) (*core.NetworkSecurityGroup, error) {
@@ -354,7 +478,7 @@ func (c *client) AddNetworkSecurityGroupSecurityRules(ctx context.Context, id st
 
 	if err != nil {
 		c.logger.With(id).Infof("AddNetworkSecurityGroupSecurityRules failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
-		return nil, errors.WithStack(err)
+		return &resp, errors.WithStack(err)
 	}
 	return &resp, nil
 }
@@ -373,7 +497,7 @@ func (c *client) RemoveNetworkSecurityGroupSecurityRules(ctx context.Context, id
 
 	if err != nil {
 		c.logger.With(id).Infof("RemoveNetworkSecurityGroupSecurityRules failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
-		return nil, errors.WithStack(err)
+		return &resp, errors.WithStack(err)
 	}
 	return &resp, nil
 }
@@ -395,7 +519,7 @@ func (c *client) ListNetworkSecurityGroupSecurityRules(ctx context.Context, id s
 
 		if err != nil {
 			c.logger.With(id).Infof("ListNetworkSecurityGroupSecurityRules failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
-			return nil, errors.WithStack(err)
+			return []core.SecurityRule{}, errors.WithStack(err)
 		}
 		for _, rule := range resp.Items {
 			nsgRules = append(nsgRules, rule)
@@ -421,7 +545,7 @@ func (c *client) UpdateNetworkSecurityGroupSecurityRules(ctx context.Context, id
 
 	if err != nil {
 		c.logger.With(id).Infof("UpdateNetworkSecurityGroupSecurityRules failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
-		return nil, errors.WithStack(err)
+		return &resp, errors.WithStack(err)
 	}
 	return &resp, nil
 }
