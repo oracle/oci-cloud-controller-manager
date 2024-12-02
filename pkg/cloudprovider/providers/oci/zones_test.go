@@ -51,7 +51,7 @@ func TestGetZoneByProviderID(t *testing.T) {
 	}{
 		{
 			name: "provider id without provider prefix",
-			in:   "instance_zone_test",
+			in:   "ocid1.instance_zone_test",
 			out: cloudprovider.Zone{
 				FailureDomain: "PHX-AD-1",
 				Region:        "PHX",
@@ -60,7 +60,7 @@ func TestGetZoneByProviderID(t *testing.T) {
 		},
 		{
 			name: "provider id with provider prefix",
-			in:   providerPrefix + "instance_zone_test",
+			in:   providerPrefix + "ocid1.instance_zone_test",
 			out: cloudprovider.Zone{
 				FailureDomain: "PHX-AD-1",
 				Region:        "PHX",
@@ -69,7 +69,7 @@ func TestGetZoneByProviderID(t *testing.T) {
 		},
 		{
 			name: "provider id with provider prefix and instance not in cache",
-			in:   providerPrefix + "instance_zone_test_noncache",
+			in:   providerPrefix + "ocid1.instance_zone_test_noncache",
 			out: cloudprovider.Zone{
 				FailureDomain: "PHX-AD-1",
 				Region:        "PHX",

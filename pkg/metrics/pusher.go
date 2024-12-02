@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -32,11 +33,14 @@ import (
 )
 
 const (
-	metricSubmissionTimeout       = time.Second * 5
-	jitterFactor                  = 0.1
-	configFilePath                = "/etc/oci/config.yaml"
-	telemetryIngestionServiceName = "telemetry-ingestion"
-	configFileName                = "config.yaml"
+	metricSubmissionTimeout                = time.Second * 5
+	jitterFactor                           = 0.1
+	configFilePath                         = "/etc/oci/config.yaml"
+	telemetryIngestionServiceName          = "telemetry-ingestion"
+	telemetryIngestionServiceNameDualStack = "ds.telemetry-ingestion"
+	configFileName                         = "config.yaml"
+	Ipv6Stack                              = "IPv6"
+	ClusterIpFamilyEnv                     = "CLUSTER_IP_FAMILY"
 )
 
 // MonitoringClient is wrapper interface over the oci golang monitoring client
@@ -101,13 +105,19 @@ func NewMetricPusher(logger *zap.SugaredLogger) (*MetricPusher, error) {
 		return nil, nil
 	}
 
+	telemetryEndpoint := common.StringToRegion(cfg.RegionKey).Endpoint(telemetryIngestionServiceName)
+	// dual stack endpoint to be called in case of SingleStack IPv6 only
+	clusterIpFamily, ok := os.LookupEnv(ClusterIpFamilyEnv)
+	if ok && strings.EqualFold(clusterIpFamily, Ipv6Stack) {
+		telemetryEndpoint = common.StringToRegion(cfg.RegionKey).Endpoint(telemetryIngestionServiceNameDualStack)
+	}
+
 	cp, err := auth.InstancePrincipalConfigurationProvider()
 	if err != nil {
 		logger.With("error", err).Error("error occurred while creating auth provider")
 		return nil, err
 	}
 
-	telemetryEndpoint := common.StringToRegion(cfg.RegionKey).Endpoint(telemetryIngestionServiceName)
 	client, err := monitoring.NewMonitoringClientWithConfigurationProvider(cp)
 	if err != nil {
 		logger.With(err).Error("error occurred while creating monitoring client")

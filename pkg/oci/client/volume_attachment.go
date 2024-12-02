@@ -54,6 +54,10 @@ type VolumeAttachmentInterface interface {
 	WaitForVolumeDetached(ctx context.Context, attachmentID string) error
 
 	FindActiveVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error)
+
+	// WaitForUHPVolumeLoggedOut WaitForUHPVolumeLogout polls waiting for a OCI UHP block volume attachment to be in the
+	// LOGGED_OUT state.
+	WaitForUHPVolumeLoggedOut(ctx context.Context, attachmentID string) error
 }
 
 var _ VolumeAttachmentInterface = &client{}
@@ -187,7 +191,7 @@ func (c *client) getDevicePath(ctx context.Context, instanceID string) (*string,
 	if len(listInstanceDevicesResp.Items) == 0 {
 		c.logger.With("service", "compute", "verb", listVerb, "resource", instanceResource).
 			With("instanceID", instanceID).Warn("No consistent device paths available for worker node.")
-		return nil, fmt.Errorf("Max number of volumes are already attached to instance %s. Please schedule workload on different node.",  instanceID)
+		return nil, fmt.Errorf("Max number of volumes are already attached to instance %s. Please schedule workload on different node.", instanceID)
 	}
 	//Picks device path from available path randomly so that 2 volume attachments don't get same path when operations happen concurrently resulting in failure of one of them.
 	device := listInstanceDevicesResp.Items[rand.Intn(len(listInstanceDevicesResp.Items))].Name
@@ -338,4 +342,25 @@ func (c *client) FindActiveVolumeAttachment(ctx context.Context, compartmentID, 
 	}
 
 	return nil, errors.WithStack(errNotFound)
+}
+
+func (c *client) WaitForUHPVolumeLoggedOut(ctx context.Context, attachmentID string) error {
+	if err := wait.PollImmediateUntil(attachmentPollInterval, func() (done bool, err error) {
+		va, err := c.GetVolumeAttachment(ctx, attachmentID)
+
+		if err != nil {
+			if IsRetryable(err) {
+				return false, nil
+			}
+			return true, errors.WithStack(err)
+		}
+		if va.GetIscsiLoginState() == core.VolumeAttachmentIscsiLoginStateLogoutSucceeded {
+			return true, nil
+		}
+		return false, nil
+	}, ctx.Done()); err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
 }

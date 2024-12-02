@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	oke "github.com/oracle/oci-go-sdk/v65/containerengine"
 	imageutils "k8s.io/kubernetes/test/utils/image"
 )
 
@@ -87,10 +88,15 @@ var (
 	reservedIP                    string // Testing public reserved IP feature
 	architecture                  string
 	volumeHandle                  string // The FSS mount volume handle
+	lustreVolumeHandle			  string // The Lustre mount volume handle
+	lustreSubnetCidr              string // The Lustre Subnet Cidr
 	staticSnapshotCompartmentOCID string // Compartment ID for cross compartment snapshot test
 	runUhpE2E                     bool   // Whether to run UHP E2Es, requires Volume Management Plugin enabled on the node and 16+ cores (check blockvolumeperformance public doc for the exact requirements)
 	enableParallelRun			  bool
 	addOkeSystemTags              bool
+	clusterID                     string              // Ocid of the newly created E2E cluster
+	clusterType                   string              // Cluster type can be BASIC_CLUSTER or ENHANCED_CLUSTER (Default: BASIC_CLUSTER)
+	clusterTypeEnum               oke.ClusterTypeEnum // Enum for OKE Cluster Type
 )
 
 func init() {
@@ -111,6 +117,8 @@ func init() {
 	flag.StringVar(&mntTargetSubnetOCID, "mnt-target-subnet-id", "", "Mount Target Subnet is required for creating storage class for FSS dynamic testing")
 	flag.StringVar(&mntTargetCompartmentOCID, "mnt-target-compartment-id", "", "Mount Target Compartment is required for creating storage class for FSS dynamic testing with cross compartment")
 	flag.StringVar(&volumeHandle, "volume-handle", "", "FSS volume handle used to mount the File System")
+	flag.StringVar(&lustreVolumeHandle, "lustre-volume-handle", "", "Lustre volume handle used to mount the File System")
+	flag.StringVar(&lustreSubnetCidr, "lustre-subnet-cidr", "", "Lustre subnet cidr to identify SVNIC in lustre subnet to configure lnet.")
 
 	flag.StringVar(&imagePullRepo, "image-pull-repo", "", "Repo to pull images from. Will pull public images if not specified.")
 	flag.StringVar(&cmekKMSKey, "cmek-kms-key", "", "KMS key to be used for CMEK testing")
@@ -123,12 +131,18 @@ func init() {
 	flag.BoolVar(&runUhpE2E, "run-uhp-e2e", false, "Run UHP E2Es as well")
 	flag.BoolVar(&enableParallelRun, "enable-parallel-run", true, "Enables parallel running of test suite")
 	flag.BoolVar(&addOkeSystemTags, "add-oke-system-tags", false, "Adds oke system tags to new and existing loadbalancers and storage resources")
+
+	flag.StringVar(&clusterType, "cluster-type", "BASIC_CLUSTER", "Cluster type can be BASIC_CLUSTER or ENHANCED_CLUSTER")
 }
 
 // Framework is the context of the text execution.
 type Framework struct {
 	// The compartment1 the cluster is running in.
 	Compartment1 string
+
+	// Cluster Type
+	ClusterType oke.ClusterTypeEnum
+
 	// Default adLocation
 	AdLocation string
 
@@ -152,6 +166,9 @@ type Framework struct {
 	Architecture             string
 
 	VolumeHandle string
+	LustreVolumeHandle string
+
+	LustreSubnetCidr string
 
 	// Compartment ID for cross compartment snapshot test
 	StaticSnapshotCompartmentOcid string
@@ -179,9 +196,12 @@ func NewWithConfig() *Framework {
 		NsgOCIDS:                      nsgOCIDS,
 		ReservedIP:                    reservedIP,
 		VolumeHandle:                  volumeHandle,
+		LustreVolumeHandle:            lustreVolumeHandle,
+		LustreSubnetCidr:              lustreSubnetCidr,
 		StaticSnapshotCompartmentOcid: staticSnapshotCompartmentOCID,
 		RunUhpE2E:                     runUhpE2E,
 		AddOkeSystemTags:              addOkeSystemTags,
+		ClusterType:                   clusterTypeEnum,
 	}
 
 	f.CloudConfigPath = cloudConfigFile
@@ -214,6 +234,10 @@ func (f *Framework) Initialize() {
 	Logf("OCI Mount Target Compartment OCID: %s", f.MntTargetCompartmentOcid)
 	f.VolumeHandle = volumeHandle
 	Logf("FSS Volume Handle is : %s", f.VolumeHandle)
+	f.LustreVolumeHandle = lustreVolumeHandle
+	Logf("Lustre Volume Handle is : %s", f.LustreVolumeHandle)
+	f.LustreSubnetCidr = lustreSubnetCidr
+	Logf("Lustre Subnet CIDR is : %s", f.LustreSubnetCidr)
 	f.StaticSnapshotCompartmentOcid = staticSnapshotCompartmentOCID
 	Logf("Static Snapshot Compartment OCID: %s", f.StaticSnapshotCompartmentOcid)
 	f.RunUhpE2E = runUhpE2E
@@ -231,6 +255,13 @@ func (f *Framework) Initialize() {
 	f.Compartment1 = compartment1
 	Logf("OCI compartment1 OCID: %s", f.Compartment1)
 	f.setImages()
+	if strings.ToUpper(clusterType) == "ENHANCED_CLUSTER" {
+		clusterTypeEnum = oke.ClusterTypeEnhancedCluster
+	} else {
+		clusterTypeEnum = oke.ClusterTypeBasicCluster
+	}
+	f.ClusterType = clusterTypeEnum
+	Logf("Cluster Type: %s", f.ClusterType)
 	f.ClusterKubeconfigPath = clusterkubeconfig
 	f.CloudConfigPath = cloudConfigFile
 }

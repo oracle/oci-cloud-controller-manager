@@ -18,17 +18,17 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 
-	"github.com/oracle/oci-cloud-controller-manager/pkg/metrics"
-
 	"go.uber.org/zap"
 	api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 
+	"github.com/oracle/oci-cloud-controller-manager/pkg/metrics"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/v65/loadbalancer"
 )
@@ -168,6 +168,12 @@ func contains(s []string, e string) bool {
 	return false
 }
 
+// removeAtPosition is a helper method to remove an element from remove and return it given the index
+func removeAtPosition(slice []string, position int) []string {
+	slice[position] = slice[len(slice)-1]
+	return slice[:len(slice)-1]
+}
+
 func getHealthCheckerChanges(actual *client.GenericHealthChecker, desired *client.GenericHealthChecker) []string {
 
 	var healthCheckerChanges []string
@@ -244,6 +250,7 @@ func hasBackendSetChanged(logger *zap.SugaredLogger, actual client.GenericBacken
 		backendSetChanges = append(backendSetChanges, fmt.Sprintf(changeFmtStr, "BackEndSet:IsPreserveSource", toBool(actual.IsPreserveSource), toBool(desired.IsPreserveSource)))
 	}
 
+	backendSetChanges = append(backendSetChanges, getSSLConfigurationChanges(actual.SslConfiguration, desired.SslConfiguration)...)
 	nameFormat := "%s:%d"
 
 	desiredSet := sets.NewString()
@@ -302,9 +309,15 @@ func sslConfigurationToDetails(sc *client.GenericSslConfigurationDetails) *clien
 		return nil
 	}
 	return &client.GenericSslConfigurationDetails{
-		CertificateName:       sc.CertificateName,
-		VerifyDepth:           sc.VerifyDepth,
-		VerifyPeerCertificate: sc.VerifyPeerCertificate,
+		VerifyDepth:                    sc.VerifyDepth,
+		VerifyPeerCertificate:          sc.VerifyPeerCertificate,
+		HasSessionResumption:           sc.HasSessionResumption,
+		TrustedCertificateAuthorityIds: sc.TrustedCertificateAuthorityIds,
+		CertificateIds:                 sc.CertificateIds,
+		CertificateName:                sc.CertificateName,
+		Protocols:                      sc.Protocols,
+		CipherSuiteName:                sc.CipherSuiteName,
+		ServerOrderPreference:          sc.ServerOrderPreference,
 	}
 }
 
@@ -314,10 +327,10 @@ func backendsToBackendDetails(bs []client.GenericBackend) []client.GenericBacken
 		backends[i] = client.GenericBackend{
 			IpAddress: backend.IpAddress,
 			Port:      backend.Port,
-			//Backup:    backend.Backup,
-			//Drain:     backend.Drain,
-			//Offline:   backend.Offline,
-			Weight: backend.Weight,
+			Backup:    backend.Backup,
+			Drain:     backend.Drain,
+			Offline:   backend.Offline,
+			Weight:    backend.Weight,
 		}
 	}
 	return backends
@@ -368,6 +381,7 @@ func getBackendSetChanges(logger *zap.SugaredLogger, actual map[string]client.Ge
 					Backends:                        backendsToBackendDetails(actualBackendSet.Backends),
 					SessionPersistenceConfiguration: actualBackendSet.SessionPersistenceConfiguration,
 					SslConfiguration:                sslConfigurationToDetails(actualBackendSet.SslConfiguration),
+					IpVersion:                       actualBackendSet.IpVersion,
 				},
 				Ports:      portsFromBackendSet(logger, *actualBackendSet.Name, &actualBackendSet),
 				actionType: Delete,
@@ -426,6 +440,13 @@ func getSSLConfigurationChanges(actual *client.GenericSslConfigurationDetails, d
 	if toBool(actual.VerifyPeerCertificate) != toBool(desired.VerifyPeerCertificate) {
 		sslConfigurationChanges = append(sslConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:VerifyPeerCertificate", toBool(actual.VerifyPeerCertificate), toBool(desired.VerifyPeerCertificate)))
 	}
+	if toString(actual.CipherSuiteName) != toString(desired.CipherSuiteName) {
+		sslConfigurationChanges = append(sslConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:CipherSuiteName", toString(actual.CipherSuiteName), toString(desired.CipherSuiteName)))
+	}
+	if !reflect.DeepEqual(actual.Protocols, desired.Protocols) {
+		sslConfigurationChanges = append(sslConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:Protocols", strings.Join(actual.Protocols, ","), strings.Join(desired.Protocols, ",")))
+	}
+
 	return sslConfigurationChanges
 }
 
@@ -441,6 +462,10 @@ func hasListenerChanged(logger *zap.SugaredLogger, actual client.GenericListener
 	if toString(actual.Protocol) != toString(desired.Protocol) {
 		listenerChanges = append(listenerChanges, fmt.Sprintf(changeFmtStr, "Listener:Protocol", toString(actual.Protocol), toString(desired.Protocol)))
 	}
+	if toBool(actual.IsPpv2Enabled) != toBool(desired.IsPpv2Enabled) {
+		listenerChanges = append(listenerChanges, fmt.Sprintf(changeFmtStr, "Listener:IsPpv2Enabled", toBool(actual.IsPpv2Enabled), toBool(desired.IsPpv2Enabled)))
+	}
+
 	listenerChanges = append(listenerChanges, getSSLConfigurationChanges(actual.SslConfiguration, desired.SslConfiguration)...)
 	listenerChanges = append(listenerChanges, getConnectionConfigurationChanges(actual.ConnectionConfiguration, desired.ConnectionConfiguration)...)
 
@@ -557,6 +582,11 @@ func hasLoadBalancerNetworkSecurityGroupsChanged(ctx context.Context, actualNetw
 	return !DeepEqualLists(actualNetworkSecurityGroup, desiredNetworkSecurityGroup)
 }
 
+// hasIpVersionChanged checks if the IP version has changed
+func hasIpVersionChanged(previousIpVersion, currentIpVersion string) bool {
+	return !strings.EqualFold(previousIpVersion, currentIpVersion)
+}
+
 func sslEnabled(sslConfigMap map[int]*loadbalancer.SslConfiguration) bool {
 	return len(sslConfigMap) > 0
 }
@@ -571,6 +601,9 @@ func getSanitizedName(name string) string {
 		name = fmt.Sprintf(strings.Join(fields, "-"))
 	}
 	if len(fields) > 2 {
+		if contains(fields, IPv6) {
+			return fmt.Sprintf(strings.Join(fields[:3], "-"))
+		}
 		return fmt.Sprintf(strings.Join(fields[:2], "-"))
 	}
 	return name
@@ -632,6 +665,12 @@ func validateProtocols(servicePorts []api.ServicePort, lbType string, secListMgm
 		}
 	}
 	return nil
+}
+
+// GetSSLEnabledPorts returns a list of port numbers for which we need to enable
+// SSL on the corresponding listener.
+func GetSSLEnabledPorts(svc *api.Service) ([]int, error) {
+	return getSSLEnabledPorts(svc)
 }
 
 // getSSLEnabledPorts returns a list of port numbers for which we need to enable
@@ -759,4 +798,44 @@ func parseFlexibleShapeBandwidth(shape, annotation string) (int, error) {
 		return 0, fmt.Errorf("invalid format for %s annotation : %v", annotation, shape)
 	}
 	return parsedIntFlexibleShape, nil
+}
+
+// GenericIpVersion returns the address of the value client.GenericIpVersion
+func GenericIpVersion(value client.GenericIpVersion) *client.GenericIpVersion {
+	return &value
+}
+
+// convertK8sIpFamiliesToOciIpVersion helper method to convert ipFamily string to GenericIpVersion
+func convertK8sIpFamiliesToOciIpVersion(ipFamily string) client.GenericIpVersion {
+	switch ipFamily {
+	case IPv4:
+		return client.GenericIPv4
+	case IPv6:
+		return client.GenericIPv6
+	case IPv4AndIPv6:
+		return client.GenericIPv4AndIPv6
+	default:
+		return client.GenericIPv4
+	}
+}
+
+// convertOciIpVersionsToOciIpFamilies helper method to convert ociIpVersions slice to string slice
+func convertOciIpVersionsToOciIpFamilies(ipVersions []client.GenericIpVersion) []string {
+	if len(ipVersions) == 0 {
+		return []string{IPv4}
+	}
+	k8sIpFamily := []string{}
+	for _, ipVersion := range ipVersions {
+		switch ipVersion {
+		case client.GenericIPv4:
+			k8sIpFamily = append(k8sIpFamily, IPv4)
+		case client.GenericIPv6:
+			k8sIpFamily = append(k8sIpFamily, IPv6)
+		case client.GenericIPv4AndIPv6:
+			k8sIpFamily = append(k8sIpFamily, IPv4AndIPv6)
+		default:
+			k8sIpFamily = append(k8sIpFamily, IPv4)
+		}
+	}
+	return k8sIpFamily
 }

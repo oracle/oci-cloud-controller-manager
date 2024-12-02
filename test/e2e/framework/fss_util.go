@@ -21,7 +21,7 @@ import (
 )
 
 func (f *CloudProviderFramework) GetFSIdByDisplayName(ctx context.Context, compartmentId, adLocation, pvName string) (string, error) {
-	_, fsVolumeSummaryList, err := f.Client.FSS().GetFileSystemSummaryByDisplayName(ctx, compartmentId, adLocation, pvName)
+	_, fsVolumeSummaryList, err := f.Client.FSS(nil).GetFileSystemSummaryByDisplayName(ctx, compartmentId, adLocation, pvName)
 	if client.IsNotFound(err) {
 		return "", err
 	}
@@ -32,7 +32,7 @@ func (f *CloudProviderFramework) GetFSIdByDisplayName(ctx context.Context, compa
 }
 
 func (f *CloudProviderFramework) GetExportsSetIdByMountTargetId(ctx context.Context, mountTargetId string) (string, error) {
-	mountTarget, err := f.Client.FSS().GetMountTarget(ctx, mountTargetId)
+	mountTarget, err := f.Client.FSS(nil).GetMountTarget(ctx, mountTargetId)
 	if client.IsNotFound(err) {
 		return "", err
 	}
@@ -43,7 +43,7 @@ func (f *CloudProviderFramework) GetExportsSetIdByMountTargetId(ctx context.Cont
 }
 
 func (f *CloudProviderFramework) CheckFSVolumeExist(ctx context.Context, fsId string) bool {
-	fs, err := f.Client.FSS().GetFileSystem(ctx, fsId)
+	fs, err := f.Client.FSS(nil).GetFileSystem(ctx, fsId)
 	if client.IsNotFound(err) {
 		return false
 	}
@@ -57,7 +57,7 @@ func (f *CloudProviderFramework) CheckFSVolumeExist(ctx context.Context, fsId st
 }
 
 func (f *CloudProviderFramework) CheckExportExists(ctx context.Context, fsId, exportPath, exportSetId string) bool {
-	export, err := f.Client.FSS().FindExport(ctx, fsId, exportPath, exportSetId)
+	export, err := f.Client.FSS(nil).FindExport(ctx, fsId, exportPath, exportSetId)
 	if client.IsNotFound(err) {
 		return false
 	}

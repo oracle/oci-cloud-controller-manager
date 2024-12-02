@@ -48,6 +48,8 @@ const (
 	PVExpand = "PV_EXPAND"
 	// PVClone is the OCI metric for PV Clone
 	PVClone = "PV_CLONE"
+	// PVUpdate is the OCI metric for PV Update
+	PVUpdate = "PV_UPDATE"
 
 	// FSSProvision is the OCI metric suffix for FSS provision
 	FSSProvision = "FSS_PROVISION"

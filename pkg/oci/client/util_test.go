@@ -15,6 +15,7 @@
 package client
 
 import (
+	"os"
 	"testing"
 
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
@@ -88,4 +89,66 @@ func TestEnableRateLimiterConfig(t *testing.T) {
 		t.Errorf("RateLimiter Should be enabled")
 	}
 
+}
+
+func TestIsIpv6SingleStackCluster(t *testing.T) {
+	// Set up test cases
+	tests := []struct {
+		name         string
+		envValue     string
+		shouldSetEnv bool
+		want         bool
+	}{
+		{
+			name:         "Returns true when cluster IP family is IPv6",
+			envValue:     "ipv6",
+			shouldSetEnv: true,
+			want:         true,
+		},
+		{
+			name:         "Returns false when cluster IP family is not set",
+			shouldSetEnv: false,
+			want:         false,
+		},
+		{
+			name:         "Returns false when cluster IP family is not IPv6",
+			envValue:     "ipv4",
+			shouldSetEnv: true,
+			want:         false,
+		},
+		{
+			name:         "Returns false when cluster IP family is mixed case",
+			envValue:     "IPv4",
+			shouldSetEnv: true,
+			want:         false,
+		},
+		{
+			name:         "Returns true when cluster IP family is mixed case IPv6",
+			envValue:     "IPv6",
+			shouldSetEnv: true,
+			want:         true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Clean up any existing env variable after test
+			defer os.Unsetenv(ClusterIpFamilyEnv)
+
+			// Set environment variable if needed
+			if tt.shouldSetEnv {
+				os.Setenv(ClusterIpFamilyEnv, tt.envValue)
+			} else {
+				os.Unsetenv(ClusterIpFamilyEnv)
+			}
+
+			// Run the function
+			got := IsIpv6SingleStackCluster()
+
+			// Validate the result
+			if got != tt.want {
+				t.Errorf("IsIpv6SingleStackCluster() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

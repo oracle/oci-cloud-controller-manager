@@ -14,6 +14,12 @@
 
 package client
 
+const (
+	GenericIPv4        GenericIpVersion = "IPv4"
+	GenericIPv6        GenericIpVersion = "IPv6"
+	GenericIPv4AndIPv6 GenericIpVersion = "IPv4_AND_IPv6"
+)
+
 type GenericBackendSetDetails struct {
 	Name                            *string
 	HealthChecker                   *GenericHealthChecker
@@ -24,7 +30,10 @@ type GenericBackendSetDetails struct {
 	SslConfiguration *GenericSslConfigurationDetails
 	// Only needed for NLB
 	IsPreserveSource *bool
+	IpVersion        *GenericIpVersion
 }
+
+type GenericIpVersion string
 
 type GenericSessionPersistenceConfiguration struct {
 	CookieName      *string
@@ -45,22 +54,27 @@ type GenericHealthChecker struct {
 }
 
 type GenericBackend struct {
-	Port      *int
-	Name      *string
-	IpAddress *string
-	TargetId  *string
-	Weight    *int
+	Port           *int
+	Name           *string
+	IpAddress      *string
+	TargetId       *string
+	Weight         *int
+	Backup         *bool
+	Drain          *bool
+	Offline        *bool
+	MaxConnections *int
 }
 
 type GenericSslConfigurationDetails struct {
-	VerifyDepth                    *int
-	VerifyPeerCertificate          *bool
-	TrustedCertificateAuthorityIds []string
-	CertificateIds                 []string
-	CertificateName                *string
-	ServerOrderPreference          string
-	CipherSuiteName                *string
-	Protocols                      []string
+	VerifyDepth                    *int     `json:"verifyDepth"`
+	VerifyPeerCertificate          *bool    `json:"verifyPeerCertificate"`
+	HasSessionResumption           *bool    `json:"hasSessionResumption"`
+	TrustedCertificateAuthorityIds []string `json:"trustedCertificateAuthorityIds"`
+	CertificateIds                 []string `json:"certificateIds"`
+	CertificateName                *string  `json:"certificateName"`
+	Protocols                      []string `json:"protocols"`
+	CipherSuiteName                *string  `json:"cipherSuiteName"`
+	ServerOrderPreference          string   `json:"serverOrderPreference"`
 }
 
 type GenericListener struct {
@@ -74,6 +88,8 @@ type GenericListener struct {
 	ConnectionConfiguration *GenericConnectionConfiguration
 	RoutingPolicyName       *string
 	RuleSetNames            []string
+	IpVersion               *GenericIpVersion
+	IsPpv2Enabled           *bool
 }
 
 type GenericConnectionConfiguration struct {
@@ -96,6 +112,7 @@ type GenericCreateLoadBalancerDetails struct {
 	NetworkSecurityGroupIds     []string
 	FreeformTags                map[string]string
 	DefinedTags                 map[string]map[string]interface{}
+	IpVersion                   *GenericIpVersion
 
 	// Only needed for LB
 	Certificates map[string]GenericCertificate
@@ -143,6 +160,7 @@ type GenericLoadBalancer struct {
 	Listeners               map[string]GenericListener
 	Certificates            map[string]GenericCertificate
 	BackendSets             map[string]GenericBackendSetDetails
+	IpVersion               *GenericIpVersion
 
 	FreeformTags map[string]string
 	DefinedTags  map[string]map[string]interface{}
@@ -165,6 +183,7 @@ type GenericUpdateNetworkSecurityGroupsDetails struct {
 }
 
 type GenericUpdateLoadBalancerDetails struct {
+	IpVersion    *GenericIpVersion
 	FreeformTags map[string]string
 	DefinedTags  map[string]map[string]interface{}
 }

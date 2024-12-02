@@ -16,6 +16,9 @@
 # The test suites to run (can replace or add tags)
 export FOCUS="\[cloudprovider\]"
 
+# The test suites to skip (can replace or add tags)
+export FOCUS_SKIP=""
+
 # Scope can be ARM / AMD / BOTH
 # Mandatory
 export SCOPE="BOTH"

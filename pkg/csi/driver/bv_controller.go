@@ -244,7 +244,6 @@ func (d *BlockVolumeControllerDriver) CreateVolume(ctx context.Context, req *csi
 
 	availableDomainShortName := ""
 	volumeName := req.Name
-
 	dimensionsMap := make(map[string]string)
 
 	volumeParams, err := extractVolumeParameters(log, req.GetParameters())
@@ -254,6 +253,14 @@ func (d *BlockVolumeControllerDriver) CreateVolume(ctx context.Context, req *csi
 		dimensionsMap[metrics.ComponentDimension] = metricDimension
 		metrics.SendMetricData(d.metricPusher, metrics.PVProvision, time.Since(startTime).Seconds(), dimensionsMap)
 		return nil, status.Errorf(codes.InvalidArgument, "failed to parse storageclass parameters %v", err)
+	}
+
+	// Return error for the case of Raw Block Volume with Ultra High Performance Volumes
+	for _, cap := range req.VolumeCapabilities {
+		if blk := cap.GetBlock(); blk != nil && volumeParams.vpusPerGB >= 30 {
+			log.Error("volumeMode is set to Block for an Ultra High Performance Volume, which is not supported")
+			return nil, status.Errorf(codes.InvalidArgument, "failed to support Block volumeMode for Ultra High Performance Volumes (vpusPerGB >= 30)")
+		}
 	}
 
 	dimensionsMap[metrics.ResourceOCIDDimension] = volumeName
@@ -406,7 +413,7 @@ func (d *BlockVolumeControllerDriver) CreateVolume(ctx context.Context, req *csi
 
 	} else {
 		// Creating new volume
-		ad, err := d.client.Identity().GetAvailabilityDomainByName(ctx, d.config.CompartmentID, availableDomainShortName)
+		ad, err := d.client.Identity(nil).GetAvailabilityDomainByName(ctx, d.config.CompartmentID, availableDomainShortName)
 		if err != nil {
 			log.With("Compartment Id", d.config.CompartmentID, "service", "identity", "verb", "get", "resource", "AD", "statusCode", util.GetHttpStatusCode(err)).
 				With(zap.Error(err)).Error("Failed to get available domain.")
@@ -855,13 +862,19 @@ func (d *BlockVolumeControllerDriver) ControllerUnpublishVolume(ctx context.Cont
 	multipath := false
 
 	if attachedVolume.GetIsMultipath() != nil {
+		var cancel context.CancelFunc
+		// this will not override parent context, it will evaluate to min(parent context timeout, current time + 90 seconds)
+		ctx, cancel = context.WithTimeout(ctx, 90*time.Second)
+		defer cancel()
 		multipath = *attachedVolume.GetIsMultipath()
-	}
-
-	// sleeping to ensure block volume plugin logs out of iscsi connections on nodes before delete
-	if multipath {
-		log.Info("Waiting for 90 seconds to ensure block volume plugin logs out of iscsi connections on nodes")
-		time.Sleep(90 * time.Second)
+		if multipath {
+			log.With("instanceID", *attachedVolume.GetInstanceId()).Info("Waiting for UHP Volume to logout")
+			err = d.client.Compute().WaitForUHPVolumeLoggedOut(ctx, *attachedVolume.GetId())
+			if err != nil {
+				log.With("service", "compute", "verb", "get", "resource", "volumeAttachment", "statusCode", util.GetHttpStatusCode(err)).
+					With("instanceID", *attachedVolume.GetInstanceId()).Warnf("timed out waiting for UHP volume logout, will not wait further or retry, will mark detach success: %s", err.Error())
+			}
+		}
 	}
 
 	log.Info("Un-publishing Volume Completed")
@@ -966,8 +979,7 @@ func (d *BlockVolumeControllerDriver) validateCapabilities(caps []*csi.VolumeCap
 
 	for _, cap := range caps {
 		if blk := cap.GetBlock(); blk != nil {
-			d.logger.Error("volumeMode is set to Block which is not supported.")
-			return fmt.Errorf("driver does not support Block volumeMode. Please use Filesystem mode")
+			d.logger.Info("The requested volume mode is set to Block")
 		}
 		if hasSupport(cap.AccessMode.Mode) {
 			continue
@@ -1029,6 +1041,9 @@ func (d *BlockVolumeControllerDriver) CreateSnapshot(ctx context.Context, req *c
 		return nil, fmt.Errorf("duplicate snapshot %q exists", req.Name)
 	}
 
+	volumeAvailableTimeoutCtx, cancel := context.WithTimeout(ctx, 45 * time.Second)
+	defer cancel()
+
 	if len(snapshots) > 0 {
 		//Assigning existing snapshot
 
@@ -1049,35 +1064,38 @@ func (d *BlockVolumeControllerDriver) CreateSnapshot(ctx context.Context, req *c
 		ts := timestamppb.New(snapshot.TimeCreated.Time)
 
 		log.Infof("Checking if backup %v has become available", *snapshot.Id)
-		blockVolumeAvailable, err := isBlockVolumeAvailable(snapshot)
+
+		_, err = d.client.BlockStorage().AwaitVolumeBackupAvailableOrTimeout(volumeAvailableTimeoutCtx, *snapshot.Id)
 		if err != nil {
-			log.Errorf("Error while waiting for backup to become available %q: %v", req.Name, err)
-			errorType = util.GetError(err)
-			snapshotMetricDimension = util.GetMetricDimensionForComponent(errorType, util.CSIStorageType)
-			dimensionsMap[metrics.ComponentDimension] = snapshotMetricDimension
-			metrics.SendMetricData(d.metricPusher, metrics.BlockSnapshotProvision, time.Since(snapshot.TimeRequestReceived.Time).Seconds(), dimensionsMap)
-			return nil, status.Errorf(codes.Internal, "Backup did not become available %q: %v", req.Name, err)
+			if strings.Contains(err.Error(), "timed out") {
+				log.Infof("Backup has not become available yet, controller will retry")
+				snapshotMetricDimension = util.GetMetricDimensionForComponent(util.BackupCreating, util.CSIStorageType)
+				dimensionsMap[metrics.ComponentDimension] = snapshotMetricDimension
+				metrics.SendMetricData(d.metricPusher, metrics.BlockSnapshotProvision, time.Since(snapshot.TimeRequestReceived.Time).Seconds(), dimensionsMap)
+				return nil, status.Errorf(codes.DeadlineExceeded, "Timed out waiting for backup to become available")
+			} else {
+				log.With("service", "blockstorage", "verb", "get", "resource", "volumeBackup", "statusCode", util.GetHttpStatusCode(err)).
+					Errorf("Error while waiting for backup to become available %q: %v", req.Name, err)
+				errorType = util.GetError(err)
+				snapshotMetricDimension = util.GetMetricDimensionForComponent(errorType, util.CSIStorageType)
+				dimensionsMap[metrics.ComponentDimension] = snapshotMetricDimension
+				metrics.SendMetricData(d.metricPusher, metrics.BlockSnapshotProvision, time.Since(startTime).Seconds(), dimensionsMap)
+				log.Errorf("Backup did not become available %q: %v", req.Name, err)
+				return nil, status.Errorf(codes.Internal, "Backup did not become available %q: %v", req.Name, err)
+			}
 		}
 
-		if blockVolumeAvailable {
-			log.Info("Snapshot is created and available.")
-			snapshotMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.CSIStorageType)
-			dimensionsMap[metrics.ComponentDimension] = snapshotMetricDimension
-			metrics.SendMetricData(d.metricPusher, metrics.BlockSnapshotProvision, time.Since(snapshot.TimeRequestReceived.Time).Seconds(), dimensionsMap)
-		} else {
-			log.Infof("Backup has not become available yet, controller will retry")
-			snapshotMetricDimension = util.GetMetricDimensionForComponent(util.BackupCreating, util.CSIStorageType)
-			dimensionsMap[metrics.ComponentDimension] = snapshotMetricDimension
-			metrics.SendMetricData(d.metricPusher, metrics.BlockSnapshotProvision, time.Since(snapshot.TimeRequestReceived.Time).Seconds(), dimensionsMap)
-		}
-
+		log.Info("Snapshot is created and available.")
+		snapshotMetricDimension = util.GetMetricDimensionForComponent(util.Success, util.CSIStorageType)
+		dimensionsMap[metrics.ComponentDimension] = snapshotMetricDimension
+		metrics.SendMetricData(d.metricPusher, metrics.BlockSnapshotProvision, time.Since(snapshot.TimeRequestReceived.Time).Seconds(), dimensionsMap)
 		return &csi.CreateSnapshotResponse{
 			Snapshot: &csi.Snapshot{
 				SnapshotId:     *snapshot.Id,
 				SourceVolumeId: *snapshot.VolumeId,
 				SizeBytes:      *snapshot.SizeInMBs * client.MiB,
 				CreationTime:   ts,
-				ReadyToUse:     blockVolumeAvailable,
+				ReadyToUse:     true,
 			},
 		}, nil
 	}
@@ -1119,22 +1137,14 @@ func (d *BlockVolumeControllerDriver) CreateSnapshot(ctx context.Context, req *c
 
 	ts := timestamppb.New(snapshot.TimeCreated.Time)
 
-	_, err = d.client.BlockStorage().AwaitVolumeBackupAvailableOrTimeout(ctx, *snapshot.Id)
+	_, err = d.client.BlockStorage().AwaitVolumeBackupAvailableOrTimeout(volumeAvailableTimeoutCtx, *snapshot.Id)
 	if err != nil {
 		if strings.Contains(err.Error(), "timed out") {
 			log.Infof("Backup did not become available immediately after creation, controller will retry")
 			snapshotMetricDimension = util.GetMetricDimensionForComponent(util.BackupCreating, util.CSIStorageType)
 			dimensionsMap[metrics.ComponentDimension] = snapshotMetricDimension
 			metrics.SendMetricData(d.metricPusher, metrics.BlockSnapshotProvision, time.Since(startTime).Seconds(), dimensionsMap)
-			return &csi.CreateSnapshotResponse{
-				Snapshot: &csi.Snapshot{
-					SnapshotId:     *snapshot.Id,
-					SourceVolumeId: *snapshot.VolumeId,
-					SizeBytes:      *snapshot.SizeInMBs * client.MiB,
-					CreationTime:   ts,
-					ReadyToUse:     false,
-				},
-			}, nil
+			return nil, status.Errorf(codes.DeadlineExceeded, "Timed out waiting for backup to become available")
 		} else {
 			log.With("service", "blockstorage", "verb", "get", "resource", "volumeBackup", "statusCode", util.GetHttpStatusCode(err)).
 				Errorf("Error while waiting for backup to become available %q: %v", req.Name, err)

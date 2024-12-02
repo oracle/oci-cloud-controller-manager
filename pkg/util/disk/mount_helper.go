@@ -24,6 +24,8 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"k8s.io/kubernetes/pkg/volume/util/hostutil"
 	"k8s.io/mount-utils"
 	utilexec "k8s.io/utils/exec"
@@ -31,9 +33,13 @@ import (
 
 const (
 	directoryDeletePollInterval = 5 * time.Second
-	EncryptedUmountCommand      = "encrypt-umount"
+	errNotMounted               = "not mounted"
+
+	EncryptedUmountCommand = "encrypt-umount"
 
 	EncryptionMountCommand = "encrypt-mount"
+	UnmountCommand         = "umount"
+	FindMountCommand       = "findmnt"
 )
 
 func MountWithEncrypt(logger *zap.SugaredLogger, source string, target string, fstype string, options []string) error {
@@ -135,7 +141,7 @@ func WaitForDirectoryDeletion(logger *zap.SugaredLogger, mountPath string) error
 
 // Unmount the target that is in-transit encryption enabled
 func UnmountWithEncrypt(logger *zap.SugaredLogger, target string) error {
-	logger.With("target", target).Info("Unmounting.")
+	logger.With("target", target).Info("Unmounting in-transit encryption mount point.")
 	command := exec.Command(EncryptedUmountCommand, target)
 	output, err := command.CombinedOutput()
 	if err != nil {
@@ -215,4 +221,28 @@ func deviceOpened(pathname string, logger *zap.SugaredLogger) (bool, error) {
 		return false, nil
 	}
 	return hostUtil.DeviceOpened(pathname)
+}
+
+func UnmountWithForce(targetPath string) error {
+	command := exec.Command(UnmountCommand, "-f", targetPath)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		if strings.Contains(string(output), errNotMounted) {
+			return nil
+		}
+		return status.Errorf(codes.Internal, err.Error())
+	}
+	return nil
+}
+
+func FindMount(target string) ([]string, error) {
+	mountArgs := []string{"-n", "-o", "SOURCE", "-T", target}
+	command := exec.Command(FindMountCommand, mountArgs...)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("findmnt failed: %v\narguments: %s\nOutput: %v\n", err, mountArgs, string(output))
+	}
+
+	sources := strings.Fields(string(output))
+	return sources, nil
 }

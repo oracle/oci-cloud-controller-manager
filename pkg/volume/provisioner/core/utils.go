@@ -66,7 +66,7 @@ func (p *OCIProvisioner) chooseAvailabilityDomain(ctx context.Context, pvc *v1.P
 		p.logger.With("availabilityDomain", availabilityDomainNames).Info("No availability domain provided. Selecting one automatically.")
 	}
 
-	availabilityDomain, err := p.client.Identity().GetAvailabilityDomainByName(ctx, p.compartmentID, availabilityDomainName)
+	availabilityDomain, err := p.client.Identity(nil).GetAvailabilityDomainByName(ctx, p.compartmentID, availabilityDomainName)
 	if err != nil {
 		return "", nil, err
 	}

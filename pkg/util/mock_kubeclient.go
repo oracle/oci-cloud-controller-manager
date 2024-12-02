@@ -2,6 +2,7 @@ package util
 
 import (
 	"context"
+	"fmt"
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -37,7 +38,7 @@ import (
 	v111 "k8s.io/client-go/kubernetes/typed/events/v1"
 	v1beta19 "k8s.io/client-go/kubernetes/typed/events/v1beta1"
 	v1beta110 "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
-	v1alpha14 "k8s.io/client-go/kubernetes/typed/flowcontrol/v1alpha1"
+	alpha1 "k8s.io/client-go/kubernetes/typed/flowcontrol/v1alpha1"
 	v1beta111 "k8s.io/client-go/kubernetes/typed/flowcontrol/v1beta1"
 	v1beta22 "k8s.io/client-go/kubernetes/typed/flowcontrol/v1beta2"
 	v1beta31 "k8s.io/client-go/kubernetes/typed/flowcontrol/v1beta3"
@@ -64,6 +65,11 @@ import (
 
 type MockKubeClient struct {
 	CoreClient *MockCoreClient
+}
+
+func (m MockKubeClient) FlowcontrolV1alpha1() alpha1.FlowcontrolV1alpha1Interface {
+	//TODO implement me
+	panic("implement me")
 }
 
 type MockCoreClient v12.CoreV1Client
@@ -320,10 +326,6 @@ func (m MockKubeClient) AuthorizationV1beta1() v1beta14.AuthorizationV1beta1Inte
 	return nil
 }
 
-func (m MockKubeClient) FlowcontrolV1alpha1() v1alpha14.FlowcontrolV1alpha1Interface {
-	return nil
-}
-
 func (m MockKubeClient) AuthenticationV1alpha1() v1alpha13.AuthenticationV1alpha1Interface {
 	return nil
 }
@@ -396,15 +398,70 @@ func (m MockCoreClient) Nodes() v12.NodeInterface {
 	}
 }
 
-func (m MockNodes) Get(ctx context.Context, name string, opts metav1.GetOptions) (*api.Node, error) {
-	return &api.Node{
-		Spec: api.NodeSpec{
-			ProviderID: "sample-provider-id",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Annotations: map[string]string{
-				CompartmentIDAnnotation: "sample-compartment-id",
+var (
+	LabelIpFamilyPreferred = "oci.oraclecloud.com/ip-family-preferred"
+	LabelIpFamilyIpv4      = "oci.oraclecloud.com/ip-family-ipv4"
+	LabelIpFamilyIpv6      = "oci.oraclecloud.com/ip-family-ipv6"
+	nodes                  = map[string]*api.Node{
+		"ipv6Preferred": {
+			Spec: api.NodeSpec{
+				ProviderID: "sample-provider-id",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					LabelIpFamilyPreferred: "IPv6",
+					LabelIpFamilyIpv4:      "true",
+					LabelIpFamilyIpv6:      "true",
+				},
 			},
 		},
-	}, nil
+		"ipv4Preferred": {
+			Spec: api.NodeSpec{
+				ProviderID: "sample-provider-id",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					LabelIpFamilyPreferred: "IPv4",
+					LabelIpFamilyIpv4:      "true",
+					LabelIpFamilyIpv6:      "true",
+				},
+			},
+		},
+		"noIpPreference": {
+			Spec: api.NodeSpec{
+				ProviderID: "sample-provider-id",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{},
+			},
+		},
+		"sample-provider-id": {
+			Spec: api.NodeSpec{
+				ProviderID: "sample-provider-id",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					CompartmentIDAnnotation: "sample-compartment-id",
+				},
+			},
+		},
+		"sample-node-id": {
+			Spec: api.NodeSpec{
+				ProviderID: "sample-provider-id",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					CompartmentIDAnnotation: "sample-compartment-id",
+				},
+			},
+		},
+	}
+)
+
+func (m MockNodes) Get(ctx context.Context, name string, opts metav1.GetOptions) (*api.Node, error) {
+	if node, ok := nodes[name]; ok {
+		return node, nil
+	}
+	return nil, fmt.Errorf("Node Not Present")
+
 }

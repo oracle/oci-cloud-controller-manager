@@ -42,13 +42,18 @@ const (
 	batchSize = 25
 )
 
-type serviceComponents struct {
+type securityRuleComponents struct {
 	frontendNsgOcid  string
 	backendNsgOcids  []string
 	ports            map[string]portSpec
 	sourceCIDRs      []string
 	isPreserveSource bool
 	serviceUid       string
+	lbSubnets        []*core.Subnet
+	backendSubnets   []*core.Subnet
+	actualPorts      *portSpec
+	desiredPorts     portSpec
+	ipFamilies       []string
 }
 
 // generateNsgBackendIngressRules is a helper method to generate the ingress rules for the backend NSG
@@ -207,7 +212,7 @@ func (s *CloudProvider) getNsg(ctx context.Context, id string) (*core.NetworkSec
 	if id == "" {
 		return nil, errors.New("invalid; empty nsg id provided") // should never happen
 	}
-	response, _, err := s.client.Networking().GetNetworkSecurityGroup(ctx, id)
+	response, _, err := s.client.Networking(nil).GetNetworkSecurityGroup(ctx, id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get nsg with id %s", id)
 	}
@@ -220,7 +225,7 @@ func (s *CloudProvider) listNsgRules(ctx context.Context, id string, direction c
 		return nil, errors.New("invalid; empty nsg id provided") // should never happen
 	}
 
-	response, err := s.client.Networking().ListNetworkSecurityGroupSecurityRules(ctx, id, direction)
+	response, err := s.client.Networking(nil).ListNetworkSecurityGroupSecurityRules(ctx, id, direction)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to list Security Rules for nsg: %s", id)
 	}
@@ -233,11 +238,11 @@ func (s *CloudProvider) addNetworkSecurityGroupSecurityRules(ctx context.Context
 	var response *core.AddNetworkSecurityGroupSecurityRulesResponse
 	var err error
 	for i, _ := range rulesInBatches {
-		response, err = s.client.Networking().AddNetworkSecurityGroupSecurityRules(ctx,
+		response, err = s.client.Networking(nil).AddNetworkSecurityGroupSecurityRules(ctx,
 			*nsgId,
 			core.AddNetworkSecurityGroupSecurityRulesDetails{SecurityRules: securityRuleToAddSecurityRuleDetails(rulesInBatches[i])})
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to add security rules for nsg: %s OpcRequestId: %s", *nsgId, pointer.StringDeref(response.OpcRequestId, ""))
+			return nil, errors.Wrapf(err, "failed to add security rules for nsg: %s", *nsgId)
 		}
 		s.logger.Infof("AddNetworkSecurityGroupSecurityRules OpcRequestId %s", pointer.StringDeref(response.OpcRequestId, ""))
 	}
@@ -250,10 +255,10 @@ func (s *CloudProvider) removeNetworkSecurityGroupSecurityRules(ctx context.Cont
 	var response *core.RemoveNetworkSecurityGroupSecurityRulesResponse
 	var err error
 	for i, _ := range rulesInBatches {
-		response, err = s.client.Networking().RemoveNetworkSecurityGroupSecurityRules(ctx, *nsgId,
+		response, err = s.client.Networking(nil).RemoveNetworkSecurityGroupSecurityRules(ctx, *nsgId,
 			core.RemoveNetworkSecurityGroupSecurityRulesDetails{SecurityRuleIds: rulesInBatches[i]})
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to remove security rules for nsg: %s OpcRequestId: %s", *nsgId, pointer.StringDeref(response.OpcRequestId, ""))
+			return nil, errors.Wrapf(err, "failed to remove security rules for nsg: %s", *nsgId)
 		}
 		s.logger.Infof("RemoveNetworkSecurityGroupSecurityRules OpcRequestId %s", pointer.StringDeref(response.OpcRequestId, ""))
 	}
@@ -303,7 +308,7 @@ func splitRuleIdsIntoBatches(rules []string) [][]string {
 	return securityRulesInBatches
 }
 
-func (s *CloudProvider) reconcileSecurityGroup(ctx context.Context, lbservice serviceComponents) error {
+func (s *CloudProvider) reconcileSecurityGroup(ctx context.Context, lbservice securityRuleComponents) error {
 	if len(lbservice.backendNsgOcids) > 0 {
 		updateRulesMutex.Lock()
 		defer updateRulesMutex.Unlock()
@@ -385,7 +390,7 @@ func (s *CloudProvider) reconcileSecurityGroup(ctx context.Context, lbservice se
 	return nil
 }
 
-func (s *CloudProvider) removeBackendSecurityGroupRules(ctx context.Context, lbservice serviceComponents) error {
+func (s *CloudProvider) removeBackendSecurityGroupRules(ctx context.Context, lbservice securityRuleComponents) error {
 
 	for _, backendNsg := range lbservice.backendNsgOcids {
 		nsg, err := s.getNsg(ctx, backendNsg)

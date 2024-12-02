@@ -16,6 +16,7 @@ package driver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -35,11 +36,12 @@ import (
 )
 
 const (
-	mountPath                  = "mount"
 	FipsEnabled                = "1"
+	fssMountSemaphoreTimeout   = time.Second * 30
 	fssUnmountSemaphoreTimeout = time.Second * 30
 )
 
+var fssMountSemaphore = semaphore.NewWeighted(int64(2))
 var fssUnmountSemaphore = semaphore.NewWeighted(int64(4))
 
 // NodeStageVolume mounts the volume to a staging path on the node.
@@ -52,14 +54,23 @@ func (d FSSNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVo
 		return nil, status.Error(codes.InvalidArgument, "Staging path must be provided")
 	}
 
+	logger := d.logger.With("volumeID", req.VolumeId)
+
 	volumeHandler := csi_util.ValidateFssId(req.VolumeId)
 	_, mountTargetIP, exportPath := volumeHandler.FilesystemOcid, volumeHandler.MountTargetIPAddress, volumeHandler.FsExportPath
+
+	logger.Debugf("volumeHandler :  %v", volumeHandler)
 
 	if mountTargetIP == "" || exportPath == "" {
 		return nil, status.Error(codes.InvalidArgument, "Invalid Volume ID provided")
 	}
 
-	logger := d.logger.With("volumeID", req.VolumeId)
+	if csi_util.IsIpv4(mountTargetIP) && !d.nodeIpFamily.Ipv4Enabled {
+		return nil, status.Error(codes.InvalidArgument, "Ipv4 mount target identified in volume id, but worker node does not support ipv4 ip family.")
+	} else if csi_util.IsIpv6(mountTargetIP) && !d.nodeIpFamily.Ipv6Enabled {
+		return nil, status.Error(codes.InvalidArgument, "Ipv6 mount target identified in volume id, but worker node does not support ipv6 ip family.")
+	}
+
 	logger.Debugf("volume context: %v", req.VolumeContext)
 
 	var fsType = ""
@@ -79,7 +90,7 @@ func (d FSSNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVo
 		return nil, status.Errorf(codes.InvalidArgument, "EncryptInTransit must be a boolean value")
 	}
 
-	mounter := mount.New(mountPath)
+	mounter := mount.New("")
 
 	if encryptInTransit {
 		isPackageInstalled, err := csi_util.IsInTransitEncryptionPackageInstalled()
@@ -112,6 +123,27 @@ func (d FSSNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVo
 
 	defer d.volumeLocks.Release(req.VolumeId)
 
+	logger.Debug("Trying to stage.")
+	startTime := time.Now()
+
+	fssMountSemaphoreCtx, cancel := context.WithTimeout(ctx, fssMountSemaphoreTimeout)
+	defer cancel()
+
+	err = fssMountSemaphore.Acquire(fssMountSemaphoreCtx, 1)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			logger.Error("Semaphore acquire timed out.")
+		} else if errors.Is(err, context.Canceled) {
+			logger.Error("Stage semaphore acquire context was canceled.")
+		} else {
+			logger.With(zap.Error(err)).Error("Error acquiring lock during stage.")
+		}
+		return nil, status.Error(codes.Aborted, "Too many mount requests.")
+	}
+	defer fssMountSemaphore.Release(1)
+
+	logger.Info("Stage started.")
+
 	targetPath := req.StagingTargetPath
 	mountPoint, err := isMountPoint(mounter, targetPath)
 	if err != nil {
@@ -137,7 +169,7 @@ func (d FSSNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVo
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
-	source := fmt.Sprintf("%s:%s", mountTargetIP, exportPath)
+	source := fmt.Sprintf("%s:%s", csi_util.FormatValidIp(mountTargetIP), exportPath)
 
 	if encryptInTransit {
 		err = disk.MountWithEncrypt(logger, source, targetPath, fsType, options)
@@ -148,7 +180,7 @@ func (d FSSNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVo
 		logger.With(zap.Error(err)).Error("failed to mount volume to staging target path.")
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	logger.With("mountTarget", mountTargetIP, "exportPath", exportPath, "StagingTargetPath", targetPath).
+	logger.With("mountTarget", mountTargetIP, "exportPath", exportPath, "StagingTargetPath", targetPath, "StageTime", time.Since(startTime).Milliseconds()).
 		Info("Mounting the volume to staging target path is completed.")
 
 	return &csi.NodeStageVolumeResponse{}, nil
@@ -190,7 +222,7 @@ func (d FSSNodeDriver) NodePublishVolume(ctx context.Context, req *csi.NodePubli
 
 	var fsType = ""
 
-	mounter := mount.New(mountPath)
+	mounter := mount.New("")
 
 	targetPath := req.GetTargetPath()
 	readOnly := req.GetReadonly()
@@ -224,12 +256,34 @@ func (d FSSNodeDriver) NodePublishVolume(ctx context.Context, req *csi.NodePubli
 		options = append(options, "ro")
 	}
 	source := req.GetStagingTargetPath()
+
+	logger.Debug("Trying to publish.")
+	startTime := time.Now()
+
+	fssMountSemaphoreCtx, cancel := context.WithTimeout(ctx, fssMountSemaphoreTimeout)
+	defer cancel()
+
+	err = fssMountSemaphore.Acquire(fssMountSemaphoreCtx, 1)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			logger.Error("Semaphore acquire timed out.")
+		} else if errors.Is(err, context.Canceled) {
+			logger.Error("Publish semaphore acquire context was canceled.")
+		} else {
+			logger.With(zap.Error(err)).Error("Error acquiring lock during stage.")
+		}
+		return nil, status.Error(codes.Aborted, "Too many mount requests.")
+	}
+	defer fssMountSemaphore.Release(1)
+
+	logger.Info("Publish started.")
+
 	err = mounter.Mount(source, targetPath, fsType, options)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("failed to bind mount volume to target path.")
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	logger.With("staging target path", source, "TargetPath", targetPath).
+	logger.With("staging target path", source, "TargetPath", targetPath, "PublishTime", time.Since(startTime).Milliseconds()).
 		Info("Bind mounting the volume to target path is completed.")
 
 	return &csi.NodePublishVolumeResponse{}, nil
@@ -247,7 +301,7 @@ func (d FSSNodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnp
 
 	logger := d.logger.With("volumeID", req.VolumeId, "targetPath", req.TargetPath)
 
-	mounter := mount.New(mountPath)
+	mounter := mount.New("")
 	targetPath := req.GetTargetPath()
 
 	// Use mount.IsNotMountPoint because mounter.IsLikelyNotMountPoint can't detect bind mounts
@@ -298,18 +352,21 @@ func (d FSSNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnsta
 		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
 	}
 
+	if req.StagingTargetPath == "" {
+		return nil, status.Error(codes.InvalidArgument, "Staging path must be provided")
+	}
+
 	volumeHandler := csi_util.ValidateFssId(req.VolumeId)
+
+	logger := d.logger.With("volumeID", req.VolumeId, "stagingPath", req.StagingTargetPath)
+
+	logger.Debugf("volumeHandler :  %v", volumeHandler)
+
 	_, mountTargetIP, exportPath := volumeHandler.FilesystemOcid, volumeHandler.MountTargetIPAddress, volumeHandler.FsExportPath
 
 	if mountTargetIP == "" || exportPath == "" {
 		return nil, status.Error(codes.InvalidArgument, "Invalid Volume ID provided")
 	}
-
-	if req.StagingTargetPath == "" {
-		return nil, status.Error(codes.InvalidArgument, "Staging path must be provided")
-	}
-
-	logger := d.logger.With("volumeID", req.VolumeId, "stagingPath", req.StagingTargetPath)
 
 	if acquired := d.volumeLocks.TryAcquire(req.VolumeId); !acquired {
 		logger.Error("Could not acquire lock for NodeUnstageVolume.")
@@ -344,7 +401,7 @@ func (d FSSNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnsta
 }
 
 func (d FSSNodeDriver) unmountAndCleanup(logger *zap.SugaredLogger, targetPath string, exportPath string, mountTargetIP string) error {
-	mounter := mount.New(mountPath)
+	mounter := mount.New("")
 	// Use mount.IsNotMountPoint because mounter.IsLikelyNotMountPoint can't detect bind mounts
 	isNotMountPoint, err := mount.IsNotMountPoint(mounter, targetPath)
 	if err != nil {
@@ -365,7 +422,7 @@ func (d FSSNodeDriver) unmountAndCleanup(logger *zap.SugaredLogger, targetPath s
 		return nil
 	}
 
-	sources, err := csi_util.FindMount(targetPath)
+	sources, err := disk.FindMount(targetPath)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Find Mount failed for target path")
 		return status.Error(codes.Internal, "Find Mount failed for target path")
@@ -373,8 +430,11 @@ func (d FSSNodeDriver) unmountAndCleanup(logger *zap.SugaredLogger, targetPath s
 
 	inTransitEncryption := false
 	for _, device := range sources {
-		source := strings.Split(device, ":")
-		if len(source) == 2 && source[1] == exportPath && source[0] != mountTargetIP {
+
+		logger.With("device", device).With("exportPath", exportPath).
+			With("mountTargetIP", mountTargetIP).Debugf("Identifying intransit encryption.")
+		if strings.HasSuffix(device, exportPath) && !strings.HasPrefix(device, mountTargetIP) {
+			logger.Debugf("Intransit encryption identified.")
 			inTransitEncryption = true
 			break
 		}
