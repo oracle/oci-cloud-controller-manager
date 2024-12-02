@@ -244,6 +244,10 @@ func (c *MockComputeClient) GetPrimaryVNICForInstance(ctx context.Context, compa
 	return nil, nil
 }
 
+func (MockComputeClient) GetSecondaryVNICsForInstance(ctx context.Context, compartmentID, instanceID string) ([]*core.Vnic, error) {
+	return nil, nil
+}
+
 func (c *MockComputeClient) FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
 	return nil, nil
 }
@@ -270,8 +274,28 @@ func (c *MockComputeClient) FindActiveVolumeAttachment(ctx context.Context, comp
 	return nil, nil
 }
 
+func (c *MockComputeClient) WaitForUHPVolumeLoggedOut(ctx context.Context, attachmentID string) error {
+	return nil
+}
+
 // MockVirtualNetworkClient mocks VirtualNetwork client implementation
 type MockVirtualNetworkClient struct {
+}
+
+func (c *MockVirtualNetworkClient) GetVNIC(ctx context.Context, id string) (*core.Vnic, error) {
+	return nil, nil
+}
+
+func (c *MockVirtualNetworkClient) ListPrivateIps(ctx context.Context, vnicId string) ([]core.PrivateIp, error) {
+	return nil, nil
+}
+
+func (c *MockVirtualNetworkClient) CreatePrivateIp(ctx context.Context, vnicID string) (*core.PrivateIp, error) {
+	return nil, nil
+}
+
+func (c *MockVirtualNetworkClient) GetIpv6(ctx context.Context, id string) (*core.Ipv6, error) {
+	return &core.Ipv6{}, nil
 }
 
 func (c *MockVirtualNetworkClient) CreateNetworkSecurityGroup(ctx context.Context, compartmentId, vcnId, displayName, lbId string) (*core.NetworkSecurityGroup, error) {
@@ -307,7 +331,7 @@ func (c *MockVirtualNetworkClient) GetSubnet(ctx context.Context, id string) (*c
 	return nil, nil
 }
 
-func (c *MockVirtualNetworkClient) GetSubnetFromCacheByIP(ip string) (*core.Subnet, error) {
+func (c *MockVirtualNetworkClient) GetSubnetFromCacheByIP(ip client.IpAddresses) (*core.Subnet, error) {
 	return nil, nil
 }
 
@@ -352,7 +376,7 @@ func (p *MockProvisionerClient) BlockStorage() client.BlockStorageInterface {
 }
 
 // Networking mocks client VirtualNetwork implementation.
-func (p *MockProvisionerClient) Networking() client.NetworkingInterface {
+func (p *MockProvisionerClient) Networking(ociClientConfig *client.OCIClientConfig) client.NetworkingInterface {
 	return &MockVirtualNetworkClient{}
 }
 
@@ -366,12 +390,12 @@ func (p *MockProvisionerClient) Compute() client.ComputeInterface {
 }
 
 // Identity mocks client Identity implementation
-func (p *MockProvisionerClient) Identity() client.IdentityInterface {
+func (p *MockProvisionerClient) Identity(ociClientConfig *client.OCIClientConfig) client.IdentityInterface {
 	return &MockIdentityClient{}
 }
 
 // FSS mocks client FileStorage implementation
-func (p *MockProvisionerClient) FSS() client.FileStorageInterface {
+func (p *MockProvisionerClient) FSS(ociClientConfig *client.OCIClientConfig) client.FileStorageInterface {
 	return &MockFileStorageClient{}
 }
 

@@ -1,6 +1,6 @@
 ARG CI_IMAGE_REGISTRY
 
-FROM golang:1.21.5 as builder
+FROM golang:1.22.9 as builder
 
 ARG COMPONENT
 
@@ -14,7 +14,7 @@ WORKDIR $SRC
 
 RUN ARCH=arm make clean build-arm-all
 
-FROM arm64v8/oraclelinux:8-slim
+FROM ghcr.io/oracle/oraclelinux:8-slim-fips-arm64v8
 
 RUN microdnf -y install util-linux e2fsprogs xfsprogs python2 && \
     microdnf update && \

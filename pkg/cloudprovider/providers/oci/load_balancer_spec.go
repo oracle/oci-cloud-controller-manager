@@ -26,6 +26,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	apiservice "k8s.io/kubernetes/pkg/api/v1/service"
+	"k8s.io/utils/pointer"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
@@ -33,6 +34,7 @@ import (
 	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/pkg/errors"
 	helper "k8s.io/cloud-provider/service/helpers"
+	net2 "k8s.io/utils/net"
 )
 
 const (
@@ -43,6 +45,14 @@ const (
 	LBHealthCheckIntervalMax  = 1800000
 	NLBHealthCheckIntervalMin = 10000
 	NLBHealthCheckIntervalMax = 1800000
+	IPv4                      = string(client.GenericIPv4)
+	IPv6                      = string(client.GenericIPv6)
+	IPv4AndIPv6               = string("IPv4_AND_IPv6")
+)
+
+const (
+	defaultLoadBalancerSourceRangesIPv4 = "0.0.0.0/0"
+	defaultLoadBalancerSourceRangesIPv6 = "::/0"
 )
 
 const ProtocolTypeMixed = "TCP_AND_UDP"
@@ -159,6 +169,17 @@ const (
 	// ServiceAnnotationBackendSecurityRuleManagement is a service annotation to denote management of backend Network Security Group(s)
 	// ingress / egress security rules for a given kubernetes service could be either LB or NLB
 	ServiceAnnotationBackendSecurityRuleManagement = "oci.oraclecloud.com/oci-backend-network-security-group"
+
+	// ServiceAnnotationLoadbalancerListenerSSLConfig is a service annotation allows you to set the cipher suite on the listener
+	ServiceAnnotationLoadbalancerListenerSSLConfig = "oci.oraclecloud.com/oci-load-balancer-listener-ssl-config"
+
+	// ServiceAnnotationLoadbalancerBackendSetSSLConfig is a service annotation allows you to set the cipher suite on the backendSet
+	ServiceAnnotationLoadbalancerBackendSetSSLConfig = "oci.oraclecloud.com/oci-load-balancer-backendset-ssl-config"
+
+	// ServiceAnnotationIngressIpMode is a service annotation allows you to set the ".status.loadBalancer.ingress.ipMode" for a Service
+	// with type set to LoadBalancer.
+	// https://kubernetes.io/docs/concepts/services-networking/service/#load-balancer-ip-mode:~:text=Specifying%20IPMode%20of%20load%20balancer%20status
+	ServiceAnnotationIngressIpMode = "oci.oraclecloud.com/ingress-ip-mode"
 )
 
 // NLB specific annotations
@@ -220,6 +241,9 @@ const (
 	// ServiceAnnotationNetworkLoadBalancerIsPreserveSource is a service annotation to enable/disable preserving source information
 	// on the NLB traffic. Default value when no annotation is given is to enable this for NLBs with externalTrafficPolicy=Local.
 	ServiceAnnotationNetworkLoadBalancerIsPreserveSource = "oci-network-load-balancer.oraclecloud.com/is-preserve-source"
+
+	// ServiceAnnotationNetworkLoadBalancerIsPpv2Enabled is a service annotation to enable/disable PPv2 feature for the listeners of this NLB.
+	ServiceAnnotationNetworkLoadBalancerIsPpv2Enabled = "oci-network-load-balancer.oraclecloud.com/is-ppv2-enabled"
 )
 
 // certificateData is a structure containing the data about a K8S secret required
@@ -316,18 +340,30 @@ type LBSpec struct {
 	securityListManager         securityListManager
 	ManagedNetworkSecurityGroup *ManagedNetworkSecurityGroup
 	NetworkSecurityGroupIds     []string
+	IpVersions                  *IpVersions
 	FreeformTags                map[string]string
 	DefinedTags                 map[string]map[string]interface{}
 	SystemTags                  map[string]map[string]interface{}
+	ingressIpMode               *v1.LoadBalancerIPMode
 
 	service *v1.Service
 	nodes   []*v1.Node
 }
 
 // NewLBSpec creates a LB Spec from a Kubernetes service and a slice of nodes.
-func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, subnets []string, sslConfig *SSLConfig, secListFactory securityListManagerFactory, initialLBTags *config.InitialTags, existingLB *client.GenericLoadBalancer) (*LBSpec, error) {
+func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, provisionedNodes []*v1.Node, subnets []string,
+	sslConfig *SSLConfig, secListFactory securityListManagerFactory, versions *IpVersions, initialLBTags *config.InitialTags,
+	existingLB *client.GenericLoadBalancer) (*LBSpec, error) {
 	if err := validateService(svc); err != nil {
 		return nil, errors.Wrap(err, "invalid service")
+	}
+
+	lbType := getLoadBalancerType(svc)
+	ipVersions := &IpVersions{
+		IpFamilyPolicy:           versions.IpFamilyPolicy,
+		IpFamilies:               versions.IpFamilies,
+		LbEndpointIpVersion:      versions.LbEndpointIpVersion,
+		ListenerBackendIpVersion: versions.ListenerBackendIpVersion,
 	}
 
 	internal, err := isInternalLB(svc)
@@ -345,7 +381,7 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sub
 		return nil, err
 	}
 
-	listeners, err := getListeners(svc, sslConfig)
+	listeners, err := getListeners(svc, sslConfig, convertOciIpVersionsToOciIpFamilies(versions.ListenerBackendIpVersion))
 	if err != nil {
 		return nil, err
 	}
@@ -355,12 +391,12 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sub
 		return nil, err
 	}
 
-	backendSets, err := getBackendSets(logger, svc, nodes, sslConfig, isPreserveSource)
+	backendSets, err := getBackendSets(logger, svc, provisionedNodes, sslConfig, isPreserveSource, convertOciIpVersionsToOciIpFamilies(versions.ListenerBackendIpVersion))
 	if err != nil {
 		return nil, err
 	}
 
-	ports, err := getPorts(svc)
+	ports, err := getPorts(svc, convertOciIpVersionsToOciIpFamilies(versions.ListenerBackendIpVersion))
 	if err != nil {
 		return nil, err
 	}
@@ -398,7 +434,10 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sub
 		managedNsg.backendNsgId = backendNsgOcids
 	}
 
-	lbType := getLoadBalancerType(svc)
+	ingressIpMode, err := getIngressIpMode(svc)
+	if err != nil {
+		return nil, err
+	}
 
 	return &LBSpec{
 		Type:                        lbType,
@@ -418,11 +457,13 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sub
 		NetworkSecurityGroupIds:     networkSecurityGroupIds,
 		ManagedNetworkSecurityGroup: managedNsg,
 		service:                     svc,
-		nodes:                       nodes,
+		nodes:                       provisionedNodes,
 		securityListManager:         secListFactory(ruleManagementMode),
+		IpVersions:                  ipVersions,
 		FreeformTags:                lbTags.FreeformTags,
 		DefinedTags:                 lbTags.DefinedTags,
-		SystemTags:                  getResourceTrackingSysTagsFromConfig(logger, initialLBTags),
+		SystemTags:                  getResourceTrackingSystemTagsFromConfig(logger, initialLBTags),
+		ingressIpMode:               ingressIpMode,
 	}, nil
 }
 
@@ -629,9 +670,24 @@ func getLoadBalancerSourceRanges(service *v1.Service) ([]string, error) {
 		return []string{}, err
 	}
 
+	requireIPv6 := contains(getIpFamilies(service), IPv6)
 	sourceCIDRs := make([]string, 0, len(sourceRanges))
 	for _, sourceRange := range sourceRanges {
 		sourceCIDRs = append(sourceCIDRs, sourceRange.String())
+	}
+
+	if len(sourceCIDRs) > 1 || (len(sourceCIDRs) == 1 && sourceCIDRs[0] != defaultLoadBalancerSourceRangesIPv4) {
+		// User provided Loadbalancer source ranges, don't add any
+		return sourceCIDRs, nil
+	}
+
+	if requireIPv6 {
+		if !isServiceDualStack(service) {
+			if len(sourceCIDRs) == 1 && sourceCIDRs[0] == defaultLoadBalancerSourceRangesIPv4 {
+				sourceCIDRs = removeAtPosition(sourceCIDRs, 0)
+			}
+		}
+		sourceCIDRs = append(sourceCIDRs, defaultLoadBalancerSourceRangesIPv6)
 	}
 
 	return sourceCIDRs, nil
@@ -641,29 +697,48 @@ func getBackendSetName(protocol string, port int) string {
 	return fmt.Sprintf("%s-%d", protocol, port)
 }
 
-func getPorts(svc *v1.Service) (map[string]portSpec, error) {
+func getPorts(svc *v1.Service, listenerBackendIpVersion []string) (map[string]portSpec, error) {
 	ports := make(map[string]portSpec)
-
 	for backendSetName, servicePort := range getBackendSetNamePortMap(svc) {
 		healthChecker, err := getHealthChecker(svc)
 		if err != nil {
 			return nil, err
 		}
-		ports[backendSetName] = portSpec{
-			BackendPort:       int(servicePort.NodePort),
-			ListenerPort:      int(servicePort.Port),
-			HealthCheckerPort: *healthChecker.Port,
+		if strings.Contains(backendSetName, IPv6) && contains(listenerBackendIpVersion, IPv6) {
+			ports[backendSetName] = portSpec{
+				BackendPort:       int(servicePort.NodePort),
+				ListenerPort:      int(servicePort.Port),
+				HealthCheckerPort: *healthChecker.Port,
+			}
+		} else if !strings.Contains(backendSetName, IPv6) && contains(listenerBackendIpVersion, IPv4) {
+			ports[backendSetName] = portSpec{
+				BackendPort:       int(servicePort.NodePort),
+				ListenerPort:      int(servicePort.Port),
+				HealthCheckerPort: *healthChecker.Port,
+			}
 		}
 	}
 	return ports, nil
 }
 
-func getBackends(logger *zap.SugaredLogger, nodes []*v1.Node, nodePort int32) []client.GenericBackend {
-	backends := make([]client.GenericBackend, 0)
-	for _, node := range nodes {
-		nodeAddressString := common.String(NodeInternalIP(node))
-		if *nodeAddressString == "" {
-			logger.Warnf("Node %q has an empty Internal IP address.", node.Name)
+func getBackends(logger *zap.SugaredLogger, provisionedNodes []*v1.Node, nodePort int32) ([]client.GenericBackend, []client.GenericBackend) {
+	IPv4Backends := make([]client.GenericBackend, 0)
+	IPv6Backends := make([]client.GenericBackend, 0)
+
+	// Prepare provisioned nodes backends
+	for _, node := range provisionedNodes {
+		nodeAddressString := NodeInternalIP(node)
+		nodeAddressStringV4 := common.String(nodeAddressString.V4)
+		nodeAddressStringV6 := common.String(nodeAddressString.V6)
+
+		if *nodeAddressStringV6 == "" {
+			// Since Internal IP is optional for IPv6 populate external IP of node if present
+			externalNodeAddressString := NodeExternalIp(node)
+			nodeAddressStringV6 = common.String(externalNodeAddressString.V6)
+		}
+
+		if *nodeAddressStringV4 == "" && *nodeAddressStringV6 == "" {
+			logger.Warnf("Node %q has an empty IP address'", node.Name)
 			continue
 		}
 		instanceID, err := MapProviderIDToResourceID(node.Spec.ProviderID)
@@ -672,17 +747,28 @@ func getBackends(logger *zap.SugaredLogger, nodes []*v1.Node, nodePort int32) []
 			continue
 		}
 
-		backends = append(backends, client.GenericBackend{
-			IpAddress: nodeAddressString,
-			Port:      common.Int(int(nodePort)),
-			Weight:    common.Int(1),
-			TargetId:  &instanceID,
-		})
+		genericBackend := client.GenericBackend{
+			Port:   common.Int(int(nodePort)),
+			Weight: common.Int(1),
+		}
+
+		if net2.IsIPv6String(*nodeAddressStringV6) {
+			// IPv6 IP
+			genericBackend.IpAddress = nodeAddressStringV6
+			genericBackend.TargetId = nil
+			IPv6Backends = append(IPv6Backends, genericBackend)
+		}
+		if net2.IsIPv4String(*nodeAddressStringV4) {
+			// IPv4 IP
+			genericBackend.IpAddress = nodeAddressStringV4
+			genericBackend.TargetId = &instanceID
+			IPv4Backends = append(IPv4Backends, genericBackend)
+		}
 	}
-	return backends
+	return IPv4Backends, IPv6Backends
 }
 
-func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node, sslCfg *SSLConfig, isPreserveSource bool) (map[string]client.GenericBackendSetDetails, error) {
+func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, provisionedNodes []*v1.Node, sslCfg *SSLConfig, isPreserveSource bool, listenerBackendIpVersion []string) (map[string]client.GenericBackendSetDetails, error) {
 	backendSets := make(map[string]client.GenericBackendSetDetails)
 	loadbalancerPolicy, err := getLoadBalancerPolicy(svc)
 	if err != nil {
@@ -691,19 +777,37 @@ func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, nodes []*v1.Node
 
 	for backendSetName, servicePort := range getBackendSetNamePortMap(svc) {
 		var secretName string
-		if sslCfg != nil && len(sslCfg.BackendSetSSLSecretName) != 0 {
+		var sslConfiguration *client.GenericSslConfigurationDetails
+		if sslCfg != nil && len(sslCfg.BackendSetSSLSecretName) != 0 && getLoadBalancerType(svc) == LB {
 			secretName = sslCfg.BackendSetSSLSecretName
+			backendSetSSLConfig, _ := svc.Annotations[ServiceAnnotationLoadbalancerBackendSetSSLConfig]
+			sslConfiguration, err = getSSLConfiguration(sslCfg, secretName, int(servicePort.Port), backendSetSSLConfig)
+			if err != nil {
+				return nil, err
+			}
 		}
 		healthChecker, err := getHealthChecker(svc)
 		if err != nil {
 			return nil, err
 		}
-		backendSets[backendSetName] = client.GenericBackendSetDetails{
+		backendsIPv4, backendsIPv6 := getBackends(logger, provisionedNodes, servicePort.NodePort)
+
+		genericBackendSetDetails := client.GenericBackendSetDetails{
+			Name:             common.String(backendSetName),
 			Policy:           &loadbalancerPolicy,
-			Backends:         getBackends(logger, nodes, servicePort.NodePort),
 			HealthChecker:    healthChecker,
 			IsPreserveSource: &isPreserveSource,
-			SslConfiguration: getSSLConfiguration(sslCfg, secretName, int(servicePort.Port)),
+			SslConfiguration: sslConfiguration,
+		}
+
+		if strings.Contains(backendSetName, IPv6) && contains(listenerBackendIpVersion, IPv6) {
+			genericBackendSetDetails.IpVersion = GenericIpVersion(client.GenericIPv6)
+			genericBackendSetDetails.Backends = backendsIPv6
+			backendSets[backendSetName] = genericBackendSetDetails
+		} else if !strings.Contains(backendSetName, IPv6) && contains(listenerBackendIpVersion, IPv4) {
+			genericBackendSetDetails.IpVersion = GenericIpVersion(client.GenericIPv4)
+			genericBackendSetDetails.Backends = backendsIPv4
+			backendSets[backendSetName] = genericBackendSetDetails
 		}
 	}
 	return backendSets, nil
@@ -854,15 +958,38 @@ func getHealthCheckTimeout(svc *v1.Service) (int, error) {
 	return timeoutInMillis, nil
 }
 
-func getSSLConfiguration(cfg *SSLConfig, name string, port int) *client.GenericSslConfigurationDetails {
-	if cfg == nil || !cfg.Ports.Has(port) || len(name) == 0 {
-		return nil
+func GetSSLConfiguration(cfg *SSLConfig, name string, port int, sslConfigAnnotation string) (*client.GenericSslConfigurationDetails, error) {
+	sslConfig, err := getSSLConfiguration(cfg, name, port, sslConfigAnnotation)
+	if err != nil {
+		return nil, err
 	}
-	return &client.GenericSslConfigurationDetails{
+	return sslConfig, nil
+}
+
+func getSSLConfiguration(cfg *SSLConfig, name string, port int, lbSslConfigurationAnnotation string) (*client.GenericSslConfigurationDetails, error) {
+	if cfg == nil || !cfg.Ports.Has(port) || len(name) == 0 {
+		return nil, nil
+	}
+	// TODO: fast-follow to pass the sslconfiguration object directly to loadbalancer
+	var extractCipherSuite *client.GenericSslConfigurationDetails
+
+	if lbSslConfigurationAnnotation != "" {
+		err := json.Unmarshal([]byte(lbSslConfigurationAnnotation), &extractCipherSuite)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to parse SSL Configuration annotation")
+		}
+	}
+	genericSSLConfigurationDetails := &client.GenericSslConfigurationDetails{
 		CertificateName:       &name,
 		VerifyDepth:           common.Int(0),
 		VerifyPeerCertificate: common.Bool(false),
 	}
+	if extractCipherSuite != nil {
+		genericSSLConfigurationDetails.CipherSuiteName = extractCipherSuite.CipherSuiteName
+		genericSSLConfigurationDetails.Protocols = extractCipherSuite.Protocols
+	}
+
+	return genericSSLConfigurationDetails, nil
 }
 
 func getListenersOciLoadBalancer(svc *v1.Service, sslCfg *SSLConfig) (map[string]client.GenericListener, error) {
@@ -912,11 +1039,18 @@ func getListenersOciLoadBalancer(svc *v1.Service, sslCfg *SSLConfig) (map[string
 			}
 		}
 		port := int(servicePort.Port)
+
 		var secretName string
+		var err error
+		var sslConfiguration *client.GenericSslConfigurationDetails
 		if sslCfg != nil && len(sslCfg.ListenerSSLSecretName) != 0 {
 			secretName = sslCfg.ListenerSSLSecretName
+			listenerCipherSuiteAnnotation, _ := svc.Annotations[ServiceAnnotationLoadbalancerListenerSSLConfig]
+			sslConfiguration, err = getSSLConfiguration(sslCfg, secretName, port, listenerCipherSuiteAnnotation)
+			if err != nil {
+				return nil, err
+			}
 		}
-		sslConfiguration := getSSLConfiguration(sslCfg, secretName, port)
 		name := getListenerName(protocol, port)
 
 		listener := client.GenericListener{
@@ -953,13 +1087,26 @@ func getListenersOciLoadBalancer(svc *v1.Service, sslCfg *SSLConfig) (map[string
 	return listeners, nil
 }
 
-func getListenersNetworkLoadBalancer(svc *v1.Service) (map[string]client.GenericListener, error) {
+func getListenersNetworkLoadBalancer(svc *v1.Service, listenerBackendIpVersion []string) (map[string]client.GenericListener, error) {
 	listeners := make(map[string]client.GenericListener)
 	portsMap := make(map[int][]string)
 	mixedProtocolsPortSet := make(map[int]bool)
+	var enablePpv2 *bool
+
+	requireIPv4, requireIPv6 := getRequireIpVersions(listenerBackendIpVersion)
+
 	for _, servicePort := range svc.Spec.Ports {
 		portsMap[int(servicePort.Port)] = append(portsMap[int(servicePort.Port)], string(servicePort.Protocol))
 	}
+
+	if ppv2EnabledValue, ppv2AnnotationSet := svc.Annotations[ServiceAnnotationNetworkLoadBalancerIsPpv2Enabled]; ppv2AnnotationSet {
+		if strings.ToLower(ppv2EnabledValue) == "true" {
+			enablePpv2 = pointer.Bool(true)
+		} else if strings.ToLower(ppv2EnabledValue) == "false" {
+			enablePpv2 = pointer.Bool(false)
+		}
+	}
+
 	for _, servicePort := range svc.Spec.Ports {
 		protocol := string(servicePort.Protocol)
 
@@ -986,26 +1133,37 @@ func getListenersNetworkLoadBalancer(svc *v1.Service) (map[string]client.Generic
 			backendSetName = getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
 		}
 
-		listener := client.GenericListener{
-			Name:                  &listenerName,
-			DefaultBackendSetName: common.String(backendSetName),
-			Protocol:              &protocol,
-			Port:                  &port,
+		genericListener := client.GenericListener{
+			Protocol:      &protocol,
+			Port:          &port,
+			IsPpv2Enabled: enablePpv2,
 		}
-
-		listeners[listenerName] = listener
+		if requireIPv4 {
+			genericListener.Name = common.String(listenerName)
+			genericListener.IpVersion = GenericIpVersion(client.GenericIPv4)
+			genericListener.DefaultBackendSetName = common.String(backendSetName)
+			listeners[listenerName] = genericListener
+		}
+		if requireIPv6 {
+			listenerNameIPv6 := fmt.Sprintf(listenerName + "-" + IPv6)
+			backendSetNameIPv6 := fmt.Sprintf(backendSetName + "-" + IPv6)
+			genericListener.Name = common.String(listenerNameIPv6)
+			genericListener.IpVersion = GenericIpVersion(client.GenericIPv6)
+			genericListener.DefaultBackendSetName = common.String(backendSetNameIPv6)
+			listeners[listenerNameIPv6] = genericListener
+		}
 	}
 
 	return listeners, nil
 }
 
-func getListeners(svc *v1.Service, sslCfg *SSLConfig) (map[string]client.GenericListener, error) {
+func getListeners(svc *v1.Service, sslCfg *SSLConfig, listenerBackendIpVersion []string) (map[string]client.GenericListener, error) {
 
 	lbType := getLoadBalancerType(svc)
 	switch lbType {
 	case NLB:
 		{
-			return getListenersNetworkLoadBalancer(svc)
+			return getListenersNetworkLoadBalancer(svc, listenerBackendIpVersion)
 		}
 	default:
 		{
@@ -1316,22 +1474,40 @@ func getBackendSetNamePortMap(service *v1.Service) map[string]v1.ServicePort {
 		portsMap[int(servicePort.Port)] = append(portsMap[int(servicePort.Port)], string(servicePort.Protocol))
 	}
 
+	ipFamilies := getIpFamilies(service)
+	requireIPv4, requireIPv6 := getRequireIpVersions(ipFamilies)
+
 	mixedProtocolsPortSet := make(map[int]bool)
 	for _, servicePort := range service.Spec.Ports {
 		port := int(servicePort.Port)
 		backendSetName := ""
-		if len(portsMap[port]) > 1 {
-			if mixedProtocolsPortSet[port] {
-				continue
+		if requireIPv4 {
+			if len(portsMap[port]) > 1 {
+				if mixedProtocolsPortSet[port] {
+					continue
+				}
+				backendSetName = getBackendSetName(ProtocolTypeMixed, port)
+				mixedProtocolsPortSet[port] = true
+			} else {
+				backendSetName = getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
 			}
-			backendSetName = getBackendSetName(ProtocolTypeMixed, port)
-			mixedProtocolsPortSet[port] = true
-		} else {
-			backendSetName = getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
+			backendSetPortMap[backendSetName] = servicePort
 		}
-		backendSetPortMap[backendSetName] = servicePort
-	}
+		if requireIPv6 {
+			if len(portsMap[port]) > 1 {
+				if mixedProtocolsPortSet[port] {
+					continue
+				}
+				backendSetName = getBackendSetName(ProtocolTypeMixed, port)
+				mixedProtocolsPortSet[port] = true
+			} else {
+				backendSetName = getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
+			}
+			backendSetNameIPv6 := fmt.Sprintf(backendSetName + "-" + IPv6)
+			backendSetPortMap[backendSetNameIPv6] = servicePort
+		}
 
+	}
 	return backendSetPortMap
 }
 
@@ -1354,21 +1530,61 @@ func updateSpecWithLbSubnets(spec *LBSpec, lbSubnetId []string) (*LBSpec, error)
 	return spec, nil
 }
 
-// getResourceTrackingSysTagsFromConfig reads resource tracking tags from config
-// which are specified under common tags
-func getResourceTrackingSysTagsFromConfig(logger *zap.SugaredLogger, initialTags *config.InitialTags) (resourceTrackingTags map[string]map[string]interface{}) {
-	resourceTrackingTags = make(map[string]map[string]interface{})
-	// TODO: Fix the double negative
-	if !(util.IsCommonTagPresent(initialTags) && initialTags.Common.DefinedTags != nil) {
-		logger.Error("oke resource tracking system tags are not present in cloud-config.yaml")
-		return nil
+// getIpFamilies gets ip families based on the field set in the spec
+func getIpFamilies(svc *v1.Service) []string {
+	ipFamilies := []string{}
+	for _, ipFamily := range svc.Spec.IPFamilies {
+		ipFamilies = append(ipFamilies, string(ipFamily))
+	}
+	return ipFamilies
+}
+
+// getIpFamilyPolicy from the service spec
+func getIpFamilyPolicy(svc *v1.Service) string {
+	if svc.Spec.IPFamilyPolicy == nil {
+		return string(v1.IPFamilyPolicySingleStack)
+	}
+	return string(*svc.Spec.IPFamilyPolicy)
+}
+
+// getRequireIpVersions gets the required IP version for the service
+func getRequireIpVersions(listenerBackendSetIpVersion []string) (requireIPv4, requireIPv6 bool) {
+	if contains(listenerBackendSetIpVersion, IPv6) {
+		requireIPv6 = true
+	}
+	if contains(listenerBackendSetIpVersion, IPv4) {
+		requireIPv4 = true
+	}
+	return
+}
+
+// isServiceDualStack checks if a Service is dual-stack or not.
+func isServiceDualStack(svc *v1.Service) bool {
+	if svc.Spec.IPFamilyPolicy == nil {
+		return false
+	}
+	if *svc.Spec.IPFamilyPolicy == v1.IPFamilyPolicyRequireDualStack || *svc.Spec.IPFamilyPolicy == v1.IPFamilyPolicyPreferDualStack {
+		return true
+	}
+	return false
+}
+
+// patchIngressIpMode reads ingress ipMode specified in the service annotation if exists
+func getIngressIpMode(service *v1.Service) (*v1.LoadBalancerIPMode, error) {
+	var ipMode, exists = "", false
+
+	if ipMode, exists = service.Annotations[ServiceAnnotationIngressIpMode]; !exists {
+		return nil, nil
 	}
 
-	if tag, exists := initialTags.Common.DefinedTags[OkeSystemTagNamesapce]; exists {
-		resourceTrackingTags[OkeSystemTagNamesapce] = tag
-		return
+	switch strings.ToLower(ipMode) {
+	case "proxy":
+		ipModeProxy := v1.LoadBalancerIPModeProxy
+		return &ipModeProxy, nil
+	case "vip":
+		ipModeProxy := v1.LoadBalancerIPModeVIP
+		return &ipModeProxy, nil
+	default:
+		return nil, errors.New("IpMode can only be set as Proxy or VIP")
 	}
-
-	logger.Error("tag config doesn't consist resource tracking tags")
-	return nil
 }

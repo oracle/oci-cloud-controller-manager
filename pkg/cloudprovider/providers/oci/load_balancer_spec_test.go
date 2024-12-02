@@ -16,7 +16,9 @@ package oci
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"k8s.io/utils/pointer"
 	"net/http"
 	"reflect"
 	"testing"
@@ -35,7 +37,7 @@ import (
 var (
 	backendSecret  = "backendsecret"
 	listenerSecret = "listenersecret"
-	testNodeString = "testNodeTargetID"
+	testNodeString = "ocid1.testNodeTargetID"
 )
 
 var (
@@ -70,14 +72,49 @@ func TestNewLBSpecSuccess(t *testing.T) {
 		defaultSubnetOne string
 		defaultSubnetTwo string
 		nodes            []*v1.Node
+		virtualPods      []*v1.Pod
 		service          *v1.Service
 		expected         *LBSpec
 		sslConfig        *SSLConfig
 		clusterTags      *providercfg.InitialTags
+		IpVersions       *IpVersions
 	}{
 		"defaults": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace:   "kube-system",
@@ -86,6 +123,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					Annotations: map[string]string{},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -111,7 +149,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:     common.String("TCP-80"),
+						Backends: []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -124,6 +163,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						},
 						IsPreserveSource: common.Bool(false),
 						Policy:           common.String("ROUND_ROBIN"),
+						IpVersion:        GenericIpVersion(client.GenericIPv4),
 					},
 				},
 				IsPreserveSource:        common.Bool(false),
@@ -137,10 +177,76 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 		"defaults-nlb-cluster-policy": {
 			defaultSubnetOne: "one",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -151,6 +257,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -171,11 +278,13 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
+						IpVersion:             GenericIpVersion(client.GenericIPv4),
 					},
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:     common.String("TCP-80"),
+						Backends: []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -188,6 +297,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						},
 						IsPreserveSource: common.Bool(false),
 						Policy:           common.String("FIVE_TUPLE"),
+						IpVersion:        GenericIpVersion(client.GenericIPv4),
 					},
 				},
 				IsPreserveSource:        common.Bool(false),
@@ -201,10 +311,76 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 		"defaults-nlb-local-policy": {
 			defaultSubnetOne: "one",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -215,6 +391,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -236,11 +413,13 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
+						IpVersion:             GenericIpVersion(client.GenericIPv4),
 					},
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:     common.String("TCP-80"),
+						Backends: []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -253,6 +432,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						},
 						IsPreserveSource: common.Bool(true),
 						Policy:           common.String("FIVE_TUPLE"),
+						IpVersion:        GenericIpVersion(client.GenericIPv4),
 					},
 				},
 				IsPreserveSource:        common.Bool(true),
@@ -266,11 +446,77 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 		"internal with default subnet": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -281,6 +527,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -306,7 +553,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:     common.String("TCP-80"),
+						Backends: []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -319,6 +567,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						},
 						IsPreserveSource: common.Bool(false),
 						Policy:           common.String("ROUND_ROBIN"),
+						IpVersion:        GenericIpVersion(client.GenericIPv4),
 					},
 				},
 				IsPreserveSource:        common.Bool(false),
@@ -332,11 +581,77 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 		"internal with overridden regional subnet1": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -348,6 +663,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -373,7 +689,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:     common.String("TCP-80"),
+						Backends: []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -386,6 +703,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						},
 						IsPreserveSource: common.Bool(false),
 						Policy:           common.String("ROUND_ROBIN"),
+						IpVersion:        GenericIpVersion(client.GenericIPv4),
 					},
 				},
 				IsPreserveSource:        common.Bool(false),
@@ -399,11 +717,77 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 		"internal with overridden regional subnet2": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -415,6 +799,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -440,7 +825,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:     common.String("TCP-80"),
+						Backends: []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -453,6 +839,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						},
 						IsPreserveSource: common.Bool(false),
 						Policy:           common.String("ROUND_ROBIN"),
+						IpVersion:        GenericIpVersion(client.GenericIPv4),
 					},
 				},
 				IsPreserveSource:        common.Bool(false),
@@ -466,9 +853,75 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 		"internal with no default subnets provide subnet1 via annotation": {
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -480,6 +933,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -505,7 +959,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -531,11 +987,77 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 		"use default subnet in case of no subnet overrides via annotation": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace:   "kube-system",
@@ -544,6 +1066,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					Annotations: map[string]string{},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						v1.ServicePort{
@@ -569,7 +1092,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": client.GenericBackendSetDetails{
-						Backends: []client.GenericBackend{},
+						Name:     common.String("TCP-80"),
+						Backends: []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -582,6 +1106,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						},
 						IsPreserveSource: common.Bool(false),
 						Policy:           common.String("ROUND_ROBIN"),
+						IpVersion:        GenericIpVersion(client.GenericIPv4),
 					},
 				},
 				IsPreserveSource:        common.Bool(false),
@@ -595,9 +1120,75 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 		"no default subnets provide subnet1 via annotation as regional-subnet": {
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -608,6 +1199,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						v1.ServicePort{
@@ -633,7 +1225,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": client.GenericBackendSetDetails{
-						Backends: []client.GenericBackend{},
+						Name:     common.String("TCP-80"),
+						Backends: []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -646,6 +1239,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						},
 						IsPreserveSource: common.Bool(false),
 						Policy:           common.String("ROUND_ROBIN"),
+						IpVersion:        GenericIpVersion(client.GenericIPv4),
 					},
 				},
 				IsPreserveSource:        common.Bool(false),
@@ -659,9 +1253,75 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 		"no default subnets provide subnet2 via annotation": {
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -672,6 +1332,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -697,7 +1358,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": client.GenericBackendSetDetails{
-						Backends: []client.GenericBackend{},
+						Name:     common.String("TCP-80"),
+						Backends: []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -710,6 +1372,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						},
 						IsPreserveSource: common.Bool(false),
 						Policy:           common.String("ROUND_ROBIN"),
+						IpVersion:        GenericIpVersion(client.GenericIPv4),
 					},
 				},
 				IsPreserveSource:        common.Bool(false),
@@ -723,11 +1386,77 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 		"override default subnet via subnet1 annotation as regional subnet": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -738,6 +1467,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						v1.ServicePort{
@@ -763,7 +1493,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": client.GenericBackendSetDetails{
-						Backends: []client.GenericBackend{},
+						Name:     common.String("TCP-80"),
+						Backends: []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -776,6 +1507,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						},
 						IsPreserveSource: common.Bool(false),
 						Policy:           common.String("ROUND_ROBIN"),
+						IpVersion:        GenericIpVersion(client.GenericIPv4),
 					},
 				},
 				IsPreserveSource:        common.Bool(false),
@@ -789,11 +1521,77 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 		"override default subnet via subnet2 annotation as regional subnet": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -804,6 +1602,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						v1.ServicePort{
@@ -829,7 +1628,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": client.GenericBackendSetDetails{
-						Backends: []client.GenericBackend{},
+						Name:     common.String("TCP-80"),
+						Backends: []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -842,6 +1642,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						},
 						IsPreserveSource: common.Bool(false),
 						Policy:           common.String("ROUND_ROBIN"),
+						IpVersion:        GenericIpVersion(client.GenericIPv4),
 					},
 				},
 				IsPreserveSource:        common.Bool(false),
@@ -855,11 +1656,77 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 		"override default subnet via subnet1 and subnet2 annotation": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -871,6 +1738,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						v1.ServicePort{
@@ -896,7 +1764,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": client.GenericBackendSetDetails{
-						Backends: []client.GenericBackend{},
+						Name:     common.String("TCP-80"),
+						Backends: []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -909,6 +1778,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						},
 						IsPreserveSource: common.Bool(false),
 						Policy:           common.String("ROUND_ROBIN"),
+						IpVersion:        GenericIpVersion(client.GenericIPv4),
 					},
 				},
 				IsPreserveSource:        common.Bool(false),
@@ -922,12 +1792,78 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 		//"security list manager annotation":
 		"custom shape": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -938,6 +1874,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -963,7 +1900,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -989,11 +1928,77 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 		"custom idle connection timeout": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -1004,6 +2009,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -1032,7 +2038,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -1058,11 +2066,77 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 		"custom proxy protocol version w/o timeout for multiple listeners": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -1073,6 +2147,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -1116,7 +2191,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -1131,7 +2208,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						Policy:           common.String("ROUND_ROBIN"),
 					},
 					"HTTP-443": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("HTTP-443"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -1161,11 +2240,77 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 		"custom proxy protocol version and timeout": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -1177,6 +2322,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -1206,7 +2352,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -1232,11 +2380,77 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 		"protocol annotation set to http": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -1249,6 +2463,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -1274,7 +2489,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -1300,11 +2517,77 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 		"protocol annotation set to tcp": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -1317,6 +2600,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -1342,7 +2626,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -1368,11 +2654,77 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 		"protocol annotation empty": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -1385,6 +2737,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -1410,7 +2763,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -1436,11 +2791,77 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 		"LBSpec returned with proper SSLConfiguration": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace:   "kube-system",
@@ -1449,6 +2870,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					Annotations: map[string]string{},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -1479,7 +2901,8 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-443": {
-						Backends: []client.GenericBackend{},
+						Name:     common.String("TCP-443"),
+						Backends: []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -1497,6 +2920,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 							VerifyDepth:           common.Int(0),
 							VerifyPeerCertificate: common.Bool(false),
 						},
+						IpVersion: GenericIpVersion(client.GenericIPv4),
 					},
 				},
 				IsPreserveSource:        common.Bool(false),
@@ -1508,12 +2932,45 @@ func TestNewLBSpecSuccess(t *testing.T) {
 						HealthCheckerPort: 10256,
 					},
 				},
-				securityListManager:         newSecurityListManagerNOOP(),
-				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				securityListManager: newSecurityListManagerNOOP(),
 				SSLConfig: &SSLConfig{
 					Ports:                   sets.NewInt(443),
 					ListenerSSLSecretName:   listenerSecret,
 					BackendSetSSLSecretName: backendSecret,
+				},
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
 				},
 			},
 			sslConfig: &SSLConfig{
@@ -1525,6 +2982,39 @@ func TestNewLBSpecSuccess(t *testing.T) {
 		"custom health check config": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -1537,6 +3027,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -1562,7 +3053,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -1588,11 +3081,77 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 		"flex shape": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -1605,6 +3164,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -1632,7 +3192,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -1658,11 +3220,77 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 		"valid loadbalancer policy": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -1674,6 +3302,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -1699,7 +3328,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -1725,11 +3356,77 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 		"default loadbalancer policy": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -1740,6 +3437,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -1765,7 +3463,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -1791,11 +3491,77 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 		"load balancer with reserved ip": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -1806,6 +3572,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					LoadBalancerIP:  "10.0.0.0",
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
@@ -1832,7 +3599,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -1857,13 +3626,79 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
-				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
 				LoadBalancerIP:              "10.0.0.0",
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 		"defaults with tags": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -1875,6 +3710,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -1907,7 +3743,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -1933,13 +3771,79 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
-				FreeformTags:                map[string]string{"cluster": "resource", "unique": "tag"},
-				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
+				FreeformTags: map[string]string{"cluster": "resource", "unique": "tag"},
+				DefinedTags:  map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}},
 			},
 		},
 		"merge default tags with common tags": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -1951,6 +3855,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -1984,7 +3889,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -2010,13 +3917,79 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
-				FreeformTags:                map[string]string{"cluster": "resource", "unique": "tag"},
-				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"cluster": "CommonCluster", "owner": "CommonClusterOwner"}, "namespace2": {"cost": "staging"}},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
+				FreeformTags: map[string]string{"cluster": "resource", "unique": "tag"},
+				DefinedTags:  map[string]map[string]interface{}{"namespace": {"cluster": "CommonCluster", "owner": "CommonClusterOwner"}, "namespace2": {"cost": "staging"}},
 			},
 		},
 		"merge intial lb tags with common tags": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -2024,6 +3997,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 					UID:       "test-uid",
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -2059,7 +4033,9 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -2085,8 +4061,486 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
-				FreeformTags:                map[string]string{"cluster": "testname", "project": "pre-prod", "access": "developers"},
-				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"cluster": "CommonCluster", "owner": "CommonClusterOwner"}, "cost": {"unit": "shared", "env": "pre-prod"}},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
+				FreeformTags: map[string]string{"cluster": "testname", "project": "pre-prod", "access": "developers"},
+				DefinedTags:  map[string]map[string]interface{}{"namespace": {"cluster": "CommonCluster", "owner": "CommonClusterOwner"}, "cost": {"unit": "shared", "env": "pre-prod"}},
+			},
+		},
+		"SingleStack IPv6 - NLB": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv6},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv6),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv6},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Type:    v1.NodeInternalIP,
+								Address: "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv6)},
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "kube-system/testservice/test-uid",
+				Type:     "nlb",
+				Shape:    "flexible",
+				Internal: false,
+				Subnets:  []string{"one"},
+				Listeners: map[string]client.GenericListener{
+					"TCP-80-IPv6": {
+						Name:                  common.String("TCP-80-IPv6"),
+						DefaultBackendSetName: common.String("TCP-80-IPv6"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+						IpVersion:             GenericIpVersion(client.GenericIPv6),
+					},
+				},
+				BackendSets: map[string]client.GenericBackendSetDetails{
+					"TCP-80-IPv6": {
+						Name:     common.String("TCP-80-IPv6"),
+						Backends: []client.GenericBackend{{IpAddress: common.String("2001:0db8:85a3:0000:0000:8a2e:0370:7334"), Port: common.Int(0), Weight: common.Int(1)}},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
+						},
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("FIVE_TUPLE"),
+						IpVersion:        GenericIpVersion(client.GenericIPv6),
+					},
+				},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"::/0"},
+				Ports: map[string]portSpec{
+					"TCP-80-IPv6": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv6},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv6),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv6},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Type:    v1.NodeInternalIP,
+									Address: "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
+			},
+		},
+		"Prefer DualStack IPv4 and IPv6 LB": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4, IPv6},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicyPreferDualStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4AndIPv6),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Type:    v1.NodeInternalIP,
+								Address: "10.0.0.1",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "lb",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4), v1.IPFamily(IPv6)},
+					IPFamilyPolicy:  (*v1.IPFamilyPolicy)(common.String(string(v1.IPFamilyPolicyPreferDualStack))),
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Type:     "lb",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"one", "two"},
+				Listeners: map[string]client.GenericListener{
+					"TCP-80": {
+						Name:                  common.String("TCP-80"),
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+					},
+				},
+				BackendSets: map[string]client.GenericBackendSetDetails{
+					"TCP-80": {
+						Name:     common.String("TCP-80"),
+						Backends: []client.GenericBackend{{IpAddress: common.String("10.0.0.1"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
+						},
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
+						IpVersion:        GenericIpVersion(client.GenericIPv4),
+					},
+				},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0", "::/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4, IPv6},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicyPreferDualStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4AndIPv6),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Type:    v1.NodeInternalIP,
+									Address: "10.0.0.1",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
+			},
+		},
+		"PreferDualStack IPv4 and IPv6 NLB": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4, IPv6},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicyPreferDualStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4AndIPv6),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4, client.GenericIPv6},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Type:    v1.NodeInternalIP,
+								Address: "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
+							},
+							{
+								Type:    v1.NodeInternalIP,
+								Address: "10.0.0.1",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4), v1.IPFamily(IPv6)},
+					IPFamilyPolicy:  (*v1.IPFamilyPolicy)(common.String(string(v1.IPFamilyPolicyPreferDualStack))),
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "kube-system/testservice/test-uid",
+				Type:     "nlb",
+				Shape:    "flexible",
+				Internal: false,
+				Subnets:  []string{"one"},
+				Listeners: map[string]client.GenericListener{
+					"TCP-80": {
+						Name:                  common.String("TCP-80"),
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+						IpVersion:             GenericIpVersion(client.GenericIPv4),
+					},
+					"TCP-80-IPv6": {
+						Name:                  common.String("TCP-80-IPv6"),
+						DefaultBackendSetName: common.String("TCP-80-IPv6"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+						IpVersion:             GenericIpVersion(client.GenericIPv6),
+					},
+				},
+				BackendSets: map[string]client.GenericBackendSetDetails{
+					"TCP-80": {
+						Name:     common.String("TCP-80"),
+						Backends: []client.GenericBackend{{IpAddress: common.String("10.0.0.1"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
+						},
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("FIVE_TUPLE"),
+						IpVersion:        GenericIpVersion(client.GenericIPv4),
+					},
+					"TCP-80-IPv6": {
+						Name:     common.String("TCP-80-IPv6"),
+						Backends: []client.GenericBackend{{IpAddress: common.String("2001:0db8:85a3:0000:0000:8a2e:0370:7334"), Port: common.Int(0), Weight: common.Int(1)}},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
+						},
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("FIVE_TUPLE"),
+						IpVersion:        GenericIpVersion(client.GenericIPv6),
+					},
+				},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0", "::/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+					"TCP-80-IPv6": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4, IPv6},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicyPreferDualStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4AndIPv6),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4, client.GenericIPv6},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Type:    v1.NodeInternalIP,
+									Address: "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
+								},
+								{
+									Type:    v1.NodeInternalIP,
+									Address: "10.0.0.1",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 	}
@@ -2114,13 +4568,16 @@ func TestNewLBSpecSuccess(t *testing.T) {
 			slManagerFactory := func(mode string) securityListManager {
 				return newSecurityListManagerNOOP()
 			}
-			result, err := NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, tc.sslConfig, slManagerFactory, tc.clusterTags, nil)
+
+			result, err := NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, tc.sslConfig, slManagerFactory, tc.IpVersions, tc.clusterTags, nil)
 			if err != nil {
 				t.Error(err)
 			}
 
 			if !reflect.DeepEqual(result, tc.expected) {
-				t.Errorf("Expected load balancer spec\n%+v\nbut got\n%+v", tc.expected, result)
+				results, _ := json.Marshal(result)
+				expected, _ := json.Marshal(tc.expected)
+				t.Errorf("Expected load balancer spec failed want: %s \n got: %s \n", expected, results)
 			}
 		})
 	}
@@ -2138,9 +4595,43 @@ func TestNewLBSpecForTags(t *testing.T) {
 		expected         *LBSpec
 		clusterTags      *providercfg.InitialTags
 		featureEnabled   bool
+		IpVersions       *IpVersions
 	}{
 		"no resource & cluster level tags but common tags from config": {
 			defaultSubnetOne: "one",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -2148,6 +4639,7 @@ func TestNewLBSpecForTags(t *testing.T) {
 					UID:       "test-uid",
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -2181,7 +4673,9 @@ func TestNewLBSpecForTags(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -2207,13 +4701,79 @@ func TestNewLBSpecForTags(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
-				FreeformTags:                map[string]string{},
-				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"cluster": "CommonCluster", "owner": "CommonClusterOwner"}},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
+				FreeformTags: map[string]string{},
+				DefinedTags:  map[string]map[string]interface{}{"namespace": {"cluster": "CommonCluster", "owner": "CommonClusterOwner"}},
 			},
 			featureEnabled: true,
 		},
 		"no resource or cluster level tags and no common tags": {
 			defaultSubnetOne: "one",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -2221,6 +4781,7 @@ func TestNewLBSpecForTags(t *testing.T) {
 					UID:       "test-uid",
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -2247,7 +4808,9 @@ func TestNewLBSpecForTags(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -2273,11 +4836,77 @@ func TestNewLBSpecForTags(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 			featureEnabled: true,
 		},
 		"resource level tags with common tags from config": {
 			defaultSubnetOne: "one",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -2290,6 +4919,7 @@ func TestNewLBSpecForTags(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -2317,11 +4947,14 @@ func TestNewLBSpecForTags(t *testing.T) {
 						DefaultBackendSetName: common.String("TCP-80"),
 						Port:                  common.Int(80),
 						Protocol:              common.String("TCP"),
+						IpVersion:             GenericIpVersion(client.GenericIPv4),
 					},
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -2347,13 +4980,79 @@ func TestNewLBSpecForTags(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
-				FreeformTags:                map[string]string{"cluster": "resource", "unique": "tag", "name": "development_cluster"},
-				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}, "namespace2": {"owner2": "team2", "key2": "value2"}},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
+				FreeformTags: map[string]string{"cluster": "resource", "unique": "tag", "name": "development_cluster"},
+				DefinedTags:  map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}, "namespace2": {"owner2": "team2", "key2": "value2"}},
 			},
 			featureEnabled: true,
 		},
 		"resource level defined tags and common defined tags from config with same key": {
 			defaultSubnetOne: "one",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -2365,6 +5064,7 @@ func TestNewLBSpecForTags(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -2396,7 +5096,9 @@ func TestNewLBSpecForTags(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -2422,13 +5124,79 @@ func TestNewLBSpecForTags(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
-				FreeformTags:                map[string]string{"cluster": "resource", "unique": "tag", "name": "development_cluster"},
-				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"owner2": "team2", "key2": "value2"}},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
+				FreeformTags: map[string]string{"cluster": "resource", "unique": "tag", "name": "development_cluster"},
+				DefinedTags:  map[string]map[string]interface{}{"namespace": {"owner2": "team2", "key2": "value2"}},
 			},
 			featureEnabled: true,
 		},
 		"cluster level tags and common tags": {
 			defaultSubnetOne: "one",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -2436,6 +5204,7 @@ func TestNewLBSpecForTags(t *testing.T) {
 					UID:       "test-uid",
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -2471,7 +5240,9 @@ func TestNewLBSpecForTags(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -2497,13 +5268,79 @@ func TestNewLBSpecForTags(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
-				FreeformTags:                map[string]string{"lbname": "development_cluster_loadbalancer", "name": "development_cluster"},
-				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}, "namespace2": {"owner2": "team2", "key2": "value2"}},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
+				FreeformTags: map[string]string{"lbname": "development_cluster_loadbalancer", "name": "development_cluster"},
+				DefinedTags:  map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}, "namespace2": {"owner2": "team2", "key2": "value2"}},
 			},
 			featureEnabled: true,
 		},
 		"cluster level defined tags and common defined tags with same key": {
 			defaultSubnetOne: "one",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -2511,6 +5348,7 @@ func TestNewLBSpecForTags(t *testing.T) {
 					UID:       "test-uid",
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -2546,7 +5384,9 @@ func TestNewLBSpecForTags(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -2572,13 +5412,79 @@ func TestNewLBSpecForTags(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
-				FreeformTags:                map[string]string{"lbname": "development_cluster_loadbalancer", "name": "development_cluster"},
-				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"owner2": "team2", "key2": "value2"}},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
+				FreeformTags: map[string]string{"lbname": "development_cluster_loadbalancer", "name": "development_cluster"},
+				DefinedTags:  map[string]map[string]interface{}{"namespace": {"owner2": "team2", "key2": "value2"}},
 			},
 			featureEnabled: true,
 		},
 		"cluster level tags with no common tags": {
 			defaultSubnetOne: "one",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -2586,6 +5492,7 @@ func TestNewLBSpecForTags(t *testing.T) {
 					UID:       "test-uid",
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -2617,7 +5524,9 @@ func TestNewLBSpecForTags(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -2643,13 +5552,79 @@ func TestNewLBSpecForTags(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
-				FreeformTags:                map[string]string{"lbname": "development_cluster_loadbalancer"},
-				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
+				FreeformTags: map[string]string{"lbname": "development_cluster_loadbalancer"},
+				DefinedTags:  map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}},
 			},
 			featureEnabled: true,
 		},
 		"no cluster or level tags but common tags from config": {
 			defaultSubnetOne: "one",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -2657,6 +5632,7 @@ func TestNewLBSpecForTags(t *testing.T) {
 					UID:       "test-uid",
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -2688,7 +5664,9 @@ func TestNewLBSpecForTags(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -2714,13 +5692,79 @@ func TestNewLBSpecForTags(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
-				FreeformTags:                map[string]string{"lbname": "development_cluster_loadbalancer"},
-				DefinedTags:                 map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
+				FreeformTags: map[string]string{"lbname": "development_cluster_loadbalancer"},
+				DefinedTags:  map[string]map[string]interface{}{"namespace": {"owner": "team", "key": "value"}},
 			},
 			featureEnabled: true,
 		},
 		"when the feature is disabled": {
 			defaultSubnetOne: "one",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -2728,6 +5772,7 @@ func TestNewLBSpecForTags(t *testing.T) {
 					UID:       "test-uid",
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -2759,7 +5804,9 @@ func TestNewLBSpecForTags(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -2785,6 +5832,39 @@ func TestNewLBSpecForTags(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 			featureEnabled: false,
 		},
@@ -2813,8 +5893,7 @@ func TestNewLBSpecForTags(t *testing.T) {
 			slManagerFactory := func(mode string) securityListManager {
 				return newSecurityListManagerNOOP()
 			}
-
-			result, err := NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, tc.sslConfig, slManagerFactory, tc.clusterTags, nil)
+			result, err := NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, tc.sslConfig, slManagerFactory, tc.IpVersions, tc.clusterTags, nil)
 			if err != nil {
 				t.Error(err)
 			}
@@ -2830,12 +5909,47 @@ func TestNewLBSpecSingleAD(t *testing.T) {
 		defaultSubnetOne string
 		defaultSubnetTwo string
 		nodes            []*v1.Node
+		virtualPods      []*v1.Pod
 		service          *v1.Service
 		expected         *LBSpec
 		clusterTags      *providercfg.InitialTags
+		IpVersions       *IpVersions
 	}{
 		"single subnet for single AD": {
 			defaultSubnetOne: "one",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -2847,6 +5961,7 @@ func TestNewLBSpecSingleAD(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{
@@ -2872,7 +5987,9 @@ func TestNewLBSpecSingleAD(t *testing.T) {
 				},
 				BackendSets: map[string]client.GenericBackendSetDetails{
 					"TCP-80": {
-						Backends: []client.GenericBackend{},
+						Name:      common.String("TCP-80"),
+						IpVersion: GenericIpVersion(client.GenericIPv4),
+						Backends:  []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
 						HealthChecker: &client.GenericHealthChecker{
 							Protocol:         "HTTP",
 							IsForcePlainText: common.Bool(false),
@@ -2898,6 +6015,39 @@ func TestNewLBSpecSingleAD(t *testing.T) {
 				},
 				securityListManager:         newSecurityListManagerNOOP(),
 				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
 			},
 		},
 	}
@@ -2925,7 +6075,8 @@ func TestNewLBSpecSingleAD(t *testing.T) {
 			slManagerFactory := func(mode string) securityListManager {
 				return newSecurityListManagerNOOP()
 			}
-			result, err := NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, nil, slManagerFactory, tc.clusterTags, nil)
+
+			result, err := NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, nil, slManagerFactory, tc.IpVersions, tc.clusterTags, nil)
 			if err != nil {
 				t.Error(err)
 			}
@@ -2942,15 +6093,24 @@ func TestNewLBSpecFailure(t *testing.T) {
 		defaultSubnetOne string
 		defaultSubnetTwo string
 		nodes            []*v1.Node
+		virtualPods      []*v1.Pod
 		service          *v1.Service
 		//add cp or cp security list
 		expectedErrMsg string
 		clusterTags    *providercfg.InitialTags
+		IpVersions     *IpVersions
 	}{
 		"unsupported udp protocol": {
 			defaultSubnetOne: "one",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
 			service: &v1.Service{
 				Spec: v1.ServiceSpec{
+					IPFamilies: []v1.IPFamily{v1.IPFamily(IPv4)},
 					Ports: []v1.ServicePort{
 						{Protocol: v1.ProtocolUDP},
 					},
@@ -2960,8 +6120,15 @@ func TestNewLBSpecFailure(t *testing.T) {
 		},
 		"unsupported session affinity": {
 			defaultSubnetOne: "one",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
 			service: &v1.Service{
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityClientIP,
 					Ports: []v1.ServicePort{
 						{Protocol: v1.ProtocolTCP},
@@ -2973,6 +6140,12 @@ func TestNewLBSpecFailure(t *testing.T) {
 		"invalid idle connection timeout": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -2983,6 +6156,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{Protocol: v1.ProtocolTCP},
@@ -2994,6 +6168,12 @@ func TestNewLBSpecFailure(t *testing.T) {
 		"invalid connection proxy protocol version": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -3004,6 +6184,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{Protocol: v1.ProtocolTCP},
@@ -3014,6 +6195,12 @@ func TestNewLBSpecFailure(t *testing.T) {
 		},
 		"internal lb missing subnet1": {
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -3024,6 +6211,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports:           []v1.ServicePort{},
 					//add security list mananger in spec
@@ -3032,6 +6220,12 @@ func TestNewLBSpecFailure(t *testing.T) {
 			expectedErrMsg: "a subnet must be specified for creating a load balancer",
 		},
 		"internal lb with empty subnet1 annotation": {
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -3042,6 +6236,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports:           []v1.ServicePort{},
 					//add security list mananger in spec
@@ -3050,6 +6245,12 @@ func TestNewLBSpecFailure(t *testing.T) {
 			expectedErrMsg: "a subnet must be specified for creating a load balancer",
 		},
 		"non boolean internal lb": {
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
@@ -3057,6 +6258,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports:           []v1.ServicePort{},
 				},
@@ -3066,6 +6268,12 @@ func TestNewLBSpecFailure(t *testing.T) {
 		"invalid flex shape missing min": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -3077,6 +6285,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{Protocol: v1.ProtocolTCP},
@@ -3088,6 +6297,12 @@ func TestNewLBSpecFailure(t *testing.T) {
 		"invalid flex shape missing max": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -3099,6 +6314,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{Protocol: v1.ProtocolTCP},
@@ -3110,6 +6326,12 @@ func TestNewLBSpecFailure(t *testing.T) {
 		"invalid loadbalancer policy": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -3121,6 +6343,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{Protocol: v1.ProtocolTCP},
@@ -3132,8 +6355,15 @@ func TestNewLBSpecFailure(t *testing.T) {
 		"invalid loadBalancerIP format": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
 			service: &v1.Service{
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					LoadBalancerIP:  "non-ip-format",
 					SessionAffinity: v1.ServiceAffinityNone,
 				},
@@ -3143,6 +6373,12 @@ func TestNewLBSpecFailure(t *testing.T) {
 		"unsupported loadBalancerIP for internal load balancer": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -3153,6 +6389,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					LoadBalancerIP:  "10.0.0.0",
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports:           []v1.ServicePort{},
@@ -3163,6 +6400,12 @@ func TestNewLBSpecFailure(t *testing.T) {
 		"invalid defined tags": {
 			defaultSubnetOne: "one",
 			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -3173,6 +6416,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{Protocol: v1.ProtocolTCP},
@@ -3182,6 +6426,12 @@ func TestNewLBSpecFailure(t *testing.T) {
 			expectedErrMsg: "failed to parse defined tags annotation: invalid character 'w' looking for beginning of value",
 		},
 		"empty subnets": {
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace:   "kube-system",
@@ -3190,6 +6440,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 					Annotations: map[string]string{},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{Protocol: v1.ProtocolTCP},
@@ -3201,6 +6452,12 @@ func TestNewLBSpecFailure(t *testing.T) {
 		"empty strings for subnets": {
 			defaultSubnetOne: "",
 			defaultSubnetTwo: "",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace:   "kube-system",
@@ -3209,6 +6466,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 					Annotations: map[string]string{},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{Protocol: v1.ProtocolTCP},
@@ -3220,6 +6478,12 @@ func TestNewLBSpecFailure(t *testing.T) {
 		"empty string for subnet1 annotation": {
 			defaultSubnetOne: "",
 			defaultSubnetTwo: "",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -3231,6 +6495,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{Protocol: v1.ProtocolTCP},
@@ -3242,6 +6507,12 @@ func TestNewLBSpecFailure(t *testing.T) {
 		"default string for cloud config subnet2": {
 			defaultSubnetOne: "",
 			defaultSubnetTwo: "random",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -3253,6 +6524,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{Protocol: v1.ProtocolTCP},
@@ -3264,6 +6536,12 @@ func TestNewLBSpecFailure(t *testing.T) {
 		"regional string for subnet2 annotation": {
 			defaultSubnetOne: "",
 			defaultSubnetTwo: "",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
 			service: &v1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "kube-system",
@@ -3275,6 +6553,7 @@ func TestNewLBSpecFailure(t *testing.T) {
 					},
 				},
 				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
 					SessionAffinity: v1.ServiceAffinityNone,
 					Ports: []v1.ServicePort{
 						{Protocol: v1.ProtocolTCP},
@@ -3300,11 +6579,12 @@ func TestNewLBSpecFailure(t *testing.T) {
 				},
 			}
 			subnets, err := cp.getLoadBalancerSubnets(context.Background(), logger.Sugar(), tc.service)
+			tc.service.Spec.IPFamilies = []v1.IPFamily{v1.IPFamily(IPv4)}
 			if err == nil {
 				slManagerFactory := func(mode string) securityListManager {
 					return newSecurityListManagerNOOP()
 				}
-				_, err = NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, nil, slManagerFactory, tc.clusterTags, nil)
+				_, err = NewLBSpec(logger.Sugar(), tc.service, tc.nodes, subnets, nil, slManagerFactory, tc.IpVersions, tc.clusterTags, nil)
 			}
 			if err == nil || err.Error() != tc.expectedErrMsg {
 				t.Errorf("Expected error with message %q but got %q", tc.expectedErrMsg, err)
@@ -3632,18 +6912,21 @@ func TestRequiresFrontendNsg(t *testing.T) {
 
 func Test_getBackends(t *testing.T) {
 	type args struct {
-		nodes    []*v1.Node
-		nodePort int32
+		nodes       []*v1.Node
+		virtualPods []*v1.Pod
+		nodePort    int32
 	}
 	var tests = []struct {
-		name string
-		args args
-		want []client.GenericBackend
+		name     string
+		args     args
+		want     []client.GenericBackend
+		wantIPv6 []client.GenericBackend
 	}{
 		{
-			name: "no nodes",
-			args: args{nodePort: 80},
-			want: []client.GenericBackend{},
+			name:     "no nodes",
+			args:     args{nodePort: 80},
+			want:     []client.GenericBackend{},
+			wantIPv6: []client.GenericBackend{},
 		},
 		{
 			name: "single node with assigned IP",
@@ -3680,6 +6963,7 @@ func Test_getBackends(t *testing.T) {
 			want: []client.GenericBackend{
 				{IpAddress: common.String("0.0.0.0"), Port: common.Int(80), Weight: common.Int(1), TargetId: &testNodeString},
 			},
+			wantIPv6: []client.GenericBackend{},
 		},
 		{
 			name: "single node with unassigned IP",
@@ -3708,7 +6992,8 @@ func Test_getBackends(t *testing.T) {
 				},
 				nodePort: 80,
 			},
-			want: []client.GenericBackend{},
+			want:     []client.GenericBackend{},
+			wantIPv6: []client.GenericBackend{},
 		},
 		{
 			name: "multiple nodes - all with assigned IP",
@@ -3771,6 +7056,7 @@ func Test_getBackends(t *testing.T) {
 				{IpAddress: common.String("0.0.0.0"), Port: common.Int(80), Weight: common.Int(1), TargetId: &testNodeString},
 				{IpAddress: common.String("0.0.0.1"), Port: common.Int(80), Weight: common.Int(1), TargetId: &testNodeString},
 			},
+			wantIPv6: []client.GenericBackend{},
 		},
 		{
 			name: "multiple nodes - all with unassigned IP",
@@ -3817,7 +7103,8 @@ func Test_getBackends(t *testing.T) {
 				},
 				nodePort: 80,
 			},
-			want: []client.GenericBackend{},
+			want:     []client.GenericBackend{},
+			wantIPv6: []client.GenericBackend{},
 		},
 		{
 			name: "multiple nodes - one with unassigned IP",
@@ -3900,14 +7187,103 @@ func Test_getBackends(t *testing.T) {
 				{IpAddress: common.String("0.0.0.0"), Port: common.Int(80), Weight: common.Int(1), TargetId: &testNodeString},
 				{IpAddress: common.String("0.0.0.1"), Port: common.Int(80), Weight: common.Int(1), TargetId: &testNodeString},
 			},
+			wantIPv6: []client.GenericBackend{},
+		},
+		{
+			name: "multiple nodes - one with unassigned IP",
+			args: args{
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "2001:0000:130F:0000:0000:09C0:876A:130B",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:        nil,
+							Allocatable:     nil,
+							Phase:           "",
+							Conditions:      nil,
+							Addresses:       []v1.NodeAddress{},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "2001:0000:130F:0000:0000:09C0:876A:1300",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
+				nodePort: 80,
+			},
+			want: []client.GenericBackend{},
+			wantIPv6: []client.GenericBackend{
+				{IpAddress: common.String("2001:0000:130F:0000:0000:09C0:876A:130B"), Port: common.Int(80), Weight: common.Int(1)},
+				{IpAddress: common.String("2001:0000:130F:0000:0000:09C0:876A:1300"), Port: common.Int(80), Weight: common.Int(1)},
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := zap.L()
-			if got := getBackends(logger.Sugar(), tt.args.nodes, tt.args.nodePort); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("getBackends() = %+v, want %+v", got, tt.want)
+			gotIpv4, gotIpv6 := getBackends(logger.Sugar(), tt.args.nodes, tt.args.nodePort)
+			if !reflect.DeepEqual(gotIpv4, tt.want) {
+				t.Errorf("getBackends() = %+v, want %+v", gotIpv4, tt.want)
 			}
+			if !reflect.DeepEqual(gotIpv6, tt.wantIPv6) {
+				t.Errorf("getBackends() = %+v, want %+v", gotIpv6, tt.wantIPv6)
+			}
+
 		})
 	}
 }
@@ -4786,9 +8162,11 @@ func Test_getHealthChecker(t *testing.T) {
 
 func Test_getListeners(t *testing.T) {
 	var tests = []struct {
-		service *v1.Service
-		name    string
-		want    map[string]client.GenericListener
+		service                  *v1.Service
+		listenerBackendIpVersion []string
+		name                     string
+		sslConfig                *SSLConfig
+		want                     map[string]client.GenericListener
 	}{
 		{
 			name: "default",
@@ -4805,7 +8183,8 @@ func Test_getListeners(t *testing.T) {
 					Annotations: map[string]string{},
 				},
 			},
-
+			listenerBackendIpVersion: []string{IPv4},
+			sslConfig:                nil,
 			want: map[string]client.GenericListener{
 				"TCP-80": {
 					Name:                  common.String("TCP-80"),
@@ -4832,7 +8211,77 @@ func Test_getListeners(t *testing.T) {
 					},
 				},
 			},
-
+			listenerBackendIpVersion: []string{IPv4},
+			sslConfig:                nil,
+			want: map[string]client.GenericListener{
+				"TCP-80": {
+					Name:                  common.String("TCP-80"),
+					Port:                  common.Int(80),
+					Protocol:              common.String("TCP"),
+					DefaultBackendSetName: common.String("TCP-80"),
+					IpVersion:             GenericIpVersion(client.GenericIPv4),
+				},
+			},
+		},
+		{
+			name: "ssl configuration and cipher suite",
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.Protocol("TCP"),
+							Port:     int32(443),
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadbalancerListenerSSLConfig: `{"cipherSuiteName":"oci-default-http2-ssl-cipher-suite-v1", "protocols":["TLSv1.2"]}`,
+						ServiceAnnotationLoadBalancerSSLPorts:          "443",
+					},
+				},
+			},
+			listenerBackendIpVersion: []string{IPv4},
+			sslConfig: &SSLConfig{
+				Ports:                   sets.NewInt(443),
+				ListenerSSLSecretName:   listenerSecret,
+				BackendSetSSLSecretName: backendSecret,
+			},
+			want: map[string]client.GenericListener{
+				"TCP-443": {
+					Name:                  common.String("TCP-443"),
+					Port:                  common.Int(443),
+					Protocol:              common.String("TCP"),
+					DefaultBackendSetName: common.String("TCP-443"),
+					SslConfiguration: &client.GenericSslConfigurationDetails{
+						CertificateName:       &listenerSecret,
+						VerifyDepth:           common.Int(0),
+						VerifyPeerCertificate: common.Bool(false),
+						CipherSuiteName:       common.String("oci-default-http2-ssl-cipher-suite-v1"),
+						Protocols:             []string{"TLSv1.2"},
+					},
+				},
+			},
+		},
+		{
+			name: "Listeners with ssl configuration information",
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadbalancerListenerSSLConfig: `{"cipherSuiteName":"oci-default-http2-ssl-cipher-suite-v1", "protocols":["TLSv1.2"]}`,
+					},
+				},
+			},
+			listenerBackendIpVersion: []string{IPv4},
+			sslConfig:                nil,
 			want: map[string]client.GenericListener{
 				"TCP-80": {
 					Name:                  common.String("TCP-80"),
@@ -4846,9 +8295,13 @@ func Test_getListeners(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := tt.service
-			if got, _ := getListeners(svc, nil); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("getListeners() = %+v, \n want %+v", got, tt.want)
-
+			if got, err := getListeners(svc, tt.sslConfig, tt.listenerBackendIpVersion); !reflect.DeepEqual(got, tt.want) {
+				if err != nil {
+					t.Errorf("Err %v", err.Error())
+				}
+				got, _ := json.Marshal(got)
+				want, _ := json.Marshal(tt.want)
+				t.Errorf("getListeners() failed want: %s \n got: %s \n", want, got)
 			}
 		})
 	}
@@ -5464,10 +8917,16 @@ func Test_getListenersNetworkLoadBalancer(t *testing.T) {
 	testFourProtocol := "UDP"
 	testFourPort := 67
 
+	IPFamilyPolicyPreferDualStack := v1.IPFamilyPolicyPreferDualStack
+	IPFamilyPolicySingleStack := v1.IPFamilyPolicySingleStack
+	testThreeListenerNameIPv6 := "TCP-67-IPv6"
+	testThreeBackendSetNameIPv6 := "TCP-67-IPv6"
+
 	testCases := map[string]struct {
-		service       *v1.Service
-		wantListeners map[string]client.GenericListener
-		err           error
+		service                  *v1.Service
+		listenerBackendIpVersion []string
+		wantListeners            map[string]client.GenericListener
+		err                      error
 	}{
 		"NLB_with_mixed_protocol_on_same_port": {
 			service: &v1.Service{
@@ -5490,6 +8949,7 @@ func Test_getListenersNetworkLoadBalancer(t *testing.T) {
 					},
 				},
 			},
+			listenerBackendIpVersion: []string{IPv4},
 			wantListeners: map[string]client.GenericListener{
 				"TCP_AND_UDP-67": {
 					Name:                  &testOneListenerName,
@@ -5521,6 +8981,7 @@ func Test_getListenersNetworkLoadBalancer(t *testing.T) {
 					},
 				},
 			},
+			listenerBackendIpVersion: []string{IPv4},
 			wantListeners: map[string]client.GenericListener{
 				"TCP-67": {
 					Name:                  &testTwoListenerNameOne,
@@ -5554,6 +9015,7 @@ func Test_getListenersNetworkLoadBalancer(t *testing.T) {
 					},
 				},
 			},
+			listenerBackendIpVersion: []string{IPv4},
 			wantListeners: map[string]client.GenericListener{
 				"TCP-67": {
 					Name:                  &testThreeListenerName,
@@ -5581,6 +9043,7 @@ func Test_getListenersNetworkLoadBalancer(t *testing.T) {
 					},
 				},
 			},
+			listenerBackendIpVersion: []string{IPv4},
 			wantListeners: map[string]client.GenericListener{
 				"UDP-67": {
 					Name:                  &testFourListenerName,
@@ -5591,10 +9054,159 @@ func Test_getListenersNetworkLoadBalancer(t *testing.T) {
 			},
 			err: nil,
 		},
+		"NLB_with_only_TCP_protocol_IPv4_IPv6": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+						},
+					},
+					IPFamilies:     []v1.IPFamily{v1.IPFamily(IPv4), v1.IPFamily(IPv6)},
+					IPFamilyPolicy: &IPFamilyPolicyPreferDualStack,
+				},
+			},
+			listenerBackendIpVersion: []string{IPv4, IPv6},
+			wantListeners: map[string]client.GenericListener{
+				"TCP-67-IPv6": {
+					Name:                  &testThreeListenerNameIPv6,
+					DefaultBackendSetName: common.String(testThreeBackendSetNameIPv6),
+					Protocol:              &testThreeProtocol,
+					Port:                  &testThreePort,
+				},
+				"TCP-67": {
+					Name:                  &testThreeListenerName,
+					DefaultBackendSetName: common.String(testThreeBackendSetName),
+					Protocol:              &testThreeProtocol,
+					Port:                  &testThreePort,
+				},
+			},
+			err: nil,
+		},
+		"NLB_with_only_TCP_protocol_IPv6": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+						},
+					},
+					IPFamilies:     []v1.IPFamily{v1.IPFamily(IPv6)},
+					IPFamilyPolicy: &IPFamilyPolicySingleStack,
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			listenerBackendIpVersion: []string{IPv6},
+			wantListeners: map[string]client.GenericListener{
+				"TCP-67-IPv6": {
+					Name:                  &testThreeListenerNameIPv6,
+					DefaultBackendSetName: common.String(testThreeBackendSetNameIPv6),
+					Protocol:              &testThreeProtocol,
+					Port:                  &testThreePort,
+				},
+			},
+			err: nil,
+		},
+		"NLB_with_Ppv2_Enabled": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+						},
+						{
+							Protocol: v1.ProtocolUDP,
+							Port:     int32(68),
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                 "nlb",
+						ServiceAnnotationNetworkLoadBalancerIsPpv2Enabled: "true",
+					},
+				},
+			},
+			listenerBackendIpVersion: []string{IPv4},
+			wantListeners: map[string]client.GenericListener{
+				"TCP-67": {
+					Name:                  &testTwoListenerNameOne,
+					DefaultBackendSetName: common.String(testTwoBackendSetNameOne),
+					Protocol:              &testTwoProtocolOne,
+					Port:                  &testTwoPortOne,
+					IsPpv2Enabled:         pointer.Bool(true),
+				},
+				"UDP-68": {
+					Name:                  &testTwoListenerNameTwo,
+					DefaultBackendSetName: common.String(testTwoBackendSetNameTwo),
+					Protocol:              &testTwoProtocolTwo,
+					Port:                  &testTwoPortTwo,
+					IsPpv2Enabled:         pointer.Bool(true),
+				},
+			},
+			err: nil,
+		},
+
+		"NLB_with_Ppv2_Disabled": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+						},
+						{
+							Protocol: v1.ProtocolUDP,
+							Port:     int32(68),
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType:                 "nlb",
+						ServiceAnnotationNetworkLoadBalancerIsPpv2Enabled: "xyz",
+					},
+				},
+			},
+			listenerBackendIpVersion: []string{IPv4},
+			wantListeners: map[string]client.GenericListener{
+				"TCP-67": {
+					Name:                  &testTwoListenerNameOne,
+					DefaultBackendSetName: common.String(testTwoBackendSetNameOne),
+					Protocol:              &testTwoProtocolOne,
+					Port:                  &testTwoPortOne,
+					IsPpv2Enabled:         pointer.Bool(true),
+				},
+				"UDP-68": {
+					Name:                  &testTwoListenerNameTwo,
+					DefaultBackendSetName: common.String(testTwoBackendSetNameTwo),
+					Protocol:              &testTwoProtocolTwo,
+					Port:                  &testTwoPortTwo,
+					IsPpv2Enabled:         pointer.Bool(false),
+				},
+			},
+			err: nil,
+		},
 	}
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			gotListeners, err := getListenersNetworkLoadBalancer(tc.service)
+			gotListeners, err := getListenersNetworkLoadBalancer(tc.service, tc.listenerBackendIpVersion)
 			if tc.err != nil && err == nil {
 				t.Errorf("Expected  \n%+v\nbut got\n%+v", tc.err, err)
 			}
@@ -6149,6 +9761,8 @@ func Test_getBackendSetNamePortMap(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
+			ipFamilies := []v1.IPFamily{v1.IPFamily(IPv4)}
+			tc.in.Spec.IPFamilies = ipFamilies
 			got := getBackendSetNamePortMap(tc.in)
 			if !reflect.DeepEqual(got, tc.out) {
 				t.Errorf("Expected \n%+v\nbut got\n%+v", tc.out, got)
@@ -6450,10 +10064,1514 @@ func Test_getResourceTrackingSysTagsFromConfig(t *testing.T) {
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			tag := getResourceTrackingSysTagsFromConfig(zap.S(), test.initialTags)
+			tag := getResourceTrackingSystemTagsFromConfig(zap.S(), test.initialTags)
 			t.Logf("%#v", tag)
 			if !reflect.DeepEqual(test.wantTag, tag) {
 				t.Errorf("wanted %v but got %v", test.wantTag, tag)
+			}
+		})
+	}
+}
+
+func Test_getIngressIpMode(t *testing.T) {
+	var proxy = v1.LoadBalancerIPModeProxy
+	var vip = v1.LoadBalancerIPModeVIP
+	var tests = map[string]struct {
+		service        *v1.Service
+		expectedIpMode *v1.LoadBalancerIPMode
+		wantErr        error
+	}{
+		"ipMode is Proxy": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationIngressIpMode: "Proxy",
+					},
+				},
+			},
+			expectedIpMode: &proxy,
+			wantErr:        nil,
+		},
+		"ipMode is VIP": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationIngressIpMode: "VIP",
+					},
+				},
+			},
+			expectedIpMode: &vip,
+			wantErr:        nil,
+		},
+		"ipMode not set": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+				},
+			},
+			expectedIpMode: nil,
+			wantErr:        nil,
+		},
+		"ipMode is invalid": {
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationIngressIpMode: "tcp",
+					},
+				},
+			},
+			expectedIpMode: nil,
+			wantErr:        errors.New("IpMode can only be set as Proxy or VIP"),
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			actual, err := getIngressIpMode(test.service)
+			if !assertError(err, test.wantErr) {
+				t.Errorf("Expected error = %v, but got %v", test.wantErr, err)
+				return
+			}
+			if err == nil && !reflect.DeepEqual(actual, test.expectedIpMode) {
+				t.Errorf("expected %v but got %v", test.expectedIpMode, actual)
+			}
+		})
+	}
+}
+
+func Test_getRequireIpVersions(t *testing.T) {
+
+	testCases := map[string]struct {
+		listenerBackendSetIpVersion []string
+		requireIPv6                 bool
+		requireIPv4                 bool
+	}{
+		"IPv4": {
+			listenerBackendSetIpVersion: []string{IPv4},
+			requireIPv4:                 true,
+			requireIPv6:                 false,
+		},
+		"IPv6": {
+			listenerBackendSetIpVersion: []string{IPv6},
+			requireIPv4:                 false,
+			requireIPv6:                 true,
+		},
+		"IPv4 and IPv6": {
+			listenerBackendSetIpVersion: []string{IPv4, IPv6},
+			requireIPv4:                 true,
+			requireIPv6:                 true,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			requireIPv4, requireIPv6 := getRequireIpVersions(tc.listenerBackendSetIpVersion)
+			if requireIPv6 != tc.requireIPv6 {
+				t.Errorf("Expected requireIPv6:%+v\nbut requireIPv6:%+v", tc.requireIPv6, requireIPv6)
+			}
+			if requireIPv4 != tc.requireIPv4 {
+				t.Errorf("Expected requireIPv4:%+v\nbut got requireIPv4:%+v", tc.requireIPv4, requireIPv4)
+			}
+		})
+	}
+}
+
+func Test_getBackendSets(t *testing.T) {
+	testThreeBackendSetNameIPv6 := "TCP-67-IPv6"
+	testThreeBackendSetNameIPv4 := "TCP-67"
+
+	testCases := map[string]struct {
+		service                  *v1.Service
+		provisionedNodes         []*v1.Node
+		virtualPods              []*v1.Pod
+		sslCfg                   *SSLConfig
+		isPreserveSource         bool
+		listenerBackendIpVersion []string
+		wantBackendSets          map[string]client.GenericBackendSetDetails
+		err                      error
+	}{
+		"IpFamilies IPv4 ListenerBackendSetIpVersion IPv4": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+							NodePort: 36667,
+						},
+					},
+					IPFamilies: []v1.IPFamily{v1.IPFamily(IPv4)},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			provisionedNodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "2001:0000:130F:0000:0000:09C0:876A:130B",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "2001:0000:130F:0000:0000:09C0:876A:1300",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "10.0.0.1",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "10.0.0.2",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
+			virtualPods:              []*v1.Pod{},
+			sslCfg:                   nil,
+			listenerBackendIpVersion: []string{IPv4},
+			wantBackendSets: map[string]client.GenericBackendSetDetails{
+				"TCP-67": {
+					Name:   &testThreeBackendSetNameIPv4,
+					Policy: common.String("FIVE_TUPLE"),
+					HealthChecker: &client.GenericHealthChecker{
+						Protocol:         "HTTP",
+						IsForcePlainText: common.Bool(false),
+						Port:             common.Int(10256),
+						UrlPath:          common.String("/healthz"),
+						Retries:          common.Int(3),
+						TimeoutInMillis:  common.Int(3000),
+						IntervalInMillis: common.Int(10000),
+						ReturnCode:       common.Int(http.StatusOK),
+					},
+					Backends: []client.GenericBackend{
+						{IpAddress: common.String("10.0.0.1"), Port: common.Int(36667), Weight: common.Int(1), TargetId: &testNodeString},
+						{IpAddress: common.String("10.0.0.2"), Port: common.Int(36667), Weight: common.Int(1), TargetId: &testNodeString},
+					},
+					SessionPersistenceConfiguration: nil,
+					SslConfiguration:                nil,
+					IpVersion:                       GenericIpVersion(client.GenericIPv4),
+					IsPreserveSource:                common.Bool(false),
+				},
+			},
+			err: nil,
+		},
+		"IpFamilies IPv4IPv6 ListenerBackendSetIpVersion IPv4": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+							NodePort: 36667,
+						},
+					},
+					IPFamilies: []v1.IPFamily{v1.IPFamily(IPv4), v1.IPFamily(IPv6)},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			provisionedNodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "2001:0000:130F:0000:0000:09C0:876A:130B",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "2001:0000:130F:0000:0000:09C0:876A:1300",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "10.0.0.1",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "10.0.0.2",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
+			virtualPods:              []*v1.Pod{},
+			sslCfg:                   nil,
+			listenerBackendIpVersion: []string{IPv4},
+			wantBackendSets: map[string]client.GenericBackendSetDetails{
+				"TCP-67": {
+					Name:   &testThreeBackendSetNameIPv4,
+					Policy: common.String("FIVE_TUPLE"),
+					HealthChecker: &client.GenericHealthChecker{
+						Protocol:         "HTTP",
+						IsForcePlainText: common.Bool(false),
+						Port:             common.Int(10256),
+						UrlPath:          common.String("/healthz"),
+						Retries:          common.Int(3),
+						TimeoutInMillis:  common.Int(3000),
+						IntervalInMillis: common.Int(10000),
+						ReturnCode:       common.Int(http.StatusOK),
+					},
+					Backends: []client.GenericBackend{
+						{IpAddress: common.String("10.0.0.1"), Port: common.Int(36667), Weight: common.Int(1), TargetId: &testNodeString},
+						{IpAddress: common.String("10.0.0.2"), Port: common.Int(36667), Weight: common.Int(1), TargetId: &testNodeString},
+					},
+					SessionPersistenceConfiguration: nil,
+					SslConfiguration:                nil,
+					IpVersion:                       GenericIpVersion(client.GenericIPv4),
+					IsPreserveSource:                common.Bool(false),
+				},
+			},
+			err: nil,
+		},
+		"IpFamilies IPv4IPv6 ListenerBackendSetIpVersion IPv6": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+							NodePort: 36667,
+						},
+					},
+					IPFamilies: []v1.IPFamily{v1.IPFamily(IPv6)},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			provisionedNodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "2001:0000:130F:0000:0000:09C0:876A:130B",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "2001:0000:130F:0000:0000:09C0:876A:1300",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "10.0.0.1",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "10.0.0.2",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
+			virtualPods:              []*v1.Pod{},
+			sslCfg:                   nil,
+			listenerBackendIpVersion: []string{IPv6},
+			wantBackendSets: map[string]client.GenericBackendSetDetails{
+				"TCP-67-IPv6": {
+					Name:   &testThreeBackendSetNameIPv6,
+					Policy: common.String("FIVE_TUPLE"),
+					HealthChecker: &client.GenericHealthChecker{
+						Protocol:         "HTTP",
+						IsForcePlainText: common.Bool(false),
+						Port:             common.Int(10256),
+						UrlPath:          common.String("/healthz"),
+						Retries:          common.Int(3),
+						TimeoutInMillis:  common.Int(3000),
+						IntervalInMillis: common.Int(10000),
+						ReturnCode:       common.Int(http.StatusOK),
+					},
+					Backends: []client.GenericBackend{
+						{IpAddress: common.String("2001:0000:130F:0000:0000:09C0:876A:130B"), Port: common.Int(36667), Weight: common.Int(1)},
+						{IpAddress: common.String("2001:0000:130F:0000:0000:09C0:876A:1300"), Port: common.Int(36667), Weight: common.Int(1)},
+					},
+					SessionPersistenceConfiguration: nil,
+					SslConfiguration:                nil,
+					IpVersion:                       GenericIpVersion(client.GenericIPv6),
+					IsPreserveSource:                common.Bool(false),
+				},
+			},
+			err: nil,
+		},
+		"IpFamilies IPv4IPv6 ListenerBackendSetIpVersion IPv4IPv6": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+							NodePort: 36667,
+						},
+					},
+					IPFamilies: []v1.IPFamily{v1.IPFamily(IPv4), v1.IPFamily(IPv6)},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			provisionedNodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "2001:0000:130F:0000:0000:09C0:876A:130B",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "2001:0000:130F:0000:0000:09C0:876A:1300",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "10.0.0.1",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "10.0.0.2",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
+			virtualPods:              []*v1.Pod{},
+			sslCfg:                   nil,
+			listenerBackendIpVersion: []string{IPv4, IPv6},
+			wantBackendSets: map[string]client.GenericBackendSetDetails{
+				"TCP-67": {
+					Name:   &testThreeBackendSetNameIPv4,
+					Policy: common.String("FIVE_TUPLE"),
+					HealthChecker: &client.GenericHealthChecker{
+						Protocol:         "HTTP",
+						IsForcePlainText: common.Bool(false),
+						Port:             common.Int(10256),
+						UrlPath:          common.String("/healthz"),
+						Retries:          common.Int(3),
+						TimeoutInMillis:  common.Int(3000),
+						IntervalInMillis: common.Int(10000),
+						ReturnCode:       common.Int(http.StatusOK),
+					},
+					Backends: []client.GenericBackend{
+						{IpAddress: common.String("10.0.0.1"), Port: common.Int(36667), Weight: common.Int(1), TargetId: &testNodeString},
+						{IpAddress: common.String("10.0.0.2"), Port: common.Int(36667), Weight: common.Int(1), TargetId: &testNodeString},
+					},
+					SessionPersistenceConfiguration: nil,
+					SslConfiguration:                nil,
+					IpVersion:                       GenericIpVersion(client.GenericIPv4),
+					IsPreserveSource:                common.Bool(false),
+				},
+				"TCP-67-IPv6": {
+					Name:   &testThreeBackendSetNameIPv6,
+					Policy: common.String("FIVE_TUPLE"),
+					HealthChecker: &client.GenericHealthChecker{
+						Protocol:         "HTTP",
+						IsForcePlainText: common.Bool(false),
+						Port:             common.Int(10256),
+						UrlPath:          common.String("/healthz"),
+						Retries:          common.Int(3),
+						TimeoutInMillis:  common.Int(3000),
+						IntervalInMillis: common.Int(10000),
+						ReturnCode:       common.Int(http.StatusOK),
+					},
+					Backends: []client.GenericBackend{
+						{IpAddress: common.String("2001:0000:130F:0000:0000:09C0:876A:130B"), Port: common.Int(36667), Weight: common.Int(1)},
+						{IpAddress: common.String("2001:0000:130F:0000:0000:09C0:876A:1300"), Port: common.Int(36667), Weight: common.Int(1)},
+					},
+					SessionPersistenceConfiguration: nil,
+					SslConfiguration:                nil,
+					IpVersion:                       GenericIpVersion(client.GenericIPv6),
+					IsPreserveSource:                common.Bool(false),
+				},
+			},
+			err: nil,
+		},
+		"IpFamilies IPv6 ListenerBackendSetIpVersion IPv6": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+							NodePort: 36667,
+						},
+					},
+					IPFamilies: []v1.IPFamily{v1.IPFamily(IPv6)},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			provisionedNodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "2001:0000:130F:0000:0000:09C0:876A:130B",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "2001:0000:130F:0000:0000:09C0:876A:1300",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "10.0.0.1",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "10.0.0.2",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
+			virtualPods:              []*v1.Pod{},
+			sslCfg:                   nil,
+			listenerBackendIpVersion: []string{IPv6},
+			wantBackendSets: map[string]client.GenericBackendSetDetails{
+				"TCP-67-IPv6": {
+					Name:   &testThreeBackendSetNameIPv6,
+					Policy: common.String("FIVE_TUPLE"),
+					HealthChecker: &client.GenericHealthChecker{
+						Protocol:         "HTTP",
+						IsForcePlainText: common.Bool(false),
+						Port:             common.Int(10256),
+						UrlPath:          common.String("/healthz"),
+						Retries:          common.Int(3),
+						TimeoutInMillis:  common.Int(3000),
+						IntervalInMillis: common.Int(10000),
+						ReturnCode:       common.Int(http.StatusOK),
+					},
+					Backends: []client.GenericBackend{
+						{IpAddress: common.String("2001:0000:130F:0000:0000:09C0:876A:130B"), Port: common.Int(36667), Weight: common.Int(1)},
+						{IpAddress: common.String("2001:0000:130F:0000:0000:09C0:876A:1300"), Port: common.Int(36667), Weight: common.Int(1)},
+					},
+					SessionPersistenceConfiguration: nil,
+					SslConfiguration:                nil,
+					IpVersion:                       GenericIpVersion(client.GenericIPv6),
+					IsPreserveSource:                common.Bool(false),
+				},
+			},
+			err: nil,
+		},
+		"IpFamilies IPv4 BackendSet cipher suite configuration": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+							NodePort: 36667,
+						},
+					},
+					IPFamilies: []v1.IPFamily{v1.IPFamily(IPv4)},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadbalancerBackendSetSSLConfig: `{"CipherSuiteName":"oci-default-http2-ssl-cipher-suite-v1", "Protocols": ["TLSv1.2"]}`,
+						ServiceAnnotationLoadBalancerTLSBackendSetSecret: "example",
+					},
+				},
+			},
+			provisionedNodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "2001:0000:130F:0000:0000:09C0:876A:130B",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "2001:0000:130F:0000:0000:09C0:876A:1300",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "10.0.0.1",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "10.0.0.2",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
+			virtualPods: []*v1.Pod{},
+			sslCfg: &SSLConfig{
+				Ports:                   sets.NewInt(67),
+				ListenerSSLSecretName:   listenerSecret,
+				BackendSetSSLSecretName: backendSecret,
+			},
+			listenerBackendIpVersion: []string{IPv4},
+			wantBackendSets: map[string]client.GenericBackendSetDetails{
+				"TCP-67": {
+					Name:   &testThreeBackendSetNameIPv4,
+					Policy: common.String("FIVE_TUPLE"),
+					HealthChecker: &client.GenericHealthChecker{
+						Protocol:         "HTTP",
+						IsForcePlainText: common.Bool(true),
+						Port:             common.Int(10256),
+						UrlPath:          common.String("/healthz"),
+						Retries:          common.Int(3),
+						TimeoutInMillis:  common.Int(3000),
+						IntervalInMillis: common.Int(10000),
+						ReturnCode:       common.Int(http.StatusOK),
+					},
+					Backends: []client.GenericBackend{
+						{IpAddress: common.String("10.0.0.1"), Port: common.Int(36667), Weight: common.Int(1), TargetId: &testNodeString},
+						{IpAddress: common.String("10.0.0.2"), Port: common.Int(36667), Weight: common.Int(1), TargetId: &testNodeString},
+					},
+					SessionPersistenceConfiguration: nil,
+					SslConfiguration: &client.GenericSslConfigurationDetails{
+						VerifyDepth:           common.Int(0),
+						VerifyPeerCertificate: common.Bool(false),
+						CertificateName:       common.String(backendSecret),
+						CipherSuiteName:       common.String("oci-default-http2-ssl-cipher-suite-v1"),
+						Protocols:             []string{"TLSv1.2"},
+					},
+					IpVersion:        GenericIpVersion(client.GenericIPv4),
+					IsPreserveSource: common.Bool(false),
+				},
+			},
+			err: nil,
+		},
+		"IpFamilies IPv4 BackendSet protocols is null ": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+							NodePort: 36667,
+						},
+					},
+					IPFamilies: []v1.IPFamily{v1.IPFamily(IPv4)},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadbalancerBackendSetSSLConfig: `{"cipherSuiteName":"oci-default-http2-ssl-cipher-suite-v1", "protocols": ["TLSv1.2"]}`,
+						ServiceAnnotationLoadBalancerTLSBackendSetSecret: "example",
+					},
+				},
+			},
+			provisionedNodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "2001:0000:130F:0000:0000:09C0:876A:130B",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "2001:0000:130F:0000:0000:09C0:876A:1300",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "10.0.0.1",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "10.0.0.2",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
+			virtualPods: []*v1.Pod{},
+			sslCfg: &SSLConfig{
+				Ports:                   sets.NewInt(67),
+				ListenerSSLSecretName:   listenerSecret,
+				BackendSetSSLSecretName: backendSecret,
+			},
+			listenerBackendIpVersion: []string{IPv4},
+			wantBackendSets: map[string]client.GenericBackendSetDetails{
+				"TCP-67": {
+					Name:   &testThreeBackendSetNameIPv4,
+					Policy: common.String("FIVE_TUPLE"),
+					HealthChecker: &client.GenericHealthChecker{
+						Protocol:         "HTTP",
+						IsForcePlainText: common.Bool(true),
+						Port:             common.Int(10256),
+						UrlPath:          common.String("/healthz"),
+						Retries:          common.Int(3),
+						TimeoutInMillis:  common.Int(3000),
+						IntervalInMillis: common.Int(10000),
+						ReturnCode:       common.Int(http.StatusOK),
+					},
+					Backends: []client.GenericBackend{
+						{IpAddress: common.String("10.0.0.1"), Port: common.Int(36667), Weight: common.Int(1), TargetId: &testNodeString},
+						{IpAddress: common.String("10.0.0.2"), Port: common.Int(36667), Weight: common.Int(1), TargetId: &testNodeString},
+					},
+					SessionPersistenceConfiguration: nil,
+					SslConfiguration: &client.GenericSslConfigurationDetails{
+						VerifyDepth:           common.Int(0),
+						VerifyPeerCertificate: common.Bool(false),
+						CertificateName:       common.String(backendSecret),
+						CipherSuiteName:       common.String("oci-default-http2-ssl-cipher-suite-v1"),
+						Protocols:             []string{"TLSv1.2"},
+					},
+					IpVersion:        GenericIpVersion(client.GenericIPv4),
+					IsPreserveSource: common.Bool(false),
+				},
+			},
+			err: nil,
+		},
+	}
+	for name, tc := range testCases {
+		logger := zap.L()
+		t.Run(name, func(t *testing.T) {
+			gotBackendSets, err := getBackendSets(logger.Sugar(), tc.service, tc.provisionedNodes, tc.sslCfg, tc.isPreserveSource, tc.listenerBackendIpVersion)
+			if tc.err != nil && err == nil {
+				t.Errorf("Expected  \n%+v\nbut got\n%+v", tc.err, err)
+			}
+			if err != nil && tc.err == nil {
+				t.Errorf("Error: expected\n%+v\nbut got\n%+v", tc.err, err)
+			}
+			if err != nil && err.Error() != tc.err.Error() {
+				t.Errorf("Expected \n%+v\nbut got\n%+v", tc.err, err)
+			}
+			if len(gotBackendSets) != len(tc.wantBackendSets) {
+				t.Errorf("Number of excpected listeners \n%+v\nbut got\n%+v", len(tc.wantBackendSets), len(gotBackendSets))
+			}
+			if len(gotBackendSets) != 0 {
+				for name, backendSetDetails := range tc.wantBackendSets {
+					gotBackendSet, ok := gotBackendSets[name]
+					if !ok {
+						t.Errorf("Expected backendSetDetails with name \n%+v\nbut backendSetDetails not present", *backendSetDetails.Name)
+					}
+					if *gotBackendSet.Name != *backendSetDetails.Name {
+						t.Errorf("Expected backendSetDetails name \n%+v\nbut got backendSetDetails name \n%+v", *backendSetDetails.Name, *gotBackendSet.Name)
+					}
+					if *gotBackendSet.IpVersion != *backendSetDetails.IpVersion {
+						t.Errorf("Expected backendSetDetails IpVersion \n%+v\nbut got backendSetDetails IpVersion \n%+v", *backendSetDetails.IpVersion, *gotBackendSet.IpVersion)
+					}
+					if !reflect.DeepEqual(backendSetDetails.Backends, gotBackendSet.Backends) {
+						t.Errorf("Expected backendSetDetails backends \n%+v\nbut got backendSetDetails backends \n%+v", backendSetDetails.Backends, gotBackendSet.Backends)
+					}
+					if !reflect.DeepEqual(backendSetDetails.HealthChecker, gotBackendSet.HealthChecker) {
+						want, _ := json.Marshal(backendSetDetails.HealthChecker)
+						got, _ := json.Marshal(gotBackendSet.HealthChecker)
+						t.Errorf("backendSetDetails HealthChecker failed want: %s \n got: %s \n", want, got)
+					}
+					if !reflect.DeepEqual(backendSetDetails.SslConfiguration, gotBackendSet.SslConfiguration) {
+						want, _ := json.Marshal(backendSetDetails.SslConfiguration)
+						got, _ := json.Marshal(gotBackendSet.SslConfiguration)
+						t.Errorf("backendSetDetails SslConfiguration failed want: %s \n got: %s \n", want, got)
+					}
+				}
+			}
+		})
+	}
+}
+
+func Test_getPorts(t *testing.T) {
+	var tests = []struct {
+		name       string
+		service    *v1.Service
+		ipVersions []string
+		err        error
+		ports      map[string]portSpec
+	}{
+		{
+			name: "IpFamilies IPv4 ListenerBackendSetIpVersion IPv4",
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+							NodePort: 36667,
+						},
+					},
+					IPFamilies: []v1.IPFamily{v1.IPFamily(IPv4)},
+				},
+			},
+			err:        nil,
+			ipVersions: []string{IPv4},
+			ports: map[string]portSpec{
+				"TCP-67": {
+					ListenerPort:      67,
+					BackendPort:       36667,
+					HealthCheckerPort: 10256,
+				},
+			},
+		},
+		{
+			name: "IpFamilies IPv6 ListenerBackendSetIpVersion IPv6",
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+							NodePort: 36667,
+						},
+					},
+					IPFamilies: []v1.IPFamily{v1.IPFamily(IPv6)},
+				},
+			},
+			err:        nil,
+			ipVersions: []string{IPv6},
+			ports: map[string]portSpec{
+				"TCP-67-IPv6": {
+					ListenerPort:      67,
+					BackendPort:       36667,
+					HealthCheckerPort: 10256,
+				},
+			},
+		},
+		{
+			name: "IpFamilies IPv4, IPv6 ListenerBackendSetIpVersion IPv4",
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+							NodePort: 36667,
+						},
+					},
+					IPFamilies: []v1.IPFamily{v1.IPFamily(IPv4), v1.IPFamily(IPv6)},
+				},
+			},
+			err:        nil,
+			ipVersions: []string{IPv4},
+			ports: map[string]portSpec{
+				"TCP-67": {
+					ListenerPort:      67,
+					BackendPort:       36667,
+					HealthCheckerPort: 10256,
+				},
+			},
+		},
+		{
+			name: "IpFamilies IPv4, IPv6 ListenerBackendSetIpVersion IPv6",
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+							NodePort: 36667,
+						},
+					},
+					IPFamilies: []v1.IPFamily{v1.IPFamily(IPv6)},
+				},
+			},
+			err:        nil,
+			ipVersions: []string{IPv6},
+			ports: map[string]portSpec{
+				"TCP-67-IPv6": {
+					ListenerPort:      67,
+					BackendPort:       36667,
+					HealthCheckerPort: 10256,
+				},
+			},
+		},
+		{
+			name: "IpFamilies IPv4 IPv6 ListenerBackendSetIpVersion IPv4 IPv6",
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+							NodePort: 36667,
+						},
+					},
+					IPFamilies: []v1.IPFamily{v1.IPFamily(IPv4), v1.IPFamily(IPv6)},
+				},
+			},
+			err:        nil,
+			ipVersions: []string{IPv4, IPv6},
+			ports: map[string]portSpec{
+				"TCP-67": {
+					ListenerPort:      67,
+					BackendPort:       36667,
+					HealthCheckerPort: 10256,
+				},
+				"TCP-67-IPv6": {
+					ListenerPort:      67,
+					BackendPort:       36667,
+					HealthCheckerPort: 10256,
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := getPorts(tt.service, tt.ipVersions)
+			if !reflect.DeepEqual(result, tt.ports) {
+				t.Errorf("getPorts() = %+v, want %+v", result, tt.ports)
+			}
+			if err != nil {
+				if !reflect.DeepEqual(err, tt.err) {
+					t.Errorf("getPorts() = %+v, want %+v", err, tt.err)
+				}
+			}
+		})
+	}
+}
+
+func Test_getLoadBalancerSourceRanges(t *testing.T) {
+	var tests = []struct {
+		name        string
+		service     *v1.Service
+		sourceCIDRs []string
+	}{
+		{
+			name: "IpFamilies IPv4 SingleStack",
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					IPFamilies:     []v1.IPFamily{v1.IPFamily(IPv4)},
+					IPFamilyPolicy: (*v1.IPFamilyPolicy)(common.String(string(v1.IPFamilyPolicySingleStack))),
+				},
+			},
+			sourceCIDRs: []string{"0.0.0.0/0"},
+		},
+		{
+			name: "IpFamilies IPv6 SingleStack",
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					IPFamilies:     []v1.IPFamily{v1.IPFamily(IPv6)},
+					IPFamilyPolicy: (*v1.IPFamilyPolicy)(common.String(string(v1.IPFamilyPolicySingleStack))),
+				},
+			},
+			sourceCIDRs: []string{"::/0"},
+		},
+		{
+			name: "IpFamilies IPv4, IPv6 PreferDualStack",
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					IPFamilies:     []v1.IPFamily{v1.IPFamily(IPv4), v1.IPFamily(IPv6)},
+					IPFamilyPolicy: (*v1.IPFamilyPolicy)(common.String(string(v1.IPFamilyPolicyPreferDualStack))),
+				},
+			},
+			sourceCIDRs: []string{"0.0.0.0/0", "::/0"},
+		},
+		{
+			name: "IpFamilies IPv4, IPv6 RequireDualStack",
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					IPFamilies:     []v1.IPFamily{v1.IPFamily(IPv4), v1.IPFamily(IPv6)},
+					IPFamilyPolicy: (*v1.IPFamilyPolicy)(common.String(string(v1.IPFamilyPolicyRequireDualStack))),
+				},
+			},
+			sourceCIDRs: []string{"0.0.0.0/0", "::/0"},
+		},
+		{
+			name: "IpFamilies IPv4 IPv6 Custom Cidr provided in spec",
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					LoadBalancerSourceRanges: []string{"2.2.2.0/24"},
+					IPFamilies:               []v1.IPFamily{v1.IPFamily(IPv4), v1.IPFamily(IPv6)},
+					IPFamilyPolicy:           (*v1.IPFamilyPolicy)(common.String("PreferDualStack")),
+				},
+			},
+			sourceCIDRs: []string{"2.2.2.0/24"},
+		},
+		{
+			name: "IpFamilies IPv6 Custom Cidr provided in spec",
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					LoadBalancerSourceRanges: []string{"1.1.1.0/24", "2603:c120:000f:8b99:0000:0000:0000:0000/64"},
+					IPFamilies:               []v1.IPFamily{v1.IPFamily(IPv6)},
+					IPFamilyPolicy:           (*v1.IPFamilyPolicy)(common.String(string(v1.IPFamilyPolicySingleStack))),
+				},
+			},
+			sourceCIDRs: []string{"1.1.1.0/24", "2603:c120:f:8b99::/64"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, _ := getLoadBalancerSourceRanges(tt.service)
+			for _, cidr := range result {
+				if !contains(tt.sourceCIDRs, cidr) {
+					t.Errorf("getLoadBalancerSourceRanges() = %+v, want %+v", result, tt.sourceCIDRs)
+				}
 			}
 		})
 	}

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -30,12 +31,14 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
 	k8sports "k8s.io/kubernetes/pkg/cluster/ports"
+	"k8s.io/utils/net"
 	"k8s.io/utils/pointer"
 
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/metrics"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
+	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/oracle/oci-go-sdk/v65/loadbalancer"
 	"github.com/oracle/oci-go-sdk/v65/networkloadbalancer"
@@ -68,15 +71,6 @@ const DefaultNetworkLoadBalancerListenerProtocol = "TCP"
 // https://docs.oracle.com/en-us/iaas/Content/General/Concepts/servicelimits.htm#nsg_limits
 const MaxNsgPerVnic = 5
 
-const (
-	OkeSystemTagNamesapce = "orcl-containerengine"
-	// MaxDefinedTagPerLB is the maximum number of defined tags that be can be associated with the resource
-	//https://docs.oracle.com/en-us/iaas/Content/Tagging/Concepts/taggingoverview.htm#limits
-	MaxDefinedTagPerLB              = 64
-	resourceTrackingFeatureFlagName = "CPO_ENABLE_RESOURCE_ATTRIBUTION"
-)
-
-var MaxDefinedTagPerLBErr = fmt.Errorf("max limit of defined tags for lb is reached. skip adding tags. sending metric")
 var enableOkeSystemTags = false
 
 const (
@@ -110,6 +104,13 @@ type CloudLoadBalancerProvider struct {
 	logger       *zap.SugaredLogger
 	metricPusher *metrics.MetricPusher
 	config       *providercfg.Config
+}
+
+type IpVersions struct {
+	IpFamilies               []string
+	IpFamilyPolicy           *string
+	LbEndpointIpVersion      *client.GenericIpVersion
+	ListenerBackendIpVersion []client.GenericIpVersion
 }
 
 func (cp *CloudProvider) getLoadBalancerProvider(ctx context.Context, svc *v1.Service) (CloudLoadBalancerProvider, error) {
@@ -207,7 +208,7 @@ func (cp *CloudProvider) GetLoadBalancer(ctx context.Context, clusterName string
 		return nil, false, err
 	}
 
-	lbStatus, err := loadBalancerToStatus(lb)
+	lbStatus, err := loadBalancerToStatus(lb, nil)
 	return lbStatus, err == nil, err
 }
 
@@ -238,21 +239,34 @@ func getReservedIpOcidByIpAddress(ctx context.Context, ipAddress string, n clien
 
 // getSubnetsForNodes returns the de-duplicated subnets in which the given
 // internal IP addresses reside.
-func getSubnetsForNodes(ctx context.Context, nodes []*v1.Node, client client.Interface) ([]*core.Subnet, error) {
+func getSubnetsForNodes(ctx context.Context, nodes []*v1.Node, networkClient client.Interface) ([]*core.Subnet, error) {
 	var (
 		subnetOCIDs = sets.NewString()
 		subnets     []*core.Subnet
-		ipSet       = sets.NewString()
+		ipSet       = sets.New[client.IpAddresses]()
 	)
 
 	for _, node := range nodes {
-		ipSet.Insert(NodeInternalIP(node))
+		ip := NodeInternalIP(node)
+		if ip.V6 == "" {
+			externalIP := NodeExternalIp(node)
+			if externalIP.V6 != "" {
+				ip.V6 = externalIP.V6
+			}
+		}
+		ipSet.Insert(ip)
 	}
 
 	for _, node := range nodes {
 		// First see if the IP of the node belongs to a subnet in the cache.
 		ip := NodeInternalIP(node)
-		subnet, err := client.Networking().GetSubnetFromCacheByIP(ip)
+		if ip.V6 == "" {
+			// For IPv6 internal IP is not mandatory
+			externalIPs := NodeExternalIp(node)
+			ip.V6 = externalIPs.V6
+		}
+
+		subnet, err := networkClient.Networking(nil).GetSubnetFromCacheByIP(ip)
 		if err != nil {
 			return nil, err
 		}
@@ -280,23 +294,30 @@ func getSubnetsForNodes(ctx context.Context, nodes []*v1.Node, client client.Int
 			return nil, errors.Errorf("%q annotation not present on node %q", CompartmentIDAnnotation, node.Name)
 		}
 
-		vnic, err := client.Compute().GetPrimaryVNICForInstance(ctx, compartmentID, id)
+		vnic, err := networkClient.Compute().GetPrimaryVNICForInstance(ctx, compartmentID, id)
 		if err != nil {
 			return nil, err
 		}
 
-		if vnic.PrivateIp != nil && ipSet.Has(*vnic.PrivateIp) &&
-			!subnetOCIDs.Has(*vnic.SubnetId) {
-			subnet, err := client.Networking().GetSubnet(ctx, *vnic.SubnetId)
-			if err != nil {
-				return nil, errors.Wrapf(err, "get subnet %q for instance %q", *vnic.SubnetId, id)
+		ipAddresses := client.IpAddresses{}
+		if vnic != nil {
+			if vnic.PrivateIp != nil {
+				ipAddresses.V4 = *vnic.PrivateIp
 			}
+			if vnic.Ipv6Addresses != nil && len(vnic.Ipv6Addresses) > 0 {
+				ipAddresses.V6 = vnic.Ipv6Addresses[0]
+			}
+			if ipAddresses != (client.IpAddresses{}) && ipSet.Has(ipAddresses) && !subnetOCIDs.Has(*vnic.SubnetId) {
+				subnet, err := networkClient.Networking(nil).GetSubnet(ctx, *vnic.SubnetId)
+				if err != nil {
+					return nil, errors.Wrapf(err, "get subnet %q for instance %q", *vnic.SubnetId, id)
+				}
 
-			subnets = append(subnets, subnet)
-			subnetOCIDs.Insert(*vnic.SubnetId)
+				subnets = append(subnets, subnet)
+				subnetOCIDs.Insert(*vnic.SubnetId)
+			}
 		}
 	}
-
 	return subnets, nil
 }
 
@@ -356,7 +377,7 @@ func (clb *CloudLoadBalancerProvider) createLoadBalancer(ctx context.Context, sp
 
 	// First update the security lists so that if it fails (due to the etag
 	// bug or otherwise) we'll retry prior to LB creation.
-	lbSubnets, err := getSubnets(ctx, spec.Subnets, clb.client.Networking())
+	lbSubnets, err := getSubnets(ctx, spec.Subnets, clb.client.Networking(nil))
 	if err != nil {
 		return nil, "", errors.Wrap(err, "getting subnets for load balancers")
 	}
@@ -383,10 +404,16 @@ func (clb *CloudLoadBalancerProvider) createLoadBalancer(ctx context.Context, sp
 		NetworkSecurityGroupIds: spec.NetworkSecurityGroupIds,
 		FreeformTags:            spec.FreeformTags,
 		DefinedTags:             spec.DefinedTags,
+		IpVersion:               spec.IpVersions.LbEndpointIpVersion,
 	}
 	// do not block creation if the defined tag limit is reached. defer LB to tracked by backfilling
-	if len(details.DefinedTags) > MaxDefinedTagPerLB {
-		logger.Warnf("the number of defined tags in the LB create request is beyond the limit. removing the resource tracking tags from the details..")
+	if len(details.DefinedTags) > MaxDefinedTagPerResource {
+		logger.Warnf("the number of defined tags in the LB create request is beyond the limit. removing the resource tracking tags from the details")
+		delete(details.DefinedTags, OkeSystemTagNamesapce)
+	}
+
+	if _, useWI := spec.service.Annotations[ServiceAnnotationServiceAccountName]; useWI { // When using Workload Identity
+		logger.Warnf("principal type is workload identity. removing oke system tags from the request")
 		delete(details.DefinedTags, OkeSystemTagNamesapce)
 	}
 
@@ -398,7 +425,7 @@ func (clb *CloudLoadBalancerProvider) createLoadBalancer(ctx context.Context, sp
 	}
 
 	if spec.LoadBalancerIP != "" {
-		reservedIpOCID, err := getReservedIpOcidByIpAddress(ctx, spec.LoadBalancerIP, clb.client.Networking())
+		reservedIpOCID, err := getReservedIpOcidByIpAddress(ctx, spec.LoadBalancerIP, clb.client.Networking(nil))
 		if err != nil {
 			return nil, "", err
 		}
@@ -432,7 +459,7 @@ func (clb *CloudLoadBalancerProvider) createLoadBalancer(ctx context.Context, sp
 	}
 
 	logger.With("loadBalancerID", *lb.Id).Info("Load balancer created")
-	status, err := loadBalancerToStatus(lb)
+	status, err := loadBalancerToStatus(lb, spec.ingressIpMode)
 
 	if status != nil && len(status.Ingress) > 0 {
 		// If the LB is successfully provisioned then open lb/node subnet seclists egress/ingress.
@@ -485,6 +512,34 @@ func filterNodes(svc *v1.Service, nodes []*v1.Node) ([]*v1.Node, error) {
 	}
 
 	return filteredNodes, nil
+}
+
+// checkSubnetIpFamilyCompatibility checks if any of the loadbalancer or node subnet supports the required IP family or returns error otherwise
+func checkSubnetIpFamilyCompatibility(subnets []*core.Subnet, ipVersion string) error {
+	var err error
+	for _, subnet := range subnets {
+		if subnet == nil {
+			continue
+		}
+		if ipVersion == IPv6 {
+			if subnet.Ipv6CidrBlock != nil || subnet.Ipv6CidrBlocks != nil {
+				if len(subnet.Ipv6CidrBlocks) > 0 || *subnet.Ipv6CidrBlock != "" {
+					return nil
+				}
+			}
+			err = errors.Errorf("subnet with id %s does not have an ipv6 cidr block", pointer.StringDeref(subnet.Id, ""))
+		} else {
+			if subnet.CidrBlock != nil {
+				// By design IPv4 CidrBlock is not allowed to be null or empty, so it has been hardcoded with string "<null>" by OCI-VCN
+				if !strings.Contains(*subnet.CidrBlock, "null") {
+					return nil
+				}
+			}
+			err = errors.Errorf("subnet with id %s does not have an ipv4 cidr block", pointer.StringDeref(subnet.Id, ""))
+		}
+
+	}
+	return err
 }
 
 // EnsureLoadBalancer creates a new load balancer or updates the existing one.
@@ -578,7 +633,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		secretBackendSetString := service.Annotations[ServiceAnnotationLoadBalancerTLSBackendSetSecret]
 		sslConfig = NewSSLConfig(secretListenerString, secretBackendSetString, service, ports, cp)
 	}
-	subnets, err := cp.getLoadBalancerSubnets(ctx, logger, service)
+	lbSubnetIds, err := cp.getLoadBalancerSubnets(ctx, logger, service)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to get Load balancer Subnets.")
 		errorType = util.GetError(err)
@@ -588,7 +643,23 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		return nil, err
 	}
 
-	spec, err := NewLBSpec(logger, service, nodes, subnets, sslConfig, cp.securityListManagerFactory, cp.config.Tags, lb)
+	lbSubnets, err := getSubnets(ctx, lbSubnetIds, cp.client.Networking(nil))
+	if err != nil {
+		logger.With(zap.Error(err)).Error("failed to get loadbalancer nodeSubnets")
+		return nil, err
+	}
+	nodeSubnets, err := getSubnetsForNodes(ctx, nodes, cp.client)
+	if err != nil {
+		logger.With(zap.Error(err)).Error("failed to get node nodeSubnets")
+		return nil, err
+	}
+
+	ipVersions, err := cp.getOciIpVersions(lbSubnets, nodeSubnets, service)
+	if err != nil {
+		return nil, err
+	}
+
+	spec, err := NewLBSpec(logger, service, nodes, lbSubnetIds, sslConfig, cp.securityListManagerFactory, ipVersions, cp.config.Tags, lb)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to derive LBSpec")
 		errorType = util.GetError(err)
@@ -660,7 +731,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 			if len(spec.NetworkSecurityGroupIds) >= MaxNsgPerVnic {
 				return nil, fmt.Errorf("invalid number of Network Security Groups (Max: 5) including managed nsg")
 			}
-			resp, err := cp.client.Networking().CreateNetworkSecurityGroup(ctx, cp.config.CompartmentID, cp.config.VCNID, generateNsgName(service), fmt.Sprintf("%s", service.UID))
+			resp, err := cp.client.Networking(nil).CreateNetworkSecurityGroup(ctx, cp.config.CompartmentID, cp.config.VCNID, generateNsgName(service), fmt.Sprintf("%s", service.UID))
 			if err != nil {
 				logger.With(zap.Error(err)).Error("Failed to create nsg")
 				errorType = util.GetError(err)
@@ -684,7 +755,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 		}
 		if len(backendNsgs) > 0 {
 			for _, nsg := range backendNsgs {
-				resp, etag, err := cp.client.Networking().GetNetworkSecurityGroup(ctx, nsg)
+				resp, etag, err := cp.client.Networking(nil).GetNetworkSecurityGroup(ctx, nsg)
 				if err != nil {
 					logger.With(zap.Error(err)).Error("Failed to get nsg")
 					errorType = util.GetError(err)
@@ -697,7 +768,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 				if _, ok := freeformTags["ManagedBy"]; !ok {
 					if etag != nil {
 						freeformTags["ManagedBy"] = "CCM"
-						response, err := cp.client.Networking().UpdateNetworkSecurityGroup(ctx, nsg, *etag, freeformTags)
+						response, err := cp.client.Networking(nil).UpdateNetworkSecurityGroup(ctx, nsg, *etag, freeformTags)
 						if err != nil {
 							logger.With(zap.Error(err)).Errorf("Failed to update nsg %s", nsg)
 							errorType = util.GetError(err)
@@ -715,7 +786,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 				}
 			}
 		}
-		serviceComponents := serviceComponents{
+		serviceComponents := securityRuleComponents{
 			frontendNsgOcid:  frontendNsgId,
 			backendNsgOcids:  backendNsgs,
 			ports:            spec.Ports,
@@ -732,7 +803,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 	if !lbExists {
 		lbStatus, newLBOCID, err := lbProvider.createLoadBalancer(ctx, spec)
 		if err != nil && client.IsSystemTagNotFoundOrNotAuthorisedError(logger, err) {
-			logger.Warn("LB creation failed due to error in adding system tags. sending metric & retrying without system tags")
+			logger.With(zap.Error(err)).Warn("LB creation failed due to error in adding system tags. sending metric & retrying without system tags")
 
 			// send resource track tagging failure metrics
 			errorType = util.SystemTagErrTypePrefix + util.GetError(err)
@@ -759,6 +830,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 			dimensionsMap[metrics.ResourceOCIDDimension] = newLBOCID
 			metrics.SendMetricData(cp.metricPusher, getMetric(loadBalancerType, Create), time.Since(startTime).Seconds(), dimensionsMap)
 		}
+
 		return lbStatus, err
 	}
 
@@ -825,7 +897,8 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 	dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
 	dimensionsMap[metrics.BackendSetsCountDimension] = strconv.Itoa(len(lb.BackendSets))
 	metrics.SendMetricData(cp.metricPusher, getMetric(loadBalancerType, Update), syncTime, dimensionsMap)
-	return loadBalancerToStatus(lb)
+
+	return loadBalancerToStatus(lb, spec.ingressIpMode)
 }
 
 func getDefaultLBSubnets(subnet1, subnet2 string) []string {
@@ -864,7 +937,7 @@ func (cp *CloudProvider) getOciLoadBalancerSubnets(ctx context.Context, logger *
 
 	if s, ok := svc.Annotations[ServiceAnnotationLoadBalancerSubnet1]; ok && len(s) != 0 {
 		subnets[0] = s
-		r, err := cp.client.Networking().IsRegionalSubnet(ctx, s)
+		r, err := cp.client.Networking(nil).IsRegionalSubnet(ctx, s)
 		if err != nil {
 			return nil, err
 		}
@@ -874,7 +947,7 @@ func (cp *CloudProvider) getOciLoadBalancerSubnets(ctx context.Context, logger *
 	}
 
 	if s, ok := svc.Annotations[ServiceAnnotationLoadBalancerSubnet2]; ok && len(s) != 0 {
-		r, err := cp.client.Networking().IsRegionalSubnet(ctx, s)
+		r, err := cp.client.Networking(nil).IsRegionalSubnet(ctx, s)
 		if err != nil {
 			return nil, err
 		}
@@ -929,6 +1002,32 @@ func (clb *CloudLoadBalancerProvider) updateLoadBalancer(ctx context.Context, lb
 			break
 		}
 	}
+	lbSubnets, err := getSubnets(ctx, spec.Subnets, clb.client.Networking(nil))
+	if err != nil {
+		return errors.Wrapf(err, "getting load balancer subnets")
+	}
+	nodeSubnets, err := getSubnetsForNodes(ctx, spec.nodes, clb.client)
+	if err != nil {
+		return errors.Wrap(err, "get subnets for nodes")
+	}
+
+	// Conversion from SingleStack to DualStack needs to happen before the IPv6 listeners & Backendsets are created
+	if spec.Type == NLB && spec.IpVersions.LbEndpointIpVersion != nil {
+		ipVersion := string(*lb.IpVersion)
+		lbEndpointVersion := string(*spec.IpVersions.LbEndpointIpVersion)
+		ipFamilyPolicy := *spec.IpVersions.IpFamilyPolicy
+		ipVersionChanged := hasIpVersionChanged(ipVersion, lbEndpointVersion)
+		if ipVersionChanged && (ipFamilyPolicy == string(v1.IPFamilyPolicyPreferDualStack) || ipFamilyPolicy == string(v1.IPFamilyPolicyRequireDualStack)) {
+			logger.Infof("IPversion: %s LbEndpointIpVersion: %s IpFamilyPolicy: %s", ipVersion, lbEndpointVersion, ipFamilyPolicy)
+			details := &client.GenericUpdateLoadBalancerDetails{
+				IpVersion: spec.IpVersions.LbEndpointIpVersion,
+			}
+			err = clb.updateLoadBalancerIpVersion(ctx, lb, details)
+			if err != nil {
+				return err
+			}
+		}
+	}
 
 	actualBackendSets := lb.BackendSets
 	desiredBackendSets := spec.BackendSets
@@ -937,15 +1036,6 @@ func (clb *CloudLoadBalancerProvider) updateLoadBalancer(ctx context.Context, lb
 	actualListeners := lb.Listeners
 	desiredListeners := spec.Listeners
 	listenerActions := getListenerChanges(logger, actualListeners, desiredListeners)
-
-	lbSubnets, err := getSubnets(ctx, spec.Subnets, clb.client.Networking())
-	if err != nil {
-		return errors.Wrapf(err, "getting load balancer subnets")
-	}
-	nodeSubnets, err := getSubnetsForNodes(ctx, spec.nodes, clb.client)
-	if err != nil {
-		return errors.Wrap(err, "get subnets for nodes")
-	}
 
 	if len(backendSetActions) == 0 && len(listenerActions) == 0 {
 		// If there are no backendSetActions or Listener actions
@@ -1007,6 +1097,24 @@ func (clb *CloudLoadBalancerProvider) updateLoadBalancer(ctx context.Context, lb
 		}
 	}
 
+	// Conversion from DualStack to SingleStack needs to happen after the IPv6 listeners & Backendsets are removed
+	if spec.Type == NLB && spec.IpVersions.LbEndpointIpVersion != nil {
+		ipVersion := string(*lb.IpVersion)
+		lbEndpointVersion := string(*spec.IpVersions.LbEndpointIpVersion)
+		ipFamilyPolicy := *spec.IpVersions.IpFamilyPolicy
+		ipVersionChanged := hasIpVersionChanged(ipVersion, lbEndpointVersion)
+		if ipVersionChanged && ipFamilyPolicy == string(v1.IPFamilyPolicySingleStack) {
+			logger.Infof("IPversion: %s LbEndpointIpVersion: %s IpFamilyPolicy: %s", ipVersion, lbEndpointVersion, ipFamilyPolicy)
+			details := &client.GenericUpdateLoadBalancerDetails{
+				IpVersion: spec.IpVersions.LbEndpointIpVersion,
+			}
+			err = clb.updateLoadBalancerIpVersion(ctx, lb, details)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	// Check if the reservedIP has changed in spec
 	if spec.LoadBalancerIP != "" || actualPublicReservedIP != nil {
 		if actualPublicReservedIP == nil || *actualPublicReservedIP != spec.LoadBalancerIP {
@@ -1023,7 +1131,7 @@ func (clb *CloudLoadBalancerProvider) updateLoadBalancer(ctx context.Context, lb
 			// fail open if the update request fails
 			logger.With(zap.Error(err)).Warn("updateLoadBalancer didn't succeed. unable to add oke system tags")
 			errType = util.SystemTagErrTypePrefix + util.GetError(err)
-			if errors.Is(err, MaxDefinedTagPerLBErr) {
+			if errors.Is(err, fmt.Errorf(MaxDefinedTagErrMessage, spec.Type)) {
 				errType = util.ErrTagLimitReached
 			}
 			dimensionsMap[metrics.ComponentDimension] = util.GetMetricDimensionForComponent(errType, util.LoadBalancerType)
@@ -1039,11 +1147,7 @@ func (clb *CloudLoadBalancerProvider) updateLoadBalancerBackends(ctx context.Con
 
 	logger := clb.logger.With("loadBalancerID", lbID, "compartmentID", clb.config.CompartmentID, "loadBalancerType", getLoadBalancerType(spec.service), "serviceName", spec.service.Name)
 
-	actualBackendSets := lb.BackendSets
-	desiredBackendSets := spec.BackendSets
-	backendSetActions := getBackendSetChanges(logger, actualBackendSets, desiredBackendSets)
-
-	lbSubnets, err := getSubnets(ctx, spec.Subnets, clb.client.Networking())
+	lbSubnets, err := getSubnets(ctx, spec.Subnets, clb.client.Networking(nil))
 	if err != nil {
 		return errors.Wrapf(err, "getting load balancer subnets")
 	}
@@ -1051,6 +1155,10 @@ func (clb *CloudLoadBalancerProvider) updateLoadBalancerBackends(ctx context.Con
 	if err != nil {
 		return errors.Wrap(err, "get subnets for nodes")
 	}
+
+	actualBackendSets := lb.BackendSets
+	desiredBackendSets := spec.BackendSets
+	backendSetActions := getBackendSetChanges(logger, actualBackendSets, desiredBackendSets)
 
 	for _, action := range backendSetActions {
 		switch a := action.(type) {
@@ -1071,7 +1179,16 @@ func updateSecurityListsInCriticalSection(ctx context.Context, spec *LBSpec, lbS
 	updateRulesMutex.Lock()
 	defer updateRulesMutex.Unlock()
 	for _, ports := range spec.Ports {
-		if err = spec.securityListManager.Update(ctx, lbSubnets, nodeSubnets, spec.SourceCIDRs, nil, ports, *spec.IsPreserveSource); err != nil {
+		sc := securityRuleComponents{
+			lbSubnets:        lbSubnets,
+			backendSubnets:   nodeSubnets,
+			sourceCIDRs:      spec.SourceCIDRs,
+			actualPorts:      nil,
+			desiredPorts:     ports,
+			isPreserveSource: *spec.IsPreserveSource,
+			ipFamilies:       convertOciIpVersionsToOciIpFamilies(spec.IpVersions.ListenerBackendIpVersion),
+		}
+		if err = spec.securityListManager.Update(ctx, sc); err != nil {
 			return err
 		}
 	}
@@ -1094,9 +1211,20 @@ func (clb *CloudLoadBalancerProvider) updateBackendSet(ctx context.Context, lbID
 		"loadBalancerID", lbID,
 		"loadBalancerType", getLoadBalancerType(spec.service))
 	logger.Info("Applying action on backend set")
+
+	sc := securityRuleComponents{
+		lbSubnets:        lbSubnets,
+		backendSubnets:   nodeSubnets,
+		sourceCIDRs:      sourceCIDRs,
+		actualPorts:      nil,
+		desiredPorts:     ports,
+		isPreserveSource: *spec.IsPreserveSource,
+		ipFamilies:       convertOciIpVersionsToOciIpFamilies(spec.IpVersions.ListenerBackendIpVersion),
+	}
+
 	switch action.Type() {
 	case Create:
-		err = secListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, nil, ports, *spec.IsPreserveSource)
+		err = secListManager.Update(ctx, sc)
 		if err != nil {
 			return err
 		}
@@ -1104,13 +1232,14 @@ func (clb *CloudLoadBalancerProvider) updateBackendSet(ctx context.Context, lbID
 	case Update:
 		// For NLB, due to source IP preservation we need to ensure ingress rules from sourceCIDRs are added to
 		// the backends subnet's seclist as well
-
-		if err = secListManager.Update(ctx, lbSubnets, nodeSubnets, spec.SourceCIDRs, action.OldPorts, ports, *spec.IsPreserveSource); err != nil {
+		sc.actualPorts = action.OldPorts
+		sc.sourceCIDRs = spec.SourceCIDRs
+		if err = secListManager.Update(ctx, sc); err != nil {
 			return err
 		}
 		workRequestID, err = clb.lbClient.UpdateBackendSet(ctx, lbID, action.Name(), &bs)
 	case Delete:
-		err = secListManager.Delete(ctx, lbSubnets, nodeSubnets, ports, sourceCIDRs, *spec.IsPreserveSource)
+		err = secListManager.Delete(ctx, sc)
 		if err != nil {
 			return err
 		}
@@ -1144,21 +1273,30 @@ func (clb *CloudLoadBalancerProvider) updateListener(ctx context.Context, lbID s
 		"loadBalancerID", lbID,
 		"loadBalancerType", getLoadBalancerType(spec.service))
 	logger.Info("Applying action on listener")
+	sc := securityRuleComponents{
+		lbSubnets:        lbSubnets,
+		backendSubnets:   nodeSubnets,
+		sourceCIDRs:      sourceCIDRs,
+		actualPorts:      nil,
+		desiredPorts:     ports,
+		isPreserveSource: *spec.IsPreserveSource,
+		ipFamilies:       convertOciIpVersionsToOciIpFamilies(spec.IpVersions.ListenerBackendIpVersion),
+	}
 	switch action.Type() {
 	case Create:
-		err = secListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, nil, ports, *spec.IsPreserveSource)
+		err = secListManager.Update(ctx, sc)
 		if err != nil {
 			return err
 		}
 		workRequestID, err = clb.lbClient.CreateListener(ctx, lbID, action.Name(), &listener)
 	case Update:
-		err = secListManager.Update(ctx, lbSubnets, nodeSubnets, sourceCIDRs, nil, ports, *spec.IsPreserveSource)
+		err = secListManager.Update(ctx, sc)
 		if err != nil {
 			return err
 		}
 		workRequestID, err = clb.lbClient.UpdateListener(ctx, lbID, action.Name(), &listener)
 	case Delete:
-		err = secListManager.Delete(ctx, lbSubnets, nodeSubnets, ports, sourceCIDRs, *spec.IsPreserveSource)
+		err = secListManager.Delete(ctx, sc)
 		if err != nil {
 			return err
 		}
@@ -1293,7 +1431,7 @@ func (cp *CloudProvider) UpdateLoadBalancer(ctx context.Context, clusterName str
 		sslConfig = NewSSLConfig(secretListenerString, secretBackendSetString, service, ports, cp)
 	}
 
-	subnets, err := cp.getLoadBalancerSubnets(ctx, logger, service)
+	lbSubnetIds, err := cp.getLoadBalancerSubnets(ctx, logger, service)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to get Load balancer Subnets.")
 		errorType = util.GetError(err)
@@ -1303,7 +1441,23 @@ func (cp *CloudProvider) UpdateLoadBalancer(ctx context.Context, clusterName str
 		return err
 	}
 
-	spec, err := NewLBSpec(logger, service, nodes, subnets, sslConfig, cp.securityListManagerFactory, cp.config.Tags, lb)
+	lbSubnets, err := getSubnets(ctx, lbSubnetIds, cp.client.Networking(nil))
+	if err != nil {
+		logger.With(zap.Error(err)).Error("failed to get loadbalancer subnets")
+		return err
+	}
+	nodeSubnets, err := getSubnetsForNodes(ctx, nodes, cp.client)
+	if err != nil {
+		logger.With(zap.Error(err)).Error("failed to get node subnets")
+		return err
+	}
+
+	ipVersions, err := cp.getOciIpVersions(lbSubnets, nodeSubnets, service)
+	if err != nil {
+		return err
+	}
+
+	spec, err := NewLBSpec(logger, service, nodes, lbSubnetIds, sslConfig, cp.securityListManagerFactory, ipVersions, cp.config.Tags, lb)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to derive LBSpec")
 		errorType = util.GetError(err)
@@ -1342,14 +1496,15 @@ func (cp *CloudProvider) UpdateLoadBalancer(ctx context.Context, clusterName str
 	return nil
 }
 
-// getNodesByIPs returns a slice of Nodes corresponding to the given IP addresses.
-func (cp *CloudProvider) getNodesByIPs(backendIPs []string) ([]*v1.Node, error) {
+// getNodesAndPodsByIPs returns slices of Nodes and Pods corresponding to the given IP addresses.
+func (cp *CloudProvider) getNodesAndPodsByIPs(ctx context.Context, backendIPs []client.IpAddresses, service *v1.Service) ([]*v1.Node, error) {
+	ipToNodeLookup := make(map[client.IpAddresses]*v1.Node)
+
 	nodeList, err := cp.NodeLister.List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
 
-	ipToNodeLookup := make(map[string]*v1.Node)
 	for _, node := range nodeList {
 		ip := NodeInternalIP(node)
 		ipToNodeLookup[ip] = node
@@ -1357,11 +1512,11 @@ func (cp *CloudProvider) getNodesByIPs(backendIPs []string) ([]*v1.Node, error) 
 
 	var nodes []*v1.Node
 	for _, ip := range backendIPs {
-		node, ok := ipToNodeLookup[ip]
-		if !ok {
-			return nil, errors.Errorf("node was not found by IP %q", ip)
+		if node, nodeExists := ipToNodeLookup[ip]; nodeExists {
+			nodes = append(nodes, node)
+		} else {
+			cp.logger.With("loadBalancerName", GetLoadBalancerName(service), "serviceName", service.Name, "loadBalancerType", getLoadBalancerType(service)).Errorf("provisioned node or virtual pod was not found by IP %q", ip)
 		}
-		nodes = append(nodes, node)
 	}
 
 	return nodes, nil
@@ -1540,13 +1695,25 @@ func (cp *CloudProvider) cleanupSecurityRulesForLoadBalancerDelete(lb *client.Ge
 	defer updateRulesMutex.Unlock()
 
 	id := *lb.Id
-	ipSet := sets.NewString()
+
+	ipAddresses := client.IpAddresses{
+		V4: "",
+		V6: "",
+	}
+	ipSet := sets.New(ipAddresses)
+
 	for _, backendSet := range lb.BackendSets {
 		for _, backend := range backendSet.Backends {
-			ipSet.Insert(*backend.IpAddress)
+			if net.IsIPv6String(*backend.IpAddress) {
+				ipAddresses.V6 = *backend.IpAddress
+			} else {
+				ipAddresses.V4 = *backend.IpAddress
+			}
+			ipSet.Insert(ipAddresses)
+
 		}
 	}
-	nodes, err := cp.getNodesByIPs(ipSet.List())
+	nodes, err := cp.getNodesAndPodsByIPs(ctx, ipSet.UnsortedList(), service)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to fetch nodes by internal ips")
 		return errors.Wrap(err, "fetching nodes by internal ips")
@@ -1557,7 +1724,7 @@ func (cp *CloudProvider) cleanupSecurityRulesForLoadBalancerDelete(lb *client.Ge
 		return errors.Wrap(err, "getting subnets for nodes")
 	}
 
-	lbSubnets, err := getSubnets(ctx, lb.SubnetIds, cp.client.Networking())
+	lbSubnets, err := getSubnets(ctx, lb.SubnetIds, cp.client.Networking(nil))
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to get subnets for load balancers")
 		return errors.Wrap(err, "getting subnets for load balancers")
@@ -1594,13 +1761,19 @@ func (cp *CloudProvider) cleanupSecurityRulesForLoadBalancerDelete(lb *client.Ge
 		logger.With(zap.Error(err)).Error("failed to determine value for is-preserve-source")
 		return errors.Wrap(err, "failed to determine value for is-preserve-source")
 	}
-	portsNsg, err := getPorts(service)
+
+	ipVersions, err := cp.getOciIpVersions(lbSubnets, nodeSubnets, service)
+	if err != nil {
+		return err
+	}
+
+	portsNsg, err := getPorts(service, convertOciIpVersionsToOciIpFamilies(ipVersions.ListenerBackendIpVersion))
 	if err != nil {
 		return errors.Wrapf(err, "failed to get ports from spec")
 	}
 	sourceCIDRs, err := getLoadBalancerSourceRanges(service)
 	if securityRuleManagerMode == NSG && len(managedNsg.backendNsgId) > 0 {
-		serviceComponents := serviceComponents{
+		serviceComponents := securityRuleComponents{
 			frontendNsgOcid:  managedNsg.frontendNsgId,
 			backendNsgOcids:  managedNsg.backendNsgId,
 			sourceCIDRs:      sourceCIDRs,
@@ -1636,7 +1809,17 @@ func (cp *CloudProvider) cleanupSecurityRulesForLoadBalancerDelete(lb *client.Ge
 
 		logger.Infof("Security rule management mode %s", securityRuleManagerMode)
 		if securityRuleManagerMode == ManagementModeAll || securityRuleManagerMode == ManagementModeFrontend {
-			if err = securityListManager.Delete(ctx, lbSubnets, nodeSubnets, ports, sourceCIDRs, isPreserveSource); err != nil {
+			sc := securityRuleComponents{
+				lbSubnets:        lbSubnets,
+				backendSubnets:   nodeSubnets,
+				sourceCIDRs:      sourceCIDRs,
+				actualPorts:      nil,
+				desiredPorts:     ports,
+				isPreserveSource: isPreserveSource,
+				ipFamilies:       convertOciIpVersionsToOciIpFamilies(ipVersions.ListenerBackendIpVersion),
+			}
+			logger.Infof("Service Components security list %#v", sc)
+			if err = securityListManager.Delete(ctx, sc); err != nil {
 				logger.With(zap.Error(err)).Errorf("Failed to delete security rules for listener %q on load balancer %q", listenerName, name)
 				return errors.Wrapf(err, "delete security rules for listener %q on load balancer %q", listenerName, name)
 			}
@@ -1708,6 +1891,10 @@ func doesLbHaveOkeSystemTags(lb *client.GenericLoadBalancer, spec *LBSpec) bool 
 func (clb *CloudLoadBalancerProvider) addLoadBalancerOkeSystemTags(ctx context.Context, lb *client.GenericLoadBalancer, spec *LBSpec) error {
 	lbDefinedTagsRequest := make(map[string]map[string]interface{})
 
+	if _, useWI := spec.service.Annotations[ServiceAnnotationServiceAccountName]; useWI { // When using Workload Identity
+		return fmt.Errorf("principal type is workload identity. skip addition of oke system tags.")
+	}
+
 	if spec.SystemTags == nil {
 		return fmt.Errorf("oke system tag is not found in LB spec. ignoring..")
 	}
@@ -1724,8 +1911,8 @@ func (clb *CloudLoadBalancerProvider) addLoadBalancerOkeSystemTags(ctx context.C
 	lbDefinedTagsRequest[OkeSystemTagNamesapce] = spec.SystemTags[OkeSystemTagNamesapce]
 
 	// update fails if the number of defined tags is more than the service limit i.e 64
-	if len(lbDefinedTagsRequest) > MaxDefinedTagPerLB {
-		return MaxDefinedTagPerLBErr
+	if len(lbDefinedTagsRequest) > MaxDefinedTagPerResource {
+		return fmt.Errorf(MaxDefinedTagErrMessage, spec.Type)
 	}
 
 	lbUpdateDetails := &client.GenericUpdateLoadBalancerDetails{
@@ -1746,8 +1933,23 @@ func (clb *CloudLoadBalancerProvider) addLoadBalancerOkeSystemTags(ctx context.C
 	return nil
 }
 
+func (clb *CloudLoadBalancerProvider) updateLoadBalancerIpVersion(ctx context.Context, lb *client.GenericLoadBalancer, details *client.GenericUpdateLoadBalancerDetails) error {
+	wrID, err := clb.lbClient.UpdateLoadBalancer(ctx, *lb.Id, details)
+	if err != nil {
+		return errors.Wrap(err, "failed to create UpdateLoadBalancer request")
+	}
+	logger := clb.logger.With("existingIpVersion", lb.IpVersion, "newIpVersion", details.IpVersion)
+	logger.Infof("Awaiting UpdateLoadBalancer workrequest to update endpoint IpVersion %s", wrID)
+	_, err = clb.lbClient.AwaitWorkRequest(ctx, wrID)
+	if err != nil {
+		return errors.Wrap(err, "failed to await UpdateLoadBalancer workrequest")
+	}
+	logger.Infof("UpdateLoadBalancer workrequest to update %s endpoint IpVersion completed successfully", *lb.Id)
+	return nil
+}
+
 // Given an OCI load balancer, return a LoadBalancerStatus
-func loadBalancerToStatus(lb *client.GenericLoadBalancer) (*v1.LoadBalancerStatus, error) {
+func loadBalancerToStatus(lb *client.GenericLoadBalancer, ipMode *v1.LoadBalancerIPMode) (*v1.LoadBalancerStatus, error) {
 	if len(lb.IpAddresses) == 0 {
 		return nil, errors.Errorf("no ip addresses found for load balancer %q", *lb.DisplayName)
 	}
@@ -1757,8 +1959,9 @@ func loadBalancerToStatus(lb *client.GenericLoadBalancer) (*v1.LoadBalancerStatu
 		if ip.IpAddress == nil {
 			continue // should never happen but appears to when EnsureLoadBalancer is called with 0 nodes.
 		}
-		ingress = append(ingress, v1.LoadBalancerIngress{IP: *ip.IpAddress})
+		ingress = append(ingress, v1.LoadBalancerIngress{IP: *ip.IpAddress, IPMode: ipMode})
 	}
+
 	return &v1.LoadBalancerStatus{Ingress: ingress}, nil
 }
 
@@ -1778,12 +1981,11 @@ func (cp *CloudProvider) checkAllBackendNodesNotReady(nodeList []*v1.Node) bool 
 	}
 	return true
 }
-
 // If CCM manages the NSG for the service, CCM to delete the NSG when the LB/NLB service is deleted
 func (cp *CloudProvider) deleteNsg(ctx context.Context, logger *zap.SugaredLogger, id, etag string) (bool, error) {
-	opcRequestId, err := cp.client.Networking().DeleteNetworkSecurityGroup(ctx, id, etag)
+	opcRequestId, err := cp.client.Networking(nil).DeleteNetworkSecurityGroup(ctx, id, etag)
 	if err != nil {
-		logger.Errorf("failed to delete nsg %s OpcRequestId %s", id, pointer.StringDeref(opcRequestId, ""))
+		logger.Errorf("failed to delete nsg %s", id)
 		return false, err
 	}
 	logger.Infof("delete nsg OpcRequestId %s", pointer.StringDeref(opcRequestId, ""))
@@ -1791,7 +1993,7 @@ func (cp *CloudProvider) deleteNsg(ctx context.Context, logger *zap.SugaredLogge
 }
 
 func (cp *CloudProvider) getFrontendNsg(ctx context.Context, logger *zap.SugaredLogger, id, uid string) (frontendNsgId string, etag *string, err error) {
-	nsg, etag, err := cp.client.Networking().GetNetworkSecurityGroup(ctx, id)
+	nsg, etag, err := cp.client.Networking(nil).GetNetworkSecurityGroup(ctx, id)
 	if err != nil || nsg == nil || etag == nil {
 		logger.Errorf("failed to get nsg %s", id)
 		return "", nil, err
@@ -1808,7 +2010,7 @@ func (cp *CloudProvider) getFrontendNsg(ctx context.Context, logger *zap.Sugared
 }
 
 func (cp *CloudProvider) getFrontendNsgByName(ctx context.Context, logger *zap.SugaredLogger, displayName, compartmentId, vcnId, uid string) (frontendNsgId string, etag *string, err error) {
-	nsgs, err := cp.client.Networking().ListNetworkSecurityGroups(ctx, displayName, compartmentId, vcnId)
+	nsgs, err := cp.client.Networking(nil).ListNetworkSecurityGroups(ctx, displayName, compartmentId, vcnId)
 	for _, nsg := range nsgs {
 		frontendNsgId, etag, err = cp.getFrontendNsg(ctx, logger, pointer.StringDeref(nsg.Id, ""), uid)
 		if err != nil {
@@ -1882,4 +2084,138 @@ func (cp *CloudProvider) checkForNetworkPartition(logger *zap.SugaredLogger, nod
 		}
 	}
 	return
+}
+
+func (cp *CloudProvider) getLbEndpointIpVersion(ipFamilies []string, ipFamilyPolicy string, lbSubnets []*core.Subnet) (string, error) {
+	lbEndpointVersion := ""
+	errIPv6Subnet := checkSubnetIpFamilyCompatibility(lbSubnets, IPv6)
+	errIPv4Subnet := checkSubnetIpFamilyCompatibility(lbSubnets, IPv4)
+	SingleStackIPv4 := "SingleStackIPv4"
+	SingleStackIPv6 := "SingleStackIPv6"
+	DualStack := "DualStack"
+	switch ipFamilyPolicy {
+	case string(v1.IPFamilyPolicySingleStack):
+		if ipFamilies[0] == IPv6 {
+			if errIPv6Subnet != nil {
+				return "", errors.Wrapf(errIPv6Subnet, "subnet does not have %s CIDR blocks", IPv6)
+			}
+			lbEndpointVersion = SingleStackIPv6
+		}
+		if ipFamilies[0] == IPv4 {
+			if errIPv4Subnet != nil {
+				return "", errors.Wrapf(errIPv4Subnet, "subnet does not have %s CIDR blocks", IPv4)
+			}
+			lbEndpointVersion = SingleStackIPv4
+		}
+	case string(v1.IPFamilyPolicyRequireDualStack):
+		if errIPv6Subnet != nil {
+			return "", errors.Wrapf(errIPv6Subnet, "subnet does not have %s CIDR blocks", IPv6)
+		}
+		if errIPv4Subnet != nil {
+			return "", errors.Wrapf(errIPv4Subnet, "subnet does not have %s CIDR blocks", IPv4)
+		}
+		lbEndpointVersion = DualStack
+	case string(v1.IPFamilyPolicyPreferDualStack):
+		lbEndpointVersion = DualStack
+		if errIPv4Subnet != nil && errIPv6Subnet != nil {
+			// This should never happen
+			return "", errors.New("subnet does not have IPv4 or IPv6 cidr, can't create loadbalancer")
+		}
+		if errIPv6Subnet != nil {
+			cp.logger.Warn("subnet provided does not have IPv6 subnet CIDR block, creating LB with only IPv4 endpoint")
+			lbEndpointVersion = SingleStackIPv4
+		}
+		if errIPv4Subnet != nil {
+			cp.logger.Warn("subnet provided does not have IPV4 subnet CIDR block, creating LB with only IPv6 endpoint")
+			lbEndpointVersion = SingleStackIPv6
+		}
+	default:
+		lbEndpointVersion = SingleStackIPv4
+	}
+	if strings.Compare(lbEndpointVersion, SingleStackIPv4) == 0 {
+		lbEndpointVersion = IPv4
+	}
+	if strings.Compare(lbEndpointVersion, SingleStackIPv6) == 0 {
+		lbEndpointVersion = IPv6
+	}
+	if strings.Compare(lbEndpointVersion, DualStack) == 0 {
+		lbEndpointVersion = IPv4AndIPv6
+	}
+	return lbEndpointVersion, nil
+}
+
+func (cp *CloudProvider) getLbListenerBackendSetIpVersion(ipFamilies []string, ipFamilyPolicy string, nodeSubnets []*core.Subnet) ([]string, error) {
+	errIPv6Subnet := checkSubnetIpFamilyCompatibility(nodeSubnets, IPv6)
+	errIPv4Subnet := checkSubnetIpFamilyCompatibility(nodeSubnets, IPv4)
+	switch ipFamilyPolicy {
+	case string(v1.IPFamilyPolicySingleStack):
+		if ipFamilies[0] == IPv6 {
+			if errIPv6Subnet != nil {
+				return []string{}, errors.Wrapf(errIPv6Subnet, "subnet does not have %s CIDR blocks", IPv6)
+			}
+			return []string{IPv6}, nil
+		}
+		if ipFamilies[0] == IPv4 {
+			if errIPv4Subnet != nil {
+				return []string{}, errors.Wrapf(errIPv4Subnet, "subnet does not have %s CIDR blocks", IPv4)
+			}
+			return []string{IPv4}, nil
+		}
+	case string(v1.IPFamilyPolicyRequireDualStack):
+		if errIPv6Subnet != nil {
+			return []string{}, errors.Wrapf(errIPv6Subnet, "subnet does not have %s CIDR blocks", IPv6)
+		}
+		if errIPv4Subnet != nil {
+			return []string{}, errors.Wrapf(errIPv4Subnet, "subnet does not have %s CIDR blocks", IPv4)
+		}
+		return []string{IPv4, IPv6}, nil
+	case string(v1.IPFamilyPolicyPreferDualStack):
+		if errIPv6Subnet != nil && errIPv4Subnet != nil {
+			// should never happen
+			return nil, errors.New("subnet does not have IPv4 or IPv6 cidr, can't create loadbalancer")
+		}
+		if errIPv6Subnet != nil {
+			cp.logger.Warn("subnet provided does not have IPv6 subnet CIDR block, creating listeners and backends of ip-version IPv4")
+			return []string{IPv4}, nil
+		}
+		if errIPv4Subnet != nil {
+			cp.logger.Warn("subnet provided does not have IPV4 subnet CIDR block, creating listeners and backends of ip-version IPv6")
+			return []string{IPv6}, nil
+		}
+		return []string{IPv4, IPv6}, nil
+	}
+	return []string{IPv4}, nil
+}
+
+func (cp *CloudProvider) getOciIpVersions(lbSubnets, nodeSubnets []*core.Subnet, service *v1.Service) (*IpVersions, error) {
+	ipFamilies := getIpFamilies(service)
+	ipFamilyPolicy := getIpFamilyPolicy(service)
+
+	lbEndpointVersion, err := cp.getLbEndpointIpVersion(ipFamilies, ipFamilyPolicy, lbSubnets)
+	if err != nil {
+		return nil, err
+	}
+	listenerBackendIpVersion, err := cp.getLbListenerBackendSetIpVersion(ipFamilies, ipFamilyPolicy, nodeSubnets)
+	if err != nil {
+		return nil, err
+	}
+
+	if getLoadBalancerType(service) == LB {
+		if lbEndpointVersion == IPv6 {
+			return nil, errors.New("SingleStack IPv6 is not supported for OCI LBaaS")
+		}
+		listenerBackendIpVersion = []string{IPv4}
+	}
+
+	var ociListenerBackendIpVersion []client.GenericIpVersion
+	for _, ipFamily := range listenerBackendIpVersion {
+		ociListenerBackendIpVersion = append(ociListenerBackendIpVersion, convertK8sIpFamiliesToOciIpVersion(ipFamily))
+	}
+	ipVersions := &IpVersions{
+		IpFamilies:               ipFamilies,
+		IpFamilyPolicy:           common.String(ipFamilyPolicy),
+		LbEndpointIpVersion:      GenericIpVersion(convertK8sIpFamiliesToOciIpVersion(lbEndpointVersion)),
+		ListenerBackendIpVersion: ociListenerBackendIpVersion,
+	}
+	return ipVersions, nil
 }

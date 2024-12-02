@@ -16,9 +16,11 @@ package client
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/oracle/oci-go-sdk/v65/core"
+	"github.com/oracle/oci-go-sdk/v65/loadbalancer"
 	"k8s.io/client-go/util/flowcontrol"
 )
 
@@ -126,7 +128,7 @@ func TestRateLimiting(t *testing.T) {
 	// Write requests up to qpsWrite should pass and the others fail
 	for i := 0; i < int(qpsWrite)*2; i++ {
 
-		_, err := client.Networking().UpdateSecurityList(context.Background(), "1234", "", nil, nil)
+		_, err := client.Networking(nil).UpdateSecurityList(context.Background(), "1234", "", nil, nil)
 		p := (err == nil)
 
 		if (i < int(qpsRead) && !p) || (i >= int(qpsRead) && p) {
@@ -156,6 +158,14 @@ func (c *mockComputeClient) ListVnicAttachments(ctx context.Context, request cor
 	return core.ListVnicAttachmentsResponse{}, nil
 }
 
+func (c *mockComputeClient) GetVnicAttachment(ctx context.Context, request core.GetVnicAttachmentRequest) (response core.GetVnicAttachmentResponse, err error) {
+	return response, nil
+}
+
+func (c *mockComputeClient) AttachVnic(ctx context.Context, request core.AttachVnicRequest) (response core.AttachVnicResponse, err error) {
+	return core.AttachVnicResponse{}, nil
+}
+
 func (c *mockComputeClient) GetVolumeAttachment(ctx context.Context, request core.GetVolumeAttachmentRequest) (response core.GetVolumeAttachmentResponse, err error) {
 	return core.GetVolumeAttachmentResponse{}, nil
 }
@@ -177,11 +187,11 @@ func (c *mockComputeClient) ListInstanceDevices(ctx context.Context, request cor
 
 	if *request.InstanceId == "ocid1.device-path-returns-error" {
 		return core.ListInstanceDevicesResponse{}, errNotFound
-	} else if  *request.InstanceId == "ocid1.device-path-not-available" {
+	} else if *request.InstanceId == "ocid1.device-path-not-available" {
 		return core.ListInstanceDevicesResponse{
-				Items: []core.Device{},
-			}, nil
-	} else if  *request.InstanceId == "ocid1.one-device-path-available" {
+			Items: []core.Device{},
+		}, nil
+	} else if *request.InstanceId == "ocid1.one-device-path-available" {
 		return core.ListInstanceDevicesResponse{
 			Items: []core.Device{{
 					Name: &devicePath,
@@ -215,6 +225,18 @@ func (c *mockVirtualNetworkClient) UpdateSecurityList(ctx context.Context, reque
 
 func (c *mockVirtualNetworkClient) GetPrivateIp(ctx context.Context, request core.GetPrivateIpRequest) (response core.GetPrivateIpResponse, err error) {
 	return core.GetPrivateIpResponse{}, nil
+}
+
+func (c *mockVirtualNetworkClient) ListPrivateIps(ctx context.Context, request core.ListPrivateIpsRequest) (response core.ListPrivateIpsResponse, err error) {
+	return core.ListPrivateIpsResponse{}, nil
+}
+
+func (c *mockVirtualNetworkClient) CreatePrivateIp(ctx context.Context, request core.CreatePrivateIpRequest) (response core.CreatePrivateIpResponse, err error) {
+	return core.CreatePrivateIpResponse{}, nil
+}
+
+func (c *mockVirtualNetworkClient) GetIpv6(ctx context.Context, request core.GetIpv6Request) (response core.GetIpv6Response, err error) {
+	return core.GetIpv6Response{}, nil
 }
 
 func (c *mockVirtualNetworkClient) GetPublicIpByIpAddress(ctx context.Context, request core.GetPublicIpByIpAddressRequest) (response core.GetPublicIpByIpAddressResponse, err error) {
@@ -255,4 +277,62 @@ func (c *mockVirtualNetworkClient) ListNetworkSecurityGroupSecurityRules(ctx con
 
 func (c *mockVirtualNetworkClient) UpdateNetworkSecurityGroupSecurityRules(ctx context.Context, request core.UpdateNetworkSecurityGroupSecurityRulesRequest) (response core.UpdateNetworkSecurityGroupSecurityRulesResponse, err error) {
 	return core.UpdateNetworkSecurityGroupSecurityRulesResponse{}, nil
+}
+
+func TestBackendTcpProxyProtocolOptionsStringArrayToEnum(t *testing.T) {
+	testCases := map[string]struct {
+		state    []string
+		expected []loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum
+	}{
+		"empty options": {
+			state:    []string{},
+			expected: []loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum{},
+		},
+		"PP2_TYPE_AUTHORITY": {
+			state:    []string{"PP2_TYPE_AUTHORITY"},
+			expected: []loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum{"PP2_TYPE_AUTHORITY"},
+		},
+		"PP2_TYPE_AUTHORITY, PP3_TYPE_AUTHORITY": {
+			state:    []string{"PP2_TYPE_AUTHORITY", "PP3_TYPE_AUTHORITY"},
+			expected: []loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum{"PP2_TYPE_AUTHORITY", "PP3_TYPE_AUTHORITY"},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			result := backendTcpProxyProtocolOptionsStringArrayToEnum(tc.state)
+			if !reflect.DeepEqual(result, tc.expected) {
+				t.Errorf("Expected enum\n%+v\nbut got\n%+v", tc.expected, result)
+			}
+		})
+	}
+}
+
+func TestStringArrayToBackendTcpProxyProtocolOptionsEnum(t *testing.T) {
+	testCases := map[string]struct {
+		state    []loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum
+		expected []string
+	}{
+		"empty options": {
+			state:    []loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum{},
+			expected: []string{},
+		},
+		"PP2_TYPE_AUTHORITY": {
+			state:    []loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum{"PP2_TYPE_AUTHORITY"},
+			expected: []string{"PP2_TYPE_AUTHORITY"},
+		},
+		"PP2_TYPE_AUTHORITY, PP3_TYPE_AUTHORITY": {
+			state:    []loadbalancer.ConnectionConfigurationBackendTcpProxyProtocolOptionsEnum{"PP2_TYPE_AUTHORITY", "PP3_TYPE_AUTHORITY"},
+			expected: []string{"PP2_TYPE_AUTHORITY", "PP3_TYPE_AUTHORITY"},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			result := stringArrayToBackendTcpProxyProtocolOptionsEnum(tc.state)
+			if !reflect.DeepEqual(result, tc.expected) {
+				t.Errorf("Expected string\n%+v\nbut got\n%+v", tc.expected, result)
+			}
+		})
+	}
 }

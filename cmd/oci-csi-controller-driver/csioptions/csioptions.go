@@ -29,7 +29,7 @@ const (
 	VolumeAttributesClass		   = "VolumeAttributesClass"
 )
 
-//CSIOptions structure which contains flag values
+// CSIOptions structure which contains flag values
 type CSIOptions struct {
 	Master                  string
 	Kubeconfig              string
@@ -63,7 +63,7 @@ type CSIOptions struct {
 
 }
 
-//NewCSIOptions initializes the flag
+// NewCSIOptions initializes the flag
 func NewCSIOptions() *CSIOptions {
 	csioptions := CSIOptions{
 		Master:                  *flag.String("master", "", "kube master"),

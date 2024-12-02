@@ -27,6 +27,7 @@ import (
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/v65/common"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSortAndCombineActions(t *testing.T) {
@@ -719,11 +720,23 @@ func TestGetListenerChanges(t *testing.T) {
 					Protocol:              common.String("TCP"),
 					Port:                  common.Int(80),
 				},
+				"TCP-80-IPv6": client.GenericListener{
+					Name:                  common.String("TCP-80-IPv6"),
+					DefaultBackendSetName: common.String("TCP-80-IPv6"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
+				},
 			},
 			actual: map[string]client.GenericListener{
 				"TCP-80": client.GenericListener{
 					Name:                  common.String("TCP-80"),
 					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
+				},
+				"TCP-80-IPv6": client.GenericListener{
+					Name:                  common.String("TCP-80-IPv6"),
+					DefaultBackendSetName: common.String("TCP-80-IPv6"),
 					Protocol:              common.String("TCP"),
 					Port:                  common.Int(80),
 				},
@@ -867,6 +880,74 @@ func TestGetListenerChanges(t *testing.T) {
 			},
 		},
 		{
+			name: "proxy protocol version switch to true - NLB",
+			desired: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
+					Name:                  common.String("TCP-80"),
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
+					IsPpv2Enabled:         common.Bool(true),
+				},
+			},
+			actual: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
+					Name:                  common.String("TCP-80"),
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
+					IsPpv2Enabled:         common.Bool(false),
+				},
+			},
+			expected: []Action{
+				&ListenerAction{
+					name:       "TCP-80",
+					actionType: Update,
+					Listener: client.GenericListener{
+						Name:                  common.String("TCP-80"),
+						DefaultBackendSetName: common.String("TCP-80"),
+						Protocol:              common.String("TCP"),
+						Port:                  common.Int(80),
+						IsPpv2Enabled:         common.Bool(true),
+					},
+				},
+			},
+		},
+		{
+			name: "proxy protocol version change - NLB",
+			desired: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
+					Name:                  common.String("TCP-80"),
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
+					IsPpv2Enabled:         common.Bool(true),
+				},
+			},
+			actual: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
+					Name:                  common.String("TCP-80"),
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
+					IsPpv2Enabled:         nil,
+				},
+			},
+			expected: []Action{
+				&ListenerAction{
+					name:       "TCP-80",
+					actionType: Update,
+					Listener: client.GenericListener{
+						Name:                  common.String("TCP-80"),
+						DefaultBackendSetName: common.String("TCP-80"),
+						Protocol:              common.String("TCP"),
+						Port:                  common.Int(80),
+						IsPpv2Enabled:         common.Bool(true),
+					},
+				},
+			},
+		},
+		{
 			name: "ssl config change [legacy listeners]",
 			desired: map[string]client.GenericListener{
 				"TCP-80": client.GenericListener{
@@ -956,6 +1037,95 @@ func TestGetListenerChanges(t *testing.T) {
 					actionType: Update,
 					Listener: client.GenericListener{
 						DefaultBackendSetName: common.String("TCP-80"),
+						Protocol:              common.String("TCP"),
+						Port:                  common.Int(80),
+					},
+				},
+			},
+		},
+		{
+			name: "create listener IPv6",
+			desired: map[string]client.GenericListener{"TCP-443-IPv6": client.GenericListener{
+				DefaultBackendSetName: common.String("TCP-443-IPv6"),
+				Protocol:              common.String("TCP"),
+				Port:                  common.Int(443),
+			}},
+			actual: map[string]client.GenericListener{},
+			expected: []Action{
+				&ListenerAction{
+					name:       "TCP-443-IPv6",
+					actionType: Create,
+					Listener: client.GenericListener{
+						DefaultBackendSetName: common.String("TCP-443-IPv6"),
+						Protocol:              common.String("TCP"),
+						Port:                  common.Int(443),
+					},
+				},
+			},
+		},
+		{
+			name: "add listener IPv6",
+			desired: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
+				},
+				"TCP-80-IPv6": client.GenericListener{
+					DefaultBackendSetName: common.String("TCP-80-IPv6"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
+				},
+			},
+			actual: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
+					Name:                  common.String("TCP-80"),
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
+				},
+			},
+			expected: []Action{
+				&ListenerAction{
+					name:       "TCP-80-IPv6",
+					actionType: Create,
+					Listener: client.GenericListener{
+						DefaultBackendSetName: common.String("TCP-80-IPv6"),
+						Protocol:              common.String("TCP"),
+						Port:                  common.Int(80),
+					},
+				},
+			},
+		},
+		{
+			name: "remove listener IPv6",
+			desired: map[string]client.GenericListener{
+				"TCP-80": client.GenericListener{
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
+				},
+			},
+			actual: map[string]client.GenericListener{
+				"TCP-80-IPv6": client.GenericListener{
+					Name:                  common.String("TCP-80-IPv6"),
+					DefaultBackendSetName: common.String("TCP-80-IPv6"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
+				},
+				"TCP-80": client.GenericListener{
+					Name:                  common.String("TCP-80"),
+					DefaultBackendSetName: common.String("TCP-80"),
+					Protocol:              common.String("TCP"),
+					Port:                  common.Int(80),
+				},
+			},
+			expected: []Action{
+				&ListenerAction{
+					name:       "TCP-80-IPv6",
+					actionType: Delete,
+					Listener: client.GenericListener{
+						DefaultBackendSetName: common.String("TCP-80-IPv6"),
 						Protocol:              common.String("TCP"),
 						Port:                  common.Int(80),
 					},
@@ -1136,6 +1306,16 @@ func TestGetSanitizedName(t *testing.T) {
 			"Name has HTTP",
 			"HTTP-80",
 			"TCP-80",
+		},
+		{
+			"Name has Ipv6",
+			"TCP-80-IPv6",
+			"TCP-80-IPv6",
+		},
+		{
+			"Name has HTTP",
+			"HTTP-80-IPv6",
+			"TCP-80-IPv6",
 		},
 	}
 
@@ -1356,6 +1536,23 @@ func TestHasListenerChanged(t *testing.T) {
 					BackendTcpProxyProtocolVersion: common.Int(1),
 				},
 			},
+			expected: false,
+		},
+		{
+			name: "Compare IPv6 listeners",
+			desired: client.GenericListener{
+				Name:                  common.String("TCP-443-IPv6"),
+				DefaultBackendSetName: common.String("TCP-443-IPv6"),
+				Port:                  common.Int(443),
+				Protocol:              common.String("TCP"),
+			},
+			actual: client.GenericListener{
+				Name:                  common.String("TCP-443-IPv6"),
+				DefaultBackendSetName: common.String("TCP-443-IPv6"),
+				Port:                  common.Int(443),
+				Protocol:              common.String("TCP"),
+			},
+
 			expected: false,
 		},
 	}
@@ -1832,6 +2029,25 @@ func TestHasBackendSetChanged(t *testing.T) {
 			},
 			expected: false,
 		},
+		{
+			name: "IPv6 backend added",
+			desired: client.GenericBackendSetDetails{
+				Name:   common.String("TCP-80-IPv6"),
+				Policy: common.String("policy"),
+				Backends: []client.GenericBackend{
+					{
+						IpAddress: common.String("2001:0db8:85a3:0000:0000:8a2e:0370:7334"),
+						Port:      &testBackendPort,
+					},
+				},
+			},
+			actual: client.GenericBackendSetDetails{
+				Name:     common.String("TCP-80-IPv6"),
+				Policy:   common.String("policy"),
+				Backends: []client.GenericBackend{},
+			},
+			expected: true,
+		},
 	}
 
 	for _, tt := range testCases {
@@ -1918,6 +2134,28 @@ func TestGetSSLConfigurationChanges(t *testing.T) {
 				fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:CertificateName", "actual", "desired"),
 				fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:VerifyDepth", 0, 1),
 				fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:CertificateName", false, true),
+			},
+		},
+		{
+			name: "Protocol Changed",
+			desired: client.GenericSslConfigurationDetails{
+				Protocols: []string{"TLSv1.2"},
+			},
+			actual: client.GenericSslConfigurationDetails{},
+			expected: []string{
+				fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:Protocols", "", "TLSv1.2"),
+			},
+		},
+		{
+			name: "TLS Protocol Changed",
+			desired: client.GenericSslConfigurationDetails{
+				Protocols: []string{"TLSv1.1", "TLSv1.2"},
+			},
+			actual: client.GenericSslConfigurationDetails{
+				Protocols: []string{"TLSv1.1", "TLSv1.2", "TLSv1.3"},
+			},
+			expected: []string{
+				fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:Protocols", "", "TLSv1.2"),
 			},
 		},
 	}
@@ -2088,6 +2326,67 @@ func TestHasLoadBalancerNetworkSecurityGroupsChanged(t *testing.T) {
 	}
 }
 
+func TestHasIpVersionChanged(t *testing.T) {
+	var testCases = []struct {
+		name             string
+		actualIpVersion  string
+		desiredIpVersion string
+		expected         bool
+	}{
+		{
+			name:             "No Changes IPv4",
+			actualIpVersion:  string(client.GenericIPv4),
+			desiredIpVersion: IPv4,
+			expected:         false,
+		},
+		{
+			name:             "No Changes IPv6",
+			actualIpVersion:  string(client.GenericIPv6),
+			desiredIpVersion: IPv6,
+			expected:         false,
+		},
+		{
+			name:             "Has Changes",
+			actualIpVersion:  string(client.GenericIPv4),
+			desiredIpVersion: IPv6,
+			expected:         true,
+		},
+		{
+			name:             "No Changes DualStack",
+			actualIpVersion:  string(client.GenericIPv4AndIPv6),
+			desiredIpVersion: IPv4AndIPv6,
+			expected:         false,
+		},
+		{
+			name:             "DualStack to SingleStack",
+			actualIpVersion:  string(client.GenericIPv4AndIPv6),
+			desiredIpVersion: IPv6,
+			expected:         true,
+		},
+		{
+			name:             "SingleStack to DualStack",
+			actualIpVersion:  string(client.GenericIPv4),
+			desiredIpVersion: IPv4AndIPv6,
+			expected:         true,
+		},
+		{
+			name:             "SingleStack IPv6 to DualStack",
+			actualIpVersion:  string(client.GenericIPv6),
+			desiredIpVersion: IPv4AndIPv6,
+			expected:         true,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			changed := hasIpVersionChanged(tt.actualIpVersion, tt.desiredIpVersion)
+			if changed != tt.expected {
+				t.Errorf("expected hasIpVersionChanged to be %+v\nbut got\n%+v", tt.expected, changed)
+			}
+		})
+	}
+}
+
 func Test_parseFlexibleShapeBandwidth(t *testing.T) {
 	var testCases = []struct {
 		name                string
@@ -2180,6 +2479,103 @@ func Test_parseFlexibleShapeBandwidth(t *testing.T) {
 			if err == nil && parsedShape != tt.expectedOutputShape {
 				t.Errorf("parseFlexibleShapeBandwidth() got = %v, want = %v", parsedShape, tt.expectedOutputShape)
 			}
+		})
+	}
+}
+
+func Test_convertOciIpVersionsToOciIpFamilies(t *testing.T) {
+	type args struct {
+		ipVersions []client.GenericIpVersion
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{
+			name: "nil",
+			args: args{
+				ipVersions: nil,
+			},
+			want: []string{IPv4},
+		},
+		{
+			name: "default",
+			args: args{
+				ipVersions: []client.GenericIpVersion{},
+			},
+			want: []string{IPv4},
+		},
+		{
+			name: "IPv4 and IPv6",
+			args: args{
+				ipVersions: []client.GenericIpVersion{client.GenericIPv4, client.GenericIPv6},
+			},
+			want: []string{IPv4, IPv6},
+		},
+		{
+			name: "IPv4",
+			args: args{
+				ipVersions: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			want: []string{IPv4},
+		},
+		{
+			name: "IPv6",
+			args: args{
+				ipVersions: []client.GenericIpVersion{client.GenericIPv6},
+			},
+			want: []string{IPv6},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, convertOciIpVersionsToOciIpFamilies(tt.args.ipVersions), "convertOciIpVersionsToOciIpFamilies(%v)", tt.args.ipVersions)
+		})
+	}
+}
+
+func Test_convertK8sIpFamiliesToOciIpVersion(t *testing.T) {
+	type args struct {
+		ipFamily string
+	}
+	tests := []struct {
+		name string
+		args args
+		want client.GenericIpVersion
+	}{
+		{
+			name: "Base case",
+			args: args{
+				ipFamily: "",
+			},
+			want: client.GenericIPv4,
+		},
+		{
+			name: "IPv4",
+			args: args{
+				ipFamily: IPv4,
+			},
+			want: client.GenericIPv4,
+		},
+		{
+			name: "IPv6",
+			args: args{
+				ipFamily: IPv6,
+			},
+			want: client.GenericIPv6,
+		},
+		{
+			name: "IPv4 and IPv6",
+			args: args{
+				ipFamily: IPv4AndIPv6,
+			},
+			want: client.GenericIPv4AndIPv6,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, convertK8sIpFamiliesToOciIpVersion(tt.args.ipFamily), "convertK8sIpFamiliesToOciIpVersion(%v)", tt.args.ipFamily)
 		})
 	}
 }

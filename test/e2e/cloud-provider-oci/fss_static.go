@@ -16,8 +16,10 @@ package e2e
 
 import (
 	"context"
+
 	. "github.com/onsi/ginkgo"
 	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
+	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -26,7 +28,7 @@ var _ = Describe("Basic Static FSS test", func() {
 	Context("[cloudprovider][storage][csi][fss][static]", func() {
 		It("Create PVC and POD for CSI-FSS", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-e2e-test")
-			pv := pvcJig.CreatePVorFailFSS(f.Namespace.Name, setupF.VolumeHandle, "false", []string{})
+			pv := pvcJig.CreatePVorFailFSS(f.Namespace.Name, setupF.VolumeHandle, "false", "ReadWriteMany", "", []string{})
 			pvc := pvcJig.CreateAndAwaitPVCOrFailStaticFSS(f.Namespace.Name, pv.Name, "50Gi", nil)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			pvcJig.CheckSinglePodReadWrite(f.Namespace.Name, pvc.Name, false, []string{})
@@ -50,7 +52,7 @@ var _ = Describe("Mount Options Static FSS test", func() {
 		It("Create PV PVC and POD for CSI-FSS with mount options", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-e2e-test")
 			mountOptions := []string{"sync", "hard", "noac", "nolock"}
-			pv := pvcJig.CreatePVorFailFSS(f.Namespace.Name, setupF.VolumeHandle, "false", mountOptions)
+			pv := pvcJig.CreatePVorFailFSS(f.Namespace.Name, setupF.VolumeHandle, "false", "ReadWriteMany", "", mountOptions)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailStaticFSS(f.Namespace.Name, pv.Name, "50Gi", nil)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			pvcJig.CheckSinglePodReadWrite(f.Namespace.Name, pvc.Name, false, mountOptions)
@@ -69,7 +71,7 @@ var _ = Describe("Mount Options Static FSS test", func() {
 
 func TestEncryptionType(f *framework.CloudProviderFramework, mountOptions []string) {
 	pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-e2e-test-intransit")
-	pv := pvcJig.CreatePVorFailFSS(f.Namespace.Name, setupF.VolumeHandle, "true", mountOptions)
+	pv := pvcJig.CreatePVorFailFSS(f.Namespace.Name, setupF.VolumeHandle, "true", "ReadWriteMany", "", mountOptions)
 	pvc := pvcJig.CreateAndAwaitPVCOrFailStaticFSS(f.Namespace.Name, pv.Name, "50Gi", nil)
 	f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 	pvcJig.CheckSinglePodReadWrite(f.Namespace.Name, pvc.Name, true, mountOptions)
@@ -80,7 +82,7 @@ var _ = Describe("Multiple Pods Static FSS test", func() {
 	Context("[cloudprovider][storage][csi][fss][static]", func() {
 		It("Multiple Pods should be able to read write same file", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-e2e-test")
-			pv := pvcJig.CreatePVorFailFSS(f.Namespace.Name, setupF.VolumeHandle, "false", []string{})
+			pv := pvcJig.CreatePVorFailFSS(f.Namespace.Name, setupF.VolumeHandle, "false", "ReadWriteMany", "", []string{})
 			pvc := pvcJig.CreateAndAwaitPVCOrFailStaticFSS(f.Namespace.Name, pv.Name, "50Gi", nil)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			pvcJig.CheckMultiplePodReadWrite(f.Namespace.Name, pvc.Name, false)
@@ -89,7 +91,7 @@ var _ = Describe("Multiple Pods Static FSS test", func() {
 		It("Multiple Pods should be able to read write same file with InTransit encryption enabled", func() {
 			checkNodeAvailability(f)
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-e2e-test")
-			pv := pvcJig.CreatePVorFailFSS(f.Namespace.Name, setupF.VolumeHandle, "true", []string{})
+			pv := pvcJig.CreatePVorFailFSS(f.Namespace.Name, setupF.VolumeHandle, "true", "ReadWriteMany", "", []string{})
 			pvc := pvcJig.CreateAndAwaitPVCOrFailStaticFSS(f.Namespace.Name, pv.Name, "50Gi", nil)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			pvcJig.CheckMultiplePodReadWrite(f.Namespace.Name, pvc.Name, true)
@@ -114,3 +116,19 @@ func checkNodeAvailability(f *framework.CloudProviderFramework) {
 		Skip("Skipping test due to non-availability of nodes with label \"oke.oraclecloud.com/e2e.oci-fss-util\"")
 	}
 }
+
+var _ = Describe("Static FSS RWO Tests", func() {
+	f := framework.NewDefaultFramework("fss-rwo")
+	Context("[cloudprovider][storage][csi][fss][static][rwo]", func() {
+		It("Verify volume group ownership change for RWO volume when fsType and fsGroup are defined", func() {
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-rwo-fss-e2e-test")
+			pv := pvcJig.CreatePVorFailFSS(f.Namespace.Name, setupF.VolumeHandle, "false", "ReadWriteOnce", "nfs", []string{})
+			pvc := pvcJig.CreateAndAwaitPVCOrFailStaticFSS(f.Namespace.Name, pv.Name, "50Gi", func(pvc *v1.PersistentVolumeClaim) {
+				pvc.Spec.AccessModes = []v1.PersistentVolumeAccessMode{"ReadWriteOnce"}
+			})
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+			pod := pvcJig.CreateAndAwaitNginxPodOrFail(f.Namespace.Name, pvc, WriteCommand)
+			pvcJig.CheckVolumeOwnership(f.Namespace.Name, pod, "/usr/share/nginx/html/", "1000")
+		})
+	})
+})

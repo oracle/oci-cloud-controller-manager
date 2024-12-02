@@ -18,15 +18,24 @@ import (
 	"context"
 	"fmt"
 	"net"
-
-	"github.com/oracle/oci-go-sdk/v65/core"
-	"k8s.io/apimachinery/pkg/labels"
+	"strings"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/pkg/errors"
 	api "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	cloudprovider "k8s.io/cloud-provider"
+)
+
+const (
+	VirtualNodePoolIdAnnotation = "oci.oraclecloud.com/virtual-node-pool-id"
+	IPv4NodeIPFamilyLabel       = "oci.oraclecloud.com/ip-family-ipv4"
+	IPv6NodeIPFamilyLabel       = "oci.oraclecloud.com/ip-family-ipv6"
+	OpenShiftTagNamesapcePrefix = "openshift-"
+	OpenShiftBootVolumeType     = "boot-volume-type"
+	OpenShiftBootVolumeISCSI    = "ISCSI"
 )
 
 var _ cloudprovider.Instances = &CloudProvider{}
@@ -66,7 +75,7 @@ func (cp *CloudProvider) getCompartmentIDByInstanceID(instanceID string) (string
 }
 
 func (cp *CloudProvider) extractNodeAddresses(ctx context.Context, instanceID string) ([]api.NodeAddress, error) {
-	addresses := []api.NodeAddress{}
+	var addresses []api.NodeAddress
 	compartmentID, err := cp.getCompartmentIDByInstanceID(instanceID)
 	if err != nil {
 		return nil, err
@@ -96,7 +105,82 @@ func (cp *CloudProvider) extractNodeAddresses(ctx context.Context, instanceID st
 		}
 		addresses = append(addresses, api.NodeAddress{Type: api.NodeExternalIP, Address: ip.String()})
 	}
+	nodeIpFamily, err := cp.getNodeIpFamily(instanceID)
+	if err != nil {
+		return nil, err
+	}
+	if contains(nodeIpFamily, IPv6) {
+		if vnic.Ipv6Addresses != nil {
+			for _, ipv6Addresses := range vnic.Ipv6Addresses {
+				if ipv6Addresses != "" {
+					ip := net.ParseIP(ipv6Addresses)
+					if ip == nil {
+						return nil, errors.Errorf("instance has invalid ipv6 address: %q", vnic.Ipv6Addresses[0])
+					}
+					if ip.IsPrivate() {
+						addresses = append(addresses, api.NodeAddress{Type: api.NodeInternalIP, Address: ip.String()})
+					} else {
+						addresses = append(addresses, api.NodeAddress{Type: api.NodeExternalIP, Address: ip.String()})
+					}
+				}
+			}
+		}
+	}
 
+	OpenShiftTagNamesapce := cp.getOpenShiftTagNamespaceByInstance(ctx, instanceID)
+
+	if OpenShiftTagNamesapce != "" {
+		secondaryVnics, err := cp.client.Compute().GetSecondaryVNICsForInstance(ctx, compartmentID, instanceID)
+		if err != nil {
+			return nil, err
+		}
+
+		if secondaryVnics == nil || len(secondaryVnics) == 0 {
+			return addresses, nil
+		}
+		for _, secondaryVnic := range secondaryVnics {
+			if cp.checkOpenShiftISCSIBootVolumeTagByVnic(ctx, secondaryVnic, OpenShiftTagNamesapce) {
+				if (secondaryVnic.IsPrimary == nil || !*secondaryVnic.IsPrimary) && secondaryVnic.PrivateIp != nil && *secondaryVnic.PrivateIp != "" {
+					ip := net.ParseIP(*secondaryVnic.PrivateIp)
+					if ip == nil {
+						return nil, fmt.Errorf("instance has invalid private address: %q", *secondaryVnic.PrivateIp)
+					}
+					addresses = append(addresses, api.NodeAddress{Type: api.NodeInternalIP, Address: ip.String()})
+				}
+
+				if (secondaryVnic.IsPrimary == nil || !*secondaryVnic.IsPrimary) && secondaryVnic.PublicIp != nil && *secondaryVnic.PublicIp != "" {
+					ip := net.ParseIP(*secondaryVnic.PublicIp)
+					if ip == nil {
+						return nil, errors.Errorf("instance has invalid public address: %q", *secondaryVnic.PublicIp)
+					}
+					addresses = append(addresses, api.NodeAddress{Type: api.NodeExternalIP, Address: ip.String()})
+				}
+			}
+		}
+		nodeIpFamily, err := cp.getNodeIpFamily(instanceID)
+		if err != nil {
+			return nil, err
+		}
+		if contains(nodeIpFamily, IPv6) {
+			if vnic.Ipv6Addresses != nil {
+				for _, ipv6Addresses := range vnic.Ipv6Addresses {
+					if ipv6Addresses != "" {
+						ip := net.ParseIP(ipv6Addresses)
+						if ip == nil {
+							return nil, errors.Errorf("instance has invalid ipv6 address: %q", vnic.Ipv6Addresses[0])
+						}
+						if ip.IsPrivate() {
+							addresses = append(addresses, api.NodeAddress{Type: api.NodeInternalIP, Address: ip.String()})
+						} else {
+							addresses = append(addresses, api.NodeAddress{Type: api.NodeExternalIP, Address: ip.String()})
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// OKE does not support setting DNS since this changes the override hostname we setup to be the ip address.
 	// Changing this can have wide reaching impact.
 	//
 	// if vnic.HostnameLabel != nil && *vnic.HostnameLabel != "" {
@@ -118,6 +202,38 @@ func (cp *CloudProvider) extractNodeAddresses(ctx context.Context, instanceID st
 	// }
 
 	return addresses, nil
+}
+
+// getNodeIpFamily checks if label exists in the Node
+// oci.oraclecloud.com/ip-family-ipv4
+// oci.oraclecloud.com/ip-family-ipv6
+func (cp *CloudProvider) getNodeIpFamily(instanceId string) ([]string, error) {
+	nodeIpFamily := []string{}
+	nodeList, err := cp.NodeLister.List(labels.Everything())
+	if err != nil {
+		return nodeIpFamily, errors.Wrap(err, "error listing nodes using node informer")
+	}
+
+	// TODO: @prasrira Add a cache to determine nodes that already have label https://github.com/kubernetes/client-go/blob/master/tools/cache/expiration_cache.go
+	for _, node := range nodeList {
+		providerID, err := MapProviderIDToResourceID(node.Spec.ProviderID)
+		if err != nil {
+			return nodeIpFamily, errors.New("Failed to map providerID to instanceID")
+		}
+		if providerID == instanceId {
+			if _, ok := node.Labels[IPv4NodeIPFamilyLabel]; ok {
+				nodeIpFamily = append(nodeIpFamily, IPv4)
+			}
+			if _, ok := node.Labels[IPv6NodeIPFamilyLabel]; ok {
+				nodeIpFamily = append(nodeIpFamily, IPv6)
+			}
+			break
+		}
+	}
+	if len(nodeIpFamily) != 0 {
+		cp.logger.Debugf("NodeIpFamily is %s for instance id %s", strings.Join(nodeIpFamily, ","), instanceId)
+	}
+	return nodeIpFamily, nil
 }
 
 // NodeAddresses returns the addresses of the specified instance.
@@ -145,14 +261,14 @@ func (cp *CloudProvider) NodeAddresses(ctx context.Context, name types.NodeName)
 // nodeaddresses are being queried. i.e. local metadata services cannot be used
 // in this method to obtain nodeaddresses.
 func (cp *CloudProvider) NodeAddressesByProviderID(ctx context.Context, providerID string) ([]api.NodeAddress, error) {
-	cp.logger.With("instanceID", providerID).Debug("Getting node addresses by provider id")
+	cp.logger.With("resourceID", providerID).Debug("Getting node addresses by provider id")
 
-	instanceID, err := MapProviderIDToResourceID(providerID)
+	resourceID, err := MapProviderIDToResourceID(providerID)
 	if err != nil {
-		return nil, errors.Wrap(err, "MapProviderIDToResourceID")
+		return nil, errors.Wrap(err, "MapProviderIDToResourceOCID")
 	}
-	return cp.extractNodeAddresses(ctx, instanceID)
 
+	return cp.extractNodeAddresses(ctx, resourceID)
 }
 
 // InstanceID returns the cloud provider ID of the node with the specified NodeName.
@@ -194,13 +310,14 @@ func (cp *CloudProvider) InstanceType(ctx context.Context, name types.NodeName) 
 
 // InstanceTypeByProviderID returns the type of the specified instance.
 func (cp *CloudProvider) InstanceTypeByProviderID(ctx context.Context, providerID string) (string, error) {
-	cp.logger.With("instanceID", providerID).Debug("Getting instance type by provider id")
+	cp.logger.With("resourceID", providerID).Debug("Getting instance type by provider id")
 
-	instanceID, err := MapProviderIDToResourceID(providerID)
+	resourceID, err := MapProviderIDToResourceID(providerID)
 	if err != nil {
-		return "", errors.Wrap(err, "MapProviderIDToResourceID")
+		return "", errors.Wrap(err, "MapProviderIDToResourceOCID")
 	}
-	item, exists, err := cp.instanceCache.GetByKey(instanceID)
+
+	item, exists, err := cp.instanceCache.GetByKey(resourceID)
 	if err != nil {
 		return "", errors.Wrap(err, "error fetching instance from instanceCache, will retry")
 	}
@@ -208,7 +325,7 @@ func (cp *CloudProvider) InstanceTypeByProviderID(ctx context.Context, providerI
 		return *item.(*core.Instance).Shape, nil
 	}
 	cp.logger.Debug("Unable to find the instance information from instanceCache. Calling OCI API")
-	inst, err := cp.client.Compute().GetInstance(ctx, instanceID)
+	inst, err := cp.client.Compute().GetInstance(ctx, resourceID)
 	if err != nil {
 		return "", errors.Wrap(err, "GetInstance")
 	}
@@ -235,16 +352,15 @@ func (cp *CloudProvider) CurrentNodeName(ctx context.Context, hostname string) (
 // provider id still is running. If false is returned with no error, the
 // instance will be immediately deleted by the cloud controller manager.
 func (cp *CloudProvider) InstanceExistsByProviderID(ctx context.Context, providerID string) (bool, error) {
-	//Please do not try to optimise it by using InstanceCache because we prefer correctness over efficiency here
-	cp.logger.With("instanceID", providerID).Debug("Checking instance exists by provider id")
-	instanceID, err := MapProviderIDToResourceID(providerID)
+	//Please do not try to optimise it by using Cache because we prefer correctness over efficiency here
+	cp.logger.With("resourceID", providerID).Debug("Checking instance exists by provider id")
+	resourceID, err := MapProviderIDToResourceID(providerID)
 	if err != nil {
 		return false, err
 	}
-	instance, err := cp.client.Compute().GetInstance(ctx, instanceID)
+	instance, err := cp.client.Compute().GetInstance(ctx, resourceID)
 	if client.IsNotFound(err) {
 		return cp.checkForAuthorizationError(ctx, providerID)
-
 	}
 	if err != nil {
 		return false, err
@@ -260,7 +376,7 @@ func (cp *CloudProvider) checkForAuthorizationError(ctx context.Context, instanc
 		return false, err
 	}
 	// to eliminate AD specific issues, list all ADs and make AD specific requests
-	availabilityDomains, err := cp.client.Identity().ListAvailabilityDomains(ctx, compartmentId)
+	availabilityDomains, err := cp.client.Identity(nil).ListAvailabilityDomains(ctx, compartmentId)
 	for _, availabilityDomain := range availabilityDomains {
 		instances, err := cp.client.Compute().ListInstancesByCompartmentAndAD(ctx, compartmentId, *availabilityDomain.Name)
 		// if we are getting errors for ListInstances the issue can be authorization or other issues
@@ -284,13 +400,13 @@ func (cp *CloudProvider) checkForAuthorizationError(ctx context.Context, instanc
 // InstanceShutdownByProviderID returns true if the instance is shutdown in cloudprovider.
 func (cp *CloudProvider) InstanceShutdownByProviderID(ctx context.Context, providerID string) (bool, error) {
 	//Please do not try to optimise it by using InstanceCache because we prefer correctness over efficiency here
-	cp.logger.With("instanceID", providerID).Debug("Checking instance is stopped by provider id")
-	instanceID, err := MapProviderIDToResourceID(providerID)
+	cp.logger.With("resourceID", providerID).Debug("Checking instance is stopped by provider id")
+	resourceID, err := MapProviderIDToResourceID(providerID)
 	if err != nil {
 		return false, err
 	}
 
-	instance, err := cp.client.Compute().GetInstance(ctx, instanceID)
+	instance, err := cp.client.Compute().GetInstance(ctx, resourceID)
 	if err != nil {
 		return false, err
 	}
@@ -311,4 +427,36 @@ func (cp *CloudProvider) getCompartmentIDByNodeName(nodeName string) (string, er
 	}
 	cp.logger.Debug("CompartmentID annotation is not present")
 	return "", errors.New("compartmentID annotation missing in the node. Would retry")
+}
+
+func (cp *CloudProvider) getOpenShiftTagNamespaceByInstance(ctx context.Context, instanceID string) string {
+	instance, err := cp.client.Compute().GetInstance(ctx, instanceID)
+	if err != nil {
+		return ""
+	}
+
+	if instance.DefinedTags == nil {
+		return ""
+	}
+
+	for namespace := range instance.DefinedTags {
+		if strings.HasPrefix(namespace, OpenShiftTagNamesapcePrefix) {
+			return namespace
+		}
+	}
+	return ""
+}
+
+func (cp *CloudProvider) checkOpenShiftISCSIBootVolumeTagByVnic(ctx context.Context, vnic *core.Vnic, namespace string) bool {
+	if vnic.DefinedTags == nil {
+		return false
+	}
+
+	if tags, namespaceExists := vnic.DefinedTags[namespace]; namespaceExists {
+		// Check if the boot volume type key exists and its value is ISCSI
+		if bootVolume, keyExists := tags[OpenShiftBootVolumeType]; keyExists && bootVolume == OpenShiftBootVolumeISCSI {
+			return true
+		}
+	}
+	return false
 }

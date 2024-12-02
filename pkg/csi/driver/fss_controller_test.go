@@ -33,8 +33,13 @@ import (
 	fss "github.com/oracle/oci-go-sdk/v65/filestorage"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	authv1 "k8s.io/api/authentication/v1"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -49,6 +54,13 @@ var (
 			LifecycleState:     fss.MountTargetLifecycleStateCreating,
 			AvailabilityDomain: common.String("NWuj:PHX-AD-2"),
 			Id:                 common.String("mount-target-stuck-creating"),
+		},
+		"private-ip-fetch-error": {
+			DisplayName:        common.String("private-ip-fetch-error"),
+			LifecycleState:     fss.MountTargetLifecycleStateActive,
+			AvailabilityDomain: common.String("NWuj:PHX-AD-2"),
+			Id:                 common.String("private-ip-fetch-error"),
+			PrivateIpIds:       []string{"private-ip-fetch-error"},
 		},
 	}
 
@@ -355,18 +367,7 @@ func (c *MockFileStorageClient) AwaitMountTargetActive(ctx context.Context, logg
 	}, ctx.Done()); err != nil {
 		return nil, err
 	}
-	idMt := "oc1.mounttarget.xxxx"
-	ad := "zkJl:US-ASHBURN-AD-1"
-	privateIpIds := []string{"10.0.20.1"}
-	displayName := "mountTarget"
-	idEx := "oc1.export.xxxx"
-	return &filestorage.MountTarget{
-		Id:                 &idMt,
-		AvailabilityDomain: &ad,
-		DisplayName:        &displayName,
-		PrivateIpIds:       privateIpIds,
-		ExportSetId:        &idEx,
-	}, nil
+	return mt, nil
 }
 
 // CreateMountTarget mocks the FileStorage CreateMountTarget implementation.
@@ -394,7 +395,7 @@ func (c *MockFileStorageClient) DeleteMountTarget(ctx context.Context, id string
 }
 
 // FSS mocks client FileStorage implementation
-func (p *MockProvisionerClient) FSS() client.FileStorageInterface {
+func (p *MockProvisionerClient) FSS(ociClientConfig *client.OCIClientConfig) client.FileStorageInterface {
 	return &MockFileStorageClient{}
 }
 
@@ -410,7 +411,10 @@ func (m MockFSSProvisionerClient) LoadBalancer(*zap.SugaredLogger, string, strin
 	return &MockLoadBalancerClient{}
 }
 
-func (m MockFSSProvisionerClient) Networking() client.NetworkingInterface {
+func (m MockFSSProvisionerClient) Networking(ociClientConfig *client.OCIClientConfig) client.NetworkingInterface {
+	if ociClientConfig != nil && ociClientConfig.TenancyId == "test-tenancy" {
+		return nil
+	}
 	return &MockVirtualNetworkClient{}
 }
 
@@ -418,11 +422,17 @@ func (m MockFSSProvisionerClient) BlockStorage() client.BlockStorageInterface {
 	return &MockBlockStorageClient{}
 }
 
-func (m MockFSSProvisionerClient) FSS() client.FileStorageInterface {
+func (m MockFSSProvisionerClient) FSS(ociClientConfig *client.OCIClientConfig) client.FileStorageInterface {
+	if ociClientConfig != nil && ociClientConfig.TenancyId == "test2-tenancy" {
+		return nil
+	}
 	return &MockFileStorageClient{}
 }
 
-func (m MockFSSProvisionerClient) Identity() client.IdentityInterface {
+func (m MockFSSProvisionerClient) Identity(ociClientConfig *client.OCIClientConfig) client.IdentityInterface {
+	if ociClientConfig != nil && ociClientConfig.TenancyId == "test1-tenancy" {
+		return nil
+	}
 	return &MockIdentityClient{}
 }
 
@@ -441,6 +451,7 @@ func TestFSSControllerDriver_CreateVolume(t *testing.T) {
 	type args struct {
 		ctx context.Context
 		req *csi.CreateVolumeRequest
+		tenancyId string
 	}
 	tests := []struct {
 		name    string
@@ -529,6 +540,24 @@ func TestFSSControllerDriver_CreateVolume(t *testing.T) {
 			},
 			want:    nil,
 			wantErr: errors.New("Neither Mount Target Ocid nor Mount Target Subnet Ocid provided in storage class"),
+		},
+		{
+			name:   "Error during mount target IP fetch",
+			fields: fields{},
+			args: args{
+				ctx: context.Background(),
+				req: &csi.CreateVolumeRequest{
+					Name:       "private-ip-fetch-error",
+					Parameters: map[string]string{"availabilityDomain": "US-ASHBURN-AD-1", "mountTargetSubnetOcid": "oc1.subnet.xxxx"},
+					VolumeCapabilities: []*csi.VolumeCapability{{
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+						},
+					}},
+				},
+			},
+			want:    nil,
+			wantErr: errors.New("Failed to get mount target privateIp ip from ip id"),
 		},
 		{
 			name:   "Time out during file system idempotency check",
@@ -639,15 +668,75 @@ func TestFSSControllerDriver_CreateVolume(t *testing.T) {
 			want:    nil,
 			wantErr: errors.New("await export failed with time out"),
 		},
+		{
+			name:   "Error for Creating incorrect Networking client",
+			fields: fields{},
+			args: args{
+				ctx: context.Background(),
+				req: &csi.CreateVolumeRequest{
+					Name:       "volume-name",
+					Parameters: map[string]string{"availabilityDomain": "US-ASHBURN-AD-1", "mountTargetOcid": "oc1.mounttarget.xxxx", "csi.storage.k8s.io/provisioner-secret-name": "fss-secret", "csi.storage.k8s.io/provisioner-secret-namespace": ""},
+					VolumeCapabilities: []*csi.VolumeCapability{{
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+						},
+					}},
+					Secrets: map[string]string{"serviceAccount": "", "serviceAccountNamespace": "", "parentRptURL": "testurl"},
+				},
+				tenancyId: "test-tenancy",
+			},
+			want:    nil,
+			wantErr: status.Error(codes.Internal, "Unable to create networking client"),
+		},
+		{
+			name:   "Error for Creating incorrect Identity client",
+			fields: fields{},
+			args: args{
+				ctx: context.Background(),
+				req: &csi.CreateVolumeRequest{
+					Name:       "volume-name",
+					Parameters: map[string]string{"availabilityDomain": "US-ASHBURN-AD-1", "mountTargetOcid": "oc1.mounttarget.xxxx", "csi.storage.k8s.io/provisioner-secret-name": "fss-secret", "csi.storage.k8s.io/provisioner-secret-namespace": ""},
+					VolumeCapabilities: []*csi.VolumeCapability{{
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+						},
+					}},
+					Secrets: map[string]string{"serviceAccount": "", "serviceAccountNamespace": "", "parentRptURL": "testurl"},
+				},
+				tenancyId: "test1-tenancy",
+			},
+			want:    nil,
+			wantErr: status.Error(codes.Internal, "Unable to create identity client"),
+		},
+		{
+			name:   "Error for Creating incorrect FSS client",
+			fields: fields{},
+			args: args{
+				ctx: context.Background(),
+				req: &csi.CreateVolumeRequest{
+					Name:       "volume-name",
+					Parameters: map[string]string{"availabilityDomain": "US-ASHBURN-AD-1", "mountTargetOcid": "oc1.mounttarget.xxxx", "csi.storage.k8s.io/provisioner-secret-name": "fss-secret", "csi.storage.k8s.io/provisioner-secret-namespace": ""},
+					VolumeCapabilities: []*csi.VolumeCapability{{
+						AccessMode: &csi.VolumeCapability_AccessMode{
+							Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+						},
+					}},
+					Secrets: map[string]string{"serviceAccount": "", "serviceAccountNamespace": "", "parentRptURL": "testurl"},
+				},
+				tenancyId: "test2-tenancy",
+			},
+			want:    nil,
+			wantErr: status.Error(codes.Internal, "Unable to create fss client"),
+		},
 	}
 	for _, tt := range tests {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 		t.Run(tt.name, func(t *testing.T) {
-			d := &FSSControllerDriver{ControllerDriver{
+			d := &FSSControllerDriver{ControllerDriver: ControllerDriver{
 				KubeClient: nil,
 				logger:     zap.S(),
-				config:     &providercfg.Config{CompartmentID: ""},
+				config:     &providercfg.Config{CompartmentID: "", Auth: config.AuthConfig{TenancyID: tt.args.tenancyId}},
 				client:     NewClientProvisioner(nil, nil, &MockFileStorageClient{}),
 				util:       &csi_util.Util{},
 			}}
@@ -678,6 +767,7 @@ func TestFSSControllerDriver_DeleteVolume(t *testing.T) {
 	type args struct {
 		ctx context.Context
 		req *csi.DeleteVolumeRequest
+		tenancyId string
 	}
 	tests := []struct {
 		name    string
@@ -736,13 +826,24 @@ func TestFSSControllerDriver_DeleteVolume(t *testing.T) {
 			want:    &csi.DeleteVolumeResponse{},
 			wantErr: nil,
 		},
+		{
+			name:   "Error while creating fss client",
+			fields: fields{},
+			args: args{
+				ctx: context.Background(),
+				req: &csi.DeleteVolumeRequest{VolumeId: "oc1.filesystem.xxxx:10.0.10.207:/export-path", Secrets: map[string]string{"serviceAccount": "", "serviceAccountNamespace": "", "parentRptURL": "testurl"}},
+				tenancyId: "test2-tenancy",
+			},
+			want:    nil,
+			wantErr: status.Error(codes.Internal, "Unable to create fss client"),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &FSSControllerDriver{ControllerDriver{
+			d := &FSSControllerDriver{ControllerDriver: ControllerDriver{
 				KubeClient: nil,
 				logger:     zap.S(),
-				config:     &providercfg.Config{CompartmentID: ""},
+				config:     &providercfg.Config{CompartmentID: "", Auth: config.AuthConfig{TenancyID: tt.args.tenancyId}},
 				client:     NewClientProvisioner(nil, nil, &MockFileStorageClient{}),
 				util:       &csi_util.Util{},
 			}}
@@ -905,14 +1006,14 @@ func TestExtractStorageClassParameters(t *testing.T) {
 	ctx := context.Background()
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			d := &FSSControllerDriver{ControllerDriver{
+			d := &FSSControllerDriver{ControllerDriver: ControllerDriver{
 				KubeClient: nil,
 				logger:     zap.S(),
 				config:     &providercfg.Config{CompartmentID: "oc1.compartment.xxxx"},
 				client:     NewClientProvisioner(nil, nil, &MockFileStorageClient{}),
 				util:       &csi_util.Util{},
 			}}
-			_, _, gotStorageClassParameters, err, _ := extractStorageClassParameters(ctx, d, d.logger, map[string]string{}, "ut-volume", tt.parameters, time.Now())
+			_, _, gotStorageClassParameters, err, _ := extractStorageClassParameters(ctx, d, d.logger, map[string]string{}, "ut-volume", tt.parameters, time.Now(), &MockIdentityClient{})
 			if tt.wantErr == false && err != nil {
 				t.Errorf("got error %q, want none", err)
 			}
@@ -933,4 +1034,370 @@ func isStorageClassParametersEqual(gotStorageClassParameters, expectedStorageCla
 		(gotStorageClassParameters.compartmentOcid == expectedStorageClassParameters.compartmentOcid) &&
 		(gotStorageClassParameters.exportPath == expectedStorageClassParameters.exportPath) &&
 		(gotStorageClassParameters.kmsKey == expectedStorageClassParameters.kmsKey)
+}
+
+func Test_validateMountTargetWithClusterIpFamily(t *testing.T) {
+
+	ipv4ClusterDriver := &FSSControllerDriver{ControllerDriver: ControllerDriver{
+		clusterIpFamily: csi_util.Ipv4Stack,
+	}}
+
+	ipv6ClusterDriver := &FSSControllerDriver{ControllerDriver: ControllerDriver{
+		clusterIpFamily: csi_util.Ipv6Stack,
+	}}
+
+	dualStackClusterDriver := &FSSControllerDriver{ControllerDriver: ControllerDriver{
+		clusterIpFamily: strings.Join([]string{csi_util.Ipv4Stack, csi_util.Ipv6Stack}, ","),
+	}}
+
+	tests := []struct {
+		name         string
+		driver       *FSSControllerDriver
+		mtIpv6Ids    []string
+		privateIpIds []string
+		wantErr      error
+	}{
+		{
+			name:      "Should error when ipv6 mount target specified for ipv4 cluster",
+			driver:    ipv4ClusterDriver,
+			mtIpv6Ids: []string{"fd00:00c1::a9fe:202"},
+			wantErr:   status.Errorf(codes.InvalidArgument, "Invalid mount target. For using ipv6 mount target, cluster needs to be ipv6 or dual stack but found to be %s.", ipv4ClusterDriver.clusterIpFamily),
+		},
+		{
+			name:         "Should error when ipv4 mount target specified for ipv6 cluster",
+			driver:       ipv6ClusterDriver,
+			privateIpIds: []string{"10.0.10.1"},
+			wantErr:      status.Errorf(codes.InvalidArgument, "Invalid mount target. For using ipv4 mount target, cluster needs to ipv4 or dual stack but found to be %s.", ipv6ClusterDriver.clusterIpFamily),
+		},
+		{
+			name:      "Should not return error when ipv6 mount target specified for ipv6 cluster",
+			driver:    ipv6ClusterDriver,
+			mtIpv6Ids: []string{"fd00:00c1::a9fe:202"},
+			wantErr:   nil,
+		},
+		{
+			name:      "Should not return error when ipv6 mount target specified for dual stack cluster",
+			driver:    dualStackClusterDriver,
+			mtIpv6Ids: []string{"fd00:00c1::a9fe:202"},
+			wantErr:   nil,
+		},
+		{
+			name:         "Should not return error when ipv4 mount target specified for ipv4 stack cluster",
+			driver:       ipv4ClusterDriver,
+			privateIpIds: []string{"10.0.10.1"},
+			wantErr:      nil,
+		},
+		{
+			name:         "Should not return error when ipv4 mount target specified for dual stack cluster",
+			driver:       dualStackClusterDriver,
+			privateIpIds: []string{"10.0.10.1"},
+			wantErr:      nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotErr := tt.driver.validateMountTargetWithClusterIpFamily(tt.mtIpv6Ids, tt.privateIpIds)
+
+			if tt.wantErr != gotErr && !strings.EqualFold(tt.wantErr.Error(), gotErr.Error()) {
+				t.Errorf("validateMountTargetWithClusterIpFamily() = %v, want %v", gotErr.Error(), tt.wantErr.Error())
+			}
+		})
+	}
+
+}
+
+func Test_validateMountTargetSubnetWithClusterIpFamily(t *testing.T) {
+	logger := zap.S()
+	ipv4ClusterDriver := &FSSControllerDriver{ControllerDriver: ControllerDriver{
+		KubeClient:      nil,
+		logger:          logger,
+		config:          &providercfg.Config{CompartmentID: "oc1.compartment.xxxx"},
+		util:            &csi_util.Util{},
+		clusterIpFamily: csi_util.Ipv4Stack,
+		client:          NewClientProvisioner(nil, nil, &MockFileStorageClient{}),
+	}}
+
+	ipv6ClusterDriver := &FSSControllerDriver{ControllerDriver: ControllerDriver{
+		KubeClient:      nil,
+		logger:          logger,
+		config:          &providercfg.Config{CompartmentID: "oc1.compartment.xxxx"},
+		util:            &csi_util.Util{},
+		clusterIpFamily: csi_util.Ipv6Stack,
+		client:          NewClientProvisioner(nil, nil, &MockFileStorageClient{}),
+	}}
+
+	dualStackClusterDriver := &FSSControllerDriver{ControllerDriver: ControllerDriver{
+		KubeClient:      nil,
+		logger:          logger,
+		config:          &providercfg.Config{CompartmentID: "oc1.compartment.xxxx"},
+		util:            &csi_util.Util{},
+		clusterIpFamily: strings.Join([]string{csi_util.Ipv4Stack, csi_util.Ipv6Stack}, ","),
+		client:          NewClientProvisioner(nil, nil, &MockFileStorageClient{}),
+	}}
+
+	tests := []struct {
+		name                string
+		driver              *FSSControllerDriver
+		mountTargetSubnetId string
+		wantErr             error
+	}{
+		{
+			name:                "Should not return error when ipv4 mount target subnet is used with ipv4 clusters",
+			driver:              ipv4ClusterDriver,
+			mountTargetSubnetId: "ocid1.ipv4-subnet",
+			wantErr:             nil,
+		},
+		{
+			name:                "Should return error when ipv6 mount target subnet is used with ipv4 clusters",
+			driver:              ipv4ClusterDriver,
+			mountTargetSubnetId: "ocid1.ipv6-subnet",
+			wantErr:             status.Errorf(codes.InvalidArgument, "Invalid mount target subnet. For using ipv6 mount target subnet, cluster needs to be ipv6 or dual stack but found to be %s.", ipv4ClusterDriver.clusterIpFamily),
+		},
+		{
+			name:                "Should not return error when dual stack mount target subnet is used with ipv4 clusters",
+			driver:              ipv4ClusterDriver,
+			mountTargetSubnetId: "ocid1.dual-stack-subnet",
+			wantErr:             nil,
+		},
+		{
+			name:                "Should return error when ipv4 mount target subnet is used with ipv6 clusters",
+			driver:              ipv6ClusterDriver,
+			mountTargetSubnetId: "ocid1.ipv4-subnet",
+			wantErr:             status.Errorf(codes.InvalidArgument, "Invalid mount target subnet. For using ipv4 mount target subnet, cluster needs to be ipv4 or dual stack but found to be %s.", ipv6ClusterDriver.clusterIpFamily),
+		},
+		{
+			name:                "Should return error when dual stack mount target subnet is used with ipv6 clusters",
+			driver:              ipv6ClusterDriver,
+			mountTargetSubnetId: "ocid1.dual-stack-subnet",
+			wantErr:             status.Errorf(codes.InvalidArgument, "Invalid mount target subnet. For using dual stack mount target subnet, cluster needs to ipv4 or dual stack but found to be %s.", ipv6ClusterDriver.clusterIpFamily),
+		},
+		{
+			name:                "Should not return error when ipv6 mount target subnet is used with ipv6 clusters",
+			driver:              ipv6ClusterDriver,
+			mountTargetSubnetId: "ocid1.ipv6-subnet",
+			wantErr:             nil,
+		},
+		{
+			name:                "Should not return error when ipv4 mount target subnet is used with dual stack clusters",
+			driver:              dualStackClusterDriver,
+			mountTargetSubnetId: "ocid1.ipv4-subnet",
+			wantErr:             nil,
+		},
+		{
+			name:                "Should not return error when ipv6 mount target subnet is used with dual stack clusters",
+			driver:              dualStackClusterDriver,
+			mountTargetSubnetId: "ocid1.ipv6-subnet",
+			wantErr:             nil,
+		},
+		{
+			name:                "Should not return error when dual stack mount target subnet is used with dual stack clusters",
+			driver:              dualStackClusterDriver,
+			mountTargetSubnetId: "ocid1.dual-stack-subnet",
+			wantErr:             nil,
+		},
+		{
+			name:                "Should return error when invalid mount target subnet is used",
+			driver:              ipv4ClusterDriver,
+			mountTargetSubnetId: "ocid1.invalid-subnet",
+			wantErr:             status.Errorf(codes.Internal, "Failed to get mount target subnet, error: %s", "Internal Error."),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotErr := tt.driver.validateMountTargetSubnetWithClusterIpFamily(context.Background(), tt.mountTargetSubnetId, logger, &MockVirtualNetworkClient{})
+
+			if tt.wantErr != gotErr && !strings.EqualFold(tt.wantErr.Error(), gotErr.Error()) {
+				t.Errorf("validateMountTargetWithClusterIpFamily() = %v, want %v", gotErr.Error(), tt.wantErr.Error())
+			}
+		})
+	}
+
+}
+
+func Test_extractSecretParameters(t *testing.T) {
+
+	tests := map[string]struct {
+		parameters                map[string]string
+		expectedSecretsParameters *SecretParameters
+		wantErr                   error
+		wantErrMessage            string
+	}{
+		"Extract secret parameters with only sa": {
+			parameters: map[string]string{
+				"serviceAccount":          "sa",
+				"serviceAccountNamespace": "",
+				"parentRptURL":            "",
+			},
+			expectedSecretsParameters: &SecretParameters{
+				serviceAccount:          "sa",
+				serviceAccountNamespace: "",
+				parentRptURL:            "",
+			},
+			wantErr:        nil,
+			wantErrMessage: "",
+		},
+		"Extract secret parameters with only sa namespace": {
+			parameters: map[string]string{
+				"serviceAccount":          "",
+				"serviceAccountNamespace": "sa-namespace",
+				"parentRptURL":            "",
+			},
+			expectedSecretsParameters: &SecretParameters{
+				serviceAccount:          "",
+				serviceAccountNamespace: "sa-namespace",
+				parentRptURL:            "",
+			},
+			wantErr:        nil,
+			wantErrMessage: "",
+		},
+		"Extract secret parameters with both sa & sa namespace empty": {
+			parameters: map[string]string{
+				"serviceAccount":          "",
+				"serviceAccountNamespace": "",
+				"parentRptURL":            "",
+			},
+			expectedSecretsParameters: &SecretParameters{
+				serviceAccount:          "",
+				serviceAccountNamespace: "",
+				parentRptURL:            "",
+			},
+			wantErr:        nil,
+			wantErrMessage: "",
+		},
+		"Extract secret parameters with both sa & sa namespace": {
+			parameters: map[string]string{
+				"serviceAccount":          "sa",
+				"serviceAccountNamespace": "sa-namespace",
+				"parentRptURL":            "",
+			},
+			expectedSecretsParameters: &SecretParameters{
+				serviceAccount:          "sa",
+				serviceAccountNamespace: "sa-namespace",
+				parentRptURL:            "",
+			},
+			wantErr:        nil,
+			wantErrMessage: "",
+		},
+		"Extract secret parameters with wrong serviceAccount key": {
+			parameters: map[string]string{
+				"dsfsdf":                  "sa",
+				"serviceAccountNamespace": "sa-namespace",
+				"parentRptURL":            "",
+			},
+			expectedSecretsParameters: &SecretParameters{
+				serviceAccount:          "",
+				serviceAccountNamespace: "sa-namespace",
+				parentRptURL:            "",
+			},
+			wantErr:        errors.New("wrong serviceAccount key is used"),
+			wantErrMessage: "",
+		},
+		"Extract secret parameters with wrong serviceAccountNamespace key": {
+			parameters: map[string]string{
+				"serviceAccount": "sa",
+				"fdafsdf":        "sa-namespace",
+				"parentRptURL":   "",
+			},
+			expectedSecretsParameters: &SecretParameters{
+				serviceAccount:          "sa",
+				serviceAccountNamespace: "",
+				parentRptURL:            "",
+			},
+			wantErr:        errors.New("wrong serviceAccountNamespace key is used"),
+			wantErrMessage: "",
+		},
+	}
+	logger := zap.S()
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+
+			got := extractSecretParameters(logger, tt.parameters)
+
+			if !reflect.DeepEqual(got, tt.expectedSecretsParameters) {
+				t.Errorf("extractSecretParameters() got = %v, want %v", got, tt.expectedSecretsParameters)
+			}
+		})
+	}
+}
+
+func TestFSSControllerDriver_getServiceAccountToken(t *testing.T) {
+	kc := NewSimpleClientset(
+		&v1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "sa", Namespace: "ns",
+			},
+		})
+
+	factory := informers.NewSharedInformerFactoryWithOptions(kc, time.Second, informers.WithNamespace("ns"))
+	serviceAccountInformer := factory.Core().V1().ServiceAccounts()
+	go serviceAccountInformer.Informer().Run(wait.NeverStop)
+
+	time.Sleep(time.Second)
+
+	fss := &FSSControllerDriver{
+		ControllerDriver: ControllerDriver{
+			client:     nil,
+			KubeClient: kc,
+			config:     &providercfg.Config{CompartmentID: "testCompartment"},
+			logger:     zap.S(),
+		},
+		serviceAccountLister: serviceAccountInformer.Lister(),
+	}
+
+	tests := map[string]struct {
+		saName              string
+		saNamespace         string
+		FSSControllerDriver *FSSControllerDriver
+		want                string
+		wantErr             bool
+	}{
+		"Error for being empty service account name": {
+			saName:              "",
+			saNamespace:         "ds",
+			FSSControllerDriver: fss,
+			want:                "abc",
+			wantErr:             true,
+		},
+		"Error for being empty service account namespace": {
+			saName:              "sa",
+			saNamespace:         "",
+			FSSControllerDriver: fss,
+			want:                "abc",
+			wantErr:             true,
+		},
+		"Error for incorrect service account name": {
+			saName:              "sadsa",
+			saNamespace:         "ds",
+			FSSControllerDriver: fss,
+			want:                "pqr",
+			wantErr:             true,
+		},
+		"Error for incorrect service account namespace": {
+			saName:              "sa",
+			saNamespace:         "dsa",
+			FSSControllerDriver: fss,
+			want:                "pqr",
+			wantErr:             true,
+		},
+		"No Error for existing service account name & service account namespace ": {
+			saName:              "sa",
+			saNamespace:         "ns",
+			FSSControllerDriver: fss,
+			want:                "abc",
+			wantErr:             false,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			tokenRequest := authv1.TokenRequest{Spec: authv1.TokenRequestSpec{ExpirationSeconds: &ServiceAccountTokenExpiry}}
+			exp, _ := fss.KubeClient.CoreV1().ServiceAccounts(tt.saNamespace).CreateToken(context.Background(), tt.saName, &tokenRequest, metav1.CreateOptions{})
+
+			got, _ := tt.FSSControllerDriver.getServiceAccountToken(context.Background(), tt.saName, tt.saNamespace)
+
+			if !reflect.DeepEqual(got, exp) != tt.wantErr && (got.Status.Token != tt.want) {
+				t.Errorf("getServiceAccountToken() expected string = %v, Got String %v", tt.want, got)
+			}
+		})
+	}
 }
