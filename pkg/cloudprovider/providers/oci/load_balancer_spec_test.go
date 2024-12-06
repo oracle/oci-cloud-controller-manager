@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"k8s.io/utils/pointer"
 	"net/http"
 	"reflect"
 	"testing"
@@ -28,6 +27,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/utils/pointer"
 
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
@@ -11854,6 +11854,77 @@ func Test_getLoadBalancerSourceRanges(t *testing.T) {
 				if !contains(tt.sourceCIDRs, cidr) {
 					t.Errorf("getLoadBalancerSourceRanges() = %+v, want %+v", result, tt.sourceCIDRs)
 				}
+			}
+		})
+	}
+}
+
+func TestIsSkipPrivateIP_NLB(t *testing.T) {
+	tests := []struct {
+		name           string
+		svcAnnotations map[string]string
+		expected       bool
+		wantErr        bool
+	}{
+		{
+			name: "skip-private-ip-enabled",
+			svcAnnotations: map[string]string{
+				ServiceAnnotationLoadBalancerType:                  NLB,
+				ServiceAnnotationNetworkLoadBalancerExternalIpOnly: "true",
+			},
+			expected: true,
+			wantErr:  false,
+		},
+		{
+			name: "skip-private-ip-disabled",
+			svcAnnotations: map[string]string{
+				ServiceAnnotationLoadBalancerType:                  NLB,
+				ServiceAnnotationNetworkLoadBalancerExternalIpOnly: "false",
+			},
+			expected: false,
+			wantErr:  false,
+		},
+		{
+			name: "skip-private-ip-invalid-value",
+			svcAnnotations: map[string]string{
+				ServiceAnnotationLoadBalancerType:                  NLB,
+				ServiceAnnotationNetworkLoadBalancerExternalIpOnly: "invalid",
+			},
+			expected: false,
+			wantErr:  true,
+		},
+		{
+			name: "skip-private-ip with internal loadbalancer",
+			svcAnnotations: map[string]string{
+				ServiceAnnotationLoadBalancerType:                  NLB,
+				ServiceAnnotationNetworkLoadBalancerInternal:       "true",
+				ServiceAnnotationNetworkLoadBalancerExternalIpOnly: "true",
+			},
+			expected: false,
+			wantErr:  false,
+		},
+		{
+			name:           "no-skip-private-ip-annotation",
+			svcAnnotations: map[string]string{},
+			expected:       false,
+			wantErr:        false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: tt.svcAnnotations,
+				},
+			}
+			got, err := isSkipPrivateIP(svc)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("isSkipPrivateIP() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.expected {
+				t.Errorf("isSkipPrivateIP() = %v, expected %v", got, tt.expected)
 			}
 		})
 	}
