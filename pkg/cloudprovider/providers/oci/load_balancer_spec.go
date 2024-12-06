@@ -175,6 +175,11 @@ const (
 
 	// ServiceAnnotationLoadbalancerBackendSetSSLConfig is a service annotation allows you to set the cipher suite on the backendSet
 	ServiceAnnotationLoadbalancerBackendSetSSLConfig = "oci.oraclecloud.com/oci-load-balancer-backendset-ssl-config"
+
+	// ServiceAnnotationIngressIpMode is a service annotation allows you to set the ".status.loadBalancer.ingress.ipMode" for a Service
+	// with type set to LoadBalancer.
+	// https://kubernetes.io/docs/concepts/services-networking/service/#load-balancer-ip-mode:~:text=Specifying%20IPMode%20of%20load%20balancer%20status
+	ServiceAnnotationIngressIpMode = "oci.oraclecloud.com/ingress-ip-mode"
 )
 
 // NLB specific annotations
@@ -239,6 +244,9 @@ const (
 
 	// ServiceAnnotationNetworkLoadBalancerIsPpv2Enabled is a service annotation to enable/disable PPv2 feature for the listeners of this NLB.
 	ServiceAnnotationNetworkLoadBalancerIsPpv2Enabled = "oci-network-load-balancer.oraclecloud.com/is-ppv2-enabled"
+
+	// ServiceAnnotationNetworkLoadBalancerExternalIpOnly is a service a boolean annotation to skip private ip when assigning to ingress resource for NLB service
+	ServiceAnnotationNetworkLoadBalancerExternalIpOnly = "oci-network-load-balancer.oraclecloud.com/external-ip-only"
 )
 
 const (
@@ -344,6 +352,7 @@ type LBSpec struct {
 	FreeformTags                map[string]string
 	DefinedTags                 map[string]map[string]interface{}
 	SystemTags                  map[string]map[string]interface{}
+	ingressIpMode               *v1.LoadBalancerIPMode
 
 	service *v1.Service
 	nodes   []*v1.Node
@@ -433,6 +442,11 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, provisionedNodes []*v
 		managedNsg.backendNsgId = backendNsgOcids
 	}
 
+	ingressIpMode, err := getIngressIpMode(svc)
+	if err != nil {
+		return nil, err
+	}
+
 	return &LBSpec{
 		Type:                        lbType,
 		Name:                        GetLoadBalancerName(svc),
@@ -457,6 +471,7 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, provisionedNodes []*v
 		FreeformTags:                lbTags.FreeformTags,
 		DefinedTags:                 lbTags.DefinedTags,
 		SystemTags:                  getResourceTrackingSystemTagsFromConfig(logger, initialLBTags),
+		ingressIpMode:               ingressIpMode,
 	}, nil
 }
 
@@ -1569,4 +1584,54 @@ func isServiceDualStack(svc *v1.Service) bool {
 		return true
 	}
 	return false
+}
+
+// getIngressIpMode reads ingress ipMode specified in the service annotation if exists
+func getIngressIpMode(service *v1.Service) (*v1.LoadBalancerIPMode, error) {
+	var ipMode, exists = "", false
+
+	if ipMode, exists = service.Annotations[ServiceAnnotationIngressIpMode]; !exists {
+		return nil, nil
+	}
+
+	switch strings.ToLower(ipMode) {
+	case "proxy":
+		ipModeProxy := v1.LoadBalancerIPModeProxy
+		return &ipModeProxy, nil
+	case "vip":
+		ipModeProxy := v1.LoadBalancerIPModeVIP
+		return &ipModeProxy, nil
+	default:
+		return nil, errors.New("IpMode can only be set as Proxy or VIP")
+	}
+}
+
+// isSkipPrivateIP determines if skipPrivateIP annotation is set or not
+func isSkipPrivateIP(svc *v1.Service) (bool, error) {
+	lbType := getLoadBalancerType(svc)
+	annotationValue := ""
+	annotationExists := false
+	annotationString := ""
+	annotationValue, annotationExists = svc.Annotations[ServiceAnnotationNetworkLoadBalancerExternalIpOnly]
+	if !annotationExists {
+		return false, nil
+	}
+
+	if lbType != NLB {
+		return false, nil
+	}
+
+	internal, err := isInternalLB(svc)
+	if err != nil {
+		return false, err
+	}
+	if internal {
+		return false, nil
+	}
+
+	skipPrivateIp, err := strconv.ParseBool(annotationValue)
+	if err != nil {
+		return false, errors.Wrap(err, fmt.Sprintf("invalid value: %s provided for annotation: %s", annotationValue, annotationString))
+	}
+	return skipPrivateIp, nil
 }
