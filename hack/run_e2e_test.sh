@@ -68,7 +68,8 @@ function run_e2e_tests_existing_cluster() {
                     --static-snapshot-compartment-id=${STATIC_SNAPSHOT_COMPARTMENT_ID} \
                     --enable-parallel-run=${ENABLE_PARALLEL_RUN} \
                     --run-uhp-e2e=${RUN_UHP_E2E} \
-                    --add-oke-system-tags="false"
+                    --add-oke-system-tags="false" \
+                    --maxpodspernode=${MAX_PODS_PER_NODE}
     else
         ginkgo -v -progress --trace -nodes=${E2E_NODE_COUNT} "${FOCUS_OPT}" "${FOCUS_SKIP_OPT}" "${FOCUS_FP_OPT}"  \
             ginkgo -v -p -progress --trace "${FOCUS_OPT}" "${FOCUS_FP_OPT}"  \
@@ -91,7 +92,8 @@ function run_e2e_tests_existing_cluster() {
                     --static-snapshot-compartment-id=${STATIC_SNAPSHOT_COMPARTMENT_ID} \
                     --enable-parallel-run=${ENABLE_PARALLEL_RUN} \
                     --run-uhp-e2e=${RUN_UHP_E2E} \
-                    --add-oke-system-tags="false"
+                    --add-oke-system-tags="false" \
+                    --maxpodspernode=${MAX_PODS_PER_NODE}
     fi
     retval=$?
     return $retval

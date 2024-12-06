@@ -97,6 +97,7 @@ var (
 	clusterID                     string              // Ocid of the newly created E2E cluster
 	clusterType                   string              // Cluster type can be BASIC_CLUSTER or ENHANCED_CLUSTER (Default: BASIC_CLUSTER)
 	clusterTypeEnum               oke.ClusterTypeEnum // Enum for OKE Cluster Type
+	maxPodsPerNode                int
 )
 
 func init() {
@@ -131,9 +132,12 @@ func init() {
 	flag.BoolVar(&runUhpE2E, "run-uhp-e2e", false, "Run UHP E2Es as well")
 	flag.BoolVar(&enableParallelRun, "enable-parallel-run", true, "Enables parallel running of test suite")
 	flag.BoolVar(&addOkeSystemTags, "add-oke-system-tags", false, "Adds oke system tags to new and existing loadbalancers and storage resources")
-
+	flag.IntVar(&maxPodsPerNode, "maxpodspernode", MAX_PODS_PER_NODE, "maxPods per node for OCI_VCN_IP_NATIVE")
 	flag.StringVar(&clusterType, "cluster-type", "BASIC_CLUSTER", "Cluster type can be BASIC_CLUSTER or ENHANCED_CLUSTER")
 }
+
+// MAX_PODS_PER_NODE : If CNI_TYPE is OCI_VCN_NATIVE MAX_PODS_PER_NODE is set to 12
+const MAX_PODS_PER_NODE = 12
 
 // Framework is the context of the text execution.
 type Framework struct {
@@ -254,6 +258,8 @@ func (f *Framework) Initialize() {
 	Logf("Architecture: %s", f.Architecture)
 	f.Compartment1 = compartment1
 	Logf("OCI compartment1 OCID: %s", f.Compartment1)
+	f.MaxPodsPerNode = maxPodsPerNode
+	Logf("Max pods per node: %s", f.MaxPodsPerNode)
 	f.setImages()
 	if strings.ToUpper(clusterType) == "ENHANCED_CLUSTER" {
 		clusterTypeEnum = oke.ClusterTypeEnhancedCluster

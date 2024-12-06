@@ -244,6 +244,9 @@ const (
 
 	// ServiceAnnotationNetworkLoadBalancerIsPpv2Enabled is a service annotation to enable/disable PPv2 feature for the listeners of this NLB.
 	ServiceAnnotationNetworkLoadBalancerIsPpv2Enabled = "oci-network-load-balancer.oraclecloud.com/is-ppv2-enabled"
+
+	// ServiceAnnotationNetworkLoadBalancerExternalIpOnly is a service a boolean annotation to skip private ip when assigning to ingress resource for NLB service
+	ServiceAnnotationNetworkLoadBalancerExternalIpOnly = "oci-network-load-balancer.oraclecloud.com/external-ip-only"
 )
 
 const (
@@ -1583,7 +1586,7 @@ func isServiceDualStack(svc *v1.Service) bool {
 	return false
 }
 
-// patchIngressIpMode reads ingress ipMode specified in the service annotation if exists
+// getIngressIpMode reads ingress ipMode specified in the service annotation if exists
 func getIngressIpMode(service *v1.Service) (*v1.LoadBalancerIPMode, error) {
 	var ipMode, exists = "", false
 
@@ -1601,4 +1604,34 @@ func getIngressIpMode(service *v1.Service) (*v1.LoadBalancerIPMode, error) {
 	default:
 		return nil, errors.New("IpMode can only be set as Proxy or VIP")
 	}
+}
+
+// isSkipPrivateIP determines if skipPrivateIP annotation is set or not
+func isSkipPrivateIP(svc *v1.Service) (bool, error) {
+	lbType := getLoadBalancerType(svc)
+	annotationValue := ""
+	annotationExists := false
+	annotationString := ""
+	annotationValue, annotationExists = svc.Annotations[ServiceAnnotationNetworkLoadBalancerExternalIpOnly]
+	if !annotationExists {
+		return false, nil
+	}
+
+	if lbType != NLB {
+		return false, nil
+	}
+
+	internal, err := isInternalLB(svc)
+	if err != nil {
+		return false, err
+	}
+	if internal {
+		return false, nil
+	}
+
+	skipPrivateIp, err := strconv.ParseBool(annotationValue)
+	if err != nil {
+		return false, errors.Wrap(err, fmt.Sprintf("invalid value: %s provided for annotation: %s", annotationValue, annotationString))
+	}
+	return skipPrivateIp, nil
 }
