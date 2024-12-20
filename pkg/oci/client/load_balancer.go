@@ -1,4 +1,4 @@
-// Copyright 2018 Oracle and/or its affiliates. All rights reserved.
+// Copyright (C) 2018, 2025, Oracle and/or its affiliates.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package client
 import (
 	"context"
 	"go.uber.org/zap"
+	"sync"
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -33,6 +34,7 @@ const (
 )
 
 type loadbalancerClientStruct struct {
+	nameToOcid      sync.Map
 	loadbalancer    loadBalancerClient
 	requestMetadata common.RequestMetadata
 	rateLimiter     RateLimiter
@@ -64,6 +66,15 @@ type GenericLoadBalancerInterface interface {
 	UpdateLoadBalancer(ctx context.Context, lbID string, details *GenericUpdateLoadBalancerDetails) (string, error)
 }
 
+func NewLBClient(lb loadBalancerClient, rm common.RequestMetadata, lim *RateLimiter) *loadbalancerClientStruct {
+	l := loadbalancerClientStruct{
+		loadbalancer:    lb,
+		requestMetadata: rm,
+		rateLimiter:     *lim,
+	}
+	return &l
+}
+
 func (c *loadbalancerClientStruct) GetLoadBalancer(ctx context.Context, id string) (*GenericLoadBalancer, error) {
 	if !c.rateLimiter.Reader.TryAccept() {
 		return nil, RateLimitError(false, "GetLoadBalancer")
@@ -83,6 +94,29 @@ func (c *loadbalancerClientStruct) GetLoadBalancer(ctx context.Context, id strin
 }
 
 func (c *loadbalancerClientStruct) GetLoadBalancerByName(ctx context.Context, compartmentID, name string) (*GenericLoadBalancer, error) {
+	logger := zap.L().Sugar() // TODO refactor after pull-requests/1389
+	logger = logger.With("lbName", name,
+		"compartment-id", compartmentID,
+		"loadBalancerType", "lb",
+	)
+
+	if ocid, ok := c.nameToOcid.Load(name); ok {
+		var err error
+		ocidStr, ok := ocid.(string)
+		if ok {
+			lb, err := c.GetLoadBalancer(ctx, ocidStr)
+			if err == nil && *lb.DisplayName == name {
+				return lb, err
+			}
+		}
+
+		if !ok || IsNotFound(err) { // Only remove the cached value on 404, not on a 5XX
+			c.nameToOcid.Delete(name)
+		}
+	} else {
+		logger.Info("LB name to OCID cache miss")
+	}
+
 	var page *string
 	for {
 		if !c.rateLimiter.Reader.TryAccept() {
@@ -101,6 +135,7 @@ func (c *loadbalancerClientStruct) GetLoadBalancerByName(ctx context.Context, co
 		}
 		for _, lb := range resp.Items {
 			if *lb.DisplayName == name {
+				c.nameToOcid.Store(name, *lb.Id)
 				return c.loadbalancerToGenericLoadbalancer(&lb), nil
 			}
 		}

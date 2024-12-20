@@ -1,4 +1,4 @@
-// Copyright 2017 Oracle and/or its affiliates. All rights reserved.
+// Copyright (C) 2017, 2025, Oracle and/or its affiliates.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -124,7 +124,7 @@ func NewOCIProvisioner(logger *zap.SugaredLogger, kubeClient kubernetes.Interfac
 
 	rateLimiter := client.NewRateLimiter(logger, cfg.RateLimiter)
 
-	client, err := client.New(logger, cp, &rateLimiter, cfg.Auth.TenancyID)
+	client, err := client.New(logger, cp, &rateLimiter, cfg)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to construct OCI client")
 	}

@@ -1,4 +1,4 @@
-// Copyright 2019 Oracle and/or its affiliates. All rights reserved.
+// Copyright (C) 2019, 2025, Oracle and/or its affiliates.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,6 +29,6 @@ func GetClient(logger *zap.SugaredLogger, cfg *config.Config) (Interface, error)
 
 	rateLimiter := NewRateLimiter(logger, cfg.RateLimiter)
 
-	c, err := New(logger, cp, &rateLimiter, cfg.Auth.TenancyID)
+	c, err := New(logger, cp, &rateLimiter, cfg)
 	return c, err
 }
