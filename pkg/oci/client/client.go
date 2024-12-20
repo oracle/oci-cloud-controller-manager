@@ -18,6 +18,7 @@ import (
 	"context"
 	"time"
 
+	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/common/auth"
 	"github.com/oracle/oci-go-sdk/v65/core"
@@ -194,7 +195,7 @@ type client struct {
 }
 
 // New constructs an OCI API client.
-func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimiter *RateLimiter, targetTenancyID string) (Interface, error) {
+func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimiter *RateLimiter, cloudProviderConfig *providercfg.Config) (Interface, error) {
 
 	compute, err := core.NewComputeClientWithConfigurationProvider(cp)
 	if err != nil {
@@ -283,23 +284,15 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 		RetryPolicy: newRetryPolicy(),
 	}
 
-	loadbalancer := loadbalancerClientStruct{
-		loadbalancer:    lb,
-		requestMetadata: requestMetadata,
-		rateLimiter:     *opRateLimiter,
-	}
-	networkloadbalancer := networkLoadbalancer{
-		networkloadbalancer: nlb,
-		requestMetadata:     requestMetadata,
-		rateLimiter:         *opRateLimiter,
-	}
+	loadbalancer := NewLBClient(lb, requestMetadata, opRateLimiter)
+	networkloadbalancer := NewNLBClient(nlb, requestMetadata, opRateLimiter)
 
 	c := &client{
 		compute:             &compute,
 		network:             &network,
 		identity:            &identity,
-		loadbalancer:        &loadbalancer,
-		networkloadbalancer: &networkloadbalancer,
+		loadbalancer:        loadbalancer,
+		networkloadbalancer: networkloadbalancer,
 		bs:                  &bs,
 		filestorage:         &fss,
 		//compartment:     	 &compartment,

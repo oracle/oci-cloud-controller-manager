@@ -17,6 +17,7 @@ package client
 import (
 	"context"
 	"errors"
+	"fmt"
 	errors2 "github.com/pkg/errors"
 	"log"
 	"strings"
@@ -98,10 +99,112 @@ func TestNLB_AwaitWorkRequest(t *testing.T) {
 	}
 }
 
+var (
+	fakeNlbOcid1   = "ocid.nlb.fake1"
+	fakeNlbName1   = "fake display name 1"
+	fakeNlbOcid2   = "ocid.nlb.fake2"
+	fakeNlbName2   = "fake display name 2"
+	fakeSubnetOcid = "ocid.subnet.fake"
+
+	NLBMap = map[string]networkloadbalancer.NetworkLoadBalancer{
+		"ocid.nlb.fake1": networkloadbalancer.NetworkLoadBalancer{
+			Id:          &fakeNlbOcid1,
+			DisplayName: &fakeNlbName1,
+			SubnetId:    &fakeSubnetOcid,
+		},
+		"ocid.nlb.fake2": networkloadbalancer.NetworkLoadBalancer{
+			Id:          &fakeNlbOcid2,
+			DisplayName: &fakeNlbName2,
+			SubnetId:    &fakeSubnetOcid,
+		},
+	}
+)
+
+func TestGetLoadBalancerByName(t *testing.T) {
+	var totalListCalls int
+	var loadbalancer = NewNLBClient(
+		&MockNetworkLoadBalancerClient{debug: true, listCalls: &totalListCalls},
+		common.RequestMetadata{},
+		&RateLimiter{
+			Reader: flowcontrol.NewFakeAlwaysRateLimiter(),
+			Writer: flowcontrol.NewFakeAlwaysRateLimiter(),
+		})
+
+	var tests = []struct {
+		skip                        bool // set true to skip a test-case
+		compartment, name, testname string
+		want                        string
+		wantErr                     error
+		wantListCalls               int
+	}{
+		{
+			testname:      "getFirstNLBFirstTime",
+			compartment:   "ocid.compartment.fake",
+			name:          fakeNlbName1,
+			want:          fakeNlbOcid1,
+			wantErr:       nil,
+			wantListCalls: 1,
+		},
+		{
+			testname:      "getFirstNLBSecondTime",
+			compartment:   "ocid.compartment.fake",
+			name:          fakeNlbName1,
+			want:          fakeNlbOcid1,
+			wantErr:       nil,
+			wantListCalls: 1, // totals, no new list should be performed
+		},
+		{
+			testname:      "getSecondNLBTime",
+			compartment:   "ocid.compartment.fake",
+			name:          fakeNlbName2,
+			want:          fakeNlbOcid2,
+			wantErr:       nil,
+			wantListCalls: 2,
+		},
+		{
+			testname:      "getFirstNLBThirdTime",
+			compartment:   "ocid.compartment.fake",
+			name:          fakeNlbName1,
+			want:          fakeNlbOcid1,
+			wantErr:       nil,
+			wantListCalls: 2,
+		},
+		{
+			testname:      "getSecondNLBSecondTime",
+			compartment:   "ocid.compartment.fake",
+			name:          fakeNlbName2,
+			want:          fakeNlbOcid2,
+			wantErr:       nil,
+			wantListCalls: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		if tt.skip {
+			continue
+		}
+
+		t.Run(tt.testname, func(t *testing.T) {
+			log.Println("running test ", tt.testname)
+			got, err := loadbalancer.GetLoadBalancerByName(context.Background(), tt.compartment, tt.name)
+			if got == nil || *got.Id != tt.want {
+				t.Errorf("Expected %v, but got %v", tt.want, got)
+			}
+			if !errors.Is(err, tt.wantErr) {
+				t.Errorf("Expected error = %v, but got %v", tt.wantErr, err)
+			}
+			if totalListCalls != tt.wantListCalls {
+				t.Errorf("Expected the total number of NLB list calls %d, but got %d", tt.wantListCalls, totalListCalls)
+			}
+		})
+	}
+}
+
 type MockNetworkLoadBalancerClient struct {
 	// MockLoadBalancerClient mocks LoadBalancer client implementation.
-	counter int
-	debug   bool // set true to run tests with debug logs
+	counter   int
+	debug     bool // set true to run tests with debug logs
+	listCalls *int // number of list operations performed
 }
 
 type getNetworkLoadBalancerWorkRequestResponse struct {
@@ -173,12 +276,27 @@ func (c *MockNetworkLoadBalancerClient) GetWorkRequest(ctx context.Context, requ
 }
 
 func (c *MockNetworkLoadBalancerClient) GetNetworkLoadBalancer(ctx context.Context, request networkloadbalancer.GetNetworkLoadBalancerRequest) (response networkloadbalancer.GetNetworkLoadBalancerResponse, err error) {
+	if c.debug {
+		log.Println(fmt.Sprintf("Getting NLB %v", *request.NetworkLoadBalancerId))
+	}
+
+	response = networkloadbalancer.GetNetworkLoadBalancerResponse{
+		NetworkLoadBalancer: NLBMap[*request.NetworkLoadBalancerId],
+	}
 	return
 }
 func (c *MockNetworkLoadBalancerClient) ListWorkRequests(ctx context.Context, request networkloadbalancer.ListWorkRequestsRequest) (response networkloadbalancer.ListWorkRequestsResponse, err error) {
 	return
 }
 func (c *MockNetworkLoadBalancerClient) ListNetworkLoadBalancers(ctx context.Context, request networkloadbalancer.ListNetworkLoadBalancersRequest) (response networkloadbalancer.ListNetworkLoadBalancersResponse, err error) {
+	if c.debug {
+		log.Println(fmt.Sprintf("Lising NLBs in compartment %v", *request.CompartmentId))
+	}
+
+	for _, nlb := range NLBMap {
+		response.NetworkLoadBalancerCollection.Items = append(response.NetworkLoadBalancerCollection.Items, networkloadbalancer.NetworkLoadBalancerSummary(nlb))
+	}
+	*c.listCalls += 1
 	return
 }
 func (c *MockNetworkLoadBalancerClient) CreateNetworkLoadBalancer(ctx context.Context, request networkloadbalancer.CreateNetworkLoadBalancerRequest) (response networkloadbalancer.CreateNetworkLoadBalancerResponse, err error) {
