@@ -1468,6 +1468,31 @@ func (j *PVCTestJig) CheckSinglePodReadWrite(namespace string, pvcName string, c
 
 	return podName, readPodName
 }
+func (j *PVCTestJig) CheckSinglePodReadWriteLustre(namespace string, pvcName string, expectedMountOptions []string, checkLustreParameters bool) (string, string) {
+
+	By("Creating Pod that can create and write to the file")
+	uid := uuid.NewUUID()
+	fileName := fmt.Sprintf("out_%s.txt", uid)
+	podName := j.NewPodForCSIFSSWrite(string(uid), namespace, pvcName, fileName, false)
+	time.Sleep(30 * time.Second) //waiting for pod to become up and running
+
+	By("check if the file exists")
+	j.CheckFileExists(namespace, podName, "/data", fileName)
+
+	if len(expectedMountOptions) > 0 {
+		By("Checking Mount Options")
+		j.CheckLustreMountOptions(namespace, podName, "/data", expectedMountOptions)
+	}
+
+	if checkLustreParameters {
+		j.CheckLustreParameters(namespace, podName)
+	}
+
+	By("Creating Pod that can read contents of existing file")
+	readPodName := j.NewPodForCSIFSSRead(string(uid), namespace, pvcName, fileName, false)
+
+	return podName, readPodName
+}
 
 func (j *PVCTestJig) CheckMultiplePodReadWrite(namespace string, pvcName string, checkEncryption bool) {
 	uid := uuid.NewUUID()
@@ -1896,4 +1921,21 @@ func (j *PVCTestJig) GetOcidFromPV(pv v1.PersistentVolume) string {
 		return pv.Name
 	}
 	return ""
+}
+
+func (j *PVCTestJig) CheckLustreParameters(namespace string, podName string) {
+	nodeName := j.GetNodeNameFromPod(podName, namespace)
+	csiPodName := j.GetCSIPodNameRunningOnNode(nodeName)
+
+	Logf("Pod %s is present on node %s", podName, nodeName)
+	Logf("Found csi-oci-node pod %s on node %s", csiPodName, nodeName)
+
+	command := fmt.Sprintf("lctl get_param *.*.*MDT*.lru_size")
+	stdout, err := RunHostCmdUsingChroot("kube-system", csiPodName, command)
+	if err != nil {
+		Failf("Failed to get lustre parameters using command %v.Error : %v", command, err)
+	}
+	if stdout == "" || !strings.Contains(strings.TrimSpace(stdout), "lru_size=11201") {
+		Failf("Did not found expected lustre parameter. Command : %v, Expected Output : *.*.*MDT*.lru_size=11201, Actual Output : %v", command, stdout)
+	}
 }

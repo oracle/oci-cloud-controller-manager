@@ -3,6 +3,7 @@ package util
 import (
 	"context"
 	"fmt"
+
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -60,7 +61,7 @@ import (
 	v117 "k8s.io/client-go/kubernetes/typed/storage/v1"
 	"k8s.io/client-go/kubernetes/typed/storage/v1alpha1"
 	v1beta117 "k8s.io/client-go/kubernetes/typed/storage/v1beta1"
-	alpha1 `k8s.io/client-go/kubernetes/typed/storagemigration/v1alpha1`
+	alpha1 "k8s.io/client-go/kubernetes/typed/storagemigration/v1alpha1"
 	"k8s.io/client-go/rest"
 )
 
@@ -130,8 +131,65 @@ func (m MockCoreClient) ComponentStatuses() v12.ComponentStatusInterface {
 	return nil
 }
 
-func (m MockCoreClient) ConfigMaps(namespace string) v12.ConfigMapInterface {
+type MockConfigMaps struct {
+	client rest.Interface
+}
+
+func (m MockConfigMaps) Create(ctx context.Context, configMap *api.ConfigMap, opts metav1.CreateOptions) (*api.ConfigMap, error) {
+	return nil, nil
+}
+
+func (m MockConfigMaps) Update(ctx context.Context, configMap *api.ConfigMap, opts metav1.UpdateOptions) (*api.ConfigMap, error) {
+	return nil, nil
+}
+
+func (m MockConfigMaps) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	return nil
+}
+func (m MockConfigMaps) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
+	return nil
+}
+
+func (m MockConfigMaps) Get(ctx context.Context, name string, opts metav1.GetOptions) (*api.ConfigMap, error) {
+	if name == "oci-csi-config" {
+		return &api.ConfigMap{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "v1",
+				Kind:       "ConfigMap",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "csi-config",
+				Namespace: "kube-system",
+			},
+			Data: map[string]string{
+				"lustre": `skipNodeUnstage: true
+skipLustreParameters: true`,
+			},
+		}, nil
+	}
+	return nil, fmt.Errorf("config map:%s not found", name)
+}
+
+func (m MockConfigMaps) List(ctx context.Context, opts metav1.ListOptions) (*api.ConfigMapList, error) {
+	return nil, nil
+}
+
+func (m MockConfigMaps) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
+	return nil, nil
+}
+
+func (m MockConfigMaps) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *api.ConfigMap, err error) {
+	return nil, nil
+}
+
+func (m MockConfigMaps) Apply(ctx context.Context, configMap *applyconfigurationscorev1.ConfigMapApplyConfiguration, opts metav1.ApplyOptions) (result *api.ConfigMap, err error) {
+	return nil, nil
+}
+
+func (m MockCoreClient) ConfigMaps(namespace string) v12.ConfigMapInterface {
+	return &MockConfigMaps{
+		client: m.RESTClient(),
+	}
 }
 
 func (m MockCoreClient) Endpoints(namespace string) v12.EndpointsInterface {

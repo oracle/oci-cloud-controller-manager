@@ -64,6 +64,8 @@ const (
 	LustreDriverVersion = "0.1.0"
 	// Default config file path
 	configFilePath = "/etc/oci/config.yaml"
+
+	CSIConfigMapName = "oci-csi-config"
 )
 
 type CSIDriver string
@@ -119,6 +121,7 @@ type NodeDriver struct {
 	util         *csi_util.Util
 	volumeLocks  *csi_util.VolumeLocks
 	nodeIpFamily *csi_util.NodeIpFamily
+	csiConfig    *csi_util.CSIConfig
 }
 
 // BlockVolumeNodeDriver extends NodeDriver
@@ -159,7 +162,7 @@ func newControllerDriver(kubeClientSet kubernetes.Interface, logger *zap.Sugared
 	}
 }
 
-func newNodeDriver(nodeID string, nodeIpFamily *csi_util.NodeIpFamily, kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger) NodeDriver {
+func newNodeDriver(nodeID string, nodeIpFamily *csi_util.NodeIpFamily, kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger, csiConfig *csi_util.CSIConfig) NodeDriver {
 	return NodeDriver{
 		nodeID:       nodeID,
 		KubeClient:   kubeClientSet,
@@ -167,6 +170,7 @@ func newNodeDriver(nodeID string, nodeIpFamily *csi_util.NodeIpFamily, kubeClien
 		util:         &csi_util.Util{Logger: logger},
 		volumeLocks:  csi_util.NewVolumeLocks(),
 		nodeIpFamily: nodeIpFamily,
+		csiConfig:    csiConfig,
 	}
 }
 
@@ -216,15 +220,15 @@ func getMetricPusher(metricPusherGetter MetricPusherGetter, logger *zap.SugaredL
 	return metricPusher, nil
 }
 
-func GetNodeDriver(name string, nodeID string, nodeIpFamily *csi_util.NodeIpFamily, kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger) csi.NodeServer {
+func GetNodeDriver(name string, nodeID string, nodeIpFamily *csi_util.NodeIpFamily, kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger, csiConfig *csi_util.CSIConfig) csi.NodeServer {
 	if name == BlockVolumeDriverName {
-		return BlockVolumeNodeDriver{NodeDriver: newNodeDriver(nodeID, nodeIpFamily, kubeClientSet, logger)}
+		return BlockVolumeNodeDriver{NodeDriver: newNodeDriver(nodeID, nodeIpFamily, kubeClientSet, logger, csiConfig)}
 	}
 	if name == FSSDriverName {
-		return FSSNodeDriver{NodeDriver: newNodeDriver(nodeID, nodeIpFamily, kubeClientSet, logger)}
+		return FSSNodeDriver{NodeDriver: newNodeDriver(nodeID, nodeIpFamily, kubeClientSet, logger, csiConfig)}
 	}
 	if name == LustreDriverName {
-		return LustreNodeDriver{NodeDriver: newNodeDriver(nodeID, nodeIpFamily, kubeClientSet, logger)}
+		return LustreNodeDriver{NodeDriver: newNodeDriver(nodeID, nodeIpFamily, kubeClientSet, logger, csiConfig)}
 	}
 	return nil
 }
@@ -241,9 +245,14 @@ func NewNodeDriver(logger *zap.SugaredLogger, nodeOptions nodedriveroptions.Node
 		return nil, err
 	}
 
+	var csiConfig *csi_util.CSIConfig
+	if nodeOptions.DriverName == LustreDriverName {
+		csiConfig = csi_util.LoadCSIConfigFromConfigMap(kubeClientSet, CSIConfigMapName, logger)
+	}
+
 	return &Driver{
 		controllerDriver:       nil,
-		nodeDriver:             GetNodeDriver(nodeOptions.DriverName, nodeOptions.NodeID, nodeIpFamily, kubeClientSet, logger),
+		nodeDriver:             GetNodeDriver(nodeOptions.DriverName, nodeOptions.NodeID, nodeIpFamily, kubeClientSet, logger, csiConfig),
 		endpoint:               nodeOptions.Endpoint,
 		logger:                 logger,
 		enableControllerServer: nodeOptions.EnableControllerServer,
