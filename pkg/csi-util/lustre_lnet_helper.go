@@ -1,6 +1,7 @@
 package csi_util
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"os/exec"
@@ -8,19 +9,17 @@ import (
 
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
-
-	"github.com/oracle/oci-cloud-controller-manager/pkg/util/osinfo"
 )
 
 const (
-	CHROOT_BASH_COMMAND             = "chroot-bash"
-	LOAD_LNET_KERNEL_MODULE_COMMAND = "modprobe lnet"
+	CHROOT_BASH_COMMAND                   = "chroot-bash"
+	LOAD_LNET_KERNEL_MODULE_COMMAND       = "modprobe lnet"
 	CONFIGURE_LNET_KERNEL_SERVICE_COMMAND = "lnetctl lnet configure"
-	SHOW_CONFIGURED_LNET = "lnetctl net show --net %s"
-	DELETE_LNET_INTERFACE = "lnetctl net del --net %s"
-	CONFIGURE_LNET_INTERFACE = "lnetctl net add --net %s --if %s --peer-timeout 180 --peer-credits 120 --credits 1024"
-	RPM_PACKAGE_QUERY = "rpm -q %s"
-	DPKG_PACKAGE_QEURY = "dpkg -s %s"
+	SHOW_CONFIGURED_LNET                  = "lnetctl net show --net %s"
+	DELETE_LNET_INTERFACE                 = "lnetctl net del --net %s"
+	CONFIGURE_LNET_INTERFACE              = "lnetctl net add --net %s --if %s --peer-timeout 180 --peer-credits 120 --credits 1024"
+	LCTL_SET_PARAM                        = "lctl set_param %s=%s"
+	LFS_VERSION_COMMAND                   = "lfs --version"
 )
 
 type NetInfo struct {
@@ -35,16 +34,17 @@ type NetInfo struct {
 }
 
 type NetInterface struct {
-	InterfaceIPv4 string
-	InterfaceName string
+	InterfaceIPv4  string
+	InterfaceName  string
 	LnetConfigured bool
 }
+type Parameter map[string]interface{}
 
 /*
 ValidateLustreVolumeId takes lustreVolumeId as input and returns if its valid or not along with lnetLabel
 Ex. volume handle :  10.112.10.6@tcp1:/fsname
  volume handle : <MGS NID>[:<MGS NID>]:/<fsname>
- */
+*/
 func ValidateLustreVolumeId(lusterVolumeId string) (bool, string) {
 	const minNumOfParamsFromVolumeHandle = 2
 	const numOfParamsForMGSNID = 2
@@ -74,12 +74,33 @@ func ValidateLustreVolumeId(lusterVolumeId string) (bool, string) {
 	return true, lnetLabel
 }
 
-func SetupLnet(logger *zap.SugaredLogger, lustreSubnetCIDR string, lnetLabel string)  error {
+type LnetConfigurator interface {
+	GetNetInterfacesInSubnet(subnetCIDR string) ([]NetInterface, error)
+	IsLustreClientPackagesInstalled(logger *zap.SugaredLogger) bool
+	GetLnetInfoByLnetLabel(lnetLabel string) (NetInfo, error)
+	ConfigureLnet(logger *zap.SugaredLogger, ifaces []NetInterface, lnetLabel string, netInfo NetInfo) error
+	VerifyLnetConfiguration(logger *zap.SugaredLogger, ifaces []NetInterface, lnetLabel string, netInfo NetInfo, err error) error
+	ExecuteCommandOnWorkerNode(args ...string) (string, error)
+}
+
+type LnetService struct {
+	Configurator LnetConfigurator
+}
+
+type OCILnetConfigurator struct{}
+
+func NewLnetService() *LnetService{
+	return &LnetService{
+		Configurator:  &OCILnetConfigurator{},
+	}
+}
+
+func (ls *LnetService) SetupLnet(logger *zap.SugaredLogger, lustreSubnetCIDR string, lnetLabel string) error {
 
 	logger.With("LustreSubnetCidr", lustreSubnetCIDR).With("LnetLabel", lnetLabel).Info("Lnet setup started.")
 
 	//Find net interfaces in lnet subnet on worker node
-	interfacesInLustreSubnet, err := getNetInterfacesInSubnet(lustreSubnetCIDR)
+	interfacesInLustreSubnet, err := ls.Configurator.GetNetInterfacesInSubnet(lustreSubnetCIDR)
 	if err != nil {
 		return err
 	}
@@ -90,41 +111,41 @@ func SetupLnet(logger *zap.SugaredLogger, lustreSubnetCIDR string, lnetLabel str
 
 	//Lustre client installation state is kept non breaking currently and we still go ahead and try loading kernel module and start lnet kernel service
 	//If any of these fail then we provide information to customer on missing packages.
-	missingLustrePackages, lustreClientPacakagesInstalled := isLustreClientPackagesInstalled(logger)
+	lustreClientPacakagesInstalled := ls.Configurator.IsLustreClientPackagesInstalled(logger)
 
 	//Load lnet kernel module
-	_, err = executeCommandOnWorkerNode(LOAD_LNET_KERNEL_MODULE_COMMAND)
+	_, err = ls.Configurator.ExecuteCommandOnWorkerNode(LOAD_LNET_KERNEL_MODULE_COMMAND)
 	if err != nil {
 		if !lustreClientPacakagesInstalled {
-			return fmt.Errorf("Failed to load lnet kernel module with error : %v. Please make sure that following lustre client packages are installed on worker nodes : %v", err, missingLustrePackages)
+			return fmt.Errorf("Failed to load lnet kernel module with error : %v. Please make sure that lustre client packages are installed on worker nodes.", err)
 		}
 		return fmt.Errorf("Failed to load lnet kernel module with error %v", err)
 	}
 
 	//Configure lnet kernel service
-	_, err = executeCommandOnWorkerNode(CONFIGURE_LNET_KERNEL_SERVICE_COMMAND)
+	_, err = ls.Configurator.ExecuteCommandOnWorkerNode(CONFIGURE_LNET_KERNEL_SERVICE_COMMAND)
 	if err != nil {
 		if !lustreClientPacakagesInstalled {
-			return fmt.Errorf("Failed to configure lnet kernel service with error : %v. Please make sure that following lustre client packages are installed on worker nodes : %v",err, missingLustrePackages)
+			return fmt.Errorf("Failed to configure lnet kernel service with error : %v. Please make sure that lustre client packages are installed on worker nodes.", err)
 		}
 		return fmt.Errorf("Failed to configure lnet kernel service with error : %v", err)
 	}
 
- 	//get existing lnet configuration
+	//get existing lnet configuration
 	var netInfo NetInfo
-	netInfo, err = getLnetInfoByLnetLabel(lnetLabel)
+	netInfo, err = ls.Configurator.GetLnetInfoByLnetLabel(lnetLabel)
 	if err != nil {
 		return err
 	}
 
 	//Configure lnet if its not configured already for requried interfaces
-	err = configureLnet(logger, interfacesInLustreSubnet, lnetLabel, netInfo)
+	err = ls.Configurator.ConfigureLnet(logger, interfacesInLustreSubnet, lnetLabel, netInfo)
 	if err != nil {
 		return err
 	}
 
 	//Verify lnet configuration
-	err = verifyLnetConfiguration(logger, interfacesInLustreSubnet, lnetLabel, netInfo, err)
+	err = ls.Configurator.VerifyLnetConfiguration(logger, interfacesInLustreSubnet, lnetLabel, netInfo, err)
 	if err != nil {
 		return err
 	}
@@ -132,12 +153,11 @@ func SetupLnet(logger *zap.SugaredLogger, lustreSubnetCIDR string, lnetLabel str
 	return nil
 }
 
-
-func getNetInterfacesInSubnet(subnetCIDR string) ([]NetInterface, error) {
+func (olc *OCILnetConfigurator) GetNetInterfacesInSubnet(subnetCIDR string) ([]NetInterface, error) {
 	_, subnet, err := net.ParseCIDR(subnetCIDR)
 
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse subnetCIDR %v  with error : %v",subnetCIDR, err)
+		return nil, fmt.Errorf("Failed to parse subnetCIDR %v  with error : %v", subnetCIDR, err)
 	}
 	var matchingInterfaces []NetInterface
 
@@ -155,7 +175,7 @@ func getNetInterfacesInSubnet(subnetCIDR string) ([]NetInterface, error) {
 		}
 
 		for _, addr := range addrs {
-			ip,_,_ := net.ParseCIDR(addr.String())
+			ip, _, _ := net.ParseCIDR(addr.String())
 			// Check if the IP address falls within the specified subnet
 			if ip.To4() != nil && subnet.Contains(ip) {
 				matchingInterfaces = append(matchingInterfaces, NetInterface{
@@ -169,21 +189,21 @@ func getNetInterfacesInSubnet(subnetCIDR string) ([]NetInterface, error) {
 	return matchingInterfaces, nil
 }
 
-func getLnetInfoByLnetLabel(lnetLabel string) (NetInfo, error) {
+func (olc *OCILnetConfigurator) GetLnetInfoByLnetLabel(lnetLabel string) (NetInfo, error) {
 	var netInfo NetInfo
-	existingConfiguredLnetInfo, err := executeCommandOnWorkerNode(fmt.Sprintf(SHOW_CONFIGURED_LNET, lnetLabel))
+	existingConfiguredLnetInfo, err := olc.ExecuteCommandOnWorkerNode(fmt.Sprintf(SHOW_CONFIGURED_LNET, lnetLabel))
 	if err != nil {
-		return  netInfo, fmt.Errorf("Failed to get existing configured lnet information with error : %v", err)
+		return netInfo, fmt.Errorf("Failed to get existing configured lnet information with error : %v", err)
 	}
 
 	err = yaml.Unmarshal([]byte(existingConfiguredLnetInfo), &netInfo)
 	if err != nil {
-		return  netInfo, fmt.Errorf("Failed to parse lnet information with error : %v", err)
+		return netInfo, fmt.Errorf("Failed to parse lnet information with error : %v", err)
 	}
 	return netInfo, nil
 }
 
-func configureLnet(logger *zap.SugaredLogger, interfacesInLustreSubnet []NetInterface, lnetLabel string, netInfo NetInfo) (error) {
+func (olc *OCILnetConfigurator) ConfigureLnet(logger *zap.SugaredLogger, interfacesInLustreSubnet []NetInterface, lnetLabel string, netInfo NetInfo) error {
 	logger.Infof("Existing lnet information : %v", netInfo)
 
 	//Find Already active and stale interfaces
@@ -210,11 +230,10 @@ func configureLnet(logger *zap.SugaredLogger, interfacesInLustreSubnet []NetInte
 		}
 	}
 
-
-	if len(staleLnetInterfaces) > 0  {
+	if len(staleLnetInterfaces) > 0 {
 		logger.Infof("Deleting stale lnet interfaces identified : %v", staleLnetInterfaces)
 
-		_, err := executeCommandOnWorkerNode(fmt.Sprintf(DELETE_LNET_INTERFACE, lnetLabel))
+		_, err := olc.ExecuteCommandOnWorkerNode(fmt.Sprintf(DELETE_LNET_INTERFACE, lnetLabel))
 		if err != nil {
 			return fmt.Errorf("Failed to delete stale lnet interface %v", staleLnetInterfaces)
 		}
@@ -222,7 +241,7 @@ func configureLnet(logger *zap.SugaredLogger, interfacesInLustreSubnet []NetInte
 	for _, interfaceInLustreSubnet := range interfacesInLustreSubnet {
 		//Lnet configuration is needed if its not already configured or we have deleted lnet in previous step because of stale interfaces.
 		if !interfaceInLustreSubnet.LnetConfigured || len(staleLnetInterfaces) > 0 {
-			_, err := executeCommandOnWorkerNode(fmt.Sprintf(CONFIGURE_LNET_INTERFACE, lnetLabel, interfaceInLustreSubnet.InterfaceName))
+			_, err := olc.ExecuteCommandOnWorkerNode(fmt.Sprintf(CONFIGURE_LNET_INTERFACE, lnetLabel, interfaceInLustreSubnet.InterfaceName))
 			if err != nil {
 				return fmt.Errorf("Lnet configuration failed for interface %s.", interfaceInLustreSubnet.InterfaceName)
 			}
@@ -231,10 +250,10 @@ func configureLnet(logger *zap.SugaredLogger, interfacesInLustreSubnet []NetInte
 	return nil
 }
 
-func verifyLnetConfiguration(logger *zap.SugaredLogger, interfacesInLustreSubnet []NetInterface, lnetLabel string, netInfo NetInfo, err error) error {
+func (olc *OCILnetConfigurator) VerifyLnetConfiguration(logger *zap.SugaredLogger, interfacesInLustreSubnet []NetInterface, lnetLabel string, netInfo NetInfo, err error) error {
 	logger.Infof("Verifying lnet configuration.")
 	//Get already configured lnet interfaces
-	netInfo, err = getLnetInfoByLnetLabel(lnetLabel)
+	netInfo, err = olc.GetLnetInfoByLnetLabel(lnetLabel)
 	if err != nil {
 		return err
 	}
@@ -267,48 +286,24 @@ func verifyLnetConfiguration(logger *zap.SugaredLogger, interfacesInLustreSubnet
 	return nil
 }
 
-func isLustreClientPackagesInstalled(logger *zap.SugaredLogger) ([]string, bool) {
+func (olc *OCILnetConfigurator) IsLustreClientPackagesInstalled(logger *zap.SugaredLogger) bool {
 
-	lustrePackages := []string{ "lustre-client-modules-dkms", "lustre-client-utils"}
-
-	var missingLustrePackages []string
-
-	for _, pkgName := range lustrePackages {
-		if !checkPackageInstalled(pkgName) {
-			missingLustrePackages = append(missingLustrePackages, pkgName)
-		}
+	_, err := olc.ExecuteCommandOnWorkerNode(LFS_VERSION_COMMAND)
+	if err != nil {
+		logger.With(zap.Error(err)).Errorf("Error occured while performing Lustre Client package check using command %v. Error : %v", LFS_VERSION_COMMAND, err)
+		return false
 	}
-	if len(missingLustrePackages) > 0 {
-		logger.Error("Following lustre packages are not installed on worker ndoes : %v", missingLustrePackages)
-		return missingLustrePackages, false
-	}
-	return nil, true
-}
-
-func checkPackageInstalled(pkgName string) bool {
-	var err error
-	var result string
-
-	if osinfo.IsDebianOrUbuntu() {
-		result, err = executeCommandOnWorkerNode(fmt.Sprintf(DPKG_PACKAGE_QEURY, pkgName))
-		if err == nil && !strings.Contains(result,"Status: install ok installed") {
-			return false
-		}
-	} else {
-		_, err = executeCommandOnWorkerNode(fmt.Sprintf(RPM_PACKAGE_QUERY, pkgName))
-	}
-	// When packages are not found command fails with non zero exit code and err will not be nil.
-	return err == nil
+	return true
 }
 
 /*
 IsLnetActive takes lnetLabel (ex. tcp0, tcp1) as input and tries to check if at leaset one lnet interface is active to consider lnet as active.
 It returns true when active lnet interface is identified else returns false singling down lnet.
- */
-func IsLnetActive(logger *zap.SugaredLogger, lnetLabel string) bool  {
+*/
+func (ls *LnetService) IsLnetActive(logger *zap.SugaredLogger, lnetLabel string) bool {
 	logger.Debugf("Trying to check status of lnet")
 	//Get already configured lnet interfaces
-	netInfo, err := getLnetInfoByLnetLabel(lnetLabel)
+	netInfo, err := ls.Configurator.GetLnetInfoByLnetLabel(lnetLabel)
 	if err != nil {
 		logger.With(zap.Error(err)).Errorf("Failed to get lnet info for lnet :  %v", lnetLabel)
 		return false
@@ -333,7 +328,7 @@ func IsLnetActive(logger *zap.SugaredLogger, lnetLabel string) bool  {
 	return idenfiedActiveInterface
 }
 
-func executeCommandOnWorkerNode(args ...string) (string, error) {
+func (olc *OCILnetConfigurator) ExecuteCommandOnWorkerNode(args ...string) (string, error) {
 	command := exec.Command(CHROOT_BASH_COMMAND, args...)
 
 	output, err := command.CombinedOutput()
@@ -342,4 +337,30 @@ func executeCommandOnWorkerNode(args ...string) (string, error) {
 		return string(output), fmt.Errorf("Command failed: %v\nOutput: %v\n", args, string(output))
 	}
 	return string(output), nil
+}
+
+func (ls *LnetService) ApplyLustreParameters(logger *zap.SugaredLogger, lustreParamsJson string) error {
+	if lustreParamsJson == "" {
+		logger.Debug("No lustre parameters specified.")
+		return nil
+	}
+	var lustreParams []Parameter
+
+	err := json.Unmarshal([]byte(lustreParamsJson), &lustreParams)
+
+	if err != nil {
+		return err
+	}
+
+	for _, param := range lustreParams {
+		for key, value := range param {
+			logger.Infof("Applying lustre param %s=%s", key, fmt.Sprintf("%v", value))
+			_, err := ls.Configurator.ExecuteCommandOnWorkerNode(fmt.Sprintf(LCTL_SET_PARAM, key, fmt.Sprintf("%v", value)))
+			if err != nil {
+				return err
+			}
+		}
+	}
+	logger.Infof("Successfully applied lustre parameters.")
+	return nil
 }

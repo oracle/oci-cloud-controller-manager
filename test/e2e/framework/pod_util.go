@@ -125,7 +125,27 @@ func (j *PVCTestJig) CheckMountOptions(namespace string, podName string, expecte
 		Failf("NFS mount with Mount Options failed in pod '%v' with error '%v'", podName, pollErr.Error())
 	}
 }
-
+func (j *PVCTestJig) CheckLustreMountOptions(namespace string, podName string, expectedPath string, expectedOptions []string) {
+	command := fmt.Sprintf("mount -t lustre")
+	if pollErr := wait.PollImmediate(K8sResourcePoll, DefaultTimeout, func() (bool, error) {
+		stdout, err := RunHostCmd(namespace, podName, command)
+		if err != nil {
+			Logf("got err: %v, retry until timeout", err)
+			return false, nil
+		}
+		if stdout == "" || !strings.Contains(stdout, expectedPath) {
+			return false, errors.Errorf("Lustre Mount not found for path %s. Mounted as %s", expectedPath, stdout)
+		}
+		for _, option := range expectedOptions {
+			if !strings.Contains(stdout, option) {
+				return false, errors.Errorf("Lustre Mount Options check failed. Mounted as %s", stdout)
+			}
+		}
+		return true, nil
+	}); pollErr != nil {
+		Failf("Lustre mount with Mount Options failed in pod '%v' with error '%v'", podName, pollErr.Error())
+	}
+}
 func (j *PVCTestJig) ExtractDataFromBlockDevice(namespace string, podName string, devicePath string, outFile string) {
 	By("extract data from block device")
 	command := fmt.Sprintf("dd if=%s count=1 | tr -d '\\000' > %s", devicePath, outFile)
@@ -388,8 +408,6 @@ func (j *PVCTestJig) CreateAndAwaitNginxPodOrFail(ns string, pvc *v1.PersistentV
 	// Waiting for pod to be running
 	err = j.waitTimeoutForPodRunningInNamespace(pod.Name, ns, slowPodStartTimeout)
 	if err != nil {
-		Logf("Pod failed to come up, logging debug info\n")
-		j.logPodDebugInfo(namespace, pod.Name)
 		Failf("Pod %q is not Running: %v", pod.Name, err)
 	}
 

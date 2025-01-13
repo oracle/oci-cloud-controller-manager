@@ -846,6 +846,10 @@ func RunHostCmd(ns, name, cmd string) (string, error) {
 	return RunKubectl("exec", fmt.Sprintf("--namespace=%v", ns), name, "--", "/bin/sh", "-c", cmd)
 }
 
+func RunHostCmdUsingChroot(ns, name, cmd string) (string, error) {
+	return RunKubectl("exec", fmt.Sprintf("--namespace=%v", ns), name, "--", "chroot-bash", cmd)
+}
+
 func getRuntimeObjectForKind(c clientset.Interface, kind schema.GroupKind, ns, name string) (runtime.Object, error) {
 	switch kind {
 	case api.Kind("ReplicationController"):

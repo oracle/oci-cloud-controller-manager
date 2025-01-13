@@ -52,6 +52,8 @@ func (d LustreNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStag
 	}
 	defer d.volumeLocks.Release(req.VolumeId)
 
+	lnetService := csi_util.NewLnetService()
+
 	//Lnet Setup
 	if setupLnet, ok := req.GetVolumeContext()[SetupLnet]; ok && setupLnet == "true" {
 
@@ -61,7 +63,7 @@ func (d LustreNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStag
 			lustreSubnetCIDR = fmt.Sprintf("%s/32", d.nodeID)
 		}
 
-		err := csi_util.SetupLnet(logger, lustreSubnetCIDR, lnetLabel)
+		err := lnetService.SetupLnet(logger, lustreSubnetCIDR, lnetLabel)
 		if err != nil {
 			logger.With(zap.Error(err)).Error("Failed to setup lnet.")
 			return nil, status.Errorf(codes.Internal, "Failed to setup lnet with error : %v", err.Error())
@@ -118,8 +120,24 @@ func (d LustreNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStag
 	logger.With("Source", source, "StagingTargetPath", targetPath).
 		Info("Mounting the volume to staging target path is completed.")
 
+	if lustrePostMountParameters, exists := req.GetVolumeContext()["lustrePostMountParameters"]; exists {
+		if !isSkipLustreParams(d.csiConfig)  {
+			err = lnetService.ApplyLustreParameters(logger, lustrePostMountParameters)
+			if err != nil {
+				//Unmounting volume on error as we are failing NodeStageVolume. If we don't unmount and customer deletes workload then volume will remain mounted as NodeUnstageVolume won't be called.
+				mounter.Unmount(targetPath)
+
+				logger.With(zap.Error(err)).Error("Failed to apply lustre post mount parameters.")
+				return nil, status.Errorf(codes.Internal, "Failed to apply lustre post mount parameters : %v. Please make sure correct lustre parameter is used.", err.Error())
+			}
+		} else {
+			logger.With("lustrePostMountParameters", lustrePostMountParameters).Info("Skipping application of lustrePostMountParameters as SkipLustreParameters csi config is true.")
+		}
+	}
+
 	return &csi.NodeStageVolumeResponse{}, nil
 }
+
 func (d LustreNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
 	if req.VolumeId == "" {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
@@ -136,6 +154,11 @@ func (d LustreNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUn
 
 	logger := d.logger.With("volumeID", req.VolumeId, "stagingPath", req.StagingTargetPath)
 
+	if d.csiConfig != nil && d.csiConfig.Lustre != nil && d.csiConfig.Lustre.SkipNodeUnstage {
+		logger.Info("Skipping NodeUnstageVolume based on CSI Driver Configuration.")
+		return &csi.NodeUnstageVolumeResponse{}, nil
+	}
+
 	if acquired := d.volumeLocks.TryAcquire(req.VolumeId); !acquired {
 		logger.Error("Could not acquire lock for NodeUnstageVolume.")
 		return nil, status.Errorf(codes.Aborted, volumeOperationAlreadyExistsFmt, req.VolumeId)
@@ -149,7 +172,9 @@ func (d LustreNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUn
 
 	logger.Info("Unstage started")
 
-	if !csi_util.IsLnetActive(logger, lnetLabel) {
+	lnetService := csi_util.NewLnetService()
+
+	if !lnetService.IsLnetActive(logger, lnetLabel) {
 		//When lnet is not active force unmount is required as regular unmounts get stuck forever.
 		logger.Info("Performing force unmount as no active lnet configuration found.")
 		if err := disk.UnmountWithForce(targetPath); err != nil {
@@ -212,13 +237,15 @@ func (d LustreNodeDriver) NodePublishVolume(ctx context.Context, req *csi.NodePu
 	//Lnet Setup
 	if setupLnet, ok := req.GetVolumeContext()[SetupLnet]; ok && setupLnet == "true" {
 
-		lustreSubnetCIDR, ok :=  req.GetVolumeContext()[LustreSubnetCidr]
+		lnetService := csi_util.NewLnetService()
+
+		lustreSubnetCIDR, ok := req.GetVolumeContext()[LustreSubnetCidr]
 
 		if !ok {
 			lustreSubnetCIDR = fmt.Sprintf("%s/32", d.nodeID)
 		}
 
-		err := csi_util.SetupLnet(logger, lustreSubnetCIDR, lnetLabel)
+		err := lnetService.SetupLnet(logger, lustreSubnetCIDR, lnetLabel)
 		if err != nil {
 			logger.With(zap.Error(err)).Error("Failed to setup lnet.")
 			return nil, status.Errorf(codes.Internal, "Failed to setup lnet with error : %v", err.Error())
@@ -296,7 +323,9 @@ func (d LustreNodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi.Node
 
 	logger.Info("Unmount started")
 
-	if !csi_util.IsLnetActive(logger, lnetLabel) {
+	lnetService := csi_util.NewLnetService()
+
+	if !lnetService.IsLnetActive(logger, lnetLabel) {
 		//When lnet is not active force unmount is required as regular unmounts get stuck forever
 		logger.Info("Performing force unmount as no active lnet configuration found.")
 		if err := disk.UnmountWithForce(targetPath); err != nil {
@@ -378,3 +407,6 @@ func (d LustreNodeDriver) NodeGetInfo(ctx context.Context, request *csi.NodeGetI
 	}, nil
 }
 
+func isSkipLustreParams(csiConfig *csi_util.CSIConfig) bool {
+	return csiConfig != nil && csiConfig.Lustre != nil && csiConfig.Lustre.SkipLustreParameters
+}

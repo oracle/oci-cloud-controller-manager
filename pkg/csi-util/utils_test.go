@@ -16,6 +16,7 @@ package csi_util
 
 import (
 	"fmt"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -742,4 +743,41 @@ func Test_ValidateDNSName(t *testing.T) {
 			}
 		})
 	}
+}
+func Test_LoadCSIConfigFromConfigMap(t *testing.T) {
+
+	tests := []struct {
+		name     string
+		configMapName string
+		want     *CSIConfig
+	}{
+		{
+			name:     "Parse Configs correctly when csi config map is present",
+			configMapName: "oci-csi-config",
+			want: &CSIConfig{
+				Lustre: &DriverConfig{
+					SkipNodeUnstage: true,
+					SkipLustreParameters: true,
+				},
+			},
+		},
+		{
+			name:     "Return default config if config map is not present",
+			configMapName: "invalid",
+			want: &CSIConfig{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := LoadCSIConfigFromConfigMap(&util.MockKubeClient{
+				CoreClient: &util.MockCoreClient{},
+			}, tt.configMapName, zap.S())
+
+			if !reflect.DeepEqual(tt.want, got) {
+				t.Errorf("LoadCSIConfigFromConfigMap() => got : %v, want :  %v", got, tt.want)
+			}
+		})
+	}
+
 }
