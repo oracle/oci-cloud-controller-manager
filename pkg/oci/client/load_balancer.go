@@ -33,6 +33,7 @@ const (
 )
 
 type loadbalancerClientStruct struct {
+	nameToOcid      LBNameOcidCache
 	loadbalancer    loadBalancerClient
 	requestMetadata common.RequestMetadata
 	rateLimiter     RateLimiter
@@ -64,6 +65,21 @@ type GenericLoadBalancerInterface interface {
 	UpdateLoadBalancer(ctx context.Context, lbID string, details *GenericUpdateLoadBalancerDetails) (string, error)
 }
 
+func NewLBClient(lb loadBalancerClient, rm common.RequestMetadata, lim *RateLimiter) *loadbalancerClientStruct {
+	l := loadbalancerClientStruct{
+		loadbalancer:    lb,
+		requestMetadata: rm,
+		rateLimiter:     *lim,
+	}
+	return &l
+}
+
+func (c *loadbalancerClientStruct) WithEmptyNameCache() *loadbalancerClientStruct {
+	c.nameToOcid.Initialize()
+	c.nameToOcid.SetEnabled(true)
+	return c
+}
+
 func (c *loadbalancerClientStruct) GetLoadBalancer(ctx context.Context, id string) (*GenericLoadBalancer, error) {
 	if !c.rateLimiter.Reader.TryAccept() {
 		return nil, RateLimitError(false, "GetLoadBalancer")
@@ -83,6 +99,17 @@ func (c *loadbalancerClientStruct) GetLoadBalancer(ctx context.Context, id strin
 }
 
 func (c *loadbalancerClientStruct) GetLoadBalancerByName(ctx context.Context, compartmentID, name string) (*GenericLoadBalancer, error) {
+	if ocid, ok := c.nameToOcid.Get(name); ok {
+		lb, err := c.GetLoadBalancer(ctx, ocid)
+		if err == nil {
+			return lb, err
+		}
+
+		if IsNotFound(err) { // Only remove the cached value on 404, not on a 5XX
+			c.nameToOcid.Delete(name)
+		}
+	}
+
 	var page *string
 	for {
 		if !c.rateLimiter.Reader.TryAccept() {
@@ -101,6 +128,7 @@ func (c *loadbalancerClientStruct) GetLoadBalancerByName(ctx context.Context, co
 		}
 		for _, lb := range resp.Items {
 			if *lb.DisplayName == name {
+				c.nameToOcid.Set(name, *lb.Id)
 				return c.loadbalancerToGenericLoadbalancer(&lb), nil
 			}
 		}

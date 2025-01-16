@@ -124,7 +124,7 @@ func NewOCIProvisioner(logger *zap.SugaredLogger, kubeClient kubernetes.Interfac
 
 	rateLimiter := client.NewRateLimiter(logger, cfg.RateLimiter)
 
-	client, err := client.New(logger, cp, &rateLimiter, cfg.Auth.TenancyID)
+	client, err := client.New(logger, cp, &rateLimiter, cfg)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to construct OCI client")
 	}

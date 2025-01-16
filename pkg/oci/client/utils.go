@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	"github.com/oracle/oci-go-sdk/v65/common"
@@ -109,4 +110,49 @@ func IsIpv6SingleStackCluster() bool {
 		return true
 	}
 	return false
+}
+
+type LBNameOcidCache struct {
+	enabled bool
+	values  map[string]string
+	lock    sync.RWMutex
+}
+
+func (c *LBNameOcidCache) Initialize() {
+	c.values = make(map[string]string)
+}
+
+func (c *LBNameOcidCache) Get(name string) (ocid string, ok bool) {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+
+	if !c.enabled {
+		return "", false
+	}
+
+	ocid, ok = c.values[name]
+	return
+}
+
+func (c *LBNameOcidCache) Set(name, ocid string) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	if c.enabled && c.values != nil { // nil check prevents panic in case of attempt to write to uninitialized map
+		c.values[name] = ocid
+	}
+}
+
+func (c *LBNameOcidCache) SetEnabled(enabled bool) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	c.enabled = enabled
+}
+
+func (c *LBNameOcidCache) Delete(name string) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	delete(c.values, name)
 }

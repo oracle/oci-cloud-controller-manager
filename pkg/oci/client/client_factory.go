@@ -29,6 +29,6 @@ func GetClient(logger *zap.SugaredLogger, cfg *config.Config) (Interface, error)
 
 	rateLimiter := NewRateLimiter(logger, cfg.RateLimiter)
 
-	c, err := New(logger, cp, &rateLimiter, cfg.Auth.TenancyID)
+	c, err := New(logger, cp, &rateLimiter, cfg)
 	return c, err
 }

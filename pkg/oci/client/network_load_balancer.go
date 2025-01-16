@@ -16,6 +16,7 @@ package client
 
 import (
 	"context"
+	"regexp"
 
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -26,6 +27,7 @@ import (
 )
 
 type networkLoadbalancer struct {
+	nameToOcid          LBNameOcidCache
 	networkloadbalancer networkLoadBalancerClient
 	requestMetadata     common.RequestMetadata
 	rateLimiter         RateLimiter
@@ -33,7 +35,69 @@ type networkLoadbalancer struct {
 
 const (
 	NetworkLoadBalancerEntityType = "NetworkLoadBalancer"
+	// TODO move to utils?
+	dns1123LabelFmt = "[a-z0-9]([-a-z0-9]*[a-z0-9])?"
+	uuidFmt         = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+	// <ns>/<svc>/<svc UID>
+	LBNameRegex = "^" + dns1123LabelFmt + "/" + dns1123LabelFmt + "/" + uuidFmt + "$"
 )
+
+func NewNLBClient(nlb networkLoadBalancerClient, rm common.RequestMetadata, lim *RateLimiter) *networkLoadbalancer {
+	n := networkLoadbalancer{
+		networkloadbalancer: nlb,
+		requestMetadata:     rm,
+		rateLimiter:         *lim,
+	}
+	return &n
+}
+
+// WithEmptyNameCache initializes the NLB Display Name -> OCID cache. Without this, names are not cached.
+func (c *networkLoadbalancer) WithEmptyNameCache() *networkLoadbalancer {
+	c.nameToOcid.Initialize()
+	c.nameToOcid.SetEnabled(true)
+	return c
+}
+
+// WithPrepopulatedNameCache initializes the NLB Display Name -> OCID cache and pre-fills it with ocids of all NLBs
+// in a given compartment matching the expected display name format. In case of error, the cache is left on, but unpopulated
+// or partially populated.
+func (c *networkLoadbalancer) WithPrepopulatedNameCache(ctx context.Context, compartmentID string) *networkLoadbalancer {
+	c.nameToOcid.Initialize()
+	c.nameToOcid.SetEnabled(true)
+
+	nameRegex, err := regexp.Compile(LBNameRegex)
+	if err != nil {
+		return c
+	}
+
+	var page *string
+	for {
+		if !c.rateLimiter.Reader.TryAccept() {
+			break
+		}
+
+		resp, err := c.networkloadbalancer.ListNetworkLoadBalancers(ctx, networkloadbalancer.ListNetworkLoadBalancersRequest{
+			CompartmentId:   &compartmentID,
+			Page:            page,
+			RequestMetadata: c.requestMetadata,
+		})
+		incRequestCounter(err, listVerb, networkLoadBalancerResource)
+		if err != nil {
+			break
+		}
+
+		for _, lb := range resp.Items {
+			if nameRegex.MatchString(*lb.DisplayName) {
+				c.nameToOcid.Set(*lb.DisplayName, *lb.Id)
+			}
+		}
+		if page = resp.OpcNextPage; page == nil {
+			break
+		}
+	}
+
+	return c
+}
 
 func (c *networkLoadbalancer) GetLoadBalancer(ctx context.Context, id string) (*GenericLoadBalancer, error) {
 	if !c.rateLimiter.Reader.TryAccept() {
@@ -54,6 +118,17 @@ func (c *networkLoadbalancer) GetLoadBalancer(ctx context.Context, id string) (*
 }
 
 func (c *networkLoadbalancer) GetLoadBalancerByName(ctx context.Context, compartmentID string, name string) (*GenericLoadBalancer, error) {
+	if ocid, ok := c.nameToOcid.Get(name); ok {
+		lb, err := c.GetLoadBalancer(ctx, ocid)
+		if err == nil {
+			return lb, err
+		}
+
+		if IsNotFound(err) { // Only remove the cached value on 404, not on a 5XX
+			c.nameToOcid.Delete(name)
+		}
+	}
+
 	var page *string
 	for {
 		if !c.rateLimiter.Reader.TryAccept() {
@@ -72,6 +147,7 @@ func (c *networkLoadbalancer) GetLoadBalancerByName(ctx context.Context, compart
 		}
 		for _, lb := range resp.Items {
 			if *lb.DisplayName == name {
+				c.nameToOcid.Set(name, *lb.Id)
 				return c.networkLoadbalancerSummaryToGenericLoadbalancer(&lb), nil
 			}
 		}
