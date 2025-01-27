@@ -43,7 +43,7 @@ import (
 const (
 	FaultDomainLabel        = "oci.oraclecloud.com/fault-domain"
 	CompartmentIDAnnotation = "oci.oraclecloud.com/compartment-id"
-	timeout                 = 10 * time.Second
+	timeout                 = 5 * time.Minute
 )
 
 // NodeInfoController helps compute workers in the cluster
