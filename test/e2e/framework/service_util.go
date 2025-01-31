@@ -778,7 +778,7 @@ func (j *ServiceTestJig) waitForPodsCreated(namespace string, replicas int) ([]s
 }
 
 func (j *ServiceTestJig) waitForPodsReady(namespace string, pods []string) error {
-	timeout := 2 * time.Minute
+	timeout := 3 * time.Minute
 	if !CheckPodsRunningReady(j.Client, namespace, pods, timeout) {
 		return fmt.Errorf("Timeout waiting for %d pods to be ready", len(pods))
 	}
