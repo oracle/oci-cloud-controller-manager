@@ -131,7 +131,8 @@ var _ = Describe("Snapshot Creation and Restore", func() {
 			//creating a snapshot dynamically
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, BVDriverName, scParams, pvcJig.Labels, BindingModeWaitForFirstConsumer, true, ReclaimPolicyDelete, nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
-			_ = pvcJig.CreateAndAwaitNginxPodOrFail(f.Namespace.Name, pvc, WriteCommand)
+			podName := pvcJig.CreateAndAwaitNginxPodOrFail(f.Namespace.Name, pvc, WriteCommand)
+			pvcJig.CheckFileExists(f.Namespace.Name, podName, "/usr/share/nginx/html", "testdata.txt")
 			vscName := f.CreateVolumeSnapshotClassOrFail(f.Namespace.Name, BVDriverName, vscParams, ReclaimPolicyDelete)
 			vs := pvcJig.CreateAndAwaitVolumeSnapshotOrFail(f.Namespace.Name, vscName, pvc.Name, nil)
 
@@ -288,7 +289,8 @@ var _ = Describe("Raw Block Volume Snapshot Creation and Restore", func() {
 			//creating a snapshot dynamically
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, BVDriverName, scParams, pvcJig.Labels, BindingModeWaitForFirstConsumer, true, ReclaimPolicyDelete, nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeBlock, v1.ReadWriteOnce, v1.ClaimPending)
-			_ = pvcJig.CreateAndAwaitNginxPodOrFail(f.Namespace.Name, pvc, WriteCommandBlock)
+			podName := pvcJig.CreateAndAwaitNginxPodOrFail(f.Namespace.Name, pvc, WriteCommandBlock)
+			pvcJig.CheckDataInBlockDevice(f.Namespace.Name, podName, "Hello World")
 			vscName := f.CreateVolumeSnapshotClassOrFail(f.Namespace.Name, BVDriverName, vscParams, ReclaimPolicyDelete)
 			vs := pvcJig.CreateAndAwaitVolumeSnapshotOrFail(f.Namespace.Name, vscName, pvc.Name, nil)
 
