@@ -413,6 +413,7 @@ func (clb *CloudLoadBalancerProvider) createLoadBalancer(ctx context.Context, sp
 		FreeformTags:            spec.FreeformTags,
 		DefinedTags:             spec.DefinedTags,
 		IpVersion:               spec.IpVersions.LbEndpointIpVersion,
+		RuleSets:                spec.RuleSets,
 	}
 	// do not block creation if the defined tag limit is reached. defer LB to tracked by backfilling
 	if len(details.DefinedTags) > MaxDefinedTagPerResource {
@@ -1046,13 +1047,18 @@ func (clb *CloudLoadBalancerProvider) updateLoadBalancer(ctx context.Context, lb
 		}
 	}
 
+	var ruleSetActions []Action
+	if spec.RuleSets != nil {
+		ruleSetActions = getRuleSetChanges(lb.RuleSets, spec.RuleSets)
+	}
+
 	actualBackendSets := lb.BackendSets
 	desiredBackendSets := spec.BackendSets
 	backendSetActions := getBackendSetChanges(logger, actualBackendSets, desiredBackendSets)
 
 	actualListeners := lb.Listeners
 	desiredListeners := spec.Listeners
-	listenerActions := getListenerChanges(logger, actualListeners, desiredListeners)
+	listenerActions := getListenerChanges(logger, actualListeners, desiredListeners, spec.RuleSets)
 
 	if len(backendSetActions) == 0 && len(listenerActions) == 0 {
 		// If there are no backendSetActions or Listener actions
@@ -1065,7 +1071,8 @@ func (clb *CloudLoadBalancerProvider) updateLoadBalancer(ctx context.Context, lb
 			return err
 		}
 	}
-	actions := sortAndCombineActions(logger, backendSetActions, listenerActions)
+	actions := sortAndCombineActions(logger, backendSetActions, listenerActions, ruleSetActions)
+
 	for _, action := range actions {
 		switch a := action.(type) {
 		case *BackendSetAction:
@@ -1089,6 +1096,11 @@ func (clb *CloudLoadBalancerProvider) updateLoadBalancer(ctx context.Context, lb
 			err := clb.updateListener(ctx, lbID, a, ports, lbSubnets, nodeSubnets, spec.SourceCIDRs, spec.securityListManager, spec)
 			if err != nil {
 				return errors.Wrap(err, "updating listener")
+			}
+		case *RuleSetAction:
+			err := clb.updateRuleSet(ctx, lbID, a, spec)
+			if err != nil {
+				return errors.Wrap(err, "updating RuleSet")
 			}
 		}
 	}
@@ -1330,6 +1342,39 @@ func (clb *CloudLoadBalancerProvider) updateListener(ctx context.Context, lbID s
 		return err
 	}
 	logger.Info("Workrequest for loadbalancer listener completed successfully")
+	return nil
+}
+
+func (clb *CloudLoadBalancerProvider) updateRuleSet(ctx context.Context, lbID string, action *RuleSetAction, spec *LBSpec) (err error) {
+	var workRequestID string
+
+	logger := clb.logger.With(
+		"actionType", action.Type(),
+		"ruleSetName", action.Name(),
+		"loadBalancerID", lbID,
+		"loadBalancerType", getLoadBalancerType(spec.service))
+	logger.Info("Applying action on rule set")
+
+	switch action.Type() {
+	case Create:
+		workRequestID, err = clb.lbClient.CreateRuleSet(ctx, lbID, action.Name(), &action.RuleSetDetails)
+	case Update:
+		workRequestID, err = clb.lbClient.UpdateRuleSet(ctx, lbID, action.Name(), &action.RuleSetDetails)
+	case Delete:
+		workRequestID, err = clb.lbClient.DeleteRuleSet(ctx, lbID, action.Name())
+	}
+
+	if err != nil {
+		return err
+	}
+	logger = logger.With("workRequestID", workRequestID)
+	logger.Info("Await work request for loadbalancer rule set")
+	_, err = clb.lbClient.AwaitWorkRequest(ctx, workRequestID)
+	if err != nil {
+		return err
+	}
+	logger.Info("Work request for loadbalancer rule set completed successfully")
+
 	return nil
 }
 

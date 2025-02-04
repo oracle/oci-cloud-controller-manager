@@ -28,6 +28,7 @@ import (
 	"github.com/oracle/oci-go-sdk/v65/filestorage"
 	"github.com/oracle/oci-go-sdk/v65/identity"
 
+	"github.com/oracle/oci-go-sdk/v65/loadbalancer"
 	"go.uber.org/zap"
 	authv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
@@ -935,6 +936,17 @@ func (MockComputeClient) GetPrimaryVNICForInstance(ctx context.Context, compartm
 func (MockComputeClient) GetSecondaryVNICsForInstance(ctx context.Context, compartmentID, instanceID string) ([]*core.Vnic, error) {
 	return []*core.Vnic{instanceVnics[instanceID]}, nil
 }
+func (c *MockComputeClient) ListVnicAttachments(ctx context.Context, compartmentID, instanceID string) ([]core.VnicAttachment, error) {
+	return nil, nil
+}
+
+func (c *MockComputeClient) GetVnicAttachment(ctx context.Context, vnicAttachmentId *string) (response *core.VnicAttachment, err error) {
+	return nil, nil
+}
+
+func (c *MockComputeClient) AttachVnic(ctx context.Context, instanceID, subnetID *string, nsgIds []*string, skipSourceDestCheck *bool) (response core.VnicAttachment, err error) {
+	return core.VnicAttachment{}, nil
+}
 
 func (MockComputeClient) FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
 	return nil, nil
@@ -1121,6 +1133,18 @@ var updateLoadBalancerErrors = map[string]error{
 	"work request fail": errors.New("internal server error"),
 }
 
+func (c *MockLoadBalancerClient) CreateRuleSet(ctx context.Context, lbID string, name string, details *loadbalancer.RuleSetDetails) (string, error) {
+	return "", nil
+}
+
+func (c *MockLoadBalancerClient) UpdateRuleSet(ctx context.Context, lbID string, name string, details *loadbalancer.RuleSetDetails) (string, error) {
+	return "", nil
+}
+
+func (c *MockLoadBalancerClient) DeleteRuleSet(ctx context.Context, lbID string, name string) (string, error) {
+	return "", nil
+}
+
 func (c *MockLoadBalancerClient) UpdateLoadBalancer(ctx context.Context, lbID string, details *client.GenericUpdateLoadBalancerDetails) (string, error) {
 	if err, ok := updateLoadBalancerErrors[lbID]; ok {
 		return "", err
@@ -1220,6 +1244,18 @@ func (c *MockNetworkLoadBalancerClient) CreateListener(ctx context.Context, lbID
 }
 
 func (c *MockNetworkLoadBalancerClient) DeleteListener(ctx context.Context, lbID, name string) (string, error) {
+	return "", nil
+}
+
+func (c *MockNetworkLoadBalancerClient) CreateRuleSet(ctx context.Context, lbID string, name string, details *loadbalancer.RuleSetDetails) (string, error) {
+	return "", nil
+}
+
+func (c *MockNetworkLoadBalancerClient) UpdateRuleSet(ctx context.Context, lbID string, name string, details *loadbalancer.RuleSetDetails) (string, error) {
+	return "", nil
+}
+
+func (c *MockNetworkLoadBalancerClient) DeleteRuleSet(ctx context.Context, lbID string, name string) (string, error) {
 	return "", nil
 }
 

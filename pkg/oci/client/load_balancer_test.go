@@ -214,6 +214,15 @@ func (c *MockLoadBalancerClient) UpdateListener(ctx context.Context, request loa
 func (c *MockLoadBalancerClient) DeleteListener(ctx context.Context, request loadbalancer.DeleteListenerRequest) (response loadbalancer.DeleteListenerResponse, err error) {
 	return
 }
+func (c *MockLoadBalancerClient) CreateRuleSet(ctx context.Context, request loadbalancer.CreateRuleSetRequest) (response loadbalancer.CreateRuleSetResponse, err error) {
+	return
+}
+func (c *MockLoadBalancerClient) UpdateRuleSet(ctx context.Context, request loadbalancer.UpdateRuleSetRequest) (response loadbalancer.UpdateRuleSetResponse, err error) {
+	return
+}
+func (c *MockLoadBalancerClient) DeleteRuleSet(ctx context.Context, request loadbalancer.DeleteRuleSetRequest) (response loadbalancer.DeleteRuleSetResponse, err error) {
+	return
+}
 func (c *MockLoadBalancerClient) UpdateLoadBalancerShape(ctx context.Context, request loadbalancer.UpdateLoadBalancerShapeRequest) (response loadbalancer.UpdateLoadBalancerShapeResponse, err error) {
 	return
 }
