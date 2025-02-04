@@ -25,8 +25,9 @@ import (
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/v65/common"
+	"github.com/oracle/oci-go-sdk/v65/loadbalancer"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -34,6 +35,7 @@ func TestSortAndCombineActions(t *testing.T) {
 	testCases := map[string]struct {
 		backendSetActions []Action
 		listenerActions   []Action
+		ruleSetActions    []Action
 		expected          []Action
 	}{
 		"create": {
@@ -61,6 +63,7 @@ func TestSortAndCombineActions(t *testing.T) {
 					Listener:   client.GenericListener{},
 				},
 			},
+			ruleSetActions: []Action{},
 			expected: []Action{
 				&BackendSetAction{
 					name:       "TCP-443",
@@ -139,6 +142,7 @@ func TestSortAndCombineActions(t *testing.T) {
 					Listener:   client.GenericListener{},
 				},
 			},
+			ruleSetActions: []Action{},
 			expected: []Action{
 				&ListenerAction{
 					name:       "TCP-442",
@@ -217,6 +221,7 @@ func TestSortAndCombineActions(t *testing.T) {
 					Listener:   client.GenericListener{},
 				},
 			},
+			ruleSetActions: []Action{},
 			expected: []Action{
 				&ListenerAction{
 					name:       "TCP-443-secret",
@@ -298,7 +303,34 @@ func TestSortAndCombineActions(t *testing.T) {
 					Listener:   client.GenericListener{},
 				},
 			},
+			ruleSetActions: []Action{
+				&RuleSetAction{
+					name:           "foo",
+					actionType:     Create,
+					RuleSetDetails: loadbalancer.RuleSetDetails{},
+				},
+				&RuleSetAction{
+					name:           "bar",
+					actionType:     Delete,
+					RuleSetDetails: loadbalancer.RuleSetDetails{},
+				},
+				&RuleSetAction{
+					name:           "blah",
+					actionType:     Update,
+					RuleSetDetails: loadbalancer.RuleSetDetails{},
+				},
+			},
 			expected: []Action{
+				&RuleSetAction{
+					name:           "blah",
+					actionType:     Update,
+					RuleSetDetails: loadbalancer.RuleSetDetails{},
+				},
+				&RuleSetAction{
+					name:           "foo",
+					actionType:     Create,
+					RuleSetDetails: loadbalancer.RuleSetDetails{},
+				},
 				&ListenerAction{
 					name:       "TCP-6443",
 					actionType: Delete,
@@ -348,6 +380,11 @@ func TestSortAndCombineActions(t *testing.T) {
 					name:       "TCP-9443",
 					actionType: Create,
 					Listener:   client.GenericListener{},
+				},
+				&RuleSetAction{
+					name:           "bar",
+					actionType:     Delete,
+					RuleSetDetails: loadbalancer.RuleSetDetails{},
 				},
 			},
 		},
@@ -355,7 +392,7 @@ func TestSortAndCombineActions(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			result := sortAndCombineActions(zap.S(), tc.backendSetActions, tc.listenerActions)
+			result := sortAndCombineActions(zap.S(), tc.backendSetActions, tc.listenerActions, tc.ruleSetActions)
 			if !reflect.DeepEqual(result, tc.expected) {
 				t.Errorf("expected\n%+v\nbut got\n%+v", tc.expected, result)
 			}
@@ -576,6 +613,314 @@ func TestGetBackendSetChanges(t *testing.T) {
 			}
 			if !reflect.DeepEqual(changes, tt.expected) {
 				t.Errorf("expected BackendSetActions\n%+v\nbut got\n%+v", tt.expected, changes)
+			}
+		})
+	}
+}
+
+func TestGetRuleSetChanges(t *testing.T) {
+	var testCases = []struct {
+		name     string
+		desired  map[string]loadbalancer.RuleSetDetails
+		actual   map[string]loadbalancer.RuleSetDetails
+		expected []Action
+	}{
+		{
+			name: "create rule set",
+			desired: map[string]loadbalancer.RuleSetDetails{
+				"one": loadbalancer.RuleSetDetails{
+					Items: []loadbalancer.Rule{
+						loadbalancer.Rule(
+							map[string]interface{}{
+								"action":                  "HTTP_HEADER",
+								"httpLargeHeaderSizeInKB": 16,
+							},
+						),
+					},
+				},
+				"two": loadbalancer.RuleSetDetails{
+					Items: []loadbalancer.Rule{
+						loadbalancer.Rule(
+							map[string]interface{}{
+								"action": "REMOVE_HTTP_REQUEST_HEADER",
+								"header": "Cache-Control",
+							},
+						),
+					},
+				},
+			},
+			actual: map[string]loadbalancer.RuleSetDetails{
+				"one": loadbalancer.RuleSetDetails{
+					Items: []loadbalancer.Rule{
+						loadbalancer.Rule(
+							map[string]interface{}{
+								"action":                  "HTTP_HEADER",
+								"httpLargeHeaderSizeInKB": 16,
+							},
+						),
+					},
+				},
+			},
+			expected: []Action{
+				&RuleSetAction{
+					name:       "two",
+					actionType: Create,
+					RuleSetDetails: loadbalancer.RuleSetDetails{
+						Items: []loadbalancer.Rule{
+							loadbalancer.Rule(
+								map[string]interface{}{
+									"action": "REMOVE_HTTP_REQUEST_HEADER",
+									"header": "Cache-Control",
+								},
+							),
+						},
+					},
+				},
+			},
+		},
+
+		{
+			name: "delete rule set",
+			desired: map[string]loadbalancer.RuleSetDetails{
+				"one": loadbalancer.RuleSetDetails{
+					Items: []loadbalancer.Rule{
+						loadbalancer.Rule(
+							map[string]interface{}{
+								"action":                  "HTTP_HEADER",
+								"httpLargeHeaderSizeInKB": 16,
+							},
+						),
+					},
+				},
+			},
+			actual: map[string]loadbalancer.RuleSetDetails{
+				"one": loadbalancer.RuleSetDetails{
+					Items: []loadbalancer.Rule{
+						loadbalancer.Rule(
+							map[string]interface{}{
+								"action":                  "HTTP_HEADER",
+								"httpLargeHeaderSizeInKB": 16,
+							},
+						),
+					},
+				},
+				"two": loadbalancer.RuleSetDetails{
+					Items: []loadbalancer.Rule{
+						loadbalancer.Rule(
+							map[string]interface{}{
+								"action": "REMOVE_HTTP_REQUEST_HEADER",
+								"header": "Cache-Control",
+							},
+						),
+					},
+				},
+			},
+			expected: []Action{
+				&RuleSetAction{
+					name:       "two",
+					actionType: Delete,
+					RuleSetDetails: loadbalancer.RuleSetDetails{
+						Items: []loadbalancer.Rule{
+							loadbalancer.Rule(
+								map[string]interface{}{
+									"action": "REMOVE_HTTP_REQUEST_HEADER",
+									"header": "Cache-Control",
+								},
+							),
+						},
+					},
+				},
+			},
+		},
+
+		{
+			name: "update rule set",
+			desired: map[string]loadbalancer.RuleSetDetails{
+				"one": loadbalancer.RuleSetDetails{
+					Items: []loadbalancer.Rule{
+						loadbalancer.Rule(
+							map[string]interface{}{
+								"action":                  "HTTP_HEADER",
+								"httpLargeHeaderSizeInKB": 16,
+							},
+						),
+					},
+				},
+			},
+			actual: map[string]loadbalancer.RuleSetDetails{
+				"one": loadbalancer.RuleSetDetails{
+					Items: []loadbalancer.Rule{
+						loadbalancer.Rule(
+							map[string]interface{}{
+								"action": "REMOVE_HTTP_REQUEST_HEADER",
+								"header": "Cache-Control",
+							},
+						),
+					},
+				},
+			},
+			expected: []Action{
+				&RuleSetAction{
+					name:       "one",
+					actionType: Update,
+					RuleSetDetails: loadbalancer.RuleSetDetails{
+						Items: []loadbalancer.Rule{
+							loadbalancer.Rule(
+								map[string]interface{}{
+									"action":                  "HTTP_HEADER",
+									"httpLargeHeaderSizeInKB": 16,
+								},
+							),
+						},
+					},
+				},
+			},
+		},
+
+		{
+			name: "update rule set - add rules",
+			desired: map[string]loadbalancer.RuleSetDetails{
+				"one": loadbalancer.RuleSetDetails{
+					Items: []loadbalancer.Rule{
+						loadbalancer.Rule(
+							map[string]interface{}{
+								"action":                  "HTTP_HEADER",
+								"httpLargeHeaderSizeInKB": 16,
+							},
+						),
+						loadbalancer.Rule(
+							map[string]interface{}{
+								"action": "REMOVE_HTTP_REQUEST_HEADER",
+								"header": "Cache-Control",
+							},
+						),
+					},
+				},
+			},
+			actual: map[string]loadbalancer.RuleSetDetails{
+				"one": loadbalancer.RuleSetDetails{
+					Items: []loadbalancer.Rule{
+						loadbalancer.Rule(
+							map[string]interface{}{
+								"action":                  "HTTP_HEADER",
+								"httpLargeHeaderSizeInKB": 16,
+							},
+						),
+					},
+				},
+			},
+			expected: []Action{
+				&RuleSetAction{
+					name:       "one",
+					actionType: Update,
+					RuleSetDetails: loadbalancer.RuleSetDetails{
+						Items: []loadbalancer.Rule{
+							loadbalancer.Rule(
+								map[string]interface{}{
+									"action":                  "HTTP_HEADER",
+									"httpLargeHeaderSizeInKB": 16,
+								},
+							),
+							loadbalancer.Rule(
+								map[string]interface{}{
+									"action": "REMOVE_HTTP_REQUEST_HEADER",
+									"header": "Cache-Control",
+								},
+							),
+						},
+					},
+				},
+			},
+		},
+
+		{
+			name: "update rule set - remove rules",
+			desired: map[string]loadbalancer.RuleSetDetails{
+				"one": loadbalancer.RuleSetDetails{
+					Items: []loadbalancer.Rule{
+						loadbalancer.Rule(
+							map[string]interface{}{
+								"action":                  "HTTP_HEADER",
+								"httpLargeHeaderSizeInKB": 16,
+							},
+						),
+					},
+				},
+			},
+			actual: map[string]loadbalancer.RuleSetDetails{
+				"one": loadbalancer.RuleSetDetails{
+					Items: []loadbalancer.Rule{
+						loadbalancer.Rule(
+							map[string]interface{}{
+								"action":                  "HTTP_HEADER",
+								"httpLargeHeaderSizeInKB": 16,
+							},
+						),
+						loadbalancer.Rule(
+							map[string]interface{}{
+								"action": "REMOVE_HTTP_REQUEST_HEADER",
+								"header": "Cache-Control",
+							},
+						),
+					},
+				},
+			},
+			expected: []Action{
+				&RuleSetAction{
+					name:       "one",
+					actionType: Update,
+					RuleSetDetails: loadbalancer.RuleSetDetails{
+						Items: []loadbalancer.Rule{
+							loadbalancer.Rule(
+								map[string]interface{}{
+									"action":                  "HTTP_HEADER",
+									"httpLargeHeaderSizeInKB": 16,
+								},
+							),
+						},
+					},
+				},
+			},
+		},
+
+		{
+			name: "no change",
+			desired: map[string]loadbalancer.RuleSetDetails{
+				"one": loadbalancer.RuleSetDetails{
+					Items: []loadbalancer.Rule{
+						loadbalancer.Rule(
+							map[string]interface{}{
+								"action":                  "HTTP_HEADER",
+								"httpLargeHeaderSizeInKB": 16,
+							},
+						),
+					},
+				},
+			},
+			actual: map[string]loadbalancer.RuleSetDetails{
+				"one": loadbalancer.RuleSetDetails{
+					Items: []loadbalancer.Rule{
+						loadbalancer.Rule(
+							map[string]interface{}{
+								"action":                  "HTTP_HEADER",
+								"httpLargeHeaderSizeInKB": 16,
+							},
+						),
+					},
+				},
+			},
+			expected: []Action{},
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			changes := getRuleSetChanges(tt.actual, tt.desired)
+			if len(changes) == 0 && len(tt.expected) == 0 {
+				return
+			}
+			if !reflect.DeepEqual(changes, tt.expected) {
+				t.Errorf("expected RuleSetActions\n%+v\nbut got\n%+v", tt.expected, changes)
 			}
 		})
 	}
@@ -1136,7 +1481,7 @@ func TestGetListenerChanges(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			changes := getListenerChanges(zap.S(), tt.actual, tt.desired)
+			changes := getListenerChanges(zap.S(), tt.actual, tt.desired, nil)
 			if len(changes) == 0 && len(tt.expected) == 0 {
 				return
 			}
@@ -1575,7 +1920,7 @@ func TestHasListenerChanged(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			isListenerChanged := hasListenerChanged(zap.S(), tt.actual, tt.desired)
+			isListenerChanged := hasListenerChanged(zap.S(), tt.actual, tt.desired, nil)
 			if isListenerChanged == tt.expected {
 				return
 			}

@@ -28,8 +28,10 @@ import (
 	. "github.com/onsi/gomega"
 	cloudprovider "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci"
 	sharedfw "github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
+	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/containerengine"
 	"github.com/oracle/oci-go-sdk/v65/core"
+	sdklb "github.com/oracle/oci-go-sdk/v65/loadbalancer"
 
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
@@ -1052,6 +1054,129 @@ var _ = Describe("CipherSuite tests Loadbalancer TLS", func() {
 
 			err = f.ClientSet.CoreV1().Secrets(ns).Delete(context.Background(), sslSecretName, metav1.DeleteOptions{})
 			sharedfw.ExpectNoError(err)
+		})
+	})
+})
+
+var _ = Describe("Rule Set tests Loadbalancer", func() {
+	baseName := "rulesets-service"
+	f := sharedfw.NewDefaultFramework(baseName)
+
+	Context("[cloudprovider][ccm][lb][rulesets]", func() {
+		It("should be possible to create, mutate and delete Rule Sets for Service type:LoadBalancer [Canary]", func() {
+			if sharedfw.CompareVersions(f.OkeClusterK8sVersion, "v1.29") < 0 {
+				Skip("Cluster K8s Version " + f.OkeClusterK8sVersion + " is less than v1.29, skipping test for Load Balancer Rule Sets")
+			}
+			serviceName := "e2e-rulesets-lb-test"
+			ns := f.Namespace.Name
+
+			jig := sharedfw.NewServiceTestJig(f.ClientSet, serviceName)
+
+			loadBalancerCreateTimeout := sharedfw.LoadBalancerCreateTimeoutDefault
+			if nodes := sharedfw.GetReadySchedulableNodesOrDie(f.ClientSet); len(nodes.Items) > sharedfw.LargeClusterMinNodesNumber {
+				loadBalancerCreateTimeout = sharedfw.LoadBalancerCreateTimeoutLarge
+			}
+
+			requestedIP := ""
+			tcpService := jig.CreateTCPServiceOrFail(ns, func(s *v1.Service) {
+				s.Spec.Type = v1.ServiceTypeLoadBalancer
+				s.Spec.LoadBalancerIP = requestedIP
+				s.Spec.Ports = []v1.ServicePort{v1.ServicePort{Name: "http", Port: 80, TargetPort: intstr.FromInt(80)},
+					v1.ServicePort{Name: "https", Port: 443, TargetPort: intstr.FromInt32(80)}}
+				s.ObjectMeta.Annotations = map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerInternal: "true",
+					cloudprovider.ServiceAnnotationRuleSets:             `{"header_size":{"items":[{"action":"HTTP_HEADER", "httpLargeHeaderSizeInKB":16}]}}`,
+				}
+			})
+
+			svcPort := int(tcpService.Spec.Ports[0].Port)
+
+			By("creating a pod to be part of the TCP service " + serviceName)
+			jig.RunOrFail(ns, nil)
+
+			By("waiting for the TCP service to have a load balancer")
+			// Wait for the load balancer to be created asynchronously
+			tcpService = jig.WaitForLoadBalancerOrFail(ns, tcpService.Name, loadBalancerCreateTimeout)
+			jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
+			tcpNodePort := int(tcpService.Spec.Ports[0].NodePort)
+			sharedfw.Logf("TCP node port: %d", tcpNodePort)
+
+			lbName := cloudprovider.GetLoadBalancerName(tcpService)
+			sharedfw.Logf("LB Name is %s", lbName)
+			ctx := context.TODO()
+			compartmentId := ""
+			if setupF.Compartment1 != "" {
+				compartmentId = setupF.Compartment1
+			} else if f.CloudProviderConfig.CompartmentID != "" {
+				compartmentId = f.CloudProviderConfig.CompartmentID
+			} else if f.CloudProviderConfig.Auth.CompartmentID != "" {
+				compartmentId = f.CloudProviderConfig.Auth.CompartmentID
+			} else {
+				sharedfw.Failf("Compartment Id undefined.")
+			}
+			if requestedIP != "" && sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]) != requestedIP {
+				sharedfw.Failf("unexpected TCP Status.LoadBalancer.Ingress (expected %s, got %s)", requestedIP, sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0]))
+			}
+			tcpIngressIP := sharedfw.GetIngressPoint(&tcpService.Status.LoadBalancer.Ingress[0])
+			sharedfw.Logf("TCP load balancer: %s", tcpIngressIP)
+
+			By("validate Rule Sets are created")
+			loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), "lb", "",  nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
+			sharedfw.ExpectNoError(err)
+
+			err = f.WaitForLoadBalancerRuleSetsConfigurationChange(loadBalancer, "header_size", 1)
+			sharedfw.ExpectNoError(err)
+
+			loadBalancer, err = f.Client.LoadBalancer(zap.L().Sugar(), "lb", "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
+			sharedfw.ExpectNoError(err)
+			Expect(len(loadBalancer.RuleSets["header_size"].Items)).To(Equal(1))
+			headerRule, ok := loadBalancer.RuleSets["header_size"].Items[0].(sdklb.HttpHeaderRule)
+			Expect(ok).To(BeTrue())
+			Expect(headerRule).To(BeEquivalentTo(sdklb.HttpHeaderRule{HttpLargeHeaderSizeInKB: common.Int(16)}))
+
+			By("validate Rule Sets are updated")
+			tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+				s.ObjectMeta.Annotations = map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerInternal: "true",
+					cloudprovider.ServiceAnnotationRuleSets:             `{"remove_header":{"items":[{"action":"REMOVE_HTTP_REQUEST_HEADER", "header":"Cache-Control"}]}}`,
+				}
+			})
+			jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
+			err = f.WaitForLoadBalancerRuleSetsConfigurationChange(loadBalancer, "remove_header", 1)
+			sharedfw.ExpectNoError(err)
+
+			loadBalancer, err = f.Client.LoadBalancer(zap.L().Sugar(), "lb", "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
+			sharedfw.ExpectNoError(err)
+
+			Expect(len(loadBalancer.RuleSets["remove_header"].Items)).To(Equal(1))
+			requestHeaderRule, ok := loadBalancer.RuleSets["remove_header"].Items[0].(sdklb.RemoveHttpRequestHeaderRule)
+			Expect(ok).To(BeTrue())
+			Expect(requestHeaderRule).To(BeEquivalentTo(sdklb.RemoveHttpRequestHeaderRule{Header: common.String("Cache-Control"), Conditions: []sdklb.RuleCondition{}}))
+
+			By("validate Rule Sets are deleted")
+			tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+				s.ObjectMeta.Annotations = map[string]string{
+					cloudprovider.ServiceAnnotationLoadBalancerInternal: "true",
+					cloudprovider.ServiceAnnotationRuleSets:             "",
+				}
+			})
+			jig.SanityCheckService(tcpService, v1.ServiceTypeLoadBalancer)
+
+			err = f.WaitForLoadBalancerRuleSetsConfigurationChange(loadBalancer, "", 0)
+			sharedfw.ExpectNoError(err)
+
+			By("changing TCP service back to type=ClusterIP")
+			tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {
+				s.Spec.Type = v1.ServiceTypeClusterIP
+				s.Spec.Ports[0].NodePort = 0
+				s.Spec.Ports[1].NodePort = 0
+			})
+
+			// Wait for the load balancer to be destroyed asynchronously
+			tcpService = jig.WaitForLoadBalancerDestroyOrFail(ns, tcpService.Name, tcpIngressIP, svcPort, loadBalancerCreateTimeout)
+			jig.SanityCheckService(tcpService, v1.ServiceTypeClusterIP)
 		})
 	})
 })

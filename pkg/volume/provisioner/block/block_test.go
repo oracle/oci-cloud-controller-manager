@@ -26,6 +26,7 @@ import (
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/oracle/oci-go-sdk/v65/filestorage"
 	"github.com/oracle/oci-go-sdk/v65/identity"
+	"github.com/oracle/oci-go-sdk/v65/loadbalancer"
 
 	"go.uber.org/zap"
 	authv1 "k8s.io/api/authentication/v1"
@@ -478,6 +479,18 @@ func (c *MockLoadBalancerClient) CreateListener(ctx context.Context, lbID string
 }
 
 func (c *MockLoadBalancerClient) DeleteListener(ctx context.Context, lbID, name string) (string, error) {
+	return "", nil
+}
+
+func (c *MockLoadBalancerClient) CreateRuleSet(ctx context.Context, lbID string, name string, details *loadbalancer.RuleSetDetails) (string, error) {
+	return "", nil
+}
+
+func (c *MockLoadBalancerClient) UpdateRuleSet(ctx context.Context, lbID string, name string, details *loadbalancer.RuleSetDetails) (string, error) {
+	return "", nil
+}
+
+func (c *MockLoadBalancerClient) DeleteRuleSet(ctx context.Context, lbID string, name string) (string, error) {
 	return "", nil
 }
 

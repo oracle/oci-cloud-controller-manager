@@ -18,6 +18,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/oracle/oci-go-sdk/v65/loadbalancer"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/util/wait"
 
@@ -411,7 +412,7 @@ func (c *networkLoadbalancer) AwaitWorkRequest(ctx context.Context, id string) (
 	contextWithTimeout, cancel := context.WithTimeout(ctx, defaultSynchronousAPIPollContextTimeout)
 	defer cancel()
 	logger := zap.L().Sugar()
-	logger = logger.With("opc-workrequest-id", id,
+	logger = logger.With("workRequestID", id,
 		"loadBalancerType", "nlb",
 	)
 	err := wait.PollUntil(workRequestPollInterval, func() (done bool, err error) {
@@ -455,6 +456,18 @@ func (c *networkLoadbalancer) DeleteListener(ctx context.Context, lbID, name str
 	}
 
 	return *resp.OpcWorkRequestId, nil
+}
+
+func (c *networkLoadbalancer) CreateRuleSet(ctx context.Context, lbID string, name string, details *loadbalancer.RuleSetDetails) (string, error) {
+	return "", nil
+}
+
+func (c *networkLoadbalancer) UpdateRuleSet(ctx context.Context, lbID string, name string, details *loadbalancer.RuleSetDetails) (string, error) {
+	return "", nil
+}
+
+func (c *networkLoadbalancer) DeleteRuleSet(ctx context.Context, lbID string, name string) (string, error) {
+	return "", nil
 }
 
 func (c *networkLoadbalancer) UpdateLoadBalancerShape(context.Context, string, *GenericUpdateLoadBalancerShapeDetails) (string, error) {
