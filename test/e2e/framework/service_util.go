@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -94,14 +95,11 @@ const (
 	// one instance group on GCP.
 	GCPMaxInstancesInInstanceGroup = 2000
 
-	// OCI LB Shape Update Timeout
-	OCILBShapeUpdateTimeout = 5 * time.Minute
-
-	// OCI LB NSG Update Timeout
-	OCILBNSGUpdateTimeout = 5 * time.Minute
-
 	// SSL config update timeout
 	OCISSLConfigUpdateTimeout = 10 * time.Minute
+
+	// OCI LB update work request timeout
+	OCILBWRUpdateTimeout = 5 * time.Minute
 )
 
 // This should match whatever the default/configured range is
@@ -951,7 +949,7 @@ func (f *CloudProviderFramework) WaitForLoadBalancerNSGChange(lb *client.Generic
 		}
 		return true, nil
 	}
-	if err := wait.Poll(15*time.Second, OCILBNSGUpdateTimeout, condition); err != nil {
+	if err := wait.Poll(15*time.Second, OCILBWRUpdateTimeout, condition); err != nil {
 		return fmt.Errorf("Failed to update LB NSGs, error: %s", err.Error())
 	}
 	return nil
@@ -968,6 +966,21 @@ func (f *CloudProviderFramework) WaitForLoadBalancerSSLConfigurationChange(lb *c
 	}
 	if err := wait.Poll(15*time.Second, OCISSLConfigUpdateTimeout, condition); err != nil {
 		return fmt.Errorf("Failed to update SSLconfiguration, error: %s", err.Error())
+	}
+	return nil
+}
+
+// WaitForLoadBalancerRuleSetsConfigurationChange polls for Rule Sets configuration of a load balancer comparing it to the spec
+func (f *CloudProviderFramework) WaitForLoadBalancerRuleSetsConfigurationChange(lb *client.GenericLoadBalancer, ruleSetName string, numberRules int) error {
+	condition := func() (bool, error) {
+		updatedLB, err := f.Client.LoadBalancer(zap.L().Sugar(), "lb", nil).GetLoadBalancer(context.TODO(), *lb.Id)
+		if err != nil {
+			return false, err
+		}
+		return ValidateRuleSetConfiguration(updatedLB, ruleSetName, numberRules)
+	}
+	if err := wait.Poll(15*time.Second, OCILBWRUpdateTimeout, condition); err != nil {
+		return fmt.Errorf("failed to update Rule Sets configuration, error: %s", err.Error())
 	}
 	return nil
 }
@@ -995,7 +1008,7 @@ func (f *CloudProviderFramework) WaitForLoadBalancerShapeChange(lb *client.Gener
 		}
 		return true, nil
 	}
-	if err := wait.Poll(15*time.Second, OCILBShapeUpdateTimeout, condition); err != nil {
+	if err := wait.Poll(15*time.Second, OCILBWRUpdateTimeout, condition); err != nil {
 		return fmt.Errorf("Failed to update LB Shape from %s to %s. ShapeDetails (min, max) (%s, %s)", *lb.ShapeName, shape, fMin, fMax)
 	}
 	return nil
@@ -1424,5 +1437,38 @@ func ValidateSSLConfiguration(tcpService *v1.Service, loadBalancer *client.Gener
 			}
 		}
 	}
+	return true, nil
+}
+
+func ValidateRuleSetConfiguration(lb *client.GenericLoadBalancer, name string, rules int) (bool, error) {
+	rulesets := lb.RuleSets
+
+	if name == "" {
+		if len(rulesets) == 0 {
+			return true, nil
+		} else {
+			Logf("Load baslancer %s expected to have no Rule set but has %d\n", *lb.DisplayName, len(rulesets))
+			return false, nil
+		}
+	}
+
+	rs, ok := rulesets[name]
+	if !ok {
+		Logf("Rule set %s not found in Load Balancer %s\n", name, *lb.DisplayName)
+		return false, nil
+	}
+
+	if len(rs.Items) != rules {
+		Logf("Rule set %s has %d rules, want %d\n", name, len(rs.Items), rules)
+		return false, nil
+	}
+
+	for _, l := range lb.Listeners {
+		if !slices.Contains(l.RuleSetNames, name) {
+			Logf("Listener %s does not contain Rule Set %s\n", *l.Name, name)
+			return false, nil
+		}
+	}
+
 	return true, nil
 }

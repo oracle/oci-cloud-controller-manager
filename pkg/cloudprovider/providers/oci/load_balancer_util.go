@@ -130,6 +130,29 @@ func (l *ListenerAction) String() string {
 	return fmt.Sprintf("ListenerAction:{Name: %s, Type: %v }", l.Name(), l.actionType)
 }
 
+type RuleSetAction struct {
+	Action
+
+	actionType ActionType
+	name       string
+
+	RuleSetDetails loadbalancer.RuleSetDetails
+}
+
+// Type of the Action.
+func (b *RuleSetAction) Type() ActionType {
+	return b.actionType
+}
+
+// Name of the action's object.
+func (b *RuleSetAction) Name() string {
+	return b.name
+}
+
+func (b *RuleSetAction) String() string {
+	return fmt.Sprintf("RuleSetAction:{Name: %s, Type: %v, Rules: %+v}", b.Name(), b.actionType, b.RuleSetDetails)
+}
+
 func toBool(b *bool) bool {
 	if b == nil {
 		return false
@@ -453,7 +476,7 @@ func getSSLConfigurationChanges(actual *client.GenericSslConfigurationDetails, d
 	return sslConfigurationChanges
 }
 
-func hasListenerChanged(logger *zap.SugaredLogger, actual client.GenericListener, desired client.GenericListener) bool {
+func hasListenerChanged(logger *zap.SugaredLogger, actual client.GenericListener, desired client.GenericListener, ruleSets map[string]loadbalancer.RuleSetDetails) bool {
 	logger = logger.With("ListenerName", toString(actual.Name))
 	var listenerChanges []string
 	if toString(actual.DefaultBackendSetName) != toString(desired.DefaultBackendSetName) {
@@ -467,6 +490,9 @@ func hasListenerChanged(logger *zap.SugaredLogger, actual client.GenericListener
 	}
 	if toBool(actual.IsPpv2Enabled) != toBool(desired.IsPpv2Enabled) {
 		listenerChanges = append(listenerChanges, fmt.Sprintf(changeFmtStr, "Listener:IsPpv2Enabled", toBool(actual.IsPpv2Enabled), toBool(desired.IsPpv2Enabled)))
+	}
+	if ruleSets != nil && !sets.NewString(actual.RuleSetNames...).Equal(sets.NewString(desired.RuleSetNames...)) {
+		listenerChanges = append(listenerChanges, fmt.Sprintf(changeFmtStr, "Listener:RuleSetNames", actual.RuleSetNames, desired.RuleSetNames))
 	}
 
 	listenerChanges = append(listenerChanges, getSSLConfigurationChanges(actual.SslConfiguration, desired.SslConfiguration)...)
@@ -503,7 +529,7 @@ func getConnectionConfigurationChanges(actual *client.GenericConnectionConfigura
 	return connectionConfigurationChanges
 }
 
-func getListenerChanges(logger *zap.SugaredLogger, actual map[string]client.GenericListener, desired map[string]client.GenericListener) []Action {
+func getListenerChanges(logger *zap.SugaredLogger, actual map[string]client.GenericListener, desired map[string]client.GenericListener, ruleSets map[string]loadbalancer.RuleSetDetails) []Action {
 	var listenerActions []Action
 
 	// set to keep track of desired listeners that already exist and should not be created
@@ -527,6 +553,7 @@ func getListenerChanges(logger *zap.SugaredLogger, actual map[string]client.Gene
 					Port:                  actualListener.Port,
 					Protocol:              actualListener.Protocol,
 					SslConfiguration:      sslConfigurationToDetails(actualListener.SslConfiguration),
+					RuleSetNames:          actualListener.RuleSetNames,
 				},
 				name:       name,
 				actionType: Delete,
@@ -534,7 +561,7 @@ func getListenerChanges(logger *zap.SugaredLogger, actual map[string]client.Gene
 			continue
 		}
 		exists.Insert(getSanitizedName(name))
-		if hasListenerChanged(logger, actualListener, desiredListener) {
+		if hasListenerChanged(logger, actualListener, desiredListener, ruleSets) {
 			listenerActions = append(listenerActions, &ListenerAction{
 				Listener:   desiredListener,
 				name:       name,
@@ -556,6 +583,45 @@ func getListenerChanges(logger *zap.SugaredLogger, actual map[string]client.Gene
 	}
 
 	return listenerActions
+}
+
+func getRuleSetChanges(actual map[string]loadbalancer.RuleSetDetails, desired map[string]loadbalancer.RuleSetDetails) []Action {
+	var ruleSetActions []Action
+
+	// First check to see if any rule sets need to be deleted.
+	for name, a := range actual {
+		_, ok := desired[name]
+		if !ok {
+			// No longer exists
+			ruleSetActions = append(ruleSetActions, &RuleSetAction{
+				name:           name,
+				RuleSetDetails: a,
+				actionType:     Delete,
+			})
+			continue
+		}
+	}
+
+	// Now check if any need to be created or updated
+	for name, desiredRuleSet := range desired {
+		if _, ok := actual[name]; !ok {
+			ruleSetActions = append(ruleSetActions, &RuleSetAction{
+				name:           name,
+				RuleSetDetails: desiredRuleSet,
+				actionType:     Create,
+			})
+		} else {
+			if !reflect.DeepEqual(actual[name], desired[name]) {
+				ruleSetActions = append(ruleSetActions, &RuleSetAction{
+					name:           name,
+					RuleSetDetails: desiredRuleSet,
+					actionType:     Update,
+				})
+			}
+		}
+	}
+
+	return ruleSetActions
 }
 
 func hasLoadbalancerShapeChanged(ctx context.Context, spec *LBSpec, lb *client.GenericLoadBalancer) bool {
@@ -705,10 +771,11 @@ func parseSecretString(secretString string) (string, string) {
 	return "", secretString
 }
 
-// sortAndCombineActions combines two slices of Actions and then sorts them to
+// sortAndCombineActions combines three slices of Actions and then sorts them to
 // ensure that BackendSets are created prior to their associated Listeners but
-// deleted after their associated Listeners.
-func sortAndCombineActions(logger *zap.SugaredLogger, backendSetActions []Action, listenerActions []Action) []Action {
+// deleted after their associated Listeners. Rule Sets are created/updated before any listener changes
+// and deleted after listener changes.
+func sortAndCombineActions(logger *zap.SugaredLogger, backendSetActions []Action, listenerActions []Action, ruleSetActions []Action) []Action {
 	actions := append(backendSetActions, listenerActions...)
 	sort.SliceStable(actions, func(i, j int) bool {
 		a1 := actions[i]
@@ -750,6 +817,15 @@ func sortAndCombineActions(logger *zap.SugaredLogger, backendSetActions []Action
 		}
 		return false
 	})
+
+	for _, a := range ruleSetActions {
+		if a.Type() == Delete { // Rule Set can only be deleted if it's not attached to any Listener
+			actions = append(actions, a)
+		} else { // Rule Set needs to exist before it can be attached to a Listener. No requirements on updates.
+			actions = append([]Action{a}, actions...)
+		}
+	}
+
 	return actions
 }
 

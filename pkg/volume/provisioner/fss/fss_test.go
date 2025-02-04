@@ -29,6 +29,7 @@ import (
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/oracle/oci-go-sdk/v65/filestorage"
 	"github.com/oracle/oci-go-sdk/v65/identity"
+	"github.com/oracle/oci-go-sdk/v65/loadbalancer"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 	"sigs.k8s.io/sig-storage-lib-external-provisioner/v9/controller"
@@ -247,6 +248,17 @@ func (c *MockComputeClient) GetPrimaryVNICForInstance(ctx context.Context, compa
 func (MockComputeClient) GetSecondaryVNICsForInstance(ctx context.Context, compartmentID, instanceID string) ([]*core.Vnic, error) {
 	return nil, nil
 }
+func (c *MockComputeClient) ListVnicAttachments(ctx context.Context, compartmentID, instanceID string) ([]core.VnicAttachment, error) {
+	return nil, nil
+}
+
+func (c *MockComputeClient) GetVnicAttachment(ctx context.Context, vnicAttachmentId *string) (response *core.VnicAttachment, err error) {
+	return nil, nil
+}
+
+func (c *MockComputeClient) AttachVnic(ctx context.Context, instanceID, subnetID *string, nsgIds []*string, skipSourceDestCheck *bool) (response core.VnicAttachment, err error) {
+	return core.VnicAttachment{}, nil
+}
 
 func (c *MockComputeClient) FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
 	return nil, nil
@@ -282,18 +294,6 @@ func (c *MockComputeClient) WaitForUHPVolumeLoggedOut(ctx context.Context, attac
 type MockVirtualNetworkClient struct {
 }
 
-func (c *MockVirtualNetworkClient) GetVNIC(ctx context.Context, id string) (*core.Vnic, error) {
-	return nil, nil
-}
-
-func (c *MockVirtualNetworkClient) ListPrivateIps(ctx context.Context, vnicId string) ([]core.PrivateIp, error) {
-	return nil, nil
-}
-
-func (c *MockVirtualNetworkClient) CreatePrivateIp(ctx context.Context, vnicID string) (*core.PrivateIp, error) {
-	return nil, nil
-}
-
 func (c *MockVirtualNetworkClient) GetIpv6(ctx context.Context, id string) (*core.Ipv6, error) {
 	return &core.Ipv6{}, nil
 }
@@ -327,6 +327,22 @@ func (c *MockVirtualNetworkClient) GetPrivateIp(ctx context.Context, id string) 
 	return &core.PrivateIp{IpAddress: &privateIP}, nil
 }
 
+func (c *MockVirtualNetworkClient) ListPrivateIps(ctx context.Context, id string) ([]core.PrivateIp, error) {
+	return []core.PrivateIp{}, nil
+}
+
+func (c *MockVirtualNetworkClient) CreatePrivateIp(ctx context.Context, vnicId string) (*core.PrivateIp, error) {
+	return &core.PrivateIp{}, nil
+}
+
+func (c *MockVirtualNetworkClient) ListIpv6s(ctx context.Context, vnicId string) ([]core.Ipv6, error) {
+	return []core.Ipv6{}, nil
+}
+
+func (c *MockVirtualNetworkClient) CreateIpv6(ctx context.Context, vnicID string) (*core.Ipv6, error) {
+	return &core.Ipv6{}, nil
+}
+
 func (c *MockVirtualNetworkClient) GetSubnet(ctx context.Context, id string) (*core.Subnet, error) {
 	return nil, nil
 }
@@ -337,6 +353,10 @@ func (c *MockVirtualNetworkClient) GetSubnetFromCacheByIP(ip client.IpAddresses)
 
 func (c *MockVirtualNetworkClient) GetVcn(ctx context.Context, id string) (*core.Vcn, error) {
 	return &core.Vcn{}, nil
+}
+
+func (c *MockVirtualNetworkClient) GetVNIC(ctx context.Context, id string) (*core.Vnic, error) {
+	return &core.Vnic{}, nil
 }
 
 func (c *MockVirtualNetworkClient) GetSecurityList(ctx context.Context, id string) (core.GetSecurityListResponse, error) {
@@ -397,6 +417,10 @@ func (p *MockProvisionerClient) Identity(ociClientConfig *client.OCIClientConfig
 // FSS mocks client FileStorage implementation
 func (p *MockProvisionerClient) FSS(ociClientConfig *client.OCIClientConfig) client.FileStorageInterface {
 	return &MockFileStorageClient{}
+}
+
+func (p *MockProvisionerClient) NewWorkloadIdentityClient(logger *zap.SugaredLogger, lbType string, ociClientConfig *client.OCIClientConfig) client.Interface {
+	return &MockProvisionerClient{}
 }
 
 // Context mocks client Context implementation
@@ -465,6 +489,18 @@ func (c *MockLoadBalancerClient) CreateListener(ctx context.Context, lbID string
 }
 
 func (c *MockLoadBalancerClient) DeleteListener(ctx context.Context, lbID, name string) (string, error) {
+	return "", nil
+}
+
+func (c *MockLoadBalancerClient) CreateRuleSet(ctx context.Context, lbID string, name string, details *loadbalancer.RuleSetDetails) (string, error) {
+	return "", nil
+}
+
+func (c *MockLoadBalancerClient) UpdateRuleSet(ctx context.Context, lbID string, name string, details *loadbalancer.RuleSetDetails) (string, error) {
+	return "", nil
+}
+
+func (c *MockLoadBalancerClient) DeleteRuleSet(ctx context.Context, lbID string, name string) (string, error) {
 	return "", nil
 }
 

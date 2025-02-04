@@ -561,6 +561,18 @@ func (c *MockLoadBalancerClient) DeleteListener(ctx context.Context, lbID, name 
 	return "", nil
 }
 
+func (c *MockLoadBalancerClient) CreateRuleSet(ctx context.Context, lbID string, name string, details *loadbalancer.RuleSetDetails) (string, error) {
+	return "", nil
+}
+
+func (c *MockLoadBalancerClient) UpdateRuleSet(ctx context.Context, lbID string, name string, details *loadbalancer.RuleSetDetails) (string, error) {
+	return "", nil
+}
+
+func (c *MockLoadBalancerClient) DeleteRuleSet(ctx context.Context, lbID string, name string) (string, error) {
+	return "", nil
+}
+
 func (c *MockLoadBalancerClient) UpdateLoadBalancerShape(context.Context, string, *client.GenericUpdateLoadBalancerShapeDetails) (string, error) {
 	return "", nil
 }

@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/oracle/oci-go-sdk/v65/loadbalancer"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
@@ -4697,6 +4698,203 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Ports:                   sets.NewInt(443),
 				ListenerSSLSecretName:   listenerSecret,
 				BackendSetSSLSecretName: backendSecret,
+			},
+		},
+
+		"with rule sets": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			nodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Capacity:    nil,
+						Allocatable: nil,
+						Phase:       "",
+						Conditions:  nil,
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "0.0.0.0",
+								Type:    "InternalIP",
+							},
+						},
+						DaemonEndpoints: v1.NodeDaemonEndpoints{},
+						NodeInfo:        v1.NodeSystemInfo{},
+						Images:          nil,
+						VolumesInUse:    nil,
+						VolumesAttached: nil,
+						Config:          nil,
+					},
+				},
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						"oci.oraclecloud.com/oci-load-balancer-rule-sets": `
+{
+	"max-connections":{
+		"items":[
+			{
+				"action":"IP_BASED_MAX_CONNECTIONS",
+				"defaultMaxConnections":0,
+				"ipMaxConnections":[
+					{
+						"ipAddresses":[
+							"10.1.2.3/32",
+							"10.3.2.1/32"
+						],
+						"maxConnections":100
+					},
+					{
+						"ipAddresses":[
+							"192.168.0.1/32",
+							"192.168.0.100/32"
+						],
+						"maxConnections":20
+					}
+				]
+			}
+		]
+	},
+	"header-size":{
+		"items":[
+		   {
+				"action":"HTTP_HEADER",
+				"httpLargeHeaderSizeInKB":16
+		   }
+		]
+	}
+}`,
+					},
+				},
+				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+			},
+			expected: &LBSpec{
+				Name:     "test-uid",
+				Type:     "lb",
+				Shape:    "100Mbps",
+				Internal: false,
+				Subnets:  []string{"one", "two"},
+				Listeners: map[string]client.GenericListener{
+					"TCP-80": {
+						Name:                  common.String("TCP-80"),
+						DefaultBackendSetName: common.String("TCP-80"),
+						Port:                  common.Int(80),
+						Protocol:              common.String("TCP"),
+						RuleSetNames:          []string{"header-size", "max-connections"},
+					},
+				},
+				BackendSets: map[string]client.GenericBackendSetDetails{
+					"TCP-80": {
+						Name:     common.String("TCP-80"),
+						Backends: []client.GenericBackend{{IpAddress: common.String("0.0.0.0"), Port: common.Int(0), Weight: common.Int(1), TargetId: &testNodeString}},
+						HealthChecker: &client.GenericHealthChecker{
+							Protocol:         "HTTP",
+							IsForcePlainText: common.Bool(false),
+							Port:             common.Int(10256),
+							UrlPath:          common.String("/healthz"),
+							Retries:          common.Int(3),
+							TimeoutInMillis:  common.Int(3000),
+							IntervalInMillis: common.Int(10000),
+							ReturnCode:       common.Int(http.StatusOK),
+						},
+						IsPreserveSource: common.Bool(false),
+						Policy:           common.String("ROUND_ROBIN"),
+						IpVersion:        GenericIpVersion(client.GenericIPv4),
+					},
+				},
+				IsPreserveSource:        common.Bool(false),
+				NetworkSecurityGroupIds: []string{},
+				SourceCIDRs:             []string{"0.0.0.0/0"},
+				Ports: map[string]portSpec{
+					"TCP-80": {
+						ListenerPort:      80,
+						HealthCheckerPort: 10256,
+					},
+				},
+				securityListManager:         newSecurityListManagerNOOP(),
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+				nodes: []*v1.Node{
+					{
+						TypeMeta:   metav1.TypeMeta{},
+						ObjectMeta: metav1.ObjectMeta{},
+						Spec: v1.NodeSpec{
+							ProviderID: testNodeString,
+						},
+						Status: v1.NodeStatus{
+							Capacity:    nil,
+							Allocatable: nil,
+							Phase:       "",
+							Conditions:  nil,
+							Addresses: []v1.NodeAddress{
+								{
+									Address: "0.0.0.0",
+									Type:    "InternalIP",
+								},
+							},
+							DaemonEndpoints: v1.NodeDaemonEndpoints{},
+							NodeInfo:        v1.NodeSystemInfo{},
+							Images:          nil,
+							VolumesInUse:    nil,
+							VolumesAttached: nil,
+							Config:          nil,
+						},
+					},
+				},
+				RuleSets: map[string]loadbalancer.RuleSetDetails{
+					"header-size": {
+						Items: []loadbalancer.Rule{
+							loadbalancer.HttpHeaderRule{
+								HttpLargeHeaderSizeInKB: common.Int(16),
+							},
+						},
+					},
+					"max-connections": {
+						Items: []loadbalancer.Rule{
+							loadbalancer.IpBasedMaxConnectionsRule{
+								DefaultMaxConnections: common.Int(0),
+								IpMaxConnections: []loadbalancer.IpMaxConnections{
+									{
+										IpAddresses:    []string{"10.1.2.3/32", "10.3.2.1/32"},
+										MaxConnections: common.Int(100),
+									},
+									{
+										IpAddresses:    []string{"192.168.0.1/32", "192.168.0.100/32"},
+										MaxConnections: common.Int(20),
+									},
+								},
+							},
+						},
+					},
+				},
 			},
 		},
 	}
