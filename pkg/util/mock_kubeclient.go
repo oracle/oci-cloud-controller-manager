@@ -31,6 +31,7 @@ import (
 	v1alpha18 "k8s.io/client-go/kubernetes/typed/certificates/v1alpha1"
 	v1beta16 "k8s.io/client-go/kubernetes/typed/certificates/v1beta1"
 	v19 "k8s.io/client-go/kubernetes/typed/coordination/v1"
+	v1alpha14 "k8s.io/client-go/kubernetes/typed/coordination/v1alpha1"
 	v1beta17 "k8s.io/client-go/kubernetes/typed/coordination/v1beta1"
 	v12 "k8s.io/client-go/kubernetes/typed/core/v1"
 	v110 "k8s.io/client-go/kubernetes/typed/discovery/v1"
@@ -53,19 +54,23 @@ import (
 	v115 "k8s.io/client-go/kubernetes/typed/rbac/v1"
 	v1alpha17 "k8s.io/client-go/kubernetes/typed/rbac/v1alpha1"
 	v1beta115 "k8s.io/client-go/kubernetes/typed/rbac/v1beta1"
-	"k8s.io/client-go/kubernetes/typed/resource/v1alpha2"
+	"k8s.io/client-go/kubernetes/typed/resource/v1alpha3"
 	v116 "k8s.io/client-go/kubernetes/typed/scheduling/v1"
 	v1alpha19 "k8s.io/client-go/kubernetes/typed/scheduling/v1alpha1"
 	v1beta116 "k8s.io/client-go/kubernetes/typed/scheduling/v1beta1"
 	v117 "k8s.io/client-go/kubernetes/typed/storage/v1"
 	"k8s.io/client-go/kubernetes/typed/storage/v1alpha1"
 	v1beta117 "k8s.io/client-go/kubernetes/typed/storage/v1beta1"
-	alpha1 `k8s.io/client-go/kubernetes/typed/storagemigration/v1alpha1`
+	alpha1 "k8s.io/client-go/kubernetes/typed/storagemigration/v1alpha1"
 	"k8s.io/client-go/rest"
 )
 
 type MockKubeClient struct {
 	CoreClient *MockCoreClient
+}
+
+func (m MockKubeClient) CoordinationV1alpha1() v1alpha14.CoordinationV1alpha1Interface {
+	return nil
 }
 
 func (m MockKubeClient) StoragemigrationV1alpha1() alpha1.StoragemigrationV1alpha1Interface {
@@ -186,11 +191,11 @@ func (m MockCoreClient) ServiceAccounts(namespace string) v12.ServiceAccountInte
 	return nil
 }
 
-func (m MockKubeClient) ResourceV1alpha2() v1alpha2.ResourceV1alpha2Interface {
+func (m MockKubeClient) CertificatesV1alpha1() v1alpha18.CertificatesV1alpha1Interface {
 	return nil
 }
 
-func (m MockKubeClient) CertificatesV1alpha1() v1alpha18.CertificatesV1alpha1Interface {
+func (m MockKubeClient) ResourceV1alpha3() v1alpha3.ResourceV1alpha3Interface {
 	return nil
 }
 
