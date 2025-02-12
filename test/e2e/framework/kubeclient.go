@@ -1005,9 +1005,17 @@ func DeleteResourceAndWaitForGC(c clientset.Interface, kind schema.GroupKind, ns
 
 	defer ps.Stop()
 	falseVar := false
-	deleteOption := &metav1.DeleteOptions{OrphanDependents: &falseVar}
+	var gracePeriod int64 = 0
+	deleteOption := &metav1.DeleteOptions{OrphanDependents: &falseVar, GracePeriodSeconds: &gracePeriod}
 	startTime := time.Now()
-	if err := testutil.DeleteResourceWithRetries(c, kind, ns, name, *deleteOption); err != nil {
+	deleteFunc := func() (bool, error) {
+		err := testutil.DeleteResource(c, kind, ns, name, *deleteOption)
+		if err == nil || apierrs.IsNotFound(err) {
+			return true, nil
+		}
+		return false, fmt.Errorf("failed to delete object with non-retriable error: %v", err)
+	}
+	if err := testutil.RetryWithExponentialBackOff(deleteFunc); err != nil {
 		return err
 	}
 	deleteTime := time.Since(startTime)

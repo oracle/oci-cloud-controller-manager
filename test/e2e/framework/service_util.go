@@ -546,7 +546,6 @@ func EnsureLoadBalancerResourcesDeleted(ip, portRange string) error {
 }
 
 func (j *ServiceTestJig) WaitForLoadBalancerDestroyOrFail(namespace, name string, ip string, port int, timeout time.Duration) *v1.Service {
-	// TODO: once support ticket 21807001 is resolved, reduce this timeout back to something reasonable
 	defer func() {
 		if err := EnsureLoadBalancerResourcesDeleted(ip, strconv.Itoa(port)); err != nil {
 			Logf("Failed to delete cloud resources for service: %s %d (%v)", ip, port, err)

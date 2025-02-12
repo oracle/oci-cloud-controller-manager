@@ -785,7 +785,7 @@ var _ = Describe("ESIPP - IpMode Proxy [Slow]", func() {
 	Context("[cloudprovider][ccm][lb][esipp]", func() {
 		It("should preserve source IP of pod with ipMode Proxy", func() {
 			if sharedfw.CompareVersions(f.OkeClusterK8sVersion, "v1.30") < 0 {
-				Skip("Cluster K8s Version " + f.OkeClusterK8sVersion + " is less than v1.30, skipping test for ESIPP since it relies on ipMode=\"Proxy\"")
+				Skip("Cluster K8s Version " + f.OkeClusterK8sVersion + " is less than v1.30, skipping test for Load Balancer ingress ipMode=\"Proxy\"")
 			}
 			for _, test := range esippTestsArray {
 				By("Running test for: " + test.lbType)
