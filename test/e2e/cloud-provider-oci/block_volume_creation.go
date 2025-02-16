@@ -28,7 +28,7 @@ var _ = Describe("Block Volume Creation", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "volume-provisioner-e2e-tests-pvc")
 
 			scName := f.CreateStorageClassOrFail(framework.ClassOCI, core.ProvisionerNameDefault, nil, pvcJig.Labels, "", false, "Delete", nil)
-			pvc := pvcJig.CreateAndAwaitPVCOrFail(f.Namespace.Name, framework.MinVolumeBlock, scName, setupF.AdLabel, nil)
+			pvc := pvcJig.CreateAndAwaitPVCOrFail(f.Namespace.Name, framework.MinVolumeBlock, scName, "", nil)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 		})
 
@@ -37,7 +37,7 @@ var _ = Describe("Block Volume Creation", func() {
 
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, core.ProvisionerNameDefault, map[string]string{block.FSType: "ext3"}, pvcJig.Labels, "", false, "Delete", nil)
 			f.StorageClasses = append(f.StorageClasses, scName)
-			pvc := pvcJig.CreateAndAwaitPVCOrFail(f.Namespace.Name, framework.MinVolumeBlock, scName, setupF.AdLabel, nil)
+			pvc := pvcJig.CreateAndAwaitPVCOrFail(f.Namespace.Name, framework.MinVolumeBlock, scName, "", nil)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			_ = f.DeleteStorageClass(f.Namespace.Name)
 		})
