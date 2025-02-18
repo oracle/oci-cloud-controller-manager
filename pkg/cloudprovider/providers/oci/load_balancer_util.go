@@ -440,11 +440,14 @@ func getSSLConfigurationChanges(actual *client.GenericSslConfigurationDetails, d
 	if toBool(actual.VerifyPeerCertificate) != toBool(desired.VerifyPeerCertificate) {
 		sslConfigurationChanges = append(sslConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:VerifyPeerCertificate", toBool(actual.VerifyPeerCertificate), toBool(desired.VerifyPeerCertificate)))
 	}
-	if toString(actual.CipherSuiteName) != toString(desired.CipherSuiteName) {
-		sslConfigurationChanges = append(sslConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:CipherSuiteName", toString(actual.CipherSuiteName), toString(desired.CipherSuiteName)))
-	}
-	if !reflect.DeepEqual(actual.Protocols, desired.Protocols) {
-		sslConfigurationChanges = append(sslConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:Protocols", strings.Join(actual.Protocols, ","), strings.Join(desired.Protocols, ",")))
+
+	if desired.CipherSuiteName != nil && len(*desired.CipherSuiteName) != 0 {
+		if toString(actual.CipherSuiteName) != toString(desired.CipherSuiteName) {
+			sslConfigurationChanges = append(sslConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:CipherSuiteName", toString(actual.CipherSuiteName), toString(desired.CipherSuiteName)))
+		}
+		if !reflect.DeepEqual(actual.Protocols, desired.Protocols) {
+			sslConfigurationChanges = append(sslConfigurationChanges, fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:Protocols", strings.Join(actual.Protocols, ","), strings.Join(desired.Protocols, ",")))
+		}
 	}
 
 	return sslConfigurationChanges

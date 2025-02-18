@@ -1555,6 +1555,22 @@ func TestHasListenerChanged(t *testing.T) {
 
 			expected: false,
 		},
+		{
+			name: "GRPC protocol",
+			desired: client.GenericListener{
+				Name:                  common.String("TCP-443"),
+				DefaultBackendSetName: common.String("TCP-443"),
+				Port:                  common.Int(443),
+				Protocol:              common.String("TCP"),
+			},
+			actual: client.GenericListener{
+				Name:                  common.String("GRPC-443"),
+				DefaultBackendSetName: common.String("TCP-443"),
+				Port:                  common.Int(443),
+				Protocol:              common.String("GRPC"),
+			},
+			expected: true,
+		},
 	}
 
 	for _, tt := range testCases {
@@ -2139,9 +2155,12 @@ func TestGetSSLConfigurationChanges(t *testing.T) {
 		{
 			name: "Protocol Changed",
 			desired: client.GenericSslConfigurationDetails{
-				Protocols: []string{"TLSv1.2"},
+				CipherSuiteName: common.String("value"),
+				Protocols:       []string{"TLSv1.2"},
 			},
-			actual: client.GenericSslConfigurationDetails{},
+			actual: client.GenericSslConfigurationDetails{
+				CipherSuiteName: common.String("value"),
+			},
 			expected: []string{
 				fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:Protocols", "", "TLSv1.2"),
 			},
@@ -2149,14 +2168,40 @@ func TestGetSSLConfigurationChanges(t *testing.T) {
 		{
 			name: "TLS Protocol Changed",
 			desired: client.GenericSslConfigurationDetails{
-				Protocols: []string{"TLSv1.1", "TLSv1.2"},
+				CipherSuiteName: common.String("value"),
+				Protocols:       []string{"TLSv1.1", "TLSv1.2"},
 			},
 			actual: client.GenericSslConfigurationDetails{
-				Protocols: []string{"TLSv1.1", "TLSv1.2", "TLSv1.3"},
+				CipherSuiteName: common.String("value"),
+				Protocols:       []string{"TLSv1.1", "TLSv1.2", "TLSv1.3"},
 			},
 			expected: []string{
 				fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:Protocols", "", "TLSv1.2"),
 			},
+		},
+		{
+			name: "Empty ciphersuite test",
+			desired: client.GenericSslConfigurationDetails{
+				CipherSuiteName: common.String(""),
+				Protocols:       []string{"TLSv1.1", "TLSv1.2"},
+			},
+			actual: client.GenericSslConfigurationDetails{
+				CipherSuiteName: common.String("value"),
+				Protocols:       []string{"TLSv1.1", "TLSv1.2", "TLSv1.3"},
+			},
+			expected: []string{},
+		},
+		{
+			name: "Default scenario, nil value",
+			desired: client.GenericSslConfigurationDetails{
+				CipherSuiteName: nil,
+				Protocols:       []string{"TLSv1.1", "TLSv1.2"},
+			},
+			actual: client.GenericSslConfigurationDetails{
+				CipherSuiteName: common.String("value"),
+				Protocols:       []string{"TLSv1.1", "TLSv1.2", "TLSv1.3"},
+			},
+			expected: []string{},
 		},
 	}
 

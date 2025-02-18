@@ -1359,7 +1359,7 @@ func Test_getGoadBalancerStatus(t *testing.T) {
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			actual, err := loadBalancerToStatus(test.lb, test.setIpMode)
+			actual, err := loadBalancerToStatus(test.lb, test.setIpMode, false)
 			if !assertError(err, test.wantErr) {
 				t.Errorf("Expected error = %v, but got %v", test.wantErr, err)
 				return
@@ -2245,6 +2245,135 @@ func Test_getOciIpVersions(t *testing.T) {
 			if err != nil && err.Error() != tt.wantErr.Error() {
 				t.Errorf("Expected error = %s,\n but got %s", tt.wantErr.Error(), err.Error())
 				return
+			}
+		})
+	}
+}
+
+func TestLoadBalancerToStatus(t *testing.T) {
+	type testCase struct {
+		name           string
+		lb             *client.GenericLoadBalancer
+		ipMode         v1.LoadBalancerIPMode
+		skipPrivateIp  bool
+		expectedOutput *v1.LoadBalancerStatus
+		expectedError  error
+	}
+
+	testCases := []testCase{
+		{
+			name: "No IP Addresses",
+			lb: &client.GenericLoadBalancer{
+				DisplayName: common.String("test-lb"),
+				IpAddresses: []client.GenericIpAddress{},
+			},
+			ipMode:         v1.LoadBalancerIPModeVIP,
+			skipPrivateIp:  false,
+			expectedOutput: nil,
+			expectedError:  errors1.Errorf("no ip addresses found for load balancer \"test-lb\""),
+		},
+		{
+			name: "Single Public IP Address",
+			lb: &client.GenericLoadBalancer{
+				DisplayName: common.String("test-lb"),
+				IpAddresses: []client.GenericIpAddress{
+					{
+						IpAddress: common.String("192.168.1.100"),
+						IsPublic:  common.Bool(true),
+					},
+				},
+			},
+			ipMode:        v1.LoadBalancerIPModeVIP,
+			skipPrivateIp: false,
+			expectedOutput: &v1.LoadBalancerStatus{
+				Ingress: []v1.LoadBalancerIngress{
+					{
+						IP: "192.168.1.100",
+					},
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "Multiple IP Addresses",
+			lb: &client.GenericLoadBalancer{
+				DisplayName: common.String("test-lb"),
+				IpAddresses: []client.GenericIpAddress{
+					{
+						IpAddress: common.String("192.168.1.100"),
+						IsPublic:  common.Bool(true),
+					},
+					{
+						IpAddress: common.String("10.0.0.100"),
+						IsPublic:  common.Bool(false),
+					},
+				},
+			},
+			ipMode:        v1.LoadBalancerIPModeVIP,
+			skipPrivateIp: false,
+			expectedOutput: &v1.LoadBalancerStatus{
+				Ingress: []v1.LoadBalancerIngress{
+					{
+						IP: "192.168.1.100",
+					},
+					{
+						IP: "10.0.0.100",
+					},
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "Skip Private IP",
+			lb: &client.GenericLoadBalancer{
+				DisplayName: common.String("test-lb"),
+				IpAddresses: []client.GenericIpAddress{
+					{
+						IpAddress: common.String("192.168.1.100"),
+						IsPublic:  common.Bool(true),
+					},
+					{
+						IpAddress: common.String("10.0.0.100"),
+						IsPublic:  common.Bool(false),
+					},
+				},
+			},
+			ipMode:        v1.LoadBalancerIPModeVIP,
+			skipPrivateIp: true,
+			expectedOutput: &v1.LoadBalancerStatus{
+				Ingress: []v1.LoadBalancerIngress{
+					{
+						IP: "192.168.1.100",
+					},
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "Nil IpAddress",
+			lb: &client.GenericLoadBalancer{
+				DisplayName: common.String("test-lb"),
+				IpAddresses: []client.GenericIpAddress{
+					{
+						IpAddress: nil,
+					},
+				},
+			},
+			ipMode:        v1.LoadBalancerIPModeVIP,
+			skipPrivateIp: false,
+			expectedOutput: &v1.LoadBalancerStatus{
+				Ingress: []v1.LoadBalancerIngress{},
+			},
+			expectedError: nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			actualOutput, actualError := loadBalancerToStatus(tc.lb, &tc.ipMode, tc.skipPrivateIp)
+			reflect.DeepEqual(tc.expectedOutput, actualOutput)
+			if tc.expectedError != nil {
+				reflect.DeepEqual(tc.expectedError.Error(), actualError.Error())
 			}
 		})
 	}

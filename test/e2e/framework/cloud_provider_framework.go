@@ -370,7 +370,7 @@ func createOCIClient(cloudProviderConfig *providercfg.Config) (client.Interface,
 	ociClientConfig := common.NewRawConfigurationProvider(cpc.TenancyID, cpc.UserID, cpc.Region, cpc.Fingerprint, cpc.PrivateKey, &cpc.PrivateKeyPassphrase)
 	logger := zap.L()
 	rateLimiter := client.NewRateLimiter(logger.Sugar(), cloudProviderConfig.RateLimiter)
-	ociClient, err := client.New(logger.Sugar(), ociClientConfig, &rateLimiter, cloudProviderConfig.Auth.TenancyID)
+	ociClient, err := client.New(logger.Sugar(), ociClientConfig, &rateLimiter, cloudProviderConfig)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Couldn't create oci client from configuration: %s.", cloudConfigFile)
 	}
