@@ -808,6 +808,8 @@ func (j *PVCTestJig) NewPodForCSI(name string, namespace string, claimName strin
 	// Waiting for pod to be running
 	err = j.waitTimeoutForPodRunningInNamespace(pod.Name, namespace, slowPodStartTimeout)
 	if err != nil {
+		Logf("Pod failed to come up, logging debug info")
+		j.logPodDebugInfo(namespace, pod.Name)
 		Failf("Pod %q is not Running: %v", pod.Name, err)
 	}
 	zap.S().With(pod.Namespace).With(pod.Name).Info("CSI POD is created.")
@@ -863,6 +865,8 @@ func (j *PVCTestJig) NewPodWithLabels(name string, namespace string, claimName s
 	// Waiting for pod to be running
 	err = j.waitTimeoutForPodRunningInNamespace(pod.Name, namespace, slowPodStartTimeout)
 	if err != nil {
+		Logf("Pod failed to come up, logging debug info\n")
+		j.logPodDebugInfo(namespace, pod.Name)
 		Failf("Pod %q is not Running: %v", pod.Name, err)
 	}
 	zap.S().With(pod.Namespace).With(pod.Name).Info("CSI POD is created.")
@@ -938,6 +942,8 @@ func (j *PVCTestJig) NewPodForCSIClone(name string, namespace string, claimName 
 	// Waiting for pod to be running
 	err = j.waitTimeoutForPodRunningInNamespace(pod.Name, namespace, slowPodStartTimeout)
 	if err != nil {
+		Logf("Pod failed to come up, logging debug info\n")
+		j.logPodDebugInfo(namespace, pod.Name)
 		Failf("Pod %q is not Running: %v", pod.Name, err)
 	}
 	zap.S().With(pod.Namespace).With(pod.Name).Info("CSI POD is created.")
@@ -1053,6 +1059,8 @@ func (j *PVCTestJig) NewPodForCSIFSSWrite(name string, namespace string, claimNa
 	// Waiting for pod to be running
 	err = j.waitTimeoutForPodRunningInNamespace(pod.Name, namespace, slowPodStartTimeout)
 	if err != nil {
+		Logf("Pod failed to come up, logging debug info\n")
+		j.logPodDebugInfo(namespace, pod.Name)
 		Failf("Pod %q is not Running: %v", pod.Name, err)
 	}
 	zap.S().With(pod.Namespace).With(pod.Name).Info("CSI POD is created.")
@@ -1115,6 +1123,8 @@ func (j *PVCTestJig) NewPodForCSIFSSRead(matchString string, namespace string, c
 	// Waiting for pod to be running
 	err = j.waitTimeoutForPodCompletedSuccessfullyInNamespace(pod.Name, namespace, slowPodStartTimeout)
 	if err != nil {
+		Logf("Pod failed to come up, logging debug info\n")
+		j.logPodDebugInfo(namespace, pod.Name)
 		Failf("Pod %q failed: %v", pod.Name, err)
 	}
 	zap.S().With(pod.Namespace).With(pod.Name).Info("CSI Fss read POD is created.")
