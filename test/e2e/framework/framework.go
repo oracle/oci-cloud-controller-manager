@@ -34,7 +34,7 @@ const (
 	// test suite before giving up.
 	DefaultTimeout = 10 * time.Minute
 	// Some pods can take much longer to get ready due to volume attach/detach latency.
-	slowPodStartTimeout = 15 * time.Minute
+	slowPodStartTimeout = 7 * time.Minute
 
 	JobCompletionTimeout       = 5 * time.Minute
 	deploymentAvailableTimeout = 5 * time.Minute
