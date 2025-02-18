@@ -1,4 +1,4 @@
-// Copyright 2017 Oracle and/or its affiliates. All rights reserved.
+// Copyright (C) 2017, 2025, Oracle and/or its affiliates.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -100,7 +100,7 @@ func NewCloudProvider(config *providercfg.Config) (cloudprovider.Interface, erro
 
 	rateLimiter := client.NewRateLimiter(logger.Sugar(), config.RateLimiter)
 
-	c, err := client.New(logger.Sugar(), cp, &rateLimiter, config.Auth.TenancyID)
+	c, err := client.New(logger.Sugar(), cp, &rateLimiter, config)
 	if err != nil {
 		return nil, err
 	}

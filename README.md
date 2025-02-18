@@ -34,8 +34,9 @@ cloud-provider specific code out of the Kubernetes codebase.
 | v1.26.4   | v1.26                  | -                      |
 | v1.27.3   | v1.27                  | -                      |
 | v1.28.2   | v1.28                  | -                      |
-| v1.29.1   | v1.29                  | -                      |
-| v1.30.0   | v1.30                  | -                      |
+| v1.29.2   | v1.29                  | -                      |
+| v1.30.1   | v1.30                  | -                      |
+| v1.31.0   | v1.31                  | -                      |
 
 
 Note: 

@@ -474,7 +474,7 @@ func (d FSSNodeDriver) NodeGetCapabilities(ctx context.Context, req *csi.NodeGet
 // NodeGetInfo returns the supported capabilities of the node server.
 // The result of this function will be used by the CO in ControllerPublishVolume.
 func (d FSSNodeDriver) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
-	ad, err := d.util.LookupNodeAvailableDomain(d.KubeClient, d.nodeID)
+	ad, _ , err := d.util.LookupNodeAvailableDomain(d.KubeClient, d.nodeID)
 
 	if err != nil {
 		d.logger.With(zap.Error(err)).With("nodeId", d.nodeID, "availabilityDomain", ad).Error("Failed to get availability domain of node from kube api server.")
