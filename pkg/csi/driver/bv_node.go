@@ -774,24 +774,37 @@ func (d BlockVolumeNodeDriver) NodeGetCapabilities(ctx context.Context, req *csi
 // NodeGetInfo returns the supported capabilities of the node server.
 // The result of this function will be used by the CO in ControllerPublishVolume.
 func (d BlockVolumeNodeDriver) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
-	ad, err := d.util.LookupNodeAvailableDomain(d.KubeClient, d.nodeID)
+	ad, fullAvailabilityDomainName, err := d.util.LookupNodeAvailableDomain(d.KubeClient, d.nodeID)
 
 	if err != nil {
 		d.logger.With(zap.Error(err)).With("nodeId", d.nodeID, "availabilityDomain", ad).Error("Failed to get availability domain of node from kube api server.")
 		return nil, status.Error(codes.Internal, "Failed to get availability domain of node from kube api server.")
 	}
 
+	segments := map[string]string {
+		kubeAPI.LabelZoneFailureDomain:   ad,
+		kubeAPI.LabelTopologyZone:        ad,
+	}
+
+	//set full ad name in segments only for IPv6 single stack
+	if csi_util.IsIpv6SingleStackNode(d.nodeIpFamily) {
+		if fullAvailabilityDomainName == "" {
+			d.logger.With(zap.Error(err)).With("nodeId", d.nodeID, "fullAvailabilityDomainName", fullAvailabilityDomainName).Error("Failed to get full availability domain name of IPv6 single stack node from node labels.")
+			return nil, status.Error(codes.Internal, "Failed to get full availability domain name of IPv6 single stack node from node labels.")
+		}
+		
+		segments[csi_util.AvailabilityDomainLabel] = fullAvailabilityDomainName
+	}
+
 	d.logger.With("nodeId", d.nodeID, "availabilityDomain", ad).Info("Availability domain of node identified.")
+
 	return &csi.NodeGetInfoResponse{
 		NodeId:            d.nodeID,
 		MaxVolumesPerNode: maxVolumesPerNode,
 
 		// make sure that the driver works on this particular AD only
 		AccessibleTopology: &csi.Topology{
-			Segments: map[string]string{
-				kubeAPI.LabelZoneFailureDomain: ad,
-				kubeAPI.LabelTopologyZone:      ad,
-			},
+			Segments: segments,
 		},
 	}, nil
 }

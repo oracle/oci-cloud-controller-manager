@@ -63,4 +63,3 @@ rateLimiter:
   rateLimitBucketRead: 5
   rateLimitQPSWrite: 20.0
   rateLimitBucketWrite: 5
-

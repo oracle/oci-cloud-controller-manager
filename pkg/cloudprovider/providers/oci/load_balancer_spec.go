@@ -244,6 +244,14 @@ const (
 
 	// ServiceAnnotationNetworkLoadBalancerIsPpv2Enabled is a service annotation to enable/disable PPv2 feature for the listeners of this NLB.
 	ServiceAnnotationNetworkLoadBalancerIsPpv2Enabled = "oci-network-load-balancer.oraclecloud.com/is-ppv2-enabled"
+
+	// ServiceAnnotationNetworkLoadBalancerExternalIpOnly is a service a boolean annotation to skip private ip when assigning to ingress resource for NLB service
+	ServiceAnnotationNetworkLoadBalancerExternalIpOnly = "oci-network-load-balancer.oraclecloud.com/external-ip-only"
+)
+
+const (
+	ProtocolGrpc              = "GRPC"
+	DefaultCipherSuiteForGRPC = "oci-default-http2-ssl-cipher-suite-v1"
 )
 
 // certificateData is a structure containing the data about a K8S secret required
@@ -1032,10 +1040,10 @@ func getListenersOciLoadBalancer(svc *v1.Service, sslCfg *SSLConfig) (map[string
 			if p == "" {
 				p = DefaultLoadBalancerBEProtocol
 			}
-			if strings.EqualFold(p, "HTTP") || strings.EqualFold(p, "TCP") {
+			if strings.EqualFold(p, "HTTP") || strings.EqualFold(p, "TCP") || strings.EqualFold(p, "GRPC") {
 				protocol = p
 			} else {
-				return nil, fmt.Errorf("invalid backend protocol %q requested for load balancer listener. Only 'HTTP' and 'TCP' protocols supported", p)
+				return nil, fmt.Errorf("invalid backend protocol %q requested for load balancer listener. Only 'HTTP', 'TCP' and 'GRPC' protocols supported", p)
 			}
 		}
 		port := int(servicePort.Port)
@@ -1049,6 +1057,15 @@ func getListenersOciLoadBalancer(svc *v1.Service, sslCfg *SSLConfig) (map[string
 			sslConfiguration, err = getSSLConfiguration(sslCfg, secretName, port, listenerCipherSuiteAnnotation)
 			if err != nil {
 				return nil, err
+			}
+		}
+		if strings.EqualFold(protocol, "GRPC") {
+			protocol = ProtocolGrpc
+			if sslConfiguration == nil {
+				return nil, fmt.Errorf("SSL configuration cannot be empty for GRPC protocol")
+			}
+			if sslConfiguration.CipherSuiteName == nil {
+				sslConfiguration.CipherSuiteName = common.String(DefaultCipherSuiteForGRPC)
 			}
 		}
 		name := getListenerName(protocol, port)
@@ -1569,7 +1586,7 @@ func isServiceDualStack(svc *v1.Service) bool {
 	return false
 }
 
-// patchIngressIpMode reads ingress ipMode specified in the service annotation if exists
+// getIngressIpMode reads ingress ipMode specified in the service annotation if exists
 func getIngressIpMode(service *v1.Service) (*v1.LoadBalancerIPMode, error) {
 	var ipMode, exists = "", false
 
@@ -1587,4 +1604,34 @@ func getIngressIpMode(service *v1.Service) (*v1.LoadBalancerIPMode, error) {
 	default:
 		return nil, errors.New("IpMode can only be set as Proxy or VIP")
 	}
+}
+
+// isSkipPrivateIP determines if skipPrivateIP annotation is set or not
+func isSkipPrivateIP(svc *v1.Service) (bool, error) {
+	lbType := getLoadBalancerType(svc)
+	annotationValue := ""
+	annotationExists := false
+	annotationString := ""
+	annotationValue, annotationExists = svc.Annotations[ServiceAnnotationNetworkLoadBalancerExternalIpOnly]
+	if !annotationExists {
+		return false, nil
+	}
+
+	if lbType != NLB {
+		return false, nil
+	}
+
+	internal, err := isInternalLB(svc)
+	if err != nil {
+		return false, err
+	}
+	if internal {
+		return false, nil
+	}
+
+	skipPrivateIp, err := strconv.ParseBool(annotationValue)
+	if err != nil {
+		return false, errors.Wrap(err, fmt.Sprintf("invalid value: %s provided for annotation: %s", annotationValue, annotationString))
+	}
+	return skipPrivateIp, nil
 }

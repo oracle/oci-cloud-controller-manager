@@ -104,6 +104,7 @@ type CloudLoadBalancerProvider struct {
 	logger       *zap.SugaredLogger
 	metricPusher *metrics.MetricPusher
 	config       *providercfg.Config
+	ociConfig    *client.OCIClientConfig
 }
 
 type IpVersions struct {
@@ -141,6 +142,10 @@ func (cp *CloudProvider) getLoadBalancerProvider(ctx context.Context, svc *v1.Se
 		logger:       cp.logger,
 		metricPusher: cp.metricPusher,
 		config:       cp.config,
+		ociConfig: &client.OCIClientConfig{
+			SaToken:   serviceAccountToken,
+			TenancyId: cp.config.Auth.TenancyID,
+		},
 	}, nil
 }
 
@@ -207,8 +212,11 @@ func (cp *CloudProvider) GetLoadBalancer(ctx context.Context, clusterName string
 
 		return nil, false, err
 	}
-
-	lbStatus, err := loadBalancerToStatus(lb, nil)
+	skipPrivateIP, err := isSkipPrivateIP(service)
+	if err != nil {
+		return nil, false, err
+	}
+	lbStatus, err := loadBalancerToStatus(lb, nil, skipPrivateIP)
 	return lbStatus, err == nil, err
 }
 
@@ -425,7 +433,7 @@ func (clb *CloudLoadBalancerProvider) createLoadBalancer(ctx context.Context, sp
 	}
 
 	if spec.LoadBalancerIP != "" {
-		reservedIpOCID, err := getReservedIpOcidByIpAddress(ctx, spec.LoadBalancerIP, clb.client.Networking(nil))
+		reservedIpOCID, err := getReservedIpOcidByIpAddress(ctx, spec.LoadBalancerIP, clb.client.Networking(clb.ociConfig))
 		if err != nil {
 			return nil, "", err
 		}
@@ -459,7 +467,12 @@ func (clb *CloudLoadBalancerProvider) createLoadBalancer(ctx context.Context, sp
 	}
 
 	logger.With("loadBalancerID", *lb.Id).Info("Load balancer created")
-	status, err := loadBalancerToStatus(lb, spec.ingressIpMode)
+
+	skipPrivateIP, err := isSkipPrivateIP(spec.service)
+	if err != nil {
+		return nil, "", err
+	}
+	status, err := loadBalancerToStatus(lb, spec.ingressIpMode, skipPrivateIP)
 
 	if status != nil && len(status.Ingress) > 0 {
 		// If the LB is successfully provisioned then open lb/node subnet seclists egress/ingress.
@@ -898,7 +911,11 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 	dimensionsMap[metrics.BackendSetsCountDimension] = strconv.Itoa(len(lb.BackendSets))
 	metrics.SendMetricData(cp.metricPusher, getMetric(loadBalancerType, Update), syncTime, dimensionsMap)
 
-	return loadBalancerToStatus(lb, spec.ingressIpMode)
+	skipPrivateIP, err := isSkipPrivateIP(service)
+	if err != nil {
+		return nil, err
+	}
+	return loadBalancerToStatus(lb, spec.ingressIpMode, skipPrivateIP)
 }
 
 func getDefaultLBSubnets(subnet1, subnet2 string) []string {
@@ -1949,7 +1966,7 @@ func (clb *CloudLoadBalancerProvider) updateLoadBalancerIpVersion(ctx context.Co
 }
 
 // Given an OCI load balancer, return a LoadBalancerStatus
-func loadBalancerToStatus(lb *client.GenericLoadBalancer, ipMode *v1.LoadBalancerIPMode) (*v1.LoadBalancerStatus, error) {
+func loadBalancerToStatus(lb *client.GenericLoadBalancer, ipMode *v1.LoadBalancerIPMode, skipPrivateIp bool) (*v1.LoadBalancerStatus, error) {
 	if len(lb.IpAddresses) == 0 {
 		return nil, errors.Errorf("no ip addresses found for load balancer %q", *lb.DisplayName)
 	}
@@ -1958,6 +1975,12 @@ func loadBalancerToStatus(lb *client.GenericLoadBalancer, ipMode *v1.LoadBalance
 	for _, ip := range lb.IpAddresses {
 		if ip.IpAddress == nil {
 			continue // should never happen but appears to when EnsureLoadBalancer is called with 0 nodes.
+		}
+
+		if skipPrivateIp {
+			if !pointer.BoolDeref(ip.IsPublic, false) {
+				continue
+			}
 		}
 		ingress = append(ingress, v1.LoadBalancerIngress{IP: *ip.IpAddress, IPMode: ipMode})
 	}
@@ -2029,31 +2052,23 @@ func (cp *CloudProvider) getFrontendNsgByName(ctx context.Context, logger *zap.S
 func (cp *CloudProvider) checkPendingLBWorkRequests(ctx context.Context, logger *zap.SugaredLogger, lbProvider CloudLoadBalancerProvider, lb *client.GenericLoadBalancer, service *v1.Service, startTime time.Time) (err error) {
 	listWorkRequestTime := time.Now()
 	loadBalancerType := getLoadBalancerType(service)
-	lbName := GetLoadBalancerName(service)
-	dimensionsMap := make(map[string]string)
-	dimensionsMap[metrics.ResourceOCIDDimension] = *lb.Id
 
-	lbInProgressWorkRequests, err := lbProvider.lbClient.ListWorkRequests(ctx, *lb.CompartmentId, *lb.Id)
-	logger.With("loadBalancerID", *lb.Id).Infof("time (in seconds) to list work-requests for LB %f", time.Since(listWorkRequestTime).Seconds())
-	if err != nil {
-		logger.With(zap.Error(err)).Error("Failed to list work-requests in-progress")
-		errorType := util.GetError(err)
-		lbMetricDimension := util.GetMetricDimensionForComponent(errorType, util.LoadBalancerType)
-		dimensionsMap[metrics.ComponentDimension] = lbMetricDimension
-		dimensionsMap[metrics.ResourceOCIDDimension] = lbName
-		metrics.SendMetricData(cp.metricPusher, getMetric(loadBalancerType, List), time.Since(startTime).Seconds(), dimensionsMap)
-		return err
-	}
-	for _, wr := range lbInProgressWorkRequests {
-		switch loadBalancerType {
-		case NLB:
-			if wr.Status == string(networkloadbalancer.OperationStatusInProgress) || wr.Status == string(networkloadbalancer.OperationStatusAccepted) {
-				logger.With("loadBalancerID", *lb.Id).Infof("current in-progress work requests for Network Load Balancer %s", *wr.Id)
-				return errors.New("Network Load Balancer has work requests in progress, will wait and retry")
-			}
-		default:
+	switch loadBalancerType {
+	case NLB:
+		if *lb.LifecycleState == string(networkloadbalancer.LifecycleStateUpdating) {
+			logger.Info("Load Balancer is in UPDATING state, possibly a work request is in progress")
+			return errors.New("Load Balancer might have work requests in progress, will wait and retry")
+		}
+	default:
+		lbInProgressWorkRequests, err := lbProvider.lbClient.ListWorkRequests(ctx, *lb.CompartmentId, *lb.Id)
+		logger.Infof("time (in seconds) to list work-requests for LB %f", time.Since(listWorkRequestTime).Seconds())
+		if err != nil {
+			logger.With(zap.Error(err)).Error("Failed to list work-requests in-progress")
+			return err
+		}
+		for _, wr := range lbInProgressWorkRequests {
 			if *wr.LifecycleState == string(loadbalancer.WorkRequestLifecycleStateInProgress) || *wr.LifecycleState == string(loadbalancer.WorkRequestLifecycleStateAccepted) {
-				logger.With("loadBalancerID", *lb.Id).Infof("current in-progress work requests for Load Balancer %s", *wr.Id)
+				logger.Infof("current in-progress work requests for Load Balancer %s", *wr.Id)
 				return errors.New("Load Balancer has work requests in progress, will wait and retry")
 			}
 		}

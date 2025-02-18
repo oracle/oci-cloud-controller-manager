@@ -39,88 +39,88 @@ const (
 var _ = Describe("Snapshot Creation and Restore", func() {
 	f := framework.NewBackupFramework("snapshot-restore")
 
-	Context("[cloudprovider][storage][csi][snapshot][restore][test1]", func() {
-		//tests := []struct{
-		//	attachmentType 	string
-		//	backupType     	string
-		//	fsType 			string
-		//}{
-		//	{framework.AttachmentTypeParavirtualized, framework.BackupTypeIncremental, ""},
-		//	{framework.AttachmentTypeParavirtualized, framework.BackupTypeFull, ""},
-		//	{framework.AttachmentTypeISCSI, framework.BackupTypeIncremental, ""},
-		//	{framework.AttachmentTypeISCSI, framework.BackupTypeFull, ""},
-		//	{framework.AttachmentTypeISCSI, framework.BackupTypeIncremental, "xfs"},
-		//	{framework.AttachmentTypeParavirtualized, framework.BackupTypeFull, "ext3"},
-		//}
-		//for _, entry := range tests {
-		//	entry := entry
-		//	testName := "Should be able to create and restore " + entry.backupType + " snapshot from " + entry.attachmentType + " volume "
-		//	if entry.fsType != "" {
-		//		testName += " with " + entry.fsType + " fsType"
-		//	}
-		//	It(testName, func() {
-		//		scParams  := map[string]string{framework.AttachmentType: entry.attachmentType}
-		//		vscParams := map[string]string{framework.BackupType: entry.backupType}
-		//		scParams[framework.FstypeKey] = entry.fsType
-		//		testSnapshotAndRestore(f, scParams, vscParams)
-		//	})
-		//}
-		//It("FS should get expanded when a PVC is restored with a lesser size backup (iscsi)", func() {
-		//	checkOrInstallCRDs(f)
-		//	scParams  := map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI}
-		//	vscParams := map[string]string{framework.BackupType: framework.BackupTypeFull}
-		//	pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-snapshot-restore-e2e-tests")
-		//	pvcJig.InitialiseSnapClient(f.SnapClientSet)
-		//
-		//	scName := f.CreateStorageClassOrFail(f.Namespace.Name, BVDriverName, scParams, pvcJig.Labels, BindingModeWaitForFirstConsumer, true, ReclaimPolicyDelete, nil)
-		//	pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
-		//
-		//	_ = pvcJig.NewPodForCSI("pod-original", f.Namespace.Name, pvc.Name, setupF.AdLabel)
-		//
-		//	time.Sleep(60 * time.Second) //waiting for pod to up and running
-		//
-		//	vscName := f.CreateVolumeSnapshotClassOrFail(f.Namespace.Name, BVDriverName, vscParams, ReclaimPolicyDelete)
-		//	vs  := pvcJig.CreateAndAwaitVolumeSnapshotOrFail(f.Namespace.Name, vscName, pvc.Name, nil)
-		//
-		//	pvcRestore := pvcJig.CreateAndAwaitPVCOrFailSnapshotSource(f.Namespace.Name, framework.MaxVolumeBlock, scName, vs.Name, v1.ClaimPending, nil)
-		//	podRestoreName := pvcJig.NewPodForCSI("pod-restored", f.Namespace.Name, pvcRestore.Name, setupF.AdLabel)
-		//
-		//	time.Sleep(60 * time.Second) //waiting for pod to up and running
-		//
-		//	pvcJig.CheckUsableVolumeSizeInsidePod(f.Namespace.Name, podRestoreName, "99G")
-		//
-		//	f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
-		//	_ = f.DeleteVolumeSnapshotClass(f.Namespace.Name)
-		//	_ = f.DeleteStorageClass(f.Namespace.Name)
-		//})
-		//It("FS should get expanded when a PVC is restored with a lesser size backup (paravirtualized)", func() {
-		//	checkOrInstallCRDs(f)
-		//	scParams  := map[string]string{framework.AttachmentType: framework.AttachmentTypeParavirtualized}
-		//	vscParams := map[string]string{framework.BackupType: framework.BackupTypeFull}
-		//	pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-snapshot-restore-e2e-tests")
-		//	pvcJig.InitialiseSnapClient(f.SnapClientSet)
-		//
-		//	scName := f.CreateStorageClassOrFail(f.Namespace.Name, BVDriverName, scParams, pvcJig.Labels, BindingModeWaitForFirstConsumer, true, ReclaimPolicyDelete, nil)
-		//	pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
-		//
-		//	_ = pvcJig.NewPodForCSI("pod-original", f.Namespace.Name, pvc.Name, setupF.AdLabel)
-		//
-		//	time.Sleep(60 * time.Second) //waiting for pod to up and running
-		//
-		//	vscName := f.CreateVolumeSnapshotClassOrFail(f.Namespace.Name, BVDriverName, vscParams, ReclaimPolicyDelete)
-		//	vs  := pvcJig.CreateAndAwaitVolumeSnapshotOrFail(f.Namespace.Name, vscName, pvc.Name, nil)
-		//
-		//	pvcRestore := pvcJig.CreateAndAwaitPVCOrFailSnapshotSource(f.Namespace.Name, framework.MaxVolumeBlock, scName, vs.Name, v1.ClaimPending, nil)
-		//	podRestoreName := pvcJig.NewPodForCSI("pod-restored", f.Namespace.Name, pvcRestore.Name, setupF.AdLabel)
-		//
-		//	time.Sleep(60 * time.Second) //waiting for pod to up and running
-		//
-		//	pvcJig.CheckUsableVolumeSizeInsidePod(f.Namespace.Name, podRestoreName, "99G")
-		//
-		//	f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
-		//	_ = f.DeleteVolumeSnapshotClass(f.Namespace.Name)
-		//	_ = f.DeleteStorageClass(f.Namespace.Name)
-		//})
+	Context("[cloudprovider][storage][csi][snapshot][restore]", func() {
+		tests := []struct{
+			attachmentType 	string
+			backupType     	string
+			fsType 			string
+		}{
+			{framework.AttachmentTypeParavirtualized, framework.BackupTypeIncremental, ""},
+			{framework.AttachmentTypeParavirtualized, framework.BackupTypeFull, ""},
+			{framework.AttachmentTypeISCSI, framework.BackupTypeIncremental, ""},
+			{framework.AttachmentTypeISCSI, framework.BackupTypeFull, ""},
+			{framework.AttachmentTypeISCSI, framework.BackupTypeIncremental, "xfs"},
+			{framework.AttachmentTypeParavirtualized, framework.BackupTypeFull, "ext3"},
+		}
+		for _, entry := range tests {
+			entry := entry
+			testName := "Should be able to create and restore " + entry.backupType + " snapshot from " + entry.attachmentType + " volume "
+			if entry.fsType != "" {
+				testName += " with " + entry.fsType + " fsType"
+			}
+			It(testName, func() {
+				scParams  := map[string]string{framework.AttachmentType: entry.attachmentType}
+				vscParams := map[string]string{framework.BackupType: entry.backupType}
+				scParams[framework.FstypeKey] = entry.fsType
+				testSnapshotAndRestore(f, scParams, vscParams, v1.PersistentVolumeBlock)
+			})
+		}
+		It("FS should get expanded when a PVC is restored with a lesser size backup (iscsi)", func() {
+			checkOrInstallCRDs(f)
+			scParams  := map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI}
+			vscParams := map[string]string{framework.BackupType: framework.BackupTypeFull}
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-snapshot-restore-e2e-tests")
+			pvcJig.InitialiseSnapClient(f.SnapClientSet)
+
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, BVDriverName, scParams, pvcJig.Labels, BindingModeWaitForFirstConsumer, true, ReclaimPolicyDelete, nil)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
+
+			_ = pvcJig.NewPodForCSI("pod-original", f.Namespace.Name, pvc.Name, setupF.AdLabel, v1.PersistentVolumeBlock)
+
+			time.Sleep(60 * time.Second) //waiting for pod to up and running
+
+			vscName := f.CreateVolumeSnapshotClassOrFail(f.Namespace.Name, BVDriverName, vscParams, ReclaimPolicyDelete)
+			vs  := pvcJig.CreateAndAwaitVolumeSnapshotOrFail(f.Namespace.Name, vscName, pvc.Name, nil)
+
+			pvcRestore := pvcJig.CreateAndAwaitPVCOrFailSnapshotSource(f.Namespace.Name, framework.MaxVolumeBlock, scName, vs.Name, v1.ClaimPending, false, nil)
+			podRestoreName := pvcJig.NewPodForCSI("pod-restored", f.Namespace.Name, pvcRestore.Name, setupF.AdLabel, v1.PersistentVolumeBlock)
+
+			time.Sleep(60 * time.Second) //waiting for pod to up and running
+
+			pvcJig.CheckUsableVolumeSizeInsidePod(f.Namespace.Name, podRestoreName, "99G")
+
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+			_ = f.DeleteVolumeSnapshotClass(f.Namespace.Name)
+			_ = f.DeleteStorageClass(f.Namespace.Name)
+		})
+		It("FS should get expanded when a PVC is restored with a lesser size backup (paravirtualized)", func() {
+			checkOrInstallCRDs(f)
+			scParams  := map[string]string{framework.AttachmentType: framework.AttachmentTypeParavirtualized}
+			vscParams := map[string]string{framework.BackupType: framework.BackupTypeFull}
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-snapshot-restore-e2e-tests")
+			pvcJig.InitialiseSnapClient(f.SnapClientSet)
+
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, BVDriverName, scParams, pvcJig.Labels, BindingModeWaitForFirstConsumer, true, ReclaimPolicyDelete, nil)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
+
+			_ = pvcJig.NewPodForCSI("pod-original", f.Namespace.Name, pvc.Name, setupF.AdLabel, v1.PersistentVolumeBlock)
+
+			time.Sleep(60 * time.Second) //waiting for pod to up and running
+
+			vscName := f.CreateVolumeSnapshotClassOrFail(f.Namespace.Name, BVDriverName, vscParams, ReclaimPolicyDelete)
+			vs  := pvcJig.CreateAndAwaitVolumeSnapshotOrFail(f.Namespace.Name, vscName, pvc.Name, nil)
+
+			pvcRestore := pvcJig.CreateAndAwaitPVCOrFailSnapshotSource(f.Namespace.Name, framework.MaxVolumeBlock, scName, vs.Name, v1.ClaimPending, false, nil)
+			podRestoreName := pvcJig.NewPodForCSI("pod-restored", f.Namespace.Name, pvcRestore.Name, setupF.AdLabel, v1.PersistentVolumeBlock)
+
+			time.Sleep(60 * time.Second) //waiting for pod to up and running
+
+			pvcJig.CheckUsableVolumeSizeInsidePod(f.Namespace.Name, podRestoreName, "99G")
+
+			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
+			_ = f.DeleteVolumeSnapshotClass(f.Namespace.Name)
+			_ = f.DeleteStorageClass(f.Namespace.Name)
+		})
 		It("Should be able to create and restore a snapshot from a backup(static case)", func() {
 			checkOrInstallCRDs(f)
 			scParams := map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI}
