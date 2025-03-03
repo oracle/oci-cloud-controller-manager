@@ -114,7 +114,7 @@ func UnmountPath(logger *zap.SugaredLogger, mountPath string, mounter mount.Inte
 	}
 	notMnt, mntErr := mounter.IsLikelyNotMountPoint(mountPath)
 	if mntErr != nil {
-		return err
+		return mntErr
 	}
 	if notMnt {
 		logger.With("mount path", mountPath).Info("Mount path is unmounted. Removing directory.")
