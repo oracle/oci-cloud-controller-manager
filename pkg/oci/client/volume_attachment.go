@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
@@ -140,13 +141,16 @@ func (c *client) AttachVolume(ctx context.Context, instanceID, volumeID string) 
 		return nil, errors.WithStack(err)
 	}
 
+	var attachVolumeDetails = core.AttachIScsiVolumeDetails{
+		InstanceId: &instanceID,
+		VolumeId:   &volumeID,
+	}
+	if !strings.Contains(volumeID, "bootvolume") {
+		attachVolumeDetails.Device = device
+	}
 	resp, err := c.compute.AttachVolume(ctx, core.AttachVolumeRequest{
-		AttachVolumeDetails: core.AttachIScsiVolumeDetails{
-			InstanceId: &instanceID,
-			VolumeId:   &volumeID,
-			Device:     device,
-		},
-		RequestMetadata: c.requestMetadata,
+		AttachVolumeDetails: attachVolumeDetails,
+		RequestMetadata:     c.requestMetadata,
 	})
 	incRequestCounter(err, createVerb, volumeAttachmentResource)
 

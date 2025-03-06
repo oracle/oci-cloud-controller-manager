@@ -790,19 +790,24 @@ func generatePublishContext(volumeAttachmentOptions VolumeAttachmentOption, log 
 
 	log.With("volumeAttachedId", *volumeAttached.GetId()).Info("Publishing iSCSI Volume Completed.")
 
+	publishContext := map[string]string{
+		attachmentType:     attachmentTypeISCSI,
+		disk.ISCSIIQN:      *iSCSIVolumeAttached.Iqn,
+		disk.ISCSIIP:       *iSCSIVolumeAttached.Ipv4,
+		disk.ISCSIPORT:     strconv.Itoa(*iSCSIVolumeAttached.Port),
+		csi_util.VpusPerGB: vpusPerGB,
+		needResize:         needsResize,
+		newSize:            expectedSize,
+		multipathEnabled:   multipath,
+		multipathDevices:   string(multiPathDevicesJson),
+	}
+
+	if dev := volumeAttached.GetDevice(); dev != nil {
+		publishContext["device"] = *dev
+	}
+
 	return &csi.ControllerPublishVolumeResponse{
-		PublishContext: map[string]string{
-			attachmentType:     attachmentTypeISCSI,
-			device:             *volumeAttached.GetDevice(),
-			disk.ISCSIIQN:      *iSCSIVolumeAttached.Iqn,
-			disk.ISCSIIP:       *iSCSIVolumeAttached.Ipv4,
-			disk.ISCSIPORT:     strconv.Itoa(*iSCSIVolumeAttached.Port),
-			csi_util.VpusPerGB: vpusPerGB,
-			needResize:         needsResize,
-			newSize:            expectedSize,
-			multipathEnabled:   multipath,
-			multipathDevices:   string(multiPathDevicesJson),
-		},
+		PublishContext: publishContext,
 	}, nil
 }
 
