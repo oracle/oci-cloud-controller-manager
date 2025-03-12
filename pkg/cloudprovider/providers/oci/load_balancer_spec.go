@@ -256,6 +256,21 @@ const (
 
 	// ServiceAnnotationNetworkLoadBalancerExternalIpOnly is a service a boolean annotation to skip private ip when assigning to ingress resource for NLB service
 	ServiceAnnotationNetworkLoadBalancerExternalIpOnly = "oci-network-load-balancer.oraclecloud.com/external-ip-only"
+
+	// ServiceAnnotationNetworkLoadBalancerAssignedPrivateIpV4 is s service annotation to provision Network LoadBalancer with an assigned
+	// IPv4 address from the subnet https://docs.oracle.com/en-us/iaas/api/#/en/networkloadbalancer/20200501/datatypes/CreateNetworkLoadBalancerDetails
+	ServiceAnnotationNetworkLoadBalancerAssignedPrivateIpV4 = "oci-network-load-balancer.oraclecloud.com/assigned-private-ipv4"
+
+	// ServiceAnnotationNetworkLoadBalancerAssignedIpV6 is s service annotation to provision Network LoadBalancer with an assigned
+	// IPv6 address from the subnet https://docs.oracle.com/en-us/iaas/api/#/en/networkloadbalancer/20200501/datatypes/CreateNetworkLoadBalancerDetails
+	ServiceAnnotationNetworkLoadBalancerAssignedIpV6 = "oci-network-load-balancer.oraclecloud.com/assigned-ipv6"
+)
+
+// Virtual Node Annotations
+const (
+	// PrivateIPOCIDAnnotation is the privateIP OCID of the Container Instance running a virtual pod
+	// set by the virtual node
+	PrivateIPOCIDAnnotation = "oci.oraclecloud.com/pod.info.private_ip_ocid"
 )
 
 const (
@@ -364,6 +379,8 @@ type LBSpec struct {
 	ingressIpMode               *v1.LoadBalancerIPMode
 	Compartment                 string
 	RuleSets                    map[string]loadbalancer.RuleSetDetails
+	AssignedPrivateIpv4         *string
+	AssignedIpv6                *string
 
 	service *v1.Service
 	nodes   []*v1.Node
@@ -465,6 +482,11 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, provisionedNodes []*v
 
 	compartment := getLoadBalancerCompartment(svc, clusterCompartment)
 
+	assignedPrivateIpv4, assignedIpv6, err := getAssignedPrivateIP(logger, svc)
+	if err != nil {
+		return nil, err
+	}
+
 	return &LBSpec{
 		Type:                        lbType,
 		Name:                        GetLoadBalancerName(svc),
@@ -492,6 +514,8 @@ func NewLBSpec(logger *zap.SugaredLogger, svc *v1.Service, provisionedNodes []*v
 		ingressIpMode:               ingressIpMode,
 		Compartment:                 compartment,
 		RuleSets:                    ruleSets,
+		AssignedPrivateIpv4:         assignedPrivateIpv4,
+		AssignedIpv6:                assignedIpv6,
 	}, nil
 }
 
@@ -1687,4 +1711,23 @@ func getRuleSets(svc *v1.Service) (rs map[string]loadbalancer.RuleSetDetails, er
 	}
 	err = json.NewDecoder(strings.NewReader(annotation)).Decode(&rs)
 	return rs, err
+}
+
+func getAssignedPrivateIP(logger *zap.SugaredLogger, svc *v1.Service) (ipV4Adress, ipV6Adress *string, err error) {
+	getIpAddress := func(key string) *string {
+		address, exists := svc.Annotations[key]
+		if !exists {
+			return nil
+		}
+		if getLoadBalancerType(svc) != NLB {
+			err = fmt.Errorf("Private IP assignment via annoations %s & %s is supported only in OCI Network Loadbalancer. Set %s to %s",
+				ServiceAnnotationNetworkLoadBalancerAssignedPrivateIpV4,
+				ServiceAnnotationNetworkLoadBalancerAssignedIpV6,
+				ServiceAnnotationLoadBalancerType,
+				NLB)
+		}
+		logger.Infof("Assigned IP address for NLB is %s", address)
+		return &address
+	}
+	return getIpAddress(ServiceAnnotationNetworkLoadBalancerAssignedPrivateIpV4), getIpAddress(ServiceAnnotationNetworkLoadBalancerAssignedIpV6), err
 }

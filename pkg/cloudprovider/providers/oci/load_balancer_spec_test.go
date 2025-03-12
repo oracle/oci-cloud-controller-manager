@@ -4897,6 +4897,146 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				},
 			},
 		},
+		"Assigned Private v4 & v6 IP to NLB": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationNetworkLoadBalancerAssignedPrivateIpV4: "10.0.0.1",
+						ServiceAnnotationNetworkLoadBalancerAssignedIpV6:        "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
+						ServiceAnnotationLoadBalancerType:                       NLB,
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+				},
+			},
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			expected: &LBSpec{
+				Name:                        "kube-system/testservice/test-uid",
+				Type:                        NLB,
+				Shape:                       flexibleShape,
+				Internal:                    false,
+				Subnets:                     []string{"one"},
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				securityListManager:         newSecurityListManagerNOOP(),
+				AssignedPrivateIpv4:         common.String("10.0.0.1"),
+				AssignedIpv6:                common.String("2001:0db8:85a3:0000:0000:8a2e:0370:7334"),
+				Listeners:                   map[string]client.GenericListener{},
+				BackendSets:                 map[string]client.GenericBackendSetDetails{},
+				IsPreserveSource:            common.Bool(false),
+				Ports:                       map[string]portSpec{},
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+			},
+		},
+		"Assigned Private v4 IP to NLB": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationNetworkLoadBalancerAssignedPrivateIpV4: "10.0.0.1",
+						ServiceAnnotationLoadBalancerType:                       NLB,
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+				},
+			},
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			expected: &LBSpec{
+				Name:                        "kube-system/testservice/test-uid",
+				Type:                        NLB,
+				Shape:                       flexibleShape,
+				Internal:                    false,
+				Subnets:                     []string{"one"},
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				securityListManager:         newSecurityListManagerNOOP(),
+				AssignedPrivateIpv4:         common.String("10.0.0.1"),
+				Listeners:                   map[string]client.GenericListener{},
+				BackendSets:                 map[string]client.GenericBackendSetDetails{},
+				IsPreserveSource:            common.Bool(false),
+				Ports:                       map[string]portSpec{},
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+			},
+		},
+		"Assigned v6 IP to NLB": {
+			defaultSubnetOne: "one",
+			defaultSubnetTwo: "two",
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationNetworkLoadBalancerAssignedIpV6: "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
+						ServiceAnnotationLoadBalancerType:                NLB,
+					},
+				},
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+				},
+			},
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			expected: &LBSpec{
+				Name:                        "kube-system/testservice/test-uid",
+				Type:                        NLB,
+				Shape:                       flexibleShape,
+				Internal:                    false,
+				Subnets:                     []string{"one"},
+				NetworkSecurityGroupIds:     []string{},
+				SourceCIDRs:                 []string{"0.0.0.0/0"},
+				securityListManager:         newSecurityListManagerNOOP(),
+				AssignedIpv6:                common.String("2001:0db8:85a3:0000:0000:8a2e:0370:7334"),
+				Listeners:                   map[string]client.GenericListener{},
+				BackendSets:                 map[string]client.GenericBackendSetDetails{},
+				IsPreserveSource:            common.Bool(false),
+				Ports:                       map[string]portSpec{},
+				ManagedNetworkSecurityGroup: &ManagedNetworkSecurityGroup{frontendNsgId: "", backendNsgId: []string{}, nsgRuleManagementMode: ManagementModeNone},
+				IpVersions: &IpVersions{
+					IpFamilies:               []string{IPv4},
+					IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+					LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+					ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+				},
+			},
+		},
 	}
 
 	cp := &CloudProvider{
@@ -6915,6 +7055,38 @@ func TestNewLBSpecFailure(t *testing.T) {
 				},
 			},
 			expectedErrMsg: "a subnet must be specified for creating a load balancer",
+		},
+		"private IP assignment to LB": {
+			defaultSubnetOne: "one",
+			IpVersions: &IpVersions{
+				IpFamilies:               []string{IPv4},
+				IpFamilyPolicy:           common.String(string(v1.IPFamilyPolicySingleStack)),
+				LbEndpointIpVersion:      GenericIpVersion(client.GenericIPv4),
+				ListenerBackendIpVersion: []client.GenericIpVersion{client.GenericIPv4},
+			},
+			service: &v1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "kube-system",
+					Name:      "testservice",
+					UID:       "test-uid",
+					Annotations: map[string]string{
+						ServiceAnnotationNetworkLoadBalancerAssignedPrivateIpV4: "10.1.2.3",
+						ServiceAnnotationNetworkLoadBalancerAssignedIpV6:        "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
+					},
+				},
+				Spec: v1.ServiceSpec{
+					IPFamilies:      []v1.IPFamily{v1.IPFamily(IPv4)},
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{Protocol: v1.ProtocolTCP},
+					},
+				},
+			},
+			expectedErrMsg: fmt.Sprintf("Private IP assignment via annoations %s & %s is supported only in OCI Network Loadbalancer. Set %s to %s",
+				ServiceAnnotationNetworkLoadBalancerAssignedPrivateIpV4,
+				ServiceAnnotationNetworkLoadBalancerAssignedIpV6,
+				ServiceAnnotationLoadBalancerType,
+				NLB),
 		},
 	}
 

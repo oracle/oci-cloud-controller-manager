@@ -852,6 +852,10 @@ var (
 					}},
 				}},
 		},
+		"lb-without-IP-address": {
+			Id:          common.String("lb-without-IP-address"),
+			IpAddresses: []client.GenericIpAddress{},
+		},
 	}
 )
 
