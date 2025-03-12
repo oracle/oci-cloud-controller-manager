@@ -149,6 +149,8 @@ func (c *networkLoadbalancer) CreateLoadBalancer(ctx context.Context, details *G
 		BackendSets:                 c.genericBackendSetDetailsToBackendSets(details.BackendSets),
 		FreeformTags:                details.FreeformTags,
 		DefinedTags:                 details.DefinedTags,
+		AssignedPrivateIpv4:         details.AssignedPrivateIpv4,
+		AssignedIpv6:                details.AssignedIpv6,
 	}
 
 	if details.IpVersion != nil {

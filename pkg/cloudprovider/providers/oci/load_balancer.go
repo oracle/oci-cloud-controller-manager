@@ -216,7 +216,7 @@ func (cp *CloudProvider) GetLoadBalancer(ctx context.Context, clusterName string
 	if err != nil {
 		return nil, false, err
 	}
-	lbStatus, err := loadBalancerToStatus(lb, nil, skipPrivateIP)
+	lbStatus, err := loadBalancerToStatus(lb, nil, skipPrivateIP, logger)
 	return lbStatus, err == nil, err
 }
 
@@ -380,7 +380,8 @@ func (clb *CloudLoadBalancerProvider) ensureSSLCertificates(ctx context.Context,
 
 // createLoadBalancer creates a new OCI load balancer based on the given spec.
 func (clb *CloudLoadBalancerProvider) createLoadBalancer(ctx context.Context, spec *LBSpec) (lbStatus *v1.LoadBalancerStatus, lbOCID string, err error) {
-	logger := clb.logger.With("loadBalancerName", spec.Name, "loadBalancerType", getLoadBalancerType(spec.service))
+	lbType := getLoadBalancerType(spec.service)
+	logger := clb.logger.With("loadBalancerName", spec.Name, "loadBalancerType", lbType)
 	logger.Info("Attempting to create a new load balancer")
 
 	// First update the security lists so that if it fails (due to the etag
@@ -446,6 +447,11 @@ func (clb *CloudLoadBalancerProvider) createLoadBalancer(ctx context.Context, sp
 		}
 	}
 
+	if lbType == NLB {
+		details.AssignedPrivateIpv4 = spec.AssignedPrivateIpv4
+		details.AssignedIpv6 = spec.AssignedIpv6
+	}
+
 	serviceUid := fmt.Sprintf("%s", spec.service.UID)
 	wrID, err := clb.lbClient.CreateLoadBalancer(ctx, &details, &serviceUid)
 	if err != nil {
@@ -473,7 +479,7 @@ func (clb *CloudLoadBalancerProvider) createLoadBalancer(ctx context.Context, sp
 	if err != nil {
 		return nil, "", err
 	}
-	status, err := loadBalancerToStatus(lb, spec.ingressIpMode, skipPrivateIP)
+	status, err := loadBalancerToStatus(lb, spec.ingressIpMode, skipPrivateIP, logger)
 
 	if status != nil && len(status.Ingress) > 0 {
 		// If the LB is successfully provisioned then open lb/node subnet seclists egress/ingress.
@@ -916,7 +922,7 @@ func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName str
 	if err != nil {
 		return nil, err
 	}
-	return loadBalancerToStatus(lb, spec.ingressIpMode, skipPrivateIP)
+	return loadBalancerToStatus(lb, spec.ingressIpMode, skipPrivateIP, logger)
 }
 
 func getDefaultLBSubnets(subnet1, subnet2 string) []string {
@@ -929,7 +935,7 @@ func getDefaultLBSubnets(subnet1, subnet2 string) []string {
 	return subnets
 }
 
-func (cp *CloudProvider) getNetworkLoadbalancerSubnets(ctx context.Context, logger *zap.SugaredLogger, svc *v1.Service) ([]string, error) {
+func (cp *CloudProvider) getNetworkLoadbalancerSubnets(svc *v1.Service) ([]string, error) {
 	subnets := getDefaultLBSubnets(cp.config.LoadBalancer.Subnet1, cp.config.LoadBalancer.Subnet2)
 	if s, ok := svc.Annotations[ServiceAnnotationNetworkLoadBalancerSubnet]; ok && len(s) != 0 {
 		return []string{s}, nil
@@ -997,7 +1003,7 @@ func (cp *CloudProvider) getLoadBalancerSubnets(ctx context.Context, logger *zap
 
 	switch lbType {
 	case NLB:
-		return cp.getNetworkLoadbalancerSubnets(ctx, logger, svc)
+		return cp.getNetworkLoadbalancerSubnets(svc)
 	default:
 		return cp.getOciLoadBalancerSubnets(ctx, logger, svc)
 	}
@@ -2011,8 +2017,15 @@ func (clb *CloudLoadBalancerProvider) updateLoadBalancerIpVersion(ctx context.Co
 }
 
 // Given an OCI load balancer, return a LoadBalancerStatus
-func loadBalancerToStatus(lb *client.GenericLoadBalancer, ipMode *v1.LoadBalancerIPMode, skipPrivateIp bool) (*v1.LoadBalancerStatus, error) {
+func loadBalancerToStatus(lb *client.GenericLoadBalancer, ipMode *v1.LoadBalancerIPMode, skipPrivateIp bool, logger *zap.SugaredLogger) (*v1.LoadBalancerStatus, error) {
+	// NLB created with an intent to assign an IP address which is already consumed goes into FAILED state
+	// An NLB in FAILED state without an IP address is FAILED during create operation
 	if len(lb.IpAddresses) == 0 {
+		if lb.LifecycleState != nil &&
+			(*lb.LifecycleState == string(networkloadbalancer.LifecycleStateFailed) || *lb.LifecycleState == string(loadbalancer.LoadBalancerLifecycleStateFailed)) {
+			logger.With("loadBalancerID", *lb.Id).Warnf("Network LoadBalancers without an IP in FAILED state. returning empty LoadBalancerStatus{}")
+			return &v1.LoadBalancerStatus{}, nil
+		}
 		return nil, errors.Errorf("no ip addresses found for load balancer %q", *lb.DisplayName)
 	}
 
