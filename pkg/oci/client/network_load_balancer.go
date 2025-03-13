@@ -79,16 +79,24 @@ func (c *networkLoadbalancer) GetLoadBalancerByName(ctx context.Context, compart
 
 	if ocid, ok := c.nameToOcid.Load(name); ok {
 		var err error
+		var lb *GenericLoadBalancer
+
 		ocidStr, ok := ocid.(string)
 		if ok {
-			lb, err := c.GetLoadBalancer(ctx, ocidStr)
-			if err == nil && *lb.DisplayName == name {
-				return lb, err
+			lb, err = c.GetLoadBalancer(ctx, ocidStr)
+			if err == nil && lb.DisplayName != nil && lb.CompartmentId != nil {
+				if *lb.DisplayName == name && *lb.CompartmentId == compartmentID {
+					return lb, err
+				}
+				logger.Info("NLB name to OCID cache stale record. Actual display name: %s, compartment %s", *lb.DisplayName, *lb.CompartmentId)
+			} else {
+				logger.Info("NLB name to OCID cache failed to get LB or the response contained unexpected nil value")
 			}
 		}
 
-		if !ok || IsNotFound(err) { // Only remove the cached value on 404, not on a 5XX
+		if IsNotFound(err) { // Only remove the cached value on 404, not on a 5XX
 			c.nameToOcid.Delete(name)
+			logger.Info("LB name to OCID cache deleted record")
 		}
 	} else {
 		logger.Info("NLB name to OCID cache miss")
