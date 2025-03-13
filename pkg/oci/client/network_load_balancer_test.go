@@ -100,27 +100,30 @@ func TestNLB_AwaitWorkRequest(t *testing.T) {
 }
 
 var (
-	fakeNlbOcid1   = "ocid.nlb.fake1"
-	fakeNlbName1   = "fake display name 1"
-	fakeNlbOcid2   = "ocid.nlb.fake2"
-	fakeNlbName2   = "fake display name 2"
-	fakeSubnetOcid = "ocid.subnet.fake"
+	fakeNlbCompartment = "ocid1.compartment.totally.fake"
+	fakeNlbOcid1       = "ocid.nlb.fake1"
+	fakeNlbName1       = "fake display name 1"
+	fakeNlbOcid2       = "ocid.nlb.fake2"
+	fakeNlbName2       = "fake display name 2"
+	fakeSubnetOcid     = "ocid.subnet.fake"
 
 	NLBMap = map[string]networkloadbalancer.NetworkLoadBalancer{
-		"ocid.nlb.fake1": networkloadbalancer.NetworkLoadBalancer{
-			Id:          &fakeNlbOcid1,
-			DisplayName: &fakeNlbName1,
-			SubnetId:    &fakeSubnetOcid,
+		fakeNlbOcid1: networkloadbalancer.NetworkLoadBalancer{
+			Id:            &fakeNlbOcid1,
+			CompartmentId: &fakeNlbCompartment,
+			DisplayName:   &fakeNlbName1,
+			SubnetId:      &fakeSubnetOcid,
 		},
-		"ocid.nlb.fake2": networkloadbalancer.NetworkLoadBalancer{
-			Id:          &fakeNlbOcid2,
-			DisplayName: &fakeNlbName2,
-			SubnetId:    &fakeSubnetOcid,
+		fakeNlbOcid2: networkloadbalancer.NetworkLoadBalancer{
+			Id:            &fakeNlbOcid2,
+			CompartmentId: &fakeNlbCompartment,
+			DisplayName:   &fakeNlbName2,
+			SubnetId:      &fakeSubnetOcid,
 		},
 	}
 )
 
-func TestGetLoadBalancerByName(t *testing.T) {
+func TestGetNetworkLoadBalancerByName(t *testing.T) {
 	var totalListCalls int
 	var loadbalancer = NewNLBClient(
 		&MockNetworkLoadBalancerClient{debug: true, listCalls: &totalListCalls},
@@ -139,7 +142,7 @@ func TestGetLoadBalancerByName(t *testing.T) {
 	}{
 		{
 			testname:      "getFirstNLBFirstTime",
-			compartment:   "ocid.compartment.fake",
+			compartment:   fakeNlbCompartment,
 			name:          fakeNlbName1,
 			want:          fakeNlbOcid1,
 			wantErr:       nil,
@@ -147,7 +150,7 @@ func TestGetLoadBalancerByName(t *testing.T) {
 		},
 		{
 			testname:      "getFirstNLBSecondTime",
-			compartment:   "ocid.compartment.fake",
+			compartment:   fakeNlbCompartment,
 			name:          fakeNlbName1,
 			want:          fakeNlbOcid1,
 			wantErr:       nil,
@@ -155,7 +158,7 @@ func TestGetLoadBalancerByName(t *testing.T) {
 		},
 		{
 			testname:      "getSecondNLBTime",
-			compartment:   "ocid.compartment.fake",
+			compartment:   fakeNlbCompartment,
 			name:          fakeNlbName2,
 			want:          fakeNlbOcid2,
 			wantErr:       nil,
@@ -163,7 +166,7 @@ func TestGetLoadBalancerByName(t *testing.T) {
 		},
 		{
 			testname:      "getFirstNLBThirdTime",
-			compartment:   "ocid.compartment.fake",
+			compartment:   fakeNlbCompartment,
 			name:          fakeNlbName1,
 			want:          fakeNlbOcid1,
 			wantErr:       nil,
@@ -171,7 +174,7 @@ func TestGetLoadBalancerByName(t *testing.T) {
 		},
 		{
 			testname:      "getSecondNLBSecondTime",
-			compartment:   "ocid.compartment.fake",
+			compartment:   fakeNlbCompartment,
 			name:          fakeNlbName2,
 			want:          fakeNlbOcid2,
 			wantErr:       nil,
