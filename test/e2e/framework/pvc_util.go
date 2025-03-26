@@ -20,6 +20,7 @@ import (
 	"time"
 
 	snapclientset "github.com/kubernetes-csi/external-snapshotter/client/v6/clientset/versioned"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	v1 "k8s.io/api/core/v1"
@@ -36,6 +37,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/oracle/oci-go-sdk/v65/common"
 	ocicore "github.com/oracle/oci-go-sdk/v65/core"
 
 	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
@@ -473,7 +475,7 @@ func (j *PVCTestJig) CreateAndAwaitStaticPVCOrFailCSI(bs ocicore.BlockstorageCli
 	if vpusPerGB == 20 {
 		pv = j.CreatePVorFailCSIHighPerf(namespace, scName, *volumeOcid)
 	} else {
-		pv = j.CreatePVorFailCSI(namespace, scName, *volumeOcid)
+		pv = j.CreatePVorFailCSI(namespace, scName, *volumeOcid, volumeMode)
 	}
 	pv = j.waitForConditionOrFailForPV(pv.Name, DefaultTimeout, "to be dynamically provisioned", func(pvc *v1.PersistentVolume) bool {
 		err := j.WaitForPVPhase(v1.VolumeAvailable, pv.Name)
@@ -485,6 +487,24 @@ func (j *PVCTestJig) CreateAndAwaitStaticPVCOrFailCSI(bs ocicore.BlockstorageCli
 	})
 
 	return j.CreateAndAwaitPVCOrFailCSI(namespace, volumeSize, scName, tweak, volumeMode, accessMode, expectedPVCPhase), *volumeOcid
+}
+
+func (j *PVCTestJig) CreateAndAwaitStaticBootVolumePVCOrFailCSI(c ocicore.ComputeClient, namespace string, compartment string, adLocation string, subnetId string,volumeSize string, scName string, tweak func(pvc *v1.PersistentVolumeClaim), volumeMode v1.PersistentVolumeMode, accessMode v1.PersistentVolumeAccessMode, expectedPVCPhase v1.PersistentVolumeClaimPhase) (*v1.PersistentVolumeClaim, string) {
+
+	bootVolumeId := j.CreateBootVolume(c, adLocation, compartment, subnetId)
+
+	pv := j.CreatePVorFailCSI(namespace, scName, bootVolumeId, volumeMode)
+
+	pv = j.waitForConditionOrFailForPV(pv.Name, DefaultTimeout, "to be dynamically provisioned", func(pvc *v1.PersistentVolume) bool {
+		err := j.WaitForPVPhase(v1.VolumeAvailable, pv.Name)
+		if err != nil {
+			Failf("PV %q did not created: %v", pv.Name, err)
+			return false
+		}
+		return true
+	})
+
+	return j.CreateAndAwaitPVCOrFailCSI(namespace, volumeSize, scName, tweak, volumeMode, accessMode, expectedPVCPhase), bootVolumeId
 }
 
 func (j *PVCTestJig) CreatePVTemplate(namespace, annotation, storageClassName string,
@@ -647,8 +667,9 @@ func (j *PVCTestJig) CreatePVorFailLustre(namespace, volumeHandle string, mountO
 // CreatePVorFail creates a new claim based on the jig's
 // defaults. Callers can provide a function to tweak the claim object
 // before it is created.
-func (j *PVCTestJig) CreatePVorFailCSI(namespace string, scName string, ocid string) *v1.PersistentVolume {
+func (j *PVCTestJig) CreatePVorFailCSI(namespace string, scName string, ocid string, volumeMode v1.PersistentVolumeMode) *v1.PersistentVolume {
 	pv := j.newPVTemplateCSI(namespace, scName, ocid)
+	pv = j.pvAddVolumeMode(pv, volumeMode)
 
 	result, err := j.KubeClient.CoreV1().PersistentVolumes().Create(context.Background(), pv, metav1.CreateOptions{})
 	if err != nil {
@@ -688,6 +709,185 @@ func (j *PVCTestJig) CreateVolume(bs ocicore.BlockstorageClient, adLabel string,
 		Failf("Volume %q creation API error: %v", volName, err)
 	}
 	return newVolume.Id
+}
+
+// CreateBootVolume is a function to create the boot volume
+func (j *PVCTestJig) CreateBootVolume(c ocicore.ComputeClient, adLabel string, compartmentId string, subnet string) string {
+	ctx := context.Background()
+
+	images, err := c.ListImages(context.Background(), ocicore.ListImagesRequest{
+		CompartmentId: &compartmentId,
+	})
+	if err != nil {
+		Failf("Error listing images: %v", err)
+	}
+
+	image := images.Items[0]
+	Logf("Chose image name: %v, id: %v", *image.DisplayName, *image.Id)
+
+	request := ocicore.LaunchInstanceRequest{
+		LaunchInstanceDetails: ocicore.LaunchInstanceDetails{
+			AvailabilityDomain: &adLabel,
+			CompartmentId: &compartmentId,
+			SubnetId: &subnet,
+			Shape: common.String("VM.Standard2.1"),
+			ImageId: image.Id,
+		},
+	}
+
+	instance, err := c.LaunchInstance(ctx, request)
+	if err != nil {
+		Failf("Error launching instance: %v", err)
+	}
+
+	instanceId := instance.Id
+
+	// Wait for instance running
+	fmt.Println("Waiting 5 minutes for instance to reach RUNNING state...")
+	err = waitForInstanceState(ctx, c, instanceId, ocicore.InstanceLifecycleStateRunning, 5*time.Minute)
+	if err != nil {
+		Failf("Instance did not reach RUNNING: %v", err)
+	}
+	fmt.Println("Instance is RUNNING")
+
+	// Stop the instance
+	fmt.Println("Stopping instance...")
+	_, err = c.InstanceAction(ctx, ocicore.InstanceActionRequest{
+		InstanceId: instanceId,
+		Action: ocicore.InstanceActionActionStop,
+	})
+	if err != nil {
+		Failf("Failed to stop instance: %v", err)
+	}
+
+	// Wait for STOPPED
+	fmt.Println("Waiting for instance to STOP...")
+	err = waitForInstanceState(ctx, c, instanceId, ocicore.InstanceLifecycleStateStopped, 5*time.Minute)
+	if err != nil {
+		Failf("Instance did not reach STOPPED: %v", err)
+	}
+	fmt.Println("Instance is STOPPED")
+
+	// Get boot volume attachment
+	fmt.Println("Detaching boot volume...")
+	attachmentsResp, err := c.ListBootVolumeAttachments(ctx, ocicore.ListBootVolumeAttachmentsRequest{
+		AvailabilityDomain: &adLabel,
+		CompartmentId:      &compartmentId,
+		InstanceId:         instanceId,
+	})
+	if err != nil {
+		Failf("Failed to list boot volume attachments: %v", err)
+	}
+
+	if len(attachmentsResp.Items) == 0 {
+		Failf("No boot volume attachment found for instance %s", *instanceId)
+	}
+
+	attachmentID := attachmentsResp.Items[0].Id
+	_, err = c.DetachBootVolume(ctx, ocicore.DetachBootVolumeRequest{
+		BootVolumeAttachmentId: attachmentID,
+	})
+	if err != nil {
+		Failf("Failed to detach boot volume: %v", err)
+	}
+
+	err = WaitForVolumeDetached(ctx, c, attachmentID)
+	if err != nil {
+		Failf("Failed while waiting for boot volume detach: %v", err)
+	}
+
+	// Terminate the instance
+	fmt.Println("Terminating instance...")
+
+	_, err = c.TerminateInstance(ctx, ocicore.TerminateInstanceRequest{
+		InstanceId:          instanceId,
+		PreserveBootVolume:  common.Bool(true),
+	})
+	if err != nil {
+		Failf("Failed to terminate instance: %v", err)
+	}
+
+	// Wait for TERMINATED
+	fmt.Println("Waiting for instance to TERMINATE...")
+	err = waitForInstanceState(ctx, c, instanceId, ocicore.InstanceLifecycleStateTerminated, 5*time.Minute)
+	if err != nil {
+		Failf("Instance did not reach TERMINATED: %v", err)
+	}
+	fmt.Println("Instance is TERMINATED")
+
+	return *attachmentsResp.Items[0].BootVolumeId
+}
+
+func waitForInstanceState(ctx context.Context, computeClient ocicore.ComputeClient, instanceID *string, expectedState ocicore.InstanceLifecycleStateEnum, timeout time.Duration) error {
+	checkInstanceState := func() (bool, error) {
+		subCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+
+		resp, err := computeClient.GetInstance(subCtx, ocicore.GetInstanceRequest{
+			InstanceId: instanceID,
+		})
+		if err != nil || resp.Id == nil {
+			return false, err
+		}
+
+		if resp.LifecycleState != expectedState {
+			fmt.Printf("Instance %s not yet in expected state. Current: %s, Expected: %s\n",
+				*instanceID, resp.LifecycleState, expectedState)
+			return false, nil
+		}
+		return true, nil
+	}
+
+	err := wait.PollImmediate(10*time.Second, timeout, func() (bool, error) {
+		return checkInstanceState()
+	})
+
+	if err != nil {
+		fmt.Printf("Timed out waiting for instance %s to reach state %s\n", *instanceID, expectedState)
+	}
+	return err
+}
+
+func WaitForVolumeDetached(ctx context.Context, c ocicore.ComputeClient, id *string) error {
+	subCtx, cancel := context.WithTimeout(ctx, 5* time.Minute)
+	defer cancel()
+
+	if err := wait.PollImmediateUntil(5 * time.Second, func() (done bool, err error) {
+		va, err := c.GetBootVolumeAttachment(subCtx, ocicore.GetBootVolumeAttachmentRequest{
+			BootVolumeAttachmentId: id,
+		})
+		fmt.Printf("Error: %+v\n", err)
+		if err != nil {
+			if client.IsRetryable(err) {
+				return false, nil
+			}
+			return true, errors.WithStack(err)
+		}
+		if va.LifecycleState == ocicore.BootVolumeAttachmentLifecycleStateDetached {
+			return true, nil
+		}
+		fmt.Printf("Waiting for boot volume to detach, current state: %s\n", va.LifecycleState)
+		return false, nil
+	}, subCtx.Done()); err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func (j *PVCTestJig) DeleteBootVolume(bs ocicore.BlockstorageClient, bootVolId string, timeout time.Duration) {
+	request := ocicore.DeleteBootVolumeRequest{
+		BootVolumeId: &bootVolId,
+	}
+
+	for start := time.Now(); time.Since(start) < timeout; time.Sleep(Poll) {
+		_, err := bs.DeleteBootVolume(context.Background(), request)
+		if err != nil {
+			Logf("Boot volume %q deletion API error: %v", bootVolId, err)
+		} else {
+			return
+		}
+	}
 }
 
 // DeleteVolume is a function to delete the block volume
@@ -1938,4 +2138,27 @@ func (j *PVCTestJig) CheckLustreParameters(namespace string, podName string) {
 	if stdout == "" || !strings.Contains(strings.TrimSpace(stdout), "lru_size=11201") {
 		Failf("Did not found expected lustre parameter. Command : %v, Expected Output : *.*.*MDT*.lru_size=11201, Actual Output : %v", command, stdout)
 	}
+}
+
+func (j *PVCTestJig) DeletePod(namespace string, name string, timeout time.Duration) error {
+	Logf("deleting pod %s/%s", namespace, name)
+	err := j.KubeClient.CoreV1().Pods(namespace).Delete(context.Background(), name, metav1.DeleteOptions{})
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	for start := time.Now(); time.Since(start) < timeout; time.Sleep(Poll) {
+		_, err := j.KubeClient.CoreV1().Pods(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+	}
+
+	return errors.New("unable to delete pod within timeout")
 }

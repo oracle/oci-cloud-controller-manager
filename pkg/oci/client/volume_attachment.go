@@ -135,17 +135,21 @@ func (c *client) AttachVolume(ctx context.Context, instanceID, volumeID string) 
 		return nil, RateLimitError(false, "")
 	}
 
-	device, err := c.getDevicePath(ctx, instanceID)
-	if err != nil {
-		return nil, errors.WithStack(err)
+	var attachVolumeDetails = core.AttachIScsiVolumeDetails{
+		InstanceId: &instanceID,
+		VolumeId:   &volumeID,
+	}
+
+	if !IsBootVolume(volumeID) {
+		device, err := c.getDevicePath(ctx, instanceID)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		attachVolumeDetails.Device = device
 	}
 
 	resp, err := c.compute.AttachVolume(ctx, core.AttachVolumeRequest{
-		AttachVolumeDetails: core.AttachIScsiVolumeDetails{
-			InstanceId: &instanceID,
-			VolumeId:   &volumeID,
-			Device:     device,
-		},
+		AttachVolumeDetails: attachVolumeDetails,
 		RequestMetadata: c.requestMetadata,
 	})
 	incRequestCounter(err, createVerb, volumeAttachmentResource)

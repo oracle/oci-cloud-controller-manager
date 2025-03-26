@@ -110,3 +110,7 @@ func IsIpv6SingleStackCluster() bool {
 	}
 	return false
 }
+
+func IsBootVolume(ocid string) bool {
+	return strings.Contains(ocid, ".bootvolume.")
+}
