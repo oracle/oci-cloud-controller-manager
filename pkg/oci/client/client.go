@@ -164,6 +164,7 @@ type blockstorageClient interface {
 	DeleteVolume(ctx context.Context, request core.DeleteVolumeRequest) (response core.DeleteVolumeResponse, err error)
 	ListVolumes(ctx context.Context, request core.ListVolumesRequest) (response core.ListVolumesResponse, err error)
 	UpdateVolume(ctx context.Context, request core.UpdateVolumeRequest) (response core.UpdateVolumeResponse, err error)
+	GetBootVolume(ctx context.Context, request core.GetBootVolumeRequest) (response core.GetBootVolumeResponse, err error)
 
 	GetVolumeBackup(ctx context.Context, request core.GetVolumeBackupRequest) (response core.GetVolumeBackupResponse, err error)
 	CreateVolumeBackup(ctx context.Context, request core.CreateVolumeBackupRequest) (response core.CreateVolumeBackupResponse, err error)
