@@ -60,6 +60,7 @@ type BlockStorageInterface interface {
 	GetVolume(ctx context.Context, id string) (*core.Volume, error)
 	GetVolumesByName(ctx context.Context, volumeName, compartmentID string) ([]core.Volume, error)
 	UpdateVolume(ctx context.Context, volumeId string, details core.UpdateVolumeDetails) (*core.Volume, error)
+	GetBootVolume(ctx context.Context, id string) (*core.BootVolume, error)
 
 	AwaitVolumeBackupAvailableOrTimeout(ctx context.Context, id string) (*core.VolumeBackup, error)
 	CreateVolumeBackup(ctx context.Context, details core.CreateVolumeBackupDetails) (*core.VolumeBackup, error)
@@ -89,6 +90,30 @@ func (c *client) GetVolume(ctx context.Context, id string) (*core.Volume, error)
 	}
 
 	return &resp.Volume, nil
+
+}
+
+func (c *client) GetBootVolume(ctx context.Context, id string) (*core.BootVolume, error) {
+	if !c.rateLimiter.Reader.TryAccept() {
+		return nil, RateLimitError(false, "GetBootVolume")
+	}
+
+	resp, err := c.bs.GetBootVolume(ctx, core.GetBootVolumeRequest{
+		BootVolumeId:        &id,
+		RequestMetadata: c.requestMetadata})
+	incRequestCounter(err, getVerb, volumeResource)
+
+	if resp.OpcRequestId != nil {
+		c.logger.With("service", "blockstorage", "verb", getVerb, "resource", volumeResource).
+			With("volumeID", id, "OpcRequestId", *(resp.OpcRequestId)).
+			With("statusCode", util.GetHttpStatusCode(err)).Info("OPC Request ID recorded for GetBootVolume call.")
+	}
+
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return &resp.BootVolume, nil
 
 }
 

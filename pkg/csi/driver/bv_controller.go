@@ -78,6 +78,10 @@ var (
 	supportedAccessMode = &csi.VolumeCapability_AccessMode{
 		Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
 	}
+
+	bootVolumeSupportedAccessMode = &csi.VolumeCapability_AccessMode{
+		Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+	}
 )
 
 var enableOkeSystemTags = csi_util.GetIsFeatureEnabledFromEnv(zap.S(), resourceTrackingFeatureFlagName, false)
@@ -312,6 +316,11 @@ func (d *BlockVolumeControllerDriver) CreateVolume(ctx context.Context, req *csi
 			}
 
 			id := srcVolume.GetVolumeId()
+			if client.IsBootVolume(id) {
+				log.With("volumeSourceType", "pvc").Error("Boot volume as data source is not supported")
+				return nil, status.Error(codes.InvalidArgument, "Boot volume as data source is not supported")
+			}
+
 			srcBlockVolume, err := d.client.BlockStorage().GetVolume(ctx, id)
 			if err != nil {
 				if client.IsNotFound(err) {
@@ -605,6 +614,21 @@ func (d *BlockVolumeControllerDriver) ControllerPublishVolume(ctx context.Contex
 	if !ok {
 		attachType = attachmentTypeISCSI
 	}
+
+	bootVolume := false
+	if client.IsBootVolume(id) {
+		if err := d.validateBootVolumeCapabilities(req.VolumeCapability); err != nil {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+		if attachType == attachmentTypeParavirtualized {
+			return nil, status.Error(codes.InvalidArgument, "Paravirtualized attachment mode not supported for boot volumes")
+		}
+		bootVolume = true
+		log.Info("Boot volume publish requested.")
+	} else {
+		log.Info("Block volume publish requested.")
+	}
+
 	volumeAttachmentOptions, err := getAttachmentOptions(ctx, d.client.Compute(), attachType, id)
 	if err != nil {
 		log.With("service", "compute", "verb", "get", "resource", "instance", "statusCode", util.GetHttpStatusCode(err)).
@@ -650,6 +674,17 @@ func (d *BlockVolumeControllerDriver) ControllerPublishVolume(ctx context.Contex
 	if !ok || vpusPerGB == "" {
 		log.Warnf("No vpusPerGB found in Volume Context falling back to balanced performance")
 		vpusPerGB = "10"
+	}
+
+	if bootVolume {
+		vpusValue, err := strconv.Atoi(vpusPerGB)
+		if err != nil {
+			log.Warnf("Invalid vpusPerGB value: %s, defaulting to 10", vpusPerGB)
+		}
+
+		if vpusValue > 10 {
+			return nil, status.Error(codes.InvalidArgument, "Only Boot Volumes with balanced performance are supported")
+		}
 	}
 
 	// volume already attached to an instance
@@ -790,19 +825,24 @@ func generatePublishContext(volumeAttachmentOptions VolumeAttachmentOption, log 
 
 	log.With("volumeAttachedId", *volumeAttached.GetId()).Info("Publishing iSCSI Volume Completed.")
 
+	publishContext := map[string]string{
+		attachmentType:     attachmentTypeISCSI,
+		disk.ISCSIIQN:      *iSCSIVolumeAttached.Iqn,
+		disk.ISCSIIP:       *iSCSIVolumeAttached.Ipv4,
+		disk.ISCSIPORT:     strconv.Itoa(*iSCSIVolumeAttached.Port),
+		csi_util.VpusPerGB: vpusPerGB,
+		needResize:         needsResize,
+		newSize:            expectedSize,
+		multipathEnabled:   multipath,
+		multipathDevices:   string(multiPathDevicesJson),
+	}
+
+	if dev := volumeAttached.GetDevice(); dev != nil {
+		publishContext["device"] = *dev
+	}
+
 	return &csi.ControllerPublishVolumeResponse{
-		PublishContext: map[string]string{
-			attachmentType:     attachmentTypeISCSI,
-			device:             *volumeAttached.GetDevice(),
-			disk.ISCSIIQN:      *iSCSIVolumeAttached.Iqn,
-			disk.ISCSIIP:       *iSCSIVolumeAttached.Ipv4,
-			disk.ISCSIPORT:     strconv.Itoa(*iSCSIVolumeAttached.Port),
-			csi_util.VpusPerGB: vpusPerGB,
-			needResize:         needsResize,
-			newSize:            expectedSize,
-			multipathEnabled:   multipath,
-			multipathDevices:   string(multiPathDevicesJson),
-		},
+		PublishContext: publishContext,
 	}, nil
 }
 
@@ -926,25 +966,43 @@ func (d *BlockVolumeControllerDriver) ValidateVolumeCapabilities(ctx context.Con
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	volume, err := d.client.BlockStorage().GetVolume(ctx, req.VolumeId)
-	if err != nil {
-		log.With("service", "blockstorage", "verb", "get", "resource", "volume", "statusCode", util.GetHttpStatusCode(err)).
-			With(zap.Error(err)).Error("Volume ID not found.")
-		return nil, status.Errorf(codes.NotFound, "Volume ID not found.")
+	volumeID := req.VolumeId
+	var (
+		accessMode *csi.VolumeCapability_AccessMode
+		found      bool
+	)
+
+	if client.IsBootVolume(volumeID) {
+		bootVolume, err := d.client.BlockStorage().GetBootVolume(ctx, volumeID)
+		if err != nil {
+			log.With("service", "blockstorage", "verb", "get", "resource", "volume", "statusCode", util.GetHttpStatusCode(err)).
+				With(zap.Error(err)).Error("Boot Volume ID not found.")
+			return nil, status.Errorf(codes.NotFound, "Boot Volume ID not found.")
+		}
+		found = *bootVolume.Id == volumeID
+		accessMode = bootVolumeSupportedAccessMode
+	} else {
+		volume, err := d.client.BlockStorage().GetVolume(ctx, volumeID)
+		if err != nil {
+			log.With("service", "blockstorage", "verb", "get", "resource", "volume", "statusCode", util.GetHttpStatusCode(err)).
+				With(zap.Error(err)).Error("Volume ID not found.")
+			return nil, status.Errorf(codes.NotFound, "Volume ID not found.")
+		}
+		found = *volume.Id == volumeID
+		accessMode = supportedAccessMode
 	}
 
-	if *volume.Id == req.VolumeId {
-		return &csi.ValidateVolumeCapabilitiesResponse{
-			Confirmed: &csi.ValidateVolumeCapabilitiesResponse_Confirmed{
-				VolumeCapabilities: []*csi.VolumeCapability{
-					{
-						AccessMode: supportedAccessMode,
-					},
-				},
-			},
-		}, nil
+	if !found {
+		return nil, status.Errorf(codes.NotFound, "Volume ID mismatch.")
 	}
-	return nil, status.Errorf(codes.NotFound, "VolumeId mis-match.")
+
+	return &csi.ValidateVolumeCapabilitiesResponse{
+		Confirmed: &csi.ValidateVolumeCapabilitiesResponse_Confirmed{
+			VolumeCapabilities: []*csi.VolumeCapability{
+				{AccessMode: accessMode},
+			},
+		},
+	}, nil
 }
 
 // ListVolumes returns a list of all requested volumes
@@ -1018,6 +1076,35 @@ func (d *BlockVolumeControllerDriver) validateCapabilities(caps []*csi.VolumeCap
 	return nil
 }
 
+// validateBootVolumeCapabilities validates the requested capabilities. It returns an error
+// if it doesn't satisfy the currently supported modes of OCI Boot Volume
+func (d *BlockVolumeControllerDriver) validateBootVolumeCapabilities(cap *csi.VolumeCapability) error {
+	// ensures RWO for boot volume
+	vcaps := []*csi.VolumeCapability_AccessMode{bootVolumeSupportedAccessMode}
+
+	hasSupport := func(mode csi.VolumeCapability_AccessMode_Mode) bool {
+		for _, m := range vcaps {
+			if mode == m.Mode {
+				return true
+			}
+		}
+		return false
+	}
+
+	if mnt := cap.GetMount(); mnt != nil {
+		d.logger.Errorf("Boot volume for volumeMode: Filesystem are not supported")
+		return fmt.Errorf("invalid volume capabilities requested. Boot volume only supported in volumeMode: Block, volumeMode: Filesystem not supported")
+	}
+	if !hasSupport(cap.AccessMode.Mode) {
+		// we need to make sure all capabilities are supported. Revert back
+		// in case we have a cap that is supported, but is invalidated now
+		d.logger.Errorf("The VolumeCapability isn't supported: %s", cap.AccessMode)
+		return fmt.Errorf("invalid volume capabilities requested. Only SINGLE_NODE_WRITER is supported ('accessModes.ReadWriteOnce' on Kubernetes)")
+	}
+
+	return nil
+}
+
 // CreateSnapshot will be called by the CO to create a new snapshot from a
 // source volume on behalf of a user.
 func (d *BlockVolumeControllerDriver) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
@@ -1044,6 +1131,14 @@ func (d *BlockVolumeControllerDriver) CreateSnapshot(ctx context.Context, req *c
 		dimensionsMap[metrics.ComponentDimension] = snapshotMetricDimension
 		metrics.SendMetricData(d.metricPusher, metrics.BlockSnapshotProvision, time.Since(startTime).Seconds(), dimensionsMap)
 		return nil, status.Error(codes.InvalidArgument, "Volume snapshot source ID must be provided")
+	}
+
+	if client.IsBootVolume(sourceVolumeId) {
+		log.Error("Volume snapshot feature not available for boot volumes")
+		snapshotMetricDimension = util.GetMetricDimensionForComponent(util.ErrValidation, util.CSIStorageType)
+		dimensionsMap[metrics.ComponentDimension] = snapshotMetricDimension
+		metrics.SendMetricData(d.metricPusher, metrics.BlockSnapshotProvision, time.Since(startTime).Seconds(), dimensionsMap)
+		return nil, status.Error(codes.InvalidArgument, "Volume snapshot feature not available for boot volumes")
 	}
 
 	snapshots, err := d.client.BlockStorage().GetVolumeBackupsByName(ctx, req.Name, d.config.CompartmentID)
@@ -1251,6 +1346,14 @@ func (d *BlockVolumeControllerDriver) ControllerExpandVolume(ctx context.Context
 
 	dimensionsMap := make(map[string]string)
 	dimensionsMap[metrics.ResourceOCIDDimension] = req.VolumeId
+
+	if client.IsBootVolume(volumeId) {
+		log.Error("Volume expansion is not supported for Boot Volumes")
+		csiMetricDimension = util.GetMetricDimensionForComponent(util.ErrValidation, util.CSIStorageType)
+		dimensionsMap[metrics.ComponentDimension] = csiMetricDimension
+		metrics.SendMetricData(d.metricPusher, metrics.PVExpand, time.Since(startTime).Seconds(), dimensionsMap)
+		return nil, status.Errorf(codes.InvalidArgument, "Volume expansion is not supported for Boot Volumes")
+	}
 
 	newSize, err := csi_util.ExtractStorage(req.CapacityRange)
 	if err != nil {
