@@ -952,15 +952,15 @@ func (c *MockComputeClient) AttachVnic(ctx context.Context, instanceID, subnetID
 	return core.VnicAttachment{}, nil
 }
 
-func (MockComputeClient) FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
+func (MockComputeClient) FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string, instanceID *string) (core.VolumeAttachment, error) {
 	return nil, nil
 }
 
-func (MockComputeClient) AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool) (core.VolumeAttachment, error) {
+func (MockComputeClient) AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool, isShareable bool) (core.VolumeAttachment, error) {
 	return nil, nil
 }
 
-func (MockComputeClient) AttachVolume(ctx context.Context, instanceID, volumeID string) (core.VolumeAttachment, error) {
+func (MockComputeClient) AttachVolume(ctx context.Context, instanceID, volumeID string, isShareable bool) (core.VolumeAttachment, error) {
 	return nil, nil
 }
 
@@ -976,7 +976,7 @@ func (MockComputeClient) WaitForVolumeDetached(ctx context.Context, attachmentID
 	return nil
 }
 
-func (c *MockComputeClient) FindActiveVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
+func (c *MockComputeClient) ListVolumeAttachments(ctx context.Context, compartmentID, volumeID string) ([]core.VolumeAttachment, error) {
 	return nil, nil
 }
 

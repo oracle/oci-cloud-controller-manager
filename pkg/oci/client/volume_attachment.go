@@ -32,14 +32,14 @@ const attachmentPollInterval = 10 * time.Second
 // API.
 type VolumeAttachmentInterface interface {
 	// FindVolumeAttachment searches for a volume attachment in either the state
-	// ATTACHING or ATTACHED and returns the first volume attachment found.
-	FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error)
+	// ATTACHING or ATTACHED. If no attachments are found, errNotFound is returned.
+	FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string, instanceID *string) (core.VolumeAttachment, error)
 
 	// AttachVolume attaches a block storage volume to the specified instance.
 	// See https://docs.us-phoenix-1.oraclecloud.com/api/#/en/iaas/20160918/VolumeAttachment/AttachVolume
-	AttachVolume(ctx context.Context, instanceID, volumeID string) (core.VolumeAttachment, error)
+	AttachVolume(ctx context.Context, instanceID, volumeID string, isShareable bool) (core.VolumeAttachment, error)
 
-	AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool) (core.VolumeAttachment, error)
+	AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool, isShareable bool) (core.VolumeAttachment, error)
 
 	// WaitForVolumeAttached polls waiting for a OCI block volume to be in the
 	// ATTACHED state.
@@ -53,28 +53,38 @@ type VolumeAttachmentInterface interface {
 	// DETACHED state.
 	WaitForVolumeDetached(ctx context.Context, attachmentID string) error
 
-	FindActiveVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error)
-
 	// WaitForUHPVolumeLoggedOut WaitForUHPVolumeLogout polls waiting for a OCI UHP block volume attachment to be in the
 	// LOGGED_OUT state.
 	WaitForUHPVolumeLoggedOut(ctx context.Context, attachmentID string) error
+
+	// ListVolumeAttachments returns all non-DETACHED volume attachments
+	// If no attachments are found, errNotFound is returned
+	ListVolumeAttachments(ctx context.Context, compartmentID, volumeID string) ([]core.VolumeAttachment, error)
 }
 
 var _ VolumeAttachmentInterface = &client{}
 
-func (c *client) FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
+func (c *client) FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string, instanceID *string) (core.VolumeAttachment, error) {
 	var page *string
 	for {
 		if !c.rateLimiter.Reader.TryAccept() {
 			return nil, RateLimitError(false, "ListVolumeAttachments")
 		}
 
-		resp, err := c.compute.ListVolumeAttachments(ctx, core.ListVolumeAttachmentsRequest{
+		// Create the request, only adding InstanceId if it's not nil
+		req := core.ListVolumeAttachmentsRequest{
 			CompartmentId:   &compartmentID,
 			VolumeId:        &volumeID,
 			Page:            page,
 			RequestMetadata: c.requestMetadata,
-		})
+		}
+
+		// Only set InstanceId if it's provided
+		if instanceID != nil {
+			req.InstanceId = instanceID
+		}
+
+		resp, err := c.compute.ListVolumeAttachments(ctx, req)
 		incRequestCounter(err, listVerb, volumeAttachmentResource)
 
 		if resp.OpcRequestId != nil {
@@ -130,14 +140,15 @@ func (c *client) GetVolumeAttachment(ctx context.Context, id string) (core.Volum
 	return resp.VolumeAttachment, nil
 }
 
-func (c *client) AttachVolume(ctx context.Context, instanceID, volumeID string) (core.VolumeAttachment, error) {
+func (c *client) AttachVolume(ctx context.Context, instanceID, volumeID string, isShareable bool) (core.VolumeAttachment, error) {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return nil, RateLimitError(false, "")
 	}
 
 	var attachVolumeDetails = core.AttachIScsiVolumeDetails{
-		InstanceId: &instanceID,
-		VolumeId:   &volumeID,
+		InstanceId:  &instanceID,
+		VolumeId:    &volumeID,
+		IsShareable: &isShareable,
 	}
 
 	if !IsBootVolume(volumeID) {
@@ -150,7 +161,7 @@ func (c *client) AttachVolume(ctx context.Context, instanceID, volumeID string) 
 
 	resp, err := c.compute.AttachVolume(ctx, core.AttachVolumeRequest{
 		AttachVolumeDetails: attachVolumeDetails,
-		RequestMetadata: c.requestMetadata,
+		RequestMetadata:     c.requestMetadata,
 	})
 	incRequestCounter(err, createVerb, volumeAttachmentResource)
 
@@ -203,7 +214,7 @@ func (c *client) getDevicePath(ctx context.Context, instanceID string) (*string,
 	return device, nil
 }
 
-func (c *client) AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool) (core.VolumeAttachment, error) {
+func (c *client) AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool, isShareable bool) (core.VolumeAttachment, error) {
 	if !c.rateLimiter.Writer.TryAccept() {
 		return nil, RateLimitError(false, "")
 	}
@@ -219,6 +230,7 @@ func (c *client) AttachParavirtualizedVolume(ctx context.Context, instanceID, vo
 			VolumeId:                       &volumeID,
 			IsPvEncryptionInTransitEnabled: &isPvEncryptionInTransitEnabled,
 			Device:                         device,
+			IsShareable:                    &isShareable,
 		},
 		RequestMetadata: c.requestMetadata,
 	})
@@ -305,8 +317,11 @@ func (c *client) WaitForVolumeDetached(ctx context.Context, id string) error {
 	return nil
 }
 
-func (c *client) FindActiveVolumeAttachment(ctx context.Context, compartmentID, volumeID string) (core.VolumeAttachment, error) {
-	var page *string
+func (c *client) ListVolumeAttachments(ctx context.Context, compartmentID, volumeID string) ([]core.VolumeAttachment, error) {
+	var (
+		page        *string
+		attachments []core.VolumeAttachment
+	)
 	for {
 		if !c.rateLimiter.Reader.TryAccept() {
 			return nil, RateLimitError(false, "ListVolumeAttachments")
@@ -336,7 +351,7 @@ func (c *client) FindActiveVolumeAttachment(ctx context.Context, compartmentID, 
 			if state == core.VolumeAttachmentLifecycleStateAttaching ||
 				state == core.VolumeAttachmentLifecycleStateAttached ||
 				state == core.VolumeAttachmentLifecycleStateDetaching {
-				return attachment, nil
+				attachments = append(attachments, attachment)
 			}
 		}
 
@@ -345,7 +360,10 @@ func (c *client) FindActiveVolumeAttachment(ctx context.Context, compartmentID, 
 		}
 	}
 
-	return nil, errors.WithStack(errNotFound)
+	if len(attachments) == 0 {
+		return nil, errors.WithStack(errNotFound)
+	}
+	return attachments, nil
 }
 
 func (c *client) WaitForUHPVolumeLoggedOut(ctx context.Context, attachmentID string) error {
