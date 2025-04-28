@@ -979,13 +979,13 @@ var _ = Describe("CSI CMEK,PV attachment and in-transit encryption test", func()
 	f := framework.NewDefaultFramework("csi-basic")
 	Context("[cloudprovider][storage][csi][cmek][paravirtualized]", func() {
 		It("Create PVC and POD for CSI with CMEK,PV attachment and in-transit encryption", func() {
-			TestCMEKAttachmentTypeAndEncryptionType(f, framework.AttachmentTypeParavirtualized, false)
+			TestCMEKAttachmentTypeAndEncryptionType(f, framework.AttachmentTypeParavirtualized, false, v1.ReadWriteOnce)
 		})
 	})
 
 	Context("[cloudprovider][storage][csi][cmek][iscsi]", func() {
 		It("Create PVC and POD for CSI with CMEK,ISCSI attachment and in-transit encryption", func() {
-			TestCMEKAttachmentTypeAndEncryptionType(f, framework.AttachmentTypeISCSI, false)
+			TestCMEKAttachmentTypeAndEncryptionType(f, framework.AttachmentTypeISCSI, false, v1.ReadWriteOnce)
 		})
 	})
 })
@@ -994,19 +994,19 @@ var _ = Describe("CSI CMEK,PV attachment and in-transit encryption test", func()
 	f := framework.NewDefaultFramework("csi-basic")
 	Context("[cloudprovider][storage][csi][cmek][paravirtualized][raw-block]", func() {
 		It("Create raw block PVC and POD for CSI with CMEK,PV attachment and in-transit encryption", func() {
-			TestCMEKAttachmentTypeAndEncryptionType(f, framework.AttachmentTypeParavirtualized, false)
+			TestCMEKAttachmentTypeAndEncryptionType(f, framework.AttachmentTypeParavirtualized, true, v1.ReadWriteOnce)
 		})
 	})
 
 	Context("[cloudprovider][storage][csi][cmek][iscsi][raw-block]", func() {
 		It("Create raw block PVC and POD for CSI with CMEK,ISCSI attachment and in-transit encryption", func() {
-			TestCMEKAttachmentTypeAndEncryptionType(f, framework.AttachmentTypeISCSI, false)
+			TestCMEKAttachmentTypeAndEncryptionType(f, framework.AttachmentTypeISCSI, true, v1.ReadWriteOnce)
 		})
 	})
 
 })
 
-func TestCMEKAttachmentTypeAndEncryptionType(f *framework.CloudProviderFramework, expectedAttachmentType string, isRawBlockVolume bool) {
+func TestCMEKAttachmentTypeAndEncryptionType(f *framework.CloudProviderFramework, expectedAttachmentType string, isRawBlockVolume bool, accessMode v1.PersistentVolumeAccessMode) {
 	pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-cmek-iscsi-in-transit-e2e-tests")
 	volumeMode := v1.PersistentVolumeFilesystem
 	if isRawBlockVolume {
@@ -1017,7 +1017,7 @@ func TestCMEKAttachmentTypeAndEncryptionType(f *framework.CloudProviderFramework
 		framework.AttachmentType: expectedAttachmentType,
 	}
 	scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com", scParameter, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
-	pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, volumeMode, v1.ReadWriteOnce, v1.ClaimPending)
+	pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, volumeMode, accessMode, v1.ClaimPending)
 
 	podName := ""
 	if isRawBlockVolume {
