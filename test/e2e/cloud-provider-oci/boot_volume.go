@@ -54,3 +54,36 @@ var _ = Describe("Boot volume tests", func() {
 		})
 	})
 })
+
+var _ = Describe("Boot volume gating test", func() {
+	f := framework.NewBackupFramework("csi-basic")
+	Context("[cloudprovider][storage][csi][boot-volume]", func() {
+		It("Attach boot volume fails with volumeMode set to Filesystem", func() {
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-boot-vol-e2e-tests")
+			compartmentId := ""
+			if setupF.Compartment1 != "" {
+				compartmentId = setupF.Compartment1
+			} else if f.CloudProviderConfig.CompartmentID != "" {
+				compartmentId = f.CloudProviderConfig.CompartmentID
+			} else if f.CloudProviderConfig.Auth.CompartmentID != "" {
+				compartmentId = f.CloudProviderConfig.Auth.CompartmentID
+			} else {
+				framework.Failf("Compartment Id undefined.")
+			}
+
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com",
+				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI},
+				pvcJig.Labels, "WaitForFirstConsumer", false, "Retain", nil)
+			pvc, bootvolumeId := pvcJig.CreateAndAwaitStaticBootVolumePVCOrFailCSI(f.ComputeClient, f.Namespace.Name, compartmentId, setupF.AdLocation, setupF.MntTargetSubnetOcid, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
+			pvcJig.NewPodForCSIWithoutWait("app1", f.Namespace.Name, pvc.Name, setupF.AdLabel)
+			err := pvcJig.WaitTimeoutForPodRunningInNamespace("app1", f.Namespace.Name, 7*time.Minute)
+			if err == nil {
+				framework.Failf("Pod went to running state for gated condition")
+			}
+
+			pvcJig.DeletePod(f.Namespace.Name, "app1", 7*time.Minute)
+			pvcJig.DeleteBootVolume(f.BlockStorageClient, bootvolumeId, 5 * time.Minute)
+			_ = f.DeleteStorageClass(f.Namespace.Name)
+		})
+	})
+})
