@@ -664,6 +664,10 @@ func (d BlockVolumeNodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi
 	isRawBlockVolume, rbvCheckErr := hostUtil.PathIsDevice(req.TargetPath)
 
 	if rbvCheckErr != nil {
+		if alreadyDeletedPathCheck(rbvCheckErr) {
+			logger.With(zap.Error(rbvCheckErr)).With("mountPath", req.TargetPath).Warn("mount point not found, marking unpublish success")
+			return &csi.NodeUnpublishVolumeResponse{}, nil
+		}
 		logger.With(zap.Error(rbvCheckErr)).Error("failed to check if it is a device file")
 		return nil, status.Errorf(codes.Internal, rbvCheckErr.Error())
 	}
@@ -749,6 +753,13 @@ func getDevicePathAndAttachmentType(path []string) (string, string, error) {
 	}
 
 	return "", "", errors.New("unable to determine the attachment type")
+}
+
+func alreadyDeletedPathCheck(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "does not exist")
 }
 
 // NodeGetCapabilities returns the supported capabilities of the node server
