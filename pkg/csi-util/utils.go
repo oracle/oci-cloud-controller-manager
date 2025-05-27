@@ -27,6 +27,8 @@ import (
 	"sync"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/wait"
+
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"go.uber.org/zap"
@@ -103,15 +105,19 @@ type FSSVolumeHandler struct {
 	FsExportPath         string
 }
 
-type NodeIpFamily struct {
-	PreferredNodeIpFamily string
-	Ipv4Enabled           bool
-	Ipv6Enabled           bool
+type NodeMetadata struct {
+	PreferredNodeIpFamily  string
+	Ipv4Enabled            bool
+	Ipv6Enabled            bool
+	AvailabilityDomain     string
+	FullAvailabilityDomain string
+	IsNodeMetadataLoaded   bool
 }
 
 // CSIConfig represents the structure of the ConfigMap data.
 type CSIConfig struct {
 	Lustre *DriverConfig `yaml:"lustre"`
+	IsLoaded bool
 }
 
 // DriverConfig represents driver-specific configurations.
@@ -134,25 +140,75 @@ func (u *Util) LookupNodeID(k kubernetes.Interface, nodeName string) (string, er
 	return n.Spec.ProviderID, nil
 }
 
-func (u *Util) LookupNodeAvailableDomain(k kubernetes.Interface, nodeID string) (string, string, error) {
-	n, err := k.CoreV1().Nodes().Get(context.Background(), nodeID, metav1.GetOptions{})
-	if err != nil {
-		u.Logger.With(zap.Error(err)).With("nodeId", nodeID).Error("Failed to get Node by name.")
-		return "", "", fmt.Errorf("failed to get node %s", nodeID)
+func (u *Util) WaitForKubeApiServerToBeReachableWithContext(ctx context.Context, k kubernetes.Interface, backOffCap time.Duration) {
+
+	waitForKubeApiServerCtx, waitForKubeApiServerCtxCancel := context.WithTimeout(ctx, time.Second * 45)
+	defer waitForKubeApiServerCtxCancel()
+
+	backoff := wait.Backoff{
+		Duration: 1 * time.Second,
+		Factor:   2.0,
+		Steps:    5,
+		Cap: backOffCap,
 	}
-	if n.Labels != nil {
-		ad, ok := n.Labels[kubeAPI.LabelTopologyZone]
+
+	wait.ExponentialBackoffWithContext(
+		waitForKubeApiServerCtx,
+		backoff,
+		func(waitForKubeApiServerCtx context.Context) (bool, error) {
+			attemptCtx, attemptCancel := context.WithTimeout(waitForKubeApiServerCtx, backoff.Step())
+			defer attemptCancel()
+			_, err := k.CoreV1().RESTClient().Get().AbsPath("/version").Do(attemptCtx).Raw()
+			if err != nil {
+				u.Logger.With(zap.Error(err)).Errorf("Waiting for kube api server to be reachable, Retrying..")
+				return false, nil
+			}
+			u.Logger.Infof("Kube Api Server is Reachable")
+			return true, nil
+		},
+	)
+}
+
+func (u *Util) LoadNodeMetadataFromApiServer(ctx context.Context, k kubernetes.Interface, nodeID string, nodeMetadata *NodeMetadata) (error) {
+
+	u.WaitForKubeApiServerToBeReachableWithContext(ctx, k, time.Second * 30)
+
+	node, err := k.CoreV1().Nodes().Get(ctx, nodeID, metav1.GetOptions{})
+
+	if err != nil {
+		u.Logger.With(zap.Error(err)).With("nodeId", nodeID).Error("Failed to get Node information from kube api server, Please check if kube api server is accessible.")
+		return fmt.Errorf("Failed to get node information from kube api server, please check if kube api server is accessible.")
+	}
+
+	var ok bool
+	if node.Labels != nil {
+		nodeMetadata.AvailabilityDomain, ok = node.Labels[kubeAPI.LabelTopologyZone]
 		if !ok {
-			ad, ok = n.Labels[kubeAPI.LabelZoneFailureDomain]
+			nodeMetadata.AvailabilityDomain, ok = node.Labels[kubeAPI.LabelZoneFailureDomain]
 		}
 		if ok {
-			fullAdName, _ := n.Labels[AvailabilityDomainLabel]
-			return ad, fullAdName, nil
+			nodeMetadata.FullAvailabilityDomain, _ = node.Labels[AvailabilityDomainLabel]
+		}
+
+		if preferredIpFamily, ok := node.Labels[LabelIpFamilyPreferred]; ok {
+			nodeMetadata.PreferredNodeIpFamily = FormatValidIpStackInK8SConvention(preferredIpFamily)
+		}
+		if ipv4Enabled, ok := node.Labels[LabelIpFamilyIpv4]; ok && strings.EqualFold(ipv4Enabled, "true") {
+			nodeMetadata.Ipv4Enabled = true
+		}
+		if ipv6Enabled, ok := node.Labels[LabelIpFamilyIpv6]; ok && strings.EqualFold(ipv6Enabled, "true") {
+			nodeMetadata.Ipv6Enabled = true
 		}
 	}
-	errMsg := fmt.Sprintf("Did not find the label for the fault domain. Checked Topology Labels: %s, %s", kubeAPI.LabelTopologyZone, kubeAPI.LabelZoneFailureDomain)
-	u.Logger.With("nodeId", nodeID).Error(errMsg)
-	return "", "", fmt.Errorf(errMsg)
+	if !nodeMetadata.Ipv4Enabled && !nodeMetadata.Ipv6Enabled {
+		nodeMetadata.PreferredNodeIpFamily = Ipv4Stack
+		nodeMetadata.Ipv4Enabled = true
+		u.Logger.With("nodeId", nodeID, "nodeMetadata", nodeMetadata).Info("No IP family labels identified on node, defaulting to ipv4.")
+	} else {
+		u.Logger.With("nodeId", nodeID, "nodeMetadata", nodeMetadata).Info("Node IP family identified.")
+	}
+	nodeMetadata.IsNodeMetadataLoaded = true
+	return  nil
 }
 
 // waitForPathToExist waits for for a given filesystem path to exist.
@@ -522,37 +578,6 @@ func GetIsFeatureEnabledFromEnv(logger *zap.SugaredLogger, featureName string, d
 	return enableFeature
 }
 
-func GetNodeIpFamily(k kubernetes.Interface, nodeID string, logger *zap.SugaredLogger) (*NodeIpFamily, error) {
-	n, err := k.CoreV1().Nodes().Get(context.Background(), nodeID, metav1.GetOptions{})
-
-	if err != nil {
-		logger.With(zap.Error(err)).With("nodeId", nodeID).Error("Failed to get Node information from kube api server, Please check if kube api server is accessible.")
-		return nil, fmt.Errorf("Failed to get node information from kube api server, please check if kube api server is accessible.")
-	}
-
-	nodeIpFamily := &NodeIpFamily{}
-
-	if n.Labels != nil {
-		if preferredIpFamily, ok := n.Labels[LabelIpFamilyPreferred]; ok {
-			nodeIpFamily.PreferredNodeIpFamily = FormatValidIpStackInK8SConvention(preferredIpFamily)
-		}
-		if ipv4Enabled, ok := n.Labels[LabelIpFamilyIpv4]; ok && strings.EqualFold(ipv4Enabled, "true") {
-			nodeIpFamily.Ipv4Enabled = true
-		}
-		if ipv6Enabled, ok := n.Labels[LabelIpFamilyIpv6]; ok && strings.EqualFold(ipv6Enabled, "true") {
-			nodeIpFamily.Ipv6Enabled = true
-		}
-	}
-	if !nodeIpFamily.Ipv4Enabled && !nodeIpFamily.Ipv6Enabled {
-		nodeIpFamily.PreferredNodeIpFamily = Ipv4Stack
-		nodeIpFamily.Ipv4Enabled = true
-		logger.With("nodeId", nodeID, "nodeIpFamily", *nodeIpFamily).Info("No IP family labels identified on node, defaulting to ipv4.")
-	} else {
-		logger.With("nodeId", nodeID, "nodeIpFamily", *nodeIpFamily).Info("Node IP family identified.")
-	}
-
-	return nodeIpFamily, nil
-}
 func ConvertIscsiIpFromIpv4ToIpv6(ipv4IscsiIp string) (string, error) {
 	ipv4IscsiIP := net.ParseIP(ipv4IscsiIp).To4()
 	if ipv4IscsiIP == nil {
@@ -607,30 +632,27 @@ func IsValidIpFamilyPresentInClusterIpFamily(clusterIpFamily string) bool {
 	return len(clusterIpFamily) > 0 && (strings.Contains(clusterIpFamily, Ipv4Stack) || strings.Contains(clusterIpFamily, Ipv6Stack))
 }
 
-func IsIpv6SingleStackNode(nodeIpFamily *NodeIpFamily) bool {
-	if nodeIpFamily == nil {
+func IsIpv6SingleStackNode(nodeMetadata *NodeMetadata) bool {
+	if nodeMetadata == nil {
 		return false
 	}
-	return nodeIpFamily.Ipv6Enabled == true && nodeIpFamily.Ipv4Enabled == false
+	return nodeMetadata.Ipv6Enabled == true && nodeMetadata.Ipv4Enabled == false
 }
 
-func LoadCSIConfigFromConfigMap(k kubernetes.Interface, configMapName string, logger *zap.SugaredLogger) *CSIConfig {
+func LoadCSIConfigFromConfigMap(csiConfig *CSIConfig, k kubernetes.Interface, configMapName string, logger *zap.SugaredLogger) {
 	// Get the ConfigMap
 	// Parse the configuration for each driver
-	config := &CSIConfig{}
 	cm, err := k.CoreV1().ConfigMaps("kube-system").Get(context.Background(), configMapName, metav1.GetOptions{})
 	if err != nil {
 		logger.Debugf("Failed to load ConfigMap %v due to error %v. Using default configuration.", configMapName, err)
-		return config
+		return
 	}
 
 	if lustreConfig, exists := cm.Data["lustre"]; exists {
-		if err := yaml.Unmarshal([]byte(lustreConfig), &config.Lustre); err != nil {
-			logger.Debugf("Failed to parse lustre key in config map %v. Error: %v", configMapName, err)
-			return config
+		if err := yaml.Unmarshal([]byte(lustreConfig), &csiConfig.Lustre); err != nil {
+			logger.Debugf("Failed to parse lustre key in config map %v. Error: %v",configMapName,  err)
+			return
 		}
 		logger.Infof("Successfully loaded ConfigMap %v. Using customized configuration for csi driver.", configMapName)
 	}
-
-	return config
 }

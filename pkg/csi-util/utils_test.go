@@ -15,15 +15,20 @@
 package csi_util
 
 import (
+	"context"
 	"fmt"
+	"log"
+	"os"
 	"reflect"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"go.uber.org/zap"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/pointer"
 )
 
@@ -344,18 +349,21 @@ func Test_DiskByPathPatternForPV(t *testing.T) {
 	}
 }
 
-func Test_GetNodeIpFamily(t *testing.T) {
+func Test_LoadNodeMetadataFromApiServer(t *testing.T) {
 
 	tests := []struct {
 		name     string
 		nodeName string
-		want     *NodeIpFamily
+		want     *NodeMetadata
+		kubeclient 		 kubernetes.Interface
 		err      error
 	}{
 		{
 			name:     "should return ipv6 for ipv6 preferred node",
 			nodeName: "ipv6Preferred",
-			want: &NodeIpFamily{
+			want: &NodeMetadata{
+				FullAvailabilityDomain: "xyz:PHX-AD-3",
+				AvailabilityDomain: "PHX-AD-3",
 				PreferredNodeIpFamily: Ipv6Stack,
 				Ipv4Enabled:           true,
 				Ipv6Enabled:           true,
@@ -364,8 +372,9 @@ func Test_GetNodeIpFamily(t *testing.T) {
 		{
 			name:     "should return ipv4 for ipv4 preferred node",
 			nodeName: "ipv4Preferred",
-			want: &NodeIpFamily{
+			want: &NodeMetadata{
 				PreferredNodeIpFamily: Ipv4Stack,
+				AvailabilityDomain: "PHX-AD-3",
 				Ipv4Enabled:           true,
 				Ipv6Enabled:           true,
 			},
@@ -373,7 +382,8 @@ func Test_GetNodeIpFamily(t *testing.T) {
 		{
 			name:     "should return default IPv4 family for no ip preference",
 			nodeName: "noIpPreference",
-			want: &NodeIpFamily{
+			want: &NodeMetadata{
+				AvailabilityDomain: "PHX-AD-3",
 				PreferredNodeIpFamily: Ipv4Stack,
 				Ipv4Enabled:           true,
 				Ipv6Enabled:           false,
@@ -382,21 +392,73 @@ func Test_GetNodeIpFamily(t *testing.T) {
 		{
 			name:     "should return error for invalid node",
 			nodeName: "InvalidNode",
-			want:     nil,
+			want:     &NodeMetadata{},
 			err:      fmt.Errorf("Failed to get node information from kube api server, please check if kube api server is accessible."),
 		},
+		{
+			name:     "should return error for node with any ad labels",
+			nodeName: "nodeWithMissingAdLabels",
+			want: &NodeMetadata{
+				PreferredNodeIpFamily: Ipv4Stack,
+				Ipv4Enabled:           true,
+				Ipv6Enabled:           false,
+			},
+			err: fmt.Errorf("Failed to get node information from kube api server, please check if kube api server is accessible."),
+		},
+		{
+			name:     "Call to get node info is done  even if health check fails",
+			nodeName: "ipv4Preferred",
+			want: &NodeMetadata{
+				PreferredNodeIpFamily: Ipv4Stack,
+				AvailabilityDomain: "PHX-AD-3",
+				Ipv4Enabled:           true,
+				Ipv6Enabled:           true,
+			},
+			kubeclient: &util.MockKubeClientWithFailingRestClient{
+				CoreClient: &util.MockCoreClientWithFailingRestClient{},
+			},
+		},
+		{
+			name:     "should return error for invalid node and failing health check",
+			nodeName: "InvalidNode",
+			want:     &NodeMetadata{},
+			err:      fmt.Errorf("Failed to get node information from kube api server, please check if kube api server is accessible."),
+			kubeclient: &util.MockKubeClientWithFailingRestClient{
+			CoreClient: &util.MockCoreClientWithFailingRestClient{},
+		},
+		},
 	}
+
+	logger, _ := zap.NewDevelopment()
+	sugar := logger.Sugar()
+	u := &Util{
+		Logger: sugar,
+	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := GetNodeIpFamily(&util.MockKubeClient{
-				CoreClient: &util.MockCoreClient{},
-			}, tt.nodeName, zap.S())
-			if (tt.want != got) && (tt.want.PreferredNodeIpFamily != got.PreferredNodeIpFamily ||
-				tt.want.Ipv6Enabled != got.Ipv6Enabled || tt.want.Ipv4Enabled != got.Ipv4Enabled) {
-				t.Errorf("GetNodeIpFamily() = %v, want %v", got, tt.want)
+
+
+			log.SetOutput(os.Stdout)
+			nodeMetadata := &NodeMetadata{}
+			ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
+			defer cancel()
+
+
+			var k kubernetes.Interface
+			if tt.kubeclient != nil {
+				k = tt.kubeclient
+			} else {
+				k = &util.MockKubeClient{CoreClient: &util.MockCoreClient{}}
+			}
+
+			err := u.LoadNodeMetadataFromApiServer(ctx, k, tt.nodeName, nodeMetadata)
+			if (tt.want != nodeMetadata) && (tt.want.PreferredNodeIpFamily != nodeMetadata.PreferredNodeIpFamily ||
+				tt.want.Ipv6Enabled != nodeMetadata.Ipv6Enabled || tt.want.Ipv4Enabled != nodeMetadata.Ipv4Enabled) {
+				t.Errorf("LoadNodeMetadataFromApiServer() = %v, want %v", nodeMetadata, tt.want)
 			}
 			if err != nil && !strings.EqualFold(tt.err.Error(), err.Error()) {
-				t.Errorf("GetNodeIpFamily() = %v, want %v", err, tt.err)
+				t.Errorf("LoadNodeMetadataFromApiServer() = %v, want %v", err, tt.err)
 			}
 
 		})
@@ -764,18 +826,20 @@ func Test_LoadCSIConfigFromConfigMap(t *testing.T) {
 		{
 			name:          "Return default config if config map is not present",
 			configMapName: "invalid",
-			want:          &CSIConfig{},
+			want: &CSIConfig{
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := LoadCSIConfigFromConfigMap(&util.MockKubeClient{
+			csiConfig := &CSIConfig{}
+			LoadCSIConfigFromConfigMap(csiConfig, &util.MockKubeClient{
 				CoreClient: &util.MockCoreClient{},
 			}, tt.configMapName, zap.S())
 
-			if !reflect.DeepEqual(tt.want, got) {
-				t.Errorf("LoadCSIConfigFromConfigMap() => got : %v, want :  %v", got, tt.want)
+			if !reflect.DeepEqual(tt.want, csiConfig) {
+				t.Errorf("LoadCSIConfigFromConfigMap() => got : %v, want :  %v", csiConfig, tt.want)
 			}
 		})
 	}

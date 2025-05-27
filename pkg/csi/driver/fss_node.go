@@ -65,9 +65,14 @@ func (d FSSNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVo
 		return nil, status.Error(codes.InvalidArgument, "Invalid Volume ID provided")
 	}
 
-	if csi_util.IsIpv4(mountTargetIP) && !d.nodeIpFamily.Ipv4Enabled {
+
+	if !d.nodeMetadata.IsNodeMetadataLoaded {
+		d.util.LoadNodeMetadataFromApiServer(ctx, d.KubeClient, d.nodeID, d.nodeMetadata)
+	}
+
+	if csi_util.IsIpv4(mountTargetIP) && !d.nodeMetadata.Ipv4Enabled {
 		return nil, status.Error(codes.InvalidArgument, "Ipv4 mount target identified in volume id, but worker node does not support ipv4 ip family.")
-	} else if csi_util.IsIpv6(mountTargetIP) && !d.nodeIpFamily.Ipv6Enabled {
+	} else if csi_util.IsIpv6(mountTargetIP) && !d.nodeMetadata.Ipv6Enabled {
 		return nil, status.Error(codes.InvalidArgument, "Ipv6 mount target identified in volume id, but worker node does not support ipv6 ip family.")
 	}
 
@@ -474,21 +479,24 @@ func (d FSSNodeDriver) NodeGetCapabilities(ctx context.Context, req *csi.NodeGet
 // NodeGetInfo returns the supported capabilities of the node server.
 // The result of this function will be used by the CO in ControllerPublishVolume.
 func (d FSSNodeDriver) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
-	ad, _ , err := d.util.LookupNodeAvailableDomain(d.KubeClient, d.nodeID)
 
-	if err != nil {
-		d.logger.With(zap.Error(err)).With("nodeId", d.nodeID, "availabilityDomain", ad).Error("Failed to get availability domain of node from kube api server.")
-		return nil, status.Error(codes.Internal, "Failed to get availability domain of node from kube api server.")
+	if !d.nodeMetadata.IsNodeMetadataLoaded {
+		err := d.util.LoadNodeMetadataFromApiServer(ctx, d.KubeClient, d.nodeID, d.nodeMetadata)
+		if err != nil || d.nodeMetadata.AvailabilityDomain == "" {
+			d.logger.With(zap.Error(err)).With("nodeId", d.nodeID).Error("Failed to get availability domain of node from kube api server.")
+			return nil, status.Error(codes.Internal, "Failed to get availability domain of node from kube api server.")
+		}
 	}
 
-	d.logger.With("nodeId", d.nodeID, "availabilityDomain", ad).Info("Availability domain of node identified.")
+	d.logger.With("nodeId", d.nodeID, "availableDomain", d.nodeMetadata.AvailabilityDomain).Info("Available domain of node identified.")
+
 	return &csi.NodeGetInfoResponse{
 		NodeId: d.nodeID,
 		// make sure that the driver works on this particular AD only
 		AccessibleTopology: &csi.Topology{
 			Segments: map[string]string{
-				kubeAPI.LabelZoneFailureDomain: ad,
-				kubeAPI.LabelTopologyZone:      ad,
+				kubeAPI.LabelZoneFailureDomain: d.nodeMetadata.AvailabilityDomain,
+				kubeAPI.LabelTopologyZone:      d.nodeMetadata.AvailabilityDomain,
 			},
 		},
 	}, nil

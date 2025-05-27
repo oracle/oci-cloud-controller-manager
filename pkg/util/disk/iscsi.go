@@ -47,7 +47,7 @@ const (
 	// ISCSIPORT is the map key to get or save iSCSI Port
 	ISCSIPORT         = "iscsi_port"
 	loginPollInterval = 5 * time.Second
-	pathPollInterval  = 10 * time.Second
+	pathPollInterval  = 2 * time.Second
 	pathPollTimeout   = 3 * time.Minute
 	waitForPathDelay  = 1 * time.Second
 
