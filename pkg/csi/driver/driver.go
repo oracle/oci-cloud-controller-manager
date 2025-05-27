@@ -134,7 +134,7 @@ type NodeDriver struct {
 	logger       *zap.SugaredLogger
 	util         *csi_util.Util
 	volumeLocks  *csi_util.VolumeLocks
-	nodeIpFamily *csi_util.NodeIpFamily
+	nodeMetadata *csi_util.NodeMetadata
 	csi.UnimplementedNodeServer
 	csiConfig    *csi_util.CSIConfig
 }
@@ -177,14 +177,14 @@ func newControllerDriver(kubeClientSet kubernetes.Interface, logger *zap.Sugared
 	}
 }
 
-func newNodeDriver(nodeID string, nodeIpFamily *csi_util.NodeIpFamily, kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger, csiConfig *csi_util.CSIConfig) NodeDriver {
+func newNodeDriver(nodeID string, nodeMetaData *csi_util.NodeMetadata, kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger, csiConfig *csi_util.CSIConfig) NodeDriver {
 	return NodeDriver{
 		nodeID:       nodeID,
 		KubeClient:   kubeClientSet,
 		logger:       logger,
 		util:         &csi_util.Util{Logger: logger},
 		volumeLocks:  csi_util.NewVolumeLocks(),
-		nodeIpFamily: nodeIpFamily,
+		nodeMetadata: nodeMetaData,
 		csiConfig:    csiConfig,
 	}
 }
@@ -235,15 +235,15 @@ func getMetricPusher(metricPusherGetter MetricPusherGetter, logger *zap.SugaredL
 	return metricPusher, nil
 }
 
-func GetNodeDriver(name string, nodeID string, nodeIpFamily *csi_util.NodeIpFamily, kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger, csiConfig *csi_util.CSIConfig) csi.NodeServer {
+func GetNodeDriver(name string, nodeID string, nodeMetadata *csi_util.NodeMetadata, kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger, csiConfig *csi_util.CSIConfig) csi.NodeServer {
 	if name == BlockVolumeDriverName {
-		return BlockVolumeNodeDriver{NodeDriver: newNodeDriver(nodeID, nodeIpFamily, kubeClientSet, logger, csiConfig)}
+		return BlockVolumeNodeDriver{NodeDriver: newNodeDriver(nodeID, nodeMetadata, kubeClientSet, logger, csiConfig)}
 	}
 	if name == FSSDriverName {
-		return FSSNodeDriver{NodeDriver: newNodeDriver(nodeID, nodeIpFamily, kubeClientSet, logger, csiConfig)}
+		return FSSNodeDriver{NodeDriver: newNodeDriver(nodeID, nodeMetadata, kubeClientSet, logger, csiConfig)}
 	}
 	if name == LustreDriverName {
-		return LustreNodeDriver{NodeDriver: newNodeDriver(nodeID, nodeIpFamily, kubeClientSet, logger, csiConfig)}
+		return LustreNodeDriver{NodeDriver: newNodeDriver(nodeID, nodeMetadata, kubeClientSet, logger, csiConfig)}
 	}
 	return nil
 }
@@ -254,20 +254,12 @@ func NewNodeDriver(logger *zap.SugaredLogger, nodeOptions nodedriveroptions.Node
 		nodeOptions.NodeID).Info("Creating a new CSI Node driver.")
 
 	kubeClientSet := csi_util.GetKubeClient(logger, nodeOptions.Master, nodeOptions.Kubeconfig)
-
-	nodeIpFamily, err := csi_util.GetNodeIpFamily(kubeClientSet, nodeOptions.NodeID, logger)
-	if err != nil {
-		return nil, err
-	}
-
-	var csiConfig *csi_util.CSIConfig
-	if nodeOptions.DriverName == LustreDriverName {
-		csiConfig = csi_util.LoadCSIConfigFromConfigMap(kubeClientSet, CSIConfigMapName, logger)
-	}
+	nodeMetadata := &csi_util.NodeMetadata{}
+	csiConfig := &csi_util.CSIConfig{}
 
 	return &Driver{
 		controllerDriver:       nil,
-		nodeDriver:             GetNodeDriver(nodeOptions.DriverName, nodeOptions.NodeID, nodeIpFamily, kubeClientSet, logger, csiConfig),
+		nodeDriver:             GetNodeDriver(nodeOptions.DriverName, nodeOptions.NodeID, nodeMetadata, kubeClientSet, logger, csiConfig),
 		endpoint:               nodeOptions.Endpoint,
 		logger:                 logger,
 		enableControllerServer: nodeOptions.EnableControllerServer,

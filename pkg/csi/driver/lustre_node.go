@@ -6,14 +6,13 @@ import (
 	"os"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util/disk"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	kubeAPI "k8s.io/api/core/v1"
 	"k8s.io/mount-utils"
-
-	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/util/disk"
 )
 
 const (
@@ -130,6 +129,7 @@ func (d LustreNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStag
 		Info("Mounting the volume to staging target path is completed.")
 
 	if lustrePostMountParameters, exists := req.GetVolumeContext()["lustrePostMountParameters"]; exists {
+		d.loadCSIConfig()
 		if !isSkipLustreParams(d.csiConfig)  {
 			err = lnetService.ApplyLustreParameters(logger, lustrePostMountParameters)
 			if err != nil {
@@ -147,6 +147,16 @@ func (d LustreNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStag
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
+func (d LustreNodeDriver) loadCSIConfig() {
+	if d.csiConfig.IsLoaded {
+		return
+	}
+	d.logger.Info("Loading CSI Config Map")
+	csi_util.LoadCSIConfigFromConfigMap(d.csiConfig, d.KubeClient, CSIConfigMapName, d.logger)
+	d.csiConfig.IsLoaded = true
+}
+
+
 func (d LustreNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
 	if req.VolumeId == "" {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
@@ -162,6 +172,8 @@ func (d LustreNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUn
 	}
 
 	logger := d.logger.With("volumeID", req.VolumeId, "stagingPath", req.StagingTargetPath)
+
+	d.loadCSIConfig()
 
 	if d.csiConfig != nil && d.csiConfig.Lustre != nil && d.csiConfig.Lustre.SkipNodeUnstage {
 		logger.Info("Skipping NodeUnstageVolume based on CSI Driver Configuration.")
@@ -383,6 +395,7 @@ func (d LustreNodeDriver) NodeExpandVolume(ctx context.Context, req *csi.NodeExp
 }
 
 func (d LustreNodeDriver) NodeGetCapabilities(ctx context.Context, request *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
+
 	nscap := &csi.NodeServiceCapability{
 		Type: &csi.NodeServiceCapability_Rpc{
 			Rpc: &csi.NodeServiceCapability_RPC{
@@ -399,18 +412,23 @@ func (d LustreNodeDriver) NodeGetCapabilities(ctx context.Context, request *csi.
 }
 
 func (d LustreNodeDriver) NodeGetInfo(ctx context.Context, request *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
-	ad, _ , err := d.util.LookupNodeAvailableDomain(d.KubeClient, d.nodeID)
-	if err != nil {
-		d.logger.With(zap.Error(err)).With("nodeId", d.nodeID, "availableDomain", ad).Error("Available domain of node missing.")
+
+	if !d.nodeMetadata.IsNodeMetadataLoaded {
+		err := d.util.LoadNodeMetadataFromApiServer(ctx, d.KubeClient, d.nodeID, d.nodeMetadata)
+		if err != nil || d.nodeMetadata.AvailabilityDomain == "" {
+			d.logger.With(zap.Error(err)).With("nodeId", d.nodeID).Error("Failed to get availability domain of node from kube api server.")
+			return nil, status.Error(codes.Internal, "Failed to get availability domain of node from kube api server.")
+		}
 	}
 
-	d.logger.With("nodeId", d.nodeID, "availableDomain", ad).Info("Available domain of node identified.")
+	d.logger.With("nodeId", d.nodeID, "availableDomain", d.nodeMetadata.AvailabilityDomain).Info("Available domain of node identified.")
 	return &csi.NodeGetInfoResponse{
 		NodeId: d.nodeID,
 		// make sure that the driver works on this particular AD only
 		AccessibleTopology: &csi.Topology{
 			Segments: map[string]string{
-				kubeAPI.LabelZoneFailureDomain: ad,
+				kubeAPI.LabelZoneFailureDomain: d.nodeMetadata.AvailabilityDomain,
+				kubeAPI.LabelTopologyZone:      d.nodeMetadata.AvailabilityDomain,
 			},
 		},
 	}, nil
