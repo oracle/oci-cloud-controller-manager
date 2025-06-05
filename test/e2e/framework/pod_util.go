@@ -408,6 +408,8 @@ func (j *PVCTestJig) CreateAndAwaitNginxPodOrFail(ns string, pvc *v1.PersistentV
 	// Waiting for pod to be running
 	err = j.WaitTimeoutForPodRunningInNamespace(pod.Name, ns, slowPodStartTimeout)
 	if err != nil {
+		Logf("Pod failed to come up, logging debug info\n")
+		j.LogPodDebugInfo(namespace, pod.Name)
 		Failf("Pod %q is not Running: %v", pod.Name, err)
 	}
 
@@ -704,10 +706,17 @@ func (j *PVCTestJig) logNodeDriverLogs(pod *v1.Pod) {
 	}
 }
 
-func (j *PVCTestJig) logPodDebugInfo(ns string, podName string) {
+func (j *PVCTestJig) LogPodDebugInfo(ns string, podName string) {
 	pod, err := j.describePod(ns, podName)
 	if err != nil {
 		Logf("Error describing pod: %v", err)
+		if apierrors.IsNotFound(err) {
+			pods, listErr := j.KubeClient.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
+			if listErr != nil {
+				Logf("Error listing pods: %v", listErr)
+			}
+			Logf("Pods in namespace list: %v", pods.Items)
+		}
 		return
 	}
 

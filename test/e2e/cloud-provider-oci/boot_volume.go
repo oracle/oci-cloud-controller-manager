@@ -46,7 +46,7 @@ var _ = Describe("Boot volume tests", func() {
 			opts := framework.Options{
 				BlockProvisionerName: setupF.BlockProvisionerName,
 			}
-			pvc, bootvolumeId := pvcJig.CreateAndAwaitStaticBootVolumePVCOrFailCSI(f.ComputeClient, f.Namespace.Name, compartmentId, setupF.AdLocation, setupF.MntTargetSubnetOcid, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeBlock, v1.ReadWriteOnce, v1.ClaimPending, opts)
+			pvc, bootvolumeId := pvcJig.CreateAndAwaitStaticBootVolumePVCOrFailCSI(f.ComputeClient, f.BlockStorageClient, f.Namespace.Name, compartmentId, setupF.AdLocation, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeBlock, v1.ReadWriteOnce, v1.ClaimPending, opts)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 
 			podName := pvcJig.NewPodForCSI("app1", f.Namespace.Name, pvc.Name, setupF.AdLabel, v1.PersistentVolumeBlock)
@@ -74,13 +74,10 @@ var _ = Describe("Boot volume gating test", func() {
 				framework.Failf("Compartment Id undefined.")
 			}
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com",
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI},
 				pvcJig.Labels, "WaitForFirstConsumer", false, "Retain", nil)
-			opts := framework.Options{
-				BlockProvisionerName: setupF.BlockProvisionerName,
-			}
-			pvc, bootvolumeId := pvcJig.CreateAndAwaitStaticBootVolumePVCOrFailCSI(f.ComputeClient, f.Namespace.Name, compartmentId, setupF.AdLocation, setupF.MntTargetSubnetOcid, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending, opts)
+			pvc, bootvolumeId := pvcJig.CreateAndAwaitStaticBootVolumePVCOrFailCSI(f.ComputeClient, f.BlockStorageClient, f.Namespace.Name, compartmentId, setupF.AdLocation, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
 			pvcJig.NewPodForCSIWithoutWait("app1", f.Namespace.Name, pvc.Name, setupF.AdLabel)
 			err := pvcJig.WaitTimeoutForPodRunningInNamespace("app1", f.Namespace.Name, 7*time.Minute)
 			if err == nil {

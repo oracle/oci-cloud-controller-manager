@@ -37,12 +37,12 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/oracle/oci-go-sdk/v65/common"
 	ocicore "github.com/oracle/oci-go-sdk/v65/core"
 
 	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/csi/driver"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
 )
 
 const (
@@ -106,9 +106,6 @@ func (j *PVCTestJig) CreatePVCTemplate(namespace, volumeSize string) *v1.Persist
 }
 
 func (j *PVCTestJig) pvcAddLabelSelector(pvc *v1.PersistentVolumeClaim, adLabel string) *v1.PersistentVolumeClaim {
-	if adLabel == "" {
-		return pvc
-	}
 	if pvc != nil {
 		pvc.Spec.Selector = &metav1.LabelSelector{
 			MatchLabels: map[string]string{
@@ -493,9 +490,9 @@ func (j *PVCTestJig) CreateAndAwaitStaticPVCOrFailCSI(bs ocicore.BlockstorageCli
 	return j.CreateAndAwaitPVCOrFailCSI(namespace, volumeSize, scName, tweak, volumeMode, accessMode, expectedPVCPhase), *volumeOcid
 }
 
-func (j *PVCTestJig) CreateAndAwaitStaticBootVolumePVCOrFailCSI(c ocicore.ComputeClient, namespace string, compartment string, adLocation string, subnetId string, volumeSize string, scName string, tweak func(pvc *v1.PersistentVolumeClaim), volumeMode v1.PersistentVolumeMode, accessMode v1.PersistentVolumeAccessMode, expectedPVCPhase v1.PersistentVolumeClaimPhase, opts Options) (*v1.PersistentVolumeClaim, string) {
+func (j *PVCTestJig) CreateAndAwaitStaticBootVolumePVCOrFailCSI(c ocicore.ComputeClient, bs ocicore.BlockstorageClient, namespace string, compartment string, adLocation string, volumeSize string, scName string, tweak func(pvc *v1.PersistentVolumeClaim), volumeMode v1.PersistentVolumeMode, accessMode v1.PersistentVolumeAccessMode, expectedPVCPhase v1.PersistentVolumeClaimPhase, opts Options) (*v1.PersistentVolumeClaim, string) {
 
-	bootVolumeId := j.CreateBootVolume(c, adLocation, compartment, subnetId)
+	bootVolumeId := j.CreateBootVolume(c, bs, adLocation, compartment)
 
 	pv := j.CreatePVorFailCSI(namespace, scName, bootVolumeId, volumeMode, opts)
 
@@ -755,161 +752,73 @@ func waitForVolumeState(ctx context.Context, bsClient ocicore.BlockstorageClient
 }
 
 // CreateBootVolume is a function to create the boot volume
-func (j *PVCTestJig) CreateBootVolume(c ocicore.ComputeClient, adLabel string, compartmentId string, subnet string) string {
+func (j *PVCTestJig) CreateBootVolume(c ocicore.ComputeClient, bs ocicore.BlockstorageClient,adLabel string, compartmentId string) string {
 	ctx := context.Background()
 
-	images, err := c.ListImages(context.Background(), ocicore.ListImagesRequest{
+	instances, err := c.ListInstances(ctx, ocicore.ListInstancesRequest{
+		AvailabilityDomain: &adLabel,
 		CompartmentId: &compartmentId,
 	})
 	if err != nil {
-		Failf("Error listing images: %v", err)
+		Failf("Error listing instances: %v", err)
 	}
 
-	image := images.Items[0]
-	Logf("Chose image name: %v, id: %v", *image.DisplayName, *image.Id)
-
-	request := ocicore.LaunchInstanceRequest{
-		LaunchInstanceDetails: ocicore.LaunchInstanceDetails{
-			AvailabilityDomain: &adLabel,
-			CompartmentId:      &compartmentId,
-			SubnetId:           &subnet,
-			Shape:              common.String("VM.Standard2.1"),
-			ImageId:            image.Id,
-		},
-	}
-
-	instance, err := c.LaunchInstance(ctx, request)
-	if err != nil {
-		Failf("Error launching instance: %v", err)
-	}
-
-	instanceId := instance.Id
-
-	// Wait for instance running
-	fmt.Println("Waiting 5 minutes for instance to reach RUNNING state...")
-	err = waitForInstanceState(ctx, c, instanceId, ocicore.InstanceLifecycleStateRunning, 5*time.Minute)
-	if err != nil {
-		Failf("Instance did not reach RUNNING: %v", err)
-	}
-	fmt.Println("Instance is RUNNING")
-
-	// Stop the instance
-	fmt.Println("Stopping instance...")
-	_, err = c.InstanceAction(ctx, ocicore.InstanceActionRequest{
-		InstanceId: instanceId,
-		Action:     ocicore.InstanceActionActionStop,
-	})
-	if err != nil {
-		Failf("Failed to stop instance: %v", err)
-	}
-
-	// Wait for STOPPED
-	fmt.Println("Waiting for instance to STOP...")
-	err = waitForInstanceState(ctx, c, instanceId, ocicore.InstanceLifecycleStateStopped, 5*time.Minute)
-	if err != nil {
-		Failf("Instance did not reach STOPPED: %v", err)
-	}
-	fmt.Println("Instance is STOPPED")
+	instance := instances.Items[0]
 
 	// Get boot volume attachment
-	fmt.Println("Detaching boot volume...")
+	Logf("Getting boot volume for instance %s", *instance.DisplayName)
 	attachmentsResp, err := c.ListBootVolumeAttachments(ctx, ocicore.ListBootVolumeAttachmentsRequest{
 		AvailabilityDomain: &adLabel,
 		CompartmentId:      &compartmentId,
-		InstanceId:         instanceId,
+		InstanceId:         instance.Id,
 	})
 	if err != nil {
 		Failf("Failed to list boot volume attachments: %v", err)
 	}
 
 	if len(attachmentsResp.Items) == 0 {
-		Failf("No boot volume attachment found for instance %s", *instanceId)
+		Failf("No boot volume attachment found for instance %s", *instance.Id)
 	}
 
-	attachmentID := attachmentsResp.Items[0].Id
-	_, err = c.DetachBootVolume(ctx, ocicore.DetachBootVolumeRequest{
-		BootVolumeAttachmentId: attachmentID,
+	attachment := attachmentsResp.Items[0]
+	Logf("Cloning boot volume %s", *attachment.BootVolumeId)
+	resp, err := bs.CreateBootVolume(ctx, ocicore.CreateBootVolumeRequest{
+		CreateBootVolumeDetails: ocicore.CreateBootVolumeDetails{
+			CompartmentId: &compartmentId,
+			SourceDetails: ocicore.BootVolumeSourceFromBootVolumeDetails{
+				Id: attachment.BootVolumeId,
+			},
+		},
 	})
+
+	bootVolumeId := resp.BootVolume.Id
+	Logf("Waiting for cloned boot volume %s to become available", *bootVolumeId)
+	err = WaitForBootVolumeAvailable(ctx, bs, bootVolumeId)
 	if err != nil {
-		Failf("Failed to detach boot volume: %v", err)
+		Failf("Failed to wait for block volume to become available: %v", err)
 	}
 
-	err = WaitForVolumeDetached(ctx, c, attachmentID)
-	if err != nil {
-		Failf("Failed while waiting for boot volume detach: %v", err)
-	}
-
-	// Terminate the instance
-	fmt.Println("Terminating instance...")
-
-	_, err = c.TerminateInstance(ctx, ocicore.TerminateInstanceRequest{
-		InstanceId:         instanceId,
-		PreserveBootVolume: common.Bool(true),
-	})
-	if err != nil {
-		Failf("Failed to terminate instance: %v", err)
-	}
-
-	// Wait for TERMINATED
-	fmt.Println("Waiting for instance to TERMINATE...")
-	err = waitForInstanceState(ctx, c, instanceId, ocicore.InstanceLifecycleStateTerminated, 5*time.Minute)
-	if err != nil {
-		Failf("Instance did not reach TERMINATED: %v", err)
-	}
-	fmt.Println("Instance is TERMINATED")
-
-	return *attachmentsResp.Items[0].BootVolumeId
+	return *bootVolumeId
 }
 
-func waitForInstanceState(ctx context.Context, computeClient ocicore.ComputeClient, instanceID *string, expectedState ocicore.InstanceLifecycleStateEnum, timeout time.Duration) error {
-	checkInstanceState := func() (bool, error) {
-		subCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-		defer cancel()
-
-		resp, err := computeClient.GetInstance(subCtx, ocicore.GetInstanceRequest{
-			InstanceId: instanceID,
-		})
-		if err != nil || resp.Id == nil {
-			return false, err
-		}
-
-		if resp.LifecycleState != expectedState {
-			fmt.Printf("Instance %s not yet in expected state. Current: %s, Expected: %s\n",
-				*instanceID, resp.LifecycleState, expectedState)
-			return false, nil
-		}
-		return true, nil
-	}
-
-	err := wait.PollImmediate(10*time.Second, timeout, func() (bool, error) {
-		return checkInstanceState()
-	})
-
-	if err != nil {
-		fmt.Printf("Timed out waiting for instance %s to reach state %s\n", *instanceID, expectedState)
-	}
-	return err
-}
-
-func WaitForVolumeDetached(ctx context.Context, c ocicore.ComputeClient, id *string) error {
+func WaitForBootVolumeAvailable(ctx context.Context, bs ocicore.BlockstorageClient, id *string) error {
 	subCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 
 	if err := wait.PollImmediateUntil(5*time.Second, func() (done bool, err error) {
-		va, err := c.GetBootVolumeAttachment(subCtx, ocicore.GetBootVolumeAttachmentRequest{
-			BootVolumeAttachmentId: id,
+		bv, err := bs.GetBootVolume(subCtx, ocicore.GetBootVolumeRequest{
+			BootVolumeId: id,
 		})
-		fmt.Printf("Error: %+v\n", err)
 		if err != nil {
 			if client.IsRetryable(err) {
 				return false, nil
 			}
 			return true, errors.WithStack(err)
 		}
-		if va.LifecycleState == ocicore.BootVolumeAttachmentLifecycleStateDetached {
+		if bv.LifecycleState == ocicore.BootVolumeLifecycleStateAvailable {
 			return true, nil
 		}
-		fmt.Printf("Waiting for boot volume to detach, current state: %s\n", va.LifecycleState)
+		fmt.Printf("Waiting for boot volume to become available, current state: %s\n", bv.LifecycleState)
 		return false, nil
 	}, subCtx.Done()); err != nil {
 		return errors.WithStack(err)
@@ -1016,17 +925,6 @@ func (j *PVCTestJig) NewPodForCSI(name string, namespace string, claimName strin
 		Failf("Unsupported volumeMode: %s", volumeMode)
 	}
 
-	podSpec := v1.PodSpec{
-		Containers: containers,
-		Volumes:    volumes,
-	}
-
-	if adLabel != "" {
-		podSpec.NodeSelector = map[string]string{
-			v1.LabelTopologyZone: adLabel,
-		}
-	}
-
 	pod, err := j.KubeClient.CoreV1().Pods(namespace).Create(context.Background(), &v1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
@@ -1036,7 +934,13 @@ func (j *PVCTestJig) NewPodForCSI(name string, namespace string, claimName strin
 			GenerateName: j.Name,
 			Namespace:    namespace,
 		},
-		Spec: podSpec,
+		Spec: v1.PodSpec{
+			Containers: containers,
+			Volumes:    volumes,
+			NodeSelector: map[string]string{
+				plugin.LabelZoneFailureDomain: adLabel,
+			},
+		},
 	}, metav1.CreateOptions{})
 	if err != nil {
 		Failf("Pod %q Create API error: %v", pod.Name, err)
@@ -1046,7 +950,7 @@ func (j *PVCTestJig) NewPodForCSI(name string, namespace string, claimName strin
 	err = j.WaitTimeoutForPodRunningInNamespace(pod.Name, namespace, slowPodStartTimeout)
 	if err != nil {
 		Logf("Pod failed to come up, logging debug info")
-		j.logPodDebugInfo(namespace, pod.Name)
+		j.LogPodDebugInfo(namespace, pod.Name)
 		Failf("Pod %q is not Running: %v", pod.Name, err)
 	}
 	zap.S().With(pod.Namespace).With(pod.Name).Info("CSI POD is created.")
@@ -1215,7 +1119,7 @@ func (j *PVCTestJig) NewPodWithLabels(name string, namespace string, claimName s
 	err = j.WaitTimeoutForPodRunningInNamespace(pod.Name, namespace, slowPodStartTimeout)
 	if err != nil {
 		Logf("Pod failed to come up, logging debug info\n")
-		j.logPodDebugInfo(namespace, pod.Name)
+		j.LogPodDebugInfo(namespace, pod.Name)
 		Failf("Pod %q is not Running: %v", pod.Name, err)
 	}
 	zap.S().With(pod.Namespace).With(pod.Name).Info("CSI POD is created.")
@@ -1253,26 +1157,6 @@ func (j *PVCTestJig) NewPodForCSIClone(name string, namespace string, claimName 
 		}
 	}
 
-	podSpec := v1.PodSpec{
-		Containers: []v1.Container{container},
-		Volumes: []v1.Volume{
-			{
-				Name: "persistent-storage",
-				VolumeSource: v1.VolumeSource{
-					PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
-						ClaimName: claimName,
-					},
-				},
-			},
-		},
-	}
-
-	if adLabel != "" {
-		podSpec.NodeSelector = map[string]string{
-			v1.LabelTopologyZone: adLabel,
-		}
-	}
-
 	pod, err := j.KubeClient.CoreV1().Pods(namespace).Create(context.Background(), &v1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
@@ -1282,7 +1166,22 @@ func (j *PVCTestJig) NewPodForCSIClone(name string, namespace string, claimName 
 			GenerateName: j.Name,
 			Namespace:    namespace,
 		},
-		Spec: podSpec,
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{container},
+			Volumes: []v1.Volume{
+				{
+					Name: "persistent-storage",
+					VolumeSource: v1.VolumeSource{
+						PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+							ClaimName: claimName,
+						},
+					},
+				},
+			},
+			NodeSelector: map[string]string{
+				v1.LabelTopologyZone: adLabel,
+			},
+		},
 	}, metav1.CreateOptions{})
 	if err != nil {
 		Failf("Pod %q Create API error: %v", pod.Name, err)
@@ -1292,7 +1191,7 @@ func (j *PVCTestJig) NewPodForCSIClone(name string, namespace string, claimName 
 	err = j.WaitTimeoutForPodRunningInNamespace(pod.Name, namespace, slowPodStartTimeout)
 	if err != nil {
 		Logf("Pod failed to come up, logging debug info\n")
-		j.logPodDebugInfo(namespace, pod.Name)
+		j.LogPodDebugInfo(namespace, pod.Name)
 		Failf("Pod %q is not Running: %v", pod.Name, err)
 	}
 	zap.S().With(pod.Namespace).With(pod.Name).Info("CSI POD is created.")
@@ -1301,39 +1200,6 @@ func (j *PVCTestJig) NewPodForCSIClone(name string, namespace string, claimName 
 
 func (j *PVCTestJig) NewPodForCSIWithoutWait(name string, namespace string, claimName string, adLabel string) string {
 	By("Creating a pod with the claiming PVC created by CSI")
-
-	podSpec := v1.PodSpec{
-		Containers: []v1.Container{
-			{
-				Name:    name,
-				Image:   centos,
-				Command: []string{"/bin/sh"},
-				Args:    []string{"-c", "echo 'Hello World' > /data/testdata.txt; while true; do echo $(date -u) >> /data/out.txt; sleep 5; done"},
-				VolumeMounts: []v1.VolumeMount{
-					{
-						Name:      "persistent-storage",
-						MountPath: "/data",
-					},
-				},
-			},
-		},
-		Volumes: []v1.Volume{
-			{
-				Name: "persistent-storage",
-				VolumeSource: v1.VolumeSource{
-					PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
-						ClaimName: claimName,
-					},
-				},
-			},
-		},
-	}
-
-	if adLabel != "" {
-		podSpec.NodeSelector = map[string]string{
-			v1.LabelTopologyZone: adLabel,
-		}
-	}
 
 	pod, err := j.KubeClient.CoreV1().Pods(namespace).Create(context.Background(), &v1.Pod{
 		TypeMeta: metav1.TypeMeta{
@@ -1344,7 +1210,35 @@ func (j *PVCTestJig) NewPodForCSIWithoutWait(name string, namespace string, clai
 			GenerateName: j.Name,
 			Namespace:    namespace,
 		},
-		Spec: podSpec,
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
+				{
+					Name:    name,
+					Image:   centos,
+					Command: []string{"/bin/sh"},
+					Args:    []string{"-c", "echo 'Hello World' > /data/testdata.txt; while true; do echo $(date -u) >> /data/out.txt; sleep 5; done"},
+					VolumeMounts: []v1.VolumeMount{
+						{
+							Name:      "persistent-storage",
+							MountPath: "/data",
+						},
+					},
+				},
+			},
+			Volumes: []v1.Volume{
+				{
+					Name: "persistent-storage",
+					VolumeSource: v1.VolumeSource{
+						PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+							ClaimName: claimName,
+						},
+					},
+				},
+			},
+			NodeSelector: map[string]string{
+				v1.LabelTopologyZone: adLabel,
+			},
+		},
 	}, metav1.CreateOptions{})
 	if err != nil {
 		Failf("Pod %q Create API error: %v", pod.Name, err)
@@ -1409,7 +1303,7 @@ func (j *PVCTestJig) NewPodForCSIFSSWrite(name string, namespace string, claimNa
 	err = j.WaitTimeoutForPodRunningInNamespace(pod.Name, namespace, slowPodStartTimeout)
 	if err != nil {
 		Logf("Pod failed to come up, logging debug info\n")
-		j.logPodDebugInfo(namespace, pod.Name)
+		j.LogPodDebugInfo(namespace, pod.Name)
 		Failf("Pod %q is not Running: %v", pod.Name, err)
 	}
 	zap.S().With(pod.Namespace).With(pod.Name).Info("CSI POD is created.")
@@ -1473,7 +1367,7 @@ func (j *PVCTestJig) NewPodForCSIFSSRead(matchString string, namespace string, c
 	err = j.waitTimeoutForPodCompletedSuccessfullyInNamespace(pod.Name, namespace, slowPodStartTimeout)
 	if err != nil {
 		Logf("Pod failed to come up, logging debug info\n")
-		j.logPodDebugInfo(namespace, pod.Name)
+		j.LogPodDebugInfo(namespace, pod.Name)
 		Failf("Pod %q failed: %v", pod.Name, err)
 	}
 	zap.S().With(pod.Namespace).With(pod.Name).Info("CSI Fss read POD is created.")
@@ -2103,6 +1997,8 @@ func (j *PVCTestJig) ListSchedulableNodesInAD(adLocation string) []v1.Node {
 		if !node.Spec.Unschedulable {
 			if len(node.Spec.Taints) == 0 { // worker nodes have no taints so set them to schedulable
 				schedulable = true
+			} else {
+				Logf("Taints found for node %s, marking node unschedulable: %v", node.Name, node.Spec.Taints)
 			}
 			for _, taint := range node.Spec.Taints {
 				if taint.Key == "node-role.kubernetes.io/worker" || taint.Key == "node-role.kubernetes.io/compute" {
