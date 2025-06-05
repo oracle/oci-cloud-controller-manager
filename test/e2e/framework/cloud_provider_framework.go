@@ -343,6 +343,21 @@ func (f *CloudProviderFramework) AfterEach() {
 	if len(nsDeletionErrors) != 0 {
 		messages := []string{}
 		for namespaceKey, namespaceErr := range nsDeletionErrors {
+			if strings.Contains(namespaceErr.Error(), "timed out waiting for the condition") {
+				Logf("Couldn't delete ns: %q: %s", namespaceKey, namespaceErr.Error())
+				pods, err := f.ClientSet.CoreV1().Pods(namespaceKey).List(context.TODO(), metav1.ListOptions{})
+				if err != nil {
+					Logf("Failed to list pods in ns %q: %v", namespaceKey, err)
+				} else {
+					for _, pod := range pods.Items {
+						if pod.DeletionTimestamp != nil {
+							Logf("Pod %q is stuck terminating in namespace %q", pod.Name, namespaceKey)
+							pvcJig := NewPVCTestJig(f.ClientSet, "namespace-stuck-pod-logging")
+							pvcJig.LogPodDebugInfo(namespaceKey, pod.Name)
+						}
+					}
+				}
+			}
 			messages = append(messages, fmt.Sprintf("Couldn't delete ns: %q: %s (%#v)", namespaceKey, namespaceErr, namespaceErr))
 		}
 		Failf(strings.Join(messages, ","))
