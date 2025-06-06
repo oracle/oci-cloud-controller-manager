@@ -32,7 +32,7 @@ var _ = Describe("CSI Volume Creation", func() {
 		It("Create PVC and POD for CSI.", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-provisioner-e2e-tests")
 			ctx := context.TODO()
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com", nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName, nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			pvcJig.NewPodForCSI("app1", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeFilesystem)
@@ -44,7 +44,7 @@ var _ = Describe("CSI Volume Creation", func() {
 			// volume name duplicate should not exist
 			for _, volume := range volumes {
 				framework.Logf("volume details %v :", volume)
-				if setupF.AddOkeSystemTags && !framework.HasOkeSystemTags(volume.SystemTags) {
+				if setupF.AddOkeSystemTags && !framework.HasOkeSystemTags(volume.SystemTags) && setupF.CustomDriverHandle == "" {
 					framework.Failf("the resource %s is expected to have oke system tags", *volume.Id)
 				}
 			}
@@ -54,7 +54,7 @@ var _ = Describe("CSI Volume Creation", func() {
 		It("Create PVC with VolumeSize 1Gi but should use default 50Gi", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-provisioner-e2e-tests-pvc-with-1gi")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com", nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName, nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.VolumeFss, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			pvcJig.NewPodForCSI("app2", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeFilesystem)
@@ -67,7 +67,7 @@ var _ = Describe("CSI Volume Creation", func() {
 		It("Create PVC with VolumeSize 100Gi should use 100Gi", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-provisioner-e2e-tests-pvc-with-100gi")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com", nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName, nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MaxVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			pvcJig.NewPodForCSI("app3", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeFilesystem)
@@ -80,7 +80,7 @@ var _ = Describe("CSI Volume Creation", func() {
 		It("Data should persist on CSI volume on pod restart", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-pod-restart-data-persistence")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com", nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName, nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			pvcJig.CheckDataPersistenceWithDeployment(pvc.Name, f.Namespace.Name)
@@ -89,7 +89,7 @@ var _ = Describe("CSI Volume Creation", func() {
 		It("FsGroup test for CSI", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-pod-nginx")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com", nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName, nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
 
 			pvcJig.CheckVolumeDirectoryOwnership(f.Namespace.Name, pvc)
@@ -104,7 +104,7 @@ var _ = Describe("CSI Raw Block Volume Creation", func() {
 		It("Create raw block PVC and POD for CSI.", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-provisioner-e2e-tests")
 			ctx := context.TODO()
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com", nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName, nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeBlock, v1.ReadWriteOnce, v1.ClaimPending)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			pvcJig.NewPodForCSI("app1", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeBlock)
@@ -117,17 +117,16 @@ var _ = Describe("CSI Raw Block Volume Creation", func() {
 			for _, volume := range volumes {
 				framework.Logf("volume details %v :", volume)
 				//framework.Logf("cluster ocid from setup is %s", setupF.ClusterOcid)
-				if setupF.AddOkeSystemTags && !framework.HasOkeSystemTags(volume.SystemTags) {
+				if setupF.AddOkeSystemTags && !framework.HasOkeSystemTags(volume.SystemTags) && setupF.CustomDriverHandle == "" {
 					framework.Failf("the resource %s is expected to have oke system tags", *volume.Id)
 				}
 			}
-
 		})
 
 		It("Create raw block PVC with VolumeSize 1Gi but should use default 50Gi", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-provisioner-e2e-tests-pvc-with-1gi")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com", nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName, nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.VolumeFss, scName, nil, v1.PersistentVolumeBlock, v1.ReadWriteOnce, v1.ClaimPending)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			pvcJig.NewPodForCSI("app2", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeBlock)
@@ -140,7 +139,7 @@ var _ = Describe("CSI Raw Block Volume Creation", func() {
 		It("Create raw block PVC with VolumeSize 100Gi should use 100Gi", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-provisioner-e2e-tests-pvc-with-100gi")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com", nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName, nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MaxVolumeBlock, scName, nil, v1.PersistentVolumeBlock, v1.ReadWriteOnce, v1.ClaimPending)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			pvcJig.NewPodForCSI("app3", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeBlock)
@@ -153,7 +152,7 @@ var _ = Describe("CSI Raw Block Volume Creation", func() {
 		It("Data should persist on CSI raw block volume on pod restart", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-pod-restart-data-persistence")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com", nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName, nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeBlock, v1.ReadWriteOnce, v1.ClaimPending)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			pvcJig.CheckDataPersistenceForRawBlockVolumeWithDeployment(pvc.Name, f.Namespace.Name)
@@ -167,7 +166,7 @@ var _ = Describe("CSI Volume Creation with different fstypes", func() {
 		It("Create PVC with fstype as XFS", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-provisioner-e2e-tests-fstype-xfs")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com", map[string]string{framework.FstypeKey: "xfs"}, pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName, map[string]string{framework.FstypeKey: "xfs"}, pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MaxVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			podName := pvcJig.NewPodForCSI("app-xfs", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeFilesystem)
@@ -180,7 +179,7 @@ var _ = Describe("CSI Volume Creation with different fstypes", func() {
 		It("Create PVC with fstype as EXT3", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-provisioner-e2e-tests-fstype-ext3")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com", map[string]string{framework.FstypeKey: "ext3"}, pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName, map[string]string{framework.FstypeKey: "ext3"}, pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MaxVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			podName := pvcJig.NewPodForCSI("app-ext3", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeFilesystem)
@@ -195,7 +194,7 @@ var _ = Describe("CSI Volume Creation with different fstypes", func() {
 		It("Create PVC with fstype as XFS with paravirtualized attachment type", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-provisioner-e2e-tests-fstype-xfs")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com", map[string]string{framework.FstypeKey: "xfs", framework.KmsKey: setupF.CMEKKMSKey, framework.AttachmentType: framework.AttachmentTypeParavirtualized}, pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName, map[string]string{framework.FstypeKey: "xfs", framework.KmsKey: setupF.CMEKKMSKey, framework.AttachmentType: framework.AttachmentTypeParavirtualized}, pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MaxVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			podName := pvcJig.NewPodForCSI("app-xfs", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeFilesystem)
@@ -212,7 +211,7 @@ var _ = Describe("CSI Volume Creation with different fstypes", func() {
 			var size = "100Gi"
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-pvc-expand-to-100gi-iscsi-xfs")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com",
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI, framework.FstypeKey: "xfs"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
@@ -237,7 +236,7 @@ var _ = Describe("CSI Volume Creation with different fstypes", func() {
 			var size = "100Gi"
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-pvc-expand-to-100gi-iscsi-ext3")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com",
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI, framework.FstypeKey: "ext3"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
@@ -268,7 +267,7 @@ var _ = Describe("CSI Volume Expansion iSCSI", func() {
 			var size = "100Gi"
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-resizer-pvc-expand-to-100gi-iscsi")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com",
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
@@ -297,7 +296,7 @@ var _ = Describe("CSI Volume Expansion iSCSI", func() {
 			var size = "100Gi"
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-resizer-pvc-expand-to-100gi-iscsi")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com",
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
@@ -327,7 +326,7 @@ var _ = Describe("CSI Raw Block Volume Expansion iSCSI", func() {
 			var size = "100Gi"
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-resizer-pvc-expand-to-100gi-iscsi")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com",
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeBlock, v1.ReadWriteOnce, v1.ClaimPending)
@@ -357,7 +356,7 @@ var _ = Describe("CSI Raw Block Volume Expansion iSCSI", func() {
 			var size = "100Gi"
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-resizer-pvc-expand-to-100gi-iscsi")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com",
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeBlock, v1.ReadWriteOnce, v1.ClaimPending)
@@ -387,7 +386,7 @@ var _ = Describe("CSI Volume Performance Level", func() {
 		It("Create CSI block volume with Performance Level as Low Cost", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-perf-iscsi-lowcost")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com",
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI, csi_util.VpusPerGB: "0"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
@@ -402,7 +401,7 @@ var _ = Describe("CSI Volume Performance Level", func() {
 		It("Create CSI block volume with no Performance Level and verify default", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-perf-iscsi-default")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com", nil, pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName, nil, pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
 			pvcJig.NewPodForCSI("default-pvc-app", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeFilesystem)
 
@@ -414,7 +413,7 @@ var _ = Describe("CSI Volume Performance Level", func() {
 		It("Create CSI block volume with Performance Level as High", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-perf-iscsi-high")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com",
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI, csi_util.VpusPerGB: "20"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
@@ -431,7 +430,7 @@ var _ = Describe("CSI Volume Performance Level", func() {
 		It("Create CSI block volume with Performance Level as Low Cost", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-perf-paravirtual-lowcost")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com",
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeParavirtualized, csi_util.VpusPerGB: "0"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
@@ -446,7 +445,7 @@ var _ = Describe("CSI Volume Performance Level", func() {
 		It("Create CSI block volume with no Performance Level and verify default", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-perf-paravirtual-balanced")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com",
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeParavirtualized, csi_util.VpusPerGB: "10"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
@@ -461,7 +460,7 @@ var _ = Describe("CSI Volume Performance Level", func() {
 		It("Create CSI block volume with Performance Level as High", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-perf-paravirtual-high")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com",
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeParavirtualized, csi_util.VpusPerGB: "20"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
@@ -477,7 +476,7 @@ var _ = Describe("CSI Volume Performance Level", func() {
 		It("High Performance Static Provisioning CSI", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-perf-static-high")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com",
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI, csi_util.VpusPerGB: "20"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 
@@ -491,7 +490,10 @@ var _ = Describe("CSI Volume Performance Level", func() {
 			} else {
 				framework.Failf("Compartment Id undefined.")
 			}
-			pvc, volumeId := pvcJig.CreateAndAwaitStaticPVCOrFailCSI(f.BlockStorageClient, f.Namespace.Name, framework.MinVolumeBlock, csi_util.HigherPerformanceOption, scName, setupF.AdLocation, compartmentId, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
+			opts := framework.Options{
+				BlockProvisionerName: setupF.BlockProvisionerName,
+			}
+			pvc, volumeId := pvcJig.CreateAndAwaitStaticPVCOrFailCSI(f.BlockStorageClient, f.Namespace.Name, framework.MinVolumeBlock, csi_util.HigherPerformanceOption, scName, setupF.AdLocation, compartmentId, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending, opts)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			podName := pvcJig.NewPodForCSI("app4", f.Namespace.Name, pvc.Name, setupF.AdLabel, v1.PersistentVolumeFilesystem)
 
@@ -511,7 +513,7 @@ var _ = Describe("CSI Raw Block Volume Performance Level", func() {
 		It("Create CSI raw block volume with Performance Level as Low Cost", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-perf-iscsi-lowcost")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com",
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI, csi_util.VpusPerGB: "0"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeBlock, v1.ReadWriteOnce, v1.ClaimPending)
@@ -526,7 +528,7 @@ var _ = Describe("CSI Raw Block Volume Performance Level", func() {
 		It("Create CSI raw block volume with no Performance Level and verify default", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-perf-iscsi-default")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com", nil, pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName, nil, pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeBlock, v1.ReadWriteOnce, v1.ClaimPending)
 			pvcJig.NewPodForCSI("default-pvc-app", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeBlock)
 
@@ -538,7 +540,7 @@ var _ = Describe("CSI Raw Block Volume Performance Level", func() {
 		It("Create CSI raw block volume with Performance Level as High", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-perf-iscsi-high")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com",
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI, csi_util.VpusPerGB: "20"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeBlock, v1.ReadWriteOnce, v1.ClaimPending)
@@ -555,7 +557,7 @@ var _ = Describe("CSI Raw Block Volume Performance Level", func() {
 		It("Create CSI raw block volume with Performance Level as Low Cost", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-perf-paravirtual-lowcost")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com",
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeParavirtualized, csi_util.VpusPerGB: "0"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeBlock, v1.ReadWriteOnce, v1.ClaimPending)
@@ -570,7 +572,7 @@ var _ = Describe("CSI Raw Block Volume Performance Level", func() {
 		It("Create CSI raw block volume with no Performance Level and verify default", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-perf-paravirtual-balanced")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com",
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeParavirtualized, csi_util.VpusPerGB: "10"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeBlock, v1.ReadWriteOnce, v1.ClaimPending)
@@ -585,7 +587,7 @@ var _ = Describe("CSI Raw Block Volume Performance Level", func() {
 		It("Create CSI raw block volume with Performance Level as High", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-perf-paravirtual-high")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com",
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeParavirtualized, csi_util.VpusPerGB: "20"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeBlock, v1.ReadWriteOnce, v1.ClaimPending)
@@ -601,7 +603,7 @@ var _ = Describe("CSI Raw Block Volume Performance Level", func() {
 		It("High Performance CSI raw block volume Static Provisioning", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-perf-static-high")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com",
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI, csi_util.VpusPerGB: "20"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 
@@ -615,7 +617,10 @@ var _ = Describe("CSI Raw Block Volume Performance Level", func() {
 			} else {
 				framework.Failf("Compartment Id undefined.")
 			}
-			pvc, volumeId := pvcJig.CreateAndAwaitStaticPVCOrFailCSI(f.BlockStorageClient, f.Namespace.Name, framework.MinVolumeBlock, csi_util.HigherPerformanceOption, scName, setupF.AdLocation, compartmentId, nil, v1.PersistentVolumeBlock, v1.ReadWriteOnce, v1.ClaimPending)
+			opts := framework.Options{
+				BlockProvisionerName: setupF.BlockProvisionerName,
+			}
+			pvc, volumeId := pvcJig.CreateAndAwaitStaticPVCOrFailCSI(f.BlockStorageClient, f.Namespace.Name, framework.MinVolumeBlock, csi_util.HigherPerformanceOption, scName, setupF.AdLocation, compartmentId, nil, v1.PersistentVolumeBlock, v1.ReadWriteOnce, v1.ClaimPending, opts)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			podName := pvcJig.NewPodForCSI("app4", f.Namespace.Name, pvc.Name, setupF.AdLabel, v1.PersistentVolumeBlock)
 
@@ -642,7 +647,7 @@ var _ = Describe("CSI Ultra High Performance Volumes", func() {
 			ctx := context.Background()
 
 			By("Running test: Create ISCSI CSI block volume with UHP Performance Level")
-			scName := f.CreateStorageClassOrFail(framework.ClassOCIUHP+"-1", "blockvolume.csi.oraclecloud.com",
+			scName := f.CreateStorageClassOrFail(framework.ClassOCIUHP+"-1", setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI, csi_util.VpusPerGB: "30"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
@@ -658,7 +663,7 @@ var _ = Describe("CSI Ultra High Performance Volumes", func() {
 			By("Completed test: Create ISCSI CSI block volume with UHP Performance Level")
 
 			By("Running test: Create Paravirtualized CSI block volume with UHP Performance Level")
-			scName = f.CreateStorageClassOrFail(framework.ClassOCIUHP+"-2", "blockvolume.csi.oraclecloud.com",
+			scName = f.CreateStorageClassOrFail(framework.ClassOCIUHP+"-2", setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeParavirtualized, csi_util.VpusPerGB: "30"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc = pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
@@ -674,7 +679,7 @@ var _ = Describe("CSI Ultra High Performance Volumes", func() {
 			By("Completed test: Create Paravirtualized CSI block volume with UHP Performance Level")
 
 			By("Running test: Create CSI block volume with UHP Performance Level and xfs file system")
-			scName = f.CreateStorageClassOrFail(framework.ClassOCIUHP+"-3", "blockvolume.csi.oraclecloud.com",
+			scName = f.CreateStorageClassOrFail(framework.ClassOCIUHP+"-3", setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeParavirtualized, csi_util.VpusPerGB: "30", framework.FstypeKey: "xfs"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc = pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
@@ -690,11 +695,14 @@ var _ = Describe("CSI Ultra High Performance Volumes", func() {
 			By("Completed test: Create CSI block volume with UHP Performance Level and xfs file system")
 
 			By("Running test: Static Provisioning CSI UHP")
-			scName = f.CreateStorageClassOrFail(framework.ClassOCIUHP+"-4", "blockvolume.csi.oraclecloud.com",
+			scName = f.CreateStorageClassOrFail(framework.ClassOCIUHP+"-4", setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeParavirtualized, csi_util.VpusPerGB: "30"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 
-			pvc, volumeId := pvcJig.CreateAndAwaitStaticPVCOrFailCSI(f.BlockStorageClient, f.Namespace.Name, framework.MinVolumeBlock, 30, scName, setupF.AdLocation, compartmentId, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
+opts := framework.Options{
+				BlockProvisionerName: setupF.BlockProvisionerName,
+			}
+			pvc, volumeId := pvcJig.CreateAndAwaitStaticPVCOrFailCSI(f.BlockStorageClient, f.Namespace.Name, framework.MinVolumeBlock, 30, scName, setupF.AdLocation, compartmentId, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending, opts)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			podName = pvcJig.NewPodForCSI("app4", f.Namespace.Name, pvc.Name, setupF.AdLabel, v1.PersistentVolumeFilesystem)
 			pvcJig.VerifyMultipathEnabled(ctx, f.ComputeClient, pvc.Name, f.Namespace.Name, compartmentId)
@@ -709,7 +717,7 @@ var _ = Describe("CSI Ultra High Performance Volumes", func() {
 			By("Completed test: Static Provisioning CSI UHP")
 
 			By("Running test: Basic Pod Delete UHP")
-			scName = f.CreateStorageClassOrFail(framework.ClassOCIUHP+"-5", "blockvolume.csi.oraclecloud.com",
+			scName = f.CreateStorageClassOrFail(framework.ClassOCIUHP+"-5", setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI, csi_util.VpusPerGB: "30"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc = pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
@@ -738,7 +746,7 @@ var _ = Describe("CSI Ultra High Performance Volumes", func() {
 				framework.AttachmentType: framework.AttachmentTypeISCSI,
 				csi_util.VpusPerGB:       "30",
 			}
-			scName = f.CreateStorageClassOrFail(framework.ClassOCIKMS+"-1", "blockvolume.csi.oraclecloud.com", scParameter, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
+			scName = f.CreateStorageClassOrFail(framework.ClassOCIKMS+"-1", setupF.BlockProvisionerName, scParameter, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			pvc = pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
 			podName = pvcJig.NewPodForCSI("app1", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeFilesystem)
 			pvcJig.VerifyMultipathEnabled(ctx, f.ComputeClient, pvc.Name, f.Namespace.Name, compartmentId)
@@ -763,7 +771,7 @@ var _ = Describe("CSI Ultra High Performance Volumes", func() {
 			By("Running test: Expand PVC VolumeSize from 50Gi to 100Gi and asserts size, file existence and file corruptions for iSCSI UHP volume")
 			pvcJig.Name = "csi-uhp-pvc-expand-to-100gi"
 			var size = "100Gi"
-			scName = f.CreateStorageClassOrFail(framework.ClassOCIUHP+"-6", "blockvolume.csi.oraclecloud.com",
+			scName = f.CreateStorageClassOrFail(framework.ClassOCIUHP+"-6", setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI, csi_util.VpusPerGB: "30"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc = pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
@@ -781,7 +789,7 @@ var _ = Describe("CSI Ultra High Performance Volumes", func() {
 			By("Completed test: Expand PVC VolumeSize from 50Gi to 100Gi and asserts size, file existence and file corruptions for iSCSI UHP volume")
 
 			By("Running test: Expand PVC VolumeSize from 50Gi to 100Gi and asserts size, file existence and file corruptions for Paravirtualized UHP volume")
-			scName = f.CreateStorageClassOrFail(framework.ClassOCIUHP+"-7", "blockvolume.csi.oraclecloud.com",
+			scName = f.CreateStorageClassOrFail(framework.ClassOCIUHP+"-7", setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeParavirtualized, csi_util.VpusPerGB: "30"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc = pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
@@ -854,7 +862,7 @@ var _ = Describe("CSI Volume Expansion Paravirtualized", func() {
 				framework.AttachmentType: framework.AttachmentTypeParavirtualized,
 			}
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name,
-				"blockvolume.csi.oraclecloud.com", scParameter, pvcJig.Labels,
+				setupF.BlockProvisionerName, scParameter, pvcJig.Labels,
 				"WaitForFirstConsumer", true, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
 			podName := pvcJig.NewPodForCSI("expanded-pvc-app", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeFilesystem)
@@ -888,7 +896,7 @@ var _ = Describe("CSI Raw Block Volume Expansion Paravirtualized", func() {
 				framework.AttachmentType: framework.AttachmentTypeParavirtualized,
 			}
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name,
-				"blockvolume.csi.oraclecloud.com", scParameter, pvcJig.Labels,
+				setupF.BlockProvisionerName, scParameter, pvcJig.Labels,
 				"WaitForFirstConsumer", true, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeBlock, v1.ReadWriteOnce, v1.ClaimPending)
 			podName := pvcJig.NewPodForCSI("expanded-pvc-app", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeBlock)
@@ -917,7 +925,7 @@ var _ = Describe("CSI Static Volume Creation", func() {
 		It("Static Provisioning CSI", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-provisioner-e2e-tests-pvc-with-static")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com",
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 
 			compartmentId := ""
@@ -930,7 +938,10 @@ var _ = Describe("CSI Static Volume Creation", func() {
 			} else {
 				framework.Failf("Compartment Id undefined.")
 			}
-			pvc, volumeId := pvcJig.CreateAndAwaitStaticPVCOrFailCSI(f.BlockStorageClient, f.Namespace.Name, framework.MinVolumeBlock, 10, scName, setupF.AdLocation, compartmentId, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
+			opts := framework.Options{
+				BlockProvisionerName: setupF.BlockProvisionerName,
+			}
+			pvc, volumeId := pvcJig.CreateAndAwaitStaticPVCOrFailCSI(f.BlockStorageClient, f.Namespace.Name, framework.MinVolumeBlock, 10, scName, setupF.AdLocation, compartmentId, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending, opts)
 			pvcJig.NewPodForCSI("app4", f.Namespace.Name, pvc.Name, setupF.AdLabel, v1.PersistentVolumeFilesystem)
 
 			time.Sleep(60 * time.Second) //waiting for pod to up and running
@@ -949,7 +960,7 @@ var _ = Describe("CSI Static Raw Block Volume Creation", func() {
 		It("Static Provisioning of a raw block CSI", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-provisioner-e2e-tests-pvc-with-static")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com",
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 
 			compartmentId := ""
@@ -962,7 +973,10 @@ var _ = Describe("CSI Static Raw Block Volume Creation", func() {
 			} else {
 				framework.Failf("Compartment Id undefined.")
 			}
-			pvc, volumeId := pvcJig.CreateAndAwaitStaticPVCOrFailCSI(f.BlockStorageClient, f.Namespace.Name, framework.MinVolumeBlock, 10, scName, setupF.AdLocation, compartmentId, nil, v1.PersistentVolumeBlock, v1.ReadWriteOnce, v1.ClaimPending)
+			opts := framework.Options{
+				BlockProvisionerName: setupF.BlockProvisionerName,
+			}
+			pvc, volumeId := pvcJig.CreateAndAwaitStaticPVCOrFailCSI(f.BlockStorageClient, f.Namespace.Name, framework.MinVolumeBlock, 10, scName, setupF.AdLocation, compartmentId, nil, v1.PersistentVolumeBlock, v1.ReadWriteOnce, v1.ClaimPending, opts)
 			pvcJig.NewPodForCSI("app4", f.Namespace.Name, pvc.Name, setupF.AdLabel, v1.PersistentVolumeBlock)
 
 			time.Sleep(60 * time.Second) //waiting for pod to up and running
@@ -1016,7 +1030,7 @@ func TestCMEKAttachmentTypeAndEncryptionType(f *framework.CloudProviderFramework
 		framework.KmsKey:         setupF.CMEKKMSKey,
 		framework.AttachmentType: expectedAttachmentType,
 	}
-	scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com", scParameter, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
+	scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName, scParameter, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 	pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, volumeMode, accessMode, v1.ClaimPending)
 
 	podName := ""
@@ -1038,7 +1052,7 @@ var _ = Describe("CSI Volume Capabilites", func() {
 		It("Create volume fails with accessMode set to ReadWriteMany", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-provisioner-e2e-tests")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com", nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName, nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteMany, v1.ClaimPending)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			pvcJig.NewPodForCSIWithoutWait("app1", f.Namespace.Name, pvc.Name, "")
@@ -1060,7 +1074,7 @@ var _ = Describe("CSI Volume Creation - Immediate Volume Binding", func() {
 		It("Create PVC without pod and wait to be bound.", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-provisioner-e2e-immediate-bind")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com", nil, pvcJig.Labels, "Immediate", true, "Delete", nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName, nil, pvcJig.Labels, "Immediate", true, "Delete", nil)
 			pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimBound)
 			err := f.DeleteStorageClass(f.Namespace.Name)
 			if err != nil {
@@ -1076,7 +1090,7 @@ var _ = Describe("CSI Raw Block Volume Creation - Immediate Volume Binding", fun
 		It("Create PVC without pod and wait to be bound.", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-provisioner-e2e-immediate-bind")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com", nil, pvcJig.Labels, "Immediate", true, "Delete", nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName, nil, pvcJig.Labels, "Immediate", true, "Delete", nil)
 			pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeBlock, v1.ReadWriteOnce, v1.ClaimBound)
 			err := f.DeleteStorageClass(f.Namespace.Name)
 			if err != nil {
@@ -1094,7 +1108,7 @@ func testTwoPVCSetup(f *framework.CloudProviderFramework, storageclass1params ma
 
 	pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-two-pvc-setup")
 
-	sc1Name := f.CreateStorageClassOrFail("storage-class-one", "blockvolume.csi.oraclecloud.com",
+	sc1Name := f.CreateStorageClassOrFail("storage-class-one", setupF.BlockProvisionerName,
 		storageclass1params,
 		pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 	pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, sc1Name, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
@@ -1110,7 +1124,7 @@ func testTwoPVCSetup(f *framework.CloudProviderFramework, storageclass1params ma
 		framework.NodeHostnameLabel: nodeHostname,
 	}
 
-	lowPerfScName := f.CreateStorageClassOrFail("storage-class-two", "blockvolume.csi.oraclecloud.com",
+	lowPerfScName := f.CreateStorageClassOrFail("storage-class-two", setupF.BlockProvisionerName,
 		storageclass2params,
 		pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 	pvcTwo := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, lowPerfScName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
