@@ -44,15 +44,27 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
+var (
+	BlockVolumeDriverName string
+	FSSDriverName         string
+)
+
+func init() {
+	BlockVolumeDriverName = getEnv("BLOCK_VOLUME_DRIVER_NAME", "blockvolume.csi.oraclecloud.com")
+	FSSDriverName = getEnv("FSS_VOLUME_DRIVER_NAME", "fss.csi.oraclecloud.com")
+}
+
+func getEnv(key, fallback string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return fallback
+}
+
 const (
-	// BlockVolumeDriverName defines the driver name to be used in Kubernetes
-	BlockVolumeDriverName = "blockvolume.csi.oraclecloud.com"
 
 	// BlockVolumeDriverVersion is the version of the CSI driver
 	BlockVolumeDriverVersion = "0.1.0"
-
-	// FSSDriverName defines the driver name to be used in Kubernetes
-	FSSDriverName = "fss.csi.oraclecloud.com"
 
 	// FSSDriverVersion is the version of the CSI driver
 	FSSDriverVersion = "0.1.0"

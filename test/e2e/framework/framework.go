@@ -55,7 +55,6 @@ const (
 	ClassOCIExt3       = "oci-ext3"
 	ClassOCIXfs        = "oci-xfs"
 	ClassFssDynamic    = "oci-file-storage-test"
-	FssProvisionerType = "fss.csi.oraclecloud.com"
 	ClassSnapshot      = "oci-snapshot-sc"
 	MinVolumeBlock     = "50Gi"
 	MaxVolumeBlock     = "100Gi"
@@ -91,6 +90,7 @@ var (
 	lustreVolumeHandle			  string // The Lustre mount volume handle
 	lustreSubnetCidr              string // The Lustre Subnet Cidr
 	staticSnapshotCompartmentOCID string // Compartment ID for cross compartment snapshot test
+	customDriverHandle		      string // Custom driver handle for custom CSI driver installation
 	runUhpE2E                     bool   // Whether to run UHP E2Es, requires Volume Management Plugin enabled on the node and 16+ cores (check blockvolumeperformance public doc for the exact requirements)
 	enableParallelRun			  bool
 	addOkeSystemTags              bool
@@ -128,6 +128,7 @@ func init() {
 	flag.StringVar(&architecture, "architecture", "", "CPU architecture to be used for testing.")
 
 	flag.StringVar(&staticSnapshotCompartmentOCID, "static-snapshot-compartment-id", "", "Compartment ID for cross compartment snapshot test")
+	flag.StringVar(&customDriverHandle, "custom-driver-handle", "", "Custom driver handle for custom CSI driver installation")
 	flag.BoolVar(&runUhpE2E, "run-uhp-e2e", false, "Run UHP E2Es as well")
 	flag.BoolVar(&enableParallelRun, "enable-parallel-run", true, "Enables parallel running of test suite")
 	flag.BoolVar(&addOkeSystemTags, "add-oke-system-tags", false, "Adds oke system tags to new and existing loadbalancers and storage resources")
@@ -173,6 +174,9 @@ type Framework struct {
 	// Compartment ID for cross compartment snapshot test
 	StaticSnapshotCompartmentOcid string
 	RunUhpE2E                     bool
+	CustomDriverHandle			  string
+	BlockProvisionerName		  string
+	FSSProvisionerName		      string
 	AddOkeSystemTags        bool
 }
 
@@ -200,6 +204,7 @@ func NewWithConfig() *Framework {
 		LustreSubnetCidr:              lustreSubnetCidr,
 		StaticSnapshotCompartmentOcid: staticSnapshotCompartmentOCID,
 		RunUhpE2E:                     runUhpE2E,
+		CustomDriverHandle: 		   customDriverHandle,
 		AddOkeSystemTags:              addOkeSystemTags,
 		ClusterType:                   clusterTypeEnum,
 	}
@@ -240,6 +245,12 @@ func (f *Framework) Initialize() {
 	Logf("Lustre Subnet CIDR is : %s", f.LustreSubnetCidr)
 	f.StaticSnapshotCompartmentOcid = staticSnapshotCompartmentOCID
 	Logf("Static Snapshot Compartment OCID: %s", f.StaticSnapshotCompartmentOcid)
+	f.CustomDriverHandle = customDriverHandle
+	Logf("Custom CSI Driver Handle: %s", f.CustomDriverHandle)
+	f.BlockProvisionerName = getBlockProvisionerName(customDriverHandle)
+	Logf("Block Provisioner name: %s", f.BlockProvisionerName)
+	f.FSSProvisionerName = getFSSProvisionerName(customDriverHandle)
+	Logf("FSS Provisioner name: %s", f.FSSProvisionerName)
 	f.RunUhpE2E = runUhpE2E
 	Logf("Run Uhp E2Es as well: %v", f.RunUhpE2E)
 	f.CMEKKMSKey = cmekKMSKey
@@ -304,4 +315,20 @@ func (f *CloudProviderFramework) GetCompartmentId(setupF Framework) string {
 		Failf("Compartment Id undefined.")
 	}
 	return compartmentId
+}
+
+func getBlockProvisionerName(handle string) string {
+	provisioner := "blockvolume.csi.oraclecloud.com"
+	if handle != "" {
+		return handle + "." + provisioner
+	}
+	return provisioner
+}
+
+func getFSSProvisionerName(handle string) string {
+	provisioner := "fss.csi.oraclecloud.com"
+	if handle != "" {
+		return handle + "." + provisioner
+	}
+	return provisioner
 }

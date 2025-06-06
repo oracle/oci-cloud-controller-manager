@@ -41,12 +41,15 @@ var _ = Describe("Lustre Static", func() {
 
 			//BV
 			bvPVCJig := framework.NewPVCTestJig(f.ClientSet, "csi-bv-e2e-test")
-			scName := f.CreateStorageClassOrFail(framework.ClassOCICSI, "blockvolume.csi.oraclecloud.com", nil, bvPVCJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
+			scName := f.CreateStorageClassOrFail(framework.ClassOCICSI, setupF.BlockProvisionerName, nil, bvPVCJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			bvPVC := bvPVCJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
 
 			//FSS
 			fssPVCJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-e2e-test")
-			fssPV := fssPVCJig.CreatePVorFailFSS(f.Namespace.Name, setupF.VolumeHandle, "false", "ReadWriteMany", "", []string{})
+			opts := framework.Options{
+				FSSProvisionerName: setupF.FSSProvisionerName,
+			}
+			fssPV := fssPVCJig.CreatePVorFailFSS(f.Namespace.Name, setupF.VolumeHandle, "false", "ReadWriteMany", "", []string{}, opts)
 			fssPVC := fssPVCJig.CreateAndAwaitPVCOrFailStaticFSS(f.Namespace.Name, fssPV.Name, "50Gi", nil)
 			f.VolumeIds = append(f.VolumeIds, fssPVC.Spec.VolumeName)
 

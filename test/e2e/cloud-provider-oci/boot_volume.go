@@ -40,10 +40,13 @@ var _ = Describe("Boot volume tests", func() {
 				framework.Failf("Compartment Id undefined.")
 			}
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com",
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI},
 				pvcJig.Labels, "WaitForFirstConsumer", false, "Retain", nil)
-			pvc, bootvolumeId := pvcJig.CreateAndAwaitStaticBootVolumePVCOrFailCSI(f.ComputeClient, f.Namespace.Name, compartmentId, setupF.AdLocation, setupF.MntTargetSubnetOcid, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeBlock, v1.ReadWriteOnce, v1.ClaimPending)
+			opts := framework.Options{
+				BlockProvisionerName: setupF.BlockProvisionerName,
+			}
+			pvc, bootvolumeId := pvcJig.CreateAndAwaitStaticBootVolumePVCOrFailCSI(f.ComputeClient, f.Namespace.Name, compartmentId, setupF.AdLocation, setupF.MntTargetSubnetOcid, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeBlock, v1.ReadWriteOnce, v1.ClaimPending, opts)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 
 			podName := pvcJig.NewPodForCSI("app1", f.Namespace.Name, pvc.Name, setupF.AdLabel, v1.PersistentVolumeBlock)

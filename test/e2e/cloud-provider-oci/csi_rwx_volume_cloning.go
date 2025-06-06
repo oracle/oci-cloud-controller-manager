@@ -19,7 +19,7 @@ var _ = Describe("CSI RWX Block Volume Creation with PVC datasource", func() {
 				Skip(fmt.Sprintf("at least 2 schedulable nodes in a AD is required to test MULTI_NODE %s", f.Namespace.Name))
 			}
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com", nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName, nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			srcPvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeBlock, v1.ReadWriteMany, v1.ClaimPending)
 			srcPod := pvcJig.NewPodForCSI("app1", f.Namespace.Name, srcPvc.Name, setupF.AdLabel, v1.PersistentVolumeBlock)
 
@@ -55,7 +55,7 @@ var _ = Describe("CSI RWX Block Volume Creation with PVC datasource", func() {
 				Skip(fmt.Sprintf("at least 2 schedulable nodes in a AD is required to test MULTI_NODE %s", f.Namespace.Name))
 			}
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com", nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName, nil, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			srcPvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeBlock, v1.ReadWriteMany, v1.ClaimPending)
 			srcPod := pvcJig.NewPodForCSI("app1", f.Namespace.Name, srcPvc.Name, setupF.AdLabel, v1.PersistentVolumeBlock)
 

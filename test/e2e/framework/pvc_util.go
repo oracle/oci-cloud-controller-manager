@@ -70,6 +70,11 @@ type PVCTestJig struct {
 	SnapClient         snapclientset.Interface
 }
 
+type Options struct {
+	BlockProvisionerName  string
+	FSSProvisionerName	  string
+}
+
 // NewPVCTestJig allocates and inits a new PVCTestJig.
 func NewPVCTestJig(kubeClient clientset.Interface, name string) *PVCTestJig {
 	id := string(uuid.NewUUID())
@@ -467,15 +472,15 @@ func (j *PVCTestJig) UpdateAndAwaitPVCOrFailCSI(pvc *v1.PersistentVolumeClaim, n
 // jig's defaults, waits for it to become ready, and then sanity checks it and
 // its dependant resources. Callers can provide a function to tweak the
 // PVC object before it is created.
-func (j *PVCTestJig) CreateAndAwaitStaticPVCOrFailCSI(bs ocicore.BlockstorageClient, namespace string, volumeSize string, vpusPerGB int64, scName string, adLabel string, compartmentId string, tweak func(pvc *v1.PersistentVolumeClaim), volumeMode v1.PersistentVolumeMode, accessMode v1.PersistentVolumeAccessMode, expectedPVCPhase v1.PersistentVolumeClaimPhase) (*v1.PersistentVolumeClaim, string) {
+func (j *PVCTestJig) CreateAndAwaitStaticPVCOrFailCSI(bs ocicore.BlockstorageClient, namespace string, volumeSize string, vpusPerGB int64, scName string, adLabel string, compartmentId string, tweak func(pvc *v1.PersistentVolumeClaim), volumeMode v1.PersistentVolumeMode, accessMode v1.PersistentVolumeAccessMode, expectedPVCPhase v1.PersistentVolumeClaimPhase, opts Options) (*v1.PersistentVolumeClaim, string) {
 
 	volumeOcid := j.CreateVolume(bs, adLabel, compartmentId, "test-volume", vpusPerGB)
 
 	var pv *v1.PersistentVolume
 	if vpusPerGB == 20 {
-		pv = j.CreatePVorFailCSIHighPerf(namespace, scName, *volumeOcid)
+		pv = j.CreatePVorFailCSIHighPerf(namespace, scName, *volumeOcid, opts)
 	} else {
-		pv = j.CreatePVorFailCSI(namespace, scName, *volumeOcid, volumeMode)
+		pv = j.CreatePVorFailCSI(namespace, scName, *volumeOcid, volumeMode, opts)
 	}
 	pv = j.waitForConditionOrFailForPV(pv.Name, DefaultTimeout, "to be dynamically provisioned", func(pvc *v1.PersistentVolume) bool {
 		err := j.WaitForPVPhase(v1.VolumeAvailable, pv.Name)
@@ -489,11 +494,11 @@ func (j *PVCTestJig) CreateAndAwaitStaticPVCOrFailCSI(bs ocicore.BlockstorageCli
 	return j.CreateAndAwaitPVCOrFailCSI(namespace, volumeSize, scName, tweak, volumeMode, accessMode, expectedPVCPhase), *volumeOcid
 }
 
-func (j *PVCTestJig) CreateAndAwaitStaticBootVolumePVCOrFailCSI(c ocicore.ComputeClient, namespace string, compartment string, adLocation string, subnetId string, volumeSize string, scName string, tweak func(pvc *v1.PersistentVolumeClaim), volumeMode v1.PersistentVolumeMode, accessMode v1.PersistentVolumeAccessMode, expectedPVCPhase v1.PersistentVolumeClaimPhase) (*v1.PersistentVolumeClaim, string) {
+func (j *PVCTestJig) CreateAndAwaitStaticBootVolumePVCOrFailCSI(c ocicore.ComputeClient, namespace string, compartment string, adLocation string, subnetId string, volumeSize string, scName string, tweak func(pvc *v1.PersistentVolumeClaim), volumeMode v1.PersistentVolumeMode, accessMode v1.PersistentVolumeAccessMode, expectedPVCPhase v1.PersistentVolumeClaimPhase, opts Options) (*v1.PersistentVolumeClaim, string) {
 
 	bootVolumeId := j.CreateBootVolume(c, adLocation, compartment, subnetId)
 
-	pv := j.CreatePVorFailCSI(namespace, scName, bootVolumeId, volumeMode)
+	pv := j.CreatePVorFailCSI(namespace, scName, bootVolumeId, volumeMode, opts)
 
 	pv = j.waitForConditionOrFailForPV(pv.Name, DefaultTimeout, "to be dynamically provisioned", func(pvc *v1.PersistentVolume) bool {
 		err := j.WaitForPVPhase(v1.VolumeAvailable, pv.Name)
@@ -563,14 +568,14 @@ func (j *PVCTestJig) pvAddMountOptions(pv *v1.PersistentVolume,
 // newPVTemplateFSS returns the default template for this jig, but
 // does not actually create the PV.  The default PV has the same name
 // as the jig
-func (j *PVCTestJig) newPVTemplateFSS(namespace, volumeHandle, enableIntransitEncrypt, accessMode, fsType string, mountOptions []string) *v1.PersistentVolume {
-	pv := j.CreatePVTemplate(namespace, "fss.csi.oraclecloud.com", "", "Retain")
+func (j *PVCTestJig) newPVTemplateFSS(namespace, volumeHandle, enableIntransitEncrypt, accessMode, fsType string, mountOptions []string, opts Options) *v1.PersistentVolume {
+	pv := j.CreatePVTemplate(namespace, opts.FSSProvisionerName, "", "Retain")
 	pv = j.pvAddVolumeMode(pv, v1.PersistentVolumeFilesystem)
 	pv = j.pvAddAccessMode(pv, v1.PersistentVolumeAccessMode(accessMode))
 	pv = j.pvAddMountOptions(pv, mountOptions)
 	pv = j.pvAddPersistentVolumeSource(pv, v1.PersistentVolumeSource{
 		CSI: &v1.CSIPersistentVolumeSource{
-			Driver:       driver.FSSDriverName,
+			Driver:       opts.FSSProvisionerName,
 			VolumeHandle: volumeHandle,
 			FSType:       fsType,
 			VolumeAttributes: map[string]string{
@@ -606,12 +611,12 @@ func (j *PVCTestJig) newPVTemplateLustre(namespace, volumeHandle string, mountOp
 // newPVTemplateCSI returns the default template for this jig, but
 // does not actually create the PV.  The default PV has the same name
 // as the jig
-func (j *PVCTestJig) newPVTemplateCSI(namespace string, scName string, ocid string) *v1.PersistentVolume {
-	pv := j.CreatePVTemplate(namespace, "blockvolume.csi.oraclecloud.com", scName, "Delete")
+func (j *PVCTestJig) newPVTemplateCSI(namespace string, scName string, ocid string, opts Options) *v1.PersistentVolume {
+	pv := j.CreatePVTemplate(namespace, opts.BlockProvisionerName, scName, "Delete")
 	pv = j.pvAddAccessMode(pv, "ReadWriteOnce")
 	pv = j.pvAddPersistentVolumeSource(pv, v1.PersistentVolumeSource{
 		CSI: &v1.CSIPersistentVolumeSource{
-			Driver:       "blockvolume.csi.oraclecloud.com",
+			Driver:       opts.BlockProvisionerName,
 			FSType:       "ext4",
 			VolumeHandle: ocid,
 		},
@@ -622,12 +627,12 @@ func (j *PVCTestJig) newPVTemplateCSI(namespace string, scName string, ocid stri
 // newPVTemplateCSI returns the default template for this jig, but
 // does not actually create the PV.  The default PV has the same name
 // as the jig
-func (j *PVCTestJig) newPVTemplateCSIHighPerf(namespace string, scName string, ocid string) *v1.PersistentVolume {
-	pv := j.CreatePVTemplate(namespace, "blockvolume.csi.oraclecloud.com", scName, "Delete")
+func (j *PVCTestJig) newPVTemplateCSIHighPerf(namespace string, scName string, ocid string, opts Options) *v1.PersistentVolume {
+	pv := j.CreatePVTemplate(namespace, opts.BlockProvisionerName, scName, "Delete")
 	pv = j.pvAddAccessMode(pv, "ReadWriteOnce")
 	pv = j.pvAddPersistentVolumeSource(pv, v1.PersistentVolumeSource{
 		CSI: &v1.CSIPersistentVolumeSource{
-			Driver:       "blockvolume.csi.oraclecloud.com",
+			Driver:       opts.BlockProvisionerName,
 			FSType:       "ext4",
 			VolumeHandle: ocid,
 			VolumeAttributes: map[string]string{
@@ -641,8 +646,8 @@ func (j *PVCTestJig) newPVTemplateCSIHighPerf(namespace string, scName string, o
 // CreatePVForFSSorFail creates a new claim based on the jig's
 // defaults. Callers can provide a function to tweak the claim object
 // before it is created.
-func (j *PVCTestJig) CreatePVorFailFSS(namespace, volumeHandle, encryptInTransit, accessMode, fsType string, mountOptions []string) *v1.PersistentVolume {
-	pv := j.newPVTemplateFSS(namespace, volumeHandle, encryptInTransit, accessMode, fsType, mountOptions)
+func (j *PVCTestJig) CreatePVorFailFSS(namespace, volumeHandle, encryptInTransit, accessMode, fsType string, mountOptions []string, opts Options) *v1.PersistentVolume {
+	pv := j.newPVTemplateFSS(namespace, volumeHandle, encryptInTransit, accessMode, fsType, mountOptions, opts)
 
 	result, err := j.KubeClient.CoreV1().PersistentVolumes().Create(context.Background(), pv, metav1.CreateOptions{})
 	if err != nil {
@@ -667,8 +672,8 @@ func (j *PVCTestJig) CreatePVorFailLustre(namespace, volumeHandle string, mountO
 // CreatePVorFail creates a new claim based on the jig's
 // defaults. Callers can provide a function to tweak the claim object
 // before it is created.
-func (j *PVCTestJig) CreatePVorFailCSI(namespace string, scName string, ocid string, volumeMode v1.PersistentVolumeMode) *v1.PersistentVolume {
-	pv := j.newPVTemplateCSI(namespace, scName, ocid)
+func (j *PVCTestJig) CreatePVorFailCSI(namespace string, scName string, ocid string, volumeMode v1.PersistentVolumeMode, opts Options) *v1.PersistentVolume {
+	pv := j.newPVTemplateCSI(namespace, scName, ocid, opts)
 	pv = j.pvAddVolumeMode(pv, volumeMode)
 
 	result, err := j.KubeClient.CoreV1().PersistentVolumes().Create(context.Background(), pv, metav1.CreateOptions{})
@@ -681,8 +686,8 @@ func (j *PVCTestJig) CreatePVorFailCSI(namespace string, scName string, ocid str
 // CreatePVorFail creates a new claim based on the jig's
 // defaults. Callers can provide a function to tweak the claim object
 // before it is created.
-func (j *PVCTestJig) CreatePVorFailCSIHighPerf(namespace string, scName string, ocid string) *v1.PersistentVolume {
-	pv := j.newPVTemplateCSIHighPerf(namespace, scName, ocid)
+func (j *PVCTestJig) CreatePVorFailCSIHighPerf(namespace string, scName string, ocid string, opts Options) *v1.PersistentVolume {
+	pv := j.newPVTemplateCSIHighPerf(namespace, scName, ocid, opts)
 
 	result, err := j.KubeClient.CoreV1().PersistentVolumes().Create(context.Background(), pv, metav1.CreateOptions{})
 	if err != nil {

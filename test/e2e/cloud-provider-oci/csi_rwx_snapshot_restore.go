@@ -43,11 +43,11 @@ var _ = Describe("RWX Raw Block Volume Snapshot Creation and Restore", func() {
 
 			backupOCID := pvcJig.CreateVolumeBackup(f.BlockStorageClient, setupF.StaticSnapshotCompartmentOcid, *volId, "test-backup")
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, BVDriverName, scParams, pvcJig.Labels, BindingModeWaitForFirstConsumer, true, ReclaimPolicyDelete, nil)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName, scParams, pvcJig.Labels, BindingModeWaitForFirstConsumer, true, ReclaimPolicyDelete, nil)
 
 			//creating a snapshot statically using the backup provisioned dynamically
 			restoreVsName := "e2e-restore-vs"
-			vscontentName := pvcJig.CreateVolumeSnapshotContentOrFail(f.Namespace.Name+"-e2e-snapshot-vsc", BVDriverName, *backupOCID, ReclaimPolicyDelete, restoreVsName, f.Namespace.Name, v1.PersistentVolumeBlock)
+			vscontentName := pvcJig.CreateVolumeSnapshotContentOrFail(f.Namespace.Name+"-e2e-snapshot-vsc", setupF.BlockProvisionerName, *backupOCID, ReclaimPolicyDelete, restoreVsName, f.Namespace.Name, v1.PersistentVolumeBlock)
 
 			pvcJig.CreateAndAwaitVolumeSnapshotStaticOrFail(restoreVsName, f.Namespace.Name, vscontentName)
 
