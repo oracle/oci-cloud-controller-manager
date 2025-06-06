@@ -59,7 +59,7 @@ type MockBlockStorageClient struct {
 }
 
 // AwaitVolumeCloneAvailableOrTimeout implements client.BlockStorageInterface.
-func (c *MockBlockStorageClient) AwaitVolumeCloneAvailableOrTimeout(ctx context.Context, id string) (*core.Volume, error) {
+func (c *MockBlockStorageClient) AwaitVolumeHydratedOrTimeout(ctx context.Context, id string) (*core.Volume, error) {
 	return &core.Volume{}, nil
 }
 

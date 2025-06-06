@@ -54,7 +54,7 @@ const (
 // by the volume provisioner.
 type BlockStorageInterface interface {
 	AwaitVolumeAvailableORTimeout(ctx context.Context, id string) (*core.Volume, error)
-	AwaitVolumeCloneAvailableOrTimeout(ctx context.Context, id string) (*core.Volume, error)
+	AwaitVolumeHydratedOrTimeout(ctx context.Context, id string) (*core.Volume, error)
 	CreateVolume(ctx context.Context, details core.CreateVolumeDetails) (*core.Volume, error)
 	DeleteVolume(ctx context.Context, id string) error
 	GetVolume(ctx context.Context, id string) (*core.Volume, error)
@@ -173,11 +173,11 @@ func (c *client) AwaitVolumeBackupAvailableOrTimeout(ctx context.Context, id str
 	return volBackup, nil
 }
 
-func (c *client) AwaitVolumeCloneAvailableOrTimeout(ctx context.Context, id string) (*core.Volume, error) {
-	var volClone *core.Volume
+func (c *client) AwaitVolumeHydratedOrTimeout(ctx context.Context, id string) (*core.Volume, error) {
+	var volume *core.Volume
 	if err := wait.PollImmediateUntil(volumeClonePollInterval, func() (bool, error) {
 		var err error
-		volClone, err = c.GetVolume(ctx, id)
+		volume, err = c.GetVolume(ctx, id)
 		if err != nil {
 			if !IsRetryable(err) {
 				return false, err
@@ -185,23 +185,23 @@ func (c *client) AwaitVolumeCloneAvailableOrTimeout(ctx context.Context, id stri
 			return false, nil
 		}
 
-		switch state := volClone.LifecycleState; state {
+		switch state := volume.LifecycleState; state {
 		case core.VolumeLifecycleStateAvailable:
-			if *volClone.IsHydrated == true {
+			if *volume.IsHydrated == true {
 				return true, nil
 			}
 			return false, nil
 		case core.VolumeLifecycleStateFaulty,
 			core.VolumeLifecycleStateTerminated,
 			core.VolumeLifecycleStateTerminating:
-			return false, errors.Errorf("Clone volume did not become available and hydrated (lifecycleState=%q) (hydrationStatus=%v)", state, *volClone.IsHydrated)
+			return false, errors.Errorf("Volume did not become available and hydrated (lifecycleState=%q) (hydrationStatus=%v)", state, *volume.IsHydrated)
 		}
 		return false, nil
 	}, ctx.Done()); err != nil {
 		return nil, err
 	}
 
-	return volClone, nil
+	return volume, nil
 }
 
 func (c *client) CreateVolume(ctx context.Context, details core.CreateVolumeDetails) (*core.Volume, error) {
