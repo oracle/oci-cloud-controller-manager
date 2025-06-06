@@ -126,6 +126,12 @@ They can be passed directly to the make target as well:
 make run-ccm-e2e-tests-local FOCUS="load_*" FILES="true"
 ```
 
+### Running tests on a new OKE cluster using open source image using pipelines
+
+1. Change image in oci-csi-controller-driver yaml (found in manifests/container-storage-interface/csi/templates/) for the controller-driver image using the image generated as part of open source build
+2. Set CUSTOM_DRIVER_HANDLE parameter in e2e job to "custom" (Only works with create cluster workflow)
+3. Trigger tests
+
 ---
 
 [1]: https://github.com/kubernetes/kubernetes/blob/0cb15453dae92d8be66cf42e6c1b04e21a2d0fb6/test/e2e/network/service.go

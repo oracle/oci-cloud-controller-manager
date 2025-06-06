@@ -1,0 +1,15 @@
+apiVersion: v2
+name: oci-oke-csi-driver
+description: A Helm chart for OKE CSI driver
+version: 1.0.0
+appVersion: "1.0.0"
+home: https://github.com/oracle/oci-cloud-controller-manager
+sources:
+  - https://github.com/oracle/oci-cloud-controller-manager
+keywords:
+  - oci
+  - oke
+  - csi
+maintainers:
+  - name: OKE Storage Plugins Team
+    url: https://github.com/oracle/oci-cloud-controller-manager
