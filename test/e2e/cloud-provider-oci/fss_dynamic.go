@@ -35,7 +35,7 @@ var _ = Describe("Dynamic FSS test in cluster compartment", func() {
 
 	Context("[cloudprovider][storage][csi][fss][mtexist]", func() {
 		It("Basic Create PVC and POD for CSI-FSS", func() {
-			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetOcid": setupF.MntTargetOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetOcid": setupF.MntTargetOcid, "exportOptions": defaultExportOptionsJsonString}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			f.StorageClasses = append(f.StorageClasses, scName)
@@ -43,7 +43,7 @@ var _ = Describe("Dynamic FSS test in cluster compartment", func() {
 			pvcJig.CheckSinglePodReadWrite(f.Namespace.Name, pvc.Name, false, []string{})
 		})
 		It("Create PVC and POD for CSI-FSS with exportPath", func() {
-			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetOcid": setupF.MntTargetOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetOcid": setupF.MntTargetOcid, "exportOptions": defaultExportOptionsJsonString}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
 			scParameters["exportPath"] = "/csi-fss-e2e-export-path-mt-exist-in-compartment"
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
@@ -52,7 +52,7 @@ var _ = Describe("Dynamic FSS test in cluster compartment", func() {
 			pvcJig.CheckSinglePodReadWrite(f.Namespace.Name, pvc.Name, false, []string{})
 		})
 		It("Create PVC and POD for CSI-FSS with exportPath and exportOptions", func() {
-			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetOcid": setupF.MntTargetOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetOcid": setupF.MntTargetOcid, "exportOptions": defaultExportOptionsJsonString}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
 			scParameters["exportPath"] = "/csi-fss-e2e-export-path-export-options-mt-exist-in-compartment"
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
@@ -61,7 +61,7 @@ var _ = Describe("Dynamic FSS test in cluster compartment", func() {
 			pvcJig.CheckSinglePodReadWrite(f.Namespace.Name, pvc.Name, false, []string{})
 		})
 		It("Create PVC and POD for CSI-FSS with kmsKey", func() {
-			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetOcid": setupF.MntTargetOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetOcid": setupF.MntTargetOcid, "exportOptions": defaultExportOptionsJsonString}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
 			scParameters["kmsKey"] = setupF.CMEKKMSKey
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
@@ -71,7 +71,7 @@ var _ = Describe("Dynamic FSS test in cluster compartment", func() {
 		})
 		It("Create PVC and POD for CSI-FSS with in-transit encryption", func() {
 			checkNodeAvailability(f)
-			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetOcid": setupF.MntTargetOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetOcid": setupF.MntTargetOcid, "exportOptions": defaultExportOptionsJsonString}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
 			scParameters["encryptInTransit"] = "true"
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
@@ -89,7 +89,7 @@ var _ = Describe("Dynamic FSS test in cluster compartment", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
 			saName := pvcJig.CreateServiceAccountOrFail(f.Namespace.Name, "sa")
 			pvcJig.CreateSecret("fss-secret", saName.Name, f.Namespace.Name)
-			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetOcid": setupF.MntTargetOcid, "csi.storage.k8s.io/provisioner-secret-name": "fss-secret", "csi.storage.k8s.io/provisioner-secret-namespace": f.Namespace.Name}
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetOcid": setupF.MntTargetOcid, "csi.storage.k8s.io/provisioner-secret-name": "fss-secret", "csi.storage.k8s.io/provisioner-secret-namespace": f.Namespace.Name, "exportOptions": defaultExportOptionsJsonString}
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			f.StorageClasses = append(f.StorageClasses, scName)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailDynamicFSS(f.Namespace.Name, "50Gi", scName, v1.ClaimPending, nil)
@@ -114,7 +114,7 @@ var _ = Describe("Dynamic FSS test in cluster compartment", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
 
 			By("Running test: Basic Create PVC and POD for CSI-FSS with new mount-target creation")
-			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "exportOptions": defaultExportOptionsJsonString}
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			f.StorageClasses = append(f.StorageClasses, scName)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailDynamicFSS(f.Namespace.Name, "50Gi", scName, v1.ClaimPending, nil)
@@ -134,7 +134,7 @@ var _ = Describe("Dynamic FSS test in cluster compartment", func() {
 			By("Completed test: Basic Create PVC and POD for CSI-FSS with new mount-target creation")
 
 			By("Running test: Create PVC and POD for CSI-FSS with exportPath and with new mount-target creation")
-			scParameters2 := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters2 := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "exportOptions": defaultExportOptionsJsonString}
 			scParameters2["exportPath"] = "/csi-fss-e2e-export-path-mt-create-in-compartment"
 			scName2 := f.CreateStorageClassOrFail(f.Namespace.Name+"-2", setupF.FSSProvisionerName, scParameters2, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			f.StorageClasses = append(f.StorageClasses, scName2)
@@ -155,7 +155,7 @@ var _ = Describe("Dynamic FSS test in cluster compartment", func() {
 			By("Completed test: Create PVC and POD for CSI-FSS with exportPath and with new mount-target creation")
 
 			By("Running test: Create PVC and POD for CSI-FSS with exportPath and exportOptions and with new mount-target creation")
-			scParameters3 := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters3 := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "exportOptions": defaultExportOptionsJsonString}
 			scParameters3["exportPath"] = "/csi-fss-e2e-export-path-export-options-mt-create-in-compartment"
 			scParameters3["exportOptions"] = defaultExportOptionsJsonString
 			scName3 := f.CreateStorageClassOrFail(f.Namespace.Name+"-3", setupF.FSSProvisionerName, scParameters3, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
@@ -177,7 +177,7 @@ var _ = Describe("Dynamic FSS test in cluster compartment", func() {
 			By("Completed test: Create PVC and POD for CSI-FSS with exportPath and exportOptions and with new mount-target creation")
 
 			By("Running test: Create PVC and POD for CSI-FSS with kmsKey and with new mount-target creation")
-			scParameters4 := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters4 := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "exportOptions": defaultExportOptionsJsonString}
 			scParameters4["kmsKey"] = setupF.CMEKKMSKey
 			scName4 := f.CreateStorageClassOrFail(f.Namespace.Name+"-4", setupF.FSSProvisionerName, scParameters4, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			f.StorageClasses = append(f.StorageClasses, scName4)
@@ -202,7 +202,7 @@ var _ = Describe("Dynamic FSS test in cluster compartment", func() {
 				saName5 := pvcJig.CreateServiceAccountOrFail(f.Namespace.Name, "sa")
 				pvcJig.CreateSecret("fss-secret", saName5.Name, f.Namespace.Name)
 
-				scParameters5 := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "csi.storage.k8s.io/provisioner-secret-name": "fss-secret", "csi.storage.k8s.io/provisioner-secret-namespace": f.Namespace.Name}
+				scParameters5 := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "csi.storage.k8s.io/provisioner-secret-name": "fss-secret", "csi.storage.k8s.io/provisioner-secret-namespace": f.Namespace.Name, "exportOptions": defaultExportOptionsJsonString}
 				scName5 := f.CreateStorageClassOrFail(f.Namespace.Name+"-5", setupF.FSSProvisionerName, scParameters5, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 				f.StorageClasses = append(f.StorageClasses, scName5)
 				pvc5 := pvcJig.CreateAndAwaitPVCOrFailDynamicFSS(f.Namespace.Name, "50Gi", scName5, v1.ClaimPending, nil)
@@ -225,7 +225,7 @@ var _ = Describe("Dynamic FSS test in cluster compartment", func() {
 		// TODO: Think of parallelising this test when there is a way to label the nodes as part of the test suite to run this test
 		It("Create PVC and POD for CSI-FSS with in-transit encryption and with new mount-target creation", func() {
 			checkNodeAvailability(f)
-			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "exportOptions": defaultExportOptionsJsonString}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
 			scParameters["encryptInTransit"] = "true"
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
@@ -242,7 +242,7 @@ var _ = Describe("Dynamic FSS test in different compartment", func() {
 
 	Context("[cloudprovider][storage][csi][fss][mtexist]", func() {
 		It("Basic Create PVC and POD for CSI-FSS with file-system compartment set", func() {
-			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetOcid": setupF.MntTargetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetOcid": setupF.MntTargetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "exportOptions": defaultExportOptionsJsonString}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			f.StorageClasses = append(f.StorageClasses, scName)
@@ -250,7 +250,7 @@ var _ = Describe("Dynamic FSS test in different compartment", func() {
 			pvcJig.CheckSinglePodReadWrite(f.Namespace.Name, pvc.Name, false, []string{})
 		})
 		It("Create PVC and POD for CSI-FSS with exportPath with file-system compartment set", func() {
-			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetOcid": setupF.MntTargetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetOcid": setupF.MntTargetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "exportOptions": defaultExportOptionsJsonString}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
 			scParameters["exportPath"] = "/csi-fss-e2e-export-path-mt-exist-diff-compartment"
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
@@ -259,7 +259,7 @@ var _ = Describe("Dynamic FSS test in different compartment", func() {
 			pvcJig.CheckSinglePodReadWrite(f.Namespace.Name, pvc.Name, false, []string{})
 		})
 		It("Create PVC and POD for CSI-FSS with exportPath and exportOptions with file-system compartment set", func() {
-			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetOcid": setupF.MntTargetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetOcid": setupF.MntTargetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "exportOptions": defaultExportOptionsJsonString}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
 			scParameters["exportPath"] = "/csi-fss-e2e-export-path-export-options-mt-exist-diff-compartment"
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
@@ -268,7 +268,7 @@ var _ = Describe("Dynamic FSS test in different compartment", func() {
 			pvcJig.CheckSinglePodReadWrite(f.Namespace.Name, pvc.Name, false, []string{})
 		})
 		It("Create PVC and POD for CSI-FSS with kmsKey and with file-system compartment set", func() {
-			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetOcid": setupF.MntTargetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetOcid": setupF.MntTargetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "exportOptions": defaultExportOptionsJsonString}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
 			scParameters["kmsKey"] = setupF.CMEKKMSKey
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
@@ -278,7 +278,7 @@ var _ = Describe("Dynamic FSS test in different compartment", func() {
 		})
 		It("Create PVC and POD for CSI-FSS with in-transit encryption and with file-system compartment set", func() {
 			checkNodeAvailability(f)
-			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetOcid": setupF.MntTargetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetOcid": setupF.MntTargetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "exportOptions": defaultExportOptionsJsonString}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
 			scParameters["encryptInTransit"] = "true"
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
@@ -296,7 +296,7 @@ var _ = Describe("Dynamic FSS test in different compartment", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
 			saName := pvcJig.CreateServiceAccountOrFail(f.Namespace.Name, "sa")
 			pvcJig.CreateSecret("fss-secret", saName.Name, f.Namespace.Name)
-			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetOcid": setupF.MntTargetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "csi.storage.k8s.io/provisioner-secret-name": "fss-secret", "csi.storage.k8s.io/provisioner-secret-namespace": f.Namespace.Name}
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetOcid": setupF.MntTargetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "csi.storage.k8s.io/provisioner-secret-name": "fss-secret", "csi.storage.k8s.io/provisioner-secret-namespace": f.Namespace.Name, "exportOptions": defaultExportOptionsJsonString}
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			f.StorageClasses = append(f.StorageClasses, scName)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailDynamicFSS(f.Namespace.Name, "50Gi", scName, v1.ClaimPending, nil)
@@ -321,7 +321,7 @@ var _ = Describe("Dynamic FSS test in different compartment", func() {
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
 
 			By("Running test: Basic Create PVC and POD for CSI-FSS with file-system compartment set and with new mount-target creation")
-			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "exportOptions": defaultExportOptionsJsonString}
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			f.StorageClasses = append(f.StorageClasses, scName)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailDynamicFSS(f.Namespace.Name, "50Gi", scName, v1.ClaimPending, nil)
@@ -341,7 +341,7 @@ var _ = Describe("Dynamic FSS test in different compartment", func() {
 			By("Completed test: Basic Create PVC and POD for CSI-FSS with file-system compartment set and with new mount-target creation")
 
 			By("Running test: Create PVC and POD for CSI-FSS with exportPath and with file-system compartment set and with new mount-target creation")
-			scParameters2 := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters2 := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "exportOptions": defaultExportOptionsJsonString}
 			scParameters2["exportPath"] = "/csi-fss-e2e-export-path-mt-create-diff-compartment"
 			scName2 := f.CreateStorageClassOrFail(f.Namespace.Name+"-2", setupF.FSSProvisionerName, scParameters2, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			f.StorageClasses = append(f.StorageClasses, scName2)
@@ -362,7 +362,7 @@ var _ = Describe("Dynamic FSS test in different compartment", func() {
 			By("Completed test: Create PVC and POD for CSI-FSS with exportPath and with file-system compartment set and with new mount-target creation")
 
 			By("Running test: Create PVC and POD for CSI-FSS with exportPath and exportOptions and with file-system compartment set and with new mount-target creation")
-			scParameters3 := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters3 := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "exportOptions": defaultExportOptionsJsonString}
 			scParameters3["exportPath"] = "/csi-fss-e2e-export-path-export-options-mt-create-diff-compartment"
 			scName3 := f.CreateStorageClassOrFail(f.Namespace.Name+"-3", setupF.FSSProvisionerName, scParameters3, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			f.StorageClasses = append(f.StorageClasses, scName3)
@@ -383,7 +383,7 @@ var _ = Describe("Dynamic FSS test in different compartment", func() {
 			By("Completed test: Create PVC and POD for CSI-FSS with exportPath and exportOptions and with file-system compartment set and with new mount-target creation")
 
 			By("Running test: Create PVC and POD for CSI-FSS with kmsKey and with file-system compartment set and with new mount-target creation")
-			scParameters4 := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters4 := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "exportOptions": defaultExportOptionsJsonString}
 			scParameters4["kmsKey"] = setupF.CMEKKMSKey
 			scName4 := f.CreateStorageClassOrFail(f.Namespace.Name+"-4", setupF.FSSProvisionerName, scParameters4, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			f.StorageClasses = append(f.StorageClasses, scName4)
@@ -408,7 +408,7 @@ var _ = Describe("Dynamic FSS test in different compartment", func() {
 				saName5 := pvcJig.CreateServiceAccountOrFail(f.Namespace.Name, "sa")
 				pvcJig.CreateSecret("fss-secret", saName5.Name, f.Namespace.Name)
 
-				scParameters5 := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "csi.storage.k8s.io/provisioner-secret-name": "fss-secret", "csi.storage.k8s.io/provisioner-secret-namespace": f.Namespace.Name}
+				scParameters5 := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "csi.storage.k8s.io/provisioner-secret-name": "fss-secret", "csi.storage.k8s.io/provisioner-secret-namespace": f.Namespace.Name, "exportOptions": defaultExportOptionsJsonString}
 				scName5 := f.CreateStorageClassOrFail(f.Namespace.Name+"-5", setupF.FSSProvisionerName, scParameters5, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 				f.StorageClasses = append(f.StorageClasses, scName5)
 				pvc5 := pvcJig.CreateAndAwaitPVCOrFailDynamicFSS(f.Namespace.Name, "50Gi", scName5, v1.ClaimPending, nil)
@@ -431,7 +431,7 @@ var _ = Describe("Dynamic FSS test in different compartment", func() {
 		// TODO: Think of parallelising this test when there is a way to label the nodes as part of the test suite to run this test
 		It("Create PVC and POD for CSI-FSS with in-transit encryption", func() {
 			checkNodeAvailability(f)
-			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "exportOptions": defaultExportOptionsJsonString}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
 			scParameters["encryptInTransit"] = "true"
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
@@ -447,7 +447,7 @@ var _ = Describe("Dynamic FSS deletion test", func() {
 
 	Context("[cloudprovider][storage][csi][fss][mtexist]", func() {
 		It("Basic Delete POD and PVC for CSI-FSS", func() {
-			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetOcid": setupF.MntTargetOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetOcid": setupF.MntTargetOcid, "exportOptions": defaultExportOptionsJsonString}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			f.StorageClasses = append(f.StorageClasses, scName)
@@ -472,7 +472,7 @@ var _ = Describe("Dynamic FSS deletion test", func() {
 			}
 		})
 		It("Test PV not deleted when reclaim policy is Retain", func() {
-			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetOcid": setupF.MntTargetOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetOcid": setupF.MntTargetOcid, "exportOptions": defaultExportOptionsJsonString}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Retain", nil)
 			f.StorageClasses = append(f.StorageClasses, scName)
@@ -503,7 +503,7 @@ var _ = Describe("Dynamic FSS deletion test", func() {
 			f.VolumeIds = append(f.VolumeIds, volumeName)
 		})
 		It("Test export is deleted in cluster compartment when export path is not set", func() {
-			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetOcid": setupF.MntTargetOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetOcid": setupF.MntTargetOcid, "exportOptions": defaultExportOptionsJsonString}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			f.StorageClasses = append(f.StorageClasses, scName)
@@ -543,7 +543,7 @@ var _ = Describe("Dynamic FSS deletion test", func() {
 			}
 		})
 		It("Test export is deleted in cluster compartment when export path is set", func() {
-			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetOcid": setupF.MntTargetOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetOcid": setupF.MntTargetOcid, "exportOptions": defaultExportOptionsJsonString}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
 			scParameters["exportPath"] = "/csi-fss-e2e-delete-export-mt-exist-in-compartment"
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
@@ -584,7 +584,7 @@ var _ = Describe("Dynamic FSS deletion test", func() {
 			}
 		})
 		It("Test export is deleted in different compartment when export path is not set", func() {
-			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetOcid": setupF.MntTargetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetOcid": setupF.MntTargetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "exportOptions": defaultExportOptionsJsonString}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
 			f.StorageClasses = append(f.StorageClasses, scName)
@@ -624,7 +624,7 @@ var _ = Describe("Dynamic FSS deletion test", func() {
 			}
 		})
 		It("Test export is deleted in different compartment when export path is set", func() {
-			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetOcid": setupF.MntTargetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetOcid": setupF.MntTargetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "exportOptions": defaultExportOptionsJsonString}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
 			scParameters["exportPath"] = "/csi-fss-e2e-delete-export-mt-exist-diff-compartment"
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
@@ -672,7 +672,7 @@ var _ = Describe("Dynamic FSS test with mount options", func() {
 
 	Context("[cloudprovider][storage][csi][fss][mtexist]", func() {
 		It("Basic Dynamic FSS test with mount options", func() {
-			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetOcid": setupF.MntTargetOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetOcid": setupF.MntTargetOcid, "exportOptions": defaultExportOptionsJsonString}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
 			mountOptions := []string{"hard"}
 			scName := f.CreateStorageClassOrFail(framework.ClassFssDynamic, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", mountOptions)
@@ -688,7 +688,7 @@ var _ = Describe("Dynamic FSS test with immediate binding mode", func() {
 
 	Context("[cloudprovider][storage][csi][fss][mtexist]", func() {
 		It("Basic Dynamic FSS test with immediate binding mode", func() {
-			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetOcid": setupF.MntTargetOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetOcid": setupF.MntTargetOcid, "exportOptions": defaultExportOptionsJsonString}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "Immediate", false, "Delete", nil)
 			f.StorageClasses = append(f.StorageClasses, scName)
@@ -703,7 +703,7 @@ var _ = Describe("Dynamic FSS test with ReadWriteOnce access mode", func() {
 
 	Context("[cloudprovider][storage][csi][fss][mtexist][rwo]", func() {
 		It("Create PVC and POD for CSI-FSS with RWO AccessMode ", func() {
-			scParameters := map[string]string{"availabilityDomain": setupF.AdLabel, "mountTargetOcid": setupF.MntTargetOcid, "exportOptions": defaultExportOptionsJsonString}
+			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetOcid": setupF.MntTargetOcid, "exportOptions": defaultExportOptionsJsonString}
 			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-rwo-fss-dyn-e2e-test")
 			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "Immediate", false, "Delete", nil)
 			f.StorageClasses = append(f.StorageClasses, scName)
