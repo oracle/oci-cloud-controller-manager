@@ -42,6 +42,15 @@ func (d LustreNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStag
 		return nil, status.Error(codes.InvalidArgument, "Invalid Volume Handle provided.")
 	}
 
+
+	d.loadCSIConfig()
+
+	if lustrePostMountParameters, exists := req.GetVolumeContext()["lustrePostMountParameters"]; exists && !isSkipLustreParams(d.csiConfig) {
+		if err := csi_util.ValidateLustreParameters(d.logger, lustrePostMountParameters); err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "Invalid lustre parameters provided : %v", err.Error())
+		}
+	}
+
 	logger := d.logger.With("volumeID", req.VolumeId)
 
 	logger.Debugf("volume context: %v", req.VolumeContext)
