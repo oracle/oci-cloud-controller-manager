@@ -364,3 +364,48 @@ func (ls *LnetService) ApplyLustreParameters(logger *zap.SugaredLogger, lustrePa
 	logger.Infof("Successfully applied lustre parameters.")
 	return nil
 }
+
+func isValidLustreParam(param string) bool {
+	// Check for no spaces
+	if strings.Contains(param, " ") {
+		return false
+	}
+	// List of forbidden characters
+	forbiddenChars := []string{";", "&", "|", "<", ">", "(", ")", "`", "'", "\""}
+	for _, char := range forbiddenChars {
+		if strings.Contains(param, char) {
+			return false
+		}
+	}
+	return true
+}
+func  ValidateLustreParameters(logger *zap.SugaredLogger, lustreParamsJson string) error {
+	if lustreParamsJson == "" {
+		logger.Debug("No lustre parameters specified.")
+		return nil
+	}
+	var lustreParams []Parameter
+
+	err := json.Unmarshal([]byte(lustreParamsJson), &lustreParams)
+
+	if err != nil {
+		return err
+	}
+
+	var invalidParams []string
+
+	for _, param := range lustreParams {
+		for key, value := range param {
+			logger.Infof("Validating lustre param %s=%s", key, fmt.Sprintf("%v", value))
+			if !isValidLustreParam(key) || !isValidLustreParam(fmt.Sprintf("%v", value)) {
+				invalidParams = append(invalidParams, fmt.Sprintf("%v=%v",key, value))
+			}
+		}
+	}
+	if len(invalidParams) > 0 {
+		return fmt.Errorf("%v", strings.Join(invalidParams, ","))
+	}
+	logger.Infof("Successfully validated lustre parameters.")
+	return nil
+}
+

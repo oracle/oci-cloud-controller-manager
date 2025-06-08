@@ -1,6 +1,7 @@
 package csi_util
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -412,6 +413,52 @@ func TestLnetService_ApplyLustreParameters(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 			}
+		})
+	}
+}
+
+
+func TestLnetService_ValidateLustreParameters(t *testing.T) {
+	logger := zap.NewExample().Sugar()
+	tests := []struct {
+		name              string
+		lustreParamsJSON  string
+		expectedErr       error
+	}{
+		{
+			name:             "Valid Lustre Parameters Json Provided",
+			lustreParamsJSON: `[{"failover.recovery_mode":"quorum","lnet.debug":"0x200"}]`,
+			expectedErr: nil,
+		},
+		{
+			name:             "No Lustre Parameters Provided",
+			lustreParamsJSON: "",
+			expectedErr: nil,
+		},
+		{
+			name:             "Invalid Lustre Parameters Json Provided",
+			lustreParamsJSON: `invalid-json`,
+			expectedErr: fmt.Errorf("%s","invalid character 'i' looking for beginning of value"),
+		},
+		{
+			name:             "Valid and Invalid Lustre Parameters Provided",
+			lustreParamsJSON: `[{"failover.recovery_mode":"quorum","lnet.debug":"0x200","lnet.debug && ls -l | wc -l":"0x200 I am Invalid"}]`,
+			expectedErr: fmt.Errorf("%v","lnet.debug && ls -l | wc -l=0x200 I am Invalid"),
+		},
+		{
+			name:             "Invalid Lustre Parameters Provided",
+			lustreParamsJSON: `[{"failover.recovery_mode;cat /var/log/cloud-init.log":"quorum; echo Hello"}]`,
+			expectedErr: fmt.Errorf("%v","failover.recovery_mode;cat /var/log/cloud-init.log=quorum; echo Hello"),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ValidateLustreParameters(logger, tc.lustreParamsJSON)
+			if err != nil && !strings.EqualFold(tc.expectedErr.Error(), err.Error()) {
+				t.Errorf("ValidateLustreParameters() got = %v, want %v", err, tc.expectedErr)
+			}
+
 		})
 	}
 }
