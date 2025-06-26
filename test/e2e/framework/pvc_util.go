@@ -43,7 +43,6 @@ import (
 	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/csi/driver"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
 )
 
 const (
@@ -1037,13 +1036,7 @@ func (j *PVCTestJig) NewPodForCSI(name string, namespace string, claimName strin
 			GenerateName: j.Name,
 			Namespace:    namespace,
 		},
-		Spec: v1.PodSpec{
-			Containers: containers,
-			Volumes:    volumes,
-			NodeSelector: map[string]string{
-				plugin.LabelZoneFailureDomain: adLabel,
-			},
-		},
+		Spec: podSpec,
 	}, metav1.CreateOptions{})
 	if err != nil {
 		Failf("Pod %q Create API error: %v", pod.Name, err)

@@ -792,9 +792,9 @@ func (d BlockVolumeNodeDriver) NodeGetInfo(ctx context.Context, req *csi.NodeGet
 			return nil, status.Error(codes.Internal, "Failed to get availability domain of node from kube api server.")
 		}
 	}
-	segments := map[string]string {
-		kubeAPI.LabelZoneFailureDomain:   d.nodeMetadata.AvailabilityDomain,
-		kubeAPI.LabelTopologyZone:        d.nodeMetadata.AvailabilityDomain,
+	segments := map[string]string{
+		kubeAPI.LabelZoneFailureDomain: d.nodeMetadata.AvailabilityDomain,
+		kubeAPI.LabelTopologyZone:      d.nodeMetadata.AvailabilityDomain,
 	}
 
 	//set full ad name in segments only for IPv6 single stack
@@ -815,10 +815,7 @@ func (d BlockVolumeNodeDriver) NodeGetInfo(ctx context.Context, req *csi.NodeGet
 
 		// make sure that the driver works on this particular AD only
 		AccessibleTopology: &csi.Topology{
-			Segments: map[string]string{
-				kubeAPI.LabelZoneFailureDomain: ad,
-				kubeAPI.LabelTopologyZone:      ad,
-			},
+			Segments: segments,
 		},
 	}, nil
 }

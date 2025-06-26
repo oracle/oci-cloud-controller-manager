@@ -82,6 +82,7 @@ func (m MockKubeClient) CoordinationV1alpha1() v1alpha14.CoordinationV1alpha1Int
 type MockKubeClientWithFailingRestClient struct {
 	CoreClient *MockCoreClientWithFailingRestClient
 }
+
 func (m MockKubeClient) StoragemigrationV1alpha1() alpha1.StoragemigrationV1alpha1Interface {
 	return nil
 }
@@ -89,6 +90,15 @@ func (m MockKubeClient) StoragemigrationV1alpha1() alpha1.StoragemigrationV1alph
 type MockCoreClient v12.CoreV1Client
 type MockCoreClientWithFailingRestClient v12.CoreV1Client
 
+func (m MockKubeClientWithFailingRestClient) CoordinationV1alpha1() v1alpha14.CoordinationV1alpha1Interface {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MockKubeClientWithFailingRestClient) ResourceV1alpha3() v1alpha3.ResourceV1alpha3Interface {
+	//TODO implement me
+	panic("implement me")
+}
 func (m MockKubeClientWithFailingRestClient) Discovery() discovery.DiscoveryInterface {
 	//TODO implement me
 	panic("implement me")
@@ -346,7 +356,6 @@ func (m MockKubeClientWithFailingRestClient) StoragemigrationV1alpha1() alpha1.S
 	//TODO implement me
 	panic("implement me")
 }
-
 
 func (m MockCoreClientWithFailingRestClient) ComponentStatuses() v12.ComponentStatusInterface {
 	//TODO implement me
@@ -833,29 +842,28 @@ func (m MockCoreClientWithFailingRestClient) Nodes() v12.NodeInterface {
 	}
 }
 
-
 var (
-	LabelIpFamilyPreferred = "oci.oraclecloud.com/ip-family-preferred"
-	LabelIpFamilyIpv4      = "oci.oraclecloud.com/ip-family-ipv4"
-	LabelIpFamilyIpv6      = "oci.oraclecloud.com/ip-family-ipv6"
-	LabelTopologyZone   = "topology.kubernetes.io/zone"
-	LabelFailureDomainBetaZone   = "failure-domain.beta.kubernetes.io/zone"
+	LabelIpFamilyPreferred     = "oci.oraclecloud.com/ip-family-preferred"
+	LabelIpFamilyIpv4          = "oci.oraclecloud.com/ip-family-ipv4"
+	LabelIpFamilyIpv6          = "oci.oraclecloud.com/ip-family-ipv6"
+	LabelTopologyZone          = "topology.kubernetes.io/zone"
+	LabelFailureDomainBetaZone = "failure-domain.beta.kubernetes.io/zone"
 
 	LabelCSIIPv6FullAdName = "csi-ipv6-full-ad-name"
 
-	nodes                  = map[string]*api.Node{
+	nodes = map[string]*api.Node{
 		"ipv6Preferred": {
 			Spec: api.NodeSpec{
 				ProviderID: "sample-provider-id",
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
-					LabelTopologyZone : "PHX-AD-3",
-					LabelFailureDomainBetaZone : "PHX-AD-3",
-					LabelCSIIPv6FullAdName : "xyz:PHX-AD-3",
-					LabelIpFamilyPreferred: "IPv6",
-					LabelIpFamilyIpv4:      "true",
-					LabelIpFamilyIpv6:      "true",
+					LabelTopologyZone:          "PHX-AD-3",
+					LabelFailureDomainBetaZone: "PHX-AD-3",
+					LabelCSIIPv6FullAdName:     "xyz:PHX-AD-3",
+					LabelIpFamilyPreferred:     "IPv6",
+					LabelIpFamilyIpv4:          "true",
+					LabelIpFamilyIpv6:          "true",
 				},
 			},
 		},
@@ -865,11 +873,11 @@ var (
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
-					LabelTopologyZone : "PHX-AD-3",
-					LabelFailureDomainBetaZone : "PHX-AD-3",
-					LabelIpFamilyPreferred: "IPv4",
-					LabelIpFamilyIpv4:      "true",
-					LabelIpFamilyIpv6:      "true",
+					LabelTopologyZone:          "PHX-AD-3",
+					LabelFailureDomainBetaZone: "PHX-AD-3",
+					LabelIpFamilyPreferred:     "IPv4",
+					LabelIpFamilyIpv4:          "true",
+					LabelIpFamilyIpv6:          "true",
 				},
 			},
 		},
@@ -879,8 +887,8 @@ var (
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
-					LabelTopologyZone : "PHX-AD-3",
-					LabelFailureDomainBetaZone : "PHX-AD-3",
+					LabelTopologyZone:          "PHX-AD-3",
+					LabelFailureDomainBetaZone: "PHX-AD-3",
 				},
 			},
 		},
@@ -889,8 +897,7 @@ var (
 				ProviderID: "sample-provider-id",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Labels: map[string]string{
-				},
+				Labels: map[string]string{},
 			},
 		},
 		"sample-provider-id": {

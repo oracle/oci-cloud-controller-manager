@@ -35,8 +35,8 @@ const (
 	rateLimitBucketDefault = 5
 )
 
-// MapProviderIDToResourceID parses the provider id and returns the instance ocid.
-func MapProviderIDToResourceID(providerID string) string {
+// MapProviderIDToInstanceID parses the provider id and returns the instance ocid.
+func MapProviderIDToInstanceID(providerID string) string {
 	if strings.HasPrefix(providerID, providerPrefix) {
 		return strings.TrimPrefix(providerID, providerPrefix)
 	}
