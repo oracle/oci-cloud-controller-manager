@@ -1122,7 +1122,7 @@ var _ = Describe("Rule Set tests Loadbalancer", func() {
 			sharedfw.Logf("TCP load balancer: %s", tcpIngressIP)
 
 			By("validate Rule Sets are created")
-			loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), "lb", "",  nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
+			loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), "lb", "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
 			sharedfw.ExpectNoError(err)
 
 			err = f.WaitForLoadBalancerRuleSetsConfigurationChange(loadBalancer, "header_size", 1)
@@ -1153,7 +1153,7 @@ var _ = Describe("Rule Set tests Loadbalancer", func() {
 			Expect(len(loadBalancer.RuleSets["remove_header"].Items)).To(Equal(1))
 			requestHeaderRule, ok := loadBalancer.RuleSets["remove_header"].Items[0].(sdklb.RemoveHttpRequestHeaderRule)
 			Expect(ok).To(BeTrue())
-			Expect(requestHeaderRule).To(BeEquivalentTo(sdklb.RemoveHttpRequestHeaderRule{Header: common.String("Cache-Control"), Conditions: []sdklb.RuleCondition{}}))
+			Expect(requestHeaderRule).To(BeEquivalentTo(sdklb.RemoveHttpRequestHeaderRule{Header: common.String("Cache-Control")}))
 
 			By("validate Rule Sets are deleted")
 			tcpService = jig.UpdateServiceOrFail(ns, tcpService.Name, func(s *v1.Service) {

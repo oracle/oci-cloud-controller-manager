@@ -264,14 +264,6 @@ func (c *MockComputeClient) AttachVnic(ctx context.Context, instanceID, subnetID
 	return core.VnicAttachment{}, nil
 }
 
-func (c *MockComputeClient) GetVnicAttachment(ctx context.Context, vnicAttachmentId *string) (response *core.VnicAttachment, err error) {
-	return nil, nil
-}
-
-func (c *MockComputeClient) AttachVnic(ctx context.Context, instanceID, subnetID *string, nsgIds []*string, skipSourceDestCheck *bool) (response core.VnicAttachment, err error) {
-	return core.VnicAttachment{}, nil
-}
-
 func (c *MockComputeClient) FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string, instanceID *string) (core.VolumeAttachment, error) {
 	return nil, nil
 }

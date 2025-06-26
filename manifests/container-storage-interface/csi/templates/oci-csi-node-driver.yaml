@@ -121,7 +121,7 @@ spec:
               value: "{{ if .Values.customHandle }}{{ .Values.customHandle }}.{{ end }}blockvolume.csi.oraclecloud.com"
             - name: FSS_VOLUME_DRIVER_NAME
               value: "{{ if .Values.customHandle }}{{ .Values.customHandle }}.{{ end }}fss.csi.oraclecloud.com"
-          image: ghcr.io/yashasg98/cloud-provider-oci:vcustomize.driver.name2
+          image: ghcr.io/oracle/cloud-provider-oci:v1.32.0
           securityContext:
             privileged: true
           volumeMounts:
