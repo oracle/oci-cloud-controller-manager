@@ -76,7 +76,7 @@ spec:
             type: DirectoryOrCreate
       containers:
         - name: oci-flexvolume-driver
-          image: ghcr.io/oracle/cloud-provider-oci:v1.30.1
+          image: ghcr.io/oracle/cloud-provider-oci:v1.30.2
           command: ["/usr/local/bin/install.py"]
           securityContext:
             privileged: true

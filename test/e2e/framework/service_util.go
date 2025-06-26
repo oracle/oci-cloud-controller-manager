@@ -973,7 +973,7 @@ func (f *CloudProviderFramework) WaitForLoadBalancerSSLConfigurationChange(lb *c
 // WaitForLoadBalancerRuleSetsConfigurationChange polls for Rule Sets configuration of a load balancer comparing it to the spec
 func (f *CloudProviderFramework) WaitForLoadBalancerRuleSetsConfigurationChange(lb *client.GenericLoadBalancer, ruleSetName string, numberRules int) error {
 	condition := func() (bool, error) {
-		updatedLB, err := f.Client.LoadBalancer(zap.L().Sugar(), "lb", nil).GetLoadBalancer(context.TODO(), *lb.Id)
+		updatedLB, err := f.Client.LoadBalancer(zap.L().Sugar(), "lb", "", nil).GetLoadBalancer(context.TODO(), *lb.Id)
 		if err != nil {
 			return false, err
 		}

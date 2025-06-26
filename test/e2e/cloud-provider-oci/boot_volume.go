@@ -52,7 +52,7 @@ var _ = Describe("Boot volume tests", func() {
 			podName := pvcJig.NewPodForCSI("app1", f.Namespace.Name, pvc.Name, setupF.AdLabel, v1.PersistentVolumeBlock)
 
 			pvcJig.DeletePod(f.Namespace.Name, podName, 7*time.Minute)
-			pvcJig.DeleteBootVolume(f.BlockStorageClient, bootvolumeId, 5 * time.Minute)
+			pvcJig.DeleteBootVolume(f.BlockStorageClient, bootvolumeId, 5*time.Minute)
 			_ = f.DeleteStorageClass(f.Namespace.Name)
 		})
 	})
@@ -74,10 +74,13 @@ var _ = Describe("Boot volume gating test", func() {
 				framework.Failf("Compartment Id undefined.")
 			}
 
-			scName := f.CreateStorageClassOrFail(f.Namespace.Name, "blockvolume.csi.oraclecloud.com",
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI},
 				pvcJig.Labels, "WaitForFirstConsumer", false, "Retain", nil)
-			pvc, bootvolumeId := pvcJig.CreateAndAwaitStaticBootVolumePVCOrFailCSI(f.ComputeClient, f.Namespace.Name, compartmentId, setupF.AdLocation, setupF.MntTargetSubnetOcid, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
+			opts := framework.Options{
+				BlockProvisionerName: setupF.BlockProvisionerName,
+			}
+			pvc, bootvolumeId := pvcJig.CreateAndAwaitStaticBootVolumePVCOrFailCSI(f.ComputeClient, f.Namespace.Name, compartmentId, setupF.AdLocation, setupF.MntTargetSubnetOcid, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending, opts)
 			pvcJig.NewPodForCSIWithoutWait("app1", f.Namespace.Name, pvc.Name, setupF.AdLabel)
 			err := pvcJig.WaitTimeoutForPodRunningInNamespace("app1", f.Namespace.Name, 7*time.Minute)
 			if err == nil {
@@ -85,7 +88,7 @@ var _ = Describe("Boot volume gating test", func() {
 			}
 
 			pvcJig.DeletePod(f.Namespace.Name, "app1", 7*time.Minute)
-			pvcJig.DeleteBootVolume(f.BlockStorageClient, bootvolumeId, 5 * time.Minute)
+			pvcJig.DeleteBootVolume(f.BlockStorageClient, bootvolumeId, 5*time.Minute)
 			_ = f.DeleteStorageClass(f.Namespace.Name)
 		})
 	})

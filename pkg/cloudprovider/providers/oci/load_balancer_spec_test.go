@@ -10662,7 +10662,6 @@ func Test_getNetworkLoadbalancerSubnets(t *testing.T) {
 	}
 
 	for name, tc := range testCases {
-		logger := zap.L()
 		t.Run(name, func(t *testing.T) {
 			cp.config = &providercfg.Config{
 				LoadBalancer: &providercfg.LoadBalancerConfig{
@@ -10670,7 +10669,7 @@ func Test_getNetworkLoadbalancerSubnets(t *testing.T) {
 					Subnet2: tc.defaultSubnetTwo,
 				},
 			}
-			subnets, err := cp.getNetworkLoadbalancerSubnets(context.Background(), logger.Sugar(), tc.service)
+			subnets, err := cp.getNetworkLoadbalancerSubnets(tc.service)
 			if !reflect.DeepEqual(subnets, tc.subnets) {
 				t.Errorf("Expected \n%+v\nbut got\n%+v", tc.subnets, subnets)
 			}
