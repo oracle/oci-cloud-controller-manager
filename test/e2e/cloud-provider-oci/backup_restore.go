@@ -31,7 +31,7 @@ var _ = Describe("Backup/Restore", func() {
 			scName := f.CreateStorageClassOrFail(framework.ClassOCI, core.ProvisionerNameDefault, nil, pvcJig.Labels, "", false, "Delete", nil)
 
 			By("Provisioning volume to backup")
-			pvc := pvcJig.CreateAndAwaitPVCOrFail(f.Namespace.Name, framework.MinVolumeBlock, scName, setupF.AdLabel, nil)
+			pvc := pvcJig.CreateAndAwaitPVCOrFail(f.Namespace.Name, framework.MinVolumeBlock, scName, "", nil)
 			backupID, err := pvcJig.CreateBackupVolume(f.BlockStorageClient, pvc)
 			if err != nil {
 				framework.Failf("Failed to created backup for pvc %q: %v", pvc.Name, err)
@@ -43,7 +43,7 @@ var _ = Describe("Backup/Restore", func() {
 			pvcJig.DeletePersistentVolumeClaim(pvc.Name, f.Namespace.Name)
 
 			By("Restoring the backup")
-			pvcRestored := pvcJig.CreateAndAwaitPVCOrFail(f.Namespace.Name, framework.MinVolumeBlock, scName, setupF.AdLabel, func(pvcRestore *v1.PersistentVolumeClaim) {
+			pvcRestored := pvcJig.CreateAndAwaitPVCOrFail(f.Namespace.Name, framework.MinVolumeBlock, scName, "", func(pvcRestore *v1.PersistentVolumeClaim) {
 				pvcRestore.Name = pvc.Name + "-restored"
 				pvcRestore.ObjectMeta.Annotations = map[string]string{
 					block.OCIVolumeBackupID: backupID,

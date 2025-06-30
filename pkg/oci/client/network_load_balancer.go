@@ -18,6 +18,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/oracle/oci-go-sdk/v65/loadbalancer"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/util/wait"
 
@@ -78,16 +79,24 @@ func (c *networkLoadbalancer) GetLoadBalancerByName(ctx context.Context, compart
 
 	if ocid, ok := c.nameToOcid.Load(name); ok {
 		var err error
+		var lb *GenericLoadBalancer
+
 		ocidStr, ok := ocid.(string)
 		if ok {
-			lb, err := c.GetLoadBalancer(ctx, ocidStr)
-			if err == nil && *lb.DisplayName == name {
-				return lb, err
+			lb, err = c.GetLoadBalancer(ctx, ocidStr)
+			if err == nil && lb.DisplayName != nil && lb.CompartmentId != nil {
+				if *lb.DisplayName == name && *lb.CompartmentId == compartmentID {
+					return lb, err
+				}
+				logger.Info("NLB name to OCID cache stale record. Actual display name: %s, compartment %s", *lb.DisplayName, *lb.CompartmentId)
+			} else {
+				logger.Info("NLB name to OCID cache failed to get LB or the response contained unexpected nil value")
 			}
 		}
 
-		if !ok || IsNotFound(err) { // Only remove the cached value on 404, not on a 5XX
+		if IsNotFound(err) { // Only remove the cached value on 404, not on a 5XX
 			c.nameToOcid.Delete(name)
+			logger.Info("LB name to OCID cache deleted record")
 		}
 	} else {
 		logger.Info("NLB name to OCID cache miss")
@@ -140,6 +149,8 @@ func (c *networkLoadbalancer) CreateLoadBalancer(ctx context.Context, details *G
 		BackendSets:                 c.genericBackendSetDetailsToBackendSets(details.BackendSets),
 		FreeformTags:                details.FreeformTags,
 		DefinedTags:                 details.DefinedTags,
+		AssignedPrivateIpv4:         details.AssignedPrivateIpv4,
+		AssignedIpv6:                details.AssignedIpv6,
 	}
 
 	if details.IpVersion != nil {
@@ -411,7 +422,7 @@ func (c *networkLoadbalancer) AwaitWorkRequest(ctx context.Context, id string) (
 	contextWithTimeout, cancel := context.WithTimeout(ctx, defaultSynchronousAPIPollContextTimeout)
 	defer cancel()
 	logger := zap.L().Sugar()
-	logger = logger.With("opc-workrequest-id", id,
+	logger = logger.With("workRequestID", id,
 		"loadBalancerType", "nlb",
 	)
 	err := wait.PollUntil(workRequestPollInterval, func() (done bool, err error) {
@@ -455,6 +466,18 @@ func (c *networkLoadbalancer) DeleteListener(ctx context.Context, lbID, name str
 	}
 
 	return *resp.OpcWorkRequestId, nil
+}
+
+func (c *networkLoadbalancer) CreateRuleSet(ctx context.Context, lbID string, name string, details *loadbalancer.RuleSetDetails) (string, error) {
+	return "", nil
+}
+
+func (c *networkLoadbalancer) UpdateRuleSet(ctx context.Context, lbID string, name string, details *loadbalancer.RuleSetDetails) (string, error) {
+	return "", nil
+}
+
+func (c *networkLoadbalancer) DeleteRuleSet(ctx context.Context, lbID string, name string) (string, error) {
+	return "", nil
 }
 
 func (c *networkLoadbalancer) UpdateLoadBalancerShape(context.Context, string, *GenericUpdateLoadBalancerShapeDetails) (string, error) {

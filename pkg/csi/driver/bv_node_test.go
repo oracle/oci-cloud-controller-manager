@@ -15,6 +15,7 @@
 package driver
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -77,6 +78,36 @@ func Test_getDevicePathAndAttachmentType(t *testing.T) {
 			}
 			if got1 != tt.diskByPath {
 				t.Errorf("getDevicePathAndAttachmentType() got1 = %v, want diskByPath %v", got1, tt.diskByPath)
+			}
+		})
+	}
+}
+
+func Test_alreadyDeletedPathCheck(t *testing.T) {
+	type args struct {
+		err error
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			"Error contains 'does not exist'",
+			args{err: fmt.Errorf("path /some/path does not exist")},
+			true,
+		},
+		{
+			"Nil error",
+			args{err: nil},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := alreadyDeletedPathCheck(tt.args.err)
+			if got != tt.want {
+				t.Errorf("alreadyDeletedPathCheck() = %v, want %v", got, tt.want)
 			}
 		})
 	}

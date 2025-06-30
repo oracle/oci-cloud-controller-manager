@@ -25,6 +25,9 @@ import (
 	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util/disk"
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
@@ -32,10 +35,6 @@ import (
 	kubeAPI "k8s.io/api/core/v1"
 	"k8s.io/kubernetes/pkg/volume"
 	"k8s.io/kubernetes/pkg/volume/util/hostutil"
-
-	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/util/disk"
 )
 
 const (
@@ -116,7 +115,7 @@ func (d BlockVolumeNodeDriver) NodeStageVolume(ctx context.Context, req *csi.Nod
 				return nil, status.Error(codes.InvalidArgument, "PublishContext is invalid.")
 			}
 
-			if strings.EqualFold(d.nodeIpFamily.PreferredNodeIpFamily, csi_util.Ipv6Stack) {
+			if strings.EqualFold(d.nodeMetadata.PreferredNodeIpFamily, csi_util.Ipv6Stack) {
 				scsiInfo.IscsiIp, err = csi_util.ConvertIscsiIpFromIpv4ToIpv6(scsiInfo.IscsiIp)
 				if err != nil {
 					logger.With(zap.Error(err)).Error("Failed get ipv6 address for Iscsi Target.")
@@ -664,6 +663,10 @@ func (d BlockVolumeNodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi
 	isRawBlockVolume, rbvCheckErr := hostUtil.PathIsDevice(req.TargetPath)
 
 	if rbvCheckErr != nil {
+		if alreadyDeletedPathCheck(rbvCheckErr) {
+			logger.With(zap.Error(rbvCheckErr)).With("mountPath", req.TargetPath).Warn("mount point not found, marking unpublish success")
+			return &csi.NodeUnpublishVolumeResponse{}, nil
+		}
 		logger.With(zap.Error(rbvCheckErr)).Error("failed to check if it is a device file")
 		return nil, status.Errorf(codes.Internal, rbvCheckErr.Error())
 	}
@@ -751,6 +754,13 @@ func getDevicePathAndAttachmentType(path []string) (string, string, error) {
 	return "", "", errors.New("unable to determine the attachment type")
 }
 
+func alreadyDeletedPathCheck(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "does not exist")
+}
+
 // NodeGetCapabilities returns the supported capabilities of the node server
 func (d BlockVolumeNodeDriver) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
 	var nscaps []*csi.NodeServiceCapability
@@ -774,29 +784,30 @@ func (d BlockVolumeNodeDriver) NodeGetCapabilities(ctx context.Context, req *csi
 // NodeGetInfo returns the supported capabilities of the node server.
 // The result of this function will be used by the CO in ControllerPublishVolume.
 func (d BlockVolumeNodeDriver) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
-	ad, fullAvailabilityDomainName, err := d.util.LookupNodeAvailableDomain(d.KubeClient, d.nodeID)
 
-	if err != nil {
-		d.logger.With(zap.Error(err)).With("nodeId", d.nodeID, "availabilityDomain", ad).Error("Failed to get availability domain of node from kube api server.")
-		return nil, status.Error(codes.Internal, "Failed to get availability domain of node from kube api server.")
+	if !d.nodeMetadata.IsNodeMetadataLoaded {
+		err := d.util.LoadNodeMetadataFromApiServer(ctx, d.KubeClient, d.nodeID, d.nodeMetadata)
+		if err != nil || d.nodeMetadata.AvailabilityDomain == "" {
+			d.logger.With(zap.Error(err)).With("nodeId", d.nodeID).Error("Failed to get availability domain of node from kube api server.")
+			return nil, status.Error(codes.Internal, "Failed to get availability domain of node from kube api server.")
+		}
 	}
-
-	segments := map[string]string {
-		kubeAPI.LabelZoneFailureDomain:   ad,
-		kubeAPI.LabelTopologyZone:        ad,
+	segments := map[string]string{
+		kubeAPI.LabelZoneFailureDomain: d.nodeMetadata.AvailabilityDomain,
+		kubeAPI.LabelTopologyZone:      d.nodeMetadata.AvailabilityDomain,
 	}
 
 	//set full ad name in segments only for IPv6 single stack
-	if csi_util.IsIpv6SingleStackNode(d.nodeIpFamily) {
-		if fullAvailabilityDomainName == "" {
-			d.logger.With(zap.Error(err)).With("nodeId", d.nodeID, "fullAvailabilityDomainName", fullAvailabilityDomainName).Error("Failed to get full availability domain name of IPv6 single stack node from node labels.")
+	if csi_util.IsIpv6SingleStackNode(d.nodeMetadata) {
+		if d.nodeMetadata.FullAvailabilityDomain == "" {
+			d.logger.With("nodeId", d.nodeID).Error("Failed to get full availability domain name of IPv6 single stack node from node labels.")
 			return nil, status.Error(codes.Internal, "Failed to get full availability domain name of IPv6 single stack node from node labels.")
 		}
-		
-		segments[csi_util.AvailabilityDomainLabel] = fullAvailabilityDomainName
+
+		segments[csi_util.AvailabilityDomainLabel] = d.nodeMetadata.FullAvailabilityDomain
 	}
 
-	d.logger.With("nodeId", d.nodeID, "availabilityDomain", ad).Info("Availability domain of node identified.")
+	d.logger.With("nodeId", d.nodeID, "availabilityDomain", d.nodeMetadata.AvailabilityDomain).Info("Availability domain of node identified.")
 
 	return &csi.NodeGetInfoResponse{
 		NodeId:            d.nodeID,

@@ -116,6 +116,9 @@ type loadBalancerClient interface {
 	CreateListener(ctx context.Context, request loadbalancer.CreateListenerRequest) (response loadbalancer.CreateListenerResponse, err error)
 	UpdateListener(ctx context.Context, request loadbalancer.UpdateListenerRequest) (response loadbalancer.UpdateListenerResponse, err error)
 	DeleteListener(ctx context.Context, request loadbalancer.DeleteListenerRequest) (response loadbalancer.DeleteListenerResponse, err error)
+	CreateRuleSet(ctx context.Context, request loadbalancer.CreateRuleSetRequest) (response loadbalancer.CreateRuleSetResponse, err error)
+	UpdateRuleSet(ctx context.Context, request loadbalancer.UpdateRuleSetRequest) (response loadbalancer.UpdateRuleSetResponse, err error)
+	DeleteRuleSet(ctx context.Context, request loadbalancer.DeleteRuleSetRequest) (response loadbalancer.DeleteRuleSetResponse, err error)
 	UpdateLoadBalancerShape(ctx context.Context, request loadbalancer.UpdateLoadBalancerShapeRequest) (response loadbalancer.UpdateLoadBalancerShapeResponse, err error)
 	UpdateNetworkSecurityGroups(ctx context.Context, request loadbalancer.UpdateNetworkSecurityGroupsRequest) (response loadbalancer.UpdateNetworkSecurityGroupsResponse, err error)
 	UpdateLoadBalancer(ctx context.Context, request loadbalancer.UpdateLoadBalancerRequest) (response loadbalancer.UpdateLoadBalancerResponse, err error)
@@ -161,6 +164,7 @@ type blockstorageClient interface {
 	DeleteVolume(ctx context.Context, request core.DeleteVolumeRequest) (response core.DeleteVolumeResponse, err error)
 	ListVolumes(ctx context.Context, request core.ListVolumesRequest) (response core.ListVolumesResponse, err error)
 	UpdateVolume(ctx context.Context, request core.UpdateVolumeRequest) (response core.UpdateVolumeResponse, err error)
+	GetBootVolume(ctx context.Context, request core.GetBootVolumeRequest) (response core.GetBootVolumeResponse, err error)
 
 	GetVolumeBackup(ctx context.Context, request core.GetVolumeBackupRequest) (response core.GetVolumeBackupResponse, err error)
 	CreateVolumeBackup(ctx context.Context, request core.CreateVolumeBackupRequest) (response core.CreateVolumeBackupResponse, err error)

@@ -29,7 +29,7 @@ var _ = Describe("flex volume driver", func() {
 			scName := f.CreateStorageClassOrFail(framework.ClassOCI, core.ProvisionerNameDefault, nil, pvcJig.Labels, "", false, "Delete", nil)
 
 			By("Provisioning volume to mount")
-			pvc := pvcJig.CreateAndAwaitPVCOrFail(f.Namespace.Name, framework.MinVolumeBlock, scName, setupF.AdLabel, nil)
+			pvc := pvcJig.CreateAndAwaitPVCOrFail(f.Namespace.Name, framework.MinVolumeBlock, scName, "", nil)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 
 			By("Creating pod to check read and write to volume")

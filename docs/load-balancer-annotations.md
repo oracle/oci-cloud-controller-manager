@@ -57,6 +57,7 @@ spec:
 | `oci.oraclecloud.com/oci-load-balancer-listener-ssl-config`                  | Specifies the cipher suite on the listener of the LB managed by CCM.                                                                                                                                                                                                             | `N/A`                                            | `'{"CipherSuiteName":"oci-default-http2-ssl-cipher-suite-v1", "Protocols":["TLSv1.2"]}'` |
 | `oci.oraclecloud.com/oci-load-balancer-backendset-ssl-config"`               | Specifies the cipher suite on the backendsets of the LB managed by CCM.                                                                                                                                                                                                          | `N/A`                                            | `'{"CipherSuiteName":"oci-default-http2-ssl-cipher-suite-v1", "Protocols":["TLSv1.2"]}'` |
 | `oci.oraclecloud.com/ingress-ip-mode`                                        | Specifies ".status.loadBalancer.ingress.ipMode" for a Service with type set to LoadBalancer. Refer: [Specifying IPMode to adjust traffic routing][11]                                                                                                                            | `VIP`                                            |                                        `"proxy"`                                         |
+| `oci.oraclecloud.com/oci-load-balancer-rule-sets`                            | [Rule Sets][11] configuration. A JSON object mapping strings to RuleSetDetails objects as specified in [OCI API documentation][12]. All rule sets will be attached to all configured listeners.                                                                                  | `N/A`                                            |
 
 
 Note:
@@ -148,3 +149,5 @@ Note:
 [11]: https://docs.oracle.com/en-us/iaas/Content/ContEng/Tasks/contengconfiguringloadbalancersnetworkloadbalancers-subtopic.htm#contengcreatingloadbalancer_topic_Specifying_IPMode
 [12]: https://docs.oracle.com/en-us/iaas/Content/ContEng/Tasks/contengconfiguringloadbalancersnetworkloadbalancers-subtopic.htm#contengcreatingloadbalancer_topic_Skip_private_IP_addresses
 [13]: https://docs.oracle.com/en-us/iaas/Content/ContEng/Tasks/contengcreatingloadbalancers-subtopic.htm#listenerprotocol
+[12]: https://docs.oracle.com/en-us/iaas/Content/Balance/Tasks/managingrulesets.htm
+[13]: https://docs.oracle.com/en-us/iaas/api/#/en/loadbalancer/20170115/datatypes/RuleSetDetails

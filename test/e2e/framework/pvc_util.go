@@ -20,6 +20,7 @@ import (
 	"time"
 
 	snapclientset "github.com/kubernetes-csi/external-snapshotter/client/v6/clientset/versioned"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	v1 "k8s.io/api/core/v1"
@@ -36,12 +37,12 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/oracle/oci-go-sdk/v65/common"
 	ocicore "github.com/oracle/oci-go-sdk/v65/core"
 
 	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/csi/driver"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/volume/provisioner/plugin"
 )
 
 const (
@@ -66,6 +67,11 @@ type PVCTestJig struct {
 	KubeClient         clientset.Interface
 	config             *restclient.Config
 	SnapClient         snapclientset.Interface
+}
+
+type Options struct {
+	BlockProvisionerName  string
+	FSSProvisionerName	  string
 }
 
 // NewPVCTestJig allocates and inits a new PVCTestJig.
@@ -100,6 +106,9 @@ func (j *PVCTestJig) CreatePVCTemplate(namespace, volumeSize string) *v1.Persist
 }
 
 func (j *PVCTestJig) pvcAddLabelSelector(pvc *v1.PersistentVolumeClaim, adLabel string) *v1.PersistentVolumeClaim {
+	if adLabel == "" {
+		return pvc
+	}
 	if pvc != nil {
 		pvc.Spec.Selector = &metav1.LabelSelector{
 			MatchLabels: map[string]string{
@@ -242,9 +251,9 @@ func (j *PVCTestJig) NewPVCTemplateDynamicFSS(namespace, volumeSize, scName stri
 // newPVCTemplateSnapshotRestore returns the default template for this jig, but
 // does not actually create the PVC.  The default PVC has the same name
 // as the jig
-func (j *PVCTestJig) newPVCTemplateSnapshotSource(namespace, volumeSize, scName string, vsName string, isRawBlockVolume bool) *v1.PersistentVolumeClaim {
+func (j *PVCTestJig) newPVCTemplateSnapshotSource(namespace, volumeSize, scName string, vsName string, accessMode v1.PersistentVolumeAccessMode, isRawBlockVolume bool) *v1.PersistentVolumeClaim {
 	pvc := j.CreatePVCTemplate(namespace, volumeSize)
-	pvc = j.pvcAddAccessMode(pvc, v1.ReadWriteOnce)
+	pvc = j.pvcAddAccessMode(pvc, accessMode)
 	pvc = j.pvcAddStorageClassName(pvc, scName)
 	pvc = j.pvcAddDataSource(pvc, vsName)
 
@@ -350,9 +359,9 @@ func (j *PVCTestJig) CreatePVCorFailDynamicFSS(namespace, volumeSize string, scN
 // CreatePVCorFailSnapshotSource creates a new claim based on the jig's
 // defaults. Callers can provide a function to tweak the claim object
 // before it is created.
-func (j *PVCTestJig) CreatePVCorFailSnapshotSource(namespace, volumeSize string, scName string, vsName string, isRawBlockVolume bool,
+func (j *PVCTestJig) CreatePVCorFailSnapshotSource(namespace, volumeSize string, scName string, vsName string, accessMode v1.PersistentVolumeAccessMode, isRawBlockVolume bool,
 	tweak func(pvc *v1.PersistentVolumeClaim)) *v1.PersistentVolumeClaim {
-	pvc := j.newPVCTemplateSnapshotSource(namespace, volumeSize, scName, vsName, isRawBlockVolume)
+	pvc := j.newPVCTemplateSnapshotSource(namespace, volumeSize, scName, vsName, accessMode, isRawBlockVolume)
 	return j.CheckPVCorFail(pvc, tweak, namespace, volumeSize)
 }
 
@@ -443,8 +452,8 @@ func (j *PVCTestJig) CreateAndAwaitPVCOrFailDynamicFSS(namespace, volumeSize, sc
 // its dependant resources. Callers can provide a function to tweak the
 // PVC object before it is created.
 func (j *PVCTestJig) CreateAndAwaitPVCOrFailSnapshotSource(namespace, volumeSize, scName string,
-	vsName string, phase v1.PersistentVolumeClaimPhase, isRawBlockVolume bool, tweak func(pvc *v1.PersistentVolumeClaim)) *v1.PersistentVolumeClaim {
-	pvc := j.CreatePVCorFailSnapshotSource(namespace, volumeSize, scName, vsName, isRawBlockVolume, tweak)
+	vsName string, accessMode v1.PersistentVolumeAccessMode, phase v1.PersistentVolumeClaimPhase, isRawBlockVolume bool, tweak func(pvc *v1.PersistentVolumeClaim)) *v1.PersistentVolumeClaim {
+	pvc := j.CreatePVCorFailSnapshotSource(namespace, volumeSize, scName, vsName, accessMode, isRawBlockVolume, tweak)
 	return j.CheckAndAwaitPVCOrFail(pvc, namespace, phase)
 }
 
@@ -462,15 +471,15 @@ func (j *PVCTestJig) UpdateAndAwaitPVCOrFailCSI(pvc *v1.PersistentVolumeClaim, n
 // jig's defaults, waits for it to become ready, and then sanity checks it and
 // its dependant resources. Callers can provide a function to tweak the
 // PVC object before it is created.
-func (j *PVCTestJig) CreateAndAwaitStaticPVCOrFailCSI(bs ocicore.BlockstorageClient, namespace string, volumeSize string, vpusPerGB int64, scName string, adLabel string, compartmentId string, tweak func(pvc *v1.PersistentVolumeClaim), volumeMode v1.PersistentVolumeMode, accessMode v1.PersistentVolumeAccessMode, expectedPVCPhase v1.PersistentVolumeClaimPhase) (*v1.PersistentVolumeClaim, string) {
+func (j *PVCTestJig) CreateAndAwaitStaticPVCOrFailCSI(bs ocicore.BlockstorageClient, namespace string, volumeSize string, vpusPerGB int64, scName string, adLabel string, compartmentId string, tweak func(pvc *v1.PersistentVolumeClaim), volumeMode v1.PersistentVolumeMode, accessMode v1.PersistentVolumeAccessMode, expectedPVCPhase v1.PersistentVolumeClaimPhase, opts Options) (*v1.PersistentVolumeClaim, string) {
 
 	volumeOcid := j.CreateVolume(bs, adLabel, compartmentId, "test-volume", vpusPerGB)
 
 	var pv *v1.PersistentVolume
 	if vpusPerGB == 20 {
-		pv = j.CreatePVorFailCSIHighPerf(namespace, scName, *volumeOcid)
+		pv = j.CreatePVorFailCSIHighPerf(namespace, scName, *volumeOcid, opts)
 	} else {
-		pv = j.CreatePVorFailCSI(namespace, scName, *volumeOcid)
+		pv = j.CreatePVorFailCSI(namespace, scName, *volumeOcid, volumeMode, opts)
 	}
 	pv = j.waitForConditionOrFailForPV(pv.Name, DefaultTimeout, "to be dynamically provisioned", func(pvc *v1.PersistentVolume) bool {
 		err := j.WaitForPVPhase(v1.VolumeAvailable, pv.Name)
@@ -482,6 +491,24 @@ func (j *PVCTestJig) CreateAndAwaitStaticPVCOrFailCSI(bs ocicore.BlockstorageCli
 	})
 
 	return j.CreateAndAwaitPVCOrFailCSI(namespace, volumeSize, scName, tweak, volumeMode, accessMode, expectedPVCPhase), *volumeOcid
+}
+
+func (j *PVCTestJig) CreateAndAwaitStaticBootVolumePVCOrFailCSI(c ocicore.ComputeClient, namespace string, compartment string, adLocation string, subnetId string, volumeSize string, scName string, tweak func(pvc *v1.PersistentVolumeClaim), volumeMode v1.PersistentVolumeMode, accessMode v1.PersistentVolumeAccessMode, expectedPVCPhase v1.PersistentVolumeClaimPhase, opts Options) (*v1.PersistentVolumeClaim, string) {
+
+	bootVolumeId := j.CreateBootVolume(c, adLocation, compartment, subnetId)
+
+	pv := j.CreatePVorFailCSI(namespace, scName, bootVolumeId, volumeMode, opts)
+
+	pv = j.waitForConditionOrFailForPV(pv.Name, DefaultTimeout, "to be dynamically provisioned", func(pvc *v1.PersistentVolume) bool {
+		err := j.WaitForPVPhase(v1.VolumeAvailable, pv.Name)
+		if err != nil {
+			Failf("PV %q did not created: %v", pv.Name, err)
+			return false
+		}
+		return true
+	})
+
+	return j.CreateAndAwaitPVCOrFailCSI(namespace, volumeSize, scName, tweak, volumeMode, accessMode, expectedPVCPhase), bootVolumeId
 }
 
 func (j *PVCTestJig) CreatePVTemplate(namespace, annotation, storageClassName string,
@@ -540,14 +567,14 @@ func (j *PVCTestJig) pvAddMountOptions(pv *v1.PersistentVolume,
 // newPVTemplateFSS returns the default template for this jig, but
 // does not actually create the PV.  The default PV has the same name
 // as the jig
-func (j *PVCTestJig) newPVTemplateFSS(namespace, volumeHandle, enableIntransitEncrypt, accessMode, fsType string, mountOptions []string) *v1.PersistentVolume {
-	pv := j.CreatePVTemplate(namespace, "fss.csi.oraclecloud.com", "", "Retain")
+func (j *PVCTestJig) newPVTemplateFSS(namespace, volumeHandle, enableIntransitEncrypt, accessMode, fsType string, mountOptions []string, opts Options) *v1.PersistentVolume {
+	pv := j.CreatePVTemplate(namespace, opts.FSSProvisionerName, "", "Retain")
 	pv = j.pvAddVolumeMode(pv, v1.PersistentVolumeFilesystem)
 	pv = j.pvAddAccessMode(pv, v1.PersistentVolumeAccessMode(accessMode))
 	pv = j.pvAddMountOptions(pv, mountOptions)
 	pv = j.pvAddPersistentVolumeSource(pv, v1.PersistentVolumeSource{
 		CSI: &v1.CSIPersistentVolumeSource{
-			Driver:       driver.FSSDriverName,
+			Driver:       opts.FSSProvisionerName,
 			VolumeHandle: volumeHandle,
 			FSType:       fsType,
 			VolumeAttributes: map[string]string{
@@ -583,12 +610,12 @@ func (j *PVCTestJig) newPVTemplateLustre(namespace, volumeHandle string, mountOp
 // newPVTemplateCSI returns the default template for this jig, but
 // does not actually create the PV.  The default PV has the same name
 // as the jig
-func (j *PVCTestJig) newPVTemplateCSI(namespace string, scName string, ocid string) *v1.PersistentVolume {
-	pv := j.CreatePVTemplate(namespace, "blockvolume.csi.oraclecloud.com", scName, "Delete")
+func (j *PVCTestJig) newPVTemplateCSI(namespace string, scName string, ocid string, opts Options) *v1.PersistentVolume {
+	pv := j.CreatePVTemplate(namespace, opts.BlockProvisionerName, scName, "Delete")
 	pv = j.pvAddAccessMode(pv, "ReadWriteOnce")
 	pv = j.pvAddPersistentVolumeSource(pv, v1.PersistentVolumeSource{
 		CSI: &v1.CSIPersistentVolumeSource{
-			Driver:       "blockvolume.csi.oraclecloud.com",
+			Driver:       opts.BlockProvisionerName,
 			FSType:       "ext4",
 			VolumeHandle: ocid,
 		},
@@ -599,12 +626,12 @@ func (j *PVCTestJig) newPVTemplateCSI(namespace string, scName string, ocid stri
 // newPVTemplateCSI returns the default template for this jig, but
 // does not actually create the PV.  The default PV has the same name
 // as the jig
-func (j *PVCTestJig) newPVTemplateCSIHighPerf(namespace string, scName string, ocid string) *v1.PersistentVolume {
-	pv := j.CreatePVTemplate(namespace, "blockvolume.csi.oraclecloud.com", scName, "Delete")
+func (j *PVCTestJig) newPVTemplateCSIHighPerf(namespace string, scName string, ocid string, opts Options) *v1.PersistentVolume {
+	pv := j.CreatePVTemplate(namespace, opts.BlockProvisionerName, scName, "Delete")
 	pv = j.pvAddAccessMode(pv, "ReadWriteOnce")
 	pv = j.pvAddPersistentVolumeSource(pv, v1.PersistentVolumeSource{
 		CSI: &v1.CSIPersistentVolumeSource{
-			Driver:       "blockvolume.csi.oraclecloud.com",
+			Driver:       opts.BlockProvisionerName,
 			FSType:       "ext4",
 			VolumeHandle: ocid,
 			VolumeAttributes: map[string]string{
@@ -618,8 +645,8 @@ func (j *PVCTestJig) newPVTemplateCSIHighPerf(namespace string, scName string, o
 // CreatePVForFSSorFail creates a new claim based on the jig's
 // defaults. Callers can provide a function to tweak the claim object
 // before it is created.
-func (j *PVCTestJig) CreatePVorFailFSS(namespace, volumeHandle, encryptInTransit, accessMode, fsType string, mountOptions []string) *v1.PersistentVolume {
-	pv := j.newPVTemplateFSS(namespace, volumeHandle, encryptInTransit, accessMode, fsType, mountOptions)
+func (j *PVCTestJig) CreatePVorFailFSS(namespace, volumeHandle, encryptInTransit, accessMode, fsType string, mountOptions []string, opts Options) *v1.PersistentVolume {
+	pv := j.newPVTemplateFSS(namespace, volumeHandle, encryptInTransit, accessMode, fsType, mountOptions, opts)
 
 	result, err := j.KubeClient.CoreV1().PersistentVolumes().Create(context.Background(), pv, metav1.CreateOptions{})
 	if err != nil {
@@ -644,8 +671,9 @@ func (j *PVCTestJig) CreatePVorFailLustre(namespace, volumeHandle string, mountO
 // CreatePVorFail creates a new claim based on the jig's
 // defaults. Callers can provide a function to tweak the claim object
 // before it is created.
-func (j *PVCTestJig) CreatePVorFailCSI(namespace string, scName string, ocid string) *v1.PersistentVolume {
-	pv := j.newPVTemplateCSI(namespace, scName, ocid)
+func (j *PVCTestJig) CreatePVorFailCSI(namespace string, scName string, ocid string, volumeMode v1.PersistentVolumeMode, opts Options) *v1.PersistentVolume {
+	pv := j.newPVTemplateCSI(namespace, scName, ocid, opts)
+	pv = j.pvAddVolumeMode(pv, volumeMode)
 
 	result, err := j.KubeClient.CoreV1().PersistentVolumes().Create(context.Background(), pv, metav1.CreateOptions{})
 	if err != nil {
@@ -657,8 +685,8 @@ func (j *PVCTestJig) CreatePVorFailCSI(namespace string, scName string, ocid str
 // CreatePVorFail creates a new claim based on the jig's
 // defaults. Callers can provide a function to tweak the claim object
 // before it is created.
-func (j *PVCTestJig) CreatePVorFailCSIHighPerf(namespace string, scName string, ocid string) *v1.PersistentVolume {
-	pv := j.newPVTemplateCSIHighPerf(namespace, scName, ocid)
+func (j *PVCTestJig) CreatePVorFailCSIHighPerf(namespace string, scName string, ocid string, opts Options) *v1.PersistentVolume {
+	pv := j.newPVTemplateCSIHighPerf(namespace, scName, ocid, opts)
 
 	result, err := j.KubeClient.CoreV1().PersistentVolumes().Create(context.Background(), pv, metav1.CreateOptions{})
 	if err != nil {
@@ -684,7 +712,225 @@ func (j *PVCTestJig) CreateVolume(bs ocicore.BlockstorageClient, adLabel string,
 	if err != nil {
 		Failf("Volume %q creation API error: %v", volName, err)
 	}
+
+	// wait for volume to be available
+	fmt.Println("Waiting for volume to be AVAILABLE...")
+	err = waitForVolumeState(context.Background(), bs, newVolume.Id, ocicore.VolumeLifecycleStateAvailable, 1*time.Minute)
+	if err != nil {
+		Failf("Volume %q did not become AVAILABLE: %v", volName, err)
+	}
+	fmt.Println("Volume is AVAILABLE")
+
 	return newVolume.Id
+}
+
+func waitForVolumeState(ctx context.Context, bsClient ocicore.BlockstorageClient, volumeID *string, expectedState ocicore.VolumeLifecycleStateEnum, timeout time.Duration) error {
+	checkVolumeState := func() (bool, error) {
+		subCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+
+		resp, err := bsClient.GetVolume(subCtx, ocicore.GetVolumeRequest{
+			VolumeId: volumeID,
+		})
+		if err != nil || resp.Id == nil {
+			return false, err
+		}
+
+		if resp.LifecycleState != expectedState {
+			fmt.Printf("Volume %s not yet in expected state. Current: %s, Expected: %s\n",
+				*volumeID, resp.LifecycleState, expectedState)
+			return false, nil
+		}
+		return true, nil
+	}
+
+	err := wait.PollImmediate(10*time.Second, timeout, func() (bool, error) {
+		return checkVolumeState()
+	})
+
+	if err != nil {
+		fmt.Printf("Timed out waiting for volume %s to reach state %s\n", *volumeID, expectedState)
+	}
+	return err
+}
+
+// CreateBootVolume is a function to create the boot volume
+func (j *PVCTestJig) CreateBootVolume(c ocicore.ComputeClient, adLabel string, compartmentId string, subnet string) string {
+	ctx := context.Background()
+
+	images, err := c.ListImages(context.Background(), ocicore.ListImagesRequest{
+		CompartmentId: &compartmentId,
+	})
+	if err != nil {
+		Failf("Error listing images: %v", err)
+	}
+
+	image := images.Items[0]
+	Logf("Chose image name: %v, id: %v", *image.DisplayName, *image.Id)
+
+	request := ocicore.LaunchInstanceRequest{
+		LaunchInstanceDetails: ocicore.LaunchInstanceDetails{
+			AvailabilityDomain: &adLabel,
+			CompartmentId:      &compartmentId,
+			SubnetId:           &subnet,
+			Shape:              common.String("VM.Standard2.1"),
+			ImageId:            image.Id,
+		},
+	}
+
+	instance, err := c.LaunchInstance(ctx, request)
+	if err != nil {
+		Failf("Error launching instance: %v", err)
+	}
+
+	instanceId := instance.Id
+
+	// Wait for instance running
+	fmt.Println("Waiting 5 minutes for instance to reach RUNNING state...")
+	err = waitForInstanceState(ctx, c, instanceId, ocicore.InstanceLifecycleStateRunning, 5*time.Minute)
+	if err != nil {
+		Failf("Instance did not reach RUNNING: %v", err)
+	}
+	fmt.Println("Instance is RUNNING")
+
+	// Stop the instance
+	fmt.Println("Stopping instance...")
+	_, err = c.InstanceAction(ctx, ocicore.InstanceActionRequest{
+		InstanceId: instanceId,
+		Action:     ocicore.InstanceActionActionStop,
+	})
+	if err != nil {
+		Failf("Failed to stop instance: %v", err)
+	}
+
+	// Wait for STOPPED
+	fmt.Println("Waiting for instance to STOP...")
+	err = waitForInstanceState(ctx, c, instanceId, ocicore.InstanceLifecycleStateStopped, 5*time.Minute)
+	if err != nil {
+		Failf("Instance did not reach STOPPED: %v", err)
+	}
+	fmt.Println("Instance is STOPPED")
+
+	// Get boot volume attachment
+	fmt.Println("Detaching boot volume...")
+	attachmentsResp, err := c.ListBootVolumeAttachments(ctx, ocicore.ListBootVolumeAttachmentsRequest{
+		AvailabilityDomain: &adLabel,
+		CompartmentId:      &compartmentId,
+		InstanceId:         instanceId,
+	})
+	if err != nil {
+		Failf("Failed to list boot volume attachments: %v", err)
+	}
+
+	if len(attachmentsResp.Items) == 0 {
+		Failf("No boot volume attachment found for instance %s", *instanceId)
+	}
+
+	attachmentID := attachmentsResp.Items[0].Id
+	_, err = c.DetachBootVolume(ctx, ocicore.DetachBootVolumeRequest{
+		BootVolumeAttachmentId: attachmentID,
+	})
+	if err != nil {
+		Failf("Failed to detach boot volume: %v", err)
+	}
+
+	err = WaitForVolumeDetached(ctx, c, attachmentID)
+	if err != nil {
+		Failf("Failed while waiting for boot volume detach: %v", err)
+	}
+
+	// Terminate the instance
+	fmt.Println("Terminating instance...")
+
+	_, err = c.TerminateInstance(ctx, ocicore.TerminateInstanceRequest{
+		InstanceId:         instanceId,
+		PreserveBootVolume: common.Bool(true),
+	})
+	if err != nil {
+		Failf("Failed to terminate instance: %v", err)
+	}
+
+	// Wait for TERMINATED
+	fmt.Println("Waiting for instance to TERMINATE...")
+	err = waitForInstanceState(ctx, c, instanceId, ocicore.InstanceLifecycleStateTerminated, 5*time.Minute)
+	if err != nil {
+		Failf("Instance did not reach TERMINATED: %v", err)
+	}
+	fmt.Println("Instance is TERMINATED")
+
+	return *attachmentsResp.Items[0].BootVolumeId
+}
+
+func waitForInstanceState(ctx context.Context, computeClient ocicore.ComputeClient, instanceID *string, expectedState ocicore.InstanceLifecycleStateEnum, timeout time.Duration) error {
+	checkInstanceState := func() (bool, error) {
+		subCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+
+		resp, err := computeClient.GetInstance(subCtx, ocicore.GetInstanceRequest{
+			InstanceId: instanceID,
+		})
+		if err != nil || resp.Id == nil {
+			return false, err
+		}
+
+		if resp.LifecycleState != expectedState {
+			fmt.Printf("Instance %s not yet in expected state. Current: %s, Expected: %s\n",
+				*instanceID, resp.LifecycleState, expectedState)
+			return false, nil
+		}
+		return true, nil
+	}
+
+	err := wait.PollImmediate(10*time.Second, timeout, func() (bool, error) {
+		return checkInstanceState()
+	})
+
+	if err != nil {
+		fmt.Printf("Timed out waiting for instance %s to reach state %s\n", *instanceID, expectedState)
+	}
+	return err
+}
+
+func WaitForVolumeDetached(ctx context.Context, c ocicore.ComputeClient, id *string) error {
+	subCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+
+	if err := wait.PollImmediateUntil(5*time.Second, func() (done bool, err error) {
+		va, err := c.GetBootVolumeAttachment(subCtx, ocicore.GetBootVolumeAttachmentRequest{
+			BootVolumeAttachmentId: id,
+		})
+		fmt.Printf("Error: %+v\n", err)
+		if err != nil {
+			if client.IsRetryable(err) {
+				return false, nil
+			}
+			return true, errors.WithStack(err)
+		}
+		if va.LifecycleState == ocicore.BootVolumeAttachmentLifecycleStateDetached {
+			return true, nil
+		}
+		fmt.Printf("Waiting for boot volume to detach, current state: %s\n", va.LifecycleState)
+		return false, nil
+	}, subCtx.Done()); err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func (j *PVCTestJig) DeleteBootVolume(bs ocicore.BlockstorageClient, bootVolId string, timeout time.Duration) {
+	request := ocicore.DeleteBootVolumeRequest{
+		BootVolumeId: &bootVolId,
+	}
+
+	for start := time.Now(); time.Since(start) < timeout; time.Sleep(Poll) {
+		_, err := bs.DeleteBootVolume(context.Background(), request)
+		if err != nil {
+			Logf("Boot volume %q deletion API error: %v", bootVolId, err)
+		} else {
+			return
+		}
+	}
 }
 
 // DeleteVolume is a function to delete the block volume
@@ -770,6 +1016,17 @@ func (j *PVCTestJig) NewPodForCSI(name string, namespace string, claimName strin
 		Failf("Unsupported volumeMode: %s", volumeMode)
 	}
 
+	podSpec := v1.PodSpec{
+		Containers: containers,
+		Volumes:    volumes,
+	}
+
+	if adLabel != "" {
+		podSpec.NodeSelector = map[string]string{
+			v1.LabelTopologyZone: adLabel,
+		}
+	}
+
 	pod, err := j.KubeClient.CoreV1().Pods(namespace).Create(context.Background(), &v1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
@@ -779,11 +1036,119 @@ func (j *PVCTestJig) NewPodForCSI(name string, namespace string, claimName strin
 			GenerateName: j.Name,
 			Namespace:    namespace,
 		},
+		Spec: podSpec,
+	}, metav1.CreateOptions{})
+	if err != nil {
+		Failf("Pod %q Create API error: %v", pod.Name, err)
+	}
+
+	// Waiting for pod to be running
+	err = j.WaitTimeoutForPodRunningInNamespace(pod.Name, namespace, slowPodStartTimeout)
+	if err != nil {
+		Logf("Pod failed to come up, logging debug info")
+		j.logPodDebugInfo(namespace, pod.Name)
+		Failf("Pod %q is not Running: %v", pod.Name, err)
+	}
+	zap.S().With(pod.Namespace).With(pod.Name).Info("CSI POD is created.")
+	return pod.Name
+}
+
+// NewPodForCSIwAntiAffinity creates a pod with the specified volume mode, using the CentOS image for both cases.
+func (j *PVCTestJig) NewPodForCSIwAntiAffinity(name string, namespace string, claimName string, adLabel string, volumeMode v1.PersistentVolumeMode) string {
+
+	if volumeMode == "" {
+		volumeMode = v1.PersistentVolumeFilesystem
+	}
+
+	By("Creating a pod with the claiming PVC created by CSI")
+
+	var containers []v1.Container
+	var volumes []v1.Volume
+	var args []string
+	var labels = map[string]string{"csi-e2e-test-pod": "pod-with-antiaffinity"}
+
+	// Determine Args and configuration based on volumeMode
+	switch volumeMode {
+	case v1.PersistentVolumeFilesystem:
+		args = []string{"-c", "echo 'Hello World' > /data/testdata.txt; while true; do echo $(date -u) >> /data/out.txt; sleep 5; done"}
+		containers = []v1.Container{
+			{
+				Name:    name,
+				Image:   centos,
+				Command: []string{"/bin/sh"},
+				Args:    args,
+				VolumeMounts: []v1.VolumeMount{
+					{
+						Name:      "persistent-storage",
+						MountPath: "/data",
+					},
+				},
+			},
+		}
+		volumes = []v1.Volume{
+			{
+				Name: "persistent-storage",
+				VolumeSource: v1.VolumeSource{
+					PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+						ClaimName: claimName,
+					},
+				},
+			},
+		}
+	case v1.PersistentVolumeBlock:
+		args = []string{"-c", "echo 'Hello World' > /tmp/test.txt; dd if=/tmp/test.txt of=/dev/xvda count=1; while true; do sleep 5; done"}
+		containers = []v1.Container{
+			{
+				Name:    name,
+				Image:   centos,
+				Command: []string{"/bin/sh"},
+				Args:    args,
+				VolumeDevices: []v1.VolumeDevice{
+					{
+						Name:       "persistent-storage",
+						DevicePath: "/dev/xvda",
+					},
+				},
+			},
+		}
+		volumes = []v1.Volume{
+			{
+				Name: "persistent-storage",
+				VolumeSource: v1.VolumeSource{
+					PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+						ClaimName: claimName,
+					},
+				},
+			},
+		}
+	default:
+		Failf("Unsupported volumeMode: %s", volumeMode)
+	}
+
+	pod, err := j.KubeClient.CoreV1().Pods(namespace).Create(context.Background(), &v1.Pod{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Pod",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: j.Name,
+			Namespace:    namespace,
+			Labels:       labels,
+		},
 		Spec: v1.PodSpec{
 			Containers: containers,
 			Volumes:    volumes,
 			NodeSelector: map[string]string{
-				plugin.LabelZoneFailureDomain: adLabel,
+				v1.LabelTopologyZone: adLabel,
+			},
+			Affinity: &v1.Affinity{
+				PodAntiAffinity: &v1.PodAntiAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
+						{LabelSelector: &metav1.LabelSelector{MatchLabels: labels},
+							TopologyKey: "kubernetes.io/hostname",
+						},
+					},
+				},
 			},
 		},
 	}, metav1.CreateOptions{})
@@ -792,7 +1157,7 @@ func (j *PVCTestJig) NewPodForCSI(name string, namespace string, claimName strin
 	}
 
 	// Waiting for pod to be running
-	err = j.waitTimeoutForPodRunningInNamespace(pod.Name, namespace, slowPodStartTimeout)
+	err = j.WaitTimeoutForPodRunningInNamespace(pod.Name, namespace, slowPodStartTimeout)
 	if err != nil {
 		Failf("Pod %q is not Running: %v", pod.Name, err)
 	}
@@ -847,8 +1212,10 @@ func (j *PVCTestJig) NewPodWithLabels(name string, namespace string, claimName s
 	}
 
 	// Waiting for pod to be running
-	err = j.waitTimeoutForPodRunningInNamespace(pod.Name, namespace, slowPodStartTimeout)
+	err = j.WaitTimeoutForPodRunningInNamespace(pod.Name, namespace, slowPodStartTimeout)
 	if err != nil {
+		Logf("Pod failed to come up, logging debug info\n")
+		j.logPodDebugInfo(namespace, pod.Name)
 		Failf("Pod %q is not Running: %v", pod.Name, err)
 	}
 	zap.S().With(pod.Namespace).With(pod.Name).Info("CSI POD is created.")
@@ -886,6 +1253,26 @@ func (j *PVCTestJig) NewPodForCSIClone(name string, namespace string, claimName 
 		}
 	}
 
+	podSpec := v1.PodSpec{
+		Containers: []v1.Container{container},
+		Volumes: []v1.Volume{
+			{
+				Name: "persistent-storage",
+				VolumeSource: v1.VolumeSource{
+					PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+						ClaimName: claimName,
+					},
+				},
+			},
+		},
+	}
+
+	if adLabel != "" {
+		podSpec.NodeSelector = map[string]string{
+			v1.LabelTopologyZone: adLabel,
+		}
+	}
+
 	pod, err := j.KubeClient.CoreV1().Pods(namespace).Create(context.Background(), &v1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
@@ -895,30 +1282,17 @@ func (j *PVCTestJig) NewPodForCSIClone(name string, namespace string, claimName 
 			GenerateName: j.Name,
 			Namespace:    namespace,
 		},
-		Spec: v1.PodSpec{
-			Containers: []v1.Container{container},
-			Volumes: []v1.Volume{
-				{
-					Name: "persistent-storage",
-					VolumeSource: v1.VolumeSource{
-						PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
-							ClaimName: claimName,
-						},
-					},
-				},
-			},
-			NodeSelector: map[string]string{
-				v1.LabelTopologyZone: adLabel,
-			},
-		},
+		Spec: podSpec,
 	}, metav1.CreateOptions{})
 	if err != nil {
 		Failf("Pod %q Create API error: %v", pod.Name, err)
 	}
 
 	// Waiting for pod to be running
-	err = j.waitTimeoutForPodRunningInNamespace(pod.Name, namespace, slowPodStartTimeout)
+	err = j.WaitTimeoutForPodRunningInNamespace(pod.Name, namespace, slowPodStartTimeout)
 	if err != nil {
+		Logf("Pod failed to come up, logging debug info\n")
+		j.logPodDebugInfo(namespace, pod.Name)
 		Failf("Pod %q is not Running: %v", pod.Name, err)
 	}
 	zap.S().With(pod.Namespace).With(pod.Name).Info("CSI POD is created.")
@@ -928,6 +1302,39 @@ func (j *PVCTestJig) NewPodForCSIClone(name string, namespace string, claimName 
 func (j *PVCTestJig) NewPodForCSIWithoutWait(name string, namespace string, claimName string, adLabel string) string {
 	By("Creating a pod with the claiming PVC created by CSI")
 
+	podSpec := v1.PodSpec{
+		Containers: []v1.Container{
+			{
+				Name:    name,
+				Image:   centos,
+				Command: []string{"/bin/sh"},
+				Args:    []string{"-c", "echo 'Hello World' > /data/testdata.txt; while true; do echo $(date -u) >> /data/out.txt; sleep 5; done"},
+				VolumeMounts: []v1.VolumeMount{
+					{
+						Name:      "persistent-storage",
+						MountPath: "/data",
+					},
+				},
+			},
+		},
+		Volumes: []v1.Volume{
+			{
+				Name: "persistent-storage",
+				VolumeSource: v1.VolumeSource{
+					PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+						ClaimName: claimName,
+					},
+				},
+			},
+		},
+	}
+
+	if adLabel != "" {
+		podSpec.NodeSelector = map[string]string{
+			v1.LabelTopologyZone: adLabel,
+		}
+	}
+
 	pod, err := j.KubeClient.CoreV1().Pods(namespace).Create(context.Background(), &v1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",
@@ -937,35 +1344,7 @@ func (j *PVCTestJig) NewPodForCSIWithoutWait(name string, namespace string, clai
 			GenerateName: j.Name,
 			Namespace:    namespace,
 		},
-		Spec: v1.PodSpec{
-			Containers: []v1.Container{
-				{
-					Name:    name,
-					Image:   centos,
-					Command: []string{"/bin/sh"},
-					Args:    []string{"-c", "echo 'Hello World' > /data/testdata.txt; while true; do echo $(date -u) >> /data/out.txt; sleep 5; done"},
-					VolumeMounts: []v1.VolumeMount{
-						{
-							Name:      "persistent-storage",
-							MountPath: "/data",
-						},
-					},
-				},
-			},
-			Volumes: []v1.Volume{
-				{
-					Name: "persistent-storage",
-					VolumeSource: v1.VolumeSource{
-						PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
-							ClaimName: claimName,
-						},
-					},
-				},
-			},
-			NodeSelector: map[string]string{
-				v1.LabelTopologyZone: adLabel,
-			},
-		},
+		Spec: podSpec,
 	}, metav1.CreateOptions{})
 	if err != nil {
 		Failf("Pod %q Create API error: %v", pod.Name, err)
@@ -1027,8 +1406,10 @@ func (j *PVCTestJig) NewPodForCSIFSSWrite(name string, namespace string, claimNa
 	}
 
 	// Waiting for pod to be running
-	err = j.waitTimeoutForPodRunningInNamespace(pod.Name, namespace, slowPodStartTimeout)
+	err = j.WaitTimeoutForPodRunningInNamespace(pod.Name, namespace, slowPodStartTimeout)
 	if err != nil {
+		Logf("Pod failed to come up, logging debug info\n")
+		j.logPodDebugInfo(namespace, pod.Name)
 		Failf("Pod %q is not Running: %v", pod.Name, err)
 	}
 	zap.S().With(pod.Namespace).With(pod.Name).Info("CSI POD is created.")
@@ -1091,6 +1472,8 @@ func (j *PVCTestJig) NewPodForCSIFSSRead(matchString string, namespace string, c
 	// Waiting for pod to be running
 	err = j.waitTimeoutForPodCompletedSuccessfullyInNamespace(pod.Name, namespace, slowPodStartTimeout)
 	if err != nil {
+		Logf("Pod failed to come up, logging debug info\n")
+		j.logPodDebugInfo(namespace, pod.Name)
 		Failf("Pod %q failed: %v", pod.Name, err)
 	}
 	zap.S().With(pod.Namespace).With(pod.Name).Info("CSI Fss read POD is created.")
@@ -1181,8 +1564,8 @@ func (j *PVCTestJig) SanityCheckPV(pvc *v1.PersistentVolumeClaim) {
 		expectedAccessModes := []v1.PersistentVolumeAccessMode{v1.ReadWriteMany}
 		Expect(pv.Spec.AccessModes).To(Equal(expectedAccessModes))
 	} else {
-		expectedAccessModes := []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce}
-		Expect(pv.Spec.AccessModes).To(Equal(expectedAccessModes))
+		expectedAccessModes := []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce, v1.ReadWriteMany}
+		Expect(expectedAccessModes).To(ContainElements(pv.Spec.AccessModes))
 	}
 	// Check PV properties
 	Expect(pv.Spec.ClaimRef.Name).To(Equal(pvc.ObjectMeta.Name))
@@ -1351,10 +1734,11 @@ func (j *PVCTestJig) CheckAttachmentTypeAndEncryptionType(compute client.Compute
 		Failf("Failed to get persistent volume %q: %v", pvc.Spec.VolumeName, err)
 	}
 
-	attachment, err := compute.FindActiveVolumeAttachment(context.Background(), compartmentID, pv.Spec.CSI.VolumeHandle)
+	attachment, err := compute.FindVolumeAttachment(context.Background(), compartmentID, pv.Spec.CSI.VolumeHandle, &instanceID)
 	if err != nil {
 		Failf("VolumeAttachment %q get API error: %v", instanceID, err)
 	}
+
 	attachmentType := ""
 	switch v := attachment.(type) {
 	case ocicore.ParavirtualizedVolumeAttachment:
@@ -1431,6 +1815,31 @@ func (j *PVCTestJig) CheckSinglePodReadWrite(namespace string, pvcName string, c
 
 	By("Creating Pod that can read contents of existing file")
 	readPodName := j.NewPodForCSIFSSRead(string(uid), namespace, pvcName, fileName, checkEncryption)
+
+	return podName, readPodName
+}
+func (j *PVCTestJig) CheckSinglePodReadWriteLustre(namespace string, pvcName string, expectedMountOptions []string, checkLustreParameters bool) (string, string) {
+
+	By("Creating Pod that can create and write to the file")
+	uid := uuid.NewUUID()
+	fileName := fmt.Sprintf("out_%s.txt", uid)
+	podName := j.NewPodForCSIFSSWrite(string(uid), namespace, pvcName, fileName, false)
+	time.Sleep(30 * time.Second) //waiting for pod to become up and running
+
+	By("check if the file exists")
+	j.CheckFileExists(namespace, podName, "/data", fileName)
+
+	if len(expectedMountOptions) > 0 {
+		By("Checking Mount Options")
+		j.CheckLustreMountOptions(namespace, podName, "/data", expectedMountOptions)
+	}
+
+	if checkLustreParameters {
+		j.CheckLustreParameters(namespace, podName)
+	}
+
+	By("Creating Pod that can read contents of existing file")
+	readPodName := j.NewPodForCSIFSSRead(string(uid), namespace, pvcName, fileName, false)
 
 	return podName, readPodName
 }
@@ -1671,6 +2080,48 @@ func (j *PVCTestJig) WaitTimeoutForPVNotFound(pvName string, timeout time.Durati
 	return wait.PollImmediate(Poll, timeout, j.pvNotFound(pvName))
 }
 
+func (j *PVCTestJig) ListSchedulableNodesInAD(adLocation string) []v1.Node {
+	nodes, err := j.KubeClient.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		Failf("Error getting list of nodes: %v", err)
+	}
+
+	if len(nodes.Items) == 0 {
+		Failf("No nodes are present in the cluster")
+	}
+
+	schedulableNodes := []v1.Node{}
+
+	for _, node := range nodes.Items {
+		// Get node's AD Label
+		nodeAD, exists := node.Labels["topology.kubernetes.io/zone"]
+		// Skip if the AD doesn't match
+		if !exists || nodeAD != adLocation {
+			continue
+		}
+		schedulable := false
+		if !node.Spec.Unschedulable {
+			if len(node.Spec.Taints) == 0 { // worker nodes have no taints so set them to schedulable
+				schedulable = true
+			}
+			for _, taint := range node.Spec.Taints {
+				if taint.Key == "node-role.kubernetes.io/worker" || taint.Key == "node-role.kubernetes.io/compute" {
+					schedulable = true
+				}
+			}
+		}
+		if schedulable {
+			schedulableNodes = append(schedulableNodes, node)
+		}
+	}
+
+	if len(schedulableNodes) == 0 {
+		Failf("No schedulable nodes found")
+	}
+
+	return schedulableNodes
+}
+
 func (j *PVCTestJig) GetPVCByName(pvcName, namespace string) v1.PersistentVolumeClaim {
 	pvc, _ := j.KubeClient.CoreV1().PersistentVolumeClaims(namespace).Get(context.Background(), pvcName, metav1.GetOptions{})
 	return *pvc
@@ -1862,4 +2313,44 @@ func (j *PVCTestJig) GetOcidFromPV(pv v1.PersistentVolume) string {
 		return pv.Name
 	}
 	return ""
+}
+
+func (j *PVCTestJig) CheckLustreParameters(namespace string, podName string) {
+	nodeName := j.GetNodeNameFromPod(podName, namespace)
+	csiPodName := j.GetCSIPodNameRunningOnNode(nodeName)
+
+	Logf("Pod %s is present on node %s", podName, nodeName)
+	Logf("Found csi-oci-node pod %s on node %s", csiPodName, nodeName)
+
+	command := fmt.Sprintf("lctl get_param *.*.*MDT*.lru_size")
+	stdout, err := RunHostCmdUsingChroot("kube-system", csiPodName, command)
+	if err != nil {
+		Failf("Failed to get lustre parameters using command %v.Error : %v", command, err)
+	}
+	if stdout == "" || !strings.Contains(strings.TrimSpace(stdout), "lru_size=11201") {
+		Failf("Did not found expected lustre parameter. Command : %v, Expected Output : *.*.*MDT*.lru_size=11201, Actual Output : %v", command, stdout)
+	}
+}
+
+func (j *PVCTestJig) DeletePod(namespace string, name string, timeout time.Duration) error {
+	Logf("deleting pod %s/%s", namespace, name)
+	err := j.KubeClient.CoreV1().Pods(namespace).Delete(context.Background(), name, metav1.DeleteOptions{})
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	for start := time.Now(); time.Since(start) < timeout; time.Sleep(Poll) {
+		_, err := j.KubeClient.CoreV1().Pods(namespace).Get(context.Background(), name, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+	}
+
+	return errors.New("unable to delete pod within timeout")
 }
