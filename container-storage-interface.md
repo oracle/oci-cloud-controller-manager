@@ -4,7 +4,7 @@ This project implements a csi plugin for Kubernetes clusters
 running on Oracle Cloud Infrastructure (OCI). It enables provisioning, attach, detach, mount and unmount of [OCI block
 storage volumes][1] to Kubernetes Pods via the [CSI][2] plugin interface.
 
-## Install / Setup
+## Install / Setup using yamls
 
 We publish two binaries oci-csi-controller-driver which runs on the master nodes, and oci-csi-node-controller which runs on each of the worker nodes.
 
@@ -75,6 +75,77 @@ Lastly, verify that the oci-csi-controller-driver and oci-csi-node-controller is
 $ kubectl -n kube-system get po | grep csi-oci-controller
 $ kubectl -n kube-system get po | grep csi-oci-node
 ```
+
+## Install / Setup using helm chart
+
+We publish two binaries oci-csi-controller-driver which runs on the master nodes, and oci-csi-node-controller which runs on each of the worker nodes.
+
+### Submit configuration as a Kubernetes secret
+
+Create a config.yaml file with contents similar to the following. This file will contain authentication
+information necessary to authenticate with the OCI APIs and provision block storage volumes.
+An example configuration file can be found [here](manifests/provider-config-example.yaml)
+
+Submit this as a Kubernetes Secret.
+
+```bash
+kubectl create secret generic oci-volume-provisioner \
+    -n kube-system \
+    --from-file=config.yaml=provider-config-example.yaml
+```
+### Installer
+
+Create the associated RBAC rules if your cluster is configured to use [RBAC][3]
+
+Before applying the below helm chart make sure you are on the GitHub branch/tag where you want to apply the helm chart from (for example, v1.31.0)
+
+The CSI Volume Snapshot-Restore feature requires additional CRDs
+
+```bash
+$ kubectl apply -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/master/client/config/crd/snapshot.storage.k8s.io_volumesnapshotclasses.yaml
+$ kubectl apply -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/master/client/config/crd/snapshot.storage.k8s.io_volumesnapshotcontents.yaml
+$ kubectl apply -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/master/client/config/crd/snapshot.storage.k8s.io_volumesnapshots.yaml
+```
+
+The below helm chart installs the following:
+1. CSI controller driver - It is provided as a deployment and it has five containers -
+   1. csi-provisioner [external-provisioner][4]
+   2. csi-attacher [external-attacher][5]
+   3. snapshot-controller [snapshot-controller][8]
+   4. csi-snapshotter [external-snapshotter][9]
+   5. oci-csi-controller-driver 
+2. Node-driver: It is provided as a daemon set and it has two containers -
+   1. node-driver-registrar [node-driver-registrar][6]
+   2. oci-csi-node-driver
+3. Storage classes required
+
+```bash
+$ helm install <release-name-of-your-choice> manifests/container-storage-interface/csi
+```
+
+Lastly, verify that the oci-csi-controller-driver and oci-csi-node-controller is running in your cluster. By default it runs in the 'kube-system' namespace.
+
+```
+$ kubectl -n kube-system get po | grep csi-oci-controller
+$ kubectl -n kube-system get po | grep csi-oci-node
+```
+
+#### CSI controller/node custom drivers deployment
+
+Some use-cases need the CSI controller/node driver containers to be installed with a custom name (for ex: To run custom containers alongside OKE deployed default containers on an OKE cluster). In such cases, the below command can be used to create a custom CSI helm release with components renamed to avoid conflicts with default components
+
+```bash
+$ helm install <release-name-of-your-choice> manifests/container-storage-interface/csi --set customHandle="custom"
+```
+
+The above installs all the components listed in the above section with custom names
+
+To uninstall the above helm release and all the components it has installed
+
+```bash
+$ helm uninstall <release-name-of-your-choice>
+```
+
 
 ## Tutorial
 
