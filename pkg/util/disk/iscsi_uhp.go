@@ -19,6 +19,9 @@ import (
 
 const (
 	volumeLoginTimeout  = 3 * time.Minute
+
+	pathPollIntervalUHP  = 10 * time.Second
+
 	CHROOT_BASH_COMMAND = "chroot-bash"
 )
 
@@ -200,7 +203,7 @@ func GetMultipathIscsiDevicePath(ctx context.Context, consistentDevicePath strin
 
 	var friendlyName string
 
-	if err := wait.PollImmediateUntil(pathPollInterval, func() (done bool, err error) {
+	if err := wait.PollImmediateUntil(pathPollIntervalUHP, func() (done bool, err error) {
 		multiDevicePath, err := GetMultipathFriendlyName(consistentDevicePath, logger)
 		if err != nil {
 			return false, nil

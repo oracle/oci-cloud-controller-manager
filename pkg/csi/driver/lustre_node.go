@@ -42,6 +42,15 @@ func (d LustreNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStag
 		return nil, status.Error(codes.InvalidArgument, "Invalid Volume Handle provided.")
 	}
 
+
+	d.loadCSIConfig()
+
+	if lustrePostMountParameters, exists := req.GetVolumeContext()["lustrePostMountParameters"]; exists && !isSkipLustreParams(d.csiConfig) {
+		if err := csi_util.ValidateLustreParameters(d.logger, lustrePostMountParameters); err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "Invalid lustre parameters provided : %v", err.Error())
+		}
+	}
+
 	logger := d.logger.With("volumeID", req.VolumeId)
 
 	logger.Debugf("volume context: %v", req.VolumeContext)
@@ -52,16 +61,18 @@ func (d LustreNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStag
 	}
 	defer d.volumeLocks.Release(req.VolumeId)
 
+	lnetService := csi_util.NewLnetService()
+
 	//Lnet Setup
 	if setupLnet, ok := req.GetVolumeContext()[SetupLnet]; ok && setupLnet == "true" {
 
-		lustreSubnetCIDR, ok :=  req.GetVolumeContext()[LustreSubnetCidr]
+		lustreSubnetCIDR, ok := req.GetVolumeContext()[LustreSubnetCidr]
 
 		if !ok {
 			lustreSubnetCIDR = fmt.Sprintf("%s/32", d.nodeID)
 		}
 
-		err := csi_util.SetupLnet(logger, lustreSubnetCIDR, lnetLabel)
+		err := lnetService.SetupLnet(logger, lustreSubnetCIDR, lnetLabel)
 		if err != nil {
 			logger.With(zap.Error(err)).Error("Failed to setup lnet.")
 			return nil, status.Errorf(codes.Internal, "Failed to setup lnet with error : %v", err.Error())
@@ -79,8 +90,6 @@ func (d LustreNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStag
 	}
 
 	mounter := mount.New(mountPath)
-
-
 
 	targetPath := req.StagingTargetPath
 	mountPoint, err := isMountPoint(mounter, targetPath)
@@ -118,8 +127,35 @@ func (d LustreNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStag
 	logger.With("Source", source, "StagingTargetPath", targetPath).
 		Info("Mounting the volume to staging target path is completed.")
 
+	if lustrePostMountParameters, exists := req.GetVolumeContext()["lustrePostMountParameters"]; exists {
+		d.loadCSIConfig()
+		if !isSkipLustreParams(d.csiConfig)  {
+			err = lnetService.ApplyLustreParameters(logger, lustrePostMountParameters)
+			if err != nil {
+				//Unmounting volume on error as we are failing NodeStageVolume. If we don't unmount and customer deletes workload then volume will remain mounted as NodeUnstageVolume won't be called.
+				mounter.Unmount(targetPath)
+
+				logger.With(zap.Error(err)).Error("Failed to apply lustre post mount parameters.")
+				return nil, status.Errorf(codes.Internal, "Failed to apply lustre post mount parameters : %v. Please make sure correct lustre parameter is used.", err.Error())
+			}
+		} else {
+			logger.With("lustrePostMountParameters", lustrePostMountParameters).Info("Skipping application of lustrePostMountParameters as SkipLustreParameters csi config is true.")
+		}
+	}
+
 	return &csi.NodeStageVolumeResponse{}, nil
 }
+
+func (d LustreNodeDriver) loadCSIConfig() {
+	if d.csiConfig.IsLoaded {
+		return
+	}
+	d.logger.Info("Loading CSI Config Map")
+	csi_util.LoadCSIConfigFromConfigMap(d.csiConfig, d.KubeClient, CSIConfigMapName, d.logger)
+	d.csiConfig.IsLoaded = true
+}
+
+
 func (d LustreNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
 	if req.VolumeId == "" {
 		return nil, status.Error(codes.InvalidArgument, "Volume ID must be provided")
@@ -136,6 +172,13 @@ func (d LustreNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUn
 
 	logger := d.logger.With("volumeID", req.VolumeId, "stagingPath", req.StagingTargetPath)
 
+	d.loadCSIConfig()
+
+	if d.csiConfig != nil && d.csiConfig.Lustre != nil && d.csiConfig.Lustre.SkipNodeUnstage {
+		logger.Info("Skipping NodeUnstageVolume based on CSI Driver Configuration.")
+		return &csi.NodeUnstageVolumeResponse{}, nil
+	}
+
 	if acquired := d.volumeLocks.TryAcquire(req.VolumeId); !acquired {
 		logger.Error("Could not acquire lock for NodeUnstageVolume.")
 		return nil, status.Errorf(codes.Aborted, volumeOperationAlreadyExistsFmt, req.VolumeId)
@@ -149,7 +192,9 @@ func (d LustreNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUn
 
 	logger.Info("Unstage started")
 
-	if !csi_util.IsLnetActive(logger, lnetLabel) {
+	lnetService := csi_util.NewLnetService()
+
+	if !lnetService.IsLnetActive(logger, lnetLabel) {
 		//When lnet is not active force unmount is required as regular unmounts get stuck forever.
 		logger.Info("Performing force unmount as no active lnet configuration found.")
 		if err := disk.UnmountWithForce(targetPath); err != nil {
@@ -167,7 +212,7 @@ func (d LustreNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUn
 			logger.With("StagingTargetPath", targetPath).Infof("mount point does not exist")
 			return &csi.NodeUnstageVolumeResponse{}, nil
 		}
-		return  nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if !isMountPoint {
@@ -175,7 +220,7 @@ func (d LustreNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUn
 		err = os.RemoveAll(targetPath)
 		if err != nil {
 			logger.With(zap.Error(err)).Error("Remove target path failed with error")
-			return  nil, status.Error(codes.Internal, "Failed to remove target path")
+			return nil, status.Error(codes.Internal, "Failed to remove target path")
 		}
 		return &csi.NodeUnstageVolumeResponse{}, nil
 	}
@@ -203,7 +248,6 @@ func (d LustreNodeDriver) NodePublishVolume(ctx context.Context, req *csi.NodePu
 		return nil, status.Error(codes.InvalidArgument, "Target Path must be provided")
 	}
 
-
 	logger := d.logger.With("volumeID", req.VolumeId)
 	logger.Debugf("volume context: %v", req.VolumeContext)
 
@@ -212,13 +256,15 @@ func (d LustreNodeDriver) NodePublishVolume(ctx context.Context, req *csi.NodePu
 	//Lnet Setup
 	if setupLnet, ok := req.GetVolumeContext()[SetupLnet]; ok && setupLnet == "true" {
 
-		lustreSubnetCIDR, ok :=  req.GetVolumeContext()[LustreSubnetCidr]
+		lnetService := csi_util.NewLnetService()
+
+		lustreSubnetCIDR, ok := req.GetVolumeContext()[LustreSubnetCidr]
 
 		if !ok {
 			lustreSubnetCIDR = fmt.Sprintf("%s/32", d.nodeID)
 		}
 
-		err := csi_util.SetupLnet(logger, lustreSubnetCIDR, lnetLabel)
+		err := lnetService.SetupLnet(logger, lustreSubnetCIDR, lnetLabel)
 		if err != nil {
 			logger.With(zap.Error(err)).Error("Failed to setup lnet.")
 			return nil, status.Errorf(codes.Internal, "Failed to setup lnet with error : %v", err.Error())
@@ -296,7 +342,9 @@ func (d LustreNodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi.Node
 
 	logger.Info("Unmount started")
 
-	if !csi_util.IsLnetActive(logger, lnetLabel) {
+	lnetService := csi_util.NewLnetService()
+
+	if !lnetService.IsLnetActive(logger, lnetLabel) {
 		//When lnet is not active force unmount is required as regular unmounts get stuck forever
 		logger.Info("Performing force unmount as no active lnet configuration found.")
 		if err := disk.UnmountWithForce(targetPath); err != nil {
@@ -345,6 +393,7 @@ func (d LustreNodeDriver) NodeExpandVolume(ctx context.Context, req *csi.NodeExp
 }
 
 func (d LustreNodeDriver) NodeGetCapabilities(ctx context.Context, request *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
+
 	nscap := &csi.NodeServiceCapability{
 		Type: &csi.NodeServiceCapability_Rpc{
 			Rpc: &csi.NodeServiceCapability_RPC{
@@ -361,20 +410,28 @@ func (d LustreNodeDriver) NodeGetCapabilities(ctx context.Context, request *csi.
 }
 
 func (d LustreNodeDriver) NodeGetInfo(ctx context.Context, request *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
-	ad, _ , err := d.util.LookupNodeAvailableDomain(d.KubeClient, d.nodeID)
-	if err != nil {
-		d.logger.With(zap.Error(err)).With("nodeId", d.nodeID, "availableDomain", ad).Error("Available domain of node missing.")
+
+	if !d.nodeMetadata.IsNodeMetadataLoaded {
+		err := d.util.LoadNodeMetadataFromApiServer(ctx, d.KubeClient, d.nodeID, d.nodeMetadata)
+		if err != nil || d.nodeMetadata.AvailabilityDomain == "" {
+			d.logger.With(zap.Error(err)).With("nodeId", d.nodeID).Error("Failed to get availability domain of node from kube api server.")
+			return nil, status.Error(codes.Internal, "Failed to get availability domain of node from kube api server.")
+		}
 	}
 
-	d.logger.With("nodeId", d.nodeID, "availableDomain", ad).Info("Available domain of node identified.")
+	d.logger.With("nodeId", d.nodeID, "availableDomain", d.nodeMetadata.AvailabilityDomain).Info("Available domain of node identified.")
 	return &csi.NodeGetInfoResponse{
 		NodeId: d.nodeID,
 		// make sure that the driver works on this particular AD only
 		AccessibleTopology: &csi.Topology{
 			Segments: map[string]string{
-				kubeAPI.LabelZoneFailureDomain: ad,
+				kubeAPI.LabelZoneFailureDomain: d.nodeMetadata.AvailabilityDomain,
+				kubeAPI.LabelTopologyZone:      d.nodeMetadata.AvailabilityDomain,
 			},
 		},
 	}, nil
 }
 
+func isSkipLustreParams(csiConfig *csi_util.CSIConfig) bool {
+	return csiConfig != nil && csiConfig.Lustre != nil && csiConfig.Lustre.SkipLustreParameters
+}

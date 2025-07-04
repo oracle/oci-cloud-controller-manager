@@ -1,0 +1,19 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: oci-bv{{ if .Values.customHandle }}-{{ .Values.customHandle }}{{ end }}
+provisioner: {{ if .Values.customHandle }}{{ .Values.customHandle }}.{{ end }}blockvolume.csi.oraclecloud.com
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: oci-bv-{{ if .Values.customHandle }}{{ .Values.customHandle }}-{{ end }}encrypted
+provisioner: {{ if .Values.customHandle }}{{ .Values.customHandle }}.{{ end }}blockvolume.csi.oraclecloud.com
+parameters:
+  attachment-type: "paravirtualized"
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
