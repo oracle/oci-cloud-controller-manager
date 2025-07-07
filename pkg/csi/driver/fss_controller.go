@@ -83,6 +83,8 @@ type StorageClassParameters struct {
 	encryptInTransit string
 	// tags
 	scTags *config.TagConfig
+	// NsgOcids
+	nsgOcids []string
 }
 
 type SecretParameters struct {
@@ -659,6 +661,22 @@ func extractStorageClassParameters(ctx context.Context, d *FSSControllerDriver, 
 		log = log.With("mountTargetSubnetOcid", mountTargetSubnetOcid)
 		log.Info("Mount Target Ocid not provided, to be created")
 		storageClassParameters.mountTargetSubnetOcid = mountTargetSubnetOcid
+
+		nsgOcidsStr, ok := parameters["nsgOcids"]
+		if !ok {
+			log.Infof("No NSG Ocids provided to associate with new mount target creation")
+		} else {
+			var nsgOcids []string
+			err := json.Unmarshal([]byte(nsgOcidsStr), &nsgOcids)
+			if err != nil {
+				log.Errorf("Failed to parse nsgOcids provided in storage class. Please provide valid input.")
+				dimensionsMap[metrics.ComponentDimension] = util.GetMetricDimensionForComponent(util.ErrValidation, util.CSIStorageType)
+				metrics.SendMetricData(d.metricPusher, metrics.MTProvision, time.Since(startTime).Seconds(), dimensionsMap)
+				return log, nil, nil, status.Errorf(codes.InvalidArgument, "Failed to parse nsgOcids provided in storage class. Please provide valid input."), true
+			}
+			log.With("nsgOcids", nsgOcids)
+			storageClassParameters.nsgOcids = nsgOcids
+		}
 	} else {
 		storageClassParameters.mountTargetOcid = mountTargetOcid
 		log = log.With("mountTargetOcid", mountTargetOcid)
@@ -775,6 +793,7 @@ func provisionMountTarget(ctx context.Context, log *zap.SugaredLogger, c client.
 		SubnetId:           &storageClassParameters.mountTargetSubnetOcid,
 		FreeformTags:       storageClassParameters.scTags.FreeformTags,
 		DefinedTags:        storageClassParameters.scTags.DefinedTags,
+		NsgIds: 			storageClassParameters.nsgOcids,
 	}
 	return fssClient.CreateMountTarget(ctx, createMountTargetDetails)
 }
