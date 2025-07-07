@@ -305,7 +305,8 @@ var _ = Describe("Raw Block Volume Snapshot Creation and Restore", func() {
 			vscontentName := pvcJig.CreateVolumeSnapshotContentOrFail(f.Namespace.Name+"-e2e-snapshot-vsc", setupF.BlockProvisionerName, backupOCID, ReclaimPolicyDelete, restoreVsName, f.Namespace.Name, v1.PersistentVolumeBlock)
 
 			pvcJig.CreateAndAwaitVolumeSnapshotStaticOrFail(restoreVsName, f.Namespace.Name, vscontentName)
-
+			//Waiting for volume snapshot content to be created and status field to be populated
+			time.Sleep(1 * time.Minute)
 			pvcRestore := pvcJig.CreateAndAwaitPVCOrFailSnapshotSource(f.Namespace.Name, framework.MinVolumeBlock, scName, restoreVsName, v1.ReadWriteOnce, v1.ClaimPending, true, nil)
 			podRestoreName := pvcJig.CreateAndAwaitNginxPodOrFail(f.Namespace.Name, pvcRestore, KeepAliveCommandBlock)
 			pvcJig.CheckDataInBlockDevice(f.Namespace.Name, podRestoreName, "Hello World")
