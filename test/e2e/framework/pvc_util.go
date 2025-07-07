@@ -810,8 +810,8 @@ func (j *PVCTestJig) CreateBootVolume(c ocicore.ComputeClient, bs ocicore.Blocks
 	if len(attachmentsResp.Items) == 0 {
 		Failf("No boot volume attachment found for instance %s", *instance.Id)
 	}
-
 	attachment := attachmentsResp.Items[0]
+
 	Logf("Cloning boot volume %s", *attachment.BootVolumeId)
 	resp, err := bs.CreateBootVolume(ctx, ocicore.CreateBootVolumeRequest{
 		CreateBootVolumeDetails: ocicore.CreateBootVolumeDetails{
