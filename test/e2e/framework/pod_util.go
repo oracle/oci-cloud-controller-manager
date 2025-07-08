@@ -125,7 +125,27 @@ func (j *PVCTestJig) CheckMountOptions(namespace string, podName string, expecte
 		Failf("NFS mount with Mount Options failed in pod '%v' with error '%v'", podName, pollErr.Error())
 	}
 }
-
+func (j *PVCTestJig) CheckLustreMountOptions(namespace string, podName string, expectedPath string, expectedOptions []string) {
+	command := fmt.Sprintf("mount -t lustre")
+	if pollErr := wait.PollImmediate(K8sResourcePoll, DefaultTimeout, func() (bool, error) {
+		stdout, err := RunHostCmd(namespace, podName, command)
+		if err != nil {
+			Logf("got err: %v, retry until timeout", err)
+			return false, nil
+		}
+		if stdout == "" || !strings.Contains(stdout, expectedPath) {
+			return false, errors.Errorf("Lustre Mount not found for path %s. Mounted as %s", expectedPath, stdout)
+		}
+		for _, option := range expectedOptions {
+			if !strings.Contains(stdout, option) {
+				return false, errors.Errorf("Lustre Mount Options check failed. Mounted as %s", stdout)
+			}
+		}
+		return true, nil
+	}); pollErr != nil {
+		Failf("Lustre mount with Mount Options failed in pod '%v' with error '%v'", podName, pollErr.Error())
+	}
+}
 func (j *PVCTestJig) ExtractDataFromBlockDevice(namespace string, podName string, devicePath string, outFile string) {
 	By("extract data from block device")
 	command := fmt.Sprintf("dd if=%s count=1 | tr -d '\\000' > %s", devicePath, outFile)
@@ -386,7 +406,7 @@ func (j *PVCTestJig) CreateAndAwaitNginxPodOrFail(ns string, pvc *v1.PersistentV
 	}
 
 	// Waiting for pod to be running
-	err = j.waitTimeoutForPodRunningInNamespace(pod.Name, ns, slowPodStartTimeout)
+	err = j.WaitTimeoutForPodRunningInNamespace(pod.Name, ns, slowPodStartTimeout)
 	if err != nil {
 		Failf("Pod %q is not Running: %v", pod.Name, err)
 	}
@@ -403,7 +423,7 @@ func (j *PVCTestJig) waitTimeoutForPodNotFoundInNamespace(podName, namespace str
 
 // WaitTimeoutForPodRunningInNamespace waits default amount of time (PodStartTimeout) for the specified pod to become running.
 // Returns an error if timeout occurs first, or pod goes in to failed state.
-func (j *PVCTestJig) waitTimeoutForPodRunningInNamespace(podName, namespace string, timeout time.Duration) error {
+func (j *PVCTestJig) WaitTimeoutForPodRunningInNamespace(podName, namespace string, timeout time.Duration) error {
 	return wait.PollImmediate(Poll, timeout, j.podRunning(podName, namespace))
 }
 
@@ -479,4 +499,219 @@ func (j *PVCTestJig) CheckVolumeOwnership(namespace, podName, mountPath, expecte
 	} else {
 		Failf("Actual Volume group ownership: %v and expected ownership: %v is not matching", cmdOutput, expectedOwner)
 	}
+}
+
+func (j *PVCTestJig) GetNodeNameFromPod(podName, namespace string) string {
+	pod, err := j.KubeClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
+	if err != nil {
+		Failf("Failed to get pod %q: %v", podName, err)
+	}
+	return pod.Spec.NodeName
+}
+
+func (j *PVCTestJig) GetCSIPodNameRunningOnNode(nodeName string) string {
+
+	// List all pods in the kube-system namespace
+	pods, err := j.KubeClient.CoreV1().Pods("kube-system").List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		Failf("Failed to list pods in kube-system namespace: %v", err)
+	}
+
+	// Find the csi-oci-node pod running on the specific node
+	for _, p := range pods.Items {
+		if p.Spec.NodeName == nodeName && p.Labels["app"] == "csi-oci-node" {
+			return p.Name
+		}
+	}
+
+	Failf("Failed to find csi-oci-node pod on node %v in kube-system namespace: %v", nodeName, err)
+	return ""
+}
+
+// describePod fetches details about the given pod
+func (j *PVCTestJig) describePod(namespace, podName string) (*v1.Pod, error) {
+	pod, err := j.KubeClient.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return pod, nil
+}
+
+func (j *PVCTestJig) describePVCs(namespace string, pod *v1.Pod) ([]*v1.PersistentVolumeClaim, error) {
+	var pvcs []*v1.PersistentVolumeClaim
+	for _, vol := range pod.Spec.Volumes {
+		if vol.PersistentVolumeClaim != nil {
+			pvcName := vol.PersistentVolumeClaim.ClaimName
+			pvc, err := j.KubeClient.CoreV1().PersistentVolumeClaims(namespace).Get(context.TODO(), pvcName, metav1.GetOptions{})
+			if err != nil {
+				Logf("Failed to get PVC %s: %v", pvcName, err)
+				continue
+			}
+			pvcs = append(pvcs, pvc)
+		}
+	}
+	return pvcs, nil
+}
+
+func (j *PVCTestJig) getPodEvents(ns, podName string) ([]*v1.Event, error) {
+	// Get events for the specified pod in the given namespace
+	eventsList, err := j.KubeClient.CoreV1().Events(ns).List(context.TODO(), metav1.ListOptions{
+		FieldSelector: fmt.Sprintf("involvedObject.name=%s", podName),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var podEvents []*v1.Event
+	for i := range eventsList.Items {
+		podEvents = append(podEvents, &eventsList.Items[i])
+	}
+	return podEvents, nil
+}
+
+func (j *PVCTestJig) logPodDetails(ns string, pod *v1.Pod) {
+	fmt.Printf("Pod Description:\n")
+	fmt.Printf("Name: %s\n", pod.Name)
+	fmt.Printf("Namespace: %s\n", pod.Namespace)
+	fmt.Printf("Node Name: %s\n", pod.Spec.NodeName)
+	fmt.Printf("Status: %s\n", pod.Status.Phase)
+	fmt.Printf("Conditions: %+v\n", pod.Status.Conditions)
+	fmt.Printf("Labels: %+v\n", pod.Labels)
+	fmt.Printf("Annotations: %+v\n", pod.Annotations)
+	fmt.Printf("Containers:\n")
+	for _, container := range pod.Spec.Containers {
+		fmt.Printf("  Name: %s\n  Image: %s\n  Ready: %v\n", container.Name, container.Image, container.ReadinessProbe)
+	}
+	fmt.Println()
+
+	// Fetch and print Pod events
+	events, err := j.getPodEvents(ns, pod.Name)
+	if err != nil {
+		Logf("Error retrieving events for pod: %v", err)
+	} else {
+		fmt.Printf("Pod Events:\n")
+		for _, event := range events {
+			fmt.Printf("  Type: %s  Reason: %s  Message: %s  Time: %s\n", event.Type, event.Reason, event.Message, event.LastTimestamp)
+		}
+	}
+	fmt.Println()
+}
+
+func logPVCDetails(pvc *v1.PersistentVolumeClaim) {
+	fmt.Printf("PVC Description:\n")
+	fmt.Printf("Name: %s\n", pvc.Name)
+	fmt.Printf("Status: %s\n", pvc.Status.Phase)
+	fmt.Printf("Access Modes: %v\n", pvc.Spec.AccessModes)
+	fmt.Printf("Volume: %s\n", pvc.Spec.VolumeName)
+	if pvc.Spec.StorageClassName != nil {
+		fmt.Printf("Storage Class: %s\n", *pvc.Spec.StorageClassName) // Dereferencing the pointer
+	} else {
+		fmt.Println("Storage Class: Not set")
+	}
+	fmt.Printf("Resources Requests: %v\n", pvc.Spec.Resources.Requests)
+	fmt.Printf("Labels: %v\n", pvc.Labels)
+	fmt.Printf("Annotations: %v\n", pvc.Annotations)
+	fmt.Println()
+}
+
+func (j *PVCTestJig) getPVCEvents(ns, pvcName string) ([]*v1.Event, error) {
+	eventsList, err := j.KubeClient.CoreV1().Events(ns).List(context.TODO(), metav1.ListOptions{
+		FieldSelector: fmt.Sprintf("involvedObject.name=%s", pvcName),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var pvcEvents []*v1.Event
+	for i := range eventsList.Items {
+		pvcEvents = append(pvcEvents, &eventsList.Items[i])
+	}
+	return pvcEvents, nil
+}
+
+func (j *PVCTestJig) logPVCEvents(ns, pvcName string) {
+	pvcEvents, err := j.getPVCEvents(ns, pvcName)
+	if err != nil {
+		Logf("Error retrieving events for PVC %s: %v", pvcName, err)
+	} else {
+		fmt.Printf("PVC Events for %s:\n", pvcName)
+		for _, event := range pvcEvents {
+			fmt.Printf("  Type: %s  Reason: %s  Message: %s  Time: %s\n", event.Type, event.Reason, event.Message, event.LastTimestamp)
+		}
+	}
+	fmt.Println()
+}
+
+func (j *PVCTestJig) logPVCs(ns string, pod *v1.Pod) {
+	pvcs, err := j.describePVCs(ns, pod)
+	if err != nil {
+		Logf("Error describing PVCs: %v", err)
+		return
+	}
+	for _, pvc := range pvcs {
+		logPVCDetails(pvc)
+		j.logPVCEvents(ns, pvc.Name)
+	}
+}
+
+// getNodeDriverLogs fetches the last 15 lines of logs from the csi-oci-node pod running on the same node
+func (j *PVCTestJig) getNodeDriverLogs(nodeName string) (string, error) {
+	// Find the csi-oci-node-* pod running on the given node
+	podList, err := j.KubeClient.CoreV1().Pods("kube-system").List(context.TODO(), metav1.ListOptions{
+		LabelSelector: "app=csi-oci-node",
+	})
+	if err != nil {
+		return "", err
+	}
+
+	var nodeDriverPod *v1.Pod
+	for _, pod := range podList.Items {
+		if pod.Spec.NodeName == nodeName {
+			nodeDriverPod = &pod
+			break
+		}
+	}
+
+	if nodeDriverPod == nil {
+		return "", fmt.Errorf("no csi-oci-node pod found on node %s", nodeName)
+	}
+
+	// Fetch logs (last 15 lines)
+	logTailLines := int64(15)
+	req := j.KubeClient.CoreV1().Pods("kube-system").GetLogs(nodeDriverPod.Name, &v1.PodLogOptions{
+		//This function does not exist for some reason
+		TailLines: &logTailLines,
+	})
+	logs, err := req.DoRaw(context.TODO())
+	if err != nil {
+		return "", err
+	}
+
+	return string(logs), nil
+}
+
+func (j *PVCTestJig) logNodeDriverLogs(pod *v1.Pod) {
+	if pod.Spec.NodeName == "" {
+		Logf("Pod is not scheduled yet, skipping node driver logs.")
+		return
+	}
+	nodeName := pod.Spec.NodeName
+	logs, err := j.getNodeDriverLogs(nodeName)
+	if err != nil {
+		Logf("Error getting node driver logs: %v", err)
+	} else {
+		fmt.Printf("Node Driver Logs:\n%s\n", logs)
+	}
+}
+
+func (j *PVCTestJig) logPodDebugInfo(ns string, podName string) {
+	pod, err := j.describePod(ns, podName)
+	if err != nil {
+		Logf("Error describing pod: %v", err)
+		return
+	}
+
+	j.logPodDetails(ns, pod)
+	j.logPVCs(ns, pod)
+	j.logNodeDriverLogs(pod)
 }

@@ -253,7 +253,7 @@ func (d OCIFlexvolumeDriver) Attach(logger *zap.SugaredLogger, opts flexvolume.O
 	compartmentID := *instance.CompartmentId
 
 	//Checking if the volume is already attached
-	attachment, err := c.Compute().FindVolumeAttachment(ctx, compartmentID, volumeOCID)
+	attachment, err := c.Compute().FindVolumeAttachment(ctx, compartmentID, volumeOCID, nil)
 	if err != nil && !client.IsNotFound(err) {
 		errorType = util.GetError(err)
 		fvdMetricDimension = util.GetMetricDimensionForComponent(errorType, util.FVDStorageType)
@@ -288,7 +288,7 @@ func (d OCIFlexvolumeDriver) Attach(logger *zap.SugaredLogger, opts flexvolume.O
 	}
 	// volume not attached to any instance, proceed with volume attachment
 	logger.With("volumeID", volumeOCID, "instanceID", *instance.Id).Info("Attaching volume to instance")
-	attachment, err = c.Compute().AttachVolume(ctx, *instance.Id, volumeOCID)
+	attachment, err = c.Compute().AttachVolume(ctx, *instance.Id, volumeOCID, false)
 	if err != nil {
 		errorType = util.GetError(err)
 		fvdMetricDimension = util.GetMetricDimensionForComponent(errorType, util.FVDStorageType)
@@ -363,7 +363,7 @@ func (d OCIFlexvolumeDriver) Detach(logger *zap.SugaredLogger, pvOrVolumeName, n
 		return flexvolume.Fail(logger, "failed to get compartmentID from node annotation: ", err)
 	}
 
-	attachment, err := c.Compute().FindVolumeAttachment(ctx, compartmentID, volumeOCID)
+	attachment, err := c.Compute().FindVolumeAttachment(ctx, compartmentID, volumeOCID, nil)
 	if err != nil {
 		logger.Error("Error in finding volume attachment")
 		errorType = util.GetError(err)
@@ -430,7 +430,7 @@ func (d OCIFlexvolumeDriver) IsAttached(logger *zap.SugaredLogger, opts flexvolu
 		return flexvolume.Fail(logger, "Failed to look up node compartment id: ", err)
 	}
 
-	attachment, err := c.Compute().FindVolumeAttachment(ctx, compartmentID, volumeOCID)
+	attachment, err := c.Compute().FindVolumeAttachment(ctx, compartmentID, volumeOCID, nil)
 	if err != nil {
 		return flexvolume.DriverStatus{
 			Status:   flexvolume.StatusSuccess,

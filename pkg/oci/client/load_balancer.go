@@ -58,6 +58,10 @@ type GenericLoadBalancerInterface interface {
 	CreateListener(ctx context.Context, lbID, name string, details *GenericListener) (string, error)
 	DeleteListener(ctx context.Context, lbID, name string) (string, error)
 
+	CreateRuleSet(ctx context.Context, lbID string, name string, details *loadbalancer.RuleSetDetails) (string, error)
+	UpdateRuleSet(ctx context.Context, lbID string, name string, details *loadbalancer.RuleSetDetails) (string, error)
+	DeleteRuleSet(ctx context.Context, lbID string, name string) (string, error)
+
 	UpdateLoadBalancerShape(context.Context, string, *GenericUpdateLoadBalancerShapeDetails) (string, error)
 	UpdateNetworkSecurityGroups(context.Context, string, []string) (string, error)
 
@@ -102,16 +106,24 @@ func (c *loadbalancerClientStruct) GetLoadBalancerByName(ctx context.Context, co
 
 	if ocid, ok := c.nameToOcid.Load(name); ok {
 		var err error
+		var lb *GenericLoadBalancer
+
 		ocidStr, ok := ocid.(string)
 		if ok {
-			lb, err := c.GetLoadBalancer(ctx, ocidStr)
-			if err == nil && *lb.DisplayName == name {
-				return lb, err
+			lb, err = c.GetLoadBalancer(ctx, ocidStr)
+			if err == nil && lb.DisplayName != nil && lb.CompartmentId != nil {
+				if *lb.DisplayName == name && *lb.CompartmentId == compartmentID {
+					return lb, err
+				}
+				logger.Info("LB name to OCID cache stale record. Actual display name: %s, compartment %s", *lb.DisplayName, *lb.CompartmentId)
+			} else {
+				logger.Info("LB name to OCID cache failed to get LB or the response contained unexpected nil value")
 			}
 		}
 
-		if !ok || IsNotFound(err) { // Only remove the cached value on 404, not on a 5XX
+		if IsNotFound(err) { // Only remove the cached value on 404, not on a 5XX
 			c.nameToOcid.Delete(name)
+			logger.Info("LB name to OCID cache deleted record")
 		}
 	} else {
 		logger.Info("LB name to OCID cache miss")
@@ -165,6 +177,7 @@ func (c *loadbalancerClientStruct) CreateLoadBalancer(ctx context.Context, detai
 		BackendSets:             c.genericBackendSetDetailsToBackendSets(details.BackendSets),
 		FreeformTags:            details.FreeformTags,
 		DefinedTags:             details.DefinedTags,
+		RuleSets:                details.RuleSets,
 	}
 
 	// IpMode for OCI Load balancers can only be set at Create
@@ -451,6 +464,7 @@ func (c *loadbalancerClientStruct) UpdateListener(ctx context.Context, lbID stri
 			DefaultBackendSetName: details.DefaultBackendSetName,
 			Port:                  details.Port,
 			Protocol:              details.Protocol,
+			RuleSetNames:          details.RuleSetNames,
 		},
 		RequestMetadata: c.requestMetadata,
 	}
@@ -474,13 +488,79 @@ func (c *loadbalancerClientStruct) UpdateListener(ctx context.Context, lbID stri
 	return *resp.OpcWorkRequestId, nil
 }
 
+func (c *loadbalancerClientStruct) CreateRuleSet(ctx context.Context, lbID string, name string, details *loadbalancer.RuleSetDetails) (string, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return "", RateLimitError(true, "CreateRuleSet")
+	}
+
+	crs := loadbalancer.CreateRuleSetRequest{
+		LoadBalancerId: &lbID,
+		CreateRuleSetDetails: loadbalancer.CreateRuleSetDetails{
+			Name:  &name,
+			Items: details.Items,
+		},
+		RequestMetadata: common.RequestMetadata{},
+	}
+
+	resp, err := c.loadbalancer.CreateRuleSet(ctx, crs)
+	incRequestCounter(err, createVerb, ruleSetResource)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	return *resp.OpcWorkRequestId, nil
+}
+
+func (c *loadbalancerClientStruct) UpdateRuleSet(ctx context.Context, lbID string, name string, details *loadbalancer.RuleSetDetails) (string, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return "", RateLimitError(true, "UpdateRuleSet")
+	}
+
+	urs := loadbalancer.UpdateRuleSetRequest{
+		LoadBalancerId: &lbID,
+		RuleSetName:    &name,
+		UpdateRuleSetDetails: loadbalancer.UpdateRuleSetDetails{
+			Items: details.Items,
+		},
+		RequestMetadata: common.RequestMetadata{},
+	}
+
+	resp, err := c.loadbalancer.UpdateRuleSet(ctx, urs)
+	incRequestCounter(err, updateVerb, ruleSetResource)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	return *resp.OpcWorkRequestId, nil
+}
+
+func (c *loadbalancerClientStruct) DeleteRuleSet(ctx context.Context, lbID string, name string) (string, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return "", RateLimitError(true, "DeleteRuleSet")
+	}
+
+	drs := loadbalancer.DeleteRuleSetRequest{
+		LoadBalancerId:  &lbID,
+		RuleSetName:     &name,
+		RequestMetadata: common.RequestMetadata{},
+	}
+
+	resp, err := c.loadbalancer.DeleteRuleSet(ctx, drs)
+	incRequestCounter(err, deleteVerb, ruleSetResource)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	return *resp.OpcWorkRequestId, nil
+}
+
 func (c *loadbalancerClientStruct) AwaitWorkRequest(ctx context.Context, id string) (*GenericWorkRequest, error) {
 	var wr *loadbalancer.WorkRequest
 	contextWithTimeout, cancel := context.WithTimeout(ctx, defaultSynchronousAPIPollContextTimeout)
 	defer cancel()
 	requestId := utils.GenerateOpcRequestID()
 	logger := zap.L().Sugar()
-	logger = logger.With("opc-workrequest-id", id,
+	logger = logger.With("workRequestID", id,
 		"request-id", requestId,
 		"loadBalancerType", "lb",
 	)
@@ -594,6 +674,13 @@ func (c *loadbalancerClientStruct) loadbalancerToGenericLoadbalancer(lb *loadbal
 		return nil
 	}
 	lifecycleState := string(lb.LifecycleState)
+
+	// convert loabalancer.RuleSet to RuleSetDetails
+	ruleSets := make(map[string]loadbalancer.RuleSetDetails)
+	for rsn, rs := range lb.RuleSets {
+		ruleSets[rsn] = loadbalancer.RuleSetDetails{Items: rs.Items}
+	}
+
 	return &GenericLoadBalancer{
 		Id:                      lb.Id,
 		CompartmentId:           lb.CompartmentId,
@@ -610,6 +697,7 @@ func (c *loadbalancerClientStruct) loadbalancerToGenericLoadbalancer(lb *loadbal
 		BackendSets:             c.backendSetsToGenericBackendSetDetails(lb.BackendSets),
 		FreeformTags:            lb.FreeformTags,
 		DefinedTags:             lb.DefinedTags,
+		RuleSets:                ruleSets,
 		SystemTags:              lb.SystemTags,
 	}
 }

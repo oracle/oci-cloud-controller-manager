@@ -125,7 +125,6 @@ They can be passed directly to the make target as well:
 ```bash
 make run-ccm-e2e-tests-local FOCUS="load_*" FILES="true"
 ```
-
 ---
 
 [1]: https://github.com/kubernetes/kubernetes/blob/0cb15453dae92d8be66cf42e6c1b04e21a2d0fb6/test/e2e/network/service.go

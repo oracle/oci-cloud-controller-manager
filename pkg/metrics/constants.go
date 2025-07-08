@@ -40,8 +40,12 @@ const (
 	PVProvision = "PV_PROVISION"
 	// PVAttach is the OCI metric suffix for PV attach
 	PVAttach = "PV_ATTACH"
+	// PVAttachRWX is the OCI metric suffix for PV attach RWX
+	PVAttachRWX = "PV_ATTACH_RWX"
 	// PVDetach is the OCI metric suffix for PV detach
 	PVDetach = "PV_DETACH"
+	// PVDetachRWX is the OCI metric suffix for PV detach RWX
+	PVDetachRWX = "PV_DETACH_RWX"
 	// PVDelete is the OCI metric suffix for PV delete
 	PVDelete = "PV_DELETE"
 	// PVExpand is the OCI metric suffix for PV Expand
@@ -83,4 +87,5 @@ const (
 	ComponentDimension        = "component"
 	BackendSetsCountDimension = "backendSetsCount"
 	VolumeVpusPerGBDimension  = "vpusPerGB"
+	InstanceIdDimension       = "instanceID"
 )
