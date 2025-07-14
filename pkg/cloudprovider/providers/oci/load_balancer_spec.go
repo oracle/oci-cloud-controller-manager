@@ -146,6 +146,10 @@ const (
 	// loadbalancer traffic policy("ROUND_ROBIN", "LEAST_CONNECTION", "IP_HASH")
 	ServiceAnnotationLoadBalancerPolicy = "oci.oraclecloud.com/loadbalancer-policy"
 
+	// ServiceAnnotationLoadBalancerProtocol is a service annotation for specifying
+	// the load balancer listener protocol ("HTTP", "HTTP2", "TCP", "GRPC").
+	ServiceAnnotationLoadBalancerProtocol = "oci.oraclecloud.com/oci-load-balancer-protocol"
+
 	// ServiceAnnotationLoadBalancerInitialDefinedTagsOverride is a service annotation for specifying
 	// defined tags on the LB
 	ServiceAnnotationLoadBalancerInitialDefinedTagsOverride = "oci.oraclecloud.com/initial-defined-tags-override"
@@ -1092,19 +1096,32 @@ func getListenersOciLoadBalancer(svc *v1.Service, sslCfg *SSLConfig) (map[string
 
 	listeners := make(map[string]client.GenericListener)
 	for _, servicePort := range svc.Spec.Ports {
-		protocol := string(servicePort.Protocol)
-		// Annotation overrides the protocol.
+		backendProtocol := string(servicePort.Protocol)
+		// Backend protocol annotation overrides the protocol.
 		if p, ok := svc.Annotations[ServiceAnnotationLoadBalancerBEProtocol]; ok {
 			// Default
 			if p == "" {
 				p = DefaultLoadBalancerBEProtocol
 			}
 			if strings.EqualFold(p, "HTTP") || strings.EqualFold(p, "TCP") || strings.EqualFold(p, "GRPC") {
-				protocol = p
+				backendProtocol = p
 			} else {
 				return nil, fmt.Errorf("invalid backend protocol %q requested for load balancer listener. Only 'HTTP', 'TCP' and 'GRPC' protocols supported", p)
 			}
 		}
+
+		// Listener protocol - starts with backend protocol but can be overridden
+		listenerProtocol := backendProtocol
+		if p, ok := svc.Annotations[ServiceAnnotationLoadBalancerProtocol]; ok {
+			if p != "" {
+				if strings.EqualFold(p, "HTTP") || strings.EqualFold(p, "HTTP2") || strings.EqualFold(p, "TCP") || strings.EqualFold(p, "GRPC") {
+					listenerProtocol = p
+				} else {
+					return nil, fmt.Errorf("invalid listener protocol %q requested for load balancer listener. Only 'HTTP', 'HTTP2', 'TCP' and 'GRPC' protocols supported", p)
+				}
+			}
+		}
+
 		port := int(servicePort.Port)
 
 		var secretName string
@@ -1118,8 +1135,8 @@ func getListenersOciLoadBalancer(svc *v1.Service, sslCfg *SSLConfig) (map[string
 				return nil, err
 			}
 		}
-		if strings.EqualFold(protocol, "GRPC") {
-			protocol = ProtocolGrpc
+		if strings.EqualFold(listenerProtocol, "GRPC") {
+			listenerProtocol = ProtocolGrpc
 			if sslConfiguration == nil {
 				return nil, fmt.Errorf("SSL configuration cannot be empty for GRPC protocol")
 			}
@@ -1127,12 +1144,12 @@ func getListenersOciLoadBalancer(svc *v1.Service, sslCfg *SSLConfig) (map[string
 				sslConfiguration.CipherSuiteName = common.String(DefaultCipherSuiteForGRPC)
 			}
 		}
-		name := getListenerName(protocol, port)
+		name := getListenerName(listenerProtocol, port)
 
 		listener := client.GenericListener{
 			Name:                  &name,
 			DefaultBackendSetName: common.String(getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))),
-			Protocol:              &protocol,
+			Protocol:              &listenerProtocol,
 			Port:                  &port,
 			RuleSetNames:          rs,
 			SslConfiguration:      sslConfiguration,
@@ -1145,10 +1162,11 @@ func getListenersOciLoadBalancer(svc *v1.Service, sslCfg *SSLConfig) (map[string
 		if proxyProtocolVersion != nil && connectionIdleTimeout == nil {
 			// At that point LB only supports HTTP and TCP
 			defaultIdleTimeoutPerProtocol := map[string]int64{
-				"HTTP": lbConnectionIdleTimeoutHTTP,
-				"TCP":  lbConnectionIdleTimeoutTCP,
+				"HTTP":  lbConnectionIdleTimeoutHTTP,
+				"HTTP2": lbConnectionIdleTimeoutHTTP, // HTTP2 uses same timeout as HTTP
+				"TCP":   lbConnectionIdleTimeoutTCP,
 			}
-			actualConnectionIdleTimeout = common.Int64(defaultIdleTimeoutPerProtocol[strings.ToUpper(protocol)])
+			actualConnectionIdleTimeout = common.Int64(defaultIdleTimeoutPerProtocol[strings.ToUpper(listenerProtocol)])
 		}
 
 		if actualConnectionIdleTimeout != nil {
