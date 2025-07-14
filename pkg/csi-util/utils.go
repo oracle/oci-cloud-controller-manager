@@ -160,7 +160,7 @@ func (u *Util) WaitForKubeApiServerToBeReachableWithContext(ctx context.Context,
 		func(waitForKubeApiServerCtx context.Context) (bool, error) {
 			attemptCtx, attemptCancel := context.WithTimeout(waitForKubeApiServerCtx, backoff.Step())
 			defer attemptCancel()
-			_, err := k.CoreV1().RESTClient().Get().AbsPath("/version").Do(attemptCtx).Raw()
+			_, err := k.CoreV1().RESTClient().Get().AbsPath("/readyz").Do(attemptCtx).Raw()
 			if err != nil {
 				u.Logger.With(zap.Error(err)).Errorf("Waiting for kube api server to be reachable, Retrying..")
 				return false, nil
