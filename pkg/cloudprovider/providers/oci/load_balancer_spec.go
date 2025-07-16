@@ -1163,7 +1163,7 @@ func getListenersOciLoadBalancer(svc *v1.Service, sslCfg *SSLConfig) (map[string
 			// At that point LB only supports HTTP and TCP
 			defaultIdleTimeoutPerProtocol := map[string]int64{
 				"HTTP":  lbConnectionIdleTimeoutHTTP,
-				"HTTP2": lbConnectionIdleTimeoutHTTP, // HTTP2 uses same timeout as HTTP
+				"HTTP2": lbConnectionIdleTimeoutHTTP, // HTTP/2 uses same timeout as HTTP
 				"TCP":   lbConnectionIdleTimeoutTCP,
 			}
 			actualConnectionIdleTimeout = common.Int64(defaultIdleTimeoutPerProtocol[strings.ToUpper(listenerProtocol)])

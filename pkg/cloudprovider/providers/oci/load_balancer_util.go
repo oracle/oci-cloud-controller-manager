@@ -679,6 +679,10 @@ func getSanitizedName(name string) string {
 }
 
 func getListenerName(protocol string, port int) string {
+	// For HTTP and HTTP/2 protocols, always use "HTTP" prefix
+	if strings.EqualFold(protocol, "HTTP") || strings.EqualFold(protocol, "HTTP2") {
+		return fmt.Sprintf("HTTP-%d", port)
+	}
 	return fmt.Sprintf("%s-%d", protocol, port)
 }
 

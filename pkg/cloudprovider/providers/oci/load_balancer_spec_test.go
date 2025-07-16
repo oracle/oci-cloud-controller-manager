@@ -8964,8 +8964,8 @@ func Test_getListeners(t *testing.T) {
 			listenerBackendIpVersion: []string{IPv4},
 			sslConfig:                nil,
 			want: map[string]client.GenericListener{
-				"HTTP2-443": {
-					Name:                  common.String("HTTP2-443"),
+				"HTTP-443": {
+					Name:                  common.String("HTTP-443"),
 					Port:                  common.Int(443),
 					Protocol:              common.String("HTTP2"),
 					DefaultBackendSetName: common.String("TCP-443"),
