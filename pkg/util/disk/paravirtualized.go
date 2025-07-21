@@ -16,6 +16,7 @@ package disk
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 
@@ -23,6 +24,7 @@ import (
 	"go.uber.org/zap"
 	"k8s.io/mount-utils"
 	"k8s.io/utils/exec"
+	"path/filepath"
 )
 
 // iSCSIMounter implements Interface.
@@ -97,6 +99,43 @@ func (c *pvMounter) Mount(source string, target string, fstype string, options [
 
 func (c *pvMounter) DeviceOpened(pathname string) (bool, error) {
 	return deviceOpened(pathname, c.logger)
+}
+
+func (c *pvMounter) IsMounted(devicePath string, targetPath string) (bool, error) {
+	notMnt, err := c.mounter.IsLikelyNotMountPoint(targetPath)
+	if err != nil {
+		if os.IsNotExist(err){
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to check if %s is a mount point: %v", targetPath, err)
+	}
+	if notMnt {
+		return false, nil
+	}
+
+	resolvedDevicePath, err := filepath.EvalSymlinks(devicePath)
+	if err != nil {
+		return false, fmt.Errorf("failed to resolve symlink for consistent device path %s: %v", devicePath, err)
+	}
+
+	mounts, err := c.mounter.List()
+	if err != nil {
+		return false, fmt.Errorf("could not list mount points: %v", err)
+	}
+
+	for _, m := range mounts {
+		if m.Path == targetPath {
+			if m.Device == resolvedDevicePath {
+				return true, nil
+			}
+			return false, fmt.Errorf("expected device %s but found %s mounted at %s", resolvedDevicePath, m.Device, targetPath)
+		}
+	}
+	return false, nil
+}
+
+func (c *pvMounter) ISCSILogoutOnFailure() error {
+	return nil
 }
 
 func (c *pvMounter) UnmountPath(path string) error {

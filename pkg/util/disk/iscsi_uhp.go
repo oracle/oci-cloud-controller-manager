@@ -195,6 +195,37 @@ func (c *iSCSIUHPMounter) DeviceOpened(pathname string) (bool, error) {
 	return deviceOpened(pathname, c.logger)
 }
 
+func (c *iSCSIUHPMounter) IsMounted(devicePath string, targetPath string) (bool, error) {
+	notMnt, err := c.mounter.IsLikelyNotMountPoint(targetPath)
+	if err != nil {
+		if os.IsNotExist(err){
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to check if %s is a mount point: %v", targetPath, err)
+	}
+	if notMnt {
+		return false, nil
+	}
+	mounts, err := c.mounter.List()
+	if err != nil {
+		return false, fmt.Errorf("could not list mount points: %v", err)
+	}
+
+	for _, m := range mounts {
+		if m.Path == targetPath {
+			if m.Device == devicePath {
+				return true, nil
+			}
+			return false, fmt.Errorf("expected device %s but found %s mounted at %s", devicePath, m.Device, targetPath)
+		}
+	}
+	return false, nil
+}
+
+func (c *iSCSIUHPMounter) ISCSILogoutOnFailure() error {
+	return nil
+}
+
 func GetMultipathIscsiDevicePath(ctx context.Context, consistentDevicePath string, logger *zap.SugaredLogger) (string, error) {
 	logger.With("consistentDevicePath", consistentDevicePath).Info("Getting friendly name of multipath device using consistent device path")
 
