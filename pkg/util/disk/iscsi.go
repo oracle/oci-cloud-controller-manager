@@ -29,6 +29,8 @@ import (
 
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/mount-utils"
 	"k8s.io/utils/exec"
@@ -87,6 +89,9 @@ type Interface interface {
 	Logout() error
 
 	DeviceOpened(pathname string) (bool, error)
+
+	IsMounted(devicePath string, targetPath string)	(bool, error)
+
 	// updates the queue depth for iSCSI target
 	UpdateQueueDepth() error
 
@@ -110,6 +115,8 @@ type Interface interface {
 	GetDiskFormat(devicePath string) (string, error)
 
 	WaitForPathToExist(path string, maxRetries int) bool
+
+	ISCSILogoutOnFailure() error
 }
 
 // iSCSIMounter implements Interface.
@@ -483,6 +490,49 @@ func (c *iSCSIMounter) DeviceOpened(pathname string) (bool, error) {
 	return deviceOpened(pathname, c.logger)
 }
 
+func (c *iSCSIMounter) IsMounted(devicePath string, targetPath string) (bool, error) {
+	var diskByPath string
+	notMnt, err := c.mounter.IsLikelyNotMountPoint(targetPath)
+	if err != nil {
+		if os.IsNotExist(err){
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to check if %s is a mount point: %v", targetPath, err)
+	}
+	if notMnt {
+		return false, nil
+	}
+
+	diskByPath, err = GetIscsiDevicePath(c.disk)
+	if err != nil {
+		if strings.Contains(err.Error(), "No such file or directory") {
+			return false, fmt.Errorf("ISCSI login not complete for volume but staging path is a mount point, mapped to wrong device")
+		} else {
+			return false, fmt.Errorf("failed to find /dev/disk/by-path path for volume: %v", c.disk)
+		}
+	}
+
+	resolvedDevicePath, err := filepath.EvalSymlinks(diskByPath)
+	if err != nil {
+		return false, fmt.Errorf("failed to resolve symlink for /dev/disk/by-path path %s: %v", diskByPath, err)
+	}
+
+	mounts, err := c.mounter.List()
+	if err != nil {
+		return false, fmt.Errorf("could not list mount points: %v", err)
+	}
+
+	for _, m := range mounts {
+		if m.Path == targetPath {
+			if m.Device == resolvedDevicePath {
+				return true, nil
+			}
+			return false, fmt.Errorf("expected device %s but found %s mounted at %s", resolvedDevicePath, m.Device, targetPath)
+		}
+	}
+	return false, nil
+}
+
 func (c *iSCSIMounter) UnmountPath(path string) error {
 	return UnmountPath(c.logger, path, c.mounter)
 }
@@ -498,6 +548,22 @@ func (c *iSCSIMounter) Resize(devicePath string, volumePath string) (bool, error
 
 func (c *iSCSIMounter) WaitForPathToExist(path string, maxRetries int) bool {
 	return true
+}
+
+func (c *iSCSIMounter) ISCSILogoutOnFailure() error {
+	err := c.Logout()
+	if err != nil {
+		c.logger.With(zap.Error(err)).Error("failed to logout from the iSCSI target")
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	err = c.RemoveFromDB()
+	if err != nil {
+		c.logger.With(zap.Error(err)).Error("failed to remove the iSCSI node record")
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	return nil
 }
 
 // getMountPointForPath returns the mount.MountPoint for a given path. If the
