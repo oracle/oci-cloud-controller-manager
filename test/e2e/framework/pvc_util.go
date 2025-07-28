@@ -758,6 +758,7 @@ func (j *PVCTestJig) CreateBootVolume(c ocicore.ComputeClient, bs ocicore.Blocks
 	instances, err := c.ListInstances(ctx, ocicore.ListInstancesRequest{
 		AvailabilityDomain: &adLabel,
 		CompartmentId: &compartmentId,
+		LifecycleState: ocicore.InstanceLifecycleStateRunning,
 	})
 	if err != nil {
 		Failf("Error listing instances: %v", err)
@@ -791,11 +792,15 @@ func (j *PVCTestJig) CreateBootVolume(c ocicore.ComputeClient, bs ocicore.Blocks
 		},
 	})
 
+	if err != nil {
+		Failf("Failed create boot volume : %v", err)
+	}
+
 	bootVolumeId := resp.BootVolume.Id
 	Logf("Waiting for cloned boot volume %s to become available", *bootVolumeId)
 	err = WaitForBootVolumeAvailable(ctx, bs, bootVolumeId)
 	if err != nil {
-		Failf("Failed to wait for block volume to become available: %v", err)
+		Failf("Failed to wait for boot volume to become available: %v", err)
 	}
 
 	return *bootVolumeId
