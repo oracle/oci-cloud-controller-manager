@@ -12,7 +12,6 @@ import (
 )
 
 const (
-	CHROOT_BASH_COMMAND                   = "chroot-bash"
 	LOAD_LNET_KERNEL_MODULE_COMMAND       = "modprobe lnet"
 	CONFIGURE_LNET_KERNEL_SERVICE_COMMAND = "lnetctl lnet configure"
 	SHOW_CONFIGURED_LNET                  = "lnetctl net show --net %s"
@@ -66,9 +65,12 @@ func ValidateLustreVolumeId(lusterVolumeId string) (bool, string) {
 			return false, lnetLabel
 		}
 		lnetLabel = parts[1]
+		if !isValidShellInput(lnetLabel) {
+			return false, ""
+		}
 	}
 	//last part in volume handle which is fsname should start with "/"
-	if !strings.HasPrefix(splits[len(splits)-1], "/") {
+	if !strings.HasPrefix(splits[len(splits)-1], "/") || !isValidShellInput(splits[len(splits)-1]) {
 		return false, lnetLabel
 	}
 	return true, lnetLabel
@@ -329,7 +331,8 @@ func (ls *LnetService) IsLnetActive(logger *zap.SugaredLogger, lnetLabel string)
 }
 
 func (olc *OCILnetConfigurator) ExecuteCommandOnWorkerNode(args ...string) (string, error) {
-	command := exec.Command(CHROOT_BASH_COMMAND, args...)
+	
+	command := exec.Command("chroot-bash", args...)
 
 	output, err := command.CombinedOutput()
 
@@ -365,15 +368,15 @@ func (ls *LnetService) ApplyLustreParameters(logger *zap.SugaredLogger, lustrePa
 	return nil
 }
 
-func isValidLustreParam(param string) bool {
+func isValidShellInput(input string) bool {
 	// Check for no spaces
-	if strings.Contains(param, " ") {
+	if strings.Contains(input, " ") {
 		return false
 	}
 	// List of forbidden characters
-	forbiddenChars := []string{";", "&", "|", "<", ">", "(", ")", "`", "'", "\""}
+	forbiddenChars := []string{";", "&", "|", "<", ">", "(", ")", "`", "'", "\"","$","!"}
 	for _, char := range forbiddenChars {
-		if strings.Contains(param, char) {
+		if strings.Contains(input, char) {
 			return false
 		}
 	}
@@ -397,7 +400,7 @@ func  ValidateLustreParameters(logger *zap.SugaredLogger, lustreParamsJson strin
 	for _, param := range lustreParams {
 		for key, value := range param {
 			logger.Infof("Validating lustre param %s=%s", key, fmt.Sprintf("%v", value))
-			if !isValidLustreParam(key) || !isValidLustreParam(fmt.Sprintf("%v", value)) {
+			if !isValidShellInput(key) || !isValidShellInput(fmt.Sprintf("%v", value)) {
 				invalidParams = append(invalidParams, fmt.Sprintf("%v=%v",key, value))
 			}
 		}
