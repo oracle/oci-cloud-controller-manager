@@ -128,6 +128,10 @@ Check if PVC is now in bound state:
 $ kubectl describe pvc/oci-bv-claim
 ```
 
+## PVCs with Lustre File System
+
+Instructions for provisioning PVCs on the file storage with lustre service can be found [here](docs/pvcs-with-lustre.md)
+
 # Troubleshoot
 
 ## FsGroup policy not propagated from pod security context

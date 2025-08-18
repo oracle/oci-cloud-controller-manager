@@ -40,6 +40,7 @@ cloud-provider specific code out of the Kubernetes codebase.
 | v1.31.0   | v1.31                  | -                      |
 | v1.31.1   | v1.31                  | -                      |
 | v1.32.0   | v1.32                  | -                      |
+| v1.32.1   | v1.32                  | -                      |
 
 
 Note: 
