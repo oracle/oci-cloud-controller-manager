@@ -13,6 +13,15 @@ metadata:
 spec:
   fsGroupPolicy: File
 ---
+apiVersion: storage.k8s.io/v1
+kind: CSIDriver
+metadata:
+  name: lustre.csi.oraclecloud.com
+spec:
+  attachRequired: false
+  podInfoOnMount: false
+  fsGroupPolicy: File
+---
 kind: ConfigMap
 apiVersion: v1
 metadata:
@@ -107,6 +116,7 @@ spec:
             - --nodeid=$(KUBE_NODE_NAME)
             - --loglevel=debug
             - --fss-endpoint=unix:///fss/csi.sock
+            - --lustre-endpoint=unix:///lustre/csi.sock
           command:
             - /usr/local/bin/oci-csi-node-driver
           env:
@@ -117,7 +127,9 @@ spec:
                   fieldPath: spec.nodeName
             - name: PATH
               value: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/host/usr/bin:/host/sbin
-          image: ghcr.io/oracle/cloud-provider-oci:v1.31.1
+            - name: LUSTRE_DRIVER_ENABLED
+              value: "true"
+          image: ghcr.io/oracle/cloud-provider-oci:v1.31.2
           securityContext:
             privileged: true
           volumeMounts:
@@ -148,6 +160,8 @@ spec:
             - mountPath: /sbin/mount
               name: fss-driver-mounts
               subPath: mount
+            - mountPath: /lustre
+              name: lustre-plugin-dir
         - name: csi-node-registrar
           args:
             - --csi-address=/csi/csi.sock
@@ -184,6 +198,25 @@ spec:
           volumeMounts:
             - mountPath: /fss
               name: fss-plugin-dir
+            - mountPath: /registration
+              name: registration-dir
+        - name: csi-node-registrar-lustre
+          args:
+            - --csi-address=/lustre/csi.sock
+            - --kubelet-registration-path=/var/lib/kubelet/plugins/lustre.csi.oraclecloud.com/csi.sock
+          image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.12.0
+          securityContext:
+            privileged: true
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - rm -rf /registration/lustre.csi.oraclecloud.com /registration/lustre.csi.oraclecloud.com-reg.sock
+          volumeMounts:
+            - mountPath: /lustre
+              name: lustre-plugin-dir
             - mountPath: /registration
               name: registration-dir
       dnsPolicy: ClusterFirst
@@ -224,6 +257,10 @@ spec:
             path: /
             type: Directory
           name: host-root
+        - hostPath:
+            path: /var/lib/kubelet/plugins/lustre.csi.oraclecloud.com
+            type: DirectoryOrCreate
+          name: lustre-plugin-dir
         - configMap:
             name: oci-csi-iscsiadm
             defaultMode: 0755

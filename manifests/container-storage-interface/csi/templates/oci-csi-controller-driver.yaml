@@ -96,7 +96,7 @@ spec:
             - --fss-csi-endpoint=unix://var/run/shared-tmpfs/csi-fss.sock
           command:
             - /usr/local/bin/oci-csi-controller-driver
-          image: ghcr.io/oracle/cloud-provider-oci:v1.31.1
+          image: ghcr.io/oracle/cloud-provider-oci:v1.31.2
           imagePullPolicy: IfNotPresent
           env:
             - name: BLOCK_VOLUME_DRIVER_NAME
