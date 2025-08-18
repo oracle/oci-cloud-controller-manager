@@ -47,11 +47,13 @@ import (
 var (
 	BlockVolumeDriverName string
 	FSSDriverName         string
+	LustreDriverName      string
 )
 
 func init() {
 	BlockVolumeDriverName = getEnv("BLOCK_VOLUME_DRIVER_NAME", "blockvolume.csi.oraclecloud.com")
 	FSSDriverName = getEnv("FSS_VOLUME_DRIVER_NAME", "fss.csi.oraclecloud.com")
+	LustreDriverName = getEnv("LUSTRE_VOLUME_DRIVER_NAME", "lustre.csi.oraclecloud.com")
 }
 
 func getEnv(key, fallback string) string {
@@ -68,9 +70,6 @@ const (
 
 	// FSSDriverVersion is the version of the CSI driver
 	FSSDriverVersion = "0.1.0"
-
-	// LustreDriverName defines the driver name to be used in Kubernetes
-	LustreDriverName = "lustre.csi.oraclecloud.com"
 
 	// LustreDriverVersion is the version of the CSI driver
 	LustreDriverVersion = "0.1.0"
@@ -136,7 +135,7 @@ type NodeDriver struct {
 	volumeLocks  *csi_util.VolumeLocks
 	nodeMetadata *csi_util.NodeMetadata
 	csi.UnimplementedNodeServer
-	csiConfig    *csi_util.CSIConfig
+	csiConfig *csi_util.CSIConfig
 }
 
 // BlockVolumeNodeDriver extends NodeDriver
