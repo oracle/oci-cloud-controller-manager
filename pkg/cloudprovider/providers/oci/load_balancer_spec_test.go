@@ -8943,6 +8943,64 @@ func Test_getListeners(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "HTTP2 listener protocol with HTTP backend protocol",
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(443),
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerBEProtocol: "HTTP",
+						ServiceAnnotationLoadBalancerProtocol:   "HTTP2",
+					},
+				},
+			},
+			listenerBackendIpVersion: []string{IPv4},
+			sslConfig:                nil,
+			want: map[string]client.GenericListener{
+				"HTTP-443": {
+					Name:                  common.String("HTTP-443"),
+					Port:                  common.Int(443),
+					Protocol:              common.String("HTTP2"),
+					DefaultBackendSetName: common.String("TCP-443"),
+				},
+			},
+		},
+		{
+			name: "HTTP listener protocol with HTTP backend protocol",
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(80),
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerBEProtocol: "HTTP",
+						ServiceAnnotationLoadBalancerProtocol:   "HTTP",
+					},
+				},
+			},
+			listenerBackendIpVersion: []string{IPv4},
+			sslConfig:                nil,
+			want: map[string]client.GenericListener{
+				"HTTP-80": {
+					Name:                  common.String("HTTP-80"),
+					Port:                  common.Int(80),
+					Protocol:              common.String("HTTP"),
+					DefaultBackendSetName: common.String("TCP-80"),
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
