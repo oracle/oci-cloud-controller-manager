@@ -1246,7 +1246,7 @@ func Test_addLoadBalancerOkeSystemTags(t *testing.T) {
 				}
 			}
 			err := clb.addLoadBalancerOkeSystemTags(context.Background(), testcase.lb, testcase.spec)
-			t.Logf(err.Error())
+			t.Logf("%s", err.Error())
 			if !assertError(err, testcase.wantErr) {
 				t.Errorf("Expected error = %v, but got %v", testcase.wantErr, err)
 				return

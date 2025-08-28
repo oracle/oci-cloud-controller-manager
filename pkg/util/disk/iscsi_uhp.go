@@ -18,9 +18,9 @@ import (
 )
 
 const (
-	volumeLoginTimeout  = 3 * time.Minute
+	volumeLoginTimeout = 3 * time.Minute
 
-	pathPollIntervalUHP  = 10 * time.Second
+	pathPollIntervalUHP = 10 * time.Second
 
 	CHROOT_BASH_COMMAND = "chroot-bash"
 )
@@ -198,7 +198,7 @@ func (c *iSCSIUHPMounter) DeviceOpened(pathname string) (bool, error) {
 func (c *iSCSIUHPMounter) IsMounted(devicePath string, targetPath string) (bool, error) {
 	notMnt, err := c.mounter.IsLikelyNotMountPoint(targetPath)
 	if err != nil {
-		if os.IsNotExist(err){
+		if os.IsNotExist(err) {
 			return false, nil
 		}
 		return false, fmt.Errorf("failed to check if %s is a mount point: %v", targetPath, err)
@@ -272,7 +272,7 @@ func ReadLink(symbolicLink string, logger *zap.SugaredLogger) (string, error) {
 	if len(files) == 0 {
 		logger.With("symbolicLink", symbolicLink).Error("Error finding linked path for multipath device consistent path")
 		errMsg := fmt.Sprintf("The linked path for symbolic link %s is not found", symbolicLink)
-		return "", fmt.Errorf(errMsg)
+		return "", fmt.Errorf("%s", errMsg)
 	}
 
 	linkedPath, err := os.Readlink(files[0])

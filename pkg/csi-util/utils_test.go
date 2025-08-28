@@ -16,6 +16,7 @@ package csi_util
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -26,8 +27,11 @@ import (
 	"time"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
+	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/pointer"
 )
@@ -844,4 +848,155 @@ func Test_LoadCSIConfigFromConfigMap(t *testing.T) {
 		})
 	}
 
+}
+
+// Mock for common.ServiceErrorRichInfo
+type mockServiceError struct {
+	StatusCode              int
+	Code                    string            `json:"code,omitempty"`
+	Message                 string            `json:"message,omitempty"`
+	OriginalMessage         string            `json:"originalMessage"`
+	OriginalMessageTemplate string            `json:"originalMessageTemplate"`
+	MessageArgument         map[string]string `json:"messageArguments"`
+	OpcRequestID            string            `json:"opc-request-id"`
+	// debugging information
+	TargetService string  `json:"target-service"`
+	OperationName string  `json:"operation-name"`
+	Timestamp     common.SDKTime `json:"timestamp"`
+	RequestTarget string  `json:"request-target"`
+	ClientVersion string  `json:"client-version"`
+
+	// troubleshooting guidance
+	OperationReferenceLink   string `json:"operation-reference-link"`
+	ErrorTroubleshootingLink string `json:"error-troubleshooting-link"`
+}
+
+func (m *mockServiceError) GetTargetService() string                { return m.TargetService }
+func (m *mockServiceError) GetHTTPStatusCode() int                  { return m.StatusCode }
+func (m *mockServiceError) GetCode() string                         { return m.Code }
+func (m *mockServiceError) GetOpcRequestID() string                 { return m.OpcRequestID }
+func (m *mockServiceError) GetMessage() string                      { return m.Message }
+func (m *mockServiceError) GetOperationName() string                { return m.OperationName }
+func (m *mockServiceError) GetTimestamp() common.SDKTime            { return m.Timestamp }
+func (m *mockServiceError) GetRequestTarget() string                { return m.RequestTarget }
+func (m *mockServiceError) GetClientVersion() string                { return m.ClientVersion }
+func (m *mockServiceError) GetOperationReferenceLink() string       { return m.OperationReferenceLink }
+func (m *mockServiceError) GetErrorTroubleshootingLink() string     { return m.ErrorTroubleshootingLink }
+func (m *mockServiceError) Error() string                           { return m.Message }
+
+func TestGetOCIServiceError(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		expected string
+	}{
+		{
+			name:     "nil error returns empty string",
+			err:      nil,
+			expected: "",
+		},
+
+		{
+			name:     "non-OCI error returns err.Error()",
+			err:      errors.New("Timeout of waiting for condition. Lot of big text."),
+			expected: "Timeout of waiting for condition. Lot of big text.",
+		},
+		{
+			name: "OCI service error returns formatted string",
+			err: &mockServiceError{
+				TargetService:            "Compute Service",
+				StatusCode:               400,
+				Code:                     "LimitExceeded",
+				OpcRequestID:             "8239a6cbec18bed008924abe8b12416b/35C4EBDF5A7728341854B0685048586B/D66BF5A8491C409D1C61B18D343607A4",
+				Message:                  "Cannot attach volume ocid1.volume.oc1.phx.abyhqljrwv2qo35rdomkhvmgtrwr6wpkezzh6gb355tn7phtp5szt5hleqja to instance ocid1.instance.oc1.phx.anyhqljrh4gjgpyc2ighn7uq32unt2e4grzkw3ta37kxbi6c3z3xhlnx66aq because the instance already has the maximum number 16 of attached PV volumes for the shape VM.Standard.E5.Flex. To attach this volume, first detach an existing PV volume from the instance, and then try again..",
+				OperationName:            "AttachVolume",
+				ClientVersion:            "Oracle-GoSDK/xVersion",
+				RequestTarget:            "https://iaas.us-phoenix-1.oraclecloud.com/20160918/volumeAttachments",
+				OperationReferenceLink:   "Test",
+				ErrorTroubleshootingLink: "Test",
+			},
+			expected: "Error returned by Compute Service Service. Http Status Code: 400. Error Code: LimitExceeded. Message: Cannot attach volume ocid1.volume.oc1.phx.abyhqljrwv2qo35rdomkhvmgtrwr6wpkezzh6gb355tn7phtp5szt5hleqja to instance ocid1.instance.oc1.phx.anyhqljrh4gjgpyc2ighn7uq32unt2e4grzkw3ta37kxbi6c3z3xhlnx66aq because the instance already has the maximum number 16 of attached PV volumes for the shape VM.Standard.E5.Flex. To attach this volume, first detach an existing PV volume from the instance, and then try again... Operation Name: AttachVolume",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := GetOCIServiceError(tt.err)
+			if !strings.EqualFold(tt.expected, got) {
+				t.Errorf("GetOCIServiceError() = %s, want %s", got, tt.expected)
+			}
+		})
+	}
+}
+func Test_TruncateError(t *testing.T) {
+	maxVolumeAttachDetachErrorMsgBytes := 1024
+
+	tests := []struct {
+		name        string
+		err         error
+		maxBytes    int
+		expectedErr error
+	}{
+		{
+			name:        "Test the truncation is working properly",
+			err:         errors.New("Timeout of waiting for condition. Lot of big text."),
+			maxBytes:    21,
+			expectedErr: errors.New("Timeout of waiting..."),
+		},
+		{
+			name:        "Test the truncation is working properly for errors created with status.Errorf",
+			err:         status.Errorf(codes.Internal, "Timeout of waiting for condition. %s.", "Lot of big texttttttttttttttttt"),
+			maxBytes:    55,
+			expectedErr: errors.New("rpc error: code = Internal desc = Timeout of waiting..."),
+		},
+		{
+			name:        "error with multi-byte truncate in middle",
+			err:         errors.New("éééérror"),
+			maxBytes:    6,
+			expectedErr: errors.New("é..."),
+		},
+		{
+			name:        "nil error",
+			err:         nil,
+			maxBytes:    6,
+			expectedErr: errors.New(""),
+		},
+		{
+			name:        "empty error",
+			err:         errors.New(""),
+			maxBytes:    6,
+			expectedErr: errors.New(""),
+		},
+		{
+			name:        "ensure suffix is not appended when maxBytes is less than 3",
+			err:         errors.New("ab"),
+			maxBytes:    1,
+			expectedErr: errors.New("a"),
+		},
+		{
+			name: "oci service error is truncated properly",
+			err: errors.New(GetOCIServiceError(&mockServiceError{
+				TargetService:            "Compute Service",
+				StatusCode:               400,
+				Code:                     "LimitExceeded",
+				OpcRequestID:             "8239a6cbec18bed008924abe8b12416b/35C4EBDF5A7728341854B0685048586B/D66BF5A8491C409D1C61B18D343607A4",
+				Message:                  "Cannot attach volume ocid1.volume.oc1.phx.abyhqljrwv2qo35rdomkhvmgtrwr6wpkezzh6gb355tn7phtp5szt5hleqja to instance ocid1.instance.oc1.phx.anyhqljrh4gjgpyc2ighn7uq32unt2e4grzkw3ta37kxbi6c3z3xhlnx66aq because the instance already has the maximum number 16 of attached PV volumes for the shape VM.Standard.E5.Flex. To attach this volume, first detach an existing PV volume from the instance, and then try again..",
+				OperationName:            "AttachVolume",
+				ClientVersion:            "Oracle-GoSDK/xVersion",
+				RequestTarget:            "https://iaas.us-phoenix-1.oraclecloud.com/20160918/volumeAttachments",
+				OperationReferenceLink:   "Test",
+				ErrorTroubleshootingLink: "Test",
+			})),
+			maxBytes:    maxVolumeAttachDetachErrorMsgBytes,
+			expectedErr: errors.New("Error returned by Compute Service Service. Http Status Code: 400. Error Code: LimitExceeded. Message: Cannot attach volume ocid1.volume.oc1.phx.abyhqljrwv2qo35rdomkhvmgtrwr6wpkezzh6gb355tn7phtp5szt5hleqja to instance ocid1.instance.oc1.phx.anyhqljrh4gjgpyc2ighn7uq32unt2e4grzkw3ta37kxbi6c3z3xhlnx66aq because the instance already has the maximum number 16 of attached PV volumes for the shape VM.Standard.E5.Flex. To attach this volume, first detach an existing PV volume from the instance, and then try again... Operation Name: AttachVolume"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotErr := TruncateError(tt.err, tt.maxBytes)
+			if !strings.EqualFold(tt.expectedErr.Error(), gotErr.Error()) {
+				t.Errorf("TruncateError() = %v, want %v", gotErr, tt.expectedErr)
+			}
+		})
+	}
 }
