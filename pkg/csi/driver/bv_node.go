@@ -212,9 +212,9 @@ func (d BlockVolumeNodeDriver) NodeStageVolume(ctx context.Context, req *csi.Nod
 		devicePath, err = mountHandler.WaitForDevicePathToExist(ctx, scsiInfo, logger)
 		if err != nil {
 			logger.With(zap.Error(err)).Error("Failed to get /dev/disk/by-path device path for iscsi volume.")
-			err = mountHandler.ISCSILogoutOnFailure()
-			if err != nil {
-				return nil, status.Error(codes.Internal, "Failed to iscsi logout after timeout on waiting for device path to exist")
+			logoutErr := mountHandler.ISCSILogoutOnFailure()
+			if logoutErr != nil {
+				return nil, status.Errorf(codes.Internal, "Failed to iscsi logout after timeout on waiting for device path to exist: %v", logoutErr)
 			}
 			return nil, status.Error(codes.InvalidArgument, "Failed to get device path for iscsi volume")
 		}
@@ -234,9 +234,9 @@ func (d BlockVolumeNodeDriver) NodeStageVolume(ctx context.Context, req *csi.Nod
 		err := csi_util.CreateFilePath(logger, stagingTargetFilePath)
 		if err != nil {
 			logger.With(zap.Error(err)).Error("failed to create the stagingTargetFile.")
-			err = mountHandler.ISCSILogoutOnFailure()
-			if err != nil {
-				return nil, status.Error(codes.Internal, "Failed to iscsi logout after mount failure")
+			logoutErr := mountHandler.ISCSILogoutOnFailure()
+			if logoutErr != nil {
+				return nil, status.Errorf(codes.Internal, "Failed to iscsi logout after mount failure: %v", logoutErr)
 			}
 			return nil, status.Error(codes.Internal, err.Error())
 		}
@@ -244,9 +244,9 @@ func (d BlockVolumeNodeDriver) NodeStageVolume(ctx context.Context, req *csi.Nod
 		err = mountHandler.Mount(devicePath, stagingTargetFilePath, "", options)
 		if err != nil {
 			logger.With(zap.Error(err)).Error("failed to bind mount raw block volume to stagingTargetFile")
-			err = mountHandler.ISCSILogoutOnFailure()
-			if err != nil {
-				return nil, status.Error(codes.Internal, "Failed to iscsi logout after mount failure")
+			logoutErr := mountHandler.ISCSILogoutOnFailure()
+			if logoutErr != nil {
+				return nil, status.Errorf(codes.Internal, "Failed to iscsi logout after mount failure: %v", logoutErr)
 			}
 			return nil, status.Error(codes.Internal, err.Error())
 		}
@@ -265,9 +265,9 @@ func (d BlockVolumeNodeDriver) NodeStageVolume(ctx context.Context, req *csi.Nod
 			exists = false
 		} else {
 			logger.With(zap.Error(err)).Errorf("failed to check if stagingTargetPath %q exists", req.StagingTargetPath)
-			err = mountHandler.ISCSILogoutOnFailure()
-			if err != nil {
-				return nil, status.Error(codes.Internal, "Failed to iscsi logout after failure to check if staging path exists")
+			logoutErr := mountHandler.ISCSILogoutOnFailure()
+			if logoutErr != nil {
+				return nil, status.Errorf(codes.Internal, "Failed to iscsi logout after failure to check if staging path exists: %v", logoutErr)
 			}
 			message := fmt.Sprintf("failed to check if stagingTargetPath %q exists", req.StagingTargetPath)
 			return nil, status.Error(codes.Internal, message)
@@ -280,9 +280,9 @@ func (d BlockVolumeNodeDriver) NodeStageVolume(ctx context.Context, req *csi.Nod
 	if !exists {
 		if err := os.MkdirAll(req.StagingTargetPath, 0750); err != nil {
 			logger.With(zap.Error(err)).Error("Failed to create StagingTargetPath directory")
-			err = mountHandler.ISCSILogoutOnFailure()
-			if err != nil {
-				return nil, status.Error(codes.Internal, "Failed to iscsi logout after failure to create StagingTargetPath directory")
+			logoutErr := mountHandler.ISCSILogoutOnFailure()
+			if logoutErr != nil {
+				return nil, status.Errorf(codes.Internal, "Failed to iscsi logout after failure to create StagingTargetPath directory: %v", logoutErr)
 			}
 			return nil, status.Error(codes.Internal, "Failed to create StagingTargetPath directory")
 		}
@@ -305,9 +305,9 @@ func (d BlockVolumeNodeDriver) NodeStageVolume(ctx context.Context, req *csi.Nod
 	if existingFs != "" && existingFs != fsType {
 		returnError := fmt.Sprintf("FS Type mismatch detected. The existing fs type on the volume: %q doesn't match the requested fs type: %q. Please change fs type in PV to match the existing fs type.", existingFs, fsType)
 		logger.Error(returnError)
-		err = mountHandler.ISCSILogoutOnFailure()
-		if err != nil {
-			return nil, status.Error(codes.Internal, "Failed to iscsi logout after failure due to FS Type mismatch")
+		loggerErr := mountHandler.ISCSILogoutOnFailure()
+		if loggerErr != nil {
+			return nil, status.Errorf(codes.Internal, "Failed to iscsi logout after failure due to FS Type mismatch: %v", loggerErr)
 		}
 		return nil, status.Error(codes.Internal, returnError)
 	}
@@ -317,9 +317,9 @@ func (d BlockVolumeNodeDriver) NodeStageVolume(ctx context.Context, req *csi.Nod
 	err = mountHandler.FormatAndMount(devicePath, req.StagingTargetPath, fsType, options)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("failed to format and mount volume to staging path.")
-		err = mountHandler.ISCSILogoutOnFailure()
-		if err != nil {
-			return nil, status.Error(codes.Internal, "Failed to iscsi logout after mount failure")
+		loggerErr := mountHandler.ISCSILogoutOnFailure()
+		if loggerErr != nil {
+			return nil, status.Errorf(codes.Internal, "Failed to iscsi logout after mount failure: %v", loggerErr)
 		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -717,7 +717,7 @@ func (d BlockVolumeNodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi
 			return &csi.NodeUnpublishVolumeResponse{}, nil
 		}
 		logger.With(zap.Error(rbvCheckErr)).Error("failed to check if it is a device file")
-		return nil, status.Errorf(codes.Internal, rbvCheckErr.Error())
+		return nil, status.Errorf(codes.Internal, "%s", rbvCheckErr.Error())
 	}
 
 	if acquired := d.volumeLocks.TryAcquire(req.VolumeId); !acquired {

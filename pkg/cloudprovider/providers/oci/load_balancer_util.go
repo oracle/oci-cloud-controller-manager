@@ -300,7 +300,7 @@ func hasBackendSetChanged(logger *zap.SugaredLogger, actual client.GenericBacken
 	}
 
 	if len(backendChanges) != 0 {
-		backendSetChanges = append(backendChanges)
+		backendSetChanges = append(backendSetChanges, backendChanges...)
 	}
 
 	if len(backendSetChanges) != 0 {
@@ -667,13 +667,13 @@ func getSanitizedName(name string) string {
 	fields := strings.Split(name, "-")
 	if strings.EqualFold(fields[0], "HTTP") {
 		fields[0] = "TCP"
-		name = fmt.Sprintf(strings.Join(fields, "-"))
+		name = fmt.Sprintf("%s", strings.Join(fields, "-"))
 	}
 	if len(fields) > 2 {
 		if contains(fields, IPv6) {
-			return fmt.Sprintf(strings.Join(fields[:3], "-"))
+			return fmt.Sprintf("%s", strings.Join(fields[:3], "-"))
 		}
-		return fmt.Sprintf(strings.Join(fields[:2], "-"))
+		return fmt.Sprintf("%s", strings.Join(fields[:2], "-"))
 	}
 	return name
 }
