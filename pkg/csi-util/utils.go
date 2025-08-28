@@ -27,10 +27,10 @@ import (
 	"sync"
 	"time"
 
-	"k8s.io/apimachinery/pkg/util/wait"
-
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/core"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -38,6 +38,7 @@ import (
 	kubeAPI "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -117,7 +118,7 @@ type NodeMetadata struct {
 
 // CSIConfig represents the structure of the ConfigMap data.
 type CSIConfig struct {
-	Lustre *DriverConfig `yaml:"lustre"`
+	Lustre   *DriverConfig `yaml:"lustre"`
 	IsLoaded bool
 }
 
@@ -144,14 +145,14 @@ func (u *Util) LookupNodeID(k kubernetes.Interface, nodeName string) (string, er
 
 func (u *Util) WaitForKubeApiServerToBeReachableWithContext(ctx context.Context, k kubernetes.Interface, backOffCap time.Duration) {
 
-	waitForKubeApiServerCtx, waitForKubeApiServerCtxCancel := context.WithTimeout(ctx, time.Second * 45)
+	waitForKubeApiServerCtx, waitForKubeApiServerCtxCancel := context.WithTimeout(ctx, time.Second*45)
 	defer waitForKubeApiServerCtxCancel()
 
 	backoff := wait.Backoff{
 		Duration: 1 * time.Second,
 		Factor:   2.0,
 		Steps:    5,
-		Cap: backOffCap,
+		Cap:      backOffCap,
 	}
 
 	wait.ExponentialBackoffWithContext(
@@ -171,9 +172,9 @@ func (u *Util) WaitForKubeApiServerToBeReachableWithContext(ctx context.Context,
 	)
 }
 
-func (u *Util) LoadNodeMetadataFromApiServer(ctx context.Context, k kubernetes.Interface, nodeID string, nodeMetadata *NodeMetadata) (error) {
+func (u *Util) LoadNodeMetadataFromApiServer(ctx context.Context, k kubernetes.Interface, nodeID string, nodeMetadata *NodeMetadata) error {
 
-	u.WaitForKubeApiServerToBeReachableWithContext(ctx, k, time.Second * 30)
+	u.WaitForKubeApiServerToBeReachableWithContext(ctx, k, time.Second*30)
 
 	node, err := k.CoreV1().Nodes().Get(ctx, nodeID, metav1.GetOptions{})
 
@@ -210,7 +211,7 @@ func (u *Util) LoadNodeMetadataFromApiServer(ctx context.Context, k kubernetes.I
 		u.Logger.With("nodeId", nodeID, "nodeMetadata", nodeMetadata).Info("Node IP family identified.")
 	}
 	nodeMetadata.IsNodeMetadataLoaded = true
-	return  nil
+	return nil
 }
 
 // waitForPathToExist waits for for a given filesystem path to exist.
@@ -652,9 +653,67 @@ func LoadCSIConfigFromConfigMap(csiConfig *CSIConfig, k kubernetes.Interface, co
 
 	if lustreConfig, exists := cm.Data["lustre"]; exists {
 		if err := yaml.Unmarshal([]byte(lustreConfig), &csiConfig.Lustre); err != nil {
-			logger.Debugf("Failed to parse lustre key in config map %v. Error: %v",configMapName,  err)
+			logger.Debugf("Failed to parse lustre key in config map %v. Error: %v", configMapName, err)
 			return
 		}
 		logger.Infof("Successfully loaded ConfigMap %v. Using customized configuration for csi driver.", configMapName)
 	}
+}
+
+// GetOCIServiceError checks if error is OCI Service Error and returns a structured error message
+// including service name, HTTP status, error code, message, and operation name.
+func GetOCIServiceError(err error) string {
+	// Early return for invalid inputs
+	errorMsg := ""
+	if err == nil {
+		return errorMsg
+	}
+	// Check for OCI service error and format structured message if present
+	if serviceErr, ok := common.IsServiceErrorRichInfo(errors.Cause(err)); ok {
+		errorMsg = fmt.Sprintf(`Error returned by %s Service. Http Status Code: %d. Error Code: %s. Message: %s. Operation Name: %s`,
+			serviceErr.GetTargetService(), serviceErr.GetHTTPStatusCode(), serviceErr.GetCode(), serviceErr.GetMessage(), serviceErr.GetOperationName())
+	} else {
+		errorMsg = err.Error()
+	}
+	return errorMsg
+}
+
+// TruncateError truncates an error message to a maximum byte length
+// If the formatted message exceeds maxBytes, it is truncated with "..." suffix,
+// ensuring no partial UTF-8 characters are left at the end.
+//
+// Parameters:
+//   - err: The error to truncate. If nil, returns empty string.
+//   - maxBytes: The maximum byte length for the output. If <= 0, returns empty string.
+//
+// Returns:
+//   - The truncated error message as a string.
+func TruncateError(err error, maxBytes int) error {
+
+	// Early return for invalid inputs
+	errorMsg := ""
+	if maxBytes <= 0 || err == nil {
+		return errors.New(errorMsg)
+	}
+	errorMsg = err.Error()
+	bytesMsg := []byte(errorMsg)
+	if len(bytesMsg) <= maxBytes {
+		return err
+	}
+
+	// Prepare truncation with suffix due to error being larger than maxBytes. Returns truncated error if maxBytes are less than 3(suffix length).
+	suffix := "..."
+	if maxBytes < len(suffix) {
+		return errors.New(string(bytesMsg[:maxBytes]))
+	}
+	suffixBytes := []byte(suffix)
+	truncLen := maxBytes - len(suffixBytes)
+
+	// Ensure truncation doesn't split multi-byte characters (e.g., UTF-8)
+	// by finding the last valid rune boundary
+	for truncLen > 0 && (bytesMsg[truncLen]&0xc0) == 0x80 {
+		truncLen--
+	}
+
+	return errors.New(string(bytesMsg[:truncLen]) + suffix)
 }
