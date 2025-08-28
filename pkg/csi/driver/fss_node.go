@@ -65,7 +65,6 @@ func (d FSSNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVo
 		return nil, status.Error(codes.InvalidArgument, "Invalid Volume ID provided")
 	}
 
-
 	if !d.nodeMetadata.IsNodeMetadataLoaded {
 		d.util.LoadNodeMetadataFromApiServer(ctx, d.KubeClient, d.nodeID, d.nodeMetadata)
 	}
@@ -344,7 +343,7 @@ func (d FSSNodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnp
 	logger.Info("Unmount started")
 	if err := mounter.Unmount(targetPath); err != nil {
 		logger.With(zap.Error(err)).Error("failed to unmount target path.")
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Errorf(codes.Internal, "%s", err.Error())
 	}
 	logger.With("UnmountTime", time.Since(startTime).Milliseconds()).With("TargetPath", targetPath).
 		Info("Unmounting volume completed")
@@ -454,7 +453,7 @@ func (d FSSNodeDriver) unmountAndCleanup(logger *zap.SugaredLogger, targetPath s
 	}
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to unmount StagingTargetPath")
-		return status.Errorf(codes.Internal, err.Error())
+		return status.Errorf(codes.Internal, "%s", err.Error())
 	}
 	return nil
 }

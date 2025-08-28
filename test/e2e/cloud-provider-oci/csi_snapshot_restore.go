@@ -584,7 +584,7 @@ func checkOrInstallCRDs(f *framework.CloudProviderFramework) {
 		if setupF.EnableCreateCluster == false {
 			Skip("Skipping test because VolumeSnapshot CRD is not present")
 		} else {
-			framework.RunKubectl("create", "-f", "https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/v6.2.0/client/config/crd/snapshot.storage.k8s.io_volumesnapshots.yaml")
+			framework.RunKubectl("create", "-f", "https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/v8.2.0/client/config/crd/snapshot.storage.k8s.io_volumesnapshots.yaml")
 		}
 	}
 
@@ -593,7 +593,7 @@ func checkOrInstallCRDs(f *framework.CloudProviderFramework) {
 		if setupF.EnableCreateCluster == false {
 			Skip("Skipping test because VolumeSnapshotClass CRD is not present")
 		} else {
-			framework.RunKubectl("create", "-f", "https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/v6.2.0/client/config/crd/snapshot.storage.k8s.io_volumesnapshotclasses.yaml")
+			framework.RunKubectl("create", "-f", "https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/v8.2.0/client/config/crd/snapshot.storage.k8s.io_volumesnapshotclasses.yaml")
 		}
 	}
 
@@ -602,7 +602,7 @@ func checkOrInstallCRDs(f *framework.CloudProviderFramework) {
 		if setupF.EnableCreateCluster == false {
 			Skip("Skipping test because VolumeSnapshotContent CRD is not present")
 		} else {
-			framework.RunKubectl("create", "-f", "https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/v6.2.0/client/config/crd/snapshot.storage.k8s.io_volumesnapshotcontents.yaml")
+			framework.RunKubectl("create", "-f", "https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/v8.2.0/client/config/crd/snapshot.storage.k8s.io_volumesnapshotcontents.yaml")
 		}
 	}
 }

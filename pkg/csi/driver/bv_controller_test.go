@@ -1399,7 +1399,7 @@ func TestControllerDriver_ControllerPublishVolume(t *testing.T) {
 					},
 				},
 			},
-			want:    nil,
+			want: nil,
 			wantErr: errors.New("Failed to attach volume shareable-volume-with-nonshareable-attachments to node sample-provider-id. The volume already has a non-shareable attachment shareable-volume-with-nonshareable-attachments to instance sample-provider-id-2."),
 		},
 	}

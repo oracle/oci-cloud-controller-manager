@@ -1222,8 +1222,8 @@ func getListenersNetworkLoadBalancer(svc *v1.Service, listenerBackendIpVersion [
 			listeners[listenerName] = genericListener
 		}
 		if requireIPv6 {
-			listenerNameIPv6 := fmt.Sprintf(listenerName + "-" + IPv6)
-			backendSetNameIPv6 := fmt.Sprintf(backendSetName + "-" + IPv6)
+			listenerNameIPv6 := fmt.Sprintf("%s", listenerName+"-"+IPv6)
+			backendSetNameIPv6 := fmt.Sprintf("%s", backendSetName+"-"+IPv6)
 			genericListener.Name = common.String(listenerNameIPv6)
 			genericListener.IpVersion = GenericIpVersion(client.GenericIPv6)
 			genericListener.DefaultBackendSetName = common.String(backendSetNameIPv6)
@@ -1580,7 +1580,7 @@ func getBackendSetNamePortMap(service *v1.Service) map[string]v1.ServicePort {
 			} else {
 				backendSetName = getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
 			}
-			backendSetNameIPv6 := fmt.Sprintf(backendSetName + "-" + IPv6)
+			backendSetNameIPv6 := fmt.Sprintf("%s", backendSetName+"-"+IPv6)
 			backendSetPortMap[backendSetNameIPv6] = servicePort
 		}
 
