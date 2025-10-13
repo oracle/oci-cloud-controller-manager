@@ -166,6 +166,10 @@ func (c *mockComputeClient) AttachVnic(ctx context.Context, request core.AttachV
 	return core.AttachVnicResponse{}, nil
 }
 
+func (c *mockComputeClient) UpdateInstance(ctx context.Context, request core.UpdateInstanceRequest) (response core.UpdateInstanceResponse, err error) {
+	return response, nil
+}
+
 func (c *mockComputeClient) GetVolumeAttachment(ctx context.Context, request core.GetVolumeAttachmentRequest) (response core.GetVolumeAttachmentResponse, err error) {
 	return core.GetVolumeAttachmentResponse{}, nil
 }
@@ -194,8 +198,8 @@ func (c *mockComputeClient) ListInstanceDevices(ctx context.Context, request cor
 	} else if *request.InstanceId == "ocid1.one-device-path-available" {
 		return core.ListInstanceDevicesResponse{
 			Items: []core.Device{{
-					Name: &devicePath,
-				},
+				Name: &devicePath,
+			},
 			},
 		}, nil
 	}

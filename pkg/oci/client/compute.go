@@ -36,6 +36,8 @@ type ComputeInterface interface {
 
 	GetSecondaryVNICsForInstance(ctx context.Context, compartmentID, instanceID string) ([]*core.Vnic, error)
 
+	UpdateInstance(ctx context.Context, request core.UpdateInstanceRequest) (*core.Instance, error)
+
 	VolumeAttachmentInterface
 }
 
@@ -228,6 +230,23 @@ func (c *client) GetSecondaryVNICsForInstance(ctx context.Context, compartmentID
 	}
 
 	return secondaryVnics, nil
+}
+
+func (c *client) UpdateInstance(ctx context.Context, request core.UpdateInstanceRequest) (*core.Instance, error) {
+	var instanceId string
+	if request.InstanceId != nil {
+		instanceId = *request.InstanceId
+	}
+
+	c.logger.With(
+		"instanceOcid", instanceId,
+	).Info("UpdateInstance API call")
+
+	resp, err := c.compute.UpdateInstance(ctx, request)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return &resp.Instance, nil
 }
 
 func (c *client) GetInstanceByNodeName(ctx context.Context, compartmentID, vcnID, nodeName string) (*core.Instance, error) {
