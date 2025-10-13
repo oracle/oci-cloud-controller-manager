@@ -630,6 +630,10 @@ type MockComputeClient struct {
 	compute util.MockOCIComputeClient
 }
 
+func (c *MockComputeClient) UpdateInstance(ctx context.Context, request core.UpdateInstanceRequest) (*core.Instance, error) {
+	return nil, nil
+}
+
 func (c *MockComputeClient) ListInstancesByCompartmentAndAD(ctx context.Context, compartmentId, availabilityDomain string) (response []core.Instance, err error) {
 	return nil, nil
 }
@@ -825,6 +829,11 @@ func (p *MockProvisionerClient) Compute() client.ComputeInterface {
 // MockIdentityClient mocks identity client structure
 type MockIdentityClient struct {
 	common.BaseClient
+}
+
+func (mockClient MockIdentityClient) ListAvailabilityDomains(ctx context.Context, compartmentID string) ([]identity.AvailabilityDomain, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 // ListAvailabilityDomains mocks the client ListAvailabilityDomains implementation
@@ -1361,7 +1370,7 @@ func TestControllerDriver_ControllerPublishVolume(t *testing.T) {
 				},
 			},
 			want:    nil,
-			wantErr: errors.New("Failed to attach volume to the node: timed out waiting for the condition"),
+			wantErr: errors.New("Failed to attach volume volume-attachment-stuck-in-attaching-state to the instance sample-provider-id. error: timed out waiting for the condition"),
 		},
 		{
 			name: "WaitForShareableVolumeAttached times out",
@@ -1376,7 +1385,7 @@ func TestControllerDriver_ControllerPublishVolume(t *testing.T) {
 				},
 			},
 			want:    nil,
-			wantErr: errors.New("Failed to attach volume to the node: timed out waiting for the condition"),
+			wantErr: errors.New("Failed to attach volume volume-attachment-stuck-in-attaching-state to the instance sample-provider-id. error: timed out waiting for the condition"),
 		},
 		{
 			name: "isShareable, but not all attachments are shareable",
@@ -1390,9 +1399,8 @@ func TestControllerDriver_ControllerPublishVolume(t *testing.T) {
 					},
 				},
 			},
-			want: nil,
-			wantErr: errors.New("Failed to attach volume to node. " +
-				"The volume already has a non-shareable attachment."),
+			want:    nil,
+			wantErr: errors.New("Failed to attach volume shareable-volume-with-nonshareable-attachments to node sample-provider-id. The volume already has a non-shareable attachment shareable-volume-with-nonshareable-attachments to instance sample-provider-id-2."),
 		},
 	}
 	for _, tt := range tests {
@@ -1444,7 +1452,7 @@ func TestControllerDriver_ControllerUnpublishVolume(t *testing.T) {
 				},
 			},
 			want:    nil,
-			wantErr: errors.New("timed out waiting for volume to be detached"),
+			wantErr: errors.New("timed out waiting for volume volume-attachment-stuck-in-detaching-state to get detached from instance sample-provider-id. error timed out waiting for the condition"),
 		},
 		{
 			name: "FindVolumeAttachment times out",
