@@ -956,6 +956,18 @@ func (c *MockComputeClient) AttachVnic(ctx context.Context, instanceID, subnetID
 	return core.VnicAttachment{}, nil
 }
 
+func (c *MockComputeClient) UpdateInstance(ctx context.Context, request core.UpdateInstanceRequest) (*core.Instance, error) {
+	// Return mock or expected response
+	return &core.Instance{
+		AvailabilityDomain: common.String("NWuj:PHX-AD-1"),
+		Id:                 request.InstanceId,
+		Region:             common.String("PHX"),
+		Shape:              common.String("VM.Standard1.2"),
+		DisplayName:        request.DisplayName,
+		DefinedTags:        request.DefinedTags,
+	}, nil
+}
+
 func (MockComputeClient) FindVolumeAttachment(ctx context.Context, compartmentID, volumeID string, instanceID *string) (core.VolumeAttachment, error) {
 	return nil, nil
 }
