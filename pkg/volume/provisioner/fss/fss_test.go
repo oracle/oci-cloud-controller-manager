@@ -239,6 +239,10 @@ func (c *MockComputeClient) GetInstance(ctx context.Context, id string) (*core.I
 	return nil, nil
 }
 
+func (c *MockComputeClient) UpdateInstance(ctx context.Context, request core.UpdateInstanceRequest) (*core.Instance, error) {
+	return nil, nil
+}
+
 // GetInstanceByNodeName gets the OCI instance corresponding to the given
 // Kubernetes node name.
 func (c *MockComputeClient) GetInstanceByNodeName(ctx context.Context, compartmentID, vcnID, nodeName string) (*core.Instance, error) {
