@@ -630,6 +630,10 @@ type MockComputeClient struct {
 	compute util.MockOCIComputeClient
 }
 
+func (c *MockComputeClient) UpdateInstance(ctx context.Context, request core.UpdateInstanceRequest) (*core.Instance, error) {
+	return nil, nil
+}
+
 func (c *MockComputeClient) ListInstancesByCompartmentAndAD(ctx context.Context, compartmentId, availabilityDomain string) (response []core.Instance, err error) {
 	return nil, nil
 }
@@ -1390,7 +1394,7 @@ func TestControllerDriver_ControllerPublishVolume(t *testing.T) {
 					},
 				},
 			},
-			want: nil,
+			want:    nil,
 			wantErr: errors.New("Failed to attach volume shareable-volume-with-nonshareable-attachments to node sample-provider-id. The volume already has a non-shareable attachment shareable-volume-with-nonshareable-attachments to instance sample-provider-id-2."),
 		},
 	}
