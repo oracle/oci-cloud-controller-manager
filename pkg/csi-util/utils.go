@@ -717,3 +717,30 @@ func TruncateError(err error, maxBytes int) error {
 
 	return errors.New(string(bytesMsg[:truncLen]) + suffix)
 }
+
+// ShortenContextBeforeDeadline returns a new context that cancels slightly
+// before the parent context's deadline, giving time for cleanup or response
+// before gRPC timeout. If the parent has no deadline, it returns the parent unchanged.
+//
+// Example:
+//   ctx = ShortenContextBeforeDeadline(ctx, 5*time.Second)
+//
+func ShortenContextBeforeDeadline(parent context.Context, buffer time.Duration) (context.Context, context.CancelFunc) {
+	deadline, hasDeadline := parent.Deadline()
+	if !hasDeadline {
+		// No deadline to shorten — just return a no-op cancel
+		return parent, func() {}
+	}
+
+	timeLeft := time.Until(deadline) - buffer
+	if timeLeft <= 0 {
+		// Already expired or too close — cancel immediately after return
+		// Use a new cancelled context for the case where we want to cancel even though parent might still be active
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		return ctx, func() {}
+	}
+
+	ctx, cancel := context.WithTimeout(parent, timeLeft)
+	return ctx, cancel
+}
