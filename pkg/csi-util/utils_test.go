@@ -1000,3 +1000,102 @@ func Test_TruncateError(t *testing.T) {
 		})
 	}
 }
+
+func TestShortenContextBeforeDeadline(t *testing.T) {
+	const (
+		tolerance = 10 * time.Millisecond
+		buffer    = 50 * time.Millisecond
+	)
+
+	tests := []struct {
+		name                 string
+		parentDeadlineOffset time.Duration
+		buffer               time.Duration
+		expectCancel         bool
+		expectedTimeout      time.Duration
+	}{
+		{
+			name:                 "NoParentDeadline",
+			parentDeadlineOffset: 0,
+			buffer:               buffer,
+			expectCancel:         false,
+			expectedTimeout:      0,
+		},
+		{
+			name:                 "DeadlineFarEnough",
+			parentDeadlineOffset: 200 * time.Millisecond,
+			buffer:               buffer,
+			expectCancel:         false,
+			expectedTimeout:      150 * time.Millisecond,
+		},
+		{
+			name:                 "DeadlineExactlyBuffer",
+			parentDeadlineOffset: buffer,
+			buffer:               buffer,
+			expectCancel:         true,
+			expectedTimeout:      0,
+		},
+		{
+			name:                 "DeadlineLessThanBuffer",
+			parentDeadlineOffset: 10 * time.Millisecond,
+			buffer:               buffer,
+			expectCancel:         true,
+			expectedTimeout:      0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var parentCtx context.Context
+			var parentCancel context.CancelFunc = func() {}
+			now := time.Now()
+
+			if tt.parentDeadlineOffset > 0 {
+				parentCtx, parentCancel = context.WithDeadline(context.Background(), now.Add(tt.parentDeadlineOffset))
+			} else {
+				parentCtx = context.Background()
+			}
+			defer parentCancel()
+
+			newCtx, cancel := ShortenContextBeforeDeadline(parentCtx, tt.buffer)
+			defer cancel()
+
+			if tt.expectCancel {
+				if err := newCtx.Err(); err != context.Canceled {
+					t.Errorf("ShortenContextBeforeDeadline() returned context.Err() = %v, want %v", err, context.Canceled)
+				}
+				return
+			}
+
+			if newCtx.Err() != nil {
+				t.Fatalf("ShortenContextBeforeDeadline() returned context.Err() = %v, want nil", newCtx.Err())
+			}
+
+			if tt.parentDeadlineOffset == 0 {
+				_, hasDeadline := newCtx.Deadline()
+				if hasDeadline {
+					t.Errorf("ShortenContextBeforeDeadline() with no parent deadline returned a context with a deadline")
+				}
+			} else {
+				deadline, hasDeadline := newCtx.Deadline()
+				if !hasDeadline {
+					t.Fatalf("ShortenContextBeforeDeadline() returned a context without a deadline, want deadline")
+				}
+
+				actualDuration := deadline.Sub(now)
+
+				expectedMin := tt.expectedTimeout - tolerance
+				expectedMax := tt.expectedTimeout + tolerance
+
+				if actualDuration < expectedMin || actualDuration > expectedMax {
+					t.Errorf("ShortenContextBeforeDeadline() deadline duration %v, want approx %v", actualDuration, tt.expectedTimeout)
+				}
+
+				cancel()
+				if err := newCtx.Err(); err != context.Canceled {
+					t.Errorf("Cancel() did not cancel context. Got: %v, Want: %v", err, context.Canceled)
+				}
+			}
+		})
+	}
+}
