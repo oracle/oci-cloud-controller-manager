@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	snapclientset "github.com/kubernetes-csi/external-snapshotter/client/v6/clientset/versioned"
+	snapclientset "github.com/kubernetes-csi/external-snapshotter/client/v8/clientset/versioned"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
