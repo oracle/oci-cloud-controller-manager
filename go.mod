@@ -40,8 +40,9 @@ replace (
 require (
 	github.com/container-storage-interface/spec v1.11.0
 	github.com/golang/protobuf v1.5.4
-	github.com/kubernetes-csi/csi-lib-utils v0.20.0
-	github.com/kubernetes-csi/external-snapshotter/client/v6 v6.3.0
+	github.com/kubernetes-csi/csi-lib-utils v0.22.0
+	github.com/kubernetes-csi/external-snapshotter/client/v8 v8.2.0
+	github.com/kubernetes-csi/external-snapshotter/v8 v8.3.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.36.2
 	github.com/oracle/oci-go-sdk/v65 v65.105.0
@@ -75,6 +76,7 @@ require (
 )
 
 require (
+	github.com/go-logr/logr v1.4.2
 	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
 	golang.org/x/sync v0.15.0
 	google.golang.org/protobuf v1.36.5
