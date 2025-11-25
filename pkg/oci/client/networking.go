@@ -23,7 +23,7 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/pkg/errors"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 // NetworkingInterface defines the subset of the OCI compute API utilised by the CCM
@@ -74,7 +74,7 @@ func (c *client) GetVNIC(ctx context.Context, id string) (*core.Vnic, error) {
 	incRequestCounter(err, getVerb, vnicResource)
 
 	if err != nil {
-		c.logger.With(id).Infof("GetVNIC failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		c.logger.With(id).Infof("GetVNIC failed %s", ptr.Deref(resp.OpcRequestId, ""))
 		return nil, errors.WithStack(err)
 	}
 
@@ -106,7 +106,7 @@ func (c *client) GetSubnet(ctx context.Context, id string) (*core.Subnet, error)
 	incRequestCounter(err, getVerb, subnetResource)
 
 	if err != nil {
-		c.logger.With(id).Infof("GetSubnet failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		c.logger.With(id).Infof("GetSubnet failed %s", ptr.Deref(resp.OpcRequestId, ""))
 		return nil, errors.WithStack(err)
 	}
 
@@ -187,7 +187,7 @@ func (c *client) GetVcn(ctx context.Context, id string) (*core.Vcn, error) {
 	incRequestCounter(err, getVerb, vcnResource)
 
 	if err != nil {
-		c.logger.With(id).Infof("GetVcn failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		c.logger.With(id).Infof("GetVcn failed %s", ptr.Deref(resp.OpcRequestId, ""))
 		return nil, errors.WithStack(err)
 	}
 
@@ -248,7 +248,7 @@ func (c *client) GetPrivateIp(ctx context.Context, id string) (*core.PrivateIp, 
 	incRequestCounter(err, getVerb, privateIPResource)
 
 	if err != nil {
-		c.logger.With("mountTargetIpId", id).Infof("GetPrivateIp failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		c.logger.With("mountTargetIpId", id).Infof("GetPrivateIp failed %s", ptr.Deref(resp.OpcRequestId, ""))
 		return nil, errors.WithStack(err)
 	}
 
@@ -267,7 +267,7 @@ func (c *client) GetPublicIpByIpAddress(ctx context.Context, ip string) (*core.P
 	})
 	incRequestCounter(err, getVerb, publicReservedIPResource)
 	if err != nil {
-		c.logger.With(ip).Infof("GetPublicIpByIpAddress failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		c.logger.With(ip).Infof("GetPublicIpByIpAddress failed %s", ptr.Deref(resp.OpcRequestId, ""))
 		return nil, errors.WithStack(err)
 	}
 
@@ -288,7 +288,7 @@ func (c *client) ListPrivateIps(ctx context.Context, vnicId string) ([]core.Priv
 		})
 		incRequestCounter(err, listVerb, privateIPResource)
 		if err != nil {
-			c.logger.With(vnicId).Infof("ListPrivateIps failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+			c.logger.With(vnicId).Infof("ListPrivateIps failed %s", ptr.Deref(resp.OpcRequestId, ""))
 			return nil, errors.WithStack(err)
 		}
 		privateIps = append(privateIps, resp.Items...)
@@ -313,7 +313,7 @@ func (c *client) CreatePrivateIp(ctx context.Context, vnicId string) (*core.Priv
 	})
 	incRequestCounter(err, createVerb, privateIPResource)
 	if err != nil {
-		c.logger.With(vnicId).Infof("CreatePrivateIp failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		c.logger.With(vnicId).Infof("CreatePrivateIp failed %s", ptr.Deref(resp.OpcRequestId, ""))
 		return nil, errors.WithStack(err)
 	}
 
@@ -336,7 +336,7 @@ func (c *client) GetIpv6(ctx context.Context, id string) (*core.Ipv6, error) {
 	incRequestCounter(err, getVerb, ipv6IPResource)
 
 	if err != nil {
-		c.logger.With(id).Infof("GetIpv6 failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		c.logger.With(id).Infof("GetIpv6 failed %s", ptr.Deref(resp.OpcRequestId, ""))
 		return nil, errors.WithStack(err)
 	}
 
@@ -362,7 +362,7 @@ func (c *client) CreateNetworkSecurityGroup(ctx context.Context, compartmentId, 
 
 	incRequestCounter(err, createVerb, nsgResource)
 	if err != nil {
-		c.logger.With(serviceUid).Infof("CreateNetworkSecurityGroup failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		c.logger.With(serviceUid).Infof("CreateNetworkSecurityGroup failed %s", ptr.Deref(resp.OpcRequestId, ""))
 		return nil, errors.WithStack(err)
 	}
 
@@ -381,7 +381,7 @@ func (c *client) GetNetworkSecurityGroup(ctx context.Context, id string) (*core.
 	incRequestCounter(err, getVerb, nsgResource)
 
 	if err != nil {
-		c.logger.With(id).Infof("GetNetworkSecurityGroup failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		c.logger.With(id).Infof("GetNetworkSecurityGroup failed %s", ptr.Deref(resp.OpcRequestId, ""))
 		return nil, nil, errors.WithStack(err)
 	}
 
@@ -408,7 +408,7 @@ func (c *client) ListNetworkSecurityGroups(ctx context.Context, displayName, com
 		incRequestCounter(err, listVerb, nsgResource)
 
 		if err != nil {
-			c.logger.With(displayName).Infof("ListNetworkSecurityGroups failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+			c.logger.With(displayName).Infof("ListNetworkSecurityGroups failed %s", ptr.Deref(resp.OpcRequestId, ""))
 			return nil, errors.WithStack(err)
 		}
 		nsgList = append(nsgList, resp.Items...)
@@ -436,7 +436,7 @@ func (c *client) UpdateNetworkSecurityGroup(ctx context.Context, id string, etag
 	incRequestCounter(err, updateVerb, nsgResource)
 
 	if err != nil {
-		c.logger.With(id).Infof("UpdateNetworkSecurityGroup failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		c.logger.With(id).Infof("UpdateNetworkSecurityGroup failed %s", ptr.Deref(resp.OpcRequestId, ""))
 		return nil, errors.WithStack(err)
 	}
 
@@ -457,7 +457,7 @@ func (c *client) DeleteNetworkSecurityGroup(ctx context.Context, id, etag string
 
 	incRequestCounter(err, deleteVerb, nsgResource)
 	if err != nil {
-		c.logger.With(id).Infof("DeleteNetworkSecurityGroup failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		c.logger.With(id).Infof("DeleteNetworkSecurityGroup failed %s", ptr.Deref(resp.OpcRequestId, ""))
 		return nil, errors.WithStack(err)
 	}
 
@@ -477,7 +477,7 @@ func (c *client) AddNetworkSecurityGroupSecurityRules(ctx context.Context, id st
 	incRequestCounter(err, createVerb, nsgRuleResource)
 
 	if err != nil {
-		c.logger.With(id).Infof("AddNetworkSecurityGroupSecurityRules failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		c.logger.With(id).Infof("AddNetworkSecurityGroupSecurityRules failed %s", ptr.Deref(resp.OpcRequestId, ""))
 		return &resp, errors.WithStack(err)
 	}
 	return &resp, nil
@@ -496,7 +496,7 @@ func (c *client) RemoveNetworkSecurityGroupSecurityRules(ctx context.Context, id
 	incRequestCounter(err, deleteVerb, nsgRuleResource)
 
 	if err != nil {
-		c.logger.With(id).Infof("RemoveNetworkSecurityGroupSecurityRules failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		c.logger.With(id).Infof("RemoveNetworkSecurityGroupSecurityRules failed %s", ptr.Deref(resp.OpcRequestId, ""))
 		return &resp, errors.WithStack(err)
 	}
 	return &resp, nil
@@ -518,7 +518,7 @@ func (c *client) ListNetworkSecurityGroupSecurityRules(ctx context.Context, id s
 		incRequestCounter(err, listVerb, nsgRuleResource)
 
 		if err != nil {
-			c.logger.With(id).Infof("ListNetworkSecurityGroupSecurityRules failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+			c.logger.With(id).Infof("ListNetworkSecurityGroupSecurityRules failed %s", ptr.Deref(resp.OpcRequestId, ""))
 			return []core.SecurityRule{}, errors.WithStack(err)
 		}
 		for _, rule := range resp.Items {
@@ -544,7 +544,7 @@ func (c *client) UpdateNetworkSecurityGroupSecurityRules(ctx context.Context, id
 	incRequestCounter(err, updateVerb, nsgRuleResource)
 
 	if err != nil {
-		c.logger.With(id).Infof("UpdateNetworkSecurityGroupSecurityRules failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		c.logger.With(id).Infof("UpdateNetworkSecurityGroupSecurityRules failed %s", ptr.Deref(resp.OpcRequestId, ""))
 		return &resp, errors.WithStack(err)
 	}
 	return &resp, nil
