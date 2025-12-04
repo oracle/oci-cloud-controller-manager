@@ -811,13 +811,13 @@ func Test_LoadCSIConfigFromConfigMap(t *testing.T) {
 	tests := []struct {
 		name     string
 		configMapName string
-		want     *CSIConfig
+		want     *util.CSIConfig
 	}{
 		{
 			name:     "Parse Configs correctly when csi config map is present",
 			configMapName: "oci-csi-config",
-			want: &CSIConfig{
-				Lustre: &DriverConfig{
+			want: &util.CSIConfig{
+				Lustre: &util.DriverConfig{
 					SkipNodeUnstage: true,
 					SkipLustreParameters: true,
 				},
@@ -826,17 +826,17 @@ func Test_LoadCSIConfigFromConfigMap(t *testing.T) {
 		{
 			name:     "Return default config if config map is not present",
 			configMapName: "invalid",
-			want: &CSIConfig{
+			want: &util.CSIConfig{
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			csiConfig := &CSIConfig{}
+			csiConfig := &util.CSIConfig{}
 			LoadCSIConfigFromConfigMap(csiConfig, &util.MockKubeClient{
 				CoreClient: &util.MockCoreClient{},
-			}, tt.configMapName, zap.S())
+			}, tt.configMapName, zap.S(), context.Background())
 
 			if !reflect.DeepEqual(tt.want, csiConfig) {
 				t.Errorf("LoadCSIConfigFromConfigMap() => got : %v, want :  %v", csiConfig, tt.want)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util/disk"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
@@ -42,7 +43,7 @@ func (d LustreNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStag
 	}
 
 
-	d.loadCSIConfig()
+	d.loadCSIConfig(ctx)
 
 	if lustrePostMountParameters, exists := req.GetVolumeContext()["lustrePostMountParameters"]; exists && !isSkipLustreParams(d.csiConfig) {
 		if err := csi_util.ValidateLustreParameters(d.logger, lustrePostMountParameters); err != nil {
@@ -129,7 +130,7 @@ func (d LustreNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStag
 		Info("Mounting the volume to staging target path is completed.")
 
 	if lustrePostMountParameters, exists := req.GetVolumeContext()["lustrePostMountParameters"]; exists {
-		d.loadCSIConfig()
+		d.loadCSIConfig(ctx)
 		if !isSkipLustreParams(d.csiConfig)  {
 			err = lnetService.ApplyLustreParameters(logger, lustrePostMountParameters)
 			if err != nil {
@@ -147,12 +148,12 @@ func (d LustreNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStag
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
-func (d LustreNodeDriver) loadCSIConfig() {
+func (d LustreNodeDriver) loadCSIConfig(ctx context.Context) {
 	if d.csiConfig.IsLoaded {
 		return
 	}
 	d.logger.Info("Loading CSI Config Map")
-	csi_util.LoadCSIConfigFromConfigMap(d.csiConfig, d.KubeClient, CSIConfigMapName, d.logger)
+	csi_util.LoadCSIConfigFromConfigMap(d.csiConfig, d.KubeClient, CSIConfigMapName, d.logger, ctx)
 	d.csiConfig.IsLoaded = true
 }
 
@@ -174,7 +175,7 @@ func (d LustreNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUn
 
 	logger := d.logger.With("volumeID", req.VolumeId, "stagingPath", req.StagingTargetPath)
 
-	d.loadCSIConfig()
+	d.loadCSIConfig(ctx)
 
 	if d.csiConfig != nil && d.csiConfig.Lustre != nil && d.csiConfig.Lustre.SkipNodeUnstage {
 		logger.Info("Skipping NodeUnstageVolume based on CSI Driver Configuration.")
@@ -439,6 +440,6 @@ func (d LustreNodeDriver) NodeGetInfo(ctx context.Context, request *csi.NodeGetI
 	}, nil
 }
 
-func isSkipLustreParams(csiConfig *csi_util.CSIConfig) bool {
+func isSkipLustreParams(csiConfig *util.CSIConfig) bool {
 	return csiConfig != nil && csiConfig.Lustre != nil && csiConfig.Lustre.SkipLustreParameters
 }
