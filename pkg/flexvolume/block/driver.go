@@ -479,7 +479,7 @@ func (d OCIFlexvolumeDriver) MountDevice(logger *zap.SugaredLogger, mountDir, mo
 	ctx := context.Background()
 
 	// Wait and get device path using the publish context
-	devicePath, err := disk.WaitForDevicePathToExist(ctx, scsiInfo, logger)
+	devicePath, err := iSCSIMounter.WaitForDevicePathToExist(ctx, scsiInfo, logger)
 	if err != nil {
 		logger.With(zap.Error(err)).Error("Failed to get /dev/disk/by-path device path for iscsi volume.")
 		return flexvolume.Fail(logger, status.Error(codes.InvalidArgument, "Failed to get device path for iscsi volume"))

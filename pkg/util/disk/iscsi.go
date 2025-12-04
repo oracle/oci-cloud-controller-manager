@@ -118,6 +118,10 @@ type Interface interface {
 	WaitForPathToExist(path string, maxRetries int) bool
 
 	ISCSILogoutOnFailure() error
+
+	GetMultipathIscsiDevicePath(ctx context.Context, consistentDevicePath string, logger *zap.SugaredLogger) (string, error)
+
+	WaitForDevicePathToExist(ctx context.Context, disk *Disk, logger *zap.SugaredLogger) (string, error)
 }
 
 // iSCSIMounter implements Interface.
@@ -450,6 +454,11 @@ func (c *iSCSIMounter) WaitForVolumeLoginOrTimeout(ctx context.Context, multipat
 	return nil
 }
 
+func (c *iSCSIMounter) GetMultipathIscsiDevicePath(ctx context.Context, consistentDevicePath string, logger *zap.SugaredLogger) (string, error) {
+	c.logger.Info("Attachment type ISCSI. GetMultipathIscsiDevicePath() not needed for iscsi attachment")
+	return "", nil
+}
+
 func (c *iSCSIMounter) FormatAndMount(source string, target string, fstype string, options []string) error {
 	safeMounter := &mount.SafeFormatAndMount{
 		Interface: c.mounter,
@@ -713,7 +722,7 @@ func GetIscsiDevicePath(disk *Disk) (string, error) {
 	return "", fmt.Errorf("cannot find device path")
 }
 
-func WaitForDevicePathToExist(ctx context.Context, disk *Disk, logger *zap.SugaredLogger) (string, error) {
+func (c *iSCSIMounter) WaitForDevicePathToExist(ctx context.Context, disk *Disk, logger *zap.SugaredLogger) (string, error) {
 	logger.With("disk", disk).Info("Waiting for iscsi device path to exist")
 
 	ctxt, cancel := context.WithTimeout(ctx, pathPollTimeout)
