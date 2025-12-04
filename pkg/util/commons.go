@@ -44,6 +44,7 @@ const (
 	ErrTagLimitReached = "TAG_LIMIT_REACHED"
 	Success            = "SUCCESS"
 	BackupCreating     = "CREATING"
+	PANIC              = "PANIC"
 
 	// Components generating errors
 	// Load Balancer
@@ -159,4 +160,19 @@ func MergeTagConfig(srcTagConfig, dstTagConfig *config.TagConfig) *config.TagCon
 func IsCommonTagPresent(initialTags *config.InitialTags) bool {
 
 	return initialTags != nil && initialTags.Common != nil
+}
+
+// CSIConfig represents the structure of the ConfigMap data.
+type CSIConfig struct {
+	Lustre   *DriverConfig `yaml:"lustre"`
+	Bv       *DriverConfig `yaml:"bv"`
+	IsLoaded bool
+}
+
+
+// DriverConfig represents driver-specific configurations.
+type DriverConfig struct {
+	SkipNodeUnstage      bool `yaml:"skipNodeUnstage"`
+	SkipLustreParameters bool `yaml:"skipLustreParameters"`
+	SkipBrokenSymLinks   bool `yaml:"skipBrokenSymLinks"`
 }
