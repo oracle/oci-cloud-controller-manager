@@ -226,7 +226,7 @@ func (c *iSCSIUHPMounter) ISCSILogoutOnFailure() error {
 	return nil
 }
 
-func GetMultipathIscsiDevicePath(ctx context.Context, consistentDevicePath string, logger *zap.SugaredLogger) (string, error) {
+func (c *iSCSIUHPMounter) GetMultipathIscsiDevicePath(ctx context.Context, consistentDevicePath string, logger *zap.SugaredLogger) (string, error) {
 	logger.With("consistentDevicePath", consistentDevicePath).Info("Getting friendly name of multipath device using consistent device path")
 
 	ctxt, cancel := context.WithTimeout(ctx, pathPollTimeout)
@@ -282,4 +282,9 @@ func ReadLink(symbolicLink string, logger *zap.SugaredLogger) (string, error) {
 	}
 
 	return linkedPath, nil
+}
+
+func (c *iSCSIUHPMounter) WaitForDevicePathToExist(ctx context.Context, disk *Disk, logger *zap.SugaredLogger) (string, error) {
+	c.logger.Info("Attachment type ISCSI for UHP. WaitForDevicePathToExist() not needed for UHP ISCSI attachment")
+	return "", nil
 }

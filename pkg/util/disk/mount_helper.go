@@ -40,6 +40,9 @@ const (
 	EncryptionMountCommand = "encrypt-mount"
 	UnmountCommand         = "umount"
 	FindMountCommand       = "findmnt"
+
+	attachmentTypeISCSI           = "iscsi"
+	attachmentTypeParavirtualized = "paravirtualized"
 )
 
 func MountWithEncrypt(logger *zap.SugaredLogger, source string, target string, fstype string, options []string) error {
@@ -245,4 +248,20 @@ func FindMount(target string) ([]string, error) {
 
 	sources := strings.Fields(string(output))
 	return sources, nil
+}
+
+type MounterFactory func(attachmentType string, scsiInfo *Disk, multipath bool, logger *zap.SugaredLogger) (Interface, error)
+
+func DefaultMounterFactory(attachmentType string, scsiInfo *Disk, multipath bool, logger *zap.SugaredLogger) (Interface, error) {
+	switch attachmentType {
+	case attachmentTypeISCSI:
+		if multipath {
+			return NewISCSIUHPMounter(logger), nil
+		}
+		return NewFromISCSIDisk(logger, scsiInfo), nil
+	case attachmentTypeParavirtualized:
+		return NewFromPVDisk(logger), nil
+	default:
+		return nil, fmt.Errorf("unknown attachment type when creating mount handler: %s", attachmentType)
+	}
 }

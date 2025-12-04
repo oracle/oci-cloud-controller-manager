@@ -18,13 +18,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"go.uber.org/zap"
 	"k8s.io/mount-utils"
 	"k8s.io/utils/exec"
-	"path/filepath"
 )
 
 // iSCSIMounter implements Interface.
@@ -36,6 +36,8 @@ type pvMounter struct {
 	iscsiadmPath string
 	logger       *zap.SugaredLogger
 }
+
+
 
 // NewFromPVDisk creates a new PV handler from PVDisk.
 func NewFromPVDisk(logger *zap.SugaredLogger) Interface {
@@ -79,6 +81,11 @@ func (c *pvMounter) UpdateQueueDepth() error {
 func (c *pvMounter) RemoveFromDB() error {
 	c.logger.Info("Attachment type paravirtualized. RemoveFromDB() not needed for paravirtualized attachment")
 	return nil
+}
+
+func (c *pvMounter) WaitForDevicePathToExist(ctx context.Context, disk *Disk, logger *zap.SugaredLogger) (string, error) {
+	c.logger.Info("Attachment type paravirtualized. WaitForDevicePathToExist() not needed for paravirtualized attachment")
+	return "", nil
 }
 
 func (c *pvMounter) FormatAndMount(source string, target string, fstype string, options []string) error {
@@ -153,6 +160,11 @@ func (c *pvMounter) Resize(devicePath string, volumePath string) (bool, error) {
 
 func (c *pvMounter) GetDiskFormat(disk string) (string, error) {
 	return getDiskFormat(c.runner, disk, c.logger)
+}
+
+func (c *pvMounter) GetMultipathIscsiDevicePath(ctx context.Context, consistentDevicePath string, logger *zap.SugaredLogger) (string, error) {
+	c.logger.Info("Attachment type ISCSI. GetMultipathIscsiDevicePath() not needed for iscsi attachment")
+	return "", nil
 }
 
 func waitForPathToExist(path string, maxRetries int) bool {

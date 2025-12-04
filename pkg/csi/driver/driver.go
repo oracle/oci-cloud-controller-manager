@@ -27,7 +27,6 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-csi/csi-lib-utils/protosanitizer"
-
 	"github.com/oracle/oci-cloud-controller-manager/cmd/oci-csi-node-driver/nodedriveroptions"
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
 	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
@@ -35,6 +34,7 @@ import (
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util/disk"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -136,6 +136,7 @@ type NodeDriver struct {
 	volumeLocks  *csi_util.VolumeLocks
 	nodeMetadata *csi_util.NodeMetadata
 	csiConfig    *util.CSIConfig
+	mounterFactory disk.MounterFactory
 	csi.UnimplementedNodeServer
 }
 
@@ -186,6 +187,7 @@ func newNodeDriver(nodeID string, nodeMetaData *csi_util.NodeMetadata, kubeClien
 		volumeLocks:  csi_util.NewVolumeLocks(),
 		nodeMetadata: nodeMetaData,
 		csiConfig:    csiConfig,
+		mounterFactory: disk.DefaultMounterFactory,
 	}
 }
 
