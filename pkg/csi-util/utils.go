@@ -17,6 +17,7 @@ package csi_util
 import (
 	"context"
 	"fmt"
+
 	"net"
 	"os"
 	"os/exec"
@@ -43,6 +44,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util/disk"
 )
 
@@ -113,19 +115,6 @@ type NodeMetadata struct {
 	AvailabilityDomain     string
 	FullAvailabilityDomain string
 	IsNodeMetadataLoaded   bool
-}
-
-// CSIConfig represents the structure of the ConfigMap data.
-type CSIConfig struct {
-	Lustre *DriverConfig `yaml:"lustre"`
-	IsLoaded bool
-}
-
-// DriverConfig represents driver-specific configurations.
-type DriverConfig struct {
-	SkipNodeUnstage bool `yaml:"skipNodeUnstage"`
-	SkipLustreParameters bool `yaml:"skipLustreParameters"`
-
 }
 
 func (u *Util) LookupNodeID(k kubernetes.Interface, nodeName string) (string, error) {
@@ -641,10 +630,10 @@ func IsIpv6SingleStackNode(nodeMetadata *NodeMetadata) bool {
 	return nodeMetadata.Ipv6Enabled == true && nodeMetadata.Ipv4Enabled == false
 }
 
-func LoadCSIConfigFromConfigMap(csiConfig *CSIConfig, k kubernetes.Interface, configMapName string, logger *zap.SugaredLogger) {
+func LoadCSIConfigFromConfigMap(csiConfig *util.CSIConfig, k kubernetes.Interface, configMapName string, logger *zap.SugaredLogger, ctx context.Context) {
 	// Get the ConfigMap
 	// Parse the configuration for each driver
-	cm, err := k.CoreV1().ConfigMaps("kube-system").Get(context.Background(), configMapName, metav1.GetOptions{})
+	cm, err := k.CoreV1().ConfigMaps("kube-system").Get(ctx, configMapName, metav1.GetOptions{})
 	if err != nil {
 		logger.Debugf("Failed to load ConfigMap %v due to error %v. Using default configuration.", configMapName, err)
 		return
@@ -652,9 +641,17 @@ func LoadCSIConfigFromConfigMap(csiConfig *CSIConfig, k kubernetes.Interface, co
 
 	if lustreConfig, exists := cm.Data["lustre"]; exists {
 		if err := yaml.Unmarshal([]byte(lustreConfig), &csiConfig.Lustre); err != nil {
-			logger.Debugf("Failed to parse lustre key in config map %v. Error: %v",configMapName,  err)
-			return
+			logger.Warnf("Failed to parse lustre key in config map %v. Error: %v", configMapName, err)
+		} else {
+			logger.Infof("Successfully loaded lustre parameters from ConfigMap %v. Using customized configuration for csi driver.", configMapName)
 		}
-		logger.Infof("Successfully loaded ConfigMap %v. Using customized configuration for csi driver.", configMapName)
+	}
+
+	if bvConfig, exists := cm.Data["blockVolume"]; exists {
+		if err := yaml.Unmarshal([]byte(bvConfig), &csiConfig.Bv); err != nil {
+			logger.Warnf("Failed to parse block volume key in config map %v. Error: %v", configMapName, err)
+		} else {
+			logger.Infof("Successfully loaded block volume parameters from ConfigMap %v. Using customized configuration for csi driver.", configMapName)
+		}
 	}
 }

@@ -326,6 +326,8 @@ func (d BlockVolumeNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.N
 
 	logger := d.logger.With("volumeID", req.VolumeId, "stagingPath", req.StagingTargetPath)
 
+	d.loadCSIConfig(ctx)
+
 	stagingTargetFilePath := csi_util.GetPathForBlock(req.StagingTargetPath)
 
 	if acquired := d.volumeLocks.TryAcquire(req.VolumeId); !acquired {
@@ -347,14 +349,14 @@ func (d BlockVolumeNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.N
 	var err error
 
 	if isRawBlockVolume {
-		diskPath, err = disk.GetDiskPathFromBindDeviceFilePath(logger, stagingTargetFilePath)
+		diskPath, err = disk.GetDiskPathFromBindDeviceFilePath(logger, stagingTargetFilePath, d.csiConfig)
 
 		if err != nil {
 			logger.With(zap.Error(err)).With("mountPath", stagingTargetFilePath).Error("unable to get diskPath from mount path")
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	} else {
-		diskPath, err = disk.GetDiskPathFromMountPath(logger, req.GetStagingTargetPath())
+		diskPath, err = disk.GetDiskPathFromMountPath(logger, req.GetStagingTargetPath(), d.csiConfig)
 
 		if err != nil {
 			// do a clean exit in case of mount point not found
@@ -468,6 +470,8 @@ func (d BlockVolumeNodeDriver) NodePublishVolume(ctx context.Context, req *csi.N
 	}
 
 	logger := d.logger.With("volumeID", req.VolumeId, "targetPath", req.TargetPath)
+
+	d.loadCSIConfig(ctx)
 
 	stagingTargetFilePath := csi_util.GetPathForBlock(req.StagingTargetPath)
 
@@ -605,13 +609,13 @@ func (d BlockVolumeNodeDriver) NodePublishVolume(ctx context.Context, req *csi.N
 			var diskErr error
 
 			if isRawBlockVolume {
-				diskPath, diskErr = disk.GetDiskPathFromBindDeviceFilePath(logger, req.TargetPath)
+				diskPath, diskErr = disk.GetDiskPathFromBindDeviceFilePath(logger, req.TargetPath, d.csiConfig)
 				if diskErr != nil {
 					logger.With(zap.Error(diskErr)).With("mountPath", req.TargetPath).Error("unable to get diskPath from mount path")
 					return nil, status.Error(codes.Internal, diskErr.Error())
 				}
 			} else {
-				diskPath, diskErr = disk.GetDiskPathFromMountPath(d.logger, req.StagingTargetPath)
+				diskPath, diskErr = disk.GetDiskPathFromMountPath(d.logger, req.StagingTargetPath, d.csiConfig)
 				if diskErr != nil {
 					// do a clean exit in case of mount point not found
 					if diskErr == disk.ErrMountPointNotFound {
@@ -687,6 +691,8 @@ func (d BlockVolumeNodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi
 
 	logger := d.logger.With("volumeID", req.VolumeId, "targetPath", req.TargetPath)
 
+	d.loadCSIConfig(ctx)
+
 	hostUtil := hostutil.NewHostUtil()
 	isRawBlockVolume, rbvCheckErr := hostUtil.PathIsDevice(req.TargetPath)
 
@@ -710,13 +716,13 @@ func (d BlockVolumeNodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi
 	var err error
 
 	if isRawBlockVolume {
-		diskPath, err = disk.GetDiskPathFromBindDeviceFilePath(logger, req.TargetPath)
+		diskPath, err = disk.GetDiskPathFromBindDeviceFilePath(logger, req.TargetPath, d.csiConfig)
 		if err != nil {
 			logger.With(zap.Error(err)).With("mountPath", req.TargetPath).Error("unable to get diskPath from mount path")
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	} else {
-		diskPath, err = disk.GetDiskPathFromMountPath(d.logger, req.TargetPath)
+		diskPath, err = disk.GetDiskPathFromMountPath(d.logger, req.TargetPath, d.csiConfig)
 		if err != nil {
 			// do a clean exit in case of mount point not found
 			if err == disk.ErrMountPointNotFound {
@@ -937,6 +943,8 @@ func (d BlockVolumeNodeDriver) NodeExpandVolume(ctx context.Context, req *csi.No
 
 	logger := d.logger.With("volumeID", req.VolumeId, "volumePath", req.VolumePath)
 
+	d.loadCSIConfig(ctx)
+
 	if acquired := d.volumeLocks.TryAcquire(req.VolumeId); !acquired {
 		logger.Error("Could not acquire lock for NodeExpandVolume.")
 		return nil, status.Errorf(codes.Aborted, volumeOperationAlreadyExistsFmt, req.VolumeId)
@@ -963,7 +971,7 @@ func (d BlockVolumeNodeDriver) NodeExpandVolume(ctx context.Context, req *csi.No
 	var diskPath []string
 
 	if !isRawBlockVolume {
-		diskPath, err = disk.GetDiskPathFromMountPath(logger, volumePath)
+		diskPath, err = disk.GetDiskPathFromMountPath(logger, volumePath, d.csiConfig)
 		if err != nil {
 			if err == disk.ErrMountPointNotFound {
 				logger.With(zap.Error(err)).With("volumePath", volumePath).Warn("unable to fetch mount point")
@@ -973,7 +981,7 @@ func (d BlockVolumeNodeDriver) NodeExpandVolume(ctx context.Context, req *csi.No
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	} else {
-		diskPath, err = disk.GetDiskPathFromBindDeviceFilePath(logger, volumePath)
+		diskPath, err = disk.GetDiskPathFromBindDeviceFilePath(logger, volumePath, d.csiConfig)
 		if err != nil {
 			logger.With(zap.Error(err)).Errorf("unable to get disk paths from volumePath %s", volumePath)
 			return nil, status.Error(codes.Internal, err.Error())
@@ -1068,4 +1076,13 @@ func getMultipathDevicesFromReq(req *csi.NodeStageVolumeRequest) ([]core.Multipa
 	})
 
 	return multipathDevicesList, nil
+}
+
+func (d BlockVolumeNodeDriver) loadCSIConfig(ctx context.Context) {
+	if d.csiConfig.IsLoaded {
+		return
+	}
+	d.logger.Info("Loading CSI Config Map for BV driver")
+	csi_util.LoadCSIConfigFromConfigMap(d.csiConfig, d.KubeClient, CSIConfigMapName, d.logger, ctx)
+	d.csiConfig.IsLoaded = true
 }
