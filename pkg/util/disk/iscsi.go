@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
@@ -215,7 +216,7 @@ func NewFromMountPointPath(logger *zap.SugaredLogger, mountPath string) (Interfa
 	if err != nil {
 		return nil, err
 	}
-	diskByPaths, err := diskByPathsForMountPoint(mountPoint)
+	diskByPaths, err := diskByPathsForMountPoint(mountPoint, logger, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +243,7 @@ func FindFromMountPointPath(logger *zap.SugaredLogger, diskByPaths []string) ([]
 }
 
 // GetDiskPathFromMountPath resolves a directory to a block device
-func GetDiskPathFromMountPath(logger *zap.SugaredLogger, mountPath string) ([]string, error) {
+func GetDiskPathFromMountPath(logger *zap.SugaredLogger, mountPath string, config *util.CSIConfig) ([]string, error) {
 	mounter := mount.New(mountCommand)
 	mountPoint, err := getMountPointForPath(mounter, mountPath)
 	if err != nil {
@@ -251,7 +252,7 @@ func GetDiskPathFromMountPath(logger *zap.SugaredLogger, mountPath string) ([]st
 	if strings.HasPrefix(mountPoint.Device, "/dev/mapper") {
 		return []string{mountPoint.Device}, nil
 	}
-	diskByPaths, err := diskByPathsForMountPoint(mountPoint)
+	diskByPaths, err := diskByPathsForMountPoint(mountPoint, logger, config)
 	if err != nil {
 		return nil, err
 	}
@@ -264,7 +265,7 @@ func GetDiskPathFromMountPath(logger *zap.SugaredLogger, mountPath string) ([]st
 // Finding disk by path - "diskByPaths": ["/dev/disk/by-path/ip-<ip>-iscsi-iqn.2015-12.com.oracleiaas:uniqfier-lun-2"]
 
 // Gets the diskPath for a bind-mounted device file
-func GetDiskPathFromBindDeviceFilePath(logger *zap.SugaredLogger, mountPath string) ([]string, error) {
+func GetDiskPathFromBindDeviceFilePath(logger *zap.SugaredLogger, mountPath string, config *util.CSIConfig) ([]string, error) {
 	// Get the block device for the given mount path
 	devices, err := FindMount(mountPath)
 
@@ -300,7 +301,7 @@ func GetDiskPathFromBindDeviceFilePath(logger *zap.SugaredLogger, mountPath stri
 	}
 
 	// Use the device path to get diskByPaths
-	diskByPaths, err := diskByPathsForMountPoint(mountPoint)
+	diskByPaths, err := diskByPathsForMountPoint(mountPoint, logger, config)
 	if err != nil {
 		logger.With(zap.Error(err)).Warn("Unable to find diskByPaths for device")
 		return nil, err
@@ -585,18 +586,54 @@ func getMountPointForPath(ml mount.Interface, path string) (mount.MountPoint, er
 
 // TODO(apryde): Need to think about how best to test this/make it more
 // testable.
-func diskByPathsForMountPoint(mountPoint mount.MountPoint) ([]string, error) {
+func diskByPathsForMountPoint(mountPoint mount.MountPoint, logger *zap.SugaredLogger, config *util.CSIConfig) ([]string, error) {
 	diskByPaths := []string{}
-	err := filepath.Walk("/dev/disk/by-path/", func(path string, info os.FileInfo, err error) error {
-		target, err := filepath.EvalSymlinks(path)
-		if err != nil {
-			return err
-		}
-		if target == mountPoint.Device {
+	var err error
+	if config != nil && config.Bv != nil && config.Bv.SkipBrokenSymLinks {
+		err = filepath.Walk("/dev/disk/by-path/", func(path string, info os.FileInfo, err error) error {
+			target, err := filepath.EvalSymlinks(path)
+			if err != nil {
+				if strings.Contains(err.Error(), "lstat") &&
+					!strings.Contains(err.Error(), fmt.Sprintf("%s:", mountPoint.Device)) {
+					logger.Infof("Ignoring error '%s' for stale device path %v entry", err.Error(), path)
+					return nil
+				}
+				logger.Errorf("Error evaluating symlink for %s: %s", path, err.Error())
+				return err
+			}
+
+			if target != mountPoint.Device {
+				return nil
+			}
+
+			// differentiating flows for ISCSI and paravirtualized devices
+			// Sample ISCSI path - ip-169.254.2.14:3260-iscsi-iqn.2015-12.com.oracleiaas:c47b5be3-d2fb-40a5-978b-a793c4ff4806-lun-3
+			// Sample PV path - pci-0000:02:00.0-scsi-0:0:1:2
+			base := filepath.Base(path)
+			if strings.HasPrefix(base, "ip-") && strings.Contains(base, "-iscsi-"){
+				// include only if ISCSI session active
+				if !isISCSISessionActive(path, logger) {
+					logger.Infof("Ignoring path %s due to no active ISCSI session", path)
+					return nil
+				}
+			}
+
 			diskByPaths = append(diskByPaths, path)
-		}
-		return nil
-	})
+			return nil
+		})
+	} else {
+		err = filepath.Walk("/dev/disk/by-path/", func(path string, info os.FileInfo, err error) error {
+			target, err := filepath.EvalSymlinks(path)
+			if err != nil {
+				return err
+			}
+			if target == mountPoint.Device {
+				diskByPaths = append(diskByPaths, path)
+			}
+			return nil
+		})
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -604,6 +641,56 @@ func diskByPathsForMountPoint(mountPoint mount.MountPoint) ([]string, error) {
 		return nil, errors.New("disk by path link not found")
 	}
 	return diskByPaths, nil
+}
+
+// isISCSISessionActive returns true if there is an active iSCSI session
+// that matches the portal and IQN of the by-path filename.
+// Example by-path:
+// /dev/disk/by-path/ip-169.254.2.2:3260-iscsi-iqn.2015-12.com.oracleiaas:5638bae3-98d1-4e33-b912-9bb567d94f59-lun-2
+func isISCSISessionActive(path string, logger *zap.SugaredLogger) bool {
+	// For /dev/disk/by-path/ip-169.254.2.2:3260-iscsi-iqn.2015-12.com.oracleiaas:5638bae3-98d1-4e33-b912-9bb567d94f59-lun-2
+	// m[0] = /dev/disk/by-path/ip-169.254.2.2:3260-iscsi-iqn.2015-12.com.oracleiaas:5638bae3-98d1-4e33-b912-9bb567d94f59-lun-2
+	// m[1] = 169.254.2.2
+	// m[2] = 3260
+	// m[3] = iqn.2015-12.com.oracleiaas:5638bae3-98d1-4e33-b912-9bb567d94f59
+	m := diskByPathPattern.FindStringSubmatch(path)
+	if len(m) != 4 {
+		logger.Errorf("mount device path %v did not match pattern; got %v", path, m)
+		return false
+	}
+
+	// 3: Query iscsiadm for active sessions
+	outBytes, err := cmdexec.Command("iscsiadm", "-m", "session").CombinedOutput()
+	out := string(outBytes)
+
+	if err != nil {
+		if strings.Contains(out, "No active sessions") {
+			logger.Errorf("No active iscsi sessions found on node")
+			return false
+		}
+		logger.Errorf("Error listing active iscsi sessions")
+		return false
+	}
+
+	// 4: Match session line that contains BOTH portal + iqn
+	// iscsiadm prints lines like:
+	// tcp: [2] 169.254.2.3:3260,1 iqn.2015-12.com.oracleiaas:5638bae3-98d1-4e33-b912-9bb567d94f59 (non-flash)
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		portal := m[1]+":"+m[2]
+		portalMatch := strings.Contains(line, portal)
+
+		if portalMatch && strings.Contains(line, m[3]) {
+			logger.Infof("Found matching iscsi session for path %s: %s", path, line)
+			return true
+		}
+	}
+
+	return false
 }
 
 func GetIscsiDevicePath(disk *Disk) (string, error) {
