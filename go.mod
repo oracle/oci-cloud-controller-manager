@@ -77,6 +77,7 @@ require (
 
 require (
 	github.com/go-logr/logr v1.4.2
+	github.com/golang/mock v1.6.0
 	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
 	golang.org/x/sync v0.15.0
 	google.golang.org/protobuf v1.36.5
