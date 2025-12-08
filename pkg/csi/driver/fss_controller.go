@@ -149,7 +149,7 @@ func (d *FSSControllerDriver) CreateVolume(ctx context.Context, req *csi.CreateV
 		serviceAccountToken = serviceAccountTokenCreated
 	}
 
-	ociClientConfig := &client.OCIClientConfig{ SaToken: serviceAccountToken, ParentRptURL: secretParameters.parentRptURL, TenancyId: d.config.Auth.TenancyID }
+	ociClientConfig := &client.OCIClientConfig{SaToken: serviceAccountToken, ParentRptURL: secretParameters.parentRptURL, TenancyId: d.config.Auth.TenancyID}
 
 	networkingClient := d.client.Networking(ociClientConfig)
 	if networkingClient == nil {
@@ -628,7 +628,7 @@ func extractStorageClassParameters(ctx context.Context, d *FSSControllerDriver, 
 	}
 
 	if client.IsIpv6SingleStackCluster() {
-		if !strings.Contains(availabilityDomain,":") {
+		if !strings.Contains(availabilityDomain, ":") {
 			log.Errorf("Full AvailabilityDomain with prefix not provided in storage class for IPv6 single stack cluster.")
 			dimensionsMap[metrics.ComponentDimension] = util.GetMetricDimensionForComponent(util.ErrValidation, util.CSIStorageType)
 			metrics.SendMetricData(d.metricPusher, metrics.FssAllProvision, time.Since(startTime).Seconds(), dimensionsMap)
@@ -793,7 +793,7 @@ func provisionMountTarget(ctx context.Context, log *zap.SugaredLogger, c client.
 		SubnetId:           &storageClassParameters.mountTargetSubnetOcid,
 		FreeformTags:       storageClassParameters.scTags.FreeformTags,
 		DefinedTags:        storageClassParameters.scTags.DefinedTags,
-		NsgIds: 			storageClassParameters.nsgOcids,
+		NsgIds:             storageClassParameters.nsgOcids,
 	}
 	return fssClient.CreateMountTarget(ctx, createMountTargetDetails)
 }
@@ -833,7 +833,7 @@ func (d *FSSControllerDriver) DeleteVolume(ctx context.Context, req *csi.DeleteV
 		serviceAccountToken = serviceAccountTokenGenerated
 	}
 
-	ociClientConfig := &client.OCIClientConfig{ SaToken: serviceAccountToken, ParentRptURL: secretParameters.parentRptURL, TenancyId: d.config.Auth.TenancyID }
+	ociClientConfig := &client.OCIClientConfig{SaToken: serviceAccountToken, ParentRptURL: secretParameters.parentRptURL, TenancyId: d.config.Auth.TenancyID}
 
 	fssClient := d.client.FSS(ociClientConfig)
 
@@ -1041,7 +1041,7 @@ func (d *FSSControllerDriver) ValidateVolumeCapabilities(ctx context.Context, re
 		serviceAccountToken = serviceAccountTokenGenerated
 	}
 
-	ociClientConfig := &client.OCIClientConfig{ SaToken: serviceAccountToken, ParentRptURL: secretParameters.parentRptURL, TenancyId: d.config.Auth.TenancyID }
+	ociClientConfig := &client.OCIClientConfig{SaToken: serviceAccountToken, ParentRptURL: secretParameters.parentRptURL, TenancyId: d.config.Auth.TenancyID}
 
 	networkingClient := d.client.Networking(ociClientConfig)
 	if networkingClient == nil {

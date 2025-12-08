@@ -193,7 +193,7 @@ type client struct {
 	bs                  blockstorageClient
 	identity            identityClient
 	//compartment 		compartmentClient
-	lustre              lustrefilestorage.LustreFileStorageClient
+	lustre lustrefilestorage.LustreFileStorageClient
 
 	requestMetadata common.RequestMetadata
 	rateLimiter     RateLimiter
@@ -311,7 +311,7 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 		bs:                  &bs,
 		filestorage:         &fss,
 		//compartment:     	 &compartment,
-		lustre:              lustreClient,
+		lustre:          lustreClient,
 		rateLimiter:     *opRateLimiter,
 		requestMetadata: requestMetadata,
 

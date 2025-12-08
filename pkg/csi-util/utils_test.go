@@ -356,21 +356,21 @@ func Test_DiskByPathPatternForPV(t *testing.T) {
 func Test_LoadNodeMetadataFromApiServer(t *testing.T) {
 
 	tests := []struct {
-		name     string
-		nodeName string
-		want     *NodeMetadata
-		kubeclient 		 kubernetes.Interface
-		err      error
+		name       string
+		nodeName   string
+		want       *NodeMetadata
+		kubeclient kubernetes.Interface
+		err        error
 	}{
 		{
 			name:     "should return ipv6 for ipv6 preferred node",
 			nodeName: "ipv6Preferred",
 			want: &NodeMetadata{
 				FullAvailabilityDomain: "xyz:PHX-AD-3",
-				AvailabilityDomain: "PHX-AD-3",
-				PreferredNodeIpFamily: Ipv6Stack,
-				Ipv4Enabled:           true,
-				Ipv6Enabled:           true,
+				AvailabilityDomain:     "PHX-AD-3",
+				PreferredNodeIpFamily:  Ipv6Stack,
+				Ipv4Enabled:            true,
+				Ipv6Enabled:            true,
 			},
 		},
 		{
@@ -378,7 +378,7 @@ func Test_LoadNodeMetadataFromApiServer(t *testing.T) {
 			nodeName: "ipv4Preferred",
 			want: &NodeMetadata{
 				PreferredNodeIpFamily: Ipv4Stack,
-				AvailabilityDomain: "PHX-AD-3",
+				AvailabilityDomain:    "PHX-AD-3",
 				Ipv4Enabled:           true,
 				Ipv6Enabled:           true,
 			},
@@ -387,7 +387,7 @@ func Test_LoadNodeMetadataFromApiServer(t *testing.T) {
 			name:     "should return default IPv4 family for no ip preference",
 			nodeName: "noIpPreference",
 			want: &NodeMetadata{
-				AvailabilityDomain: "PHX-AD-3",
+				AvailabilityDomain:    "PHX-AD-3",
 				PreferredNodeIpFamily: Ipv4Stack,
 				Ipv4Enabled:           true,
 				Ipv6Enabled:           false,
@@ -414,7 +414,7 @@ func Test_LoadNodeMetadataFromApiServer(t *testing.T) {
 			nodeName: "ipv4Preferred",
 			want: &NodeMetadata{
 				PreferredNodeIpFamily: Ipv4Stack,
-				AvailabilityDomain: "PHX-AD-3",
+				AvailabilityDomain:    "PHX-AD-3",
 				Ipv4Enabled:           true,
 				Ipv6Enabled:           true,
 			},
@@ -428,8 +428,8 @@ func Test_LoadNodeMetadataFromApiServer(t *testing.T) {
 			want:     &NodeMetadata{},
 			err:      fmt.Errorf("Failed to get node information from kube api server, please check if kube api server is accessible."),
 			kubeclient: &util.MockKubeClientWithFailingRestClient{
-			CoreClient: &util.MockCoreClientWithFailingRestClient{},
-		},
+				CoreClient: &util.MockCoreClientWithFailingRestClient{},
+			},
 		},
 	}
 
@@ -442,12 +442,10 @@ func Test_LoadNodeMetadataFromApiServer(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-
 			log.SetOutput(os.Stdout)
 			nodeMetadata := &NodeMetadata{}
-			ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-
 
 			var k kubernetes.Interface
 			if tt.kubeclient != nil {
@@ -813,25 +811,24 @@ func Test_ValidateDNSName(t *testing.T) {
 func Test_LoadCSIConfigFromConfigMap(t *testing.T) {
 
 	tests := []struct {
-		name     string
+		name          string
 		configMapName string
-		want     *util.CSIConfig
+		want          *util.CSIConfig
 	}{
 		{
-			name:     "Parse Configs correctly when csi config map is present",
+			name:          "Parse Configs correctly when csi config map is present",
 			configMapName: "oci-csi-config",
 			want: &util.CSIConfig{
 				Lustre: &util.DriverConfig{
-					SkipNodeUnstage: true,
+					SkipNodeUnstage:      true,
 					SkipLustreParameters: true,
 				},
 			},
 		},
 		{
-			name:     "Return default config if config map is not present",
+			name:          "Return default config if config map is not present",
 			configMapName: "invalid",
-			want: &util.CSIConfig{
-			},
+			want:          &util.CSIConfig{},
 		},
 	}
 
@@ -860,29 +857,29 @@ type mockServiceError struct {
 	MessageArgument         map[string]string `json:"messageArguments"`
 	OpcRequestID            string            `json:"opc-request-id"`
 	// debugging information
-	TargetService string  `json:"target-service"`
-	OperationName string  `json:"operation-name"`
+	TargetService string         `json:"target-service"`
+	OperationName string         `json:"operation-name"`
 	Timestamp     common.SDKTime `json:"timestamp"`
-	RequestTarget string  `json:"request-target"`
-	ClientVersion string  `json:"client-version"`
+	RequestTarget string         `json:"request-target"`
+	ClientVersion string         `json:"client-version"`
 
 	// troubleshooting guidance
 	OperationReferenceLink   string `json:"operation-reference-link"`
 	ErrorTroubleshootingLink string `json:"error-troubleshooting-link"`
 }
 
-func (m *mockServiceError) GetTargetService() string                { return m.TargetService }
-func (m *mockServiceError) GetHTTPStatusCode() int                  { return m.StatusCode }
-func (m *mockServiceError) GetCode() string                         { return m.Code }
-func (m *mockServiceError) GetOpcRequestID() string                 { return m.OpcRequestID }
-func (m *mockServiceError) GetMessage() string                      { return m.Message }
-func (m *mockServiceError) GetOperationName() string                { return m.OperationName }
-func (m *mockServiceError) GetTimestamp() common.SDKTime            { return m.Timestamp }
-func (m *mockServiceError) GetRequestTarget() string                { return m.RequestTarget }
-func (m *mockServiceError) GetClientVersion() string                { return m.ClientVersion }
-func (m *mockServiceError) GetOperationReferenceLink() string       { return m.OperationReferenceLink }
-func (m *mockServiceError) GetErrorTroubleshootingLink() string     { return m.ErrorTroubleshootingLink }
-func (m *mockServiceError) Error() string                           { return m.Message }
+func (m *mockServiceError) GetTargetService() string            { return m.TargetService }
+func (m *mockServiceError) GetHTTPStatusCode() int              { return m.StatusCode }
+func (m *mockServiceError) GetCode() string                     { return m.Code }
+func (m *mockServiceError) GetOpcRequestID() string             { return m.OpcRequestID }
+func (m *mockServiceError) GetMessage() string                  { return m.Message }
+func (m *mockServiceError) GetOperationName() string            { return m.OperationName }
+func (m *mockServiceError) GetTimestamp() common.SDKTime        { return m.Timestamp }
+func (m *mockServiceError) GetRequestTarget() string            { return m.RequestTarget }
+func (m *mockServiceError) GetClientVersion() string            { return m.ClientVersion }
+func (m *mockServiceError) GetOperationReferenceLink() string   { return m.OperationReferenceLink }
+func (m *mockServiceError) GetErrorTroubleshootingLink() string { return m.ErrorTroubleshootingLink }
+func (m *mockServiceError) Error() string                       { return m.Message }
 
 func TestGetOCIServiceError(t *testing.T) {
 	tests := []struct {

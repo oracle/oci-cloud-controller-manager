@@ -25,9 +25,9 @@ import (
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/loadbalancer"
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -12,9 +12,9 @@ var OsName = ""
 const (
 	LinuxOsReleaseFile = "/host/etc/os-release"
 
-	DebianOSName       = "Debian GNU/Linux"
+	DebianOSName = "Debian GNU/Linux"
 
-	UbuntuOSName       = "Ubuntu"
+	UbuntuOSName = "Ubuntu"
 )
 
 func GetOsName() (name string) {
@@ -22,8 +22,8 @@ func GetOsName() (name string) {
 		return OsName
 	}
 
-	OsName =  parseLinuxReleaseFile(LinuxOsReleaseFile)
-	return OsName;
+	OsName = parseLinuxReleaseFile(LinuxOsReleaseFile)
+	return OsName
 }
 
 func readLines(path string) ([]string, error) {
@@ -57,7 +57,6 @@ func parseLinuxReleaseFile(releaseFile string) (name string) {
 	}
 	return osName
 }
-
 
 func IsUbuntu() bool {
 	return strings.EqualFold(UbuntuOSName, GetOsName())

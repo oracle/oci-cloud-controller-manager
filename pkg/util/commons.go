@@ -169,7 +169,6 @@ type CSIConfig struct {
 	IsLoaded bool
 }
 
-
 // DriverConfig represents driver-specific configurations.
 type DriverConfig struct {
 	SkipNodeUnstage      bool `yaml:"skipNodeUnstage"`

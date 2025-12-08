@@ -2054,7 +2054,7 @@ func (j *PVCTestJig) CheckDataPersistenceWithDeploymentImpl(pvcName string, ns s
 		taintIsMaster := false
 		if node.Spec.Unschedulable == false {
 			for _, taint := range node.Spec.Taints {
-				taintIsMaster = (taint.Key == "node-role.kubernetes.io/master" || taint.Key == "node-role.kubernetes.io/control-plane" ||(taint.Key == "dedicated" && taint.Value == "lustre"))
+				taintIsMaster = (taint.Key == "node-role.kubernetes.io/master" || taint.Key == "node-role.kubernetes.io/control-plane" || (taint.Key == "dedicated" && taint.Value == "lustre"))
 			}
 			if !taintIsMaster {
 				schedulableNodeFound = true

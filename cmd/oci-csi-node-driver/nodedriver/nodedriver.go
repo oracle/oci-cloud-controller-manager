@@ -21,7 +21,7 @@ import (
 	"go.uber.org/zap"
 )
 
-//RunNodeDriver main function to start node driver
+// RunNodeDriver main function to start node driver
 func RunNodeDriver(nodeOptions nodedriveroptions.NodeOptions, stopCh <-chan struct{}) error {
 	logger := logging.Logger().Sugar()
 	logger.Sync()
