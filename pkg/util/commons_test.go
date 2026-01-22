@@ -152,6 +152,10 @@ func TestIsCommonTagPresent(t *testing.T) {
 					FreeformTags: nil,
 					DefinedTags:  nil,
 				},
+				Lustre: &config.TagConfig{
+					FreeformTags: nil,
+					DefinedTags:  nil,
+				},
 			},
 			want: false,
 		},

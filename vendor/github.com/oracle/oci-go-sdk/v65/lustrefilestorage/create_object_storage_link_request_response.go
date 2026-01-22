@@ -12,10 +12,6 @@ import (
 )
 
 // CreateObjectStorageLinkRequest wrapper for the CreateObjectStorageLink operation
-//
-// # See also
-//
-// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/CreateObjectStorageLink.go.html to see an example of how to use CreateObjectStorageLinkRequest.
 type CreateObjectStorageLinkRequest struct {
 
 	// Details for the new Object Storage link.

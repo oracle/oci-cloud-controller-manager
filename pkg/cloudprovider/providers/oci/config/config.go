@@ -126,6 +126,7 @@ type InitialTags struct {
 	LoadBalancer *TagConfig `yaml:"loadBalancer"`
 	BlockVolume  *TagConfig `yaml:"blockVolume"`
 	FSS          *TagConfig `yaml:"fss"`
+	Lustre       *TagConfig `yaml:"lustre"`
 	Common       *TagConfig `yaml:"common"`
 }
 

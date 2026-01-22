@@ -55,6 +55,7 @@ func init() {
 	BlockVolumeDriverName = getEnv("BLOCK_VOLUME_DRIVER_NAME", "blockvolume.csi.oraclecloud.com")
 	FSSDriverName = getEnv("FSS_VOLUME_DRIVER_NAME", "fss.csi.oraclecloud.com")
 	LustreDriverName = getEnv("LUSTRE_VOLUME_DRIVER_NAME", "lustre.csi.oraclecloud.com")
+
 }
 
 func getEnv(key, fallback string) string {
@@ -127,15 +128,20 @@ type FSSControllerDriver struct {
 	serviceAccountLister listersv1.ServiceAccountLister
 }
 
+// LustreControllerDriver extends ControllerDriver for Lustre CSI Controller RPCs.
+type LustreControllerDriver struct {
+	ControllerDriver
+}
+
 // NodeDriver implements CSI Node interfaces
 type NodeDriver struct {
-	nodeID       string
-	KubeClient   kubernetes.Interface
-	logger       *zap.SugaredLogger
-	util         *csi_util.Util
-	volumeLocks  *csi_util.VolumeLocks
-	nodeMetadata *csi_util.NodeMetadata
-	csiConfig    *util.CSIConfig
+	nodeID         string
+	KubeClient     kubernetes.Interface
+	logger         *zap.SugaredLogger
+	util           *csi_util.Util
+	volumeLocks    *csi_util.VolumeLocks
+	nodeMetadata   *csi_util.NodeMetadata
+	csiConfig      *util.CSIConfig
 	mounterFactory disk.MounterFactory
 	csi.UnimplementedNodeServer
 }
@@ -180,13 +186,13 @@ func newControllerDriver(kubeClientSet kubernetes.Interface, logger *zap.Sugared
 
 func newNodeDriver(nodeID string, nodeMetaData *csi_util.NodeMetadata, kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger, csiConfig *util.CSIConfig) NodeDriver {
 	return NodeDriver{
-		nodeID:       nodeID,
-		KubeClient:   kubeClientSet,
-		logger:       logger,
-		util:         &csi_util.Util{Logger: logger},
-		volumeLocks:  csi_util.NewVolumeLocks(),
-		nodeMetadata: nodeMetaData,
-		csiConfig:    csiConfig,
+		nodeID:         nodeID,
+		KubeClient:     kubeClientSet,
+		logger:         logger,
+		util:           &csi_util.Util{Logger: logger},
+		volumeLocks:    csi_util.NewVolumeLocks(),
+		nodeMetadata:   nodeMetaData,
+		csiConfig:      csiConfig,
 		mounterFactory: disk.DefaultMounterFactory,
 	}
 }
@@ -211,9 +217,10 @@ func GetControllerDriver(name string, kubeClientSet kubernetes.Interface, logger
 		if !cache.WaitForCacheSync(wait.NeverStop, serviceAccountInformer.Informer().HasSynced) {
 			utilruntime.HandleError(fmt.Errorf("timed out waiting for informers to sync"))
 		}
-
 		return &FSSControllerDriver{ControllerDriver: newControllerDriver(kubeClientSet, logger, config, c, metricPusher, clusterIpFamily), serviceAccountLister: serviceAccountInformer.Lister()}
-
+	}
+	if name == LustreDriverName {
+		return &LustreControllerDriver{ControllerDriver: newControllerDriver(kubeClientSet, logger, config, c, metricPusher, clusterIpFamily)}
 	}
 	return nil
 }
@@ -299,6 +306,9 @@ func (d *Driver) GetControllerDriver() csi.ControllerServer {
 	}
 	if d.name == FSSDriverName {
 		return d.controllerDriver.(*FSSControllerDriver)
+	}
+	if d.name == LustreDriverName {
+		return d.controllerDriver.(*LustreControllerDriver)
 	}
 	return nil
 }

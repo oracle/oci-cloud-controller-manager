@@ -12,10 +12,6 @@ import (
 )
 
 // CancelWorkRequestRequest wrapper for the CancelWorkRequest operation
-//
-// # See also
-//
-// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/CancelWorkRequest.go.html to see an example of how to use CancelWorkRequestRequest.
 type CancelWorkRequestRequest struct {
 
 	// The OCID (https://docs.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the asynchronous work request.
