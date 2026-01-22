@@ -83,6 +83,11 @@ const (
 	// FssAllDelete is the OCI metric suffix for FSS end to end deletion
 	FssAllDelete = "FSS_ALL_DELETE"
 
+	// LustreProvision is the OCI metric suffix for Lustre end to end provision
+	LustreProvision = "LUSTRE_PROVISION"
+	// LustreDelete is the OCI metric suffix for Lustre end to end deletion
+	LustreDelete = "LUSTRE_DELETE"
+
 	ResourceOCIDDimension     = "resourceOCID"
 	ComponentDimension        = "component"
 	BackendSetsCountDimension = "backendSetsCount"

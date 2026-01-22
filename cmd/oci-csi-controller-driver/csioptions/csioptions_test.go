@@ -74,3 +74,60 @@ func Test_GetFssVolumeNamePrefix(t *testing.T) {
 		})
 	}
 }
+
+func Test_GetLustreAddress(t *testing.T) {
+	testCases := map[string]struct {
+		csiAddress            string
+		expectedLustreAddress string
+		defaultAddress        string
+	}{
+		"Valid csi address": {
+			csiAddress:            "/var/run/shared-tmpfs/csi.sock",
+			expectedLustreAddress: "/var/run/shared-tmpfs/csi-lustre.sock",
+			defaultAddress:        "/var/run/shared-tmpfs/csi-lustre.sock",
+		},
+		"Invalid csi address": {
+			csiAddress:            "/var/run/shared-tmpfs/csi.sock.sock",
+			expectedLustreAddress: "/var/run/shared-tmpfs/csi-lustre.sock",
+			defaultAddress:        "/var/run/shared-tmpfs/csi-lustre.sock",
+		},
+		"Valid csi endpoint": {
+			csiAddress:            "unix:///var/run/shared-tmpfs/csi.sock",
+			expectedLustreAddress: "unix:///var/run/shared-tmpfs/csi-lustre.sock",
+			defaultAddress:        "unix:///var/run/shared-tmpfs/csi-lustre.sock",
+		},
+		"Invalid csi endpoint": {
+			csiAddress:            "unix:///var/run/shared-tmpfs/csi-lustre.sock.sock",
+			expectedLustreAddress: "unix:///var/run/shared-tmpfs/csi-lustre.sock",
+			defaultAddress:        "unix:///var/run/shared-tmpfs/csi-lustre.sock",
+		},
+	}
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			lustreAddress := GetLustreAddress(tc.csiAddress, tc.defaultAddress)
+			if tc.expectedLustreAddress != lustreAddress {
+				t.Errorf("Expected \n%+v\n but got \n%+v", tc.expectedLustreAddress, lustreAddress)
+			}
+		})
+	}
+}
+
+func Test_GetLustreVolumeNamePrefix(t *testing.T) {
+	testCases := map[string]struct {
+		csiPrefix      string
+		expectedPrefix string
+	}{
+		"Valid csi address": {
+			csiPrefix:      "csi",
+			expectedPrefix: "csi-lustre",
+		},
+	}
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			lustreVolumeNamePrefix := GetLustreVolumeNamePrefix(tc.csiPrefix)
+			if tc.expectedPrefix != lustreVolumeNamePrefix {
+				t.Errorf("Expected \n%+v\n but got \n%+v", tc.expectedPrefix, lustreVolumeNamePrefix)
+			}
+		})
+	}
+}

@@ -25,6 +25,7 @@ import (
 	"github.com/oracle/oci-go-sdk/v65/filestorage"
 	"github.com/oracle/oci-go-sdk/v65/identity"
 	"github.com/oracle/oci-go-sdk/v65/loadbalancer"
+	"github.com/oracle/oci-go-sdk/v65/lustrefilestorage"
 	"github.com/oracle/oci-go-sdk/v65/networkloadbalancer"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -48,6 +49,7 @@ type Interface interface {
 	Networking(*OCIClientConfig) NetworkingInterface
 	BlockStorage() BlockStorageInterface
 	FSS(*OCIClientConfig) FileStorageInterface
+	Lustre() LustreInterface
 	Identity(*OCIClientConfig) IdentityInterface
 }
 
@@ -190,6 +192,7 @@ type client struct {
 	bs                  blockstorageClient
 	identity            identityClient
 	//compartment 		compartmentClient
+	lustre              lustrefilestorage.LustreFileStorageClient
 
 	requestMetadata common.RequestMetadata
 	rateLimiter     RateLimiter
@@ -283,7 +286,14 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 	if err != nil {
 		return nil, errors.Wrap(err, "configuring file storage service client custom transport")
 	}
-
+	lustreClient, err := lustrefilestorage.NewLustreFileStorageClientWithConfigurationProvider(cp)
+	if err != nil {
+		return nil, errors.Wrap(err, "NewLustreFileStorageClientWithConfigurationProvider")
+	}
+	err = configureCustomTransport(logger, &lustreClient.BaseClient)
+	if err != nil {
+		return nil, errors.Wrap(err, "configuring lustre file storage client custom transport")
+	}
 	requestMetadata := common.RequestMetadata{
 		RetryPolicy: newRetryPolicy(),
 	}
@@ -300,7 +310,7 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 		bs:                  &bs,
 		filestorage:         &fss,
 		//compartment:     	 &compartment,
-
+		lustre:              lustreClient,
 		rateLimiter:     *opRateLimiter,
 		requestMetadata: requestMetadata,
 
@@ -404,6 +414,10 @@ func (c *client) Networking(ociClientConfig *OCIClientConfig) NetworkingInterfac
 			logger:          c.logger,
 		}
 	}
+	return c
+}
+
+func (c *client) Lustre() LustreInterface {
 	return c
 }
 
