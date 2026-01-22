@@ -16,7 +16,6 @@ package client
 
 import (
 	"context"
-
 	"time"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
@@ -99,7 +98,7 @@ func (c *client) GetBootVolume(ctx context.Context, id string) (*core.BootVolume
 	}
 
 	resp, err := c.bs.GetBootVolume(ctx, core.GetBootVolumeRequest{
-		BootVolumeId:        &id,
+		BootVolumeId:    &id,
 		RequestMetadata: c.requestMetadata})
 	incRequestCounter(err, getVerb, volumeResource)
 

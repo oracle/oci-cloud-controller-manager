@@ -12,10 +12,6 @@ import (
 )
 
 // DeleteLustreFileSystemRequest wrapper for the DeleteLustreFileSystem operation
-//
-// # See also
-//
-// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/DeleteLustreFileSystem.go.html to see an example of how to use DeleteLustreFileSystemRequest.
 type DeleteLustreFileSystemRequest struct {
 
 	// The OCID (https://docs.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the Lustre file system.

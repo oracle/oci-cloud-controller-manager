@@ -2,9 +2,11 @@ package util
 
 import (
 	"context"
+
 	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/oracle/oci-go-sdk/v65/filestorage"
+	lustre "github.com/oracle/oci-go-sdk/v65/lustrefilestorage"
 )
 
 type MockOCIBlockStorageClient struct {
@@ -17,6 +19,10 @@ type MockOCIComputeClient struct {
 
 type MockOCIFileStorageClient struct {
 	client filestorage.FileStorageClient
+}
+
+type MockOCILustreFileStorageClient struct {
+	client lustre.LustreFileStorageClient
 }
 
 func (c MockOCIFileStorageClient) ListMountTargets(ctx context.Context, request filestorage.ListMountTargetsRequest) (response filestorage.ListMountTargetsResponse, err error) {
