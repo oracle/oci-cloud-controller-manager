@@ -24,7 +24,8 @@ import (
 )
 
 const (
-	bvCsiDriver = "BV"
+	bvCsiDriver      = "BV"
+	lustreCsiDriver  = "Lustre"
 )
 
 // StartControllerDriver main function to start CSI Controller Driver
@@ -44,6 +45,9 @@ func StartControllerDriver(csioptions csioptions.CSIOptions, csiDriver driver.CS
 
 	if csiDriver == bvCsiDriver {
 		controllerDriverConfig := &driver.ControllerDriverConfig{CsiEndpoint: csioptions.Endpoint, CsiKubeConfig: csioptions.Kubeconfig, CsiMaster: csioptions.Master, EnableControllerServer: true, DriverName: driver.BlockVolumeDriverName, DriverVersion: driver.BlockVolumeDriverVersion, ClusterIpFamily: clusterIpFamily}
+		drv, err = driver.NewControllerDriver(logger, *controllerDriverConfig)
+	} else if csiDriver == lustreCsiDriver {
+		controllerDriverConfig := &driver.ControllerDriverConfig{CsiEndpoint: csioptions.LustreEndpoint, CsiKubeConfig: csioptions.Kubeconfig, CsiMaster: csioptions.Master, EnableControllerServer: true, DriverName: driver.LustreDriverName, DriverVersion: driver.LustreDriverVersion, ClusterIpFamily: clusterIpFamily}
 		drv, err = driver.NewControllerDriver(logger, *controllerDriverConfig)
 	} else {
 		controllerDriverConfig := &driver.ControllerDriverConfig{CsiEndpoint: csioptions.FssEndpoint, CsiKubeConfig: csioptions.Kubeconfig, CsiMaster: csioptions.Master, EnableControllerServer: true, DriverName: driver.FSSDriverName, DriverVersion: driver.FSSDriverVersion, ClusterIpFamily: clusterIpFamily}

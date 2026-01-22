@@ -31,7 +31,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/core"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -654,4 +656,89 @@ func LoadCSIConfigFromConfigMap(csiConfig *util.CSIConfig, k kubernetes.Interfac
 			logger.Infof("Successfully loaded block volume parameters from ConfigMap %v. Using customized configuration for csi driver.", configMapName)
 		}
 	}
+}
+
+// GetOCIServiceError checks if error is OCI Service Error and returns a structured error message
+// including service name, HTTP status, error code, message, and operation name.
+func GetOCIServiceError(err error) string {
+	// Early return for invalid inputs
+	errorMsg := ""
+	if err == nil {
+		return errorMsg
+	}
+	// Check for OCI service error and format structured message if present
+	if serviceErr, ok := common.IsServiceErrorRichInfo(errors.Cause(err)); ok {
+		errorMsg = fmt.Sprintf(`Error returned by %s Service. Http Status Code: %d. Error Code: %s. Message: %s. Operation Name: %s`,
+			serviceErr.GetTargetService(), serviceErr.GetHTTPStatusCode(), serviceErr.GetCode(), serviceErr.GetMessage(), serviceErr.GetOperationName())
+	} else {
+		errorMsg = err.Error()
+	}
+	return errorMsg
+}
+
+// TruncateError truncates an error message to a maximum byte length
+// If the formatted message exceeds maxBytes, it is truncated with "..." suffix,
+// ensuring no partial UTF-8 characters are left at the end.
+//
+// Parameters:
+//   - err: The error to truncate. If nil, returns empty string.
+//   - maxBytes: The maximum byte length for the output. If <= 0, returns empty string.
+//
+// Returns:
+//   - The truncated error message as a string.
+func TruncateError(err error, maxBytes int) error {
+
+	// Early return for invalid inputs
+	errorMsg := ""
+	if maxBytes <= 0 || err == nil {
+		return errors.New(errorMsg)
+	}
+	errorMsg = err.Error()
+	bytesMsg := []byte(errorMsg)
+	if len(bytesMsg) <= maxBytes {
+		return err
+	}
+
+	// Prepare truncation with suffix due to error being larger than maxBytes. Returns truncated error if maxBytes are less than 3(suffix length).
+	suffix := "..."
+	if maxBytes < len(suffix) {
+		return errors.New(string(bytesMsg[:maxBytes]))
+	}
+	suffixBytes := []byte(suffix)
+	truncLen := maxBytes - len(suffixBytes)
+
+	// Ensure truncation doesn't split multi-byte characters (e.g., UTF-8)
+	// by finding the last valid rune boundary
+	for truncLen > 0 && (bytesMsg[truncLen]&0xc0) == 0x80 {
+		truncLen--
+	}
+
+	return errors.New(string(bytesMsg[:truncLen]) + suffix)
+}
+
+// ShortenContextBeforeDeadline returns a new context that cancels slightly
+// before the parent context's deadline, giving time for cleanup or response
+// before gRPC timeout. If the parent has no deadline, it returns the parent unchanged.
+//
+// Example:
+//
+//	ctx = ShortenContextBeforeDeadline(ctx, 5*time.Second)
+func ShortenContextBeforeDeadline(parent context.Context, buffer time.Duration) (context.Context, context.CancelFunc) {
+	deadline, hasDeadline := parent.Deadline()
+	if !hasDeadline {
+		// No deadline to shorten — just return a no-op cancel
+		return parent, func() {}
+	}
+
+	timeLeft := time.Until(deadline) - buffer
+	if timeLeft <= 0 {
+		// Already expired or too close — cancel immediately after return
+		// Use a new cancelled context for the case where we want to cancel even though parent might still be active
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		return ctx, func() {}
+	}
+
+	ctx, cancel := context.WithTimeout(parent, timeLeft)
+	return ctx, cancel
 }

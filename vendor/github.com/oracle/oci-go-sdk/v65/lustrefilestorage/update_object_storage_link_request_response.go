@@ -12,10 +12,6 @@ import (
 )
 
 // UpdateObjectStorageLinkRequest wrapper for the UpdateObjectStorageLink operation
-//
-// # See also
-//
-// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/UpdateObjectStorageLink.go.html to see an example of how to use UpdateObjectStorageLinkRequest.
 type UpdateObjectStorageLinkRequest struct {
 
 	// The OCID (https://docs.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the Object Storage link.
