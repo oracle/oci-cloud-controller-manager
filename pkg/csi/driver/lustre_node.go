@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	csi_util "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
@@ -37,7 +38,9 @@ func (d LustreNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStag
 		return nil, status.Error(codes.InvalidArgument, "Invalid fsType provided. Only \"lustre\" fsType is supported on this driver.")
 	}
 
-	isValidVolumeId, lnetLabel := csi_util.ValidateLustreVolumeId(req.VolumeId)
+	// Accept both legacy and new dynamic volume ID formats by stripping OCID prefix if present.
+	normalizedVolID := stripLustreOCIDPrefix(req.VolumeId)
+	isValidVolumeId, lnetLabel := csi_util.ValidateLustreVolumeId(normalizedVolID)
 	if !isValidVolumeId {
 		return nil, status.Error(codes.InvalidArgument, "Invalid Volume Handle provided.")
 	}
@@ -118,7 +121,7 @@ func (d LustreNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStag
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
 
-	source := req.VolumeId
+	source := normalizedVolID
 
 	err = mounter.Mount(source, targetPath, fsType, options)
 
@@ -168,7 +171,8 @@ func (d LustreNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUn
 		return nil, status.Error(codes.InvalidArgument, "Staging path must be provided")
 	}
 
-	isValidVolumeId, lnetLabel := csi_util.ValidateLustreVolumeId(req.VolumeId)
+	normalizedVolID := stripLustreOCIDPrefix(req.VolumeId)
+	isValidVolumeId, lnetLabel := csi_util.ValidateLustreVolumeId(normalizedVolID)
 	if !isValidVolumeId {
 		return nil, status.Error(codes.InvalidArgument, "Invalid Volume Handle provided.")
 	}
@@ -255,7 +259,8 @@ func (d LustreNodeDriver) NodePublishVolume(ctx context.Context, req *csi.NodePu
 	logger := d.logger.With("volumeID", req.VolumeId)
 	logger.Debugf("volume context: %v", req.VolumeContext)
 
-	isValidVolumeId, lnetLabel := csi_util.ValidateLustreVolumeId(req.VolumeId)
+	normalizedVolID := stripLustreOCIDPrefix(req.VolumeId)
+	isValidVolumeId, lnetLabel := csi_util.ValidateLustreVolumeId(normalizedVolID)
 	if !isValidVolumeId {
 		return nil, status.Error(codes.InvalidArgument, "Invalid Volume Handle provided.")
 	}
@@ -338,7 +343,8 @@ func (d LustreNodeDriver) NodeUnpublishVolume(ctx context.Context, req *csi.Node
 		return nil, status.Error(codes.InvalidArgument, "NodeUnpublishVolume: Target Path must be provided")
 	}
 
-	isValidVolumeId, lnetLabel := csi_util.ValidateLustreVolumeId(req.VolumeId)
+	normalizedVolID := stripLustreOCIDPrefix(req.VolumeId)
+	isValidVolumeId, lnetLabel := csi_util.ValidateLustreVolumeId(normalizedVolID)
 	if !isValidVolumeId {
 		return nil, status.Error(codes.InvalidArgument, "Invalid Volume Handle provided.")
 	}
@@ -442,4 +448,17 @@ func (d LustreNodeDriver) NodeGetInfo(ctx context.Context, request *csi.NodeGetI
 
 func isSkipLustreParams(csiConfig *util.CSIConfig) bool {
 	return csiConfig != nil && csiConfig.Lustre != nil && csiConfig.Lustre.SkipLustreParameters
+}
+
+// stripLustreOCIDPrefix returns the legacy mount handle part of the volume ID.
+// New dynamic format: <ocid>:<managementServiceAddress>@<lnet>:/<fsName>
+// Legacy format:      <managementServiceAddress>@<lnet>:/<fsName>
+func stripLustreOCIDPrefix(volumeID string) string {
+	// if there is a colon before '@', treat it as OCID separator.
+	atIdx := strings.Index(volumeID, "@")
+	colonIdx := strings.Index(volumeID, ":")
+	if atIdx > 0 && colonIdx >= 0 && colonIdx < atIdx {
+		return volumeID[colonIdx+1:]
+	}
+	return volumeID
 }

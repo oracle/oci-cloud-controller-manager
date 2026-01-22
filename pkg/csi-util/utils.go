@@ -720,8 +720,8 @@ func TruncateError(err error, maxBytes int) error {
 // before gRPC timeout. If the parent has no deadline, it returns the parent unchanged.
 //
 // Example:
-//   ctx = ShortenContextBeforeDeadline(ctx, 5*time.Second)
 //
+//	ctx = ShortenContextBeforeDeadline(ctx, 5*time.Second)
 func ShortenContextBeforeDeadline(parent context.Context, buffer time.Duration) (context.Context, context.CancelFunc) {
 	deadline, hasDeadline := parent.Deadline()
 	if !hasDeadline {
