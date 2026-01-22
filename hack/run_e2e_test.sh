@@ -52,6 +52,7 @@ function run_e2e_tests_existing_cluster() {
                     test/e2e/cloud-provider-oci -- \
                     --cluster-kubeconfig=${CLUSTER_KUBECONFIG} \
                     --cloud-config=${CLOUD_CONFIG} \
+                    --compartment1=${COMPARTMENT} \
                     --adlocation=${ADLOCATION} \
                     --delete-namespace=${DELETE_NAMESPACE} \
                     --image-pull-repo=${IMAGE_PULL_REPO} \
@@ -65,6 +66,12 @@ function run_e2e_tests_existing_cluster() {
                     --architecture=${ARCHITECTURE} \
                     --volume-handle=${FSS_VOLUME_HANDLE} \
                     --lustre-volume-handle=${LUSTRE_VOLUME_HANDLE} \
+                    --lustre-subnet-cidr=${LUSTRE_SUBNET_CIDR} \
+                    --enable-lustre-tests=${ENABLE_LUSTRE_TESTS} \
+                    --lustre-worker-node-image=${LUSTRE_WORKER_NODE_IMAGE} \
+                    --lustre-kms-key=${LUSTRE_KMS_KEY} \
+                    --lustre-subnet=${LUSTRE_SUBNET} \
+                    --lustre-ad=${LUSTRE_AD} \
                     --static-snapshot-compartment-id=${STATIC_SNAPSHOT_COMPARTMENT_ID} \
                     --enable-parallel-run=${ENABLE_PARALLEL_RUN} \
                     --run-uhp-e2e=${RUN_UHP_E2E} \
@@ -75,6 +82,7 @@ function run_e2e_tests_existing_cluster() {
                     test/e2e/cloud-provider-oci -- \
                     --cluster-kubeconfig=${CLUSTER_KUBECONFIG} \
                     --cloud-config=${CLOUD_CONFIG} \
+                    --compartment1=${COMPARTMENT} \
                     --adlocation=${ADLOCATION} \
                     --delete-namespace=${DELETE_NAMESPACE} \
                     --image-pull-repo=${IMAGE_PULL_REPO} \
@@ -88,6 +96,12 @@ function run_e2e_tests_existing_cluster() {
                     --architecture=${ARCHITECTURE} \
                     --volume-handle=${FSS_VOLUME_HANDLE} \
                     --lustre-volume-handle=${LUSTRE_VOLUME_HANDLE} \
+                    --lustre-subnet-cidr=${LUSTRE_SUBNET_CIDR} \
+                    --enable-lustre-tests=${ENABLE_LUSTRE_TESTS} \
+                    --lustre-worker-node-image=${LUSTRE_WORKER_NODE_IMAGE} \
+                    --lustre-kms-key=${LUSTRE_KMS_KEY} \
+                    --lustre-subnet=${LUSTRE_SUBNET} \
+                    --lustre-ad=${LUSTRE_AD} \
                     --static-snapshot-compartment-id=${STATIC_SNAPSHOT_COMPARTMENT_ID} \
                     --enable-parallel-run=${ENABLE_PARALLEL_RUN} \
                     --run-uhp-e2e=${RUN_UHP_E2E} \
@@ -151,6 +165,13 @@ echo "CLOUD_CONFIG is ${CLOUD_CONFIG}"
 echo "MNT_TARGET_ID is ${MNT_TARGET_ID}"
 echo "MNT_TARGET_SUBNET_ID is ${MNT_TARGET_SUBNET_ID}"
 echo "MNT_TARGET_COMPARTMENT_ID is ${MNT_TARGET_COMPARTMENT_ID}"
+echo "LUSTRE_VOLUME_HANDLE is ${LUSTRE_VOLUME_HANDLE}"
+echo "LUSTRE_SUBNET_CIDR is ${LUSTRE_SUBNET_CIDR}"
+echo "ENABLE_LUSTRE_TESTS is ${ENABLE_LUSTRE_TESTS}"
+echo "LUSTRE_WORKER_NODE_IMAGE is ${LUSTRE_WORKER_NODE_IMAGE}"
+echo "LUSTRE_KMS_KEY is ${LUSTRE_KMS_KEY}"
+echo "LUSTRE_SUBNET is ${LUSTRE_SUBNET}"
+echo "LUSTRE_AD is ${LUSTRE_AD}"
 
 function run_tests () {
     set_image_pull_repo_and_delete_namespace_flag
