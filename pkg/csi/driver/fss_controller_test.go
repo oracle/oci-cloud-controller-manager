@@ -403,7 +403,9 @@ func (p *MockProvisionerClient) FSS(ociClientConfig *client.OCIClientConfig) cli
 type MockFSSProvisionerClient struct {
 	Storage *MockFileStorageClient
 }
-
+func (m MockFSSProvisionerClient) Lustre() client.LustreInterface {
+	return nil
+}
 func (m MockFSSProvisionerClient) Compute() client.ComputeInterface {
 	return &MockComputeClient{}
 }

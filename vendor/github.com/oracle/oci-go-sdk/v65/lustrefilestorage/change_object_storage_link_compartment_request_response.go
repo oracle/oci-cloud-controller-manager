@@ -12,10 +12,6 @@ import (
 )
 
 // ChangeObjectStorageLinkCompartmentRequest wrapper for the ChangeObjectStorageLinkCompartment operation
-//
-// # See also
-//
-// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/ChangeObjectStorageLinkCompartment.go.html to see an example of how to use ChangeObjectStorageLinkCompartmentRequest.
 type ChangeObjectStorageLinkCompartmentRequest struct {
 
 	// The OCID (https://docs.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the Object Storage link.
