@@ -16,6 +16,8 @@ package main
 
 import (
 	"flag"
+	"os"
+	"strings"
 	"time"
 
 	csicontrollerdriver "github.com/oracle/oci-cloud-controller-manager/cmd/oci-csi-controller-driver/csi-controller-driver"
@@ -33,6 +35,7 @@ func main() {
 	csiOptions := csioptions.CSIOptions{}
 	flag.StringVar(&csiOptions.Endpoint, "endpoint", "unix://tmp/csi.sock", "CSI endpoint")
 	flag.StringVar(&csiOptions.FssEndpoint, "fss-csi-endpoint", "unix://tmp/csi-fss.sock", "CSI FSS endpoint")
+	flag.StringVar(&csiOptions.LustreEndpoint, "lustre-csi-endpoint", "unix://tmp/csi-lustre.sock", "CSI Lustre endpoint")
 	flag.StringVar(&csiOptions.Master, "master", "", "kube master")
 	flag.StringVar(&csiOptions.Kubeconfig, "kubeconfig", "", "cluster kubeconfig")
 	flag.Parse()
@@ -63,5 +66,14 @@ func main() {
 	go csicontrollerdriver.StartControllerDriver(csiOptions, driver.BV)
 
 	go csicontrollerdriver.StartControllerDriver(csiOptions, driver.FSS)
+
+	if IsLustreControllerDriverEnabled() {
+		go csicontrollerdriver.StartControllerDriver(csiOptions, driver.Lustre)
+	}
+
 	<-stopCh
+}
+
+func IsLustreControllerDriverEnabled() bool {
+	return strings.EqualFold(os.Getenv("LUSTRE_CSI_CONTROLLER_DRIVER_ENABLED"), "true")
 }
