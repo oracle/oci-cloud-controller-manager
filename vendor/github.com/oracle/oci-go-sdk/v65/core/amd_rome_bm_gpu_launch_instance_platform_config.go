@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2025, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -6,11 +6,11 @@
 //
 // Use the Core Services API to manage resources such as virtual cloud networks (VCNs),
 // compute instances, and block storage volumes. For more information, see the console
-// documentation for the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
-// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
-// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
+// documentation for the Networking (https://docs.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
 // The required permissions are documented in the
-// Details for the Core Services (https://docs.cloud.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
+// Details for the Core Services (https://docs.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
 //
 
 package core
@@ -98,7 +98,7 @@ func (m AmdRomeBmGpuLaunchInstancePlatformConfig) ValidateEnumValue() (bool, err
 	}
 
 	if len(errMessage) > 0 {
-		return true, fmt.Errorf(strings.Join(errMessage, "\n"))
+		return true, fmt.Errorf("%s", strings.Join(errMessage, "\n"))
 	}
 	return false, nil
 }
@@ -126,6 +126,7 @@ const (
 	AmdRomeBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketNps1 AmdRomeBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketEnum = "NPS1"
 	AmdRomeBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketNps2 AmdRomeBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketEnum = "NPS2"
 	AmdRomeBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketNps4 AmdRomeBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketEnum = "NPS4"
+	AmdRomeBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketNps6 AmdRomeBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketEnum = "NPS6"
 )
 
 var mappingAmdRomeBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketEnum = map[string]AmdRomeBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketEnum{
@@ -133,6 +134,7 @@ var mappingAmdRomeBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketEnum = map[
 	"NPS1": AmdRomeBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketNps1,
 	"NPS2": AmdRomeBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketNps2,
 	"NPS4": AmdRomeBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketNps4,
+	"NPS6": AmdRomeBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketNps6,
 }
 
 var mappingAmdRomeBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketEnumLowerCase = map[string]AmdRomeBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketEnum{
@@ -140,6 +142,7 @@ var mappingAmdRomeBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketEnumLowerCa
 	"nps1": AmdRomeBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketNps1,
 	"nps2": AmdRomeBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketNps2,
 	"nps4": AmdRomeBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketNps4,
+	"nps6": AmdRomeBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketNps6,
 }
 
 // GetAmdRomeBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketEnumValues Enumerates the set of values for AmdRomeBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketEnum
@@ -158,6 +161,7 @@ func GetAmdRomeBmGpuLaunchInstancePlatformConfigNumaNodesPerSocketEnumStringValu
 		"NPS1",
 		"NPS2",
 		"NPS4",
+		"NPS6",
 	}
 }
 
