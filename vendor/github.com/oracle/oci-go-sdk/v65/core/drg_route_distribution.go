@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2025, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -6,11 +6,11 @@
 //
 // Use the Core Services API to manage resources such as virtual cloud networks (VCNs),
 // compute instances, and block storage volumes. For more information, see the console
-// documentation for the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
-// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
-// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
+// documentation for the Networking (https://docs.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
 // The required permissions are documented in the
-// Details for the Core Services (https://docs.cloud.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
+// Details for the Core Services (https://docs.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
 //
 
 package core
@@ -22,16 +22,15 @@ import (
 )
 
 // DrgRouteDistribution A route distribution establishes how routes get imported into DRG route tables and exported through the DRG attachments.
-// A route distribution is a list of statements. Each statement consists of a set of matches, all of which must be `True` in order for
-// the statement's action to take place. Each statement determines which routes are propagated.
+// A route distribution is a list of statements. Each statement consists of a set of matches, all of which must be `True` for the statement's action to take place. Each statement determines which routes are propagated.
 // You can assign a route distribution as a route table's import distribution. The statements in an import
 // route distribution specify how how incoming route advertisements through a referenced attachment or all attachments of a certain type are inserted into the route table.
 // You can assign a route distribution as a DRG attachment's export distribution unless the
-// attachment has the type VCN. Exporting routes through a VCN attachment is unsupported. Export
+// attachment has the type `VCN`. Exporting routes through a VCN attachment is unsupported. Export
 // route distribution statements specify how routes in a DRG attachment's assigned table are
 // advertised out through the attachment. When a DRG is created, a route distribution is created
 // with a single ACCEPT statement with match criteria MATCH_ALL. By default, all DRG attachments
-// (except for those of type VCN), are assigned this distribution.
+// (except for those of type VCN), are assigned this distribution. You can't create a new export route distribution, one is created for you when the DRG is created.
 //
 // The two auto-generated DRG route tables (one as the default for VCN attachments, and the other for all other types of attachments)
 // are each assigned an auto generated import route distribution. The default VCN table's import distribution has a single statement with match criteria MATCH_ALL to import routes from
@@ -39,13 +38,13 @@ import (
 // The route distribution is always in the same compartment as the DRG.
 type DrgRouteDistribution struct {
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the DRG that contains this route distribution.
+	// The OCID (https://docs.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the DRG that contains this route distribution.
 	DrgId *string `mandatory:"true" json:"drgId"`
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the compartment containing the route distribution.
+	// The OCID (https://docs.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the compartment containing the route distribution.
 	CompartmentId *string `mandatory:"true" json:"compartmentId"`
 
-	// The route distribution's Oracle ID (OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm)).
+	// The route distribution's Oracle ID (OCID (https://docs.oracle.com/iaas/Content/General/Concepts/identifiers.htm)).
 	Id *string `mandatory:"true" json:"id"`
 
 	// The route distribution's current state.
@@ -59,7 +58,7 @@ type DrgRouteDistribution struct {
 	DistributionType DrgRouteDistributionDistributionTypeEnum `mandatory:"true" json:"distributionType"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a
-	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
+	// namespace. For more information, see Resource Tags (https://docs.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
@@ -68,7 +67,7 @@ type DrgRouteDistribution struct {
 	DisplayName *string `mandatory:"false" json:"displayName"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
-	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
+	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
 }
@@ -90,7 +89,7 @@ func (m DrgRouteDistribution) ValidateEnumValue() (bool, error) {
 	}
 
 	if len(errMessage) > 0 {
-		return true, fmt.Errorf(strings.Join(errMessage, "\n"))
+		return true, fmt.Errorf("%s", strings.Join(errMessage, "\n"))
 	}
 	return false, nil
 }
