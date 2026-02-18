@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2025, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -6,11 +6,11 @@
 //
 // Use the Core Services API to manage resources such as virtual cloud networks (VCNs),
 // compute instances, and block storage volumes. For more information, see the console
-// documentation for the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
-// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
-// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
+// documentation for the Networking (https://docs.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
 // The required permissions are documented in the
-// Details for the Core Services (https://docs.cloud.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
+// Details for the Core Services (https://docs.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
 //
 
 package core
@@ -70,6 +70,9 @@ type InstanceShapeConfig struct {
 	// in which case the actual number of OCPUs will be calculated based on this value
 	// and the actual hardware. This must be a multiple of 2.
 	Vcpus *int `mandatory:"false" json:"vcpus"`
+
+	// This field is reserved for internal use.
+	ResourceManagement InstanceShapeConfigResourceManagementEnum `mandatory:"false" json:"resourceManagement,omitempty"`
 }
 
 func (m InstanceShapeConfig) String() string {
@@ -85,8 +88,11 @@ func (m InstanceShapeConfig) ValidateEnumValue() (bool, error) {
 	if _, ok := GetMappingInstanceShapeConfigBaselineOcpuUtilizationEnum(string(m.BaselineOcpuUtilization)); !ok && m.BaselineOcpuUtilization != "" {
 		errMessage = append(errMessage, fmt.Sprintf("unsupported enum value for BaselineOcpuUtilization: %s. Supported values are: %s.", m.BaselineOcpuUtilization, strings.Join(GetInstanceShapeConfigBaselineOcpuUtilizationEnumStringValues(), ",")))
 	}
+	if _, ok := GetMappingInstanceShapeConfigResourceManagementEnum(string(m.ResourceManagement)); !ok && m.ResourceManagement != "" {
+		errMessage = append(errMessage, fmt.Sprintf("unsupported enum value for ResourceManagement: %s. Supported values are: %s.", m.ResourceManagement, strings.Join(GetInstanceShapeConfigResourceManagementEnumStringValues(), ",")))
+	}
 	if len(errMessage) > 0 {
-		return true, fmt.Errorf(strings.Join(errMessage, "\n"))
+		return true, fmt.Errorf("%s", strings.Join(errMessage, "\n"))
 	}
 	return false, nil
 }
@@ -134,5 +140,47 @@ func GetInstanceShapeConfigBaselineOcpuUtilizationEnumStringValues() []string {
 // GetMappingInstanceShapeConfigBaselineOcpuUtilizationEnum performs case Insensitive comparison on enum value and return the desired enum
 func GetMappingInstanceShapeConfigBaselineOcpuUtilizationEnum(val string) (InstanceShapeConfigBaselineOcpuUtilizationEnum, bool) {
 	enum, ok := mappingInstanceShapeConfigBaselineOcpuUtilizationEnumLowerCase[strings.ToLower(val)]
+	return enum, ok
+}
+
+// InstanceShapeConfigResourceManagementEnum Enum with underlying type: string
+type InstanceShapeConfigResourceManagementEnum string
+
+// Set of constants representing the allowable values for InstanceShapeConfigResourceManagementEnum
+const (
+	InstanceShapeConfigResourceManagementDynamic InstanceShapeConfigResourceManagementEnum = "DYNAMIC"
+	InstanceShapeConfigResourceManagementStatic  InstanceShapeConfigResourceManagementEnum = "STATIC"
+)
+
+var mappingInstanceShapeConfigResourceManagementEnum = map[string]InstanceShapeConfigResourceManagementEnum{
+	"DYNAMIC": InstanceShapeConfigResourceManagementDynamic,
+	"STATIC":  InstanceShapeConfigResourceManagementStatic,
+}
+
+var mappingInstanceShapeConfigResourceManagementEnumLowerCase = map[string]InstanceShapeConfigResourceManagementEnum{
+	"dynamic": InstanceShapeConfigResourceManagementDynamic,
+	"static":  InstanceShapeConfigResourceManagementStatic,
+}
+
+// GetInstanceShapeConfigResourceManagementEnumValues Enumerates the set of values for InstanceShapeConfigResourceManagementEnum
+func GetInstanceShapeConfigResourceManagementEnumValues() []InstanceShapeConfigResourceManagementEnum {
+	values := make([]InstanceShapeConfigResourceManagementEnum, 0)
+	for _, v := range mappingInstanceShapeConfigResourceManagementEnum {
+		values = append(values, v)
+	}
+	return values
+}
+
+// GetInstanceShapeConfigResourceManagementEnumStringValues Enumerates the set of values in String for InstanceShapeConfigResourceManagementEnum
+func GetInstanceShapeConfigResourceManagementEnumStringValues() []string {
+	return []string{
+		"DYNAMIC",
+		"STATIC",
+	}
+}
+
+// GetMappingInstanceShapeConfigResourceManagementEnum performs case Insensitive comparison on enum value and return the desired enum
+func GetMappingInstanceShapeConfigResourceManagementEnum(val string) (InstanceShapeConfigResourceManagementEnum, bool) {
+	enum, ok := mappingInstanceShapeConfigResourceManagementEnumLowerCase[strings.ToLower(val)]
 	return enum, ok
 }

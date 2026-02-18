@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2025, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -6,11 +6,11 @@
 //
 // Use the Core Services API to manage resources such as virtual cloud networks (VCNs),
 // compute instances, and block storage volumes. For more information, see the console
-// documentation for the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
-// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
-// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
+// documentation for the Networking (https://docs.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
 // The required permissions are documented in the
-// Details for the Core Services (https://docs.cloud.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
+// Details for the Core Services (https://docs.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
 //
 
 package core
@@ -48,7 +48,7 @@ func (m ShapeNumaNodesPerSocketPlatformOptions) ValidateEnumValue() (bool, error
 	}
 
 	if len(errMessage) > 0 {
-		return true, fmt.Errorf(strings.Join(errMessage, "\n"))
+		return true, fmt.Errorf("%s", strings.Join(errMessage, "\n"))
 	}
 	return false, nil
 }
@@ -62,6 +62,7 @@ const (
 	ShapeNumaNodesPerSocketPlatformOptionsAllowedValuesNps1 ShapeNumaNodesPerSocketPlatformOptionsAllowedValuesEnum = "NPS1"
 	ShapeNumaNodesPerSocketPlatformOptionsAllowedValuesNps2 ShapeNumaNodesPerSocketPlatformOptionsAllowedValuesEnum = "NPS2"
 	ShapeNumaNodesPerSocketPlatformOptionsAllowedValuesNps4 ShapeNumaNodesPerSocketPlatformOptionsAllowedValuesEnum = "NPS4"
+	ShapeNumaNodesPerSocketPlatformOptionsAllowedValuesNps6 ShapeNumaNodesPerSocketPlatformOptionsAllowedValuesEnum = "NPS6"
 )
 
 var mappingShapeNumaNodesPerSocketPlatformOptionsAllowedValuesEnum = map[string]ShapeNumaNodesPerSocketPlatformOptionsAllowedValuesEnum{
@@ -69,6 +70,7 @@ var mappingShapeNumaNodesPerSocketPlatformOptionsAllowedValuesEnum = map[string]
 	"NPS1": ShapeNumaNodesPerSocketPlatformOptionsAllowedValuesNps1,
 	"NPS2": ShapeNumaNodesPerSocketPlatformOptionsAllowedValuesNps2,
 	"NPS4": ShapeNumaNodesPerSocketPlatformOptionsAllowedValuesNps4,
+	"NPS6": ShapeNumaNodesPerSocketPlatformOptionsAllowedValuesNps6,
 }
 
 var mappingShapeNumaNodesPerSocketPlatformOptionsAllowedValuesEnumLowerCase = map[string]ShapeNumaNodesPerSocketPlatformOptionsAllowedValuesEnum{
@@ -76,6 +78,7 @@ var mappingShapeNumaNodesPerSocketPlatformOptionsAllowedValuesEnumLowerCase = ma
 	"nps1": ShapeNumaNodesPerSocketPlatformOptionsAllowedValuesNps1,
 	"nps2": ShapeNumaNodesPerSocketPlatformOptionsAllowedValuesNps2,
 	"nps4": ShapeNumaNodesPerSocketPlatformOptionsAllowedValuesNps4,
+	"nps6": ShapeNumaNodesPerSocketPlatformOptionsAllowedValuesNps6,
 }
 
 // GetShapeNumaNodesPerSocketPlatformOptionsAllowedValuesEnumValues Enumerates the set of values for ShapeNumaNodesPerSocketPlatformOptionsAllowedValuesEnum
@@ -94,6 +97,7 @@ func GetShapeNumaNodesPerSocketPlatformOptionsAllowedValuesEnumStringValues() []
 		"NPS1",
 		"NPS2",
 		"NPS4",
+		"NPS6",
 	}
 }
 

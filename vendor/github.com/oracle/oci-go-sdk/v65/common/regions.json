@@ -436,5 +436,65 @@
         "realmKey": "oc26",
         "regionIdentifier": "me-alain-1",
         "realmDomainComponent": "oraclecloud26.com"
+    },
+    {
+        "regionKey": "yxj",
+        "realmKey": "oc42",
+        "regionIdentifier": "us-ashburn-2",
+        "realmDomainComponent": "oraclecloud42.com"
+    },
+    {
+        "regionKey": "onm",
+        "realmKey": "oc1",
+        "regionIdentifier": "ap-delhi-1",
+        "realmDomainComponent": "oraclecloud.com"
+    },
+    {
+        "regionKey": "hsg",
+        "realmKey": "oc1",
+        "regionIdentifier": "ap-batam-1",
+        "realmDomainComponent": "oraclecloud.com"
+    },
+    {
+        "regionKey": "pgc",
+        "realmKey": "oc42",
+        "regionIdentifier": "us-newark-1",
+        "realmDomainComponent": "oraclecloud42.com"
+    },
+    {
+        "regionKey": "jsk",
+        "realmKey": "oc51",
+        "regionIdentifier": "eu-budapest-1",
+        "realmDomainComponent": "oraclecloud51.com"
+    },
+    {
+        "regionKey": "ibr",
+        "realmKey": "oc9",
+        "regionIdentifier": "me-ibri-1",
+        "realmDomainComponent": "oraclecloud9.com"
+    },
+    {
+        "regionKey": "orf",
+        "realmKey": "oc1",
+        "regionIdentifier": "eu-madrid-3",
+        "realmDomainComponent": "oraclecloud.com"
+    },
+    {
+        "regionKey": "des",
+        "realmKey": "oc1",
+        "regionIdentifier": "ap-chennai-1",
+        "realmDomainComponent": "oraclecloud.com"
+    },
+    {
+        "regionKey": "vkz",
+        "realmKey": "oc1",
+        "regionIdentifier": "us-columbus-1",
+        "realmDomainComponent": "oraclecloud.com"
+    },
+    {
+        "regionKey": "nrq",
+        "realmKey": "oc1",
+        "regionIdentifier": "eu-turin-1",
+        "realmDomainComponent": "oraclecloud.com"
     }
 ]

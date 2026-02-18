@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2025, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -6,16 +6,17 @@
 //
 // Use the Core Services API to manage resources such as virtual cloud networks (VCNs),
 // compute instances, and block storage volumes. For more information, see the console
-// documentation for the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
-// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
-// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
+// documentation for the Networking (https://docs.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
 // The required permissions are documented in the
-// Details for the Core Services (https://docs.cloud.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
+// Details for the Core Services (https://docs.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
 //
 
 package core
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/oracle/oci-go-sdk/v65/common"
 	"strings"
@@ -40,7 +41,7 @@ type DedicatedVmHost struct {
 	// Avoid entering confidential information.
 	DisplayName *string `mandatory:"true" json:"displayName"`
 
-	// The OCID (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the dedicated VM host.
+	// The OCID (https://docs.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the dedicated VM host.
 	Id *string `mandatory:"true" json:"id"`
 
 	// The current state of the dedicated VM host.
@@ -57,28 +58,43 @@ type DedicatedVmHost struct {
 	RemainingOcpus *float32 `mandatory:"true" json:"remainingOcpus"`
 
 	// Defined tags for this resource. Each key is predefined and scoped to a
-	// namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
+	// namespace. For more information, see Resource Tags (https://docs.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
 
 	// The fault domain for the dedicated virtual machine host's assigned instances.
-	// For more information, see Fault Domains (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/regions.htm#fault).
+	// For more information, see Fault Domains (https://docs.oracle.com/iaas/Content/General/Concepts/regions.htm#fault).
 	// If you do not specify the fault domain, the system selects one for you. To change the fault domain for a dedicated virtual machine host,
 	// delete it, and then create a new dedicated virtual machine host in the preferred fault domain.
-	// To get a list of fault domains, use the `ListFaultDomains` operation in the Identity and Access Management Service API (https://docs.cloud.oracle.com/iaas/api/#/en/identity/20160918/).
+	// To get a list of fault domains, use the `ListFaultDomains` operation in the Identity and Access Management Service API (https://docs.oracle.com/iaas/api/#/en/identity/20160918/).
 	// Example: `FAULT-DOMAIN-1`
 	FaultDomain *string `mandatory:"false" json:"faultDomain"`
 
 	// Free-form tags for this resource. Each tag is a simple key-value pair with no
-	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.cloud.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
+	// predefined name, type, or namespace. For more information, see Resource Tags (https://docs.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Department": "Finance"}`
 	FreeformTags map[string]string `mandatory:"false" json:"freeformTags"`
+
+	PlacementConstraintDetails PlacementConstraintDetails `mandatory:"false" json:"placementConstraintDetails"`
+
+	// The capacity configuration selected to be configured for the Dedicated Virtual Machine host.
+	// Run ListDedicatedVmHostShapes API to see details of this capacity configuration.
+	CapacityConfig *string `mandatory:"false" json:"capacityConfig"`
+
+	// Specifies if the Dedicated Virtual Machine Host (DVMH) is restricted to running only Confidential VMs. If `true`, only Confidential VMs can be launched. If `false`, Confidential VMs cannot be launched.
+	IsMemoryEncryptionEnabled *bool `mandatory:"false" json:"isMemoryEncryptionEnabled"`
 
 	// The total memory of the dedicated VM host, in GBs.
 	TotalMemoryInGBs *float32 `mandatory:"false" json:"totalMemoryInGBs"`
 
 	// The remaining memory of the dedicated VM host, in GBs.
 	RemainingMemoryInGBs *float32 `mandatory:"false" json:"remainingMemoryInGBs"`
+
+	// A list of total and remaining CPU and memory per capacity bucket.
+	CapacityBins []CapacityBin `mandatory:"false" json:"capacityBins"`
+
+	// The compute bare metal host OCID of the dedicated virtual machine host.
+	ComputeBareMetalHostId *string `mandatory:"false" json:"computeBareMetalHostId"`
 }
 
 func (m DedicatedVmHost) String() string {
@@ -95,9 +111,87 @@ func (m DedicatedVmHost) ValidateEnumValue() (bool, error) {
 	}
 
 	if len(errMessage) > 0 {
-		return true, fmt.Errorf(strings.Join(errMessage, "\n"))
+		return true, fmt.Errorf("%s", strings.Join(errMessage, "\n"))
 	}
 	return false, nil
+}
+
+// UnmarshalJSON unmarshals from json
+func (m *DedicatedVmHost) UnmarshalJSON(data []byte) (e error) {
+	model := struct {
+		DefinedTags                map[string]map[string]interface{} `json:"definedTags"`
+		FaultDomain                *string                           `json:"faultDomain"`
+		FreeformTags               map[string]string                 `json:"freeformTags"`
+		PlacementConstraintDetails placementconstraintdetails        `json:"placementConstraintDetails"`
+		CapacityConfig             *string                           `json:"capacityConfig"`
+		IsMemoryEncryptionEnabled  *bool                             `json:"isMemoryEncryptionEnabled"`
+		TotalMemoryInGBs           *float32                          `json:"totalMemoryInGBs"`
+		RemainingMemoryInGBs       *float32                          `json:"remainingMemoryInGBs"`
+		CapacityBins               []CapacityBin                     `json:"capacityBins"`
+		ComputeBareMetalHostId     *string                           `json:"computeBareMetalHostId"`
+		AvailabilityDomain         *string                           `json:"availabilityDomain"`
+		CompartmentId              *string                           `json:"compartmentId"`
+		DedicatedVmHostShape       *string                           `json:"dedicatedVmHostShape"`
+		DisplayName                *string                           `json:"displayName"`
+		Id                         *string                           `json:"id"`
+		LifecycleState             DedicatedVmHostLifecycleStateEnum `json:"lifecycleState"`
+		TimeCreated                *common.SDKTime                   `json:"timeCreated"`
+		TotalOcpus                 *float32                          `json:"totalOcpus"`
+		RemainingOcpus             *float32                          `json:"remainingOcpus"`
+	}{}
+
+	e = json.Unmarshal(data, &model)
+	if e != nil {
+		return
+	}
+	var nn interface{}
+	m.DefinedTags = model.DefinedTags
+
+	m.FaultDomain = model.FaultDomain
+
+	m.FreeformTags = model.FreeformTags
+
+	nn, e = model.PlacementConstraintDetails.UnmarshalPolymorphicJSON(model.PlacementConstraintDetails.JsonData)
+	if e != nil {
+		return
+	}
+	if nn != nil {
+		m.PlacementConstraintDetails = nn.(PlacementConstraintDetails)
+	} else {
+		m.PlacementConstraintDetails = nil
+	}
+
+	m.CapacityConfig = model.CapacityConfig
+
+	m.IsMemoryEncryptionEnabled = model.IsMemoryEncryptionEnabled
+
+	m.TotalMemoryInGBs = model.TotalMemoryInGBs
+
+	m.RemainingMemoryInGBs = model.RemainingMemoryInGBs
+
+	m.CapacityBins = make([]CapacityBin, len(model.CapacityBins))
+	copy(m.CapacityBins, model.CapacityBins)
+	m.ComputeBareMetalHostId = model.ComputeBareMetalHostId
+
+	m.AvailabilityDomain = model.AvailabilityDomain
+
+	m.CompartmentId = model.CompartmentId
+
+	m.DedicatedVmHostShape = model.DedicatedVmHostShape
+
+	m.DisplayName = model.DisplayName
+
+	m.Id = model.Id
+
+	m.LifecycleState = model.LifecycleState
+
+	m.TimeCreated = model.TimeCreated
+
+	m.TotalOcpus = model.TotalOcpus
+
+	m.RemainingOcpus = model.RemainingOcpus
+
+	return
 }
 
 // DedicatedVmHostLifecycleStateEnum Enum with underlying type: string

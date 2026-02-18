@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2025, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -6,11 +6,11 @@
 //
 // Use the Core Services API to manage resources such as virtual cloud networks (VCNs),
 // compute instances, and block storage volumes. For more information, see the console
-// documentation for the Networking (https://docs.cloud.oracle.com/iaas/Content/Network/Concepts/overview.htm),
-// Compute (https://docs.cloud.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
-// Block Volume (https://docs.cloud.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
+// documentation for the Networking (https://docs.oracle.com/iaas/Content/Network/Concepts/overview.htm),
+// Compute (https://docs.oracle.com/iaas/Content/Compute/Concepts/computeoverview.htm), and
+// Block Volume (https://docs.oracle.com/iaas/Content/Block/Concepts/overview.htm) services.
 // The required permissions are documented in the
-// Details for the Core Services (https://docs.cloud.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
+// Details for the Core Services (https://docs.oracle.com/iaas/Content/Identity/Reference/corepolicyreference.htm) article.
 //
 
 package core
@@ -50,6 +50,9 @@ type LaunchInstanceShapeConfigDetails struct {
 
 	// The number of NVMe drives to be used for storage. A single drive has 6.8 TB available.
 	Nvmes *int `mandatory:"false" json:"nvmes"`
+
+	// This field is reserved for internal use.
+	ResourceManagement LaunchInstanceShapeConfigDetailsResourceManagementEnum `mandatory:"false" json:"resourceManagement,omitempty"`
 }
 
 func (m LaunchInstanceShapeConfigDetails) String() string {
@@ -65,8 +68,11 @@ func (m LaunchInstanceShapeConfigDetails) ValidateEnumValue() (bool, error) {
 	if _, ok := GetMappingLaunchInstanceShapeConfigDetailsBaselineOcpuUtilizationEnum(string(m.BaselineOcpuUtilization)); !ok && m.BaselineOcpuUtilization != "" {
 		errMessage = append(errMessage, fmt.Sprintf("unsupported enum value for BaselineOcpuUtilization: %s. Supported values are: %s.", m.BaselineOcpuUtilization, strings.Join(GetLaunchInstanceShapeConfigDetailsBaselineOcpuUtilizationEnumStringValues(), ",")))
 	}
+	if _, ok := GetMappingLaunchInstanceShapeConfigDetailsResourceManagementEnum(string(m.ResourceManagement)); !ok && m.ResourceManagement != "" {
+		errMessage = append(errMessage, fmt.Sprintf("unsupported enum value for ResourceManagement: %s. Supported values are: %s.", m.ResourceManagement, strings.Join(GetLaunchInstanceShapeConfigDetailsResourceManagementEnumStringValues(), ",")))
+	}
 	if len(errMessage) > 0 {
-		return true, fmt.Errorf(strings.Join(errMessage, "\n"))
+		return true, fmt.Errorf("%s", strings.Join(errMessage, "\n"))
 	}
 	return false, nil
 }
@@ -114,5 +120,47 @@ func GetLaunchInstanceShapeConfigDetailsBaselineOcpuUtilizationEnumStringValues(
 // GetMappingLaunchInstanceShapeConfigDetailsBaselineOcpuUtilizationEnum performs case Insensitive comparison on enum value and return the desired enum
 func GetMappingLaunchInstanceShapeConfigDetailsBaselineOcpuUtilizationEnum(val string) (LaunchInstanceShapeConfigDetailsBaselineOcpuUtilizationEnum, bool) {
 	enum, ok := mappingLaunchInstanceShapeConfigDetailsBaselineOcpuUtilizationEnumLowerCase[strings.ToLower(val)]
+	return enum, ok
+}
+
+// LaunchInstanceShapeConfigDetailsResourceManagementEnum Enum with underlying type: string
+type LaunchInstanceShapeConfigDetailsResourceManagementEnum string
+
+// Set of constants representing the allowable values for LaunchInstanceShapeConfigDetailsResourceManagementEnum
+const (
+	LaunchInstanceShapeConfigDetailsResourceManagementDynamic LaunchInstanceShapeConfigDetailsResourceManagementEnum = "DYNAMIC"
+	LaunchInstanceShapeConfigDetailsResourceManagementStatic  LaunchInstanceShapeConfigDetailsResourceManagementEnum = "STATIC"
+)
+
+var mappingLaunchInstanceShapeConfigDetailsResourceManagementEnum = map[string]LaunchInstanceShapeConfigDetailsResourceManagementEnum{
+	"DYNAMIC": LaunchInstanceShapeConfigDetailsResourceManagementDynamic,
+	"STATIC":  LaunchInstanceShapeConfigDetailsResourceManagementStatic,
+}
+
+var mappingLaunchInstanceShapeConfigDetailsResourceManagementEnumLowerCase = map[string]LaunchInstanceShapeConfigDetailsResourceManagementEnum{
+	"dynamic": LaunchInstanceShapeConfigDetailsResourceManagementDynamic,
+	"static":  LaunchInstanceShapeConfigDetailsResourceManagementStatic,
+}
+
+// GetLaunchInstanceShapeConfigDetailsResourceManagementEnumValues Enumerates the set of values for LaunchInstanceShapeConfigDetailsResourceManagementEnum
+func GetLaunchInstanceShapeConfigDetailsResourceManagementEnumValues() []LaunchInstanceShapeConfigDetailsResourceManagementEnum {
+	values := make([]LaunchInstanceShapeConfigDetailsResourceManagementEnum, 0)
+	for _, v := range mappingLaunchInstanceShapeConfigDetailsResourceManagementEnum {
+		values = append(values, v)
+	}
+	return values
+}
+
+// GetLaunchInstanceShapeConfigDetailsResourceManagementEnumStringValues Enumerates the set of values in String for LaunchInstanceShapeConfigDetailsResourceManagementEnum
+func GetLaunchInstanceShapeConfigDetailsResourceManagementEnumStringValues() []string {
+	return []string{
+		"DYNAMIC",
+		"STATIC",
+	}
+}
+
+// GetMappingLaunchInstanceShapeConfigDetailsResourceManagementEnum performs case Insensitive comparison on enum value and return the desired enum
+func GetMappingLaunchInstanceShapeConfigDetailsResourceManagementEnum(val string) (LaunchInstanceShapeConfigDetailsResourceManagementEnum, bool) {
+	enum, ok := mappingLaunchInstanceShapeConfigDetailsResourceManagementEnumLowerCase[strings.ToLower(val)]
 	return enum, ok
 }
