@@ -147,9 +147,9 @@ run-volume-provisioner-dev:
 BUILD_ARGS = --build-arg CI_IMAGE_REGISTRY="$(CI_IMAGE_REGISTRY)" --build-arg COMPONENT="$(COMPONENT)"
 image:
 	docker  build $(BUILD_ARGS) \
-		-t $(IMAGE)-amd64:$(VERSION) .
+		-t $(IMAGE)-amd64:$(VERSION) --provenance false .
 	docker  build $(BUILD_ARGS) \
-		-t $(IMAGE)-arm64:$(VERSION) -f Dockerfile_arm_all .
+		-t $(IMAGE)-arm64:$(VERSION) --provenance false -f Dockerfile_arm_all .
 
 .PHONY: push
 push: image
