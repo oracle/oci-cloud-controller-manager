@@ -3,30 +3,40 @@ name: Unit Tests
 on:
   pull_request: {}
   push: {}
+# Prevent multiple runs from the same PR/branch from overlapping
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    # Added a job-level timeout as a safety net
+    timeout-minutes: 15
     steps:
+      - name: Check out code
+        uses: actions/checkout@v4 # Upgraded
 
-      - name: Set up Go 1.x
-        uses: actions/setup-go@v2
+      - name: Set up Go
+        uses: actions/setup-go@v5 # Upgraded
         with:
           go-version: '1.24.0'
-        id: go
+          cache: true # Built-in caching for faster runs
 
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
       - name: Install dependencies
-        run: |
-          go mod download
+        run: go mod download
+
       - name: Run Unit Tests
+        env:
+          GOMEMLIMIT: 6GiB
+        # Added -v to see which specific test hangs if it fails again
         run: |
-          go test -covermode=count -coverprofile=profile.cov ./pkg/...
-      - name: Install goveralls
-        run: go install github.com/mattn/goveralls@latest
+          go test -v -p 1 -covermode=count -coverprofile=profile.cov ./pkg/...
+
       - name: Send coverage
         env:
           COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          goveralls -coverprofile=profile.cov -service=github
+          go install github.com/mattn/goveralls@latest
+          $(go env GOPATH)/bin/goveralls -coverprofile=profile.cov -service=github
