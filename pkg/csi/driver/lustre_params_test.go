@@ -15,7 +15,7 @@ import (
 
 // helper to call extractLustreStorageClassParameters
 func parseParams(t *testing.T, p map[string]string, identity client.IdentityInterface) (*LustreStorageClassParameters, error) {
-	d := &LustreControllerDriver{ControllerDriver: &ControllerDriver{config: &providercfg.Config{CompartmentID: "ocid1.compartment.oc1..unit-test"}}}
+	d := &LustreControllerDriver{ControllerDriver: ControllerDriver{config: &providercfg.Config{CompartmentID: "ocid1.compartment.oc1..unit-test"}}}
 	_, _, parsed, err := extractLustreStorageClassParameters(context.Background(), d, zap.S(), "vol-1", p, identity)
 	if err != nil {
 		return nil, err
@@ -164,7 +164,7 @@ func TestLustreParams_AvailabilityDomain_ExplicitValidNormalization(t *testing.T
 		"performanceTier":    "MBPS_PER_TB_125",
 		"availabilityDomain": "PHX-AD-2",
 	}
-	d := &LustreControllerDriver{ControllerDriver: &ControllerDriver{config: &providercfg.Config{CompartmentID: "ocid1.compartment.oc1..unit-test"}}}
+	d := &LustreControllerDriver{ControllerDriver: ControllerDriver{config: &providercfg.Config{CompartmentID: "ocid1.compartment.oc1..unit-test"}}}
 	_, _, parsed, err := extractLustreStorageClassParameters(context.Background(), d, zap.S(), "vol-xyz", p, &MockOCIIdentityClient{ads: []string{"phx:PHX-AD-2"}})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -232,7 +232,7 @@ func TestLustreParams_DeriveDefaultFSName(t *testing.T) {
 		"performanceTier":    "MBPS_PER_TB_125",
 		"availabilityDomain": "PHX-AD-2",
 	}
-	d := &LustreControllerDriver{ControllerDriver: &ControllerDriver{config: &providercfg.Config{CompartmentID: "ocid1.compartment.oc1..unit-test"}}}
+	d := &LustreControllerDriver{ControllerDriver: ControllerDriver{config: &providercfg.Config{CompartmentID: "ocid1.compartment.oc1..unit-test"}}}
 	_, _, parsed, err := extractLustreStorageClassParameters(context.Background(), d, zap.S(), "vol-abc_DEF123", p, &MockOCIIdentityClient{ads: []string{"phx:PHX-AD-2"}})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
