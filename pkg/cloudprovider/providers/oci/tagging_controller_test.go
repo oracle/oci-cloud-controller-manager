@@ -12,6 +12,7 @@ import (
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
+	authv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -173,10 +174,16 @@ func (r *recordingComputeClient) UpdateInstance(ctx context.Context, request cor
 // recordingOCIClient implements client.Interface returning the provided compute client and stubs others.
 type recordingOCIClient struct{ compute ociClient.ComputeInterface }
 
-func (m recordingOCIClient) Compute() ociClient.ComputeInterface { return m.compute }
-func (m recordingOCIClient) LoadBalancer(*zap.SugaredLogger, string, *ociClient.OCIClientConfig) ociClient.GenericLoadBalancerInterface {
+func (m recordingOCIClient) LoadBalancer(logger *zap.SugaredLogger, s string, s2 string, request *authv1.TokenRequest) ociClient.GenericLoadBalancerInterface {
 	return nil
 }
+
+func (m recordingOCIClient) Lustre() ociClient.LustreInterface {
+	return nil
+}
+
+func (m recordingOCIClient) Compute() ociClient.ComputeInterface { return m.compute }
+
 func (m recordingOCIClient) Networking(*ociClient.OCIClientConfig) ociClient.NetworkingInterface {
 	return nil
 }
@@ -187,7 +194,6 @@ func (m recordingOCIClient) FSS(*ociClient.OCIClientConfig) ociClient.FileStorag
 func (m recordingOCIClient) Identity(*ociClient.OCIClientConfig) ociClient.IdentityInterface {
 	return nil
 }
-func (m recordingOCIClient) ContainerEngine() ociClient.ContainerEngineInterface { return nil }
 func (m recordingOCIClient) NewWorkloadIdentityClient(*zap.SugaredLogger, string, *ociClient.OCIClientConfig) ociClient.Interface {
 	return m
 }
