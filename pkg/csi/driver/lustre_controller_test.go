@@ -14,6 +14,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/utils/pointer"
 )
 
@@ -100,6 +101,11 @@ type MockOCIIdentityClient struct {
 	ads     []string
 	getErr  error
 	listErr error
+}
+
+func (i *MockOCIIdentityClient) ListAvailabilityDomains(ctx context.Context, compartmentID string) ([]ociidentity.AvailabilityDomain, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (i *MockOCIIdentityClient) GetAvailabilityDomainByName(ctx context.Context, compartmentID, name string) (*ociidentity.AvailabilityDomain, error) { // interface{} to avoid ctx import
@@ -898,7 +904,7 @@ func TestHelper_buildLustreVolumeHandle(t *testing.T) {
 
 func newControllerWith(flustre client.LustreInterface, fid client.IdentityInterface) *LustreControllerDriver {
 	logger, _ := zap.NewDevelopment()
-	cd := &ControllerDriver{config: &providercfg.Config{CompartmentID: "ocid1.compartment.oc1..unit", Tags: &providercfg.InitialTags{
+	cd := ControllerDriver{config: &providercfg.Config{CompartmentID: "ocid1.compartment.oc1..unit", Tags: &providercfg.InitialTags{
 		LoadBalancer: nil,
 		BlockVolume: &providercfg.TagConfig{
 			FreeformTags: map[string]string{"Project": "Lustre"},
@@ -914,20 +920,17 @@ type testOCIClient struct {
 	id     client.IdentityInterface
 }
 
-func (t *testOCIClient) Compute() client.ComputeInterface { return nil }
-func (t *testOCIClient) LoadBalancer(*zap.SugaredLogger, string, *client.OCIClientConfig) client.GenericLoadBalancerInterface {
+func (t *testOCIClient) LoadBalancer(logger *zap.SugaredLogger, s string, s2 string, request *authv1.TokenRequest) client.GenericLoadBalancerInterface {
 	return nil
 }
+
+func (t *testOCIClient) Compute() client.ComputeInterface { return nil }
+
 func (t *testOCIClient) Networking(*client.OCIClientConfig) client.NetworkingInterface { return nil }
 func (t *testOCIClient) BlockStorage() client.BlockStorageInterface                    { return nil }
 func (t *testOCIClient) FSS(*client.OCIClientConfig) client.FileStorageInterface       { return nil }
 func (t *testOCIClient) Lustre() client.LustreInterface                                { return t.lustre }
 func (t *testOCIClient) Identity(*client.OCIClientConfig) client.IdentityInterface     { return t.id }
-func (t *testOCIClient) ContainerEngine() client.ContainerEngineInterface              { return nil }
-func (t *testOCIClient) NewWorkloadIdentityClient(*zap.SugaredLogger, string, *client.OCIClientConfig) client.Interface {
-	return t
-}
-func (t *testOCIClient) CertManager() client.CertificateManagerInterface { return nil }
 
 // Keep for compatibility if other tests add additional helpers here.
 
