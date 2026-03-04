@@ -12,6 +12,10 @@ import (
 )
 
 // GetLustreFileSystemRequest wrapper for the GetLustreFileSystem operation
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/GetLustreFileSystem.go.html to see an example of how to use GetLustreFileSystemRequest.
 type GetLustreFileSystemRequest struct {
 
 	// The OCID (https://docs.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the Lustre file system.

@@ -1,6 +1,6 @@
 module github.com/oracle/oci-cloud-controller-manager
 
-go 1.24.0
+go 1.24.13
 
 replace (
 	github.com/docker/distribution => github.com/docker/distribution v2.8.3+incompatible
@@ -77,6 +77,7 @@ require (
 require (
 	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
 	golang.org/x/sync v0.15.0
+	golang.org/x/time v0.9.0
 	google.golang.org/protobuf v1.36.5
 	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v3 v3.18.4
@@ -216,7 +217,6 @@ require (
 	golang.org/x/oauth2 v0.28.0 // indirect
 	golang.org/x/term v0.32.0 // indirect
 	golang.org/x/text v0.26.0 // indirect
-	golang.org/x/time v0.9.0 // indirect
 	golang.org/x/tools v0.33.0 // indirect
 	google.golang.org/genproto v0.0.0-20240227224415-6ceb2ff114de // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250218202821-56aae31c358a // indirect
