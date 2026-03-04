@@ -12,6 +12,10 @@ import (
 )
 
 // GetObjectStorageLinkRequest wrapper for the GetObjectStorageLink operation
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/GetObjectStorageLink.go.html to see an example of how to use GetObjectStorageLinkRequest.
 type GetObjectStorageLinkRequest struct {
 
 	// The OCID (https://docs.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the Object Storage link.
