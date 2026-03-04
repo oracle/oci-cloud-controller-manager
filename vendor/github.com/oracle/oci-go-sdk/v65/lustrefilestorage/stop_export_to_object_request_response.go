@@ -12,6 +12,10 @@ import (
 )
 
 // StopExportToObjectRequest wrapper for the StopExportToObject operation
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/StopExportToObject.go.html to see an example of how to use StopExportToObjectRequest.
 type StopExportToObjectRequest struct {
 
 	// The OCID (https://docs.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the Object Storage link.
