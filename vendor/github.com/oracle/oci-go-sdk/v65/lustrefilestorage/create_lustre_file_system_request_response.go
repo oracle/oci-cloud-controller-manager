@@ -12,6 +12,10 @@ import (
 )
 
 // CreateLustreFileSystemRequest wrapper for the CreateLustreFileSystem operation
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/CreateLustreFileSystem.go.html to see an example of how to use CreateLustreFileSystemRequest.
 type CreateLustreFileSystemRequest struct {
 
 	// Details for the new Lustre file system.

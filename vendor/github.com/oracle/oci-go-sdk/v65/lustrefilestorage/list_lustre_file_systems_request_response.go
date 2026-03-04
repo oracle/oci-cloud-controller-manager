@@ -12,6 +12,10 @@ import (
 )
 
 // ListLustreFileSystemsRequest wrapper for the ListLustreFileSystems operation
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/ListLustreFileSystems.go.html to see an example of how to use ListLustreFileSystemsRequest.
 type ListLustreFileSystemsRequest struct {
 
 	// The OCID (https://docs.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the compartment in which to list resources.
