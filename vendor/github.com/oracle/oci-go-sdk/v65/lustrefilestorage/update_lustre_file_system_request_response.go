@@ -12,6 +12,10 @@ import (
 )
 
 // UpdateLustreFileSystemRequest wrapper for the UpdateLustreFileSystem operation
+//
+// # See also
+//
+// Click https://docs.oracle.com/en-us/iaas/tools/go-sdk-examples/latest/lustrefilestorage/UpdateLustreFileSystem.go.html to see an example of how to use UpdateLustreFileSystemRequest.
 type UpdateLustreFileSystemRequest struct {
 
 	// The OCID (https://docs.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the Lustre file system.
