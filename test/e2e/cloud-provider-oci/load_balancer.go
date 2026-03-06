@@ -844,7 +844,7 @@ var _ = Describe("ESIPP - IpMode Proxy [Slow]", func() {
 				var srcIP, expectedIP string
 				By(fmt.Sprintf("Hitting external lb %v from pod %v (%v) on node %v", ingressIP, podName, execPod.Status.PodIP, nodeName))
 				if pollErr := wait.PollImmediate(sharedfw.K8sResourcePoll, 5*time.Minute, func() (bool, error) {
-					expectedIP = execPod.Spec.NodeName // Node IP
+					expectedIP = execPod.Status.HostIP // Node IP
 
 					stdout, err := sharedfw.RunHostCmd(execPod.Namespace, execPod.Name, cmd)
 					if err != nil {
