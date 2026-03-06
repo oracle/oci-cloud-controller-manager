@@ -49,7 +49,7 @@ func MountWithEncrypt(logger *zap.SugaredLogger, source string, target string, f
 	mountArgs, mountArgsLogStr := MakeMountArgs(source, target, fstype, options)
 	mountArgsLogStr = EncryptionMountCommand + " " + mountArgsLogStr
 
-	logger.Debug("Mounting cmd (%s) with arguments (%s)", EncryptionMountCommand, mountArgsLogStr)
+	logger.Debugf("Mounting cmd (%s) with arguments (%s)", EncryptionMountCommand, mountArgsLogStr)
 	command := exec.Command(EncryptionMountCommand, mountArgs...)
 	output, err := command.CombinedOutput()
 	if err != nil {

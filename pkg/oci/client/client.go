@@ -403,7 +403,7 @@ func (c *client) Networking(ociClientConfig *OCIClientConfig) NetworkingInterfac
 
 		err = configureCustomTransport(c.logger, &network.BaseClient)
 		if err != nil {
-			c.logger.Error("Failed configure custom transport for Network Client %v", err)
+			c.logger.Errorf("Failed configure custom transport for Network Client %v", err)
 			return nil
 		}
 
@@ -443,7 +443,7 @@ func (c *client) Identity(ociClientConfig *OCIClientConfig) IdentityInterface {
 
 		err = configureCustomTransport(c.logger, &identity.BaseClient)
 		if err != nil {
-			c.logger.Error("Failed configure custom transport for Identity Client %v", err)
+			c.logger.Errorf("Failed configure custom transport for Identity Client %v", err)
 			return nil
 		}
 
