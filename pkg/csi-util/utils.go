@@ -17,7 +17,6 @@ package csi_util
 import (
 	"context"
 	"fmt"
-
 	"net"
 	"os"
 	"os/exec"
@@ -90,7 +89,6 @@ const (
 	RawBlockStagingFile = "mountfile"
 
 	AvailabilityDomainLabel = "csi-ipv6-full-ad-name"
-
 )
 
 // Util interface
@@ -115,6 +113,7 @@ type NodeMetadata struct {
 	Ipv6Enabled            bool
 	AvailabilityDomain     string
 	FullAvailabilityDomain string
+	NodeInternalIP         string
 	IsNodeMetadataLoaded   bool
 }
 
@@ -172,6 +171,15 @@ func (u *Util) LoadNodeMetadataFromApiServer(ctx context.Context, k kubernetes.I
 		return fmt.Errorf("Failed to get node information from kube api server, please check if kube api server is accessible.")
 	}
 
+	if node.Status.Addresses != nil {
+		for _, address := range node.Status.Addresses {
+			if address.Type == kubeAPI.NodeInternalIP {
+				nodeMetadata.NodeInternalIP = address.Address
+				break
+			}
+		}
+	}
+
 	var ok bool
 	if node.Labels != nil {
 		nodeMetadata.AvailabilityDomain, ok = node.Labels[kubeAPI.LabelTopologyZone]
@@ -192,6 +200,7 @@ func (u *Util) LoadNodeMetadataFromApiServer(ctx context.Context, k kubernetes.I
 			nodeMetadata.Ipv6Enabled = true
 		}
 	}
+
 	if !nodeMetadata.Ipv4Enabled && !nodeMetadata.Ipv6Enabled {
 		nodeMetadata.PreferredNodeIpFamily = Ipv4Stack
 		nodeMetadata.Ipv4Enabled = true
