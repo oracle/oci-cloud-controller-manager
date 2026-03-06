@@ -17,7 +17,7 @@ package framework
 import (
 	"context"
 
-	snapshot "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
+	snapshot "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -49,17 +49,17 @@ func (f *CloudProviderFramework) CreateVolumeSnapshotClassOrFail(name string, dr
 // does not actually create the storage class. The default storage class has the same name
 // as the jig
 func (f *CloudProviderFramework) NewVolumeSnapshotClassTemplate(name string, parameters map[string]string,
-	driverType string,deletionPolicy snapshot.DeletionPolicy) *snapshot.VolumeSnapshotClass {
+	driverType string, deletionPolicy snapshot.DeletionPolicy) *snapshot.VolumeSnapshotClass {
 	return &snapshot.VolumeSnapshotClass{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "VolumeSnapshotClass",
 			APIVersion: "snapshot.storage.k8s.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   name,
+			Name: name,
 		},
 		Driver:         driverType,
-		Parameters:		parameters,
+		Parameters:     parameters,
 		DeletionPolicy: deletionPolicy,
 	}
 }

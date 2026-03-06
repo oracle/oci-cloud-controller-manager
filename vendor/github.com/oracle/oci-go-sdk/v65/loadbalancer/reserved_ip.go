@@ -1,11 +1,11 @@
-// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2026, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
 // Load Balancing API
 //
 // API for the Load Balancing service. Use this API to manage load balancers, backend sets, and related items. For more
-// information, see Overview of Load Balancing (https://docs.cloud.oracle.com/iaas/Content/Balance/Concepts/balanceoverview.htm).
+// information, see Overview of Load Balancing (https://docs.oracle.com/iaas/Content/Balance/Concepts/balanceoverview.htm).
 //
 
 package loadbalancer
@@ -25,6 +25,7 @@ type ReservedIp struct {
 	// field reservedIp to attach the Ip to Load balancer. Load balancer will be configured to listen to traffic on this IP.
 	// Reserved IPs will not be deleted when the Load balancer is deleted. They will be unattached from the Load balancer.
 	// Example: "ocid1.publicip.oc1.phx.unique_ID"
+	// IPV6 example: "ocid1.ipv6.oc1.phx.unique_ID"
 	Id *string `mandatory:"false" json:"id"`
 }
 
@@ -39,7 +40,7 @@ func (m ReservedIp) ValidateEnumValue() (bool, error) {
 	errMessage := []string{}
 
 	if len(errMessage) > 0 {
-		return true, fmt.Errorf(strings.Join(errMessage, "\n"))
+		return true, fmt.Errorf("%s", strings.Join(errMessage, "\n"))
 	}
 	return false, nil
 }

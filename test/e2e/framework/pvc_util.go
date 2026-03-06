@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	snapclientset "github.com/kubernetes-csi/external-snapshotter/client/v6/clientset/versioned"
+	snapclientset "github.com/kubernetes-csi/external-snapshotter/client/v8/clientset/versioned"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
@@ -77,8 +77,8 @@ type PVCTestJig struct {
 }
 
 type Options struct {
-	BlockProvisionerName  string
-	FSSProvisionerName	  string
+	BlockProvisionerName string
+	FSSProvisionerName   string
 }
 
 // NewPVCTestJig allocates and inits a new PVCTestJig.
@@ -782,13 +782,13 @@ func waitForVolumeState(ctx context.Context, bsClient ocicore.BlockstorageClient
 }
 
 // CreateBootVolume is a function to create the boot volume
-func (j *PVCTestJig) CreateBootVolume(c ocicore.ComputeClient, bs ocicore.BlockstorageClient,adLabel string, compartmentId string) string {
+func (j *PVCTestJig) CreateBootVolume(c ocicore.ComputeClient, bs ocicore.BlockstorageClient, adLabel string, compartmentId string) string {
 	ctx := context.Background()
 
 	instances, err := c.ListInstances(ctx, ocicore.ListInstancesRequest{
 		AvailabilityDomain: &adLabel,
-		CompartmentId: &compartmentId,
-		LifecycleState: ocicore.InstanceLifecycleStateRunning,
+		CompartmentId:      &compartmentId,
+		LifecycleState:     ocicore.InstanceLifecycleStateRunning,
 	})
 	if err != nil {
 		Failf("Error listing instances: %v", err)
@@ -2040,7 +2040,7 @@ func (j *PVCTestJig) CheckDataPersistenceWithDeploymentImpl(pvcName string, ns s
 		taintIsMaster := false
 		if node.Spec.Unschedulable == false {
 			for _, taint := range node.Spec.Taints {
-				taintIsMaster = (taint.Key == "node-role.kubernetes.io/master" || taint.Key == "node-role.kubernetes.io/control-plane" ||(taint.Key == "dedicated" && taint.Value == "lustre"))
+				taintIsMaster = (taint.Key == "node-role.kubernetes.io/master" || taint.Key == "node-role.kubernetes.io/control-plane" || (taint.Key == "dedicated" && taint.Value == "lustre"))
 			}
 			if !taintIsMaster {
 				schedulableNodeFound = true
