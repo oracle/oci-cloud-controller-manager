@@ -34,7 +34,7 @@ const (
 	// test suite before giving up.
 	DefaultTimeout = 15 * time.Minute
 	// Some pods can take much longer to get ready due to volume attach/detach latency.
-	slowPodStartTimeout = 7 * time.Minute
+	slowPodStartTimeout = 15 * time.Minute
 
 	JobCompletionTimeout       = 5 * time.Minute
 	deploymentAvailableTimeout = 5 * time.Minute
@@ -43,22 +43,22 @@ const (
 	DefaultClusterKubeconfig = "/tmp/clusterkubeconfig"
 	DefaultCloudConfig       = "/tmp/cloudconfig"
 
-	ClassOCI           = "oci"
-	ClassOCICSI        = "oci-bv"
-	ClassCustom        = "oci-bv-custom"
-	ClassOCICSIExpand  = "oci-bv-expand"
-	ClassOCILowCost    = "oci-bv-low"
-	ClassOCIBalanced   = "oci-bal"
-	ClassOCIHigh       = "oci-bv-high"
-	ClassOCIUHP        = "oci-uhp"
-	ClassOCIKMS        = "oci-kms"
-	ClassOCIExt3       = "oci-ext3"
-	ClassOCIXfs        = "oci-xfs"
-	ClassFssDynamic    = "oci-file-storage-test"
-	ClassSnapshot      = "oci-snapshot-sc"
-	MinVolumeBlock     = "50Gi"
-	MaxVolumeBlock     = "100Gi"
-	VolumeFss          = "1Gi"
+	ClassOCI          = "oci"
+	ClassOCICSI       = "oci-bv"
+	ClassCustom       = "oci-bv-custom"
+	ClassOCICSIExpand = "oci-bv-expand"
+	ClassOCILowCost   = "oci-bv-low"
+	ClassOCIBalanced  = "oci-bal"
+	ClassOCIHigh      = "oci-bv-high"
+	ClassOCIUHP       = "oci-uhp"
+	ClassOCIKMS       = "oci-kms"
+	ClassOCIExt3      = "oci-ext3"
+	ClassOCIXfs       = "oci-xfs"
+	ClassFssDynamic   = "oci-file-storage-test"
+	ClassSnapshot     = "oci-snapshot-sc"
+	MinVolumeBlock    = "50Gi"
+	MaxVolumeBlock    = "100Gi"
+	VolumeFss         = "1Gi"
 
 	VSClassDefault    = "oci-snapclass"
 	NodeHostnameLabel = "kubernetes.io/hostname"
@@ -87,7 +87,7 @@ var (
 	reservedIP                    string // Testing public reserved IP feature
 	architecture                  string
 	volumeHandle                  string // The FSS mount volume handle
-	lustreVolumeHandle			  string // The Lustre mount volume handle
+	lustreVolumeHandle            string // The Lustre mount volume handle
 	lustreSubnetCidr              string // The Lustre Subnet Cidr
 	enableLustreTests             bool   // Flag to enable disable lustre tests
 	lustreWorkerNodeImage         string // Ocid of worker node image having backed in lustre clients to create separate nodepool
@@ -95,9 +95,9 @@ var (
 	lustreSubnet                  string
 	lustreAD                      string
 	staticSnapshotCompartmentOCID string // Compartment ID for cross compartment snapshot test
-	customDriverHandle		      string // Custom driver handle for custom CSI driver installation
+	customDriverHandle            string // Custom driver handle for custom CSI driver installation
 	runUhpE2E                     bool   // Whether to run UHP E2Es, requires Volume Management Plugin enabled on the node and 16+ cores (check blockvolumeperformance public doc for the exact requirements)
-	enableParallelRun			  bool
+	enableParallelRun             bool
 	addOkeSystemTags              bool
 	clusterID                     string              // Ocid of the newly created E2E cluster
 	clusterType                   string              // Cluster type can be BASIC_CLUSTER or ENHANCED_CLUSTER (Default: BASIC_CLUSTER)
@@ -175,7 +175,7 @@ type Framework struct {
 	ReservedIP               string
 	Architecture             string
 
-	VolumeHandle string
+	VolumeHandle       string
 	LustreVolumeHandle string
 
 	LustreSubnetCidr      string
@@ -188,11 +188,11 @@ type Framework struct {
 	// Compartment ID for cross compartment snapshot test
 	StaticSnapshotCompartmentOcid string
 	RunUhpE2E                     bool
-	CustomDriverHandle			  string
-	BlockProvisionerName		  string
-	FSSProvisionerName		      string
+	CustomDriverHandle            string
+	BlockProvisionerName          string
+	FSSProvisionerName            string
 	LustreProvisionerName         string
-	AddOkeSystemTags        bool
+	AddOkeSystemTags              bool
 }
 
 // New creates a new a framework that holds the context of the test
@@ -224,7 +224,7 @@ func NewWithConfig() *Framework {
 		EnableLustreTests:             enableLustreTests,
 		StaticSnapshotCompartmentOcid: staticSnapshotCompartmentOCID,
 		RunUhpE2E:                     runUhpE2E,
-		CustomDriverHandle: 		   customDriverHandle,
+		CustomDriverHandle:            customDriverHandle,
 		AddOkeSystemTags:              addOkeSystemTags,
 		ClusterType:                   clusterTypeEnum,
 	}
