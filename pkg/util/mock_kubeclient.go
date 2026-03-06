@@ -5,8 +5,9 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"k8s.io/client-go/kubernetes/typed/resource/v1beta2"
 	"net/http"
+
+	"k8s.io/client-go/kubernetes/typed/resource/v1beta2"
 
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -50,7 +51,6 @@ import (
 	v1beta22 "k8s.io/client-go/kubernetes/typed/flowcontrol/v1beta2"
 	v1beta31 "k8s.io/client-go/kubernetes/typed/flowcontrol/v1beta3"
 	v112 "k8s.io/client-go/kubernetes/typed/networking/v1"
-	v1alpha15 "k8s.io/client-go/kubernetes/typed/networking/v1alpha1"
 	v1beta112 "k8s.io/client-go/kubernetes/typed/networking/v1beta1"
 	v113 "k8s.io/client-go/kubernetes/typed/node/v1"
 	v1alpha16 "k8s.io/client-go/kubernetes/typed/node/v1alpha1"
@@ -60,6 +60,7 @@ import (
 	v115 "k8s.io/client-go/kubernetes/typed/rbac/v1"
 	v1alpha17 "k8s.io/client-go/kubernetes/typed/rbac/v1alpha1"
 	v1beta115 "k8s.io/client-go/kubernetes/typed/rbac/v1beta1"
+	resourev1 "k8s.io/client-go/kubernetes/typed/resource/v1"
 	"k8s.io/client-go/kubernetes/typed/resource/v1alpha3"
 	"k8s.io/client-go/kubernetes/typed/resource/v1beta1"
 	v116 "k8s.io/client-go/kubernetes/typed/scheduling/v1"
@@ -75,6 +76,11 @@ import (
 
 type MockKubeClient struct {
 	CoreClient *MockCoreClient
+}
+
+func (m MockKubeClient) ResourceV1() resourev1.ResourceV1Interface {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (m MockKubeClient) ResourceV1beta2() v1beta2.ResourceV1beta2Interface {
@@ -96,6 +102,11 @@ func (m MockKubeClient) CoordinationV1alpha1() v1alpha14.CoordinationV1alpha2Int
 
 type MockKubeClientWithFailingRestClient struct {
 	CoreClient *MockCoreClientWithFailingRestClient
+}
+
+func (m MockKubeClientWithFailingRestClient) ResourceV1() resourev1.ResourceV1Interface {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (m MockKubeClient) StoragemigrationV1alpha1() alpha1.StoragemigrationV1alpha1Interface {
@@ -294,11 +305,6 @@ func (m MockKubeClientWithFailingRestClient) FlowcontrolV1beta3() v1beta31.Flowc
 }
 
 func (m MockKubeClientWithFailingRestClient) NetworkingV1() v112.NetworkingV1Interface {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (m MockKubeClientWithFailingRestClient) NetworkingV1alpha1() v1alpha15.NetworkingV1alpha1Interface {
 	//TODO implement me
 	panic("implement me")
 }
@@ -774,10 +780,6 @@ func (m MockKubeClient) NodeV1alpha1() v1alpha16.NodeV1alpha1Interface {
 }
 
 func (m MockKubeClient) BatchV1beta1() v1beta15.BatchV1beta1Interface {
-	return nil
-}
-
-func (m MockKubeClient) NetworkingV1alpha1() v1alpha15.NetworkingV1alpha1Interface {
 	return nil
 }
 
