@@ -35,7 +35,7 @@ spec:
             secretName: oci-volume-provisioner
       containers:
         - name: oci-volume-provisioner
-          image: ghcr.io/dhananjay-ng/cloud-provider-oci:v1.33.1-test9
+          image: ghcr.io/dhananjay-ng/cloud-provider-oci:v1.34.0-test
           command: ["/usr/local/bin/oci-volume-provisioner"]
           env:
             - name: NODE_NAME
