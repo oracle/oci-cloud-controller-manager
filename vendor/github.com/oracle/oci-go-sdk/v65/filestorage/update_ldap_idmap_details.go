@@ -1,11 +1,11 @@
-// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2026, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
 // File Storage API
 //
 // Use the File Storage service API to manage file systems, mount targets, and snapshots.
-// For more information, see Overview of File Storage (https://docs.cloud.oracle.com/iaas/Content/File/Concepts/filestorageoverview.htm).
+// For more information, see Overview of File Storage (https://docs.oracle.com/iaas/Content/File/Concepts/filestorageoverview.htm).
 //
 
 package filestorage
@@ -39,10 +39,10 @@ type UpdateLdapIdmapDetails struct {
 	// Example: `CN=Group,DC=domain,DC=com`
 	GroupSearchBase *string `mandatory:"false" json:"groupSearchBase"`
 
-	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the first connector to use to communicate with the LDAP server.
+	// The OCID (https://docs.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the first connector to use to communicate with the LDAP server.
 	OutboundConnector1Id *string `mandatory:"false" json:"outboundConnector1Id"`
 
-	// The OCID (https://docs.cloud.oracle.com/Content/General/Concepts/identifiers.htm) of the second connector to use to communicate with the LDAP server.
+	// The OCID (https://docs.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the second connector to use to communicate with the LDAP server.
 	OutboundConnector2Id *string `mandatory:"false" json:"outboundConnector2Id"`
 }
 
@@ -60,7 +60,7 @@ func (m UpdateLdapIdmapDetails) ValidateEnumValue() (bool, error) {
 		errMessage = append(errMessage, fmt.Sprintf("unsupported enum value for SchemaType: %s. Supported values are: %s.", m.SchemaType, strings.Join(GetUpdateLdapIdmapDetailsSchemaTypeEnumStringValues(), ",")))
 	}
 	if len(errMessage) > 0 {
-		return true, fmt.Errorf(strings.Join(errMessage, "\n"))
+		return true, fmt.Errorf("%s", strings.Join(errMessage, "\n"))
 	}
 	return false, nil
 }
@@ -70,15 +70,18 @@ type UpdateLdapIdmapDetailsSchemaTypeEnum string
 
 // Set of constants representing the allowable values for UpdateLdapIdmapDetailsSchemaTypeEnum
 const (
-	UpdateLdapIdmapDetailsSchemaTypeRfc2307 UpdateLdapIdmapDetailsSchemaTypeEnum = "RFC2307"
+	UpdateLdapIdmapDetailsSchemaTypeRfc2307    UpdateLdapIdmapDetailsSchemaTypeEnum = "RFC2307"
+	UpdateLdapIdmapDetailsSchemaTypeRfc2307bis UpdateLdapIdmapDetailsSchemaTypeEnum = "RFC2307BIS"
 )
 
 var mappingUpdateLdapIdmapDetailsSchemaTypeEnum = map[string]UpdateLdapIdmapDetailsSchemaTypeEnum{
-	"RFC2307": UpdateLdapIdmapDetailsSchemaTypeRfc2307,
+	"RFC2307":    UpdateLdapIdmapDetailsSchemaTypeRfc2307,
+	"RFC2307BIS": UpdateLdapIdmapDetailsSchemaTypeRfc2307bis,
 }
 
 var mappingUpdateLdapIdmapDetailsSchemaTypeEnumLowerCase = map[string]UpdateLdapIdmapDetailsSchemaTypeEnum{
-	"rfc2307": UpdateLdapIdmapDetailsSchemaTypeRfc2307,
+	"rfc2307":    UpdateLdapIdmapDetailsSchemaTypeRfc2307,
+	"rfc2307bis": UpdateLdapIdmapDetailsSchemaTypeRfc2307bis,
 }
 
 // GetUpdateLdapIdmapDetailsSchemaTypeEnumValues Enumerates the set of values for UpdateLdapIdmapDetailsSchemaTypeEnum
@@ -94,6 +97,7 @@ func GetUpdateLdapIdmapDetailsSchemaTypeEnumValues() []UpdateLdapIdmapDetailsSch
 func GetUpdateLdapIdmapDetailsSchemaTypeEnumStringValues() []string {
 	return []string{
 		"RFC2307",
+		"RFC2307BIS",
 	}
 }
 

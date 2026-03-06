@@ -1,11 +1,11 @@
-// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2026, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
 // Load Balancing API
 //
 // API for the Load Balancing service. Use this API to manage load balancers, backend sets, and related items. For more
-// information, see Overview of Load Balancing (https://docs.cloud.oracle.com/iaas/Content/Balance/Concepts/balanceoverview.htm).
+// information, see Overview of Load Balancing (https://docs.oracle.com/iaas/Content/Balance/Concepts/balanceoverview.htm).
 //
 
 package loadbalancer
@@ -18,7 +18,7 @@ import (
 
 // Listener The listener's configuration.
 // For more information on backend set configuration, see
-// Managing Load Balancer Listeners (https://docs.cloud.oracle.com/Content/Balance/Tasks/managinglisteners.htm).
+// Managing Load Balancer Listeners (https://docs.oracle.com/iaas/Content/Balance/Tasks/managinglisteners.htm).
 type Listener struct {
 
 	// A friendly name for the listener. It must be unique and it cannot be changed.
@@ -33,8 +33,9 @@ type Listener struct {
 	// Example: `80`
 	Port *int `mandatory:"true" json:"port"`
 
-	// The protocol on which the listener accepts connection requests. The supported protocols are HTTP, HTTP2, TCP, and GRPC.
-	// You can also use the ListProtocols operation to get a list of valid protocols.
+	// The protocol on which the listener accepts connection requests.
+	// To get a list of valid protocols, use the ListProtocols
+	// operation.
 	// Example: `HTTP`
 	Protocol *string `mandatory:"true" json:"protocol"`
 
@@ -71,7 +72,7 @@ func (m Listener) ValidateEnumValue() (bool, error) {
 	errMessage := []string{}
 
 	if len(errMessage) > 0 {
-		return true, fmt.Errorf(strings.Join(errMessage, "\n"))
+		return true, fmt.Errorf("%s", strings.Join(errMessage, "\n"))
 	}
 	return false, nil
 }

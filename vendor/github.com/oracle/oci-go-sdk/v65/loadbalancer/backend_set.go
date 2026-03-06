@@ -1,11 +1,11 @@
-// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2026, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
 // Load Balancing API
 //
 // API for the Load Balancing service. Use this API to manage load balancers, backend sets, and related items. For more
-// information, see Overview of Load Balancing (https://docs.cloud.oracle.com/iaas/Content/Balance/Concepts/balanceoverview.htm).
+// information, see Overview of Load Balancing (https://docs.oracle.com/iaas/Content/Balance/Concepts/balanceoverview.htm).
 //
 
 package loadbalancer
@@ -18,7 +18,7 @@ import (
 
 // BackendSet The configuration of a load balancer backend set.
 // For more information on backend set configuration, see
-// Managing Backend Sets (https://docs.cloud.oracle.com/Content/Balance/Tasks/managingbackendsets.htm).
+// Managing Backend Sets (https://docs.oracle.com/iaas/Content/Balance/Tasks/managingbackendsets.htm).
 // **Note:** The `sessionPersistenceConfiguration` (application cookie stickiness) and `lbCookieSessionPersistenceConfiguration`
 // (LB cookie stickiness) attributes are mutually exclusive. To avoid returning an error, configure only one of these two
 // attributes per backend set.
@@ -42,8 +42,9 @@ type BackendSet struct {
 
 	// The maximum number of simultaneous connections the load balancer can make to any backend
 	// in the backend set unless the backend has its own maxConnections setting. If this is not
-	// set then the number of simultaneous connections the load balancer can make to any backend
-	// in the backend set unless the backend has its own maxConnections setting is unlimited.
+	// set or set to 0 then the number of simultaneous connections the load balancer can make
+	// to any backend in the backend set unless the backend has its own maxConnections setting
+	// is unlimited.
 	// Example: `300`
 	BackendMaxConnections *int `mandatory:"false" json:"backendMaxConnections"`
 
@@ -65,7 +66,7 @@ func (m BackendSet) ValidateEnumValue() (bool, error) {
 	errMessage := []string{}
 
 	if len(errMessage) > 0 {
-		return true, fmt.Errorf(strings.Join(errMessage, "\n"))
+		return true, fmt.Errorf("%s", strings.Join(errMessage, "\n"))
 	}
 	return false, nil
 }

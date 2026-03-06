@@ -1751,7 +1751,7 @@ Copyright 2021 The Kubernetes Authors.
 --------------------------------- (separator) ----------------------------------
 
 == Dependency
-github.com/kubernetes-csi/external-snapshotter/client/v6
+github.com/kubernetes-csi/external-snapshotter/client/v8
 
 == License Type
 SPDX:Apache-2.0
