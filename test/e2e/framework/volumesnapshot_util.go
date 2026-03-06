@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"time"
 
-	snapshot "github.com/kubernetes-csi/external-snapshotter/client/v6/apis/volumesnapshot/v1"
+	snapshot "github.com/kubernetes-csi/external-snapshotter/client/v8/apis/volumesnapshot/v1"
 	. "github.com/onsi/ginkgo"
 	ocicore "github.com/oracle/oci-go-sdk/v65/core"
 	v1 "k8s.io/api/core/v1"
