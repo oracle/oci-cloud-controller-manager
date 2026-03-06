@@ -45,8 +45,10 @@ func (d LustreNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStag
 		return nil, status.Error(codes.InvalidArgument, "Invalid Volume Handle provided.")
 	}
 
-
 	d.loadCSIConfig(ctx)
+	if !d.nodeMetadata.IsNodeMetadataLoaded {
+		d.util.LoadNodeMetadataFromApiServer(ctx, d.KubeClient, d.nodeID, d.nodeMetadata)
+	}
 
 	if lustrePostMountParameters, exists := req.GetVolumeContext()["lustrePostMountParameters"]; exists && !isSkipLustreParams(d.csiConfig) {
 		if err := csi_util.ValidateLustreParameters(d.logger, lustrePostMountParameters); err != nil {
@@ -69,10 +71,10 @@ func (d LustreNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStag
 	//Lnet Setup
 	if setupLnet, ok := req.GetVolumeContext()[SetupLnet]; ok && setupLnet == "true" {
 
-		lustreSubnetCIDR, ok :=  req.GetVolumeContext()[LustreSubnetCidr]
+		lustreSubnetCIDR, ok := req.GetVolumeContext()[LustreSubnetCidr]
 
 		if !ok {
-			lustreSubnetCIDR = fmt.Sprintf("%s/32", d.nodeID)
+			lustreSubnetCIDR = fmt.Sprintf("%s/32", d.nodeMetadata.NodeInternalIP)
 		}
 
 		err := lnetService.SetupLnet(logger, lustreSubnetCIDR, lnetLabel)
@@ -93,8 +95,6 @@ func (d LustreNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStag
 	}
 
 	mounter := mount.New(mountPath)
-
-
 
 	targetPath := req.StagingTargetPath
 	mountPoint, err := isMountPoint(mounter, targetPath)
@@ -134,7 +134,7 @@ func (d LustreNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStag
 
 	if lustrePostMountParameters, exists := req.GetVolumeContext()["lustrePostMountParameters"]; exists {
 		d.loadCSIConfig(ctx)
-		if !isSkipLustreParams(d.csiConfig)  {
+		if !isSkipLustreParams(d.csiConfig) {
 			err = lnetService.ApplyLustreParameters(logger, lustrePostMountParameters)
 			if err != nil {
 				//Unmounting volume on error as we are failing NodeStageVolume. If we don't unmount and customer deletes workload then volume will remain mounted as NodeUnstageVolume won't be called.
@@ -159,7 +159,6 @@ func (d LustreNodeDriver) loadCSIConfig(ctx context.Context) {
 	csi_util.LoadCSIConfigFromConfigMap(d.csiConfig, d.KubeClient, CSIConfigMapName, d.logger, ctx)
 	d.csiConfig.IsLoaded = true
 }
-
 
 func (d LustreNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
 
@@ -219,7 +218,7 @@ func (d LustreNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUn
 			logger.With("StagingTargetPath", targetPath).Infof("mount point does not exist")
 			return &csi.NodeUnstageVolumeResponse{}, nil
 		}
-		return  nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if !isMountPoint {
@@ -227,7 +226,7 @@ func (d LustreNodeDriver) NodeUnstageVolume(ctx context.Context, req *csi.NodeUn
 		err = os.RemoveAll(targetPath)
 		if err != nil {
 			logger.With(zap.Error(err)).Error("Remove target path failed with error")
-			return  nil, status.Error(codes.Internal, "Failed to remove target path")
+			return nil, status.Error(codes.Internal, "Failed to remove target path")
 		}
 		return &csi.NodeUnstageVolumeResponse{}, nil
 	}
@@ -255,7 +254,6 @@ func (d LustreNodeDriver) NodePublishVolume(ctx context.Context, req *csi.NodePu
 		return nil, status.Error(codes.InvalidArgument, "Target Path must be provided")
 	}
 
-
 	logger := d.logger.With("volumeID", req.VolumeId)
 	logger.Debugf("volume context: %v", req.VolumeContext)
 
@@ -264,7 +262,9 @@ func (d LustreNodeDriver) NodePublishVolume(ctx context.Context, req *csi.NodePu
 	if !isValidVolumeId {
 		return nil, status.Error(codes.InvalidArgument, "Invalid Volume Handle provided.")
 	}
-
+	if !d.nodeMetadata.IsNodeMetadataLoaded {
+		d.util.LoadNodeMetadataFromApiServer(ctx, d.KubeClient, d.nodeID, d.nodeMetadata)
+	}
 	//Lnet Setup
 	if setupLnet, ok := req.GetVolumeContext()[SetupLnet]; ok && setupLnet == "true" {
 
@@ -273,7 +273,7 @@ func (d LustreNodeDriver) NodePublishVolume(ctx context.Context, req *csi.NodePu
 		lustreSubnetCIDR, ok := req.GetVolumeContext()[LustreSubnetCidr]
 
 		if !ok {
-			lustreSubnetCIDR = fmt.Sprintf("%s/32", d.nodeID)
+			lustreSubnetCIDR = fmt.Sprintf("%s/32", d.nodeMetadata.NodeInternalIP)
 		}
 
 		err := lnetService.SetupLnet(logger, lustreSubnetCIDR, lnetLabel)
