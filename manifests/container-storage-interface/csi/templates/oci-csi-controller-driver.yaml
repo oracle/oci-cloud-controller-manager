@@ -22,7 +22,7 @@ spec:
         node-role.kubernetes.io/control-plane: ""
       containers:
         - name: csi-volume-provisioner
-          image: registry.k8s.io/sig-storage/csi-provisioner:v5.0.1
+          image: registry.k8s.io/sig-storage/csi-provisioner:v5.2.0
           args:
             - --csi-address=/var/run/shared-tmpfs/csi.sock
             - --volume-name-prefix=csi
@@ -37,7 +37,7 @@ spec:
             - mountPath: /var/run/shared-tmpfs
               name: shared-tmpfs
         - name: csi-fss-volume-provisioner
-          image: registry.k8s.io/sig-storage/csi-provisioner:v5.0.1
+          image: registry.k8s.io/sig-storage/csi-provisioner:v5.2.0
           args:
             - --csi-address=/var/run/shared-tmpfs/csi-fss.sock
             - --volume-name-prefix=csi-fss
@@ -52,7 +52,7 @@ spec:
             - mountPath: /var/run/shared-tmpfs
               name: shared-tmpfs
         - name: csi-lustre-volume-provisioner
-          image: registry.k8s.io/sig-storage/csi-provisioner:v5.0.1
+          image: registry.k8s.io/sig-storage/csi-provisioner:v5.2.0
           args:
             - --csi-address=/var/run/shared-tmpfs/csi-lustre.sock
             - --volume-name-prefix=csi-lustre
@@ -69,7 +69,7 @@ spec:
             - mountPath: /var/run/shared-tmpfs
               name: shared-tmpfs
         - name: csi-attacher
-          image: registry.k8s.io/sig-storage/csi-attacher:v4.6.1
+          image: registry.k8s.io/sig-storage/csi-attacher:v4.8.1
           args:
             - --csi-address=/var/run/shared-tmpfs/csi.sock
             - --timeout=120s
@@ -82,7 +82,7 @@ spec:
             - mountPath: /var/run/shared-tmpfs
               name: shared-tmpfs
         - name: csi-resizer
-          image: registry.k8s.io/sig-storage/csi-resizer:v1.11.1
+          image: registry.k8s.io/sig-storage/csi-resizer:v1.13.2
           args:
             - --csi-address=/var/run/shared-tmpfs/csi.sock
             - --leader-election
@@ -91,7 +91,7 @@ spec:
             - mountPath: /var/run/shared-tmpfs
               name: shared-tmpfs
         - name: snapshot-controller
-          image: registry.k8s.io/sig-storage/snapshot-controller:v6.3.0
+          image: registry.k8s.io/sig-storage/snapshot-controller:v8.3.0
           args:
             - --leader-election
           imagePullPolicy: "IfNotPresent"
@@ -99,7 +99,7 @@ spec:
             - mountPath: /var/run/shared-tmpfs
               name: shared-tmpfs
         - name: csi-snapshotter
-          image: registry.k8s.io/sig-storage/csi-snapshotter:v6.3.0
+          image: registry.k8s.io/sig-storage/csi-snapshotter:v8.3.0
           args:
             - --csi-address=/var/run/shared-tmpfs/csi.sock
             - --leader-election
@@ -114,7 +114,7 @@ spec:
             - --lustre-csi-endpoint=unix://var/run/shared-tmpfs/csi-lustre.sock
           command:
             - /usr/local/bin/oci-csi-controller-driver
-          image: ghcr.io/dhananjay-ng/cloud-provider-oci:v1.33.1-test9
+          image: ghcr.io/dhananjay-ng/cloud-provider-oci:v1.34.0-test
           imagePullPolicy: IfNotPresent
           env:
             - name: BLOCK_VOLUME_DRIVER_NAME
