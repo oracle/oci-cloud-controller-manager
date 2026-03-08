@@ -14,11 +14,13 @@ Copyright 2017 Oracle and/or its affiliates. All rights reserved.
 Copyright 2017 The Kubernetes Authors.
 Copyright 2018 Oracle and/or its affiliates. All rights reserved.
 Copyright 2018 The Kubernetes Authors.
+Copyright 2018-2026 Oracle and/or its affiliates. All rights reserved.
 Copyright 2019 Oracle and/or its affiliates. All rights reserved.
 Copyright 2020 Oracle and/or its affiliates. All rights reserved.
 Copyright 2021 Oracle and/or its affiliates. All rights reserved.
 Copyright 2022 Oracle and/or its affiliates. All rights reserved.
 Copyright 2023 Oracle and/or its affiliates. All rights reserved.
+Copyright 2026 Oracle and/or its affiliates. All rights reserved.
 
 -------------------------- Fourth Party Dependencies ---------------------------
 
@@ -1607,11 +1609,13 @@ SPDX:Apache-2.0
 Copyright 2018 The Kubernetes Authors.
 Copyright 2019 The Kubernetes Authors.
 Copyright 2021 The Kubernetes Authors.
+Copyright 2024 The Kubernetes Authors.
+Copyright 2025 The Kubernetes Authors.
 
 --------------------------------- (separator) ----------------------------------
 
 == Dependency
-github.com/kubernetes-csi/external-snapshotter/client/v6
+github.com/kubernetes-csi/external-snapshotter/client/v8
 
 == License Type
 SPDX:Apache-2.0
@@ -1621,6 +1625,7 @@ Copyright 2018 The Kubernetes Authors.
 Copyright 2019 The Kubernetes Authors.
 Copyright 2020 The Kubernetes Authors.
 Copyright 2023 The Kubernetes Authors.
+Copyright 2024 The Kubernetes Authors.
 
 --------------------------------- (separator) ----------------------------------
 
@@ -2014,7 +2019,6 @@ SPDX:MIT
 
 == Copyright
 Copyright (c) 2013-2014 Onsi Fakhouri
-Copyright (c) 2014 Amit Kumar Gupta
 
 --------------------------------- (separator) ----------------------------------
 
@@ -2162,16 +2166,12 @@ END OF TERMS AND CONDITIONS
 
 
 == Copyright
-Copyright (c) 2012-2020 Mat Ryer, Tyler Bunnell and contributors.
-Copyright (c) 2013 The Go Authors. All rights reserved.
 Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.
 Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.  All rights reserved.
-Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
+Copyright (c) 2016, 2018, 2025, Oracle and/or its affiliates.  All rights reserved.
 Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
 Copyright (c) 2016, 2023 Oracle and/or its affiliates.
 Copyright (c) 2016, 2023, Oracle and/or its affiliates.  All rights reserved.
-Copyright © 2012-2020 Mat Ryer, Tyler Bunnell and contributors.
-Copyright © 2013 The Go Authors. All rights reserved.
 
 == Notices
 Copyright (c) 2016, 2018, 2020, Oracle and/or its affiliates.
@@ -2826,6 +2826,17 @@ Copyright © 2016 Maxim Kupriianov <max@kc.vc>
 --------------------------------- (separator) ----------------------------------
 
 == Dependency
+github.com/youmark/pkcs8
+
+== License Type
+SPDX:MIT
+
+== Copyright
+Copyright (c) 2014 youmark
+
+--------------------------------- (separator) ----------------------------------
+
+== Dependency
 go.etcd.io/etcd/api/v3
 
 == License Type
@@ -3015,7 +3026,6 @@ go.uber.org/zap
 SPDX:MIT
 
 == Copyright
-Copyright (c) "*" Uber Technologies, Inc.")
 Copyright (c) 2016 Uber Technologies, Inc.
 Copyright (c) 2016, 2017 Uber Technologies, Inc.
 Copyright (c) 2016-2017 Uber Technologies, Inc.
@@ -5773,5 +5783,5 @@ the Mozilla Public License, v. 2.0.
 
 
 === ATTRIBUTION-HELPER-GENERATED:
-=== Attribution helper version: {Major:0 Minor:11 GitVersion: GitCommit: GitTreeState:dirty BuildDate:1970-01-01T00:00:00Z GoVersion:go1.19.3 Compiler:gc Platform:darwin/arm64}
-=== License file based on go.mod with md5 sum:  7b015272ffe062302b87ddc9a3701a0e
+=== Attribution helper version: {Major:unknown Minor:unknown GitVersion:unknown GitCommit:unknown GitTreeState:unknown BuildDate:unknown GoVersion:go1.22.3 Compiler:gc Platform:darwin/amd64}
+=== License file based on go.mod with md5 sum:  071de8df14632adcce107dd58a1d2ea0
