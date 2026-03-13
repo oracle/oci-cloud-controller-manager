@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -1235,27 +1236,29 @@ func TestControllerDriver_CreateVolume(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
-			defer cancel()
-			d := &BlockVolumeControllerDriver{ControllerDriver{
-				KubeClient: nil,
-				logger:     zap.S(),
-				config:     &providercfg.Config{CompartmentID: ""},
-				client:     NewClientProvisioner(nil, &MockBlockStorageClient{}, nil),
-				util:       &csi_util.Util{Logger: logging.Logger().Sugar()},
-			}}
-			got, err := d.CreateVolume(ctx, tt.args.req)
-			if tt.wantErr == nil && err != nil {
-				t.Errorf("got error %q, want none", err)
-			}
-			if tt.wantErr != nil && err == nil {
-				t.Errorf("want error %q, got none", tt.wantErr)
-			} else if tt.wantErr != nil && !strings.Contains(err.Error(), tt.wantErr.Error()) {
-				t.Errorf("want error %q to include %q", err, tt.wantErr)
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ControllerDriver.CreateVolume() = %v, want %v", got, tt.want)
-			}
+			synctest.Test(t, func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+				defer cancel()
+				d := &BlockVolumeControllerDriver{ControllerDriver{
+					KubeClient: nil,
+					logger:     zap.S(),
+					config:     &providercfg.Config{CompartmentID: ""},
+					client:     NewClientProvisioner(nil, &MockBlockStorageClient{}, nil),
+					util:       &csi_util.Util{Logger: logging.Logger().Sugar()},
+				}}
+				got, err := d.CreateVolume(ctx, tt.args.req)
+				if tt.wantErr == nil && err != nil {
+					t.Errorf("got error %q, want none", err)
+				}
+				if tt.wantErr != nil && err == nil {
+					t.Errorf("want error %q, got none", tt.wantErr)
+				} else if tt.wantErr != nil && !strings.Contains(err.Error(), tt.wantErr.Error()) {
+					t.Errorf("want error %q to include %q", err, tt.wantErr)
+				}
+				if !reflect.DeepEqual(got, tt.want) {
+					t.Errorf("ControllerDriver.CreateVolume() = %v, want %v", got, tt.want)
+				}
+			})
 		})
 	}
 }
@@ -1405,29 +1408,31 @@ func TestControllerDriver_ControllerPublishVolume(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
-			defer cancel()
-			d := &BlockVolumeControllerDriver{ControllerDriver{
-				KubeClient: &util.MockKubeClient{
-					CoreClient: &util.MockCoreClient{},
-				},
-				logger: zap.S(),
-				config: &providercfg.Config{CompartmentID: ""},
-				client: NewClientProvisioner(nil, &MockBlockStorageClient{}, nil),
-				util:   &csi_util.Util{Logger: logging.Logger().Sugar()},
-			}}
-			got, err := d.ControllerPublishVolume(ctx, tt.args.req)
-			if tt.wantErr == nil && err != nil {
-				t.Errorf("got error %q, want none", err)
-			}
-			if tt.wantErr != nil && err == nil {
-				t.Errorf("want error %q, got none", tt.wantErr)
-			} else if tt.wantErr != nil && !strings.Contains(err.Error(), tt.wantErr.Error()) {
-				t.Errorf("want error %q to include %q", err, tt.wantErr)
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ControllerDriver.ControllerPublish() = %v, want %v", got, tt.want)
-			}
+			synctest.Test(t, func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+				defer cancel()
+				d := &BlockVolumeControllerDriver{ControllerDriver{
+					KubeClient: &util.MockKubeClient{
+						CoreClient: &util.MockCoreClient{},
+					},
+					logger: zap.S(),
+					config: &providercfg.Config{CompartmentID: ""},
+					client: NewClientProvisioner(nil, &MockBlockStorageClient{}, nil),
+					util:   &csi_util.Util{Logger: logging.Logger().Sugar()},
+				}}
+				got, err := d.ControllerPublishVolume(ctx, tt.args.req)
+				if tt.wantErr == nil && err != nil {
+					t.Errorf("got error %q, want none", err)
+				}
+				if tt.wantErr != nil && err == nil {
+					t.Errorf("want error %q, got none", tt.wantErr)
+				} else if tt.wantErr != nil && !strings.Contains(err.Error(), tt.wantErr.Error()) {
+					t.Errorf("want error %q to include %q", err, tt.wantErr)
+				}
+				if !reflect.DeepEqual(got, tt.want) {
+					t.Errorf("ControllerDriver.ControllerPublish() = %v, want %v", got, tt.want)
+				}
+			})
 		})
 	}
 }
@@ -1479,29 +1484,31 @@ func TestControllerDriver_ControllerUnpublishVolume(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
-			defer cancel()
-			d := &BlockVolumeControllerDriver{ControllerDriver{
-				KubeClient: &util.MockKubeClient{
-					CoreClient: &util.MockCoreClient{},
-				},
-				logger: zap.S(),
-				config: &providercfg.Config{CompartmentID: ""},
-				client: NewClientProvisioner(nil, &MockBlockStorageClient{}, nil),
-				util:   &csi_util.Util{Logger: logging.Logger().Sugar()},
-			}}
-			got, err := d.ControllerUnpublishVolume(ctx, tt.args.req)
-			if tt.wantErr == nil && err != nil {
-				t.Errorf("got error %q, want none", err)
-			}
-			if tt.wantErr != nil && err == nil {
-				t.Errorf("want error %q, got none", tt.wantErr)
-			} else if tt.wantErr != nil && !strings.Contains(err.Error(), tt.wantErr.Error()) {
-				t.Errorf("want error %q to include %q", err, tt.wantErr)
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ControllerDriver.ControllerUnpublish() = %v, want %v", got, tt.want)
-			}
+			synctest.Test(t, func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+				defer cancel()
+				d := &BlockVolumeControllerDriver{ControllerDriver{
+					KubeClient: &util.MockKubeClient{
+						CoreClient: &util.MockCoreClient{},
+					},
+					logger: zap.S(),
+					config: &providercfg.Config{CompartmentID: ""},
+					client: NewClientProvisioner(nil, &MockBlockStorageClient{}, nil),
+					util:   &csi_util.Util{Logger: logging.Logger().Sugar()},
+				}}
+				got, err := d.ControllerUnpublishVolume(ctx, tt.args.req)
+				if tt.wantErr == nil && err != nil {
+					t.Errorf("got error %q, want none", err)
+				}
+				if tt.wantErr != nil && err == nil {
+					t.Errorf("want error %q, got none", tt.wantErr)
+				} else if tt.wantErr != nil && !strings.Contains(err.Error(), tt.wantErr.Error()) {
+					t.Errorf("want error %q to include %q", err, tt.wantErr)
+				}
+				if !reflect.DeepEqual(got, tt.want) {
+					t.Errorf("ControllerDriver.ControllerUnpublish() = %v, want %v", got, tt.want)
+				}
+			})
 		})
 	}
 }
