@@ -239,6 +239,14 @@ func (c *mockVirtualNetworkClient) CreatePrivateIp(ctx context.Context, request 
 	return core.CreatePrivateIpResponse{}, nil
 }
 
+func (c *mockVirtualNetworkClient) ListIpv6s(ctx context.Context, request core.ListIpv6sRequest) (response core.ListIpv6sResponse, err error) {
+	return core.ListIpv6sResponse{}, nil
+}
+
+func (c *mockVirtualNetworkClient) CreateIpv6(ctx context.Context, request core.CreateIpv6Request) (response core.CreateIpv6Response, err error) {
+	return core.CreateIpv6Response{}, nil
+}
+
 func (c *mockVirtualNetworkClient) GetIpv6(ctx context.Context, request core.GetIpv6Request) (response core.GetIpv6Response, err error) {
 	return core.GetIpv6Response{}, nil
 }

@@ -191,6 +191,14 @@ func (cp *CloudProvider) Initialize(clientBuilder cloudprovider.ControllerClient
 		cp.logger,
 		cp.instanceCache,
 		cp.client)
+	flexCIDRController := NewFlexCIDRController(
+		factory.Core().V1().Nodes(),
+		factory.Core().V1().Services(),
+		cp.kubeclient,
+		cp,
+		cp.logger,
+		cp.instanceCache,
+		cp.client)
 
 	nodeInformer := factory.Core().V1().Nodes()
 	go nodeInformer.Informer().Run(wait.NeverStop)
@@ -202,6 +210,7 @@ func (cp *CloudProvider) Initialize(clientBuilder cloudprovider.ControllerClient
 	go serviceAccountInformer.Informer().Run(wait.NeverStop)
 
 	go nodeInfoController.Run(wait.NeverStop)
+	go flexCIDRController.Run(wait.NeverStop)
 
 	// If the cluster is type OpenShift then the Tagging Controller
 	// should be enabled.

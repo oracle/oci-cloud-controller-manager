@@ -41,7 +41,11 @@ type NetworkingInterface interface {
 	ListPrivateIps(ctx context.Context, vnicId string) ([]core.PrivateIp, error)
 	GetPrivateIp(ctx context.Context, id string) (*core.PrivateIp, error)
 	CreatePrivateIp(ctx context.Context, vnicID string) (*core.PrivateIp, error)
+	CreatePrivateIpWithRequest(ctx context.Context, request core.CreatePrivateIpRequest) (core.PrivateIp, error)
 	GetIpv6(ctx context.Context, id string) (*core.Ipv6, error)
+	ListIpv6s(ctx context.Context, vnicId string) ([]core.Ipv6, error)
+	CreateIpv6(ctx context.Context, vnicID string) (*core.Ipv6, error)
+	CreateIpv6WithRequest(ctx context.Context, request core.CreateIpv6Request) (core.Ipv6, error)
 
 	GetPublicIpByIpAddress(ctx context.Context, id string) (*core.PublicIp, error)
 
@@ -301,23 +305,31 @@ func (c *client) ListPrivateIps(ctx context.Context, vnicId string) ([]core.Priv
 }
 
 func (c *client) CreatePrivateIp(ctx context.Context, vnicId string) (*core.PrivateIp, error) {
-	if !c.rateLimiter.Writer.TryAccept() {
-		return nil, RateLimitError(false, "CreatePrivateIp")
-	}
-	requestMetadata := getDefaultRequestMetadata(c.requestMetadata)
-	resp, err := c.network.CreatePrivateIp(ctx, core.CreatePrivateIpRequest{
+	privateIP, err := c.CreatePrivateIpWithRequest(ctx, core.CreatePrivateIpRequest{
 		CreatePrivateIpDetails: core.CreatePrivateIpDetails{
 			VnicId: &vnicId,
 		},
-		RequestMetadata: requestMetadata,
 	})
+	if err != nil {
+		return nil, err
+	}
+	return &privateIP, nil
+}
+
+func (c *client) CreatePrivateIpWithRequest(ctx context.Context, request core.CreatePrivateIpRequest) (core.PrivateIp, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return core.PrivateIp{}, RateLimitError(false, "CreatePrivateIp")
+	}
+	requestMetadata := getDefaultRequestMetadata(c.requestMetadata)
+	request.RequestMetadata = requestMetadata
+	resp, err := c.network.CreatePrivateIp(ctx, request)
 	incRequestCounter(err, createVerb, privateIPResource)
 	if err != nil {
-		c.logger.With(vnicId).Infof("CreatePrivateIp failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
-		return nil, errors.WithStack(err)
+		c.logger.Infof("CreatePrivateIp failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		return core.PrivateIp{}, errors.WithStack(err)
 	}
 
-	return &resp.PrivateIp, nil
+	return resp.PrivateIp, nil
 }
 
 func (c *client) GetIpv6(ctx context.Context, id string) (*core.Ipv6, error) {
@@ -341,6 +353,60 @@ func (c *client) GetIpv6(ctx context.Context, id string) (*core.Ipv6, error) {
 	}
 
 	return &resp.Ipv6, nil
+}
+
+func (c *client) ListIpv6s(ctx context.Context, vnicId string) ([]core.Ipv6, error) {
+	var page *string
+	ipv6s := []core.Ipv6{}
+	for {
+		if !c.rateLimiter.Reader.TryAccept() {
+			return nil, RateLimitError(false, "ListIpv6s")
+		}
+		resp, err := c.network.ListIpv6s(ctx, core.ListIpv6sRequest{
+			VnicId:          &vnicId,
+			Page:            page,
+			RequestMetadata: c.requestMetadata,
+		})
+		incRequestCounter(err, listVerb, ipv6IPResource)
+		if err != nil {
+			c.logger.With(vnicId).Infof("ListIpv6s failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+			return nil, errors.WithStack(err)
+		}
+		ipv6s = append(ipv6s, resp.Items...)
+		if page = resp.OpcNextPage; page == nil {
+			break
+		}
+	}
+
+	return ipv6s, nil
+}
+
+func (c *client) CreateIpv6(ctx context.Context, vnicId string) (*core.Ipv6, error) {
+	ipv6, err := c.CreateIpv6WithRequest(ctx, core.CreateIpv6Request{
+		CreateIpv6Details: core.CreateIpv6Details{
+			VnicId: &vnicId,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &ipv6, nil
+}
+
+func (c *client) CreateIpv6WithRequest(ctx context.Context, request core.CreateIpv6Request) (core.Ipv6, error) {
+	if !c.rateLimiter.Writer.TryAccept() {
+		return core.Ipv6{}, RateLimitError(false, "CreateIpv6")
+	}
+	requestMetadata := getDefaultRequestMetadata(c.requestMetadata)
+	request.RequestMetadata = requestMetadata
+	resp, err := c.network.CreateIpv6(ctx, request)
+	incRequestCounter(err, createVerb, ipv6IPResource)
+	if err != nil {
+		c.logger.Infof("CreateIpv6 failed %s", pointer.StringDeref(resp.OpcRequestId, ""))
+		return core.Ipv6{}, errors.WithStack(err)
+	}
+
+	return resp.Ipv6, nil
 }
 
 func (c *client) CreateNetworkSecurityGroup(ctx context.Context, compartmentId, vcnId, displayName, serviceUid string) (*core.NetworkSecurityGroup, error) {
