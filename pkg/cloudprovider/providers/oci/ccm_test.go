@@ -203,3 +203,21 @@ func TestParseOpenShiftLabelSelectorInvalid(t *testing.T) {
 		t.Fatalf("expected error for missing key and value")
 	}
 }
+
+func TestEnableFlexCIDRControllerEnv(t *testing.T) {
+	logger := zap.NewNop().Sugar()
+
+	t.Run("defaults to enabled", func(t *testing.T) {
+		t.Setenv(enableFlexCIDRController, "")
+		if got := GetIsFeatureEnabledFromEnv(logger, enableFlexCIDRController, false); got {
+			t.Fatalf("GetIsFeatureEnabledFromEnv(%q) = %v, want false", enableFlexCIDRController, got)
+		}
+	})
+
+	t.Run("can be enabled explicitly", func(t *testing.T) {
+		t.Setenv(enableFlexCIDRController, "true")
+		if got := GetIsFeatureEnabledFromEnv(logger, enableFlexCIDRController, false); !got {
+			t.Fatalf("GetIsFeatureEnabledFromEnv(%q) = %v, want true", enableFlexCIDRController, got)
+		}
+	})
+}

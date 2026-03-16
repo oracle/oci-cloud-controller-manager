@@ -88,6 +88,8 @@ type virtualNetworkClient interface {
 	GetPrivateIp(ctx context.Context, request core.GetPrivateIpRequest) (response core.GetPrivateIpResponse, err error)
 	ListPrivateIps(ctx context.Context, request core.ListPrivateIpsRequest) (response core.ListPrivateIpsResponse, err error)
 	CreatePrivateIp(ctx context.Context, request core.CreatePrivateIpRequest) (response core.CreatePrivateIpResponse, err error)
+	ListIpv6s(ctx context.Context, request core.ListIpv6sRequest) (response core.ListIpv6sResponse, err error)
+	CreateIpv6(ctx context.Context, request core.CreateIpv6Request) (response core.CreateIpv6Response, err error)
 
 	GetPublicIpByIpAddress(ctx context.Context, request core.GetPublicIpByIpAddressRequest) (response core.GetPublicIpByIpAddressResponse, err error)
 	GetIpv6(ctx context.Context, request core.GetIpv6Request) (response core.GetIpv6Response, err error)
@@ -193,7 +195,7 @@ type client struct {
 	bs                  blockstorageClient
 	identity            identityClient
 	//compartment 		compartmentClient
-	lustre              lustrefilestorage.LustreFileStorageClient
+	lustre lustrefilestorage.LustreFileStorageClient
 
 	requestMetadata common.RequestMetadata
 	rateLimiter     RateLimiter
@@ -311,7 +313,7 @@ func New(logger *zap.SugaredLogger, cp common.ConfigurationProvider, opRateLimit
 		bs:                  &bs,
 		filestorage:         &fss,
 		//compartment:     	 &compartment,
-		lustre:              lustreClient,
+		lustre:          lustreClient,
 		rateLimiter:     *opRateLimiter,
 		requestMetadata: requestMetadata,
 

@@ -1,13 +1,17 @@
 package client
 
 import (
+	"context"
+	"net/http"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/core"
+	"go.uber.org/zap"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/flowcontrol"
 )
 
 var (
@@ -138,5 +142,126 @@ func Test_client_GetSubnetFromCacheByIP(t *testing.T) {
 				t.Errorf("GetSubnetFromCacheByIP() got = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+type retryingVirtualNetworkClient struct {
+	mockVirtualNetworkClient
+
+	createPrivateIpCalls int
+	createIpv6Calls      int
+}
+
+func (c *retryingVirtualNetworkClient) CreatePrivateIp(ctx context.Context, request core.CreatePrivateIpRequest) (core.CreatePrivateIpResponse, error) {
+	c.createPrivateIpCalls++
+	if c.createPrivateIpCalls == 1 {
+		return core.CreatePrivateIpResponse{}, mockServiceError{
+			StatusCode: http.StatusTooManyRequests,
+			Code:       HTTP429TooManyRequestsCode,
+			Message:    "rate limited",
+		}
+	}
+
+	return core.CreatePrivateIpResponse{
+		PrivateIp: core.PrivateIp{
+			Id: common.String("private-ip-id"),
+		},
+	}, nil
+}
+
+func (c *retryingVirtualNetworkClient) CreateIpv6(ctx context.Context, request core.CreateIpv6Request) (core.CreateIpv6Response, error) {
+	c.createIpv6Calls++
+	if c.createIpv6Calls == 1 {
+		return core.CreateIpv6Response{}, mockServiceError{
+			StatusCode: http.StatusTooManyRequests,
+			Code:       HTTP429TooManyRequestsCode,
+			Message:    "rate limited",
+		}
+	}
+
+	return core.CreateIpv6Response{
+		Ipv6: core.Ipv6{
+			Id: common.String("ipv6-id"),
+		},
+	}, nil
+}
+
+func TestCreatePrivateIpWithRequestRetriesRateLimit(t *testing.T) {
+	originalMaxAttempts := rateLimitRetryMaxAttempts
+	originalNextDuration := rateLimitRetryNextDuration
+	rateLimitRetryMaxAttempts = 2
+	rateLimitRetryNextDuration = func(attempt uint) time.Duration { return 0 }
+	defer func() {
+		rateLimitRetryMaxAttempts = originalMaxAttempts
+		rateLimitRetryNextDuration = originalNextDuration
+	}()
+
+	network := &retryingVirtualNetworkClient{}
+	c := &client{
+		network: network,
+		logger:  zap.NewNop().Sugar(),
+		rateLimiter: RateLimiter{
+			Reader: flowcontrol.NewFakeAlwaysRateLimiter(),
+			Writer: flowcontrol.NewFakeAlwaysRateLimiter(),
+		},
+	}
+
+	privateIP, err := c.CreatePrivateIpWithRequest(context.Background(), core.CreatePrivateIpRequest{
+		CreatePrivateIpDetails: core.CreatePrivateIpDetails{
+			VnicId: common.String("vnic-id"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreatePrivateIpWithRequest() error = %v", err)
+	}
+	if network.createPrivateIpCalls != 2 {
+		t.Fatalf("CreatePrivateIpWithRequest() calls = %d, want 2", network.createPrivateIpCalls)
+	}
+	if privateIP.Id == nil || *privateIP.Id != "private-ip-id" {
+		got := "<nil>"
+		if privateIP.Id != nil {
+			got = *privateIP.Id
+		}
+		t.Fatalf("CreatePrivateIpWithRequest() private IP id = %q, want %q", got, "private-ip-id")
+	}
+}
+
+func TestCreateIpv6WithRequestRetriesRateLimit(t *testing.T) {
+	originalMaxAttempts := rateLimitRetryMaxAttempts
+	originalNextDuration := rateLimitRetryNextDuration
+	rateLimitRetryMaxAttempts = 2
+	rateLimitRetryNextDuration = func(attempt uint) time.Duration { return 0 }
+	defer func() {
+		rateLimitRetryMaxAttempts = originalMaxAttempts
+		rateLimitRetryNextDuration = originalNextDuration
+	}()
+
+	network := &retryingVirtualNetworkClient{}
+	c := &client{
+		network: network,
+		logger:  zap.NewNop().Sugar(),
+		rateLimiter: RateLimiter{
+			Reader: flowcontrol.NewFakeAlwaysRateLimiter(),
+			Writer: flowcontrol.NewFakeAlwaysRateLimiter(),
+		},
+	}
+
+	ipv6, err := c.CreateIpv6WithRequest(context.Background(), core.CreateIpv6Request{
+		CreateIpv6Details: core.CreateIpv6Details{
+			VnicId: common.String("vnic-id"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateIpv6WithRequest() error = %v", err)
+	}
+	if network.createIpv6Calls != 2 {
+		t.Fatalf("CreateIpv6WithRequest() calls = %d, want 2", network.createIpv6Calls)
+	}
+	if ipv6.Id == nil || *ipv6.Id != "ipv6-id" {
+		got := "<nil>"
+		if ipv6.Id != nil {
+			got = *ipv6.Id
+		}
+		t.Fatalf("CreateIpv6WithRequest() IPv6 id = %q, want %q", got, "ipv6-id")
 	}
 }
