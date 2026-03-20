@@ -129,7 +129,7 @@ spec:
               value: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/host/usr/bin:/host/sbin
             - name: LUSTRE_DRIVER_ENABLED
               value: "true"
-          image: ghcr.io/dhananjay-ng/cloud-provider-oci:v1.33.1-test9
+          image: ghcr.io/oracle/cloud-provider-oci:v1.33.1
           securityContext:
             privileged: true
           volumeMounts:
