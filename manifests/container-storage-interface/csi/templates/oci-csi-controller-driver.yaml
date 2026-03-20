@@ -114,7 +114,7 @@ spec:
             - --lustre-csi-endpoint=unix://var/run/shared-tmpfs/csi-lustre.sock
           command:
             - /usr/local/bin/oci-csi-controller-driver
-          image: ghcr.io/dhananjay-ng/cloud-provider-oci:v1.32.2-test-2
+          image: ghcr.io/oracle/cloud-provider-oci:v1.32.2
           imagePullPolicy: IfNotPresent
           env:
             - name: BLOCK_VOLUME_DRIVER_NAME

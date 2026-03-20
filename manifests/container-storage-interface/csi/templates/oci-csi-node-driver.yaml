@@ -135,7 +135,7 @@ spec:
               value: "{{ if .Values.customHandle }}{{ .Values.customHandle }}.{{ end }}fss.csi.oraclecloud.com"
             - name: LUSTRE_VOLUME_DRIVER_NAME
               value: "{{ if .Values.customHandle }}{{ .Values.customHandle }}.{{ end }}lustre.csi.oraclecloud.com"
-          image: ghcr.io/dhananjay-ng/cloud-provider-oci:v1.32.2-test-2
+          image: ghcr.io/oracle/cloud-provider-oci:v1.32.2
           securityContext:
             privileged: true
           volumeMounts:
