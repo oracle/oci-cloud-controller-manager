@@ -2,12 +2,19 @@ package util
 
 import (
 	"context"
+	"time"
 
 	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/core"
 	"github.com/oracle/oci-go-sdk/v65/filestorage"
 	lustre "github.com/oracle/oci-go-sdk/v65/lustrefilestorage"
 )
+
+// mockPollInterval is the fake-time interval used by pagination mocks that
+// simulate an infinite page stream until context cancellation. It must be
+// smaller than testTimeout so the context expires after a few iterations when
+// running inside a testing/synctest bubble.
+const mockPollInterval = 5 * time.Second
 
 type MockOCIBlockStorageClient struct {
 	client core.BlockstorageClient
@@ -28,10 +35,9 @@ type MockOCILustreFileStorageClient struct {
 func (c MockOCIFileStorageClient) ListMountTargets(ctx context.Context, request filestorage.ListMountTargetsRequest) (response filestorage.ListMountTargetsResponse, err error) {
 	if *request.DisplayName == "mount-target-idempotency-check-timeout-volume" {
 		select {
-		// from retry.go
 		case <-ctx.Done():
 			return response, ctx.Err()
-		default:
+		case <-time.After(mockPollInterval):
 			return filestorage.ListMountTargetsResponse{
 				Items: []filestorage.MountTargetSummary{
 					{
@@ -48,10 +54,9 @@ func (c MockOCIFileStorageClient) ListMountTargets(ctx context.Context, request 
 func (c MockOCIFileStorageClient) ListFileSystems(ctx context.Context, request filestorage.ListFileSystemsRequest) (response filestorage.ListFileSystemsResponse, err error) {
 	if *request.DisplayName == "file-system-idempotency-check-timeout-volume" {
 		select {
-		// from retry.go
 		case <-ctx.Done():
 			return response, ctx.Err()
-		default:
+		case <-time.After(mockPollInterval):
 			return filestorage.ListFileSystemsResponse{
 				Items: []filestorage.FileSystemSummary{
 					{
@@ -68,10 +73,9 @@ func (c MockOCIFileStorageClient) ListFileSystems(ctx context.Context, request f
 func (c MockOCIFileStorageClient) ListExports(ctx context.Context, request filestorage.ListExportsRequest) (response filestorage.ListExportsResponse, err error) {
 	if *request.FileSystemId == "export-idempotency-check-timeout" {
 		select {
-		// from retry.go
 		case <-ctx.Done():
 			return response, ctx.Err()
-		default:
+		case <-time.After(mockPollInterval):
 			return filestorage.ListExportsResponse{
 				Items:       []filestorage.ExportSummary{},
 				OpcNextPage: common.String("a"),
@@ -84,10 +88,9 @@ func (c MockOCIFileStorageClient) ListExports(ctx context.Context, request files
 func (c MockOCIComputeClient) ListVolumeAttachments(ctx context.Context, request core.ListVolumeAttachmentsRequest) (response core.ListVolumeAttachmentsResponse, err error) {
 	if *request.VolumeId == "find-active-volume-attachment-timeout-volume" || *request.VolumeId == "find-volume-attachment-timeout" {
 		select {
-		// from retry.go
 		case <-ctx.Done():
 			return response, ctx.Err()
-		default:
+		case <-time.After(mockPollInterval):
 			return core.ListVolumeAttachmentsResponse{
 				Items: []core.VolumeAttachment{
 					core.IScsiVolumeAttachment{
@@ -122,10 +125,9 @@ func (c MockOCIComputeClient) GetVolumeAttachment(ctx context.Context, request c
 func (c *MockOCIBlockStorageClient) ListVolumes(ctx context.Context, request core.ListVolumesRequest) (response core.ListVolumesResponse, err error) {
 	if *request.DisplayName == "get-volumes-by-name-timeout-volume" {
 		select {
-		// from retry.go
 		case <-ctx.Done():
 			return response, ctx.Err()
-		default:
+		case <-time.After(mockPollInterval):
 			return core.ListVolumesResponse{
 				Items: []core.Volume{
 					{

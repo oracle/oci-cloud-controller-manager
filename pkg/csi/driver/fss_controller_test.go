@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -751,28 +752,30 @@ func TestFSSControllerDriver_CreateVolume(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
-		defer cancel()
 		t.Run(tt.name, func(t *testing.T) {
-			d := &FSSControllerDriver{ControllerDriver: ControllerDriver{
-				KubeClient: nil,
-				logger:     zap.S(),
-				config:     &providercfg.Config{CompartmentID: "", Auth: config.AuthConfig{TenancyID: tt.args.tenancyId}},
-				client:     NewClientProvisioner(nil, nil, &MockFileStorageClient{}),
-				util:       &csi_util.Util{},
-			}}
-			got, err := d.CreateVolume(ctx, tt.args.req)
-			if tt.wantErr == nil && err != nil {
-				t.Errorf("got error %q, want none", err)
-			}
-			if tt.wantErr != nil && err == nil {
-				t.Errorf("want error %q, got none", tt.wantErr)
-			} else if tt.wantErr != nil && !strings.Contains(err.Error(), tt.wantErr.Error()) {
-				t.Errorf("want error %q to include %q", err, tt.wantErr)
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ControllerDriver.CreateVolume() = %v, want %v", got, tt.want)
-			}
+			synctest.Test(t, func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+				defer cancel()
+				d := &FSSControllerDriver{ControllerDriver: ControllerDriver{
+					KubeClient: nil,
+					logger:     zap.S(),
+					config:     &providercfg.Config{CompartmentID: "", Auth: config.AuthConfig{TenancyID: tt.args.tenancyId}},
+					client:     NewClientProvisioner(nil, nil, &MockFileStorageClient{}),
+					util:       &csi_util.Util{},
+				}}
+				got, err := d.CreateVolume(ctx, tt.args.req)
+				if tt.wantErr == nil && err != nil {
+					t.Errorf("got error %q, want none", err)
+				}
+				if tt.wantErr != nil && err == nil {
+					t.Errorf("want error %q, got none", tt.wantErr)
+				} else if tt.wantErr != nil && !strings.Contains(err.Error(), tt.wantErr.Error()) {
+					t.Errorf("want error %q to include %q", err, tt.wantErr)
+				}
+				if !reflect.DeepEqual(got, tt.want) {
+					t.Errorf("ControllerDriver.CreateVolume() = %v, want %v", got, tt.want)
+				}
+			})
 		})
 	}
 }
