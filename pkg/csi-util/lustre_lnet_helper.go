@@ -42,7 +42,8 @@ type Parameter map[string]interface{}
 /*
 ValidateLustreVolumeId takes lustreVolumeId as input and returns if its valid or not along with lnetLabel
 Ex. volume handle :  10.112.10.6@tcp1:/fsname
- volume handle : <MGS NID>[:<MGS NID>]:/<fsname>
+
+	volume handle : <MGS NID>[:<MGS NID>]:/<fsname>
 */
 func ValidateLustreVolumeId(lusterVolumeId string) (bool, string) {
 	const minNumOfParamsFromVolumeHandle = 2
@@ -91,9 +92,9 @@ type LnetService struct {
 
 type OCILnetConfigurator struct{}
 
-func NewLnetService() *LnetService{
+func NewLnetService() *LnetService {
 	return &LnetService{
-		Configurator:  &OCILnetConfigurator{},
+		Configurator: &OCILnetConfigurator{},
 	}
 }
 
@@ -331,7 +332,7 @@ func (ls *LnetService) IsLnetActive(logger *zap.SugaredLogger, lnetLabel string)
 }
 
 func (olc *OCILnetConfigurator) ExecuteCommandOnWorkerNode(args ...string) (string, error) {
-	
+
 	command := exec.Command("chroot-bash", args...)
 
 	output, err := command.CombinedOutput()
@@ -374,7 +375,7 @@ func isValidShellInput(input string) bool {
 		return false
 	}
 	// List of forbidden characters
-	forbiddenChars := []string{";", "&", "|", "<", ">", "(", ")", "`", "'", "\"","$","!"}
+	forbiddenChars := []string{";", "&", "|", "<", ">", "(", ")", "`", "'", "\"", "$", "!"}
 	for _, char := range forbiddenChars {
 		if strings.Contains(input, char) {
 			return false
@@ -382,7 +383,7 @@ func isValidShellInput(input string) bool {
 	}
 	return true
 }
-func  ValidateLustreParameters(logger *zap.SugaredLogger, lustreParamsJson string) error {
+func ValidateLustreParameters(logger *zap.SugaredLogger, lustreParamsJson string) error {
 	if lustreParamsJson == "" {
 		logger.Debug("No lustre parameters specified.")
 		return nil
@@ -401,7 +402,7 @@ func  ValidateLustreParameters(logger *zap.SugaredLogger, lustreParamsJson strin
 		for key, value := range param {
 			logger.Infof("Validating lustre param %s=%s", key, fmt.Sprintf("%v", value))
 			if !isValidShellInput(key) || !isValidShellInput(fmt.Sprintf("%v", value)) {
-				invalidParams = append(invalidParams, fmt.Sprintf("%v=%v",key, value))
+				invalidParams = append(invalidParams, fmt.Sprintf("%v=%v", key, value))
 			}
 		}
 	}
@@ -411,4 +412,3 @@ func  ValidateLustreParameters(logger *zap.SugaredLogger, lustreParamsJson strin
 	logger.Infof("Successfully validated lustre parameters.")
 	return nil
 }
-

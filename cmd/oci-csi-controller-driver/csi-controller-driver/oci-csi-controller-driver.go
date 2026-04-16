@@ -24,8 +24,8 @@ import (
 )
 
 const (
-	bvCsiDriver      = "BV"
-	lustreCsiDriver  = "Lustre"
+	bvCsiDriver     = "BV"
+	lustreCsiDriver = "Lustre"
 )
 
 // StartControllerDriver main function to start CSI Controller Driver

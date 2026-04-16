@@ -130,10 +130,10 @@ func Test_alreadyDeletedPathCheck(t *testing.T) {
 
 // mockMounter implements Interface.
 type mockMounter struct {
-	runner  exec.Interface
-	mounter mount.Interface
-	logger  *zap.SugaredLogger
-	devicePathExistWaitError error
+	runner                    exec.Interface
+	mounter                   mount.Interface
+	logger                    *zap.SugaredLogger
+	devicePathExistWaitError  error
 	ISCSILogoutOnFailureError error
 }
 
@@ -246,7 +246,7 @@ func TestNodeStageVolume(t *testing.T) {
 	multiPathDevicesJson, err = json.Marshal([]core.MultipathDevice{
 		{
 			Ipv4: common.String("1.2.3.4"),
-			Iqn: common.String("iqn.2016-09.com.oraclecloud"),
+			Iqn:  common.String("iqn.2016-09.com.oraclecloud"),
 			Port: common.Int(3034),
 		},
 	})
@@ -256,14 +256,14 @@ func TestNodeStageVolume(t *testing.T) {
 	multipathDevicesString := string(multiPathDevicesJson)
 
 	testCases := []struct {
-		name         string
-		req          *csi.NodeStageVolumeRequest
-		setup  		 func(m *mockMounter)
-		expectedErr  error
+		name        string
+		req         *csi.NodeStageVolumeRequest
+		setup       func(m *mockMounter)
+		expectedErr error
 	}{
 		{
-			name: "Volume ID not present",
-			req: &csi.NodeStageVolumeRequest{},
+			name:        "Volume ID not present",
+			req:         &csi.NodeStageVolumeRequest{},
 			expectedErr: status.Error(codes.InvalidArgument, "Volume ID must be provided"),
 		},
 		{
@@ -276,17 +276,16 @@ func TestNodeStageVolume(t *testing.T) {
 		{
 			name: "Staging path not present",
 			req: &csi.NodeStageVolumeRequest{
-				VolumeId: "ocid.abcd",
+				VolumeId:       "ocid.abcd",
 				PublishContext: map[string]string{"attach-type": "iscsi"},
-
 			},
 			expectedErr: status.Error(codes.InvalidArgument, "Staging Target Path must be provided"),
 		},
 		{
 			name: "Volume Capability not present",
 			req: &csi.NodeStageVolumeRequest{
-				VolumeId: "ocid.abcd",
-				PublishContext: map[string]string{"attach-type": "iscsi"},
+				VolumeId:          "ocid.abcd",
+				PublishContext:    map[string]string{"attach-type": "iscsi"},
 				StagingTargetPath: "/staging-path",
 			},
 			expectedErr: status.Error(codes.InvalidArgument, "Volume Capability must be provided"),
@@ -294,8 +293,8 @@ func TestNodeStageVolume(t *testing.T) {
 		{
 			name: "Wrong value for multipath enabled",
 			req: &csi.NodeStageVolumeRequest{
-				VolumeId: "ocid.abcd",
-				PublishContext: map[string]string{multipathEnabled: "yes"},
+				VolumeId:          "ocid.abcd",
+				PublishContext:    map[string]string{multipathEnabled: "yes"},
 				StagingTargetPath: "/staging-path",
 				VolumeCapability: &csi.VolumeCapability{
 					AccessMode: &csi.VolumeCapability_AccessMode{
@@ -308,8 +307,8 @@ func TestNodeStageVolume(t *testing.T) {
 		{
 			name: "UHP - Invalid multipath device list",
 			req: &csi.NodeStageVolumeRequest{
-				VolumeId: "ocid.abcd",
-				PublishContext: map[string]string{multipathEnabled: "true", multipathDevices: "Not a valid device list"},
+				VolumeId:          "ocid.abcd",
+				PublishContext:    map[string]string{multipathEnabled: "true", multipathDevices: "Not a valid device list"},
 				StagingTargetPath: "/staging-path",
 				VolumeCapability: &csi.VolumeCapability{
 					AccessMode: &csi.VolumeCapability_AccessMode{
@@ -337,8 +336,8 @@ func TestNodeStageVolume(t *testing.T) {
 		{
 			name: "ISCSI - Information missing in publish context",
 			req: &csi.NodeStageVolumeRequest{
-				VolumeId: "ocid.abcd",
-				PublishContext: map[string]string{disk.ISCSIPORT: "3043", disk.ISCSIIP: "1.2.3.4"},
+				VolumeId:          "ocid.abcd",
+				PublishContext:    map[string]string{disk.ISCSIPORT: "3043", disk.ISCSIIP: "1.2.3.4"},
 				StagingTargetPath: "/staging-path",
 				VolumeCapability: &csi.VolumeCapability{
 					AccessMode: &csi.VolumeCapability_AccessMode{
@@ -351,8 +350,8 @@ func TestNodeStageVolume(t *testing.T) {
 		{
 			name: "ISCSI - Error getting target IP in IPv6 single stack cluster",
 			req: &csi.NodeStageVolumeRequest{
-				VolumeId: "ocid.abcd",
-				PublishContext: map[string]string{disk.ISCSIPORT: "3043", disk.ISCSIIP: "fd00:c1::a9fe:a9fe", disk.ISCSIIQN: "iqn.2016-09.com.oraclecloud"},
+				VolumeId:          "ocid.abcd",
+				PublishContext:    map[string]string{disk.ISCSIPORT: "3043", disk.ISCSIIP: "fd00:c1::a9fe:a9fe", disk.ISCSIIQN: "iqn.2016-09.com.oraclecloud"},
 				StagingTargetPath: "/staging-path",
 				VolumeCapability: &csi.VolumeCapability{
 					AccessMode: &csi.VolumeCapability_AccessMode{
@@ -489,19 +488,19 @@ func TestNodeStageVolume(t *testing.T) {
 			if tc.name == "ISCSI - Error getting target IP in IPv6 single stack cluster" {
 				driver = &BlockVolumeNodeDriver{
 					NodeDriver: NodeDriver{
-						logger: logging.Logger().Sugar(),
+						logger:         logging.Logger().Sugar(),
 						mounterFactory: testMounterFactory,
 						nodeMetadata: &csi_util.NodeMetadata{
 							PreferredNodeIpFamily: "IPv6",
 						},
 					},
 				}
-			} else if  tc.name == "Error acquiring lock" {
+			} else if tc.name == "Error acquiring lock" {
 				driver = &BlockVolumeNodeDriver{
 					NodeDriver: NodeDriver{
-						logger: logging.Logger().Sugar(),
+						logger:         logging.Logger().Sugar(),
 						mounterFactory: testMounterFactory,
-						volumeLocks:  csi_util.NewVolumeLocks(),
+						volumeLocks:    csi_util.NewVolumeLocks(),
 						nodeMetadata: &csi_util.NodeMetadata{
 							PreferredNodeIpFamily: "IPv4",
 						},
@@ -513,9 +512,9 @@ func TestNodeStageVolume(t *testing.T) {
 			} else {
 				driver = &BlockVolumeNodeDriver{
 					NodeDriver: NodeDriver{
-						logger: logging.Logger().Sugar(),
+						logger:         logging.Logger().Sugar(),
 						mounterFactory: testMounterFactory,
-						volumeLocks:  csi_util.NewVolumeLocks(),
+						volumeLocks:    csi_util.NewVolumeLocks(),
 						nodeMetadata: &csi_util.NodeMetadata{
 							PreferredNodeIpFamily: "IPv4",
 						},

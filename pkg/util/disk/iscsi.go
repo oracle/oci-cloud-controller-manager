@@ -91,7 +91,7 @@ type Interface interface {
 
 	DeviceOpened(pathname string) (bool, error)
 
-	IsMounted(devicePath string, targetPath string)	(bool, error)
+	IsMounted(devicePath string, targetPath string) (bool, error)
 
 	// updates the queue depth for iSCSI target
 	UpdateQueueDepth() error
@@ -504,7 +504,7 @@ func (c *iSCSIMounter) IsMounted(devicePath string, targetPath string) (bool, er
 	var diskByPath string
 	notMnt, err := c.mounter.IsLikelyNotMountPoint(targetPath)
 	if err != nil {
-		if os.IsNotExist(err){
+		if os.IsNotExist(err) {
 			return false, nil
 		}
 		return false, fmt.Errorf("failed to check if %s is a mount point: %v", targetPath, err)
@@ -619,7 +619,7 @@ func diskByPathsForMountPoint(mountPoint mount.MountPoint, logger *zap.SugaredLo
 			// Sample ISCSI path - ip-169.254.2.14:3260-iscsi-iqn.2015-12.com.oracleiaas:c47b5be3-d2fb-40a5-978b-a793c4ff4806-lun-3
 			// Sample PV path - pci-0000:02:00.0-scsi-0:0:1:2
 			base := filepath.Base(path)
-			if strings.HasPrefix(base, "ip-") && strings.Contains(base, "-iscsi-"){
+			if strings.HasPrefix(base, "ip-") && strings.Contains(base, "-iscsi-") {
 				// include only if ISCSI session active
 				if !isISCSISessionActive(path, logger) {
 					logger.Infof("Ignoring path %s due to no active ISCSI session", path)
@@ -690,7 +690,7 @@ func isISCSISessionActive(path string, logger *zap.SugaredLogger) bool {
 			continue
 		}
 
-		portal := m[1]+":"+m[2]
+		portal := m[1] + ":" + m[2]
 		portalMatch := strings.Contains(line, portal)
 
 		if portalMatch && strings.Contains(line, m[3]) {

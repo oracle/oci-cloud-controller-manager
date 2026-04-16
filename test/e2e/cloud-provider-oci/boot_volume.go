@@ -84,7 +84,7 @@ var _ = Describe("Boot volume tests", func() {
 				}
 
 				pvcJig.DeletePod(f.Namespace.Name, "app1", 7*time.Minute)
-				pvcJig.DeleteBootVolume(f.BlockStorageClient, bootvolumeId, 5 * time.Minute)
+				pvcJig.DeleteBootVolume(f.BlockStorageClient, bootvolumeId, 5*time.Minute)
 				_ = f.DeleteStorageClass(f.Namespace.Name)
 			})
 		})

@@ -49,17 +49,17 @@ func (f *CloudProviderFramework) CreateVolumeSnapshotClassOrFail(name string, dr
 // does not actually create the storage class. The default storage class has the same name
 // as the jig
 func (f *CloudProviderFramework) NewVolumeSnapshotClassTemplate(name string, parameters map[string]string,
-	driverType string,deletionPolicy snapshot.DeletionPolicy) *snapshot.VolumeSnapshotClass {
+	driverType string, deletionPolicy snapshot.DeletionPolicy) *snapshot.VolumeSnapshotClass {
 	return &snapshot.VolumeSnapshotClass{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "VolumeSnapshotClass",
 			APIVersion: "snapshot.storage.k8s.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   name,
+			Name: name,
 		},
 		Driver:         driverType,
-		Parameters:		parameters,
+		Parameters:     parameters,
 		DeletionPolicy: deletionPolicy,
 	}
 }
