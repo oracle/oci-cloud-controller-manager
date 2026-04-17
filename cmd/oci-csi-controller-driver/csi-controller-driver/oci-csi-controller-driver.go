@@ -54,10 +54,10 @@ func StartControllerDriver(csioptions csioptions.CSIOptions, csiDriver driver.CS
 		drv, err = driver.NewControllerDriver(logger, *controllerDriverConfig)
 	}
 	if err != nil {
-		logger.With(zap.Error(err)).Fatal("Failed to create %s controller driver.", csiDriver)
+		logger.With(zap.Error(err)).Fatalf("Failed to create %s controller driver.", csiDriver)
 	}
 	if err := drv.Run(); err != nil {
-		logger.With(zap.Error(err)).Fatal("Failed to run the CSI driver for %s.", csiDriver)
+		logger.With(zap.Error(err)).Fatalf("Failed to run the CSI driver for %s.", csiDriver)
 	}
 
 	logger.Info("CSI driver exited")

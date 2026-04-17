@@ -115,7 +115,7 @@ func (c *loadbalancerClientStruct) GetLoadBalancerByName(ctx context.Context, co
 				if *lb.DisplayName == name && *lb.CompartmentId == compartmentID {
 					return lb, err
 				}
-				logger.Info("LB name to OCID cache stale record. Actual display name: %s, compartment %s", *lb.DisplayName, *lb.CompartmentId)
+				logger.Infof("LB name to OCID cache stale record. Actual display name: %s, compartment %s", *lb.DisplayName, *lb.CompartmentId)
 			} else {
 				logger.Info("LB name to OCID cache failed to get LB or the response contained unexpected nil value")
 			}

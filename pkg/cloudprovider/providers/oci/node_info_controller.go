@@ -188,7 +188,7 @@ func (nic *NodeInfoController) processItem(key string) error {
 		return err
 	})
 	if err != nil {
-		logger.With(zap.Error(err)).Error("Error in applying patch in node %v", err)
+		logger.With(zap.Error(err)).Error("Error in applying patch in node")
 		return err
 	}
 

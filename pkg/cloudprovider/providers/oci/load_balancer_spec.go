@@ -696,7 +696,7 @@ func getPreserveSource(logger *zap.SugaredLogger, svc *v1.Service) (bool, error)
 	if svc.Spec.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeCluster {
 		_, ok := svc.Annotations[ServiceAnnotationNetworkLoadBalancerIsPreserveSource]
 		if ok {
-			logger.Error("error : externalTrafficPolicy is set to Cluster and the %s annotation is set", ServiceAnnotationNetworkLoadBalancerIsPreserveSource)
+			logger.Errorf("error : externalTrafficPolicy is set to Cluster and the %s annotation is set", ServiceAnnotationNetworkLoadBalancerIsPreserveSource)
 			return false, fmt.Errorf("%s annotation cannot be set when externalTrafficPolicy is set to Cluster", ServiceAnnotationNetworkLoadBalancerIsPreserveSource)
 		}
 	}
@@ -715,7 +715,7 @@ func getPreserveSourceAnnotation(logger *zap.SugaredLogger, svc *v1.Service) (bo
 	if annotationString, ok := svc.Annotations[ServiceAnnotationNetworkLoadBalancerIsPreserveSource]; ok {
 		enable, err := strconv.ParseBool(annotationString)
 		if err != nil {
-			logger.Error("failed to to parse %s annotation value - %s", ServiceAnnotationNetworkLoadBalancerIsPreserveSource, annotationString)
+			logger.Errorf("failed to to parse %s annotation value - %s", ServiceAnnotationNetworkLoadBalancerIsPreserveSource, annotationString)
 			return false, fmt.Errorf("failed to to parse %s annotation value - %s", ServiceAnnotationNetworkLoadBalancerIsPreserveSource, annotationString)
 		}
 		return enable, nil
