@@ -27,7 +27,10 @@ import (
 )
 
 const (
-	defaultExportOptionsJsonString = "[{\"source\":\"10.0.0.0/16\",\"requirePrivilegedSourcePort\":false,\"access\":\"READ_WRITE\",\"identitySquash\":\"NONE\",\"anonymousUid\":0,\"anonymousGid\":0}]"
+	defaultExportOptionsJsonString      = "[{\"source\":\"10.0.0.0/16\",\"requirePrivilegedSourcePort\":false,\"access\":\"READ_WRITE\",\"identitySquash\":\"NONE\",\"anonymousUid\":0,\"anonymousGid\":0},{\"source\":\"2603:c020:4015:2100::/56\",\"requirePrivilegedSourcePort\":false,\"access\":\"READ_WRITE\",\"identitySquash\":\"NONE\"},{\"source\":\"2603:c020:11:1500::/56\",\"requirePrivilegedSourcePort\":false,\"access\":\"READ_WRITE\",\"identitySquash\":\"NONE\"}]"
+	fssSecurityAttributeNamespacePrefix = "zpr-csi-test-ns"
+	fssSecurityAttributeName            = "zpr-csi-test-attribute"
+	defaultSecurityAttributesJsonString = `{"zpr-csi-test-ns":{"zpr-csi-test-attribute":{"value":"test","mode":"enforce"}}}`
 )
 
 var _ = Describe("Dynamic FSS test in cluster compartment", func() {
@@ -223,6 +226,49 @@ var _ = Describe("Dynamic FSS test in cluster compartment", func() {
 			}
 		})
 		// TODO: Think of parallelising this test when there is a way to label the nodes as part of the test suite to run this test
+		It("Create PVC and POD for CSI-FSS with securityAttributes and with new mount-target creation", func() {
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
+			scParameters := map[string]string{
+				"availabilityDomain":    setupF.AdLocation,
+				"mountTargetSubnetOcid": setupF.MntTargetSubnetOcid,
+				"exportOptions":         defaultExportOptionsJsonString,
+				"securityAttributes":    defaultSecurityAttributesJsonString,
+			}
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
+			f.StorageClasses = append(f.StorageClasses, scName)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailDynamicFSS(f.Namespace.Name, "50Gi", scName, v1.ClaimPending, nil)
+			writePod, readPod := pvcJig.CheckSinglePodReadWrite(f.Namespace.Name, pvc.Name, false, []string{})
+
+			volumeName := pvcJig.GetVolumeNameFromPVC(pvc.GetName(), f.Namespace.Name)
+			hasSecurityAttributes, err := f.CheckMountTargetSecurityAttributesByVolumeName(
+				context.Background(),
+				volumeName,
+				setupF.Compartment1,
+				setupF.AdLocation,
+				fssSecurityAttributeNamespacePrefix,
+				fssSecurityAttributeName,
+				map[string]interface{}{"value": "test", "mode": "enforce"},
+			)
+			if err != nil {
+				framework.Failf("Failed to validate mount target security attributes: %v", err)
+			}
+			if !hasSecurityAttributes {
+				framework.Failf("mount target for volume %s does not have the expected security attributes", volumeName)
+			}
+
+			err = pvcJig.DeleteAndAwaitPod(f.Namespace.Name, writePod)
+			if err != nil {
+				framework.Failf("Error deleting pod: %v", err)
+			}
+			err = pvcJig.DeleteAndAwaitPod(f.Namespace.Name, readPod)
+			if err != nil {
+				framework.Failf("Error deleting pod: %v", err)
+			}
+			err = pvcJig.DeleteAndAwaitPVC(f.Namespace.Name, pvc.Name)
+			if err != nil {
+				framework.Failf("Error deleting PVC: %v", err)
+			}
+		})
 		It("Create PVC and POD for CSI-FSS with in-transit encryption and with new mount-target creation", func() {
 			checkNodeAvailability(f)
 			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "exportOptions": defaultExportOptionsJsonString}
@@ -429,6 +475,50 @@ var _ = Describe("Dynamic FSS test in different compartment", func() {
 			}
 		})
 		// TODO: Think of parallelising this test when there is a way to label the nodes as part of the test suite to run this test
+		It("Create PVC and POD for CSI-FSS with securityAttributes and with file-system compartment set and with new mount-target creation", func() {
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-fss-dyn-e2e-test")
+			scParameters := map[string]string{
+				"availabilityDomain":    setupF.AdLocation,
+				"mountTargetSubnetOcid": setupF.MntTargetSubnetOcid,
+				"compartmentOcid":       setupF.MntTargetCompartmentOcid,
+				"exportOptions":         defaultExportOptionsJsonString,
+				"securityAttributes":    defaultSecurityAttributesJsonString,
+			}
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.FSSProvisionerName, scParameters, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
+			f.StorageClasses = append(f.StorageClasses, scName)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailDynamicFSS(f.Namespace.Name, "50Gi", scName, v1.ClaimPending, nil)
+			writePod, readPod := pvcJig.CheckSinglePodReadWrite(f.Namespace.Name, pvc.Name, false, []string{})
+
+			volumeName := pvcJig.GetVolumeNameFromPVC(pvc.GetName(), f.Namespace.Name)
+			hasSecurityAttributes, err := f.CheckMountTargetSecurityAttributesByVolumeName(
+				context.Background(),
+				volumeName,
+				setupF.MntTargetCompartmentOcid,
+				setupF.AdLocation,
+				fssSecurityAttributeNamespacePrefix,
+				fssSecurityAttributeName,
+				map[string]interface{}{"value": "test", "mode": "enforce"},
+			)
+			if err != nil {
+				framework.Failf("Failed to validate mount target security attributes: %v", err)
+			}
+			if !hasSecurityAttributes {
+				framework.Failf("mount target for volume %s does not have the expected security attributes", volumeName)
+			}
+
+			err = pvcJig.DeleteAndAwaitPod(f.Namespace.Name, writePod)
+			if err != nil {
+				framework.Failf("Error deleting pod: %v", err)
+			}
+			err = pvcJig.DeleteAndAwaitPod(f.Namespace.Name, readPod)
+			if err != nil {
+				framework.Failf("Error deleting pod: %v", err)
+			}
+			err = pvcJig.DeleteAndAwaitPVC(f.Namespace.Name, pvc.Name)
+			if err != nil {
+				framework.Failf("Error deleting PVC: %v", err)
+			}
+		})
 		It("Create PVC and POD for CSI-FSS with in-transit encryption", func() {
 			checkNodeAvailability(f)
 			scParameters := map[string]string{"availabilityDomain": setupF.AdLocation, "mountTargetSubnetOcid": setupF.MntTargetSubnetOcid, "compartmentOcid": setupF.MntTargetCompartmentOcid, "exportOptions": defaultExportOptionsJsonString}

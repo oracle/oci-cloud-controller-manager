@@ -17,6 +17,8 @@ package framework
 import (
 	"context"
 	"fmt"
+	"reflect"
+
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/v65/filestorage"
 )
@@ -55,6 +57,40 @@ func (f *CloudProviderFramework) GetExportsSetIdByMountTargetId(ctx context.Cont
 	return *mountTarget.ExportSetId, nil
 }
 
+func (f *CloudProviderFramework) GetMountTargetByVolumeName(ctx context.Context, compartmentId, adLocation, pvName string) (*filestorage.MountTarget, error) {
+	fsID, err := f.GetFSIdByDisplayName(ctx, compartmentId, adLocation, pvName)
+	if err != nil {
+		return nil, err
+	}
+
+	fs, err := f.Client.FSS(nil).GetFileSystem(ctx, fsID)
+	if client.IsNotFound(err) {
+		return nil, err
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if fs.FreeformTags == nil {
+		return nil, fmt.Errorf("filesystem %s does not contain freeform tags", fsID)
+	}
+
+	mountTargetID := fs.FreeformTags["mountTargetOCID"]
+	if mountTargetID == "" {
+		return nil, fmt.Errorf("filesystem %s does not contain mountTargetOCID freeform tag", fsID)
+	}
+
+	mountTarget, err := f.Client.FSS(nil).GetMountTarget(ctx, mountTargetID)
+	if client.IsNotFound(err) {
+		return nil, err
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return mountTarget, nil
+}
+
 func (f *CloudProviderFramework) CheckFSVolumeExist(ctx context.Context, fsId string) bool {
 	fs, err := f.Client.FSS(nil).GetFileSystem(ctx, fsId)
 	if client.IsNotFound(err) {
@@ -81,4 +117,40 @@ func (f *CloudProviderFramework) CheckExportExists(ctx context.Context, fsId, ex
 		return false
 	}
 	return true
+}
+
+func ValidateMountTargetSecurityAttributes(mountTarget *filestorage.MountTarget, saNs, sa string, val interface{}) bool {
+	if mountTarget.SecurityAttributes == nil {
+		Logf("Mount target security attributes are nil")
+		return saNs == ""
+	}
+
+	if saNs == "" && len(mountTarget.SecurityAttributes) == 0 {
+		return true
+	}
+
+	ns, ok := mountTarget.SecurityAttributes[saNs]
+	if !ok {
+		Logf("Security attribute namespace %s not present on mount target", saNs)
+		return false
+	}
+
+	actual, ok := ns[sa]
+	if !ok {
+		Logf("Security attribute %s not present in security attribute namespace %s on mount target", sa, saNs)
+		return false
+	}
+
+	Logf("Mount target security attributes: current: %v, waiting for %v", actual, val)
+
+	return reflect.DeepEqual(actual, val)
+}
+
+func (f *CloudProviderFramework) CheckMountTargetSecurityAttributesByVolumeName(ctx context.Context, volumeName string, compartment string, adlocation string, saNs string, sa string, val interface{}) (bool, error) {
+	mountTarget, err := f.GetMountTargetByVolumeName(ctx, compartment, adlocation, volumeName)
+	if err != nil {
+		return false, err
+	}
+
+	return ValidateMountTargetSecurityAttributes(mountTarget, saNs, sa, val), nil
 }
