@@ -8,6 +8,17 @@ storage volumes][1] to Kubernetes Pods via the [CSI][2] plugin interface.
 
 We publish two binaries oci-csi-controller-driver which runs on the master nodes, and oci-csi-node-controller which runs on each of the worker nodes.
 
+### Preparing Your Cluster
+For CSI to indentify the cluster worker nodes add below two labels to each of the worker nodes in your cluster
+
+`failure-domain.beta.kubernetes.io/zone=<Availability Domain>`(Please change the Availability domain as per your setup but follow the pattern eg `AP-MUMBAI-1-AD-1`)
+`oci.oraclecloud.com/compartment-id= <Instance Compartment ID>`
+you can run the command as:
+
+```bash
+kubectl label nodes <node name> failure-domain.beta.kubernetes.io/zone=<Availability Domain>
+```
+
 ### Submit configuration as a Kubernetes secret
 
 Create a config.yaml file with contents similar to the following. This file will contain authentication
