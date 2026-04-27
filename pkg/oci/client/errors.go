@@ -16,9 +16,12 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"math"
+	"math/rand"
 	"net/http"
 	"regexp"
+	"sync"
 	"time"
 
 	"github.com/oracle/oci-go-sdk/v65/common"
@@ -27,6 +30,18 @@ import (
 )
 
 var errNotFound = errors.New("not found")
+var rateLimitRetryRNG = rand.New(rand.NewSource(time.Now().UnixNano()))
+var rateLimitRetryRNGMu sync.Mutex
+
+var rateLimitRetryMaxAttempts uint = 6
+
+var rateLimitRetryNextDuration = func(attempt uint) time.Duration {
+	base := math.Pow(2, float64(attempt-1))
+	rateLimitRetryRNGMu.Lock()
+	jitter := 1 + (rateLimitRetryRNG.Float64()-0.5)*0.2
+	rateLimitRetryRNGMu.Unlock()
+	return time.Duration(base * jitter * float64(time.Second))
+}
 
 /*
 Addition of system tags can fail due to permission issue while API returns error code: RelatedResourceNotAuthorizedOrNotFound &
@@ -95,6 +110,46 @@ func RateLimitError(isWrite bool, opName string) error {
 		opType = "write"
 	}
 	return errors.Errorf("rate limited(%s) for operation: %s", opType, opName)
+}
+
+func isRateLimitError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	serviceErr, ok := common.IsServiceError(errors.Cause(err))
+	return ok && serviceErr.GetHTTPStatusCode() == http.StatusTooManyRequests
+}
+
+func runWithRateLimitRetry(ctx context.Context, logger *zap.SugaredLogger, operation string, fn func(context.Context) error) error {
+	var lastErr error
+
+	for attempt := uint(1); rateLimitRetryMaxAttempts == 0 || attempt <= rateLimitRetryMaxAttempts; attempt++ {
+		opErr := fn(ctx)
+		lastErr = opErr
+		if !isRateLimitError(opErr) {
+			return opErr
+		}
+
+		backoff := rateLimitRetryNextDuration(attempt)
+		if logger != nil {
+			logger.Warnf("%s hit rate limit on attempt %d, retrying in %s", operation, attempt, backoff)
+		}
+		if deadline, ok := ctx.Deadline(); ok && time.Now().Add(backoff).After(deadline) {
+			return fmt.Errorf("%s retry exceeded context deadline: %w", operation, context.DeadlineExceeded)
+		}
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(backoff):
+		}
+	}
+
+	if lastErr == nil {
+		lastErr = fmt.Errorf("operation %s reached retry limit", operation)
+	}
+	return fmt.Errorf("%s retry exceeded maximum attempts: %w", operation, lastErr)
 }
 
 func newRetryPolicy() *common.RetryPolicy {

@@ -50,6 +50,9 @@ spec:
             - --leader-elect-resource-lock=leases
             - --concurrent-service-syncs=3
             - --v=2
+          env:
+            - name: ENABLE_FLEX_CIDR_CONTROLLER
+              value: "false"
           volumeMounts:
             - name: cfg
               mountPath: /etc/oci

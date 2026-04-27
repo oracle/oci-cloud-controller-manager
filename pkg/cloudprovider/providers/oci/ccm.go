@@ -51,6 +51,7 @@ const (
 	providerName   = "oci"
 	providerPrefix = providerName + "://"
 
+	enableFlexCIDRController         = "ENABLE_FLEX_CIDR_CONTROLLER"
 	disableInstanceTaggingController = "DISABLE_INSTANCE_TAGGING_CONTROLLER"
 	openshiftNodeLabelId             = "OPENSHIFT_NODE_LABEL_ID"
 	// Default OpenShift node OS label key/value
@@ -191,6 +192,13 @@ func (cp *CloudProvider) Initialize(clientBuilder cloudprovider.ControllerClient
 		cp.logger,
 		cp.instanceCache,
 		cp.client)
+	flexCIDRController := NewFlexCIDRController(
+		factory.Core().V1().Nodes(),
+		factory.Core().V1().Services(),
+		cp.kubeclient,
+		cp,
+		cp.logger,
+		cp.client)
 
 	nodeInformer := factory.Core().V1().Nodes()
 	go nodeInformer.Informer().Run(wait.NeverStop)
@@ -202,6 +210,12 @@ func (cp *CloudProvider) Initialize(clientBuilder cloudprovider.ControllerClient
 	go serviceAccountInformer.Informer().Run(wait.NeverStop)
 
 	go nodeInfoController.Run(wait.NeverStop)
+	if GetIsFeatureEnabledFromEnv(cp.logger, enableFlexCIDRController, false) {
+		cp.logger.Info("Flex CIDR controller enabled")
+		go flexCIDRController.Run(wait.NeverStop)
+	} else {
+		cp.logger.Info("Flex CIDR controller disabled because ENABLE_FLEX_CIDR_CONTROLLER is unset or set to false")
+	}
 
 	// If the cluster is type OpenShift then the Tagging Controller
 	// should be enabled.
