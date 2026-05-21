@@ -36,7 +36,7 @@ func validateAuthConfig(c *AuthConfig, fldPath *field.Path) field.ErrorList {
 	for fieldName, fieldValue := range checkFields {
 		if fieldValue == "" {
 			if fieldName == "region" {
-				allErrs = append(allErrs, field.InternalError(fldPath.Child(fieldName), errors.New("This value is normally discovered automatically if omitted. Continue checking the logs to see if something else is wrong")))
+				allErrs = append(allErrs, field.InternalError(fldPath.Child(fieldName), errors.New("This value is normally discovered automatically if omitted.")))
 			} else {
 				allErrs = append(allErrs, field.Required(fldPath.Child(fieldName), ""))
 			}
@@ -73,10 +73,16 @@ func validateLoadBalancerConfig(c *Config, fldPath *field.Path) field.ErrorList 
 // ValidateConfig validates the OCI Cloud Provider config file.
 func ValidateConfig(c *Config) field.ErrorList {
 	allErrs := field.ErrorList{}
-	if len(c.CompartmentID) == 0 {
-		allErrs = append(allErrs, field.InternalError(field.NewPath("compartment"), errors.New("This value is normally discovered automatically if omitted. Continue checking the logs to see if something else is wrong")))
+	if c.UseInstancePrincipals && c.UseWorkloadIdentity {
+		allErrs = append(allErrs, field.Invalid(field.NewPath("useWorkloadIdentity"), c.UseWorkloadIdentity, "useInstancePrincipals and useWorkloadIdentity cannot both be true"))
 	}
-	if !c.UseInstancePrincipals {
+	if c.UseWorkloadIdentity && !c.UseInstancePrincipals && len(c.Auth.Region) == 0 {
+		allErrs = append(allErrs, field.InternalError(field.NewPath("auth", "region"), errors.New("This value is required when useWorkloadIdentity is enabled.")))
+	}
+	if len(c.CompartmentID) == 0 {
+		allErrs = append(allErrs, field.InternalError(field.NewPath("compartment"), errors.New("This value is normally discovered automatically if omitted.")))
+	}
+	if !c.UseInstancePrincipals && !c.UseWorkloadIdentity {
 		allErrs = append(allErrs, validateAuthConfig(&c.Auth, field.NewPath("auth"))...)
 	}
 	if c.LoadBalancer != nil && !c.LoadBalancer.Disabled {

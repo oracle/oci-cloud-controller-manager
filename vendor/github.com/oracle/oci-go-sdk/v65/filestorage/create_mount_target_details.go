@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2025, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2026, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -42,12 +42,20 @@ type CreateMountTargetDetails struct {
 	// with RFC 952 (https://tools.ietf.org/html/rfc952)
 	// and RFC 1123 (https://tools.ietf.org/html/rfc1123).
 	// Note:
-	// This attribute value is stored in the PrivateIp (https://docs.oracle.com/iaas/en-us/iaas/api/#/en/iaas/20160918/PrivateIp/) resource,
+	// If the IP address is IPv4, this attribute value is stored in the
+	// PrivateIp (https://docs.oracle.com/iaas/en-us/iaas/api/#/en/iaas/20160918/PrivateIp/) resource,
 	// not in the `mountTarget` resource.
 	// To update the `hostnameLabel`, use `GetMountTarget` to obtain the
 	// OCIDs (https://docs.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the mount target's
 	// private IPs (`privateIpIds`). Then, you can use
 	// UpdatePrivateIp (https://docs.oracle.com/iaas/en-us/iaas/api/#/en/iaas/20160918/PrivateIp/UpdatePrivateIp)
+	// to update the `hostnameLabel` value.
+	// If the IP address is IPv6, it is stored in the
+	// Ipv6  (https://docs.oracle.com/en-us/iaas/api/#/en/iaas/20160918/Ipv6) resource
+	// To update the `hostnameLabel`, use `GetMountTarget` to obtain the
+	// OCIDs (https://docs.oracle.com/iaas/Content/General/Concepts/identifiers.htm) of the mount target's
+	// IPv6 address (`mountTargetIpv6Ids`). Then, you can use
+	// UpdateIpv6 (https://docs.oracle.com/iaas/en-us/iaas/api/#/en/iaas/20160918/Ipv6/UpdateIpv6)
 	// to update the `hostnameLabel` value.
 	// For more information, see
 	// DNS in Your Virtual Cloud Network (https://docs.oracle.com/iaas/Content/Network/Concepts/dns.htm).

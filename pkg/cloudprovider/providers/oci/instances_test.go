@@ -1422,12 +1422,11 @@ func (MockFileStorageClient) DeleteMountTarget(ctx context.Context, id string) e
 // MockIdentityClient mocks Identity client implementaion
 type MockIdentityClient struct{}
 
-func (c MockIdentityClient) ListAvailabilityDomains(ctx context.Context, compartmentID string) ([]identity.AvailabilityDomain, error) {
-	//TODO implement me
-	panic("implement me")
+func (MockIdentityClient) GetAvailabilityDomainByName(ctx context.Context, compartmentID, name string) (*identity.AvailabilityDomain, error) {
+	return nil, nil
 }
 
-func (MockIdentityClient) GetAvailabilityDomainByName(ctx context.Context, compartmentID, name string) (*identity.AvailabilityDomain, error) {
+func (MockIdentityClient) ListAvailabilityDomains(ctx context.Context, compartmentID string) ([]identity.AvailabilityDomain, error) {
 	return nil, nil
 }
 

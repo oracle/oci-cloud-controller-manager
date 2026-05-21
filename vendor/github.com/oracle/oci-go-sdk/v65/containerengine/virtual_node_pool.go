@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2025, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2026, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -41,6 +41,9 @@ type VirtualNodePool struct {
 	// The list of placement configurations which determines where Virtual Nodes will be provisioned across as it relates to the subnet and availability domains. The size attribute determines how many we evenly spread across these placement configurations
 	PlacementConfigurations []PlacementConfiguration `mandatory:"true" json:"placementConfigurations"`
 
+	// The pod configuration for pods run on virtual nodes of this virtual node pool.
+	PodConfiguration *PodConfiguration `mandatory:"true" json:"podConfiguration"`
+
 	// Initial labels that will be added to the Kubernetes Virtual Node object when it registers. This is the same as virtualNodePool resources.
 	InitialVirtualNodeLabels []InitialVirtualNodeLabel `mandatory:"false" json:"initialVirtualNodeLabels"`
 
@@ -49,9 +52,6 @@ type VirtualNodePool struct {
 
 	// List of network security group id's applied to the Virtual Node VNIC.
 	NsgIds []string `mandatory:"false" json:"nsgIds"`
-
-	// The pod configuration for pods run on virtual nodes of this virtual node pool.
-	PodConfiguration *PodConfiguration `mandatory:"false" json:"podConfiguration"`
 
 	// The state of the Virtual Node Pool.
 	LifecycleState VirtualNodePoolLifecycleStateEnum `mandatory:"false" json:"lifecycleState,omitempty"`

@@ -70,6 +70,14 @@ loadBalancer:
   disabled: true
 `
 
+const validConfigNoLoadbalancingWithWorkloadIdentity = `
+useWorkloadIdentity: true
+vcn: ocid1.vcn.oc1..
+
+loadBalancer:
+  disabled: true
+`
+
 const validConfigLegacyFormat = `
 auth:
   region: us-phoenix-1
@@ -166,6 +174,63 @@ func TestLoadBalancingDisabled(t *testing.T) {
 
 	if !cfg.LoadBalancer.Disabled {
 		t.Errorf("Load balancing should be disabled")
+	}
+}
+
+func TestLoadBalancingDisabledWithWorkloadIdentity(t *testing.T) {
+	cfg, err := ReadConfig(strings.NewReader(validConfigNoLoadbalancingWithWorkloadIdentity))
+	if err != nil {
+		t.Fatalf("expected no error but got '%v'", err)
+	}
+
+	if !cfg.LoadBalancer.Disabled {
+		t.Errorf("Load balancing should be disabled")
+	}
+	if !cfg.UseWorkloadIdentity {
+		t.Errorf("Workload identity should be enabled")
+	}
+}
+
+func TestNewWorkloadIdentityConfigurationProviderRequiresDomainURL(t *testing.T) {
+	t.Setenv(workloadIdentityResourceTypeEnv, "k8sworkload")
+	t.Setenv(workloadIdentityClientIDEnv, "client-id")
+	t.Setenv(workloadIdentityClientSecretEnv, "client-secret")
+
+	_, err := NewWorkloadIdentityConfigurationProvider(&Config{
+		Auth: AuthConfig{
+			Region: "us-phoenix-1",
+		},
+	})
+	if err == nil || !strings.Contains(err.Error(), workloadIdentityDomainURLEnv) {
+		t.Fatalf("expected error containing %q, got: %v", workloadIdentityDomainURLEnv, err)
+	}
+}
+
+func TestNewWorkloadIdentityConfigurationProviderRequiresValidDomainURL(t *testing.T) {
+	t.Setenv(workloadIdentityDomainURLEnv, "ocid1.domain.oc1..aaaaaaaa")
+	t.Setenv(workloadIdentityResourceTypeEnv, "k8sworkload")
+	t.Setenv(workloadIdentityClientIDEnv, "client-id")
+	t.Setenv(workloadIdentityClientSecretEnv, "client-secret")
+
+	_, err := NewWorkloadIdentityConfigurationProvider(&Config{
+		Auth: AuthConfig{
+			Region: "us-phoenix-1",
+		},
+	})
+	if err == nil || !strings.Contains(err.Error(), workloadIdentityDomainURLEnv) {
+		t.Fatalf("expected error containing %q, got: %v", workloadIdentityDomainURLEnv, err)
+	}
+}
+
+func TestNewWorkloadIdentityConfigurationProviderRequiresRegion(t *testing.T) {
+	t.Setenv(workloadIdentityDomainURLEnv, "https://example.identity.oraclecloud.com")
+	t.Setenv(workloadIdentityResourceTypeEnv, "k8sworkload")
+	t.Setenv(workloadIdentityClientIDEnv, "client-id")
+	t.Setenv(workloadIdentityClientSecretEnv, "client-secret")
+
+	_, err := NewWorkloadIdentityConfigurationProvider(&Config{})
+	if err == nil || !strings.Contains(err.Error(), "auth.region") {
+		t.Fatalf("expected auth.region validation error, got: %v", err)
 	}
 }
 

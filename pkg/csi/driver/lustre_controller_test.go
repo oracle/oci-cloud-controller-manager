@@ -103,11 +103,6 @@ type MockOCIIdentityClient struct {
 	listErr error
 }
 
-func (i *MockOCIIdentityClient) ListAvailabilityDomains(ctx context.Context, compartmentID string) ([]ociidentity.AvailabilityDomain, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (i *MockOCIIdentityClient) GetAvailabilityDomainByName(ctx context.Context, compartmentID, name string) (*ociidentity.AvailabilityDomain, error) { // interface{} to avoid ctx import
 	if i.getErr != nil {
 		return nil, i.getErr
@@ -116,6 +111,21 @@ func (i *MockOCIIdentityClient) GetAvailabilityDomainByName(ctx context.Context,
 		return &ociidentity.AvailabilityDomain{Name: &i.ads[0]}, nil
 	}
 	return &ociidentity.AvailabilityDomain{Name: &name}, nil
+}
+
+func (i *MockOCIIdentityClient) ListAvailabilityDomains(ctx context.Context, compartmentID string) ([]ociidentity.AvailabilityDomain, error) {
+	if i.listErr != nil {
+		return nil, i.listErr
+	}
+	if len(i.ads) == 0 {
+		return nil, nil
+	}
+	ads := make([]ociidentity.AvailabilityDomain, 0, len(i.ads))
+	for _, ad := range i.ads {
+		adName := ad
+		ads = append(ads, ociidentity.AvailabilityDomain{Name: &adName})
+	}
+	return ads, nil
 }
 
 // ########################## CreateVolume Tests   ##########################
@@ -920,7 +930,7 @@ type testOCIClient struct {
 	id     client.IdentityInterface
 }
 
-func (t *testOCIClient) LoadBalancer(logger *zap.SugaredLogger, s string, s2 string, request *authv1.TokenRequest) client.GenericLoadBalancerInterface {
+func (t *testOCIClient) LoadBalancer(*zap.SugaredLogger, string, string, *authv1.TokenRequest) client.GenericLoadBalancerInterface {
 	return nil
 }
 

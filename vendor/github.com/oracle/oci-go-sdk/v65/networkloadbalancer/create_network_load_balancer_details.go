@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2025, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2026, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -42,7 +42,8 @@ type CreateNetworkLoadBalancerDetails struct {
 	// This removes the additional dependency from NLB backends(like Firewalls) to perform SNAT.
 	IsSymmetricHashEnabled *bool `mandatory:"false" json:"isSymmetricHashEnabled"`
 
-	// An array of reserved Ips.
+	// An array of reserved Ips. NLB supports reserved public ip, reserved private IP and reserved IPv6. Customer can pass 3 reserved IP ocids, with all items unique, and a maximum of 1 allowed for each entity type: public-ip, private-ip and IPv6
+	// Note that NLB does not support changing an IP’s lifecycle state between ephemeral and reserved if the IP is already assigned to the NLB. While this type of lifecycle state change is supported by VCN IPs even when the IP is assigned to a resource, such changes will not be recognized or reflected by NLB.
 	ReservedIps []ReservedIp `mandatory:"false" json:"reservedIps"`
 
 	// Whether the network load balancer has a virtual cloud network-local (private) IP address.
