@@ -80,7 +80,7 @@ func ValidateLustreVolumeId(lusterVolumeId string) (bool, string) {
 type LnetConfigurator interface {
 	GetNetInterfacesInSubnet(subnetCIDR string) ([]NetInterface, error)
 	IsLustreClientPackagesInstalled(logger *zap.SugaredLogger) bool
-	GetLnetInfoByLnetLabel(lnetLabel string) (NetInfo, error)
+	GetLnetInfoByLnetLabel(logger *zap.SugaredLogger, lnetLabel string) (NetInfo, error)
 	ConfigureLnet(logger *zap.SugaredLogger, ifaces []NetInterface, lnetLabel string, netInfo NetInfo) error
 	VerifyLnetConfiguration(logger *zap.SugaredLogger, ifaces []NetInterface, lnetLabel string, netInfo NetInfo, err error) error
 	ExecuteCommandOnWorkerNode(args ...string) (string, error)
@@ -136,7 +136,7 @@ func (ls *LnetService) SetupLnet(logger *zap.SugaredLogger, lustreSubnetCIDR str
 
 	//get existing lnet configuration
 	var netInfo NetInfo
-	netInfo, err = ls.Configurator.GetLnetInfoByLnetLabel(lnetLabel)
+	netInfo, err = ls.Configurator.GetLnetInfoByLnetLabel(logger, lnetLabel)
 	if err != nil {
 		return err
 	}
@@ -192,18 +192,34 @@ func (olc *OCILnetConfigurator) GetNetInterfacesInSubnet(subnetCIDR string) ([]N
 	return matchingInterfaces, nil
 }
 
-func (olc *OCILnetConfigurator) GetLnetInfoByLnetLabel(lnetLabel string) (NetInfo, error) {
-	var netInfo NetInfo
+func (olc *OCILnetConfigurator) GetLnetInfoByLnetLabel(logger *zap.SugaredLogger, lnetLabel string) (NetInfo, error) {
 	existingConfiguredLnetInfo, err := olc.ExecuteCommandOnWorkerNode(fmt.Sprintf(SHOW_CONFIGURED_LNET, lnetLabel))
-	if err != nil {
-		return netInfo, fmt.Errorf("Failed to get existing configured lnet information with error : %v", err)
+	return parseLnetInfo(logger, existingConfiguredLnetInfo, err)
+}
+
+func parseLnetInfo(logger *zap.SugaredLogger, existingConfiguredLnetInfo string, commandErr error) (NetInfo, error) {
+	var netInfo NetInfo
+	if commandErr != nil {
+		if isLnetNetworkDownResponse(existingConfiguredLnetInfo, commandErr) {
+			logger.With(zap.Error(commandErr)).Info("Expected failure observed while getting existing configured lnet information because lnet network is down. Starting lnet configuration.")
+			return netInfo, nil
+		}
+		return netInfo, fmt.Errorf("Failed to get existing configured lnet information with error : %v", commandErr)
 	}
 
-	err = yaml.Unmarshal([]byte(existingConfiguredLnetInfo), &netInfo)
+	err := yaml.Unmarshal([]byte(existingConfiguredLnetInfo), &netInfo)
 	if err != nil {
 		return netInfo, fmt.Errorf("Failed to parse lnet information with error : %v", err)
 	}
 	return netInfo, nil
+}
+
+func isLnetNetworkDownResponse(output string, err error) bool {
+	if err == nil {
+		return false
+	}
+	lnetctlResponse := fmt.Sprintf("%s\n%v", output, err)
+	return strings.Contains(lnetctlResponse, "Network is down")
 }
 
 func (olc *OCILnetConfigurator) ConfigureLnet(logger *zap.SugaredLogger, interfacesInLustreSubnet []NetInterface, lnetLabel string, netInfo NetInfo) error {
@@ -256,7 +272,7 @@ func (olc *OCILnetConfigurator) ConfigureLnet(logger *zap.SugaredLogger, interfa
 func (olc *OCILnetConfigurator) VerifyLnetConfiguration(logger *zap.SugaredLogger, interfacesInLustreSubnet []NetInterface, lnetLabel string, netInfo NetInfo, err error) error {
 	logger.Infof("Verifying lnet configuration.")
 	//Get already configured lnet interfaces
-	netInfo, err = olc.GetLnetInfoByLnetLabel(lnetLabel)
+	netInfo, err = olc.GetLnetInfoByLnetLabel(logger, lnetLabel)
 	if err != nil {
 		return err
 	}
@@ -306,7 +322,7 @@ It returns true when active lnet interface is identified else returns false sing
 func (ls *LnetService) IsLnetActive(logger *zap.SugaredLogger, lnetLabel string) bool {
 	logger.Debugf("Trying to check status of lnet")
 	//Get already configured lnet interfaces
-	netInfo, err := ls.Configurator.GetLnetInfoByLnetLabel(lnetLabel)
+	netInfo, err := ls.Configurator.GetLnetInfoByLnetLabel(logger, lnetLabel)
 	if err != nil {
 		logger.With(zap.Error(err)).Errorf("Failed to get lnet info for lnet :  %v", lnetLabel)
 		return false
@@ -332,7 +348,6 @@ func (ls *LnetService) IsLnetActive(logger *zap.SugaredLogger, lnetLabel string)
 }
 
 func (olc *OCILnetConfigurator) ExecuteCommandOnWorkerNode(args ...string) (string, error) {
-
 	command := exec.Command("chroot-bash", args...)
 
 	output, err := command.CombinedOutput()
