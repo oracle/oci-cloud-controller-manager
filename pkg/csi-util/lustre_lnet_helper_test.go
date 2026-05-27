@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest/observer"
 )
 
 func TestValidateLustreVolumeId(t *testing.T) {
@@ -50,7 +51,7 @@ func TestValidateLustreVolumeId(t *testing.T) {
 type FakeConfigurator struct {
 	GetNetInterfacesInSubnetFunc        func(subnetCIDR string) ([]NetInterface, error)
 	IsLustreClientPackagesInstalledFunc func(logger *zap.SugaredLogger) bool
-	GetLnetInfoByLnetLabelFunc          func(lnetLabel string) (NetInfo, error)
+	GetLnetInfoByLnetLabelFunc          func(logger *zap.SugaredLogger, lnetLabel string) (NetInfo, error)
 	ConfigureLnetFunc                   func(logger *zap.SugaredLogger, ifaces []NetInterface, lnetLabel string, netInfo NetInfo) error
 	VerifyLnetConfigurationFunc         func(logger *zap.SugaredLogger, ifaces []NetInterface, lnetLabel string, netInfo NetInfo, err error) error
 	ExecuteCommandOnWorkerNodeFunc      func(args ...string) (string, error)
@@ -64,8 +65,8 @@ func (f *FakeConfigurator) IsLustreClientPackagesInstalled(logger *zap.SugaredLo
 	return f.IsLustreClientPackagesInstalledFunc(logger)
 }
 
-func (f *FakeConfigurator) GetLnetInfoByLnetLabel(lnetLabel string) (NetInfo, error) {
-	return f.GetLnetInfoByLnetLabelFunc(lnetLabel)
+func (f *FakeConfigurator) GetLnetInfoByLnetLabel(logger *zap.SugaredLogger, lnetLabel string) (NetInfo, error) {
+	return f.GetLnetInfoByLnetLabelFunc(logger, lnetLabel)
 }
 
 func (f *FakeConfigurator) ConfigureLnet(logger *zap.SugaredLogger, ifaces []NetInterface, lnetLabel string, netInfo NetInfo) error {
@@ -130,7 +131,7 @@ func TestLnetService_SetupLnet_TableDriven(t *testing.T) {
 				// These functions are not used in this case.
 				IsLustreClientPackagesInstalledFunc: func(logger *zap.SugaredLogger) bool { return true },
 				ExecuteCommandOnWorkerNodeFunc:      func(args ...string) (string, error) { return "ok", nil },
-				GetLnetInfoByLnetLabelFunc:          func(lnetLabel string) (NetInfo, error) { return NetInfo{}, nil },
+				GetLnetInfoByLnetLabelFunc:          func(logger *zap.SugaredLogger, lnetLabel string) (NetInfo, error) { return NetInfo{}, nil },
 				ConfigureLnetFunc: func(logger *zap.SugaredLogger, ifaces []NetInterface, lnetLabel string, netInfo NetInfo) error {
 					return nil
 				},
@@ -158,7 +159,7 @@ func TestLnetService_SetupLnet_TableDriven(t *testing.T) {
 					}
 					return "ok", nil
 				},
-				GetLnetInfoByLnetLabelFunc: func(lnetLabel string) (NetInfo, error) {
+				GetLnetInfoByLnetLabelFunc: func(logger *zap.SugaredLogger, lnetLabel string) (NetInfo, error) {
 					return dummyNetInfo, nil
 				},
 				ConfigureLnetFunc: func(logger *zap.SugaredLogger, ifaces []NetInterface, lnetLabel string, netInfo NetInfo) error {
@@ -185,7 +186,7 @@ func TestLnetService_SetupLnet_TableDriven(t *testing.T) {
 					}
 					return "ok", nil
 				},
-				GetLnetInfoByLnetLabelFunc: func(lnetLabel string) (NetInfo, error) { return NetInfo{}, nil },
+				GetLnetInfoByLnetLabelFunc: func(logger *zap.SugaredLogger, lnetLabel string) (NetInfo, error) { return NetInfo{}, nil },
 				ConfigureLnetFunc: func(logger *zap.SugaredLogger, ifaces []NetInterface, lnetLabel string, netInfo NetInfo) error {
 					return nil
 				},
@@ -210,7 +211,7 @@ func TestLnetService_SetupLnet_TableDriven(t *testing.T) {
 					}
 					return "ok", nil
 				},
-				GetLnetInfoByLnetLabelFunc: func(lnetLabel string) (NetInfo, error) { return NetInfo{}, nil },
+				GetLnetInfoByLnetLabelFunc: func(logger *zap.SugaredLogger, lnetLabel string) (NetInfo, error) { return NetInfo{}, nil },
 				ConfigureLnetFunc: func(logger *zap.SugaredLogger, ifaces []NetInterface, lnetLabel string, netInfo NetInfo) error {
 					return nil
 				},
@@ -233,7 +234,7 @@ func TestLnetService_SetupLnet_TableDriven(t *testing.T) {
 					// Both kernel module load and kernel service config succeed.
 					return "ok", nil
 				},
-				GetLnetInfoByLnetLabelFunc: func(lnetLabel string) (NetInfo, error) {
+				GetLnetInfoByLnetLabelFunc: func(logger *zap.SugaredLogger, lnetLabel string) (NetInfo, error) {
 					return NetInfo{}, errors.New("get lnet info error")
 				},
 			},
@@ -251,7 +252,7 @@ func TestLnetService_SetupLnet_TableDriven(t *testing.T) {
 				ExecuteCommandOnWorkerNodeFunc: func(args ...string) (string, error) {
 					return "ok", nil
 				},
-				GetLnetInfoByLnetLabelFunc: func(lnetLabel string) (NetInfo, error) {
+				GetLnetInfoByLnetLabelFunc: func(logger *zap.SugaredLogger, lnetLabel string) (NetInfo, error) {
 					return dummyNetInfo, nil
 				},
 				ConfigureLnetFunc: func(logger *zap.SugaredLogger, ifaces []NetInterface, lnetLabel string, netInfo NetInfo) error {
@@ -272,7 +273,7 @@ func TestLnetService_SetupLnet_TableDriven(t *testing.T) {
 				ExecuteCommandOnWorkerNodeFunc: func(args ...string) (string, error) {
 					return "ok", nil
 				},
-				GetLnetInfoByLnetLabelFunc: func(lnetLabel string) (NetInfo, error) {
+				GetLnetInfoByLnetLabelFunc: func(logger *zap.SugaredLogger, lnetLabel string) (NetInfo, error) {
 					return dummyNetInfo, nil
 				},
 				ConfigureLnetFunc: func(logger *zap.SugaredLogger, ifaces []NetInterface, lnetLabel string, netInfo NetInfo) error {
@@ -300,18 +301,135 @@ func TestLnetService_SetupLnet_TableDriven(t *testing.T) {
 	}
 }
 
+func TestParseLnetInfo(t *testing.T) {
+	tests := []struct {
+		name              string
+		commandOutput     string
+		commandErr        error
+		expectedErrSubstr string
+		expectedNetType   string
+		expectedLogSubstr string
+	}{
+		{
+			name: "Lustre 2.15.90 network down response returns empty net info",
+			commandOutput: `---
+show:
+-     net:
+      errno: -3
+      descr: ! "Network is down"
+...
+`,
+			commandErr:        errors.New("exit status 234"),
+			expectedLogSubstr: "Expected failure observed",
+		},
+		{
+			name: "network down response without errno returns empty net info",
+			commandOutput: `---
+show:
+-     net:
+      descr: ! "Network is down"
+...
+`,
+			commandErr:        errors.New("exit status 1"),
+			expectedLogSubstr: "Expected failure observed",
+		},
+		{
+			name: "valid lnet output is parsed",
+			commandOutput: `net:
+-     net type: tcp
+      local NI(s):
+      -     nid: 10.244.0.10@tcp
+            status: up
+            interfaces:
+                  0: eth0
+`,
+			expectedNetType: "tcp",
+		},
+		{
+			name:              "unrelated command error is returned",
+			commandOutput:     "opening /dev/lnet failed: No such device",
+			commandErr:        errors.New("exit status 1"),
+			expectedErrSubstr: "Failed to get existing configured lnet information",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			core, recorded := observer.New(zap.InfoLevel)
+			logger := zap.New(core).Sugar()
+
+			netInfo, err := parseLnetInfo(logger, tc.commandOutput, tc.commandErr)
+
+			if tc.expectedErrSubstr != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedErrSubstr)
+				return
+			}
+
+			assert.NoError(t, err)
+			if tc.expectedLogSubstr != "" {
+				assert.Equal(t, 1, recorded.FilterMessageSnippet(tc.expectedLogSubstr).Len())
+			}
+			if tc.expectedNetType == "" {
+				assert.Empty(t, netInfo.Net)
+				return
+			}
+			if assert.Len(t, netInfo.Net, 1) {
+				assert.Equal(t, tc.expectedNetType, netInfo.Net[0].NetType)
+			}
+		})
+	}
+}
+
+func TestLnetService_SetupLnet_ConfiguresWhenExistingLnetInfoIsEmpty(t *testing.T) {
+	logger := zap.NewExample().Sugar()
+	configureCalled := false
+	ifaces := []NetInterface{{InterfaceName: "eth0", InterfaceIPv4: "10.244.0.10"}}
+	fakeCfg := &FakeConfigurator{
+		GetNetInterfacesInSubnetFunc: func(subnetCIDR string) ([]NetInterface, error) {
+			return ifaces, nil
+		},
+		IsLustreClientPackagesInstalledFunc: func(logger *zap.SugaredLogger) bool {
+			return true
+		},
+		ExecuteCommandOnWorkerNodeFunc: func(args ...string) (string, error) {
+			return "ok", nil
+		},
+		GetLnetInfoByLnetLabelFunc: func(logger *zap.SugaredLogger, lnetLabel string) (NetInfo, error) {
+			return NetInfo{}, nil
+		},
+		ConfigureLnetFunc: func(logger *zap.SugaredLogger, gotIfaces []NetInterface, lnetLabel string, netInfo NetInfo) error {
+			configureCalled = true
+			assert.Equal(t, ifaces, gotIfaces)
+			assert.Equal(t, "tcp", lnetLabel)
+			assert.Empty(t, netInfo.Net)
+			return nil
+		},
+		VerifyLnetConfigurationFunc: func(logger *zap.SugaredLogger, ifaces []NetInterface, lnetLabel string, netInfo NetInfo, err error) error {
+			return nil
+		},
+	}
+
+	svc := LnetService{Configurator: fakeCfg}
+
+	err := svc.SetupLnet(logger, "10.244.0.0/24", "tcp")
+
+	assert.NoError(t, err)
+	assert.True(t, configureCalled)
+}
+
 func TestLnetService_IsLnetActive_TableDriven(t *testing.T) {
 	logger := zap.NewExample().Sugar()
 	tests := []struct {
 		name           string
 		lnetLabel      string
-		fakeGetInfo    func(lnetLabel string) (NetInfo, error)
+		fakeGetInfo    func(logger *zap.SugaredLogger, lnetLabel string) (NetInfo, error)
 		expectedActive bool
 	}{
 		{
 			name:      "Active Lnet",
 			lnetLabel: "tcp1",
-			fakeGetInfo: func(lnetLabel string) (NetInfo, error) {
+			fakeGetInfo: func(logger *zap.SugaredLogger, lnetLabel string) (NetInfo, error) {
 				return NetInfo{
 					Net: []struct {
 						NetType string "yaml:\"net type\""
@@ -339,7 +457,7 @@ func TestLnetService_IsLnetActive_TableDriven(t *testing.T) {
 		{
 			name:      "Inactive Lnet",
 			lnetLabel: "tcp1",
-			fakeGetInfo: func(lnetLabel string) (NetInfo, error) {
+			fakeGetInfo: func(logger *zap.SugaredLogger, lnetLabel string) (NetInfo, error) {
 				return NetInfo{
 					Net: []struct {
 						NetType string "yaml:\"net type\""
