@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2025, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2026, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -29,6 +29,9 @@ type ServiceLbConfigDetails struct {
 	// For more information, see Resource Tags (https://docs.oracle.com/iaas/Content/General/Concepts/resourcetags.htm).
 	// Example: `{"Operations": {"CostCenter": "42"}}`
 	DefinedTags map[string]map[string]interface{} `mandatory:"false" json:"definedTags"`
+
+	// A list of the OCIDs of the network security groups (NSGs) associated to backends to LBs (pods/nodes/virtual pods, etc.). Rules necessary for LB to backend communication would be added when rule management mode is set to NSG via annotations. see NetworkSecurityGroup.
+	BackendNsgIds []string `mandatory:"false" json:"backendNsgIds"`
 }
 
 func (m ServiceLbConfigDetails) String() string {

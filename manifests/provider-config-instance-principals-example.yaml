@@ -1,6 +1,6 @@
-# Use this config as a template in order to  use Instance Principals based aithentication
+# Use this config as a template in order to use Instance Principals based authentication
 # (https://docs.us-phoenix-1.oraclecloud.com/Content/Identity/Tasks/callingservicesfrominstances.htm).
-# Ensure you have setup the following OCI policies and your kubernetes nodes are running within them
+# Ensure you have set up the following OCI policies and your kubernetes nodes are running within them
 # allow dynamic-group [your dynamic group name] to read instance-family in compartment [your compartment name]
 # allow dynamic-group [your dynamic group name] to use virtual-network-family in compartment [your compartment name]
 # allow dynamic-group [your dynamic group name] to manage load-balancers in compartment [your compartment name]

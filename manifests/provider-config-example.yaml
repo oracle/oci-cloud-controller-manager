@@ -22,6 +22,14 @@ auth:
 # compartment configures Compartment within which the cluster resides.
 compartment: ocid1.compartment.oc1..aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
+# Set to true to use self-managed Kubernetes Workload Identity (KSAT->RPST token exchange).
+# Requires Workload Identity token-exchange environment variables on the pod:
+# OCI_WORKLOAD_IDENTITY_DOMAIN_URL, OCI_WORKLOAD_IDENTITY_RESOURCE_TYPE and either
+# OCI_WORKLOAD_IDENTITY_CLIENT_ID/OCI_WORKLOAD_IDENTITY_CLIENT_SECRET or
+# OCI_WORKLOAD_IDENTITY_USE_INSTANCE_PRINCIPAL_FOR_TOKEN_EXCHANGE=true.
+# Mutually exclusive with useInstancePrincipals.
+useWorkloadIdentity: false
+
 # vcn configures the Virtual Cloud Network (VCN) within which the cluster resides.
 vcn: ocid1.vcn.oc1..aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 

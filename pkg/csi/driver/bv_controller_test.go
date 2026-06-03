@@ -848,12 +848,7 @@ type MockIdentityClient struct {
 	common.BaseClient
 }
 
-func (mockClient MockIdentityClient) ListAvailabilityDomains(ctx context.Context, compartmentID string) ([]identity.AvailabilityDomain, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-// ListAvailabilityDomains mocks the client ListAvailabilityDomains implementation
+// GetAvailabilityDomainByName mocks the client GetAvailabilityDomainByName implementation
 func (mockClient MockIdentityClient) GetAvailabilityDomainByName(ctx context.Context, compartmentID, name string) (*identity.AvailabilityDomain, error) {
 	var ad1 string
 
@@ -863,6 +858,14 @@ func (mockClient MockIdentityClient) GetAvailabilityDomainByName(ctx context.Con
 		ad1 = "AD1"
 	}
 	return &identity.AvailabilityDomain{Name: &ad1}, nil
+}
+
+func (mockClient MockIdentityClient) ListAvailabilityDomains(ctx context.Context, compartmentID string) ([]identity.AvailabilityDomain, error) {
+	ad, _ := mockClient.GetAvailabilityDomainByName(ctx, compartmentID, "")
+	if ad == nil {
+		return nil, nil
+	}
+	return []identity.AvailabilityDomain{*ad}, nil
 }
 
 // Identity mocks client Identity implementation

@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2025, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2026, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -24,7 +24,7 @@ import (
 type ClientOptions struct {
 
 	// Clients these options should apply to. Must be a either
-	// single IPv4 address or single IPv4 CIDR block.
+	// single IPv4/IPv6 address or single IPv4/IPv6 CIDR block.
 	// **Note:** Access will also be limited by any applicable VCN
 	// security rules and the ability to route IP packets to the
 	// mount target. Mount targets do not have Internet-routable IP addresses.

@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2025, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2026, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 // Code generated. DO NOT EDIT.
 
@@ -136,8 +136,12 @@ type CreateVnicDetails struct {
 	//
 	// If you specify a `vlanId`, the `privateIp` cannot be specified.
 	// See Vlan.
+	// If you specify a 'privateIpId', the 'privateIp' cannot be specified.
 	// Example: `10.0.3.3`
 	PrivateIp *string `mandatory:"false" json:"privateIp"`
+
+	// An OCID (https://docs.oracle.com/iaas/Content/General/Concepts/identifiers.htm) that specifies a previously-reserved IP address to use for this VNIC.
+	PrivateIpId *string `mandatory:"false" json:"privateIpId"`
 
 	// Whether the source/destination check is disabled on the VNIC.
 	// Defaults to `false`, which means the check is performed. For information

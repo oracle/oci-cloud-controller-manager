@@ -15,15 +15,32 @@
 package config
 
 import (
-	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 	"io"
+	"net/url"
 	"os"
+	"strings"
 
+	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
 	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/common/auth"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
+)
+
+const (
+	workloadIdentityDomainURLEnv                      = "OCI_WORKLOAD_IDENTITY_DOMAIN_URL"
+	workloadIdentityClientIDEnv                       = "OCI_WORKLOAD_IDENTITY_CLIENT_ID"
+	workloadIdentityClientSecretEnv                   = "OCI_WORKLOAD_IDENTITY_CLIENT_SECRET"
+	workloadIdentityResourceTypeEnv                   = "OCI_WORKLOAD_IDENTITY_RESOURCE_TYPE"
+	workloadIdentitySubjectTokenTypeEnv               = "OCI_WORKLOAD_IDENTITY_SUBJECT_TOKEN_TYPE"
+	workloadIdentityRequestedTokenTypeEnv             = "OCI_WORKLOAD_IDENTITY_REQUESTED_TOKEN_TYPE"
+	workloadIdentityTokenPathEnv                      = "OCI_WORKLOAD_IDENTITY_TOKEN_PATH"
+	workloadIdentityRpstExpEnv                        = "OCI_WORKLOAD_IDENTITY_RPST_EXP"
+	workloadIdentityPublicKeyEnv                      = "OCI_WORKLOAD_IDENTITY_PUBLIC_KEY"
+	workloadIdentityUseInstancePrincipalForTokenExEnv = "OCI_WORKLOAD_IDENTITY_USE_INSTANCE_PRINCIPAL_FOR_TOKEN_EXCHANGE"
+	defaultRequestedTokenType                         = "urn:oci:token-type:oci-rpst"
+	defaultSubjectTokenType                           = "jwt"
 )
 
 // AuthConfig holds the configuration required for communicating with the OCI
@@ -145,6 +162,8 @@ type Config struct {
 
 	// When set to true, clients will use an instance principal configuration provider and ignore auth fields.
 	UseInstancePrincipals bool `yaml:"useInstancePrincipals"`
+	// When set to true, clients will use workload identity and ignore auth fields.
+	UseWorkloadIdentity bool `yaml:"useWorkloadIdentity"`
 	// CompartmentID is the OCID of the Compartment within which the cluster
 	// resides.
 	CompartmentID string `yaml:"compartment"`
@@ -279,6 +298,14 @@ func NewConfigurationProvider(cfg *Config) (common.ConfigurationProvider, error)
 			return cp, nil
 		}
 
+		if cfg.UseWorkloadIdentity {
+			cp, err := NewWorkloadIdentityConfigurationProvider(cfg)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to instantiate self-managed Workload Identity configuration provider")
+			}
+			return cp, nil
+		}
+
 		conf = common.NewRawConfigurationProvider(
 			cfg.Auth.TenancyID,
 			cfg.Auth.UserID,
@@ -292,4 +319,85 @@ func NewConfigurationProvider(cfg *Config) (common.ConfigurationProvider, error)
 	}
 
 	return conf, nil
+}
+
+type fileTokenIssuer struct {
+	tokenPath string
+}
+
+func (fti fileTokenIssuer) GetToken() (string, error) {
+	token, err := os.ReadFile(fti.tokenPath)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(token)), nil
+}
+
+// NewWorkloadIdentityConfigurationProvider builds a token-exchange based
+// configuration provider for self-managed Kubernetes workload identity.
+func NewWorkloadIdentityConfigurationProvider(cfg *Config) (common.ConfigurationProvider, error) {
+	if cfg == nil {
+		return nil, errors.New("config cannot be nil")
+	}
+
+	domainURL := strings.TrimSpace(os.Getenv(workloadIdentityDomainURLEnv))
+	if domainURL == "" {
+		return nil, errors.Errorf("%s must be set when useWorkloadIdentity is true", workloadIdentityDomainURLEnv)
+	}
+	if _, err := url.ParseRequestURI(domainURL); err != nil {
+		return nil, errors.Wrapf(err, "%s must be a valid URL when useWorkloadIdentity is true", workloadIdentityDomainURLEnv)
+	}
+
+	resourceType := strings.TrimSpace(os.Getenv(workloadIdentityResourceTypeEnv))
+	if resourceType == "" {
+		return nil, errors.Errorf("%s must be set when useWorkloadIdentity is true", workloadIdentityResourceTypeEnv)
+	}
+
+	requestedTokenType := strings.TrimSpace(os.Getenv(workloadIdentityRequestedTokenTypeEnv))
+	if requestedTokenType == "" {
+		requestedTokenType = defaultRequestedTokenType
+	}
+
+	subjectTokenType := strings.TrimSpace(os.Getenv(workloadIdentitySubjectTokenTypeEnv))
+	if subjectTokenType == "" {
+		subjectTokenType = defaultSubjectTokenType
+	}
+
+	tokenPath := strings.TrimSpace(os.Getenv(workloadIdentityTokenPathEnv))
+	if tokenPath == "" {
+		tokenPath = auth.KubernetesServiceAccountTokenPath
+	}
+
+	region := cfg.Auth.Region
+	if region == "" {
+		return nil, errors.New("auth.region must be set when useWorkloadIdentity is true")
+	}
+
+	builder := auth.TokenExchangeBuilder{
+		DomainUrl:          domainURL,
+		Region:             region,
+		RequestedTokenType: requestedTokenType,
+		ResType:            resourceType,
+		SubjectTokenType:   subjectTokenType,
+		RpstExp:            strings.TrimSpace(os.Getenv(workloadIdentityRpstExpEnv)),
+		PublicKey:          strings.TrimSpace(os.Getenv(workloadIdentityPublicKeyEnv)),
+	}
+
+	useInstancePrincipalTokenExchange := strings.EqualFold(strings.TrimSpace(os.Getenv(workloadIdentityUseInstancePrincipalForTokenExEnv)), "true")
+	if useInstancePrincipalTokenExchange {
+		instancePrincipalProvider, err := auth.InstancePrincipalConfigurationProvider()
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to instantiate InstancePrincipalConfigurationProvider for workload identity token exchange")
+		}
+		builder.InstancePrincipalProvider = instancePrincipalProvider
+	} else {
+		builder.ClientId = strings.TrimSpace(os.Getenv(workloadIdentityClientIDEnv))
+		builder.ClientSecret = strings.TrimSpace(os.Getenv(workloadIdentityClientSecretEnv))
+		if builder.ClientId == "" || builder.ClientSecret == "" {
+			return nil, errors.Errorf("%s and %s must be set unless %s=true", workloadIdentityClientIDEnv, workloadIdentityClientSecretEnv, workloadIdentityUseInstancePrincipalForTokenExEnv)
+		}
+	}
+
+	tokenIssuer := fileTokenIssuer{tokenPath: tokenPath}
+	return auth.TokenExchangeConfigurationProviderFromIssuer(tokenIssuer, builder)
 }
