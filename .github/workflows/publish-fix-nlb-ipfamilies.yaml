@@ -1,0 +1,55 @@
+name: Publish fix-nlb-ipfamilies image
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - fix-nlb-ipfamilies
+    paths:
+      - ".github/workflows/publish-fix-nlb-ipfamilies.yaml"
+      - "cmd/**"
+      - "image/**"
+      - "pkg/**"
+      - "scripts/**"
+      - "Dockerfile_arm_all"
+      - "go.mod"
+      - "go.sum"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish-arm64:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push arm64 image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile_arm_all
+          platforms: linux/arm64
+          push: true
+          build-args: |
+            COMPONENT=oci-cloud-controller-manager oci-volume-provisioner oci-flexvolume-driver oci-csi-controller-driver oci-csi-node-driver
+          tags: |
+            ghcr.io/kab1r/oci-cloud-controller-manager:fix-nlb-ipfamilies
+            ghcr.io/kab1r/oci-cloud-controller-manager:fix-nlb-ipfamilies-${{ github.sha }}
