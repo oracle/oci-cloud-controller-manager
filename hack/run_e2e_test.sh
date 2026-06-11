@@ -43,7 +43,7 @@ function set_image_pull_repo_and_delete_namespace_flag () {
 }
 
 function run_e2e_tests_existing_cluster() {
-    if [[ -z "${E2E_NODE_COUNT}" ]]; then
+    if [[ -z "${E2E_NODE_COUNT:-}" ]]; then
         E2E_NODE_COUNT=1
     fi
 
@@ -78,7 +78,6 @@ function run_e2e_tests_existing_cluster() {
                     --add-oke-system-tags="false"
     else
         ginkgo -v -progress --trace -nodes=${E2E_NODE_COUNT} "${FOCUS_OPT}" "${FOCUS_SKIP_OPT}" "${FOCUS_FP_OPT}"  \
-            ginkgo -v -p -progress --trace "${FOCUS_OPT}" "${FOCUS_FP_OPT}"  \
                     test/e2e/cloud-provider-oci -- \
                     --cluster-kubeconfig=${CLUSTER_KUBECONFIG} \
                     --cloud-config=${CLOUD_CONFIG} \
