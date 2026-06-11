@@ -96,6 +96,10 @@ manifests: build-dirs
 vendor:
 	@GO111MODULE=on go mod vendor -v
 
+.PHONY: fix-security-vulnerabilities
+fix-security-vulnerabilities:
+	@./hack/fix-security-vulnerabilities.sh
+
 .PHONY: test
 test:
 	@./hack/test.sh $(SRC_DIRS)
