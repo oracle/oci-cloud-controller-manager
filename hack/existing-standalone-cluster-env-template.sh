@@ -19,6 +19,9 @@ export FOCUS="\[cloudprovider\]"
 # The test suites to skip (can replace or add tags)
 export FOCUS_SKIP=""
 
+# Run E2Es in parallel.
+export ENABLE_PARALLEL_RUN="true"
+
 # Scope can be ARM / AMD / BOTH
 # Mandatory
 export SCOPE="BOTH"

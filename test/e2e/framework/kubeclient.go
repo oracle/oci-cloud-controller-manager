@@ -48,6 +48,7 @@ import (
 	clientcmd "k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/remotecommand"
 	v1helper "k8s.io/component-helpers/scheduling/corev1"
+	"k8s.io/klog/v2"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	appsinternal "k8s.io/kubernetes/pkg/apis/apps"
 	batchinternal "k8s.io/kubernetes/pkg/apis/batch"
@@ -651,7 +652,7 @@ func podToleratesNodeTaints(pod *v1.Pod, nodeInfo *scheduler.NodeInfo, filter fu
 		return true, nil
 	}
 
-	_, matchingFlag := v1helper.FindMatchingUntoleratedTaint(taints, pod.Spec.Tolerations, filter)
+	_, matchingFlag := v1helper.FindMatchingUntoleratedTaint(klog.Background(), taints, pod.Spec.Tolerations, filter, false)
 
 	if !matchingFlag {
 		return true, nil

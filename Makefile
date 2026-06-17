@@ -38,7 +38,7 @@ else
     VERSION   ?= ${VERSION}
 endif
 
-RELEASE = v1.34.2
+RELEASE = v1.35.0
 
 GOOS ?= linux
 ARCH ?= amd64
@@ -95,6 +95,10 @@ manifests: build-dirs
 .PHONY: vendor
 vendor:
 	@GO111MODULE=on go mod vendor -v
+
+.PHONY: fix-security-vulnerabilities
+fix-security-vulnerabilities:
+	@./hack/fix-security-vulnerabilities.sh
 
 .PHONY: test
 test:
