@@ -2244,19 +2244,20 @@ func (cp *CloudProvider) getLbListenerBackendSetIpVersion(ipFamilies []string, i
 		}
 		return []string{IPv4, IPv6}, nil
 	case string(v1.IPFamilyPolicyPreferDualStack):
-		if errIPv6Subnet != nil && errIPv4Subnet != nil {
-			// should never happen
-			return nil, errors.New("subnet does not have IPv4 or IPv6 cidr, can't create loadbalancer")
+		// ipFamilies is the authoritative source of what IP families the service uses.
+		// Only include IP versions that are in ipFamilies AND supported by the subnet.
+		var result []string
+		for _, ipFamily := range ipFamilies {
+			if ipFamily == IPv4 && errIPv4Subnet == nil {
+				result = append(result, IPv4)
+			} else if ipFamily == IPv6 && errIPv6Subnet == nil {
+				result = append(result, IPv6)
+			}
 		}
-		if errIPv6Subnet != nil {
-			cp.logger.Warn("subnet provided does not have IPv6 subnet CIDR block, creating listeners and backends of ip-version IPv4")
-			return []string{IPv4}, nil
+		if len(result) == 0 {
+			return nil, errors.New("no compatible IP families between service spec and subnet capabilities")
 		}
-		if errIPv4Subnet != nil {
-			cp.logger.Warn("subnet provided does not have IPV4 subnet CIDR block, creating listeners and backends of ip-version IPv6")
-			return []string{IPv6}, nil
-		}
-		return []string{IPv4, IPv6}, nil
+		return result, nil
 	}
 	return []string{IPv4}, nil
 }
