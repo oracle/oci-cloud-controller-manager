@@ -56,6 +56,7 @@ func TestGetNodePatchBytes(t *testing.T) {
 				CompartmentId:      &instanceCompID,
 				FaultDomain:        &instanceFD,
 				AvailabilityDomain: &instanceAD,
+				Id:                 &instanceID,
 			},
 			expectedPatchBytes: nil,
 			clusterIpFamily:    "IPv4",
@@ -76,6 +77,7 @@ func TestGetNodePatchBytes(t *testing.T) {
 				CompartmentId:      &instanceCompID,
 				FaultDomain:        &instanceFD,
 				AvailabilityDomain: &instanceAD,
+				Id:                 &instanceID,
 			},
 			expectedPatchBytes: nil,
 			clusterIpFamily:    "IPv6",
@@ -93,9 +95,10 @@ func TestGetNodePatchBytes(t *testing.T) {
 				CompartmentId:      &instanceCompID,
 				FaultDomain:        &instanceFD,
 				AvailabilityDomain: &instanceAD,
+				Id:                 &instanceID,
 			},
 			clusterIpFamily:    "IPv4",
-			expectedPatchBytes: []byte("{\"metadata\": {\"annotations\": {\"oci.oraclecloud.com/compartment-id\":\"instanceCompID\"}}}"),
+			expectedPatchBytes: []byte("{\"metadata\":{\"annotations\":{\"oci.oraclecloud.com/compartment-id\":\"instanceCompID\"}},\"spec\":{\"providerID\":\"oci://ocid1.instanceID\"}}"),
 		},
 		"Only CompartmentID annotation present Ipv4": {
 			node: &v1.Node{
@@ -109,9 +112,10 @@ func TestGetNodePatchBytes(t *testing.T) {
 				CompartmentId:      &instanceCompID,
 				FaultDomain:        &instanceFD,
 				AvailabilityDomain: &instanceAD,
+				Id:                 &instanceID,
 			},
 			clusterIpFamily:    "IPv4",
-			expectedPatchBytes: []byte("{\"metadata\": {\"labels\": {\"oci.oraclecloud.com/fault-domain\":\"instanceFD\"}}}"),
+			expectedPatchBytes: []byte("{\"metadata\":{\"labels\":{\"oci.oraclecloud.com/fault-domain\":\"instanceFD\"}},\"spec\":{\"providerID\":\"oci://ocid1.instanceID\"}}"),
 		},
 		"Only CompartmentID annotation present Ipv6": {
 			node: &v1.Node{
@@ -125,9 +129,10 @@ func TestGetNodePatchBytes(t *testing.T) {
 				CompartmentId:      &instanceCompID,
 				FaultDomain:        &instanceFD,
 				AvailabilityDomain: &instanceAD,
+				Id:                 &instanceID,
 			},
 			clusterIpFamily:    "IPv6",
-			expectedPatchBytes: []byte("{\"metadata\": {\"labels\": {\"oci.oraclecloud.com/fault-domain\":\"instanceFD\",\"csi-ipv6-full-ad-name\":\"prefix.instanceAD\"}}}"),
+			expectedPatchBytes: []byte("{\"metadata\":{\"labels\":{\"csi-ipv6-full-ad-name\":\"prefix.instanceAD\",\"oci.oraclecloud.com/fault-domain\":\"instanceFD\"}},\"spec\":{\"providerID\":\"oci://ocid1.instanceID\"}}"),
 		},
 		"Only FD label is present IPv4 dual stack": {
 			node: &v1.Node{
@@ -141,9 +146,10 @@ func TestGetNodePatchBytes(t *testing.T) {
 				CompartmentId:      &instanceCompID,
 				FaultDomain:        &instanceFD,
 				AvailabilityDomain: &instanceAD,
+				Id:                 &instanceID,
 			},
 			clusterIpFamily:    "IPv4,IPv6",
-			expectedPatchBytes: []byte("{\"metadata\": {\"annotations\": {\"oci.oraclecloud.com/compartment-id\":\"instanceCompID\"}}}"),
+			expectedPatchBytes: []byte("{\"metadata\":{\"annotations\":{\"oci.oraclecloud.com/compartment-id\":\"instanceCompID\"}},\"spec\":{\"providerID\":\"oci://ocid1.instanceID\"}}"),
 		},
 		"Only FD label is present IPv6": {
 			node: &v1.Node{
@@ -157,9 +163,10 @@ func TestGetNodePatchBytes(t *testing.T) {
 				CompartmentId:      &instanceCompID,
 				FaultDomain:        &instanceFD,
 				AvailabilityDomain: &instanceAD,
+				Id:                 &instanceID,
 			},
 			clusterIpFamily:    "IPv6",
-			expectedPatchBytes: []byte("{\"metadata\": {\"labels\": {\"oci.oraclecloud.com/fault-domain\":\"instanceFD\",\"csi-ipv6-full-ad-name\":\"prefix.instanceAD\"},\"annotations\": {\"oci.oraclecloud.com/compartment-id\":\"instanceCompID\"}}}"),
+			expectedPatchBytes: []byte("{\"metadata\":{\"labels\":{\"csi-ipv6-full-ad-name\":\"prefix.instanceAD\"},\"annotations\":{\"oci.oraclecloud.com/compartment-id\":\"instanceCompID\"}},\"spec\":{\"providerID\":\"oci://ocid1.instanceID\"}}"),
 		},
 		"Only AD label present Ipv4": {
 			node: &v1.Node{
@@ -173,9 +180,10 @@ func TestGetNodePatchBytes(t *testing.T) {
 				CompartmentId:      &instanceCompID,
 				FaultDomain:        &instanceFD,
 				AvailabilityDomain: &instanceAD,
+				Id:                 &instanceID,
 			},
 			clusterIpFamily:    "IPv4",
-			expectedPatchBytes: []byte("{\"metadata\": {\"labels\": {\"oci.oraclecloud.com/fault-domain\":\"instanceFD\"},\"annotations\": {\"oci.oraclecloud.com/compartment-id\":\"instanceCompID\"}}}"),
+			expectedPatchBytes: []byte("{\"metadata\":{\"labels\":{\"oci.oraclecloud.com/fault-domain\":\"instanceFD\"},\"annotations\":{\"oci.oraclecloud.com/compartment-id\":\"instanceCompID\"}},\"spec\":{\"providerID\":\"oci://ocid1.instanceID\"}}"),
 		},
 		"Only AD label present Ipv6": {
 			node: &v1.Node{
@@ -189,9 +197,10 @@ func TestGetNodePatchBytes(t *testing.T) {
 				CompartmentId:      &instanceCompID,
 				FaultDomain:        &instanceFD,
 				AvailabilityDomain: &instanceAD,
+				Id:                 &instanceID,
 			},
 			clusterIpFamily:    "IPv6",
-			expectedPatchBytes: []byte("{\"metadata\": {\"labels\": {\"oci.oraclecloud.com/fault-domain\":\"instanceFD\",\"csi-ipv6-full-ad-name\":\"prefix.instanceAD\"},\"annotations\": {\"oci.oraclecloud.com/compartment-id\":\"instanceCompID\"}}}"),
+			expectedPatchBytes: []byte("{\"metadata\":{\"labels\":{\"oci.oraclecloud.com/fault-domain\":\"instanceFD\"},\"annotations\":{\"oci.oraclecloud.com/compartment-id\":\"instanceCompID\"}},\"spec\":{\"providerID\":\"oci://ocid1.instanceID\"}}"),
 		},
 		"none present Ipv4": {
 			node: &v1.Node{
@@ -201,9 +210,10 @@ func TestGetNodePatchBytes(t *testing.T) {
 				CompartmentId:      &instanceCompID,
 				FaultDomain:        &instanceFD,
 				AvailabilityDomain: &instanceAD,
+				Id:                 &instanceID,
 			},
 			clusterIpFamily:    "IPv4",
-			expectedPatchBytes: []byte("{\"metadata\": {\"labels\": {\"oci.oraclecloud.com/fault-domain\":\"instanceFD\"},\"annotations\": {\"oci.oraclecloud.com/compartment-id\":\"instanceCompID\"}}}"),
+			expectedPatchBytes: []byte("{\"metadata\":{\"labels\":{\"oci.oraclecloud.com/fault-domain\":\"instanceFD\"},\"annotations\":{\"oci.oraclecloud.com/compartment-id\":\"instanceCompID\"}},\"spec\":{\"providerID\":\"oci://ocid1.instanceID\"}}"),
 		},
 		"none present Ipv6": {
 			node: &v1.Node{
@@ -213,9 +223,10 @@ func TestGetNodePatchBytes(t *testing.T) {
 				CompartmentId:      &instanceCompID,
 				FaultDomain:        &instanceFD,
 				AvailabilityDomain: &instanceAD,
+				Id:                 &instanceID,
 			},
 			clusterIpFamily:    "IPv6",
-			expectedPatchBytes: []byte("{\"metadata\": {\"labels\": {\"oci.oraclecloud.com/fault-domain\":\"instanceFD\",\"csi-ipv6-full-ad-name\":\"prefix.instanceAD\"},\"annotations\": {\"oci.oraclecloud.com/compartment-id\":\"instanceCompID\"}}}"),
+			expectedPatchBytes: []byte("{\"metadata\":{\"labels\":{\"csi-ipv6-full-ad-name\":\"prefix.instanceAD\",\"oci.oraclecloud.com/fault-domain\":\"instanceFD\"},\"annotations\":{\"oci.oraclecloud.com/compartment-id\":\"instanceCompID\"}},\"spec\":{\"providerID\":\"oci://ocid1.instanceID\"}}"),
 		},
 	}
 	logger := zap.L()
