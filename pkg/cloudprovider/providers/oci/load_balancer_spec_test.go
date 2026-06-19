@@ -2888,7 +2888,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Internal: false,
 				Subnets:  []string{"one", "two"},
 				Listeners: map[string]client.GenericListener{
-					fmt.Sprintf("TCP-443"): {
+					"TCP-443": {
 						Name:                  common.String("TCP-443"),
 						DefaultBackendSetName: common.String("TCP-443"),
 						Port:                  common.Int(443),
@@ -4607,7 +4607,7 @@ func TestNewLBSpecSuccess(t *testing.T) {
 				Internal: false,
 				Subnets:  []string{"one", "two"},
 				Listeners: map[string]client.GenericListener{
-					fmt.Sprintf("GRPC-443"): {
+					"GRPC-443": {
 						Name:                  common.String("GRPC-443"),
 						DefaultBackendSetName: common.String("TCP-443"),
 						Port:                  common.Int(443),
@@ -9544,9 +9544,15 @@ func Test_validateService(t *testing.T) {
 }
 
 func Test_getListenersNetworkLoadBalancer(t *testing.T) {
-	testOneListenerName := "TCP_AND_UDP-67"
-	testOneBackendSetName := "TCP_AND_UDP-67"
-	testOneProtocol := "TCP_AND_UDP"
+	testOneCombinedListenerName := "TCP_AND_UDP-67"
+	testOneCombinedBackendSetName := "TCP_AND_UDP-67"
+	testOneCombinedProtocol := "TCP_AND_UDP"
+	testOneSeparateListenerNameOne := "TCP-67"
+	testOneSeparateListenerNameTwo := "UDP-67"
+	testOneSeparateBackendSetNameOne := "TCP-67"
+	testOneSeparateBackendSetNameTwo := "UDP-67"
+	testOneSeparateProtocolOne := "TCP"
+	testOneSeparateProtocolTwo := "UDP"
 	testOnePort := 67
 
 	testTwoListenerNameOne := "TCP-67"
@@ -9580,7 +9586,7 @@ func Test_getListenersNetworkLoadBalancer(t *testing.T) {
 		wantListeners            map[string]client.GenericListener
 		err                      error
 	}{
-		"NLB_with_mixed_protocol_on_same_port": {
+		"NLB_with_mixed_protocol_on_same_port_and_SAME_nodeport": {
 			service: &v1.Service{
 				Spec: v1.ServiceSpec{
 					SessionAffinity: v1.ServiceAffinityNone,
@@ -9588,10 +9594,12 @@ func Test_getListenersNetworkLoadBalancer(t *testing.T) {
 						{
 							Protocol: v1.ProtocolTCP,
 							Port:     int32(67),
+							NodePort: int32(30067),
 						},
 						{
 							Protocol: v1.ProtocolUDP,
 							Port:     int32(67),
+							NodePort: int32(30067),
 						},
 					},
 				},
@@ -9604,9 +9612,49 @@ func Test_getListenersNetworkLoadBalancer(t *testing.T) {
 			listenerBackendIpVersion: []string{IPv4},
 			wantListeners: map[string]client.GenericListener{
 				"TCP_AND_UDP-67": {
-					Name:                  &testOneListenerName,
-					DefaultBackendSetName: common.String(testOneBackendSetName),
-					Protocol:              &testOneProtocol,
+					Name:                  &testOneCombinedListenerName,
+					DefaultBackendSetName: common.String(testOneCombinedBackendSetName),
+					Protocol:              &testOneCombinedProtocol,
+					Port:                  &testOnePort,
+				},
+			},
+			err: nil,
+		},
+		"NLB_with_mixed_protocol_on_same_port_and_DIFFERENT_nodeports": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+							NodePort: int32(30067),
+						},
+						{
+							Protocol: v1.ProtocolUDP,
+							Port:     int32(67),
+							NodePort: int32(30068),
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadBalancerType: "nlb",
+					},
+				},
+			},
+			listenerBackendIpVersion: []string{IPv4},
+			wantListeners: map[string]client.GenericListener{
+				"TCP-67": {
+					Name:                  &testOneSeparateListenerNameOne,
+					DefaultBackendSetName: common.String(testOneSeparateBackendSetNameOne),
+					Protocol:              &testOneSeparateProtocolOne,
+					Port:                  &testOnePort,
+				},
+				"UDP-67": {
+					Name:                  &testOneSeparateListenerNameTwo,
+					DefaultBackendSetName: common.String(testOneSeparateBackendSetNameTwo),
+					Protocol:              &testOneSeparateProtocolTwo,
 					Port:                  &testOnePort,
 				},
 			},
@@ -10345,17 +10393,19 @@ func Test_getBackendSetNamePortMap(t *testing.T) {
 				},
 			},
 		},
-		"multiple ports with different protocols": {
+		"multiple ports with different protocols (different external ports)": {
 			in: &v1.Service{
 				Spec: v1.ServiceSpec{
 					Ports: []v1.ServicePort{
 						{
 							Protocol: v1.ProtocolTCP,
 							Port:     80,
+							NodePort: 30080,
 						},
 						{
 							Protocol: v1.ProtocolUDP,
 							Port:     81,
+							NodePort: 30081,
 						},
 					},
 				},
@@ -10364,32 +10414,53 @@ func Test_getBackendSetNamePortMap(t *testing.T) {
 				"TCP-80": {
 					Protocol: v1.ProtocolTCP,
 					Port:     80,
+					NodePort: 30080,
 				},
 				"UDP-81": {
 					Protocol: v1.ProtocolUDP,
 					Port:     81,
+					NodePort: 30081,
 				},
 			},
 		},
-		"multiple ports with mixed protocols": {
+		"multiple ports with mixed protocols (same external port, SAME NodePort)": {
 			in: &v1.Service{
 				Spec: v1.ServiceSpec{
 					Ports: []v1.ServicePort{
 						{
 							Protocol: v1.ProtocolTCP,
 							Port:     80,
+							NodePort: 30000,
 						},
 						{
 							Protocol: v1.ProtocolUDP,
-							Port:     81,
+							Port:     80,
+							NodePort: 30000,
 						},
+					},
+				},
+			},
+			out: map[string]v1.ServicePort{
+				"TCP_AND_UDP-80": {
+					Protocol: v1.ProtocolTCP,
+					Port:     80,
+					NodePort: 30000,
+				},
+			},
+		},
+		"multiple ports with mixed protocols (same external port, DIFFERENT NodePorts)": {
+			in: &v1.Service{
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
 						{
 							Protocol: v1.ProtocolTCP,
-							Port:     82,
+							Port:     80,
+							NodePort: 30000,
 						},
 						{
 							Protocol: v1.ProtocolUDP,
-							Port:     82,
+							Port:     80,
+							NodePort: 30001,
 						},
 					},
 				},
@@ -10398,14 +10469,12 @@ func Test_getBackendSetNamePortMap(t *testing.T) {
 				"TCP-80": {
 					Protocol: v1.ProtocolTCP,
 					Port:     80,
+					NodePort: 30000,
 				},
-				"UDP-81": {
+				"UDP-80": {
 					Protocol: v1.ProtocolUDP,
-					Port:     81,
-				},
-				"TCP_AND_UDP-82": {
-					Protocol: v1.ProtocolTCP,
-					Port:     82,
+					Port:     80,
+					NodePort: 30001,
 				},
 			},
 		},
