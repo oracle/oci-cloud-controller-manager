@@ -29,6 +29,7 @@ import (
 	"github.com/oracle/oci-go-sdk/v65/networkloadbalancer"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	"golang.org/x/sync/semaphore"
 	authv1 "k8s.io/api/authentication/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/flowcontrol"
@@ -200,8 +201,129 @@ type client struct {
 	requestMetadata common.RequestMetadata
 	rateLimiter     RateLimiter
 
+	instanceAttachmentLocksMutex sync.Mutex
+	instanceAttachmentLocks      map[string]*instanceAttachmentLock
+
 	subnetCache cache.Store
 	logger      *zap.SugaredLogger
+}
+
+type instanceAttachmentLock struct {
+	semaphore  *semaphore.Weighted
+	references int
+}
+
+func newInstanceAttachmentLock() *instanceAttachmentLock {
+	return &instanceAttachmentLock{semaphore: semaphore.NewWeighted(1)}
+}
+
+func (c *client) lockInstanceAttachment(ctx context.Context, instanceID, volumeID string) (func(), error) {
+	waitStartedAt := time.Now()
+
+	c.instanceAttachmentLocksMutex.Lock()
+	if c.instanceAttachmentLocks == nil {
+		c.instanceAttachmentLocks = make(map[string]*instanceAttachmentLock)
+	}
+
+	lock := c.instanceAttachmentLocks[instanceID]
+	if lock == nil {
+		lock = newInstanceAttachmentLock()
+		c.instanceAttachmentLocks[instanceID] = lock
+	}
+	lock.references++
+	referenceCount := lock.references
+	c.instanceAttachmentLocksMutex.Unlock()
+
+	c.logInstanceAttachmentLock("Waiting to acquire instance attachment lock.", instanceID, volumeID, referenceCount, 0, 0, nil)
+	if err := lock.semaphore.Acquire(ctx, 1); err != nil {
+		remainingReferences := c.removeInstanceAttachmentLockReference(instanceID, lock)
+		c.logInstanceAttachmentLock("Failed to acquire instance attachment lock.", instanceID, volumeID, remainingReferences, time.Since(waitStartedAt).Milliseconds(), 0, err)
+		return nil, err
+	}
+
+	acquiredAt := time.Now()
+	currentReferences := c.instanceAttachmentLockReferences(instanceID, lock)
+	c.logInstanceAttachmentLock("Acquired instance attachment lock.", instanceID, volumeID, currentReferences, acquiredAt.Sub(waitStartedAt).Milliseconds(), 0, nil)
+
+	return func() {
+		lock.semaphore.Release(1)
+		remainingReferences := c.removeInstanceAttachmentLockReference(instanceID, lock)
+		c.logInstanceAttachmentLock("Released instance attachment lock.", instanceID, volumeID, remainingReferences, acquiredAt.Sub(waitStartedAt).Milliseconds(), time.Since(acquiredAt).Milliseconds(), nil)
+	}, nil
+}
+
+func (c *client) removeInstanceAttachmentLockReference(instanceID string, lock *instanceAttachmentLock) int {
+	c.instanceAttachmentLocksMutex.Lock()
+	defer c.instanceAttachmentLocksMutex.Unlock()
+
+	lock.references--
+	if lock.references == 0 && c.instanceAttachmentLocks[instanceID] == lock {
+		delete(c.instanceAttachmentLocks, instanceID)
+	}
+
+	return lock.references
+}
+
+func (c *client) instanceAttachmentLockReferences(instanceID string, lock *instanceAttachmentLock) int {
+	c.instanceAttachmentLocksMutex.Lock()
+	defer c.instanceAttachmentLocksMutex.Unlock()
+
+	if c.instanceAttachmentLocks[instanceID] != lock {
+		return 0
+	}
+	return lock.references
+}
+
+func (c *client) logInstanceAttachmentLock(message, instanceID, volumeID string, references int, waitDurationMs, holdDurationMs int64, err error) {
+	if c.logger == nil {
+		return
+	}
+
+	logger := c.logger.With(
+		"instanceID", instanceID,
+		"volumeID", volumeID,
+		"references", references,
+		"waitDurationMs", waitDurationMs,
+		"holdDurationMs", holdDurationMs,
+	)
+	if err != nil {
+		logger = logger.With("error", err)
+	}
+
+	logger.Info(message)
+}
+
+func setupBaseClient(log *zap.SugaredLogger, client *common.BaseClient, signer common.HTTPRequestSigner, interceptor common.RequestInterceptor, endpointOverrideEnvVar string) {
+	client.Signer = signer
+	client.Interceptor = interceptor
+	if endpointOverrideEnvVar != "" {
+		endpointOverride, ok := os.LookupEnv(endpointOverrideEnvVar)
+		if ok && endpointOverride != "" {
+			client.Host = endpointOverride
+		}
+	}
+	clusterIpFamily, ok := os.LookupEnv(ClusterIpFamilyEnv)
+	// currently as dual stack endpoints are going to be present in selected regions, only for IPv6 single stack cluster we will be using dual stack endpoints
+	if ok && strings.EqualFold(clusterIpFamily, Ipv6Stack) {
+		client.EnableDualStackEndpoints(true)
+
+		region, ok := os.LookupEnv("OCI_RESOURCE_PRINCIPAL_REGION")
+		if !ok {
+			log.Errorf("unable to get OCI_RESOURCE_PRINCIPAL_REGION env var for region")
+		}
+
+		authEndpoint, ok := os.LookupEnv("OCI_SDK_AUTH_CLIENT_REGION_URL")
+		if !ok {
+			authDualStackEndpoint := common.StringToRegion(region).EndpointForTemplate("", "ds.auth.{region}.oci.{secondLevelDomain}")
+			if err := os.Setenv("OCI_SDK_AUTH_CLIENT_REGION_URL", authDualStackEndpoint); err != nil {
+				log.Errorf("unable to set OCI_SDK_AUTH_CLIENT_REGION_URL env var for oci auth dual stack endpoint")
+			} else {
+				log.Infof("OCI_SDK_AUTH_CLIENT_REGION_URL env var set to: %s", authDualStackEndpoint)
+			}
+		} else {
+			log.Infof("OCI_SDK_AUTH_CLIENT_REGION_URL env var set to: %s", authEndpoint)
+		}
+	}
 }
 
 // New constructs an OCI API client.

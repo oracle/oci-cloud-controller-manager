@@ -17,7 +17,6 @@ package client
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/util"
@@ -141,10 +140,6 @@ func (c *client) GetVolumeAttachment(ctx context.Context, id string) (core.Volum
 }
 
 func (c *client) AttachVolume(ctx context.Context, instanceID, volumeID string, isShareable bool) (core.VolumeAttachment, error) {
-	if !c.rateLimiter.Writer.TryAccept() {
-		return nil, RateLimitError(false, "")
-	}
-
 	var attachVolumeDetails = core.AttachIScsiVolumeDetails{
 		InstanceId:  &instanceID,
 		VolumeId:    &volumeID,
@@ -152,11 +147,33 @@ func (c *client) AttachVolume(ctx context.Context, instanceID, volumeID string, 
 	}
 
 	if !IsBootVolume(volumeID) {
+		release, err := c.lockInstanceAttachment(ctx, instanceID, volumeID)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		defer release()
+
+		if !c.rateLimiter.Writer.TryAccept() {
+			return nil, RateLimitError(false, "")
+		}
+
 		device, err := c.getDevicePath(ctx, instanceID)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
 		attachVolumeDetails.Device = device
+
+		resp, err := c.compute.AttachVolume(ctx, core.AttachVolumeRequest{
+			AttachVolumeDetails: attachVolumeDetails,
+			RequestMetadata:     c.requestMetadata,
+		})
+		incRequestCounter(err, createVerb, volumeAttachmentResource)
+
+		return c.handleAttachVolumeResponse(resp, err, volumeID, instanceID)
+	}
+
+	if !c.rateLimiter.Writer.TryAccept() {
+		return nil, RateLimitError(false, "")
 	}
 
 	resp, err := c.compute.AttachVolume(ctx, core.AttachVolumeRequest{
@@ -164,7 +181,10 @@ func (c *client) AttachVolume(ctx context.Context, instanceID, volumeID string, 
 		RequestMetadata:     c.requestMetadata,
 	})
 	incRequestCounter(err, createVerb, volumeAttachmentResource)
+	return c.handleAttachVolumeResponse(resp, err, volumeID, instanceID)
+}
 
+func (c *client) handleAttachVolumeResponse(resp core.AttachVolumeResponse, err error, volumeID, instanceID string) (core.VolumeAttachment, error) {
 	if resp.OpcRequestId != nil {
 		c.logger.With("service", "compute", "verb", createVerb, "resource", volumeAttachmentResource).
 			With("volumeID", volumeID, "instanceID", instanceID, "OpcRequestId", *(resp.OpcRequestId)).With("statusCode", util.GetHttpStatusCode(err)).
@@ -208,13 +228,18 @@ func (c *client) getDevicePath(ctx context.Context, instanceID string) (*string,
 			With("instanceID", instanceID).Warn("No consistent device paths available for worker node.")
 		return nil, fmt.Errorf("Max number of volumes are already attached to instance %s. Please schedule workload on different node.", instanceID)
 	}
-	//Picks device path from available path randomly so that 2 volume attachments don't get same path when operations happen concurrently resulting in failure of one of them.
-	device := listInstanceDevicesResp.Items[rand.Intn(len(listInstanceDevicesResp.Items))].Name
+	device := listInstanceDevicesResp.Items[0].Name
 
 	return device, nil
 }
 
 func (c *client) AttachParavirtualizedVolume(ctx context.Context, instanceID, volumeID string, isPvEncryptionInTransitEnabled bool, isShareable bool) (core.VolumeAttachment, error) {
+	release, err := c.lockInstanceAttachment(ctx, instanceID, volumeID)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	defer release()
+
 	if !c.rateLimiter.Writer.TryAccept() {
 		return nil, RateLimitError(false, "")
 	}
