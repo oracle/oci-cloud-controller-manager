@@ -879,7 +879,8 @@ func (j *PVCTestJig) DeleteBootVolume(bs ocicore.BlockstorageClient, bootVolId s
 // DeleteVolume is a function to delete the block volume
 func (j *PVCTestJig) DeleteVolume(bs ocicore.BlockstorageClient, volId string) {
 	request := ocicore.DeleteVolumeRequest{
-		VolumeId: &volId,
+		VolumeId:        &volId,
+		RequestMetadata: blockStorageDeleteRequestMetadata(),
 	}
 
 	_, err := bs.DeleteVolume(context.Background(), request)

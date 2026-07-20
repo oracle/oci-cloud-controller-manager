@@ -210,9 +210,12 @@ func TestAttachVolumeConsumesWriterPermitAfterLockAcquisition(t *testing.T) {
 
 func newVolumeAttachmentTestClient(compute computeClient) *client {
 	return &client{
-		compute:     compute,
-		logger:      zap.S(),
-		rateLimiter: *newAlwaysAcceptRateLimiter(),
+		compute: compute,
+		logger:  zap.S(),
+		rateLimiter: RateLimiter{
+			Reader: flowcontrol.NewFakeAlwaysRateLimiter(),
+			Writer: flowcontrol.NewFakeAlwaysRateLimiter(),
+		},
 	}
 }
 

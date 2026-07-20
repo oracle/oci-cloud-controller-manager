@@ -16,6 +16,7 @@ package client
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	providercfg "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci/config"
@@ -291,39 +292,6 @@ func (c *client) logInstanceAttachmentLock(message, instanceID, volumeID string,
 	}
 
 	logger.Info(message)
-}
-
-func setupBaseClient(log *zap.SugaredLogger, client *common.BaseClient, signer common.HTTPRequestSigner, interceptor common.RequestInterceptor, endpointOverrideEnvVar string) {
-	client.Signer = signer
-	client.Interceptor = interceptor
-	if endpointOverrideEnvVar != "" {
-		endpointOverride, ok := os.LookupEnv(endpointOverrideEnvVar)
-		if ok && endpointOverride != "" {
-			client.Host = endpointOverride
-		}
-	}
-	clusterIpFamily, ok := os.LookupEnv(ClusterIpFamilyEnv)
-	// currently as dual stack endpoints are going to be present in selected regions, only for IPv6 single stack cluster we will be using dual stack endpoints
-	if ok && strings.EqualFold(clusterIpFamily, Ipv6Stack) {
-		client.EnableDualStackEndpoints(true)
-
-		region, ok := os.LookupEnv("OCI_RESOURCE_PRINCIPAL_REGION")
-		if !ok {
-			log.Errorf("unable to get OCI_RESOURCE_PRINCIPAL_REGION env var for region")
-		}
-
-		authEndpoint, ok := os.LookupEnv("OCI_SDK_AUTH_CLIENT_REGION_URL")
-		if !ok {
-			authDualStackEndpoint := common.StringToRegion(region).EndpointForTemplate("", "ds.auth.{region}.oci.{secondLevelDomain}")
-			if err := os.Setenv("OCI_SDK_AUTH_CLIENT_REGION_URL", authDualStackEndpoint); err != nil {
-				log.Errorf("unable to set OCI_SDK_AUTH_CLIENT_REGION_URL env var for oci auth dual stack endpoint")
-			} else {
-				log.Infof("OCI_SDK_AUTH_CLIENT_REGION_URL env var set to: %s", authDualStackEndpoint)
-			}
-		} else {
-			log.Infof("OCI_SDK_AUTH_CLIENT_REGION_URL env var set to: %s", authEndpoint)
-		}
-	}
 }
 
 // New constructs an OCI API client.
