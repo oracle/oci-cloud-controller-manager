@@ -585,14 +585,14 @@ func getRuleManagementMode(svc *v1.Service) (string, *ManagedNetworkSecurityGrou
 		return secListMode, &nsg, err
 	}
 
-	if strings.ToLower(annotationValue) == strings.ToLower(RuleManagementModeSlAll) {
+	if strings.EqualFold(annotationValue, RuleManagementModeSlAll) {
 		return ManagementModeAll, &nsg, nil
 	}
-	if strings.ToLower(annotationValue) == strings.ToLower(RuleManagementModeSlFrontend) {
+	if strings.EqualFold(annotationValue, RuleManagementModeSlFrontend) {
 		return ManagementModeFrontend, &nsg, nil
 	}
 
-	if strings.ToLower(annotationValue) == strings.ToLower(RuleManagementModeNsg) {
+	if strings.EqualFold(annotationValue, RuleManagementModeNsg) {
 		nsg = ManagedNetworkSecurityGroup{
 			nsgRuleManagementMode: RuleManagementModeNsg,
 			frontendNsgId:         "",
@@ -840,7 +840,7 @@ func getBackendSets(logger *zap.SugaredLogger, svc *v1.Service, provisionedNodes
 		var sslConfiguration *client.GenericSslConfigurationDetails
 		if sslCfg != nil && len(sslCfg.BackendSetSSLSecretName) != 0 && getLoadBalancerType(svc) == LB {
 			secretName = sslCfg.BackendSetSSLSecretName
-			backendSetSSLConfig, _ := svc.Annotations[ServiceAnnotationLoadbalancerBackendSetSSLConfig]
+			backendSetSSLConfig := svc.Annotations[ServiceAnnotationLoadbalancerBackendSetSSLConfig]
 			sslConfiguration, err = getSSLConfiguration(sslCfg, secretName, int(servicePort.Port), backendSetSSLConfig)
 			if err != nil {
 				return nil, err
@@ -1112,7 +1112,7 @@ func getListenersOciLoadBalancer(svc *v1.Service, sslCfg *SSLConfig) (map[string
 		var sslConfiguration *client.GenericSslConfigurationDetails
 		if sslCfg != nil && len(sslCfg.ListenerSSLSecretName) != 0 {
 			secretName = sslCfg.ListenerSSLSecretName
-			listenerCipherSuiteAnnotation, _ := svc.Annotations[ServiceAnnotationLoadbalancerListenerSSLConfig]
+			listenerCipherSuiteAnnotation := svc.Annotations[ServiceAnnotationLoadbalancerListenerSSLConfig]
 			sslConfiguration, err = getSSLConfiguration(sslCfg, secretName, port, listenerCipherSuiteAnnotation)
 			if err != nil {
 				return nil, err
@@ -1166,15 +1166,15 @@ func getListenersOciLoadBalancer(svc *v1.Service, sslCfg *SSLConfig) (map[string
 
 func getListenersNetworkLoadBalancer(svc *v1.Service, listenerBackendIpVersion []string) (map[string]client.GenericListener, error) {
 	listeners := make(map[string]client.GenericListener)
-	portsMap := make(map[int][]string)
+	portsMap := make(map[int][]v1.ServicePort)
+	for _, servicePort := range svc.Spec.Ports {
+		portsMap[int(servicePort.Port)] = append(portsMap[int(servicePort.Port)], servicePort)
+	}
+
 	mixedProtocolsPortSet := make(map[int]bool)
 	var enablePpv2 *bool
 
 	requireIPv4, requireIPv6 := getRequireIpVersions(listenerBackendIpVersion)
-
-	for _, servicePort := range svc.Spec.Ports {
-		portsMap[int(servicePort.Port)] = append(portsMap[int(servicePort.Port)], string(servicePort.Protocol))
-	}
 
 	if ppv2EnabledValue, ppv2AnnotationSet := svc.Annotations[ServiceAnnotationNetworkLoadBalancerIsPpv2Enabled]; ppv2AnnotationSet {
 		if strings.ToLower(ppv2EnabledValue) == "true" {
@@ -1195,9 +1195,25 @@ func getListenersNetworkLoadBalancer(svc *v1.Service, listenerBackendIpVersion [
 			return nil, fmt.Errorf("invalid backend protocol %q requested for network load balancer listener", protocol)
 		}
 		port := int(servicePort.Port)
+		useMixed := false
+		if len(portsMap[port]) > 1 {
+			firstNodePort := portsMap[port][0].NodePort
+			allSameNodePort := true
+			for _, sp := range portsMap[port] {
+				if sp.NodePort != firstNodePort {
+					allSameNodePort = false
+					break
+				}
+			}
+			if allSameNodePort {
+				useMixed = true
+			}
+		}
+
 		listenerName := ""
 		backendSetName := ""
-		if len(portsMap[port]) > 1 {
+
+		if useMixed {
 			if mixedProtocolsPortSet[port] {
 				continue
 			}
@@ -1207,7 +1223,7 @@ func getListenersNetworkLoadBalancer(svc *v1.Service, listenerBackendIpVersion [
 			mixedProtocolsPortSet[port] = true
 		} else {
 			listenerName = getListenerName(protocol, port)
-			backendSetName = getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
+			backendSetName = getBackendSetName(string(servicePort.Protocol), port)
 		}
 
 		genericListener := client.GenericListener{
@@ -1222,8 +1238,8 @@ func getListenersNetworkLoadBalancer(svc *v1.Service, listenerBackendIpVersion [
 			listeners[listenerName] = genericListener
 		}
 		if requireIPv6 {
-			listenerNameIPv6 := fmt.Sprintf("%s", listenerName+"-"+IPv6)
-			backendSetNameIPv6 := fmt.Sprintf("%s", backendSetName+"-"+IPv6)
+			listenerNameIPv6 := listenerName + "-" + IPv6
+			backendSetNameIPv6 := backendSetName + "-" + IPv6
 			genericListener.Name = common.String(listenerNameIPv6)
 			genericListener.IpVersion = GenericIpVersion(client.GenericIPv6)
 			genericListener.DefaultBackendSetName = common.String(backendSetNameIPv6)
@@ -1546,9 +1562,9 @@ func getLoadBalancerType(svc *v1.Service) string {
 func getBackendSetNamePortMap(service *v1.Service) map[string]v1.ServicePort {
 	backendSetPortMap := make(map[string]v1.ServicePort)
 
-	portsMap := make(map[int][]string)
+	portsMap := make(map[int][]v1.ServicePort)
 	for _, servicePort := range service.Spec.Ports {
-		portsMap[int(servicePort.Port)] = append(portsMap[int(servicePort.Port)], string(servicePort.Protocol))
+		portsMap[int(servicePort.Port)] = append(portsMap[int(servicePort.Port)], servicePort)
 	}
 
 	ipFamilies := getIpFamilies(service)
@@ -1557,30 +1573,42 @@ func getBackendSetNamePortMap(service *v1.Service) map[string]v1.ServicePort {
 	mixedProtocolsPortSet := make(map[int]bool)
 	for _, servicePort := range service.Spec.Ports {
 		port := int(servicePort.Port)
+		useMixed := false
+		if len(portsMap[port]) > 1 {
+			firstNodePort := portsMap[port][0].NodePort
+			allSameNodePort := true
+			for _, sp := range portsMap[port] {
+				if sp.NodePort != firstNodePort {
+					allSameNodePort = false
+					break
+				}
+			}
+			if allSameNodePort {
+				useMixed = true
+			}
+		}
+		if useMixed {
+			if mixedProtocolsPortSet[port] {
+				continue
+			}
+			mixedProtocolsPortSet[port] = true
+		}
 		backendSetName := ""
 		if requireIPv4 {
-			if len(portsMap[port]) > 1 {
-				if mixedProtocolsPortSet[port] {
-					continue
-				}
+			if useMixed {
 				backendSetName = getBackendSetName(ProtocolTypeMixed, port)
-				mixedProtocolsPortSet[port] = true
 			} else {
-				backendSetName = getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
+				backendSetName = getBackendSetName(string(servicePort.Protocol), port)
 			}
 			backendSetPortMap[backendSetName] = servicePort
 		}
 		if requireIPv6 {
-			if len(portsMap[port]) > 1 {
-				if mixedProtocolsPortSet[port] {
-					continue
-				}
+			if useMixed {
 				backendSetName = getBackendSetName(ProtocolTypeMixed, port)
-				mixedProtocolsPortSet[port] = true
 			} else {
-				backendSetName = getBackendSetName(string(servicePort.Protocol), int(servicePort.Port))
+				backendSetName = getBackendSetName(string(servicePort.Protocol), port)
 			}
-			backendSetNameIPv6 := fmt.Sprintf("%s", backendSetName+"-"+IPv6)
+			backendSetNameIPv6 := backendSetName + "-" + IPv6
 			backendSetPortMap[backendSetNameIPv6] = servicePort
 		}
 
