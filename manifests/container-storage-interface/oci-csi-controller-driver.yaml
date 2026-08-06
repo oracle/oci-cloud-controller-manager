@@ -139,8 +139,6 @@ spec:
           emptyDir: {}
       dnsPolicy: ClusterFirst
       hostNetwork: true
-      imagePullSecrets:
-        - name: image-pull-secret
       restartPolicy: Always
       schedulerName: default-scheduler
       serviceAccount: csi-oci-node-sa
