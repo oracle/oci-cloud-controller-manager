@@ -1148,7 +1148,7 @@ func (j *PVCTestJig) NewPodWithLabels(name string, namespace string, claimName s
 					},
 				},
 			},
-			NodeSelector: map[string]string{},
+			NodeSelector: labels,
 		},
 	}, metav1.CreateOptions{})
 	if err != nil {
