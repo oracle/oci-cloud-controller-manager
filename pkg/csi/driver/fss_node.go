@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/semaphore"
@@ -92,6 +93,9 @@ func (d FSSNodeDriver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVo
 	encryptInTransit, err := isInTransitEncryptionEnabled(req.VolumeContext)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "EncryptInTransit must be a boolean value")
+	}
+	if err := validateFSSExportPath(exportPath, encryptInTransit); err != nil {
+		return nil, err
 	}
 
 	mounter := mount.New("")
@@ -197,6 +201,13 @@ func isInTransitEncryptionEnabled(volumeContext map[string]string) (bool, error)
 		}
 	}
 	return false, nil
+}
+
+func validateFSSExportPath(exportPath string, encryptInTransit bool) error {
+	if encryptInTransit && strings.IndexFunc(exportPath, unicode.IsSpace) >= 0 {
+		return status.Error(codes.InvalidArgument, "FSS export path must not contain whitespace when encryptInTransit is enabled")
+	}
+	return nil
 }
 
 func isMountPoint(mounter mount.Interface, path string) (bool, error) {
