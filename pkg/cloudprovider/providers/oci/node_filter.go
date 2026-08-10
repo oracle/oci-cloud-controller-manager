@@ -104,7 +104,9 @@ func (f *nodeFilteredSharedInformerFactory) InformerFor(
 	newFunc internalinterfaces.NewInformerFunc,
 ) cache.SharedIndexInformer {
 	if _, ok := obj.(*corev1.Node); ok {
-		return f.nodeFactory.InformerFor(obj, newFunc)
+		// A caller-provided newFunc may create an unfiltered Node informer, so
+		// always return the canonical informer configured with the Node selector.
+		return f.nodeFactory.Core().V1().Nodes().Informer()
 	}
 	return f.SharedInformerFactory.InformerFor(obj, newFunc)
 }

@@ -21,6 +21,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	corev1informers "k8s.io/client-go/informers/core/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 )
@@ -91,6 +93,65 @@ func TestNewNodeFilteredSharedInformerFactory(t *testing.T) {
 	}
 	if len(services) != 1 || services[0].Name != service.Name {
 		t.Fatalf("expected the Node selector not to filter Services, got %d Services", len(services))
+	}
+}
+
+func TestNewNodeFilteredSharedInformerFactoryInformerForMaintainsNodeFilter(t *testing.T) {
+	ociNode := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "oci-node",
+			Labels: map[string]string{
+				"platform": "oci",
+			},
+		},
+	}
+	otherNode := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "other-node",
+			Labels: map[string]string{
+				"platform": "other",
+			},
+		},
+	}
+	kubeClient := fake.NewSimpleClientset(ociNode, otherNode)
+
+	factory, err := NewNodeFilteredSharedInformerFactory(kubeClient, 0, "platform=oci")
+	if err != nil {
+		t.Fatalf("NewNodeFilteredSharedInformerFactory returned an error: %v", err)
+	}
+
+	directInformer := factory.InformerFor(
+		&corev1.Node{},
+		func(client kubernetes.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+			return corev1informers.NewNodeInformer(
+				client,
+				resyncPeriod,
+				cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
+			)
+		},
+	)
+	nodeInformer := factory.Core().V1().Nodes()
+	typedInformer := nodeInformer.Informer()
+	if directInformer != typedInformer {
+		t.Fatal("expected direct and typed Node informer accessors to share an informer")
+	}
+
+	stopCh := make(chan struct{})
+	t.Cleanup(func() {
+		close(stopCh)
+	})
+	factory.Start(stopCh)
+
+	if !cache.WaitForCacheSync(stopCh, directInformer.HasSynced) {
+		t.Fatal("timed out waiting for informer cache to sync")
+	}
+
+	nodes, err := nodeInformer.Lister().List(labels.Everything())
+	if err != nil {
+		t.Fatalf("failed to list Nodes: %v", err)
+	}
+	if len(nodes) != 1 || nodes[0].Name != ociNode.Name {
+		t.Fatalf("expected only %q, got %#v", ociNode.Name, nodeNames(nodes))
 	}
 }
 
