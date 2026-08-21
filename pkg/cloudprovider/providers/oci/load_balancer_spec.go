@@ -1260,6 +1260,33 @@ func getSecretParts(secretString string, service *v1.Service) (name string, name
 	return parts[1], parts[0]
 }
 
+func validateTLSSecretNamespaces(service *v1.Service) error {
+	var references []string
+	for _, annotation := range []string{
+		ServiceAnnotationLoadBalancerTLSSecret,
+		ServiceAnnotationLoadBalancerTLSBackendSetSecret,
+	} {
+		value := service.Annotations[annotation]
+		if value == "" {
+			continue
+		}
+		_, namespace := getSecretParts(value, service)
+		if namespace != "" && namespace != service.Namespace {
+			references = append(references, fmt.Sprintf("%s=%s", annotation, value))
+		}
+	}
+
+	if len(references) == 0 {
+		return nil
+	}
+
+	return fmt.Errorf(
+		"TLS secret annotation reference(s) %s point outside Service namespace %q; cross-namespace TLS Secret references are not allowed; copy each Secret into the Service namespace and update the annotation",
+		strings.Join(references, ", "),
+		service.Namespace,
+	)
+}
+
 func getNetworkSecurityGroupIds(svc *v1.Service) ([]string, error) {
 	lbType := getLoadBalancerType(svc)
 	nsgList := make([]string, 0)

@@ -565,6 +565,10 @@ func checkSubnetIpFamilyCompatibility(subnets []*core.Subnet, ipVersion string) 
 // EnsureLoadBalancer creates a new load balancer or updates the existing one.
 // Returns the status of the balancer (i.e it's public IP address if one exists).
 func (cp *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName string, service *v1.Service, clusterNodes []*v1.Node) (*v1.LoadBalancerStatus, error) {
+	if err := validateTLSSecretNamespaces(service); err != nil {
+		return nil, err
+	}
+
 	startTime := time.Now()
 	lbName := GetLoadBalancerName(service)
 	loadBalancerType := getLoadBalancerType(service)
@@ -1386,6 +1390,10 @@ func (clb *CloudLoadBalancerProvider) updateRuleSet(ctx context.Context, lbID st
 
 // UpdateLoadBalancer updates an existing loadbalancer
 func (cp *CloudProvider) UpdateLoadBalancer(ctx context.Context, clusterName string, service *v1.Service, nodes []*v1.Node) error {
+	if err := validateTLSSecretNamespaces(service); err != nil {
+		return err
+	}
+
 	startTime := time.Now()
 	lbName := GetLoadBalancerName(service)
 	loadBalancerType := getLoadBalancerType(service)
