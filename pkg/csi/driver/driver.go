@@ -149,6 +149,7 @@ type NodeDriver struct {
 // BlockVolumeNodeDriver extends NodeDriver
 type BlockVolumeNodeDriver struct {
 	NodeDriver
+	defaultVolumeAttachmentLimit int64
 }
 
 // FSSNodeDriver extends NodeDriver
@@ -244,9 +245,12 @@ func getMetricPusher(metricPusherGetter MetricPusherGetter, logger *zap.SugaredL
 	return metricPusher, nil
 }
 
-func GetNodeDriver(name string, nodeID string, nodeMetadata *csi_util.NodeMetadata, kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger, csiConfig *util.CSIConfig) csi.NodeServer {
+func GetNodeDriver(name string, nodeID string, nodeMetadata *csi_util.NodeMetadata, kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger, csiConfig *util.CSIConfig, volumeAttachmentLimit int64) csi.NodeServer {
 	if name == BlockVolumeDriverName {
-		return BlockVolumeNodeDriver{NodeDriver: newNodeDriver(nodeID, nodeMetadata, kubeClientSet, logger, csiConfig)}
+		return BlockVolumeNodeDriver{
+			NodeDriver:                   newNodeDriver(nodeID, nodeMetadata, kubeClientSet, logger, csiConfig),
+			defaultVolumeAttachmentLimit: volumeAttachmentLimit,
+		}
 	}
 	if name == FSSDriverName {
 		return FSSNodeDriver{NodeDriver: newNodeDriver(nodeID, nodeMetadata, kubeClientSet, logger, csiConfig)}
@@ -268,7 +272,7 @@ func NewNodeDriver(logger *zap.SugaredLogger, nodeOptions nodedriveroptions.Node
 
 	return &Driver{
 		controllerDriver:       nil,
-		nodeDriver:             GetNodeDriver(nodeOptions.DriverName, nodeOptions.NodeID, nodeMetadata, kubeClientSet, logger, csiConfig),
+		nodeDriver:             GetNodeDriver(nodeOptions.DriverName, nodeOptions.NodeID, nodeMetadata, kubeClientSet, logger, csiConfig, nodeOptions.VolumeAttachmentLimit),
 		endpoint:               nodeOptions.Endpoint,
 		logger:                 logger,
 		enableControllerServer: nodeOptions.EnableControllerServer,
