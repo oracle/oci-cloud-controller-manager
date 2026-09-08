@@ -919,6 +919,17 @@ var (
 				},
 			},
 		},
+		"volumeAttachmentLimit": {
+			Spec: api.NodeSpec{
+				ProviderID: "sample-provider-id",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					LabelTopologyZone: "PHX-AD-3",
+					"oci.oraclecloud.com/volume-attachment-limit-override": "128",
+				},
+			},
+		},
 		"nodeWithMissingAdLabels": {
 			Spec: api.NodeSpec{
 				ProviderID: "sample-provider-id",
