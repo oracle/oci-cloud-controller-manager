@@ -63,6 +63,13 @@ func (f *CloudProviderFramework) GetMountTargetByVolumeName(ctx context.Context,
 		return nil, err
 	}
 
+	return f.GetMountTargetByFileSystemID(ctx, fsID)
+}
+
+// GetMountTargetByFileSystemID returns the mount target recorded by the CSI
+// provisioner on a filesystem. It deliberately avoids a ListFileSystems
+// display-name lookup when the caller already has the filesystem OCID.
+func (f *CloudProviderFramework) GetMountTargetByFileSystemID(ctx context.Context, fsID string) (*filestorage.MountTarget, error) {
 	fs, err := f.Client.FSS(nil).GetFileSystem(ctx, fsID)
 	if client.IsNotFound(err) {
 		return nil, err
@@ -148,6 +155,15 @@ func ValidateMountTargetSecurityAttributes(mountTarget *filestorage.MountTarget,
 
 func (f *CloudProviderFramework) CheckMountTargetSecurityAttributesByVolumeName(ctx context.Context, volumeName string, compartment string, adlocation string, saNs string, sa string, val interface{}) (bool, error) {
 	mountTarget, err := f.GetMountTargetByVolumeName(ctx, compartment, adlocation, volumeName)
+	if err != nil {
+		return false, err
+	}
+
+	return ValidateMountTargetSecurityAttributes(mountTarget, saNs, sa, val), nil
+}
+
+func (f *CloudProviderFramework) CheckMountTargetSecurityAttributesByFileSystemID(ctx context.Context, filesystemID string, saNs string, sa string, val interface{}) (bool, error) {
+	mountTarget, err := f.GetMountTargetByFileSystemID(ctx, filesystemID)
 	if err != nil {
 		return false, err
 	}
