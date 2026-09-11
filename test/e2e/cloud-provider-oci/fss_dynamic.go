@@ -20,6 +20,8 @@ import (
 	"time"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	csiutil "github.com/oracle/oci-cloud-controller-manager/pkg/csi-util"
 	"github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
 	"github.com/oracle/oci-go-sdk/v65/containerengine"
 	v1 "k8s.io/api/core/v1"
@@ -32,6 +34,22 @@ const (
 	fssSecurityAttributeName            = "zpr-csi-test-attribute"
 	defaultSecurityAttributesJsonString = `{"zpr-csi-test-ns":{"zpr-csi-test-attribute":{"value":"test","mode":"enforce"}}}`
 )
+
+// The FSS control plane can expose a provisioned volume to Kubernetes before
+// the mount target's security attributes are immediately readable. Retry the
+// read-only validation instead of treating that short propagation window as a failure.
+func waitForMountTargetSecurityAttributes(volumeName string, check func() (bool, error)) {
+	Eventually(func() error {
+		hasSecurityAttributes, err := check()
+		if err != nil {
+			return err
+		}
+		if !hasSecurityAttributes {
+			return fmt.Errorf("mount target for volume %s does not have the expected security attributes", volumeName)
+		}
+		return nil
+	}, 2*time.Minute, 5*time.Second).Should(Succeed())
+}
 
 var _ = Describe("Dynamic FSS test in cluster compartment", func() {
 	f := framework.NewDefaultFramework("fss-dynamic")
@@ -239,24 +257,21 @@ var _ = Describe("Dynamic FSS test in cluster compartment", func() {
 			pvc := pvcJig.CreateAndAwaitPVCOrFailDynamicFSS(f.Namespace.Name, "50Gi", scName, v1.ClaimPending, nil)
 			writePod, readPod := pvcJig.CheckSinglePodReadWrite(f.Namespace.Name, pvc.Name, false, []string{})
 
-			volumeName := pvcJig.GetVolumeNameFromPVC(pvc.GetName(), f.Namespace.Name)
-			hasSecurityAttributes, err := f.CheckMountTargetSecurityAttributesByVolumeName(
-				context.Background(),
-				volumeName,
-				setupF.Compartment1,
-				setupF.AdLocation,
-				fssSecurityAttributeNamespacePrefix,
-				fssSecurityAttributeName,
-				map[string]interface{}{"value": "test", "mode": "enforce"},
-			)
-			if err != nil {
-				framework.Failf("Failed to validate mount target security attributes: %v", err)
-			}
-			if !hasSecurityAttributes {
-				framework.Failf("mount target for volume %s does not have the expected security attributes", volumeName)
-			}
+			boundPVC := pvcJig.GetPVCByName(pvc.Name, f.Namespace.Name)
+			pv := pvcJig.GetPVByName(boundPVC.Spec.VolumeName)
+			volume := csiutil.ValidateFssId(pv.Spec.CSI.VolumeHandle)
+			Expect(volume.FilesystemOcid).NotTo(BeEmpty(), "expected a CSI FSS volume handle on PV %s", pv.Name)
+			waitForMountTargetSecurityAttributes(pv.Name, func() (bool, error) {
+				return f.CheckMountTargetSecurityAttributesByFileSystemID(
+					context.Background(),
+					volume.FilesystemOcid,
+					fssSecurityAttributeNamespacePrefix,
+					fssSecurityAttributeName,
+					map[string]interface{}{"value": "test", "mode": "enforce"},
+				)
+			})
 
-			err = pvcJig.DeleteAndAwaitPod(f.Namespace.Name, writePod)
+			err := pvcJig.DeleteAndAwaitPod(f.Namespace.Name, writePod)
 			if err != nil {
 				framework.Failf("Error deleting pod: %v", err)
 			}
@@ -489,24 +504,21 @@ var _ = Describe("Dynamic FSS test in different compartment", func() {
 			pvc := pvcJig.CreateAndAwaitPVCOrFailDynamicFSS(f.Namespace.Name, "50Gi", scName, v1.ClaimPending, nil)
 			writePod, readPod := pvcJig.CheckSinglePodReadWrite(f.Namespace.Name, pvc.Name, false, []string{})
 
-			volumeName := pvcJig.GetVolumeNameFromPVC(pvc.GetName(), f.Namespace.Name)
-			hasSecurityAttributes, err := f.CheckMountTargetSecurityAttributesByVolumeName(
-				context.Background(),
-				volumeName,
-				setupF.MntTargetCompartmentOcid,
-				setupF.AdLocation,
-				fssSecurityAttributeNamespacePrefix,
-				fssSecurityAttributeName,
-				map[string]interface{}{"value": "test", "mode": "enforce"},
-			)
-			if err != nil {
-				framework.Failf("Failed to validate mount target security attributes: %v", err)
-			}
-			if !hasSecurityAttributes {
-				framework.Failf("mount target for volume %s does not have the expected security attributes", volumeName)
-			}
+			boundPVC := pvcJig.GetPVCByName(pvc.Name, f.Namespace.Name)
+			pv := pvcJig.GetPVByName(boundPVC.Spec.VolumeName)
+			volume := csiutil.ValidateFssId(pv.Spec.CSI.VolumeHandle)
+			Expect(volume.FilesystemOcid).NotTo(BeEmpty(), "expected a CSI FSS volume handle on PV %s", pv.Name)
+			waitForMountTargetSecurityAttributes(pv.Name, func() (bool, error) {
+				return f.CheckMountTargetSecurityAttributesByFileSystemID(
+					context.Background(),
+					volume.FilesystemOcid,
+					fssSecurityAttributeNamespacePrefix,
+					fssSecurityAttributeName,
+					map[string]interface{}{"value": "test", "mode": "enforce"},
+				)
+			})
 
-			err = pvcJig.DeleteAndAwaitPod(f.Namespace.Name, writePod)
+			err := pvcJig.DeleteAndAwaitPod(f.Namespace.Name, writePod)
 			if err != nil {
 				framework.Failf("Error deleting pod: %v", err)
 			}

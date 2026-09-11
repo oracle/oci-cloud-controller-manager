@@ -32,7 +32,7 @@ make run-ccm-e2e-tests-local
 The tests use below images - 
 *   nginx:stable-alpine
 *   agnhost:2.6
-*   centos:latest
+*   centos:8.4.2105 (EOL; retained for legacy shell-based helper pods)
 *   busybox:latest
 
 By default, public images are used. But if your Cluster's environment cannot access above public images then below option can be used to specify an accessible repo.
