@@ -30,8 +30,6 @@ import (
 	v1beta14 "k8s.io/client-go/kubernetes/typed/authorization/v1beta1"
 	v16 "k8s.io/client-go/kubernetes/typed/autoscaling/v1"
 	v21 "k8s.io/client-go/kubernetes/typed/autoscaling/v2"
-	v2beta11 "k8s.io/client-go/kubernetes/typed/autoscaling/v2beta1"
-	v2beta21 "k8s.io/client-go/kubernetes/typed/autoscaling/v2beta2"
 	v17 "k8s.io/client-go/kubernetes/typed/batch/v1"
 	v1beta15 "k8s.io/client-go/kubernetes/typed/batch/v1beta1"
 	v18 "k8s.io/client-go/kubernetes/typed/certificates/v1"
@@ -64,7 +62,7 @@ import (
 	"k8s.io/client-go/kubernetes/typed/resource/v1alpha3"
 	"k8s.io/client-go/kubernetes/typed/resource/v1beta1"
 	v116 "k8s.io/client-go/kubernetes/typed/scheduling/v1"
-	v1alpha19 "k8s.io/client-go/kubernetes/typed/scheduling/v1alpha1"
+	v1alpha19 "k8s.io/client-go/kubernetes/typed/scheduling/v1alpha2"
 	v1beta116 "k8s.io/client-go/kubernetes/typed/scheduling/v1beta1"
 	v117 "k8s.io/client-go/kubernetes/typed/storage/v1"
 	"k8s.io/client-go/kubernetes/typed/storage/v1alpha1"
@@ -93,10 +91,6 @@ func (m MockKubeClient) CoordinationV1alpha2() v1alpha14.CoordinationV1alpha2Int
 }
 
 func (m MockKubeClient) ResourceV1beta1() v1beta1.ResourceV1beta1Interface {
-	return nil
-}
-
-func (m MockKubeClient) CoordinationV1alpha1() v1alpha14.CoordinationV1alpha2Interface {
 	return nil
 }
 
@@ -206,16 +200,6 @@ func (m MockKubeClientWithFailingRestClient) AutoscalingV1() v16.AutoscalingV1In
 }
 
 func (m MockKubeClientWithFailingRestClient) AutoscalingV2() v21.AutoscalingV2Interface {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (m MockKubeClientWithFailingRestClient) AutoscalingV2beta1() v2beta11.AutoscalingV2beta1Interface {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (m MockKubeClientWithFailingRestClient) AutoscalingV2beta2() v2beta21.AutoscalingV2beta2Interface {
 	//TODO implement me
 	panic("implement me")
 }
@@ -353,7 +337,7 @@ func (m MockKubeClientWithFailingRestClient) RbacV1alpha1() v1alpha17.RbacV1alph
 	//TODO implement me
 	panic("implement me")
 }
-func (m MockKubeClientWithFailingRestClient) SchedulingV1alpha1() v1alpha19.SchedulingV1alpha1Interface {
+func (m MockKubeClientWithFailingRestClient) SchedulingV1alpha2() v1alpha19.SchedulingV1alpha2Interface {
 	//TODO implement me
 	panic("implement me")
 }
@@ -755,7 +739,7 @@ func (m MockKubeClient) EventsV1beta1() v1beta19.EventsV1beta1Interface {
 	return nil
 }
 
-func (m MockKubeClient) SchedulingV1alpha1() v1alpha19.SchedulingV1alpha1Interface {
+func (m MockKubeClient) SchedulingV1alpha2() v1alpha19.SchedulingV1alpha2Interface {
 	return nil
 }
 
@@ -832,14 +816,6 @@ func (m MockKubeClient) AppsV1beta2() v1beta21.AppsV1beta2Interface {
 }
 
 func (m MockKubeClient) AutoscalingV2() v21.AutoscalingV2Interface {
-	return nil
-}
-
-func (m MockKubeClient) AutoscalingV2beta1() v2beta11.AutoscalingV2beta1Interface {
-	return nil
-}
-
-func (m MockKubeClient) AutoscalingV2beta2() v2beta21.AutoscalingV2beta2Interface {
 	return nil
 }
 

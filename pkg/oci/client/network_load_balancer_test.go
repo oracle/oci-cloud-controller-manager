@@ -33,12 +33,12 @@ import (
 func TestNLB_AwaitWorkRequest(t *testing.T) {
 	var tests = map[string]struct {
 		skip         bool // set true to skip a test-case
-		loadbalancer networkLoadbalancer
+		loadbalancer *networkLoadbalancer
 		wantErr      error
 	}{
 		"getWorkRequestTimedOut": {
 			skip: true,
-			loadbalancer: networkLoadbalancer{
+			loadbalancer: &networkLoadbalancer{
 				networkloadbalancer: &MockNetworkLoadBalancerClient{debug: true}, // set true to run test with debug logs
 				requestMetadata:     common.RequestMetadata{},
 				rateLimiter: RateLimiter{
@@ -49,7 +49,7 @@ func TestNLB_AwaitWorkRequest(t *testing.T) {
 			wantErr: wait.ErrWaitTimeout,
 		},
 		"getWorkRequestTimedOutOnce": {
-			loadbalancer: networkLoadbalancer{
+			loadbalancer: &networkLoadbalancer{
 				networkloadbalancer: &MockNetworkLoadBalancerClient{debug: false},
 				requestMetadata:     common.RequestMetadata{},
 				rateLimiter: RateLimiter{
@@ -60,7 +60,7 @@ func TestNLB_AwaitWorkRequest(t *testing.T) {
 			wantErr: TestNonRetryableError,
 		},
 		"getWorkRequestTimedOutOnceWrappedError": {
-			loadbalancer: networkLoadbalancer{
+			loadbalancer: &networkLoadbalancer{
 				networkloadbalancer: &MockNetworkLoadBalancerClient{debug: false},
 				requestMetadata:     common.RequestMetadata{},
 				rateLimiter: RateLimiter{
@@ -71,7 +71,7 @@ func TestNLB_AwaitWorkRequest(t *testing.T) {
 			wantErr: TestNonRetryableError,
 		},
 		"getWorkRequestSuccess": {
-			loadbalancer: networkLoadbalancer{
+			loadbalancer: &networkLoadbalancer{
 				networkloadbalancer: &MockNetworkLoadBalancerClient{debug: false},
 				requestMetadata:     common.RequestMetadata{},
 				rateLimiter: RateLimiter{

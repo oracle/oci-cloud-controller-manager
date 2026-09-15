@@ -393,7 +393,8 @@ func (d *LustreControllerDriver) checkLustreSupportedVolumeCapabilities(volumeCa
 		if blk := cap.GetBlock(); blk != nil {
 			return status.Error(codes.InvalidArgument, "Lustre contoller driver does not support volume mode block")
 		}
-		for _, c := range lustreSupportedVolumeCapabilities {
+		for i := range lustreSupportedVolumeCapabilities {
+			c := &lustreSupportedVolumeCapabilities[i]
 			if c.GetMode() == cap.AccessMode.GetMode() {
 				return nil
 			}
