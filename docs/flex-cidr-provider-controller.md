@@ -47,13 +47,25 @@ env:
 
 ## Configure IAM Permissions
 
-OCI recommends using Instance Principal based access for the CCM. The policy requires granting the ability to use virtual-network-family in the worker node compartment. To use the FlexCIDR Provider Controller, it should grant the ability to manage virtual-network-family in the worker node compartment. 
+OCI recommends using instance principal authentication for the CCM pod. The dynamic group must include every worker node on which the CCM pod can run. Grant the following least-privilege policies to that dynamic group. Replace the placeholders with the appropriate dynamic group and compartment names.
 
-Example policy:
+The instance compartment contains the worker instances and their VNIC attachments. The network compartment contains the VNICs, subnets, private IPs, and IPv6 addresses. If these resources share a compartment, use that compartment for every statement.
 
 ```text
-Allow dynamic-group <worker-node-dynamic-group> to manage virtual-network-family in compartment <worker-node-compartment>
+# Required for all IP families
+Allow dynamic-group <worker-node-dynamic-group> to read instances in compartment <instance-compartment>
+Allow dynamic-group <worker-node-dynamic-group> to inspect vnic-attachments in compartment <instance-compartment>
+Allow dynamic-group <worker-node-dynamic-group> to use vnics in compartment <network-compartment>
+Allow dynamic-group <worker-node-dynamic-group> to use subnets in compartment <network-compartment>
+
+# Required for IPv4 or dual-stack clusters
+Allow dynamic-group <worker-node-dynamic-group> to use private-ips in compartment <network-compartment>
+
+# Required for IPv6 or dual-stack clusters
+Allow dynamic-group <worker-node-dynamic-group> to manage ipv6s in compartment <network-compartment>
 ```
+
+These policies cover the controller's instance and primary-VNIC discovery, IPv4 private-IP allocation, and IPv6 allocation. The controller does not require permission to manage instances, VCNs, route tables, security lists, network security groups, or load balancers.
 
 ## Configure Worker Node Metadata
 
@@ -184,7 +196,7 @@ Verify:
 - `flexcidr-primary-vnic` metadata exists.
 - `ip-count` is valid.
 - OCI CCM is running.
-- IAM policies allow `manage virtual-network-family`.
+- IAM policies cover the enabled IP families: `use private-ips` for IPv4 and `manage ipv6s` for IPv6, along with the common instance, VNIC, and subnet permissions.
 
 Inspect logs:
 
