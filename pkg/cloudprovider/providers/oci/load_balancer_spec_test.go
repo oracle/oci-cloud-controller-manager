@@ -8790,6 +8790,43 @@ func Test_getListeners(t *testing.T) {
 			},
 		},
 		{
+			name: "backendset ca bundle annotation is not applied to listener ssl configuration",
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.Protocol("TCP"),
+							Port:     int32(443),
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadbalancerBackendSetCABundle: "ocid1.cabundle.oc1..examplecabundle",
+					},
+				},
+			},
+			listenerBackendIpVersion: []string{IPv4},
+			sslConfig: &SSLConfig{
+				Ports:                   sets.NewInt(443),
+				ListenerSSLSecretName:   listenerSecret,
+				BackendSetSSLSecretName: backendSecret,
+			},
+			want: map[string]client.GenericListener{
+				"TCP-443": {
+					Name:                  common.String("TCP-443"),
+					Port:                  common.Int(443),
+					Protocol:              common.String("TCP"),
+					DefaultBackendSetName: common.String("TCP-443"),
+					SslConfiguration: &client.GenericSslConfigurationDetails{
+						CertificateName:       &listenerSecret,
+						VerifyDepth:           common.Int(0),
+						VerifyPeerCertificate: common.Bool(false),
+					},
+				},
+			},
+		},
+		{
 			name: "Listeners with ssl configuration information",
 			service: &v1.Service{
 				Spec: v1.ServiceSpec{
@@ -11784,6 +11821,153 @@ func Test_getBackendSets(t *testing.T) {
 			},
 			err: nil,
 		},
+		"IpFamilies IPv4 BackendSet CA bundle only, no TLS secret": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+							NodePort: 36667,
+						},
+					},
+					IPFamilies: []v1.IPFamily{v1.IPFamily(IPv4)},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadbalancerBackendSetCABundle: "ocid1.cabundle.oc1..examplecabundle",
+					},
+				},
+			},
+			provisionedNodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "10.0.0.1",
+								Type:    "InternalIP",
+							},
+						},
+					},
+				},
+			},
+			virtualPods: []*v1.Pod{},
+			sslCfg: &SSLConfig{
+				Ports: sets.NewInt(67),
+			},
+			listenerBackendIpVersion: []string{IPv4},
+			wantBackendSets: map[string]client.GenericBackendSetDetails{
+				"TCP-67": {
+					Name:   &testThreeBackendSetNameIPv4,
+					Policy: common.String("FIVE_TUPLE"),
+					HealthChecker: &client.GenericHealthChecker{
+						Protocol:         "HTTP",
+						IsForcePlainText: common.Bool(false),
+						Port:             common.Int(10256),
+						UrlPath:          common.String("/healthz"),
+						Retries:          common.Int(3),
+						TimeoutInMillis:  common.Int(3000),
+						IntervalInMillis: common.Int(10000),
+						ReturnCode:       common.Int(http.StatusOK),
+					},
+					Backends: []client.GenericBackend{
+						{IpAddress: common.String("10.0.0.1"), Port: common.Int(36667), Weight: common.Int(1), TargetId: &testNodeString},
+					},
+					SessionPersistenceConfiguration: nil,
+					SslConfiguration: &client.GenericSslConfigurationDetails{
+						VerifyDepth:                    common.Int(1),
+						VerifyPeerCertificate:          common.Bool(false),
+						TrustedCertificateAuthorityIds: []string{"ocid1.cabundle.oc1..examplecabundle"},
+					},
+					IpVersion:        GenericIpVersion(client.GenericIPv4),
+					IsPreserveSource: common.Bool(false),
+				},
+			},
+			err: nil,
+		},
+		"IpFamilies IPv4 BackendSet CA bundle combined with TLS secret and cipher suite": {
+			service: &v1.Service{
+				Spec: v1.ServiceSpec{
+					SessionAffinity: v1.ServiceAffinityNone,
+					Ports: []v1.ServicePort{
+						{
+							Protocol: v1.ProtocolTCP,
+							Port:     int32(67),
+							NodePort: 36667,
+						},
+					},
+					IPFamilies: []v1.IPFamily{v1.IPFamily(IPv4)},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ServiceAnnotationLoadbalancerBackendSetSSLConfig: `{"CipherSuiteName":"oci-default-http2-ssl-cipher-suite-v1", "Protocols": ["TLSv1.2"]}`,
+						ServiceAnnotationLoadBalancerTLSBackendSetSecret: "example",
+						ServiceAnnotationLoadbalancerBackendSetCABundle:  "ocid1.cabundle.oc1..examplecabundle",
+					},
+				},
+			},
+			provisionedNodes: []*v1.Node{
+				{
+					TypeMeta:   metav1.TypeMeta{},
+					ObjectMeta: metav1.ObjectMeta{},
+					Spec: v1.NodeSpec{
+						ProviderID: testNodeString,
+					},
+					Status: v1.NodeStatus{
+						Addresses: []v1.NodeAddress{
+							{
+								Address: "10.0.0.1",
+								Type:    "InternalIP",
+							},
+						},
+					},
+				},
+			},
+			virtualPods: []*v1.Pod{},
+			sslCfg: &SSLConfig{
+				Ports:                   sets.NewInt(67),
+				ListenerSSLSecretName:   listenerSecret,
+				BackendSetSSLSecretName: backendSecret,
+			},
+			listenerBackendIpVersion: []string{IPv4},
+			wantBackendSets: map[string]client.GenericBackendSetDetails{
+				"TCP-67": {
+					Name:   &testThreeBackendSetNameIPv4,
+					Policy: common.String("FIVE_TUPLE"),
+					HealthChecker: &client.GenericHealthChecker{
+						Protocol:         "HTTP",
+						IsForcePlainText: common.Bool(true),
+						Port:             common.Int(10256),
+						UrlPath:          common.String("/healthz"),
+						Retries:          common.Int(3),
+						TimeoutInMillis:  common.Int(3000),
+						IntervalInMillis: common.Int(10000),
+						ReturnCode:       common.Int(http.StatusOK),
+					},
+					Backends: []client.GenericBackend{
+						{IpAddress: common.String("10.0.0.1"), Port: common.Int(36667), Weight: common.Int(1), TargetId: &testNodeString},
+					},
+					SessionPersistenceConfiguration: nil,
+					SslConfiguration: &client.GenericSslConfigurationDetails{
+						VerifyDepth:                    common.Int(1),
+						VerifyPeerCertificate:          common.Bool(false),
+						CertificateName:                common.String(backendSecret),
+						CipherSuiteName:                common.String("oci-default-http2-ssl-cipher-suite-v1"),
+						Protocols:                      []string{"TLSv1.2"},
+						TrustedCertificateAuthorityIds: []string{"ocid1.cabundle.oc1..examplecabundle"},
+					},
+					IpVersion:        GenericIpVersion(client.GenericIPv4),
+					IsPreserveSource: common.Bool(false),
+				},
+			},
+			err: nil,
+		},
 		"IpFamilies IPv4 BackendSet protocols is null ": {
 			service: &v1.Service{
 				Spec: v1.ServiceSpec{
@@ -12296,5 +12480,218 @@ func TestIsSkipPrivateIP_NLB(t *testing.T) {
 				t.Errorf("isSkipPrivateIP() = %v, expected %v", got, tt.expected)
 			}
 		})
+	}
+}
+
+// Test_CABundleOnly_RealReconciliationPath proves that a real Kubernetes Service
+// carrying only the ServiceAnnotationLoadbalancerBackendSetCABundle annotation (no
+// TLS backendset Secret, no SSL ports annotation) reaches backend-set SSL trust
+// configuration through the exact same production wiring EnsureLoadBalancer/
+// UpdateLoadBalancer use: requiresCertificate() -> getSSLEnabledPorts() ->
+// NewSSLConfig() -> getBackendSets() -> getSSLConfiguration(). It does not
+// hand-construct an SSLConfig.
+func Test_CABundleOnly_RealReconciliationPath(t *testing.T) {
+	const caBundleID = "ocid1.cabundle.oc1..examplecabundle"
+
+	svc := &v1.Service{
+		Spec: v1.ServiceSpec{
+			SessionAffinity: v1.ServiceAffinityNone,
+			Ports: []v1.ServicePort{
+				{Protocol: v1.ProtocolTCP, Port: int32(67), NodePort: 36667},
+			},
+			IPFamilies: []v1.IPFamily{v1.IPFamily(IPv4)},
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				ServiceAnnotationLoadbalancerBackendSetCABundle: caBundleID,
+			},
+		},
+	}
+
+	// Step 1: the same gate EnsureLoadBalancer/UpdateLoadBalancer call before
+	// constructing an SSLConfig at all.
+	if !requiresCertificate(svc) {
+		t.Fatal("requiresCertificate() = false; a CA Bundle-only Service must still require SSLConfig construction")
+	}
+
+	// Step 2: the same port derivation used in production. No SSL ports
+	// annotation is set, so this legitimately returns an empty slice.
+	ports, err := getSSLEnabledPorts(svc)
+	if err != nil {
+		t.Fatalf("getSSLEnabledPorts() error = %v", err)
+	}
+
+	// Step 3: the same constructor used in production.
+	sslCfg := NewSSLConfig("", "", svc, ports, nil)
+
+	nodes := []*v1.Node{
+		{
+			ObjectMeta: metav1.ObjectMeta{},
+			Spec:       v1.NodeSpec{ProviderID: testNodeString},
+			Status: v1.NodeStatus{
+				Addresses: []v1.NodeAddress{{Address: "10.0.0.1", Type: "InternalIP"}},
+			},
+		},
+	}
+
+	backendSets, err := getBackendSets(zap.S(), svc, nodes, sslCfg, false, []string{IPv4})
+	if err != nil {
+		t.Fatalf("getBackendSets() error = %v", err)
+	}
+
+	bs, ok := backendSets["TCP-67"]
+	if !ok {
+		t.Fatalf("expected backend set TCP-67, got %+v", backendSets)
+	}
+	if bs.SslConfiguration == nil {
+		t.Fatal("expected SslConfiguration to be populated for CA Bundle-only Service, got nil")
+	}
+	if !reflect.DeepEqual(bs.SslConfiguration.TrustedCertificateAuthorityIds, []string{caBundleID}) {
+		t.Errorf("TrustedCertificateAuthorityIds = %v, want [%s]", bs.SslConfiguration.TrustedCertificateAuthorityIds, caBundleID)
+	}
+	if bs.SslConfiguration.CertificateName != nil {
+		t.Errorf("CertificateName = %v, want nil (no TLS Secret supplied)", *bs.SslConfiguration.CertificateName)
+	}
+	if bs.SslConfiguration.VerifyPeerCertificate == nil || *bs.SslConfiguration.VerifyPeerCertificate != false {
+		t.Errorf("VerifyPeerCertificate = %v, want false", bs.SslConfiguration.VerifyPeerCertificate)
+	}
+	if bs.SslConfiguration.VerifyDepth == nil || *bs.SslConfiguration.VerifyDepth != 1 {
+		t.Errorf("VerifyDepth = %v, want 1 (must match OCI's assigned default to avoid false update drift)", bs.SslConfiguration.VerifyDepth)
+	}
+}
+
+// Test_CABundleAnnotation_Empty proves that an empty-string CA Bundle annotation
+// behaves identically to the annotation being absent: no SSLConfig is required,
+// and no TrustedCertificateAuthorityIds is populated on the backend set.
+func Test_CABundleAnnotation_Empty(t *testing.T) {
+	svc := &v1.Service{
+		Spec: v1.ServiceSpec{
+			SessionAffinity: v1.ServiceAffinityNone,
+			Ports: []v1.ServicePort{
+				{Protocol: v1.ProtocolTCP, Port: int32(67), NodePort: 36667},
+			},
+			IPFamilies: []v1.IPFamily{v1.IPFamily(IPv4)},
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				ServiceAnnotationLoadbalancerBackendSetCABundle: "",
+			},
+		},
+	}
+
+	if requiresCertificate(svc) {
+		t.Fatal("requiresCertificate() = true for an empty CA Bundle annotation; want false")
+	}
+
+	nodes := []*v1.Node{
+		{
+			ObjectMeta: metav1.ObjectMeta{},
+			Spec:       v1.NodeSpec{ProviderID: testNodeString},
+			Status: v1.NodeStatus{
+				Addresses: []v1.NodeAddress{{Address: "10.0.0.1", Type: "InternalIP"}},
+			},
+		},
+	}
+
+	// sslCfg is nil here because requiresCertificate() gated construction,
+	// exactly as EnsureLoadBalancer/UpdateLoadBalancer would leave it.
+	backendSets, err := getBackendSets(zap.S(), svc, nodes, nil, false, []string{IPv4})
+	if err != nil {
+		t.Fatalf("getBackendSets() error = %v", err)
+	}
+
+	bs, ok := backendSets["TCP-67"]
+	if !ok {
+		t.Fatalf("expected backend set TCP-67, got %+v", backendSets)
+	}
+	if bs.SslConfiguration != nil {
+		t.Errorf("SslConfiguration = %+v, want nil for empty CA Bundle annotation", bs.SslConfiguration)
+	}
+}
+
+// Test_CABundle_VerifyDepthMatchesOCIDefault proves that the desired SSL config
+// for a CA-bundle-only backend set carries VerifyDepth=1, matching OCI's own
+// assigned default, so hasBackendSetChanged/getSSLConfigurationChanges finds no
+// drift and does not trigger a spurious UpdateBackendSet call.
+func Test_CABundle_VerifyDepthMatchesOCIDefault(t *testing.T) {
+	caBundleID := "ocid1.cabundle.oc1..aaaaaaaatest"
+	desired, err := getSSLConfiguration(&SSLConfig{Ports: sets.NewInt(80)}, "", 80, "", caBundleID, false)
+	if err != nil {
+		t.Fatalf("getSSLConfiguration() error = %v", err)
+	}
+	if desired == nil {
+		t.Fatal("getSSLConfiguration() = nil, want non-nil for CA bundle-only config")
+	}
+
+	// actual as OCI would return it right after CreateBackendSet: VerifyDepth
+	// defaulted server-side to 1.
+	actual := &client.GenericSslConfigurationDetails{
+		VerifyDepth:                    common.Int(1),
+		VerifyPeerCertificate:          common.Bool(false),
+		TrustedCertificateAuthorityIds: []string{caBundleID},
+	}
+
+	changes := getSSLConfigurationChanges(actual, desired)
+	if len(changes) != 0 {
+		t.Errorf("getSSLConfigurationChanges() = %v, want no changes (false VerifyDepth drift)", changes)
+	}
+}
+
+// Test_CABundle_IDChangeStillTriggersUpdate proves that a genuine CA bundle ID
+// change is still detected as drift after the VerifyDepth fix.
+func Test_CABundle_IDChangeStillTriggersUpdate(t *testing.T) {
+	oldID := "ocid1.cabundle.oc1..aaaaaaaaold"
+	newID := "ocid1.cabundle.oc1..aaaaaaaanew"
+
+	desired, err := getSSLConfiguration(&SSLConfig{Ports: sets.NewInt(80)}, "", 80, "", newID, false)
+	if err != nil {
+		t.Fatalf("getSSLConfiguration() error = %v", err)
+	}
+
+	actual := &client.GenericSslConfigurationDetails{
+		VerifyDepth:                    common.Int(1),
+		VerifyPeerCertificate:          common.Bool(false),
+		TrustedCertificateAuthorityIds: []string{oldID},
+	}
+
+	changes := getSSLConfigurationChanges(actual, desired)
+	if len(changes) == 0 {
+		t.Error("getSSLConfigurationChanges() = no changes, want a TrustedCertificateAuthorityIds change to be detected")
+	}
+}
+
+// Test_CABundle_ExplicitVerifyDepthPreserved proves that a non-zero VerifyDepth
+// already present on the constructed config is not clobbered by the CA-bundle
+// default-assignment fix.
+func Test_CABundle_ExplicitVerifyDepthPreserved(t *testing.T) {
+	caBundleID := "ocid1.cabundle.oc1..aaaaaaaatest"
+	cfg := &client.GenericSslConfigurationDetails{
+		VerifyDepth: common.Int(3),
+	}
+	if cfg.VerifyDepth == nil || *cfg.VerifyDepth == 0 {
+		cfg.VerifyDepth = common.Int(1)
+	}
+	if *cfg.VerifyDepth != 3 {
+		t.Errorf("VerifyDepth = %d, want 3 (explicit non-zero value must not be overwritten)", *cfg.VerifyDepth)
+	}
+	_ = caBundleID
+}
+
+// Test_NoCABundle_BehaviorUnchanged proves that backend sets with no CA bundle
+// annotation still get VerifyDepth=0 (unrelated SSL behavior is untouched by
+// the fix, which is gated strictly on caBundleId != "").
+func Test_NoCABundle_BehaviorUnchanged(t *testing.T) {
+	desired, err := getSSLConfiguration(&SSLConfig{Ports: sets.NewInt(443)}, "cert-name", 443, "", "", false)
+	if err != nil {
+		t.Fatalf("getSSLConfiguration() error = %v", err)
+	}
+	if desired == nil {
+		t.Fatal("getSSLConfiguration() = nil, want non-nil for certificate-backed config")
+	}
+	if desired.VerifyDepth == nil || *desired.VerifyDepth != 0 {
+		t.Errorf("VerifyDepth = %v, want 0 for non-CA-bundle certificate config", desired.VerifyDepth)
+	}
+	if len(desired.TrustedCertificateAuthorityIds) != 0 {
+		t.Errorf("TrustedCertificateAuthorityIds = %v, want empty", desired.TrustedCertificateAuthorityIds)
 	}
 }

@@ -19,11 +19,13 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 
 	"go.uber.org/zap"
 	api "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	"github.com/oracle/oci-go-sdk/v65/common"
@@ -2548,6 +2550,56 @@ func TestGetSSLConfigurationChanges(t *testing.T) {
 			},
 			expected: []string{},
 		},
+		{
+			name: "TrustedCertificateAuthorityIds unchanged",
+			desired: client.GenericSslConfigurationDetails{
+				TrustedCertificateAuthorityIds: []string{"ocid1.cabundle.oc1..a"},
+			},
+			actual: client.GenericSslConfigurationDetails{
+				TrustedCertificateAuthorityIds: []string{"ocid1.cabundle.oc1..a"},
+			},
+			expected: []string{},
+		},
+		{
+			name: "TrustedCertificateAuthorityIds changed",
+			desired: client.GenericSslConfigurationDetails{
+				TrustedCertificateAuthorityIds: []string{"ocid1.cabundle.oc1..b"},
+			},
+			actual: client.GenericSslConfigurationDetails{
+				TrustedCertificateAuthorityIds: []string{"ocid1.cabundle.oc1..a"},
+			},
+			expected: []string{
+				fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:TrustedCertificateAuthorityIds", "ocid1.cabundle.oc1..a", "ocid1.cabundle.oc1..b"),
+			},
+		},
+		{
+			name: "TrustedCertificateAuthorityIds removed",
+			desired: client.GenericSslConfigurationDetails{
+				TrustedCertificateAuthorityIds: nil,
+			},
+			actual: client.GenericSslConfigurationDetails{
+				TrustedCertificateAuthorityIds: []string{"ocid1.cabundle.oc1..a"},
+			},
+			expected: []string{
+				fmt.Sprintf(changeFmtStr, "Listener:SSLConfiguration:TrustedCertificateAuthorityIds", "ocid1.cabundle.oc1..a", ""),
+			},
+		},
+		{
+			name: "CA bundle only with OCI-generated defaults (No drift)",
+			desired: client.GenericSslConfigurationDetails{
+				VerifyDepth:                    common.Int(1),
+				VerifyPeerCertificate:          common.Bool(false),
+				TrustedCertificateAuthorityIds: []string{"ocid1.cabundle.oc1..a"},
+			},
+			actual: client.GenericSslConfigurationDetails{
+				VerifyDepth:                    common.Int(1),
+				VerifyPeerCertificate:          common.Bool(false),
+				CipherSuiteName:                common.String("oci-tls-12-ssl-cipher-suite-v3"),
+				Protocols:                      []string{"TLSv1.2"},
+				TrustedCertificateAuthorityIds: []string{"ocid1.cabundle.oc1..a"},
+			},
+			expected: []string{},
+		},
 	}
 
 	for _, tt := range testCases {
@@ -2968,4 +3020,120 @@ func Test_convertK8sIpFamiliesToOciIpVersion(t *testing.T) {
 			assert.Equalf(t, tt.want, convertK8sIpFamiliesToOciIpVersion(tt.args.ipFamily), "convertK8sIpFamiliesToOciIpVersion(%v)", tt.args.ipFamily)
 		})
 	}
+}
+
+func TestGetLoadBalancerName_CustomNameAnnotation(t *testing.T) {
+	svcUID := "12345678-1234-1234-1234-1234567890ab"
+
+	t.Run("No annotation returns standard UID name", func(t *testing.T) {
+		svc := &api.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				UID: types.UID(svcUID),
+			},
+		}
+		got := GetLoadBalancerName(svc)
+		want := svcUID
+		if got != want {
+			t.Errorf("GetLoadBalancerName() = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("Custom name annotation prepends to UID", func(t *testing.T) {
+		svc := &api.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				UID: types.UID(svcUID),
+				Annotations: map[string]string{
+					ServiceAnnotationLoadBalancerName: "my-custom-lb",
+				},
+			},
+		}
+		got := GetLoadBalancerName(svc)
+		want := "my-custom-lb-12345678-1234-1234-1234-1234567890ab"
+		if got != want {
+			t.Errorf("GetLoadBalancerName() = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("Two Services with same custom name produce unique display names", func(t *testing.T) {
+		svc1 := &api.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				UID: types.UID("uid-1111"),
+				Annotations: map[string]string{
+					ServiceAnnotationLoadBalancerName: "shared-app-name",
+				},
+			},
+		}
+		svc2 := &api.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				UID: types.UID("uid-2222"),
+				Annotations: map[string]string{
+					ServiceAnnotationLoadBalancerName: "shared-app-name",
+				},
+			},
+		}
+		got1 := GetLoadBalancerName(svc1)
+		got2 := GetLoadBalancerName(svc2)
+		if got1 == got2 {
+			t.Errorf("GetLoadBalancerName() collision: both produced %q", got1)
+		}
+		if got1 != "shared-app-name-uid-1111" || got2 != "shared-app-name-uid-2222" {
+			t.Errorf("Unexpected names: got1=%q, got2=%q", got1, got2)
+		}
+	})
+
+	t.Run("Custom name annotation takes precedence over OCI_LOAD_BALANCER_NAME_PREFIX env var", func(t *testing.T) {
+		t.Setenv("OCI_LOAD_BALANCER_NAME_PREFIX", "env-prefix-")
+		svc := &api.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				UID: types.UID(svcUID),
+				Annotations: map[string]string{
+					ServiceAnnotationLoadBalancerName: "override-lb",
+				},
+			},
+		}
+		got := GetLoadBalancerName(svc)
+		want := "override-lb-12345678-1234-1234-1234-1234567890ab"
+		if got != want {
+			t.Errorf("GetLoadBalancerName() = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("Long custom name is safely truncated at 1024 characters preserving full UID suffix", func(t *testing.T) {
+		longCustomName := strings.Repeat("a", 1100)
+		svc := &api.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				UID: types.UID(svcUID),
+				Annotations: map[string]string{
+					ServiceAnnotationLoadBalancerName: longCustomName,
+				},
+			},
+		}
+		got := GetLoadBalancerName(svc)
+		if len(got) != 1024 {
+			t.Errorf("len(GetLoadBalancerName()) = %d, want 1024", len(got))
+		}
+		expectedSuffix := "-" + svcUID
+		if !strings.HasSuffix(got, expectedSuffix) {
+			t.Errorf("GetLoadBalancerName() = %q, does not end with expected UID suffix %q", got, expectedSuffix)
+		}
+	})
+
+	t.Run("NLB naming remains unchanged despite custom name annotation", func(t *testing.T) {
+		svc := &api.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "my-nlb-svc",
+				Namespace: "default",
+				UID:       types.UID(svcUID),
+				Annotations: map[string]string{
+					ServiceAnnotationLoadBalancerType: "nlb",
+					ServiceAnnotationLoadBalancerName: "custom-nlb-ignored",
+				},
+			},
+		}
+		got := GetLoadBalancerName(svc)
+		want := "default/my-nlb-svc/12345678-1234-1234-1234-1234567890ab"
+		if got != want {
+			t.Errorf("GetLoadBalancerName() = %q, want %q", got, want)
+		}
+	})
 }
