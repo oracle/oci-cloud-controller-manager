@@ -19,9 +19,10 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
 
-	_ "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci"
+	oci "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci"
 	"github.com/oracle/oci-cloud-controller-manager/pkg/logging"
 	"github.com/spf13/pflag"
 	"go.uber.org/zap"
@@ -40,6 +41,7 @@ import (
 
 var version string
 var build string
+var nodeFilterRequirements string
 
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -54,6 +56,12 @@ func main() {
 	}
 
 	fss := cliflag.NamedFlagSets{}
+	fss.FlagSet("node filtering").StringVar(
+		&nodeFilterRequirements,
+		"node-filter-requirements",
+		nodeFilterRequirements,
+		"Label selector for Nodes to be managed by the cloud controller manager (for example, 'platform=oci')",
+	)
 	command := app.NewCloudControllerManagerCommand(s, cloudInitializer, app.DefaultInitFuncConstructors, names.CCMControllerAliases(), fss, wait.NeverStop)
 
 	// TODO: once we switch everything over to Cobra commands, we can go back to calling
@@ -76,6 +84,19 @@ func main() {
 
 func cloudInitializer(config *config.CompletedConfig) cloudprovider.Interface {
 	cloudConfig := config.ComponentConfig.KubeCloudShared.CloudProvider
+
+	if strings.TrimSpace(nodeFilterRequirements) != "" {
+		nodeFilteredInformers, err := oci.NewNodeFilteredSharedInformerFactory(
+			config.VersionedClient,
+			app.ResyncPeriod(config)(),
+			nodeFilterRequirements,
+		)
+		if err != nil {
+			klog.Fatalf("Invalid node filter requirements %q: %v", nodeFilterRequirements, err)
+		}
+		config.SharedInformers = nodeFilteredInformers
+	}
+
 	// initialize cloud provider with the cloud provider name and config file provided
 	cloud, err := cloudprovider.InitCloudProvider(cloudConfig.Name, cloudConfig.CloudConfigFile)
 	if err != nil {
@@ -83,6 +104,10 @@ func cloudInitializer(config *config.CompletedConfig) cloudprovider.Interface {
 	}
 	if cloud == nil {
 		klog.Fatalf("Cloud provider is nil")
+	}
+
+	if ociCloud, ok := cloud.(*oci.CloudProvider); ok {
+		ociCloud.SetNodeFilterRequirements(nodeFilterRequirements)
 	}
 
 	if !cloud.HasClusterID() {

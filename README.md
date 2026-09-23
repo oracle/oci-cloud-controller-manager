@@ -159,6 +159,7 @@ $ kubectl apply -f https://github.com/oracle/oci-cloud-controller-manager/releas
 
  - [Service `type: LoadBalancer` basic NGINX example][8]
  - [Service `type: LoadBalancer` NGINX SSL example][9]
+ - [Restrict reconciliation to selected Nodes][12]
 
 ## Development
 
@@ -195,3 +196,4 @@ See [LICENSE](LICENSE) for more details.
 [9]: https://github.com/oracle/oci-cloud-controller-manager/blob/master/docs/tutorial-ssl.md
 [10]: https://github.com/oracle/oci-cloud-controller-manager/blob/master/docs/rate-limiter-configuration.md
 [11]: https://docs.cloud.oracle.com/en-us/iaas/Content/Compute/Concepts/computeoverview.htm#two
+[12]: https://github.com/oracle/oci-cloud-controller-manager/blob/master/docs/node-filtering.md
