@@ -115,6 +115,7 @@ spec:
             - --endpoint=unix:///csi/csi.sock
             - --nodeid=$(KUBE_NODE_NAME)
             - --loglevel=debug
+            - --volume-attachment-limit={{ .Values.volumeAttachmentLimit }}
             - --fss-endpoint=unix:///fss/csi.sock
             - --lustre-endpoint=unix:///lustre/csi.sock
           command:

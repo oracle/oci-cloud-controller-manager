@@ -38,7 +38,7 @@ func main() {
 	flag.StringVar(&nodecsioptions.LogLevel, "loglevel", "info", "log level")
 	flag.StringVar(&nodecsioptions.Master, "master", "", "kube master")
 	flag.StringVar(&nodecsioptions.Kubeconfig, "kubeconfig", "", "cluster kubeconfig")
-	flag.Int64Var(&nodecsioptions.VolumeAttachmentLimit, "volume-attachment-limit", 32, "Default maximum number of block volume attachments per node.")
+	flag.Int64Var(&nodecsioptions.VolumeAttachmentLimit, "volume-attachment-limit", 32, "Default maximum number of block volume attachments per node; overridden by the oci.oraclecloud.com/volume-attachment-limit-override node label.")
 	flag.StringVar(&nodecsioptions.FssEndpoint, "fss-endpoint", "unix://tmp/fss/csi.sock", "FSS CSI endpoint")
 	flag.BoolVar(&nodecsioptions.EnableFssDriver, "fss-csi-driver-enabled", true, "Handle flag to enable FSS CSI driver")
 	flag.StringVar(&nodecsioptions.LustreEndpoint, "lustre-endpoint", "unix:///lustre/csi.sock", "Lustre CSI endpoint")
