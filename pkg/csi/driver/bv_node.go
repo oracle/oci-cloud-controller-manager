@@ -38,7 +38,6 @@ import (
 )
 
 const (
-	maxVolumesPerNode               = 32
 	volumeOperationAlreadyExistsFmt = "An operation for the volume: %s already exists."
 	FSTypeXfs                       = "xfs"
 )
@@ -856,7 +855,12 @@ func (d BlockVolumeNodeDriver) NodeGetInfo(ctx context.Context, req *csi.NodeGet
 		segments[csi_util.AvailabilityDomainLabel] = d.nodeMetadata.FullAvailabilityDomain
 	}
 
-	d.logger.With("nodeId", d.nodeID, "availabilityDomain", d.nodeMetadata.AvailabilityDomain).Info("Availability domain of node identified.")
+	maxVolumesPerNode := d.defaultVolumeAttachmentLimit
+	if d.nodeMetadata.VolumeAttachmentLimit > 0 {
+		maxVolumesPerNode = d.nodeMetadata.VolumeAttachmentLimit
+	}
+
+	d.logger.With("nodeId", d.nodeID, "availabilityDomain", d.nodeMetadata.AvailabilityDomain, "maxVolumesPerNode", maxVolumesPerNode).Info("Node metadata identified.")
 
 	return &csi.NodeGetInfoResponse{
 		NodeId:            d.nodeID,

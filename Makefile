@@ -38,7 +38,7 @@ else
     VERSION   ?= ${VERSION}
 endif
 
-RELEASE = v1.35.0
+RELEASE = v1.35.1
 
 GOOS ?= linux
 ARCH ?= amd64
@@ -198,4 +198,3 @@ test-local: build \
 .PHONY: run-ccm-e2e-tests-local
 run-ccm-e2e-tests-local:
 	./hack/run_e2e_test.sh
-

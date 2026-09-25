@@ -394,6 +394,16 @@ func Test_LoadNodeMetadataFromApiServer(t *testing.T) {
 			},
 		},
 		{
+			name:     "should load volume attachment limit from node label",
+			nodeName: "volumeAttachmentLimit",
+			want: &NodeMetadata{
+				AvailabilityDomain:    "PHX-AD-3",
+				PreferredNodeIpFamily: Ipv4Stack,
+				Ipv4Enabled:           true,
+				VolumeAttachmentLimit: 128,
+			},
+		},
+		{
 			name:     "should return error for invalid node",
 			nodeName: "InvalidNode",
 			want:     &NodeMetadata{},
@@ -456,7 +466,8 @@ func Test_LoadNodeMetadataFromApiServer(t *testing.T) {
 
 			err := u.LoadNodeMetadataFromApiServer(ctx, k, tt.nodeName, nodeMetadata)
 			if (tt.want != nodeMetadata) && (tt.want.PreferredNodeIpFamily != nodeMetadata.PreferredNodeIpFamily ||
-				tt.want.Ipv6Enabled != nodeMetadata.Ipv6Enabled || tt.want.Ipv4Enabled != nodeMetadata.Ipv4Enabled) {
+				tt.want.Ipv6Enabled != nodeMetadata.Ipv6Enabled || tt.want.Ipv4Enabled != nodeMetadata.Ipv4Enabled ||
+				tt.want.VolumeAttachmentLimit != nodeMetadata.VolumeAttachmentLimit) {
 				t.Errorf("LoadNodeMetadataFromApiServer() = %v, want %v", nodeMetadata, tt.want)
 			}
 			if err != nil && !strings.EqualFold(tt.err.Error(), err.Error()) {
@@ -466,6 +477,68 @@ func Test_LoadNodeMetadataFromApiServer(t *testing.T) {
 		})
 	}
 
+}
+
+func TestGetVolumeAttachmentLimit(t *testing.T) {
+	tests := []struct {
+		name    string
+		labels  map[string]string
+		want    int64
+		found   bool
+		wantErr bool
+	}{
+		{
+			name:   "label is not set",
+			labels: map[string]string{},
+		},
+		{
+			name: "valid positive limit",
+			labels: map[string]string{
+				LabelVolumeAttachmentLimit: "128",
+			},
+			want:  128,
+			found: true,
+		},
+		{
+			name: "non-numeric limit",
+			labels: map[string]string{
+				LabelVolumeAttachmentLimit: "many",
+			},
+			found:   true,
+			wantErr: true,
+		},
+		{
+			name: "zero limit",
+			labels: map[string]string{
+				LabelVolumeAttachmentLimit: "0",
+			},
+			found:   true,
+			wantErr: true,
+		},
+		{
+			name: "negative limit",
+			labels: map[string]string{
+				LabelVolumeAttachmentLimit: "-1",
+			},
+			found:   true,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, found, err := getVolumeAttachmentLimit(tt.labels)
+			if found != tt.found {
+				t.Fatalf("getVolumeAttachmentLimit() found = %t, want %t", found, tt.found)
+			}
+			if got != tt.want {
+				t.Fatalf("getVolumeAttachmentLimit() = %d, want %d", got, tt.want)
+			}
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("getVolumeAttachmentLimit() error = %v, want error: %t", err, tt.wantErr)
+			}
+		})
+	}
 }
 
 func Test_ExtractISCSIInformationFromMountPath(t *testing.T) {

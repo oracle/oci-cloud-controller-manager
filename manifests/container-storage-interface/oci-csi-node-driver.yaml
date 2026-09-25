@@ -115,6 +115,7 @@ spec:
             - --endpoint=unix:///csi/csi.sock
             - --nodeid=$(KUBE_NODE_NAME)
             - --loglevel=debug
+            - --volume-attachment-limit=32
             - --fss-endpoint=unix:///fss/csi.sock
             - --lustre-endpoint=unix:///lustre/csi.sock
           command:
@@ -129,7 +130,7 @@ spec:
               value: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/host/usr/bin:/host/sbin
             - name: LUSTRE_DRIVER_ENABLED
               value: "true"
-          image: ghcr.io/oracle/cloud-provider-oci:v1.35.0
+          image: ghcr.io/oracle/cloud-provider-oci:v1.35.1
           securityContext:
             privileged: true
           volumeMounts:
