@@ -115,6 +115,7 @@ spec:
             - --endpoint=unix:///csi/csi.sock
             - --nodeid=$(KUBE_NODE_NAME)
             - --loglevel=debug
+            - --volume-attachment-limit={{ .Values.volumeAttachmentLimit }}
             - --fss-endpoint=unix:///fss/csi.sock
             - --lustre-endpoint=unix:///lustre/csi.sock
           command:
@@ -135,7 +136,7 @@ spec:
               value: "{{ if .Values.customHandle }}{{ .Values.customHandle }}.{{ end }}fss.csi.oraclecloud.com"
             - name: LUSTRE_VOLUME_DRIVER_NAME
               value: "{{ if .Values.customHandle }}{{ .Values.customHandle }}.{{ end }}lustre.csi.oraclecloud.com"
-          image: ghcr.io/oracle/cloud-provider-oci:v1.34.2
+          image: ghcr.io/oracle/cloud-provider-oci:v1.34.3
           securityContext:
             privileged: true
           volumeMounts:

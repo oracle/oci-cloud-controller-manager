@@ -27,6 +27,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	cloudprovider "github.com/oracle/oci-cloud-controller-manager/pkg/cloudprovider/providers/oci"
+	ociclient "github.com/oracle/oci-cloud-controller-manager/pkg/oci/client"
 	sharedfw "github.com/oracle/oci-cloud-controller-manager/test/e2e/framework"
 	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/containerengine"
@@ -189,8 +190,16 @@ var _ = Describe("Service [Slow]", func() {
 						if strings.HasSuffix(test.lbType, "-wris") {
 							lbType = strings.TrimSuffix(test.lbType, "-wris")
 						}
-						loadBalancer, err := f.Client.LoadBalancer(zap.L().Sugar(), lbType, "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
-						sharedfw.ExpectNoError(err)
+						var loadBalancer *ociclient.GenericLoadBalancer
+						By("waiting for the load balancer to become observable through the OCI API")
+						Eventually(func() error {
+							var err error
+							loadBalancer, err = f.Client.LoadBalancer(zap.L().Sugar(), lbType, "", nil).GetLoadBalancerByName(ctx, compartmentId, lbName)
+							if err == nil && loadBalancer == nil {
+								return fmt.Errorf("load balancer %q was not returned by the OCI API", lbName)
+							}
+							return err
+						}, 2*time.Minute, 5*time.Second).Should(Succeed())
 						sharedfw.Logf("Loadbalancer details %v:", loadBalancer)
 						if setupF.AddOkeSystemTags && !sharedfw.HasOkeSystemTags(loadBalancer.SystemTags) {
 							sharedfw.Failf("Loadbalancer is expected to have the system tags")

@@ -314,13 +314,15 @@ func (f *Framework) setImages() {
 	var Agnhost = "agnhost:2.6"
 	var BusyBoxImage = "busybox:latest"
 	var Nginx = "nginx:stable-alpine"
-	var Centos = "centos:latest"
+	// The official CentOS image is EOL and no longer publishes a latest tag.
+	// Keep the legacy helper image on this explicit historical tag because the
+	// E2E jobs rely on its shell utilities, including curl.
+	var Centos = "centos:8.4.2105"
 
 	if architecture == "ARM" {
 		Agnhost = "agnhost-arm:2.6"
 		BusyBoxImage = "busybox-arm:latest"
 		Nginx = "nginx-arm:latest"
-		Centos = "centos-arm:latest"
 	}
 
 	if imagePullRepo != "" {
