@@ -146,6 +146,9 @@ To uninstall the above helm release and all the components it has installed
 $ helm uninstall <release-name-of-your-choice>
 ```
 
+### Override the block volume attachment limit for a node
+
+The block volume CSI driver supports a per-node [volume attachment limit override](docs/overriding-block-volume-attachment-limit-using-csi.md). Use it when nodes in the same cluster have different supported block volume attachment limits.
 
 ## Tutorial
 
