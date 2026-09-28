@@ -15,7 +15,6 @@
 package config
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/oracle/oci-cloud-controller-manager/pkg/oci/instance/metadata"
@@ -96,16 +95,8 @@ func TestValidateConfig(t *testing.T) {
 				},
 			},
 			errs: field.ErrorList{
-				&field.Error{
-					Type:   field.ErrorTypeInternal,
-					Field:  "auth.region",
-					Detail: "This value is required when useWorkloadIdentity is enabled.",
-				},
-				&field.Error{
-					Type:   field.ErrorTypeInternal,
-					Field:  "compartment",
-					Detail: "This value is normally discovered automatically if omitted.",
-				},
+				&field.Error{Type: field.ErrorTypeInternal, Field: "auth.region", Detail: "This value is required when useWorkloadIdentity is enabled."},
+				&field.Error{Type: field.ErrorTypeInternal, Field: "compartment", Detail: "This value is normally discovered automatically if omitted."},
 			},
 		},
 		{
@@ -408,9 +399,7 @@ func TestValidateConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.in.Complete()
 			result := ValidateConfig(tt.in)
-			if !reflect.DeepEqual(result, tt.errs) {
-				t.Errorf("ValidateConfig (%s) \n(%#v)\n=>        %q \nExpected: %q", tt.name, tt.in, result, tt.errs)
-			}
+			field.ErrorMatcher{}.ByType().ByField().ByDetailExact().Test(t, tt.errs, result)
 		})
 	}
 }

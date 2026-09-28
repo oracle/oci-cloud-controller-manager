@@ -34,12 +34,12 @@ var TestNonRetryableError = errors.New("some non-retryable error")
 func TestLB_AwaitWorkRequest(t *testing.T) {
 	var tests = map[string]struct {
 		skip         bool // set true to skip a test-case
-		loadbalancer loadbalancerClientStruct
+		loadbalancer *loadbalancerClientStruct
 		wantErr      error
 	}{
 		"getWorkRequestTimedOut": {
 			skip: true,
-			loadbalancer: loadbalancerClientStruct{
+			loadbalancer: &loadbalancerClientStruct{
 				loadbalancer:    &MockLoadBalancerClient{debug: true}, // set true to run test with debug logs
 				requestMetadata: common.RequestMetadata{},
 				rateLimiter: RateLimiter{
@@ -50,7 +50,7 @@ func TestLB_AwaitWorkRequest(t *testing.T) {
 			wantErr: wait.ErrWaitTimeout,
 		},
 		"getWorkRequestTimedOutOnce": {
-			loadbalancer: loadbalancerClientStruct{
+			loadbalancer: &loadbalancerClientStruct{
 				loadbalancer:    &MockLoadBalancerClient{debug: false},
 				requestMetadata: common.RequestMetadata{},
 				rateLimiter: RateLimiter{
@@ -61,7 +61,7 @@ func TestLB_AwaitWorkRequest(t *testing.T) {
 			wantErr: TestNonRetryableError,
 		},
 		"getWorkRequestTimedOutOnceWrappedError": {
-			loadbalancer: loadbalancerClientStruct{
+			loadbalancer: &loadbalancerClientStruct{
 				loadbalancer:    &MockLoadBalancerClient{debug: false},
 				requestMetadata: common.RequestMetadata{},
 				rateLimiter: RateLimiter{
@@ -72,7 +72,7 @@ func TestLB_AwaitWorkRequest(t *testing.T) {
 			wantErr: TestNonRetryableError,
 		},
 		"getWorkRequestSuccess": {
-			loadbalancer: loadbalancerClientStruct{
+			loadbalancer: &loadbalancerClientStruct{
 				loadbalancer:    &MockLoadBalancerClient{debug: false},
 				requestMetadata: common.RequestMetadata{},
 				rateLimiter: RateLimiter{

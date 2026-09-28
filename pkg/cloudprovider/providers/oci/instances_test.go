@@ -538,7 +538,7 @@ var (
 			Status: v1.PodStatus{
 				PodIP: "0.0.0.10",
 				PodIPs: []v1.PodIP{
-					{"0.0.0.10"},
+					{IP: "0.0.0.10"},
 				},
 			},
 		},
@@ -555,8 +555,8 @@ var (
 			Status: v1.PodStatus{
 				PodIP: "0.0.0.20",
 				PodIPs: []v1.PodIP{
-					{"0.0.0.20"},
-					{"2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
+					{IP: "0.0.0.20"},
+					{IP: "2001:0db8:85a3:0000:0000:8a2e:0370:7334"},
 				},
 			},
 		},
@@ -1451,6 +1451,12 @@ func (m mockInstanceCache) List() []interface{} {
 func (m mockInstanceCache) ListKeys() []string {
 	return nil
 }
+
+func (m mockInstanceCache) LastStoreSyncResourceVersion() string {
+	return ""
+}
+
+func (m mockInstanceCache) Bookmark(rv string) {}
 
 func (m mockInstanceCache) Get(obj interface{}) (item interface{}, exists bool, err error) {
 	return instances["default"], true, nil
