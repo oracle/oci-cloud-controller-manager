@@ -34,6 +34,57 @@ import (
 	"k8s.io/utils/exec"
 )
 
+func TestNodeGetInfoVolumeAttachmentLimit(t *testing.T) {
+	tests := []struct {
+		name                         string
+		defaultVolumeAttachmentLimit int64
+		volumeAttachmentLimit        int64
+		want                         int64
+	}{
+		{
+			name:                         "uses the configured default limit when node label is not set",
+			defaultVolumeAttachmentLimit: 32,
+			want:                         32,
+		},
+		{
+			name:                         "uses a non-default configured limit when node label is not set",
+			defaultVolumeAttachmentLimit: 64,
+			want:                         64,
+		},
+		{
+			name:                         "uses the node label limit",
+			defaultVolumeAttachmentLimit: 32,
+			volumeAttachmentLimit:        128,
+			want:                         128,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			driver := BlockVolumeNodeDriver{
+				defaultVolumeAttachmentLimit: tt.defaultVolumeAttachmentLimit,
+				NodeDriver: NodeDriver{
+					nodeID: "node-1",
+					logger: logging.Logger().Sugar(),
+					nodeMetadata: &csi_util.NodeMetadata{
+						AvailabilityDomain:    "PHX-AD-1",
+						VolumeAttachmentLimit: tt.volumeAttachmentLimit,
+						IsNodeMetadataLoaded:  true,
+					},
+				},
+			}
+
+			resp, err := driver.NodeGetInfo(t.Context(), &csi.NodeGetInfoRequest{})
+			if err != nil {
+				t.Fatalf("NodeGetInfo() error = %v", err)
+			}
+			if got := resp.GetMaxVolumesPerNode(); got != tt.want {
+				t.Fatalf("NodeGetInfo() MaxVolumesPerNode = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
 func Test_getDevicePathAndAttachmentType(t *testing.T) {
 	type args struct {
 		path []string

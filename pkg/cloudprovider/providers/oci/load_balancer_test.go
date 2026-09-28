@@ -49,6 +49,89 @@ func newNodeObj(name string, labels map[string]string) *v1.Node {
 	}
 }
 
+func TestCloudProviderRejectsCrossNamespaceTLSSecretsBeforeReconciliation(t *testing.T) {
+	service := &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "cross-namespace-tls-service",
+			Namespace: "default",
+			Annotations: map[string]string{
+				ServiceAnnotationLoadBalancerTLSSecret: "shared/listener-secret",
+			},
+		},
+	}
+	cp := &CloudProvider{}
+
+	if _, err := cp.EnsureLoadBalancer(context.Background(), "", service, nil); err == nil || !strings.Contains(err.Error(), "cross-namespace TLS Secret references are not allowed") {
+		t.Fatalf("EnsureLoadBalancer() returned %v, want a cross-namespace TLS Secret error", err)
+	}
+	if err := cp.UpdateLoadBalancer(context.Background(), "", service, nil); err == nil || !strings.Contains(err.Error(), "cross-namespace TLS Secret references are not allowed") {
+		t.Fatalf("UpdateLoadBalancer() returned %v, want a cross-namespace TLS Secret error", err)
+	}
+}
+
+func TestValidateTLSSecretNamespaces(t *testing.T) {
+	testCases := []struct {
+		name          string
+		annotations   map[string]string
+		errorContains []string
+	}{
+		{name: "no TLS secret annotations"},
+		{
+			name: "unqualified and explicit same-namespace references",
+			annotations: map[string]string{
+				ServiceAnnotationLoadBalancerTLSSecret:           "listener-secret",
+				ServiceAnnotationLoadBalancerTLSBackendSetSecret: "default/backend-secret",
+			},
+		},
+		{
+			name: "listener reference in another namespace",
+			annotations: map[string]string{
+				ServiceAnnotationLoadBalancerTLSSecret: "shared/listener-secret",
+			},
+			errorContains: []string{ServiceAnnotationLoadBalancerTLSSecret + "=shared/listener-secret"},
+		},
+		{
+			name: "backend-set reference in another namespace",
+			annotations: map[string]string{
+				ServiceAnnotationLoadBalancerTLSBackendSetSecret: "shared/backend-secret",
+			},
+			errorContains: []string{ServiceAnnotationLoadBalancerTLSBackendSetSecret + "=shared/backend-secret"},
+		},
+		{
+			name: "both invalid references are reported",
+			annotations: map[string]string{
+				ServiceAnnotationLoadBalancerTLSSecret:           "shared/listener-secret",
+				ServiceAnnotationLoadBalancerTLSBackendSetSecret: "certs/backend-secret",
+			},
+			errorContains: []string{
+				ServiceAnnotationLoadBalancerTLSSecret + "=shared/listener-secret",
+				ServiceAnnotationLoadBalancerTLSBackendSetSecret + "=certs/backend-secret",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			service := &v1.Service{ObjectMeta: metav1.ObjectMeta{Namespace: "default", Annotations: tc.annotations}}
+			err := validateTLSSecretNamespaces(service)
+			if len(tc.errorContains) == 0 {
+				if err != nil {
+					t.Fatalf("validateTLSSecretNamespaces() returned unexpected error: %v", err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatal("validateTLSSecretNamespaces() returned nil, want an error")
+			}
+			for _, fragment := range tc.errorContains {
+				if !strings.Contains(err.Error(), fragment) {
+					t.Errorf("error %q does not contain %q", err, fragment)
+				}
+			}
+		})
+	}
+}
+
 func Test_filterNodes(t *testing.T) {
 	testCases := map[string]struct {
 		nodes    []*v1.Node

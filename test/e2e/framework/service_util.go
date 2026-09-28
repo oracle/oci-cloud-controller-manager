@@ -786,7 +786,10 @@ func (j *ServiceTestJig) waitForPodsReady(namespace string, pods []string) error
 }
 
 func (j *ServiceTestJig) TestReachableHTTP(secure bool, host string, port int, timeout time.Duration) {
-	j.TestReachableHTTPWithRetriableErrorCodes(secure, host, port, []int{502}, timeout)
+	// The Service ingress may be published before an OCI load balancer's
+	// listener/backend route is ready.  That short window can return 400 or
+	// 502 even though the endpoint becomes healthy moments later.
+	j.TestReachableHTTPWithRetriableErrorCodes(secure, host, port, []int{400, 502}, timeout)
 }
 
 func (j *ServiceTestJig) TestReachableHTTPWithRetriableErrorCodes(secure bool, host string, port int, retriableErrCodes []int, timeout time.Duration) {

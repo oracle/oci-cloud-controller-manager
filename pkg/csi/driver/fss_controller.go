@@ -85,6 +85,8 @@ type StorageClassParameters struct {
 	scTags *config.TagConfig
 	// NsgOcids
 	nsgOcids []string
+	// securityAttributes are applied to newly created mount targets for ZPR
+	securityAttributes map[string]map[string]interface{}
 }
 
 type SecretParameters struct {
@@ -677,10 +679,30 @@ func extractStorageClassParameters(ctx context.Context, d *FSSControllerDriver, 
 			log.With("nsgOcids", nsgOcids)
 			storageClassParameters.nsgOcids = nsgOcids
 		}
+
+		securityAttributesString, ok := parameters["securityAttributes"]
+		if ok && securityAttributesString != "" {
+			var securityAttributes map[string]map[string]interface{}
+			err := json.Unmarshal([]byte(securityAttributesString), &securityAttributes)
+			if err != nil {
+				log.With(zap.Error(err)).Error("Failed to parse securityAttributes provided in storage class. Please provide valid input.")
+				dimensionsMap[metrics.ComponentDimension] = util.GetMetricDimensionForComponent(util.ErrValidation, util.CSIStorageType)
+				metrics.SendMetricData(d.metricPusher, metrics.MTProvision, time.Since(startTime).Seconds(), dimensionsMap)
+				return log, nil, nil, status.Errorf(codes.InvalidArgument, "Failed to parse securityAttributes provided in storage class. Please provide valid input."), true
+			}
+			log.With("securityAttributes", securityAttributes).Info("Parsed securityAttributes for new mount target")
+			storageClassParameters.securityAttributes = securityAttributes
+		}
 	} else {
 		storageClassParameters.mountTargetOcid = mountTargetOcid
 		log = log.With("mountTargetOcid", mountTargetOcid)
 		log.Info("Mount Target Ocid provided, new mount target will not be created")
+		if securityAttributesString, ok := parameters["securityAttributes"]; ok && securityAttributesString != "" {
+			log.Errorf("securityAttributes cannot be used with mountTargetOcid. Use mountTargetSubnetOcid to create a new mount target with security attributes.")
+			dimensionsMap[metrics.ComponentDimension] = util.GetMetricDimensionForComponent(util.ErrValidation, util.CSIStorageType)
+			metrics.SendMetricData(d.metricPusher, metrics.MTProvision, time.Since(startTime).Seconds(), dimensionsMap)
+			return log, nil, nil, status.Errorf(codes.InvalidArgument, "securityAttributes cannot be used with mountTargetOcid. Use mountTargetSubnetOcid to create a new mount target with security attributes"), true
+		}
 	}
 
 	exportPath, ok := parameters["exportPath"]
@@ -794,6 +816,7 @@ func provisionMountTarget(ctx context.Context, log *zap.SugaredLogger, c client.
 		FreeformTags:       storageClassParameters.scTags.FreeformTags,
 		DefinedTags:        storageClassParameters.scTags.DefinedTags,
 		NsgIds:             storageClassParameters.nsgOcids,
+		SecurityAttributes: storageClassParameters.securityAttributes,
 	}
 	return fssClient.CreateMountTarget(ctx, createMountTargetDetails)
 }

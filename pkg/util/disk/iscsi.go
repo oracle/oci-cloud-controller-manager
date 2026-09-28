@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
 	"os"
 	cmdexec "os/exec"
 	"path/filepath"
@@ -344,6 +345,18 @@ func (c *iSCSIMounter) iscsiadm(parts ...string) (string, error) {
 	return string(output), nil
 }
 
+// iscsiadmCombinedOutput runs iscsiadm while retaining stderr for the caller.
+// It is used only when diagnosing a failed iSCSI session lookup.
+func (c *iSCSIMounter) iscsiadmCombinedOutput(parts ...string) (string, error) {
+	iscsiadmPath, err := c.getISCSIAdmPath()
+	if err != nil {
+		return "", err
+	}
+
+	output, err := c.runner.Command(iscsiadmPath, parts...).CombinedOutput()
+	return string(output), err
+}
+
 func (c *iSCSIMounter) AddToDB() error {
 	c.logger.With("IQN", c.disk.IQN, "target", c.disk.Target()).Info("Adding node record to db.")
 
@@ -388,12 +401,63 @@ func (c *iSCSIMounter) Login() error {
 		"-p", c.disk.Target(),
 		"-l")
 	if err != nil {
+		if c.isIscsiSessionActive() {
+			c.logger.With("IQN", c.disk.IQN, "target", c.disk.Target()).Info("iSCSI target session is already active.")
+			return nil
+		}
 		return fmt.Errorf("iscsi: error logging in target: %v", err)
 	}
 
 	c.logger.With("IQN", c.disk.IQN, "target", c.disk.Target()).Info("Logged in.")
 
 	return nil
+}
+
+// isIscsiSessionActive returns true when iscsiadm reports an active session
+// matching the mounter's target portal and IQN.
+func (c *iSCSIMounter) isIscsiSessionActive() bool {
+	output, err := c.iscsiadmCombinedOutput("-m", "session")
+	if err != nil {
+		c.logger.With("IQN", c.disk.IQN, "target", c.disk.Target(), "error", err, "output", output).Info("Unable to list active iSCSI sessions.")
+		return false
+	}
+
+	return isIscsiSessionOutputContainsTarget(output, c.disk.Target(), c.disk.IQN)
+}
+
+// isIscsiSessionOutputContainsTarget returns true when iscsiadm -m session output
+// includes a session for both the target portal (ex.169.254.2.2:3260) and IQN (ex. iqn.2015-12.com.oracleiaas:6729a90b-1082-4d38-9bfa-214492b9045b).
+// iscsiadm outputs sessions in the following format:
+// IPv4 : tcp: [1] 169.254.2.2:3260,1 iqn.2015-12.com.oracleiaas:6729a90b-1082-4d38-9bfa-214492b9045b (non-flash)
+// IPv6 : tcp: [1] [fd00:c1::a9fe:20a]:3260,1 iqn.2015-12.com.oracleiaas:b1ad3444-70dd-4087-9c61-2e5880d69b9b (non-flash)
+func isIscsiSessionOutputContainsTarget(output, target, iqn string) bool {
+	targetAddrPort, err := netip.ParseAddrPort(target)
+	if err != nil {
+		return false
+	}
+
+	for _, line := range strings.Split(output, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 4 {
+			continue
+		}
+
+		portal := fields[2]
+		if comma := strings.LastIndex(portal, ","); comma != -1 {
+			portal = portal[:comma]
+		}
+
+		portalAddrPort, err := netip.ParseAddrPort(portal)
+		if err != nil {
+			continue
+		}
+
+		if portalAddrPort == targetAddrPort && fields[3] == iqn {
+			return true
+		}
+	}
+
+	return false
 }
 
 // Logout logs out the iSCSI target.
@@ -621,7 +685,7 @@ func diskByPathsForMountPoint(mountPoint mount.MountPoint, logger *zap.SugaredLo
 			base := filepath.Base(path)
 			if strings.HasPrefix(base, "ip-") && strings.Contains(base, "-iscsi-") {
 				// include only if ISCSI session active
-				if !isISCSISessionActive(path, logger) {
+				if !isISCSISessionActiveForDiskPath(path, logger) {
 					logger.Infof("Ignoring path %s due to no active ISCSI session", path)
 					return nil
 				}
@@ -652,16 +716,24 @@ func diskByPathsForMountPoint(mountPoint mount.MountPoint, logger *zap.SugaredLo
 	return diskByPaths, nil
 }
 
-// isISCSISessionActive returns true if there is an active iSCSI session
+// isISCSISessionActiveForDiskPath returns true if there is an active iSCSI session
 // that matches the portal and IQN of the by-path filename.
 // Example by-path:
-// /dev/disk/by-path/ip-169.254.2.2:3260-iscsi-iqn.2015-12.com.oracleiaas:5638bae3-98d1-4e33-b912-9bb567d94f59-lun-2
-func isISCSISessionActive(path string, logger *zap.SugaredLogger) bool {
+// IPv4 : /dev/disk/by-path/ip-169.254.2.2:3260-iscsi-iqn.2015-12.com.oracleiaas:5638bae3-98d1-4e33-b912-9bb567d94f59-lun-2
+// IPv6 : /dev/disk/by-path/ip-fd00:c1::a9fe:20a:3260-iscsi-iqn.2015-12.com.oracleiaas:b1ad3444-70dd-4087-9c61-2e5880d69b9b-lun-2
+func isISCSISessionActiveForDiskPath(path string, logger *zap.SugaredLogger) bool {
+	// IPv4
 	// For /dev/disk/by-path/ip-169.254.2.2:3260-iscsi-iqn.2015-12.com.oracleiaas:5638bae3-98d1-4e33-b912-9bb567d94f59-lun-2
 	// m[0] = /dev/disk/by-path/ip-169.254.2.2:3260-iscsi-iqn.2015-12.com.oracleiaas:5638bae3-98d1-4e33-b912-9bb567d94f59-lun-2
 	// m[1] = 169.254.2.2
 	// m[2] = 3260
 	// m[3] = iqn.2015-12.com.oracleiaas:5638bae3-98d1-4e33-b912-9bb567d94f59
+	//
+	// IPv6
+	// m[0] = /dev/disk/by-path/ip-fd00:c1::a9fe:20a:3260-iscsi-iqn.2015-12.com.oracleiaas:b1ad3444-70dd-4087-9c61-2e5880d69b9b-lun-2
+	// m[1] = fd00:c1::a9fe:20a
+	// m[2] = 3260
+	// m[3] = iqn.2015-12.com.oracleiaas:b1ad3444-70dd-4087-9c61-2e5880d69b9b
 	m := diskByPathPattern.FindStringSubmatch(path)
 	if len(m) != 4 {
 		logger.Errorf("mount device path %v did not match pattern; got %v", path, m)
@@ -681,22 +753,10 @@ func isISCSISessionActive(path string, logger *zap.SugaredLogger) bool {
 		return false
 	}
 
-	// 4: Match session line that contains BOTH portal + iqn
-	// iscsiadm prints lines like:
-	// tcp: [2] 169.254.2.3:3260,1 iqn.2015-12.com.oracleiaas:5638bae3-98d1-4e33-b912-9bb567d94f59 (non-flash)
-	for _, line := range strings.Split(out, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-
-		portal := m[1] + ":" + m[2]
-		portalMatch := strings.Contains(line, portal)
-
-		if portalMatch && strings.Contains(line, m[3]) {
-			logger.Infof("Found matching iscsi session for path %s: %s", path, line)
-			return true
-		}
+	portal := net.JoinHostPort(strings.Trim(m[1], "[]"), m[2])
+	if isIscsiSessionOutputContainsTarget(out, portal, m[3]) {
+		logger.Infof("Found matching iscsi session for path %s", path)
+		return true
 	}
 
 	return false

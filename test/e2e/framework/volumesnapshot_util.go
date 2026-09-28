@@ -349,12 +349,13 @@ func (j *PVCTestJig) DeleteVolumeSnapshotContent(vscontentName string) error {
 // DeleteVolumeBackup is a function to delete a block volume backup
 func (j *PVCTestJig) DeleteVolumeBackup(bs ocicore.BlockstorageClient, backupId string) {
 	request := ocicore.DeleteVolumeBackupRequest{
-		VolumeBackupId: &backupId,
+		VolumeBackupId:  &backupId,
+		RequestMetadata: blockStorageDeleteRequestMetadata(),
 	}
 
 	_, err := bs.DeleteVolumeBackup(context.Background(), request)
 	if err != nil {
-		Failf("VolumeBackup %q creation API error: %v", backupId, err)
+		Failf("VolumeBackup %q deletion API error: %v", backupId, err)
 	}
 }
 

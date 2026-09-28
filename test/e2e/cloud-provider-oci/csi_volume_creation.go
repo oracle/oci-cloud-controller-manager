@@ -643,11 +643,10 @@ var _ = Describe("CSI Ultra High Performance Volumes", func() {
 			if compartmentId == "" {
 				framework.Failf("Compartment Id undefined.")
 			}
-			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-uhp")
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-iscsi-uhp")
 			ctx := context.Background()
 
-			By("Running test: Create ISCSI CSI block volume with UHP Performance Level")
-			scName := f.CreateStorageClassOrFail(framework.ClassOCIUHP+"-1", setupF.BlockProvisionerName,
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI, csi_util.VpusPerGB: "30"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
@@ -660,42 +659,66 @@ var _ = Describe("CSI Ultra High Performance Volumes", func() {
 				framework.Failf("Error deleting pod: %v", err)
 			}
 			_ = f.DeleteStorageClass(scName)
-			By("Completed test: Create ISCSI CSI block volume with UHP Performance Level")
+		})
 
-			By("Running test: Create Paravirtualized CSI block volume with UHP Performance Level")
-			scName = f.CreateStorageClassOrFail(framework.ClassOCIUHP+"-2", setupF.BlockProvisionerName,
+		It("Create Paravirtualized CSI block volume with UHP Performance Level", func() {
+			checkUhpPrerequisites(f)
+			compartmentId := f.GetCompartmentId(*setupF)
+			if compartmentId == "" {
+				framework.Failf("Compartment Id undefined.")
+			}
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-paravirtualized-uhp")
+			ctx := context.Background()
+
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeParavirtualized, csi_util.VpusPerGB: "30"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
-			pvc = pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
-			podName = pvcJig.NewPodForCSI("uhp-pvc-app", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeFilesystem)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
+			podName := pvcJig.NewPodForCSI("uhp-pvc-app", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeFilesystem)
 			pvcJig.VerifyMultipathEnabled(ctx, f.ComputeClient, pvc.Name, f.Namespace.Name, compartmentId)
 
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
-			err = pvcJig.DeleteAndAwaitPod(f.Namespace.Name, podName)
+			err := pvcJig.DeleteAndAwaitPod(f.Namespace.Name, podName)
 			if err != nil {
 				framework.Failf("Error deleting pod: %v", err)
 			}
 			_ = f.DeleteStorageClass(scName)
-			By("Completed test: Create Paravirtualized CSI block volume with UHP Performance Level")
+		})
 
-			By("Running test: Create CSI block volume with UHP Performance Level and xfs file system")
-			scName = f.CreateStorageClassOrFail(framework.ClassOCIUHP+"-3", setupF.BlockProvisionerName,
+		It("Create CSI block volume with UHP Performance Level and xfs file system", func() {
+			checkUhpPrerequisites(f)
+			compartmentId := f.GetCompartmentId(*setupF)
+			if compartmentId == "" {
+				framework.Failf("Compartment Id undefined.")
+			}
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-uhp-xfs")
+			ctx := context.Background()
+
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeParavirtualized, csi_util.VpusPerGB: "30", framework.FstypeKey: "xfs"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
-			pvc = pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
-			podName = pvcJig.NewPodForCSI("uhp-pvc-app", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeFilesystem)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
+			podName := pvcJig.NewPodForCSI("uhp-pvc-app", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeFilesystem)
 			pvcJig.VerifyMultipathEnabled(ctx, f.ComputeClient, pvc.Name, f.Namespace.Name, compartmentId)
-
+			pvcJig.CheckFilesystemTypeOfVolumeInsidePod(f.Namespace.Name, podName, "xfs")
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
-			err = pvcJig.DeleteAndAwaitPod(f.Namespace.Name, podName)
+			err := pvcJig.DeleteAndAwaitPod(f.Namespace.Name, podName)
 			if err != nil {
 				framework.Failf("Error deleting pod: %v", err)
 			}
 			_ = f.DeleteStorageClass(scName)
-			By("Completed test: Create CSI block volume with UHP Performance Level and xfs file system")
+		})
 
-			By("Running test: Static Provisioning CSI UHP")
-			scName = f.CreateStorageClassOrFail(framework.ClassOCIUHP+"-4", setupF.BlockProvisionerName,
+		It("Static Provisioning CSI UHP", func() {
+			checkUhpPrerequisites(f)
+			compartmentId := f.GetCompartmentId(*setupF)
+			if compartmentId == "" {
+				framework.Failf("Compartment Id undefined.")
+			}
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-provisioner-e2e-tests-pvc-with-static-uhp")
+			ctx := context.Background()
+
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeParavirtualized, csi_util.VpusPerGB: "30"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 
@@ -704,24 +727,32 @@ var _ = Describe("CSI Ultra High Performance Volumes", func() {
 			}
 			pvc, volumeId := pvcJig.CreateAndAwaitStaticPVCOrFailCSI(f.BlockStorageClient, f.Namespace.Name, framework.MinVolumeBlock, 30, scName, setupF.AdLocation, compartmentId, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending, opts)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
-			podName = pvcJig.NewPodForCSI("app4", f.Namespace.Name, pvc.Name, setupF.AdLabel, v1.PersistentVolumeFilesystem)
+			podName := pvcJig.NewPodForCSI("app4", f.Namespace.Name, pvc.Name, setupF.AdLabel, v1.PersistentVolumeFilesystem)
 			pvcJig.VerifyMultipathEnabled(ctx, f.ComputeClient, pvc.Name, f.Namespace.Name, compartmentId)
 
 			pvcJig.CheckVolumeCapacity("50Gi", pvc.Name, f.Namespace.Name)
-			err = pvcJig.DeleteAndAwaitPod(f.Namespace.Name, podName)
+			err := pvcJig.DeleteAndAwaitPod(f.Namespace.Name, podName)
 			if err != nil {
 				framework.Failf("Error deleting pod: %v", err)
 			}
 			f.VolumeIds = append(f.VolumeIds, volumeId)
 			_ = f.DeleteStorageClass(scName)
-			By("Completed test: Static Provisioning CSI UHP")
+		})
 
-			By("Running test: Basic Pod Delete UHP")
-			scName = f.CreateStorageClassOrFail(framework.ClassOCIUHP+"-5", setupF.BlockProvisionerName,
+		It("Basic Pod Delete UHP", func() {
+			checkUhpPrerequisites(f)
+			compartmentId := f.GetCompartmentId(*setupF)
+			if compartmentId == "" {
+				framework.Failf("Compartment Id undefined.")
+			}
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-iscsi-uhp")
+			ctx := context.Background()
+
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI, csi_util.VpusPerGB: "30"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
-			pvc = pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
-			podName = pvcJig.NewPodForCSI("uhp-pvc-app", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeFilesystem)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
+			podName := pvcJig.NewPodForCSI("uhp-pvc-app", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeFilesystem)
 			pvcJig.VerifyMultipathEnabled(ctx, f.ComputeClient, pvc.Name, f.Namespace.Name, compartmentId)
 
 			volumeName := pvcJig.GetVolumeNameFromPVC(pvc.Name, f.Namespace.Name)
@@ -729,7 +760,7 @@ var _ = Describe("CSI Ultra High Performance Volumes", func() {
 			framework.Logf("Persistent volume name : %s", volumeName)
 
 			pvcJig.DeleteAndAwaitPodOrFail(f.Namespace.Name, podName)
-			err = pvcJig.DeletePersistentVolumeClaim(f.Namespace.Name, pvc.Name)
+			err := pvcJig.DeletePersistentVolumeClaim(f.Namespace.Name, pvc.Name)
 			if err != nil {
 				framework.Failf("Failed to delete persistent volume claim: %s", err.Error())
 			}
@@ -738,26 +769,35 @@ var _ = Describe("CSI Ultra High Performance Volumes", func() {
 				framework.Failf("Persistent volume did not terminate : %s", err.Error())
 			}
 			_ = f.DeleteStorageClass(scName)
-			By("Completed test: Basic Pod Delete UHP")
+		})
 
-			By("Running test: Create UHP PVC and POD for CSI with CMEK and in-transit encryption")
+		It("Create UHP PVC and POD for CSI with CMEK and in-transit encryption", func() {
+			checkUhpPrerequisites(f)
+			compartmentId := f.GetCompartmentId(*setupF)
+			if compartmentId == "" {
+				framework.Failf("Compartment Id undefined.")
+			}
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-cmek-iscsi-in-transit-e2e-tests-uhp")
+			ctx := context.Background()
+
 			scParameter := map[string]string{
 				framework.KmsKey:         setupF.CMEKKMSKey,
 				framework.AttachmentType: framework.AttachmentTypeISCSI,
 				csi_util.VpusPerGB:       "30",
 			}
-			scName = f.CreateStorageClassOrFail(framework.ClassOCIKMS+"-1", setupF.BlockProvisionerName, scParameter, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
-			pvc = pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
-			podName = pvcJig.NewPodForCSI("app1", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeFilesystem)
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName, scParameter, pvcJig.Labels, "WaitForFirstConsumer", false, "Delete", nil)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
+			podName := pvcJig.NewPodForCSI("app1", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeFilesystem)
 			pvcJig.VerifyMultipathEnabled(ctx, f.ComputeClient, pvc.Name, f.Namespace.Name, compartmentId)
 			pvcJig.CheckCMEKKey(f.Client.BlockStorage(), pvc.Name, f.Namespace.Name, setupF.CMEKKMSKey)
 			pvcJig.CheckAttachmentTypeAndEncryptionType(f.Client.Compute(), pvc.Name, f.Namespace.Name, podName, framework.AttachmentTypeISCSI)
 			pvcJig.DeleteAndAwaitPodOrFail(f.Namespace.Name, podName)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			_ = f.DeleteStorageClass(scName)
-			By("Completed test: Create UHP PVC and POD for CSI with CMEK and in-transit encryption")
+		})
 
-			By("Running test: Create UHP and lower performance block volumes on same node")
+		It("Create UHP and lower performance block volumes on same node", func() {
+			checkUhpPrerequisites(f)
 			sc1params := map[string]string{
 				framework.AttachmentType: framework.AttachmentTypeISCSI,
 				csi_util.VpusPerGB:       "30",
@@ -765,17 +805,19 @@ var _ = Describe("CSI Ultra High Performance Volumes", func() {
 			sc2params := map[string]string{
 				framework.AttachmentType: framework.AttachmentTypeISCSI,
 			}
-			testTwoPVCSetup(f, sc1params, sc2params)
-			By("Completed test: Create UHP and lower performance block volumes on same node")
+			testTwoPVCSetup(f, sc1params, sc2params, false)
+		})
 
-			By("Running test: Expand PVC VolumeSize from 50Gi to 100Gi and asserts size, file existence and file corruptions for iSCSI UHP volume")
-			pvcJig.Name = "csi-uhp-pvc-expand-to-100gi"
+		It("Expand PVC VolumeSize from 50Gi to 100Gi and asserts size, file existence and file corruptions for iSCSI UHP volume", func() {
+			checkUhpPrerequisites(f)
 			var size = "100Gi"
-			scName = f.CreateStorageClassOrFail(framework.ClassOCIUHP+"-6", setupF.BlockProvisionerName,
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-pvc-expand-to-100gi-iscsi-uhp")
+
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeISCSI, csi_util.VpusPerGB: "30"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
-			pvc = pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
-			podName = pvcJig.NewPodForCSI("expanded-uhp-pvc-app", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeFilesystem)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
+			podName := pvcJig.NewPodForCSI("expanded-uhp-pvc-app", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeFilesystem)
 			time.Sleep(60 * time.Second) //waiting for pod to up and running
 			expandedPvc := pvcJig.UpdateAndAwaitPVCOrFailCSI(pvc, pvc.Namespace, size, nil)
 			pvcJig.CheckVolumeCapacity("100Gi", expandedPvc.Name, f.Namespace.Name)
@@ -786,16 +828,20 @@ var _ = Describe("CSI Ultra High Performance Volumes", func() {
 			pvcJig.DeleteAndAwaitPodOrFail(f.Namespace.Name, podName)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			_ = f.DeleteStorageClass(scName)
-			By("Completed test: Expand PVC VolumeSize from 50Gi to 100Gi and asserts size, file existence and file corruptions for iSCSI UHP volume")
+		})
 
-			By("Running test: Expand PVC VolumeSize from 50Gi to 100Gi and asserts size, file existence and file corruptions for Paravirtualized UHP volume")
-			scName = f.CreateStorageClassOrFail(framework.ClassOCIUHP+"-7", setupF.BlockProvisionerName,
+		It("Expand PVC VolumeSize from 50Gi to 100Gi and asserts size, file existence and file corruptions for Paravirtualized UHP volume", func() {
+			checkUhpPrerequisites(f)
+			var size = "100Gi"
+			pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-pvc-expand-to-100gi-paravirtualized-uhp")
+
+			scName := f.CreateStorageClassOrFail(f.Namespace.Name, setupF.BlockProvisionerName,
 				map[string]string{framework.AttachmentType: framework.AttachmentTypeParavirtualized, csi_util.VpusPerGB: "30"},
 				pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
-			pvc = pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
-			podName = pvcJig.NewPodForCSI("expanded-uhp-pvc-app", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeFilesystem)
+			pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, scName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
+			podName := pvcJig.NewPodForCSI("expanded-uhp-pvc-app", f.Namespace.Name, pvc.Name, "", v1.PersistentVolumeFilesystem)
 			time.Sleep(60 * time.Second) //waiting for pod to up and running
-			expandedPvc = pvcJig.UpdateAndAwaitPVCOrFailCSI(pvc, pvc.Namespace, size, nil)
+			expandedPvc := pvcJig.UpdateAndAwaitPVCOrFailCSI(pvc, pvc.Namespace, size, nil)
 			time.Sleep(120 * time.Second) //waiting for expanded pvc to be functional
 
 			pvcJig.CheckVolumeCapacity("100Gi", expandedPvc.Name, f.Namespace.Name)
@@ -803,9 +849,9 @@ var _ = Describe("CSI Ultra High Performance Volumes", func() {
 			pvcJig.CheckFileCorruption(f.Namespace.Name, podName, "/data", "testdata.txt")
 			pvcJig.CheckExpandedVolumeReadWrite(f.Namespace.Name, podName)
 			pvcJig.CheckUsableVolumeSizeInsidePod(f.Namespace.Name, podName, "99G")
+			pvcJig.DeleteAndAwaitPodOrFail(f.Namespace.Name, podName)
 			f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 			_ = f.DeleteStorageClass(scName)
-			By("Completed test: Expand PVC VolumeSize from 50Gi to 100Gi and asserts size, file existence and file corruptions for Paravirtualized UHP volume")
 		})
 	})
 })
@@ -822,7 +868,7 @@ var _ = Describe("CSI UHP Volumes additional e2es", func() {
 			sc2params := map[string]string{
 				framework.AttachmentType: framework.AttachmentTypeISCSI,
 			}
-			testTwoPVCSetup(f, sc1params, sc2params)
+			testTwoPVCSetup(f, sc1params, sc2params, false)
 		})
 		It("Create UHP ISCSI volume and lower performance paravirtualized block volumes on same node", func() {
 			checkUhpPrerequisites(f)
@@ -833,7 +879,7 @@ var _ = Describe("CSI UHP Volumes additional e2es", func() {
 			sc2params := map[string]string{
 				framework.AttachmentType: framework.AttachmentTypeParavirtualized,
 			}
-			testTwoPVCSetup(f, sc1params, sc2params)
+			testTwoPVCSetup(f, sc1params, sc2params, false)
 		})
 		It("Create two UHP ISCSI block volumes on same node", func() {
 			checkUhpPrerequisites(f)
@@ -845,7 +891,7 @@ var _ = Describe("CSI UHP Volumes additional e2es", func() {
 				framework.AttachmentType: framework.AttachmentTypeISCSI,
 				csi_util.VpusPerGB:       "30",
 			}
-			testTwoPVCSetup(f, sc1params, sc2params)
+			testTwoPVCSetup(f, sc1params, sc2params, true)
 		})
 	})
 })
@@ -1100,7 +1146,7 @@ var _ = Describe("CSI Raw Block Volume Creation - Immediate Volume Binding", fun
 	})
 })
 
-func testTwoPVCSetup(f *framework.CloudProviderFramework, storageclass1params map[string]string, storageclass2params map[string]string) {
+func testTwoPVCSetup(f *framework.CloudProviderFramework, storageclass1params map[string]string, storageclass2params map[string]string, verifySecondVolumeMultipath bool) {
 	compartmentId := f.GetCompartmentId(*setupF)
 	if compartmentId == "" {
 		framework.Failf("Compartment Id undefined.")
@@ -1108,7 +1154,7 @@ func testTwoPVCSetup(f *framework.CloudProviderFramework, storageclass1params ma
 
 	pvcJig := framework.NewPVCTestJig(f.ClientSet, "csi-two-pvc-setup")
 
-	sc1Name := f.CreateStorageClassOrFail("storage-class-one", setupF.BlockProvisionerName,
+	sc1Name := f.CreateStorageClassOrFail(f.Namespace.Name+"-one", setupF.BlockProvisionerName,
 		storageclass1params,
 		pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 	pvc := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, sc1Name, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
@@ -1120,22 +1166,27 @@ func testTwoPVCSetup(f *framework.CloudProviderFramework, storageclass1params ma
 	nodeHostname := pvcJig.GetNodeHostnameFromPod(podName, f.Namespace.Name)
 
 	nodeLabels := map[string]string{
-		v1.LabelTopologyZone:        setupF.AdLabel,
 		framework.NodeHostnameLabel: nodeHostname,
 	}
 
-	lowPerfScName := f.CreateStorageClassOrFail("storage-class-two", setupF.BlockProvisionerName,
+	lowPerfScName := f.CreateStorageClassOrFail(f.Namespace.Name+"-two", setupF.BlockProvisionerName,
 		storageclass2params,
 		pvcJig.Labels, "WaitForFirstConsumer", true, "Delete", nil)
 	pvcTwo := pvcJig.CreateAndAwaitPVCOrFailCSI(f.Namespace.Name, framework.MinVolumeBlock, lowPerfScName, nil, v1.PersistentVolumeFilesystem, v1.ReadWriteOnce, v1.ClaimPending)
 	podName2 := pvcJig.NewPodWithLabels("pvc-two-app", f.Namespace.Name, pvcTwo.Name, nodeLabels)
+	if secondNodeHostname := pvcJig.GetNodeHostnameFromPod(podName2, f.Namespace.Name); secondNodeHostname != nodeHostname {
+		framework.Failf("Expected both volumes to be attached to node %q, but the second volume was attached to node %q", nodeHostname, secondNodeHostname)
+	}
+	if verifySecondVolumeMultipath {
+		pvcJig.VerifyMultipathEnabled(ctx, f.ComputeClient, pvcTwo.Name, f.Namespace.Name, compartmentId)
+	}
 
 	pvcJig.DeleteAndAwaitPodOrFail(f.Namespace.Name, podName)
 	pvcJig.DeleteAndAwaitPodOrFail(f.Namespace.Name, podName2)
 	f.VolumeIds = append(f.VolumeIds, pvc.Spec.VolumeName)
 	f.VolumeIds = append(f.VolumeIds, pvcTwo.Spec.VolumeName)
-	_ = f.DeleteStorageClass("storage-class-one")
-	_ = f.DeleteStorageClass("storage-class-two")
+	_ = f.DeleteStorageClass(sc1Name)
+	_ = f.DeleteStorageClass(lowPerfScName)
 }
 
 func checkUhpPrerequisites(f *framework.CloudProviderFramework) {

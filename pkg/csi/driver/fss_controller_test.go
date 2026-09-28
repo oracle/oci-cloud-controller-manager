@@ -46,7 +46,8 @@ import (
 )
 
 type MockFileStorageClient struct {
-	filestorage util.MockOCIFileStorageClient
+	filestorage                  util.MockOCIFileStorageClient
+	lastCreateMountTargetDetails *filestorage.CreateMountTargetDetails
 }
 
 var (
@@ -374,6 +375,8 @@ func (c *MockFileStorageClient) AwaitMountTargetActive(ctx context.Context, logg
 
 // CreateMountTarget mocks the FileStorage CreateMountTarget implementation.
 func (c *MockFileStorageClient) CreateMountTarget(ctx context.Context, details filestorage.CreateMountTargetDetails) (*filestorage.MountTarget, error) {
+	detailsCopy := details
+	c.lastCreateMountTargetDetails = &detailsCopy
 	if mountTargets[*details.DisplayName] != nil {
 		return mountTargets[*details.DisplayName], nil
 	}
@@ -934,6 +937,35 @@ func TestExtractStorageClassParameters(t *testing.T) {
 			wantErr:         false,
 			wantErrMessage:  "",
 		},
+		"Extract storage class parameters with securityAttributes": {
+			parameters: map[string]string{
+				"availabilityDomain":    "AD1",
+				"mountTargetSubnetOcid": "oc1.subnet.xxxx",
+				"securityAttributes":    `{"Oracle-ZPR":{"MaxEgressCount":{"value":"42","mode":"enforce"}}}`,
+			},
+			expectedStorageClassParameters: &StorageClassParameters{
+				availabilityDomain:    "AD1",
+				compartmentOcid:       "oc1.compartment.xxxx",
+				kmsKey:                "",
+				exportPath:            "/ut-volume",
+				exportOptions:         []filestorage.ClientOptions{},
+				mountTargetOcid:       "",
+				mountTargetSubnetOcid: "oc1.subnet.xxxx",
+				encryptInTransit:      "false",
+				scTags:                &config.TagConfig{},
+				securityAttributes: map[string]map[string]interface{}{
+					"Oracle-ZPR": {
+						"MaxEgressCount": map[string]interface{}{
+							"value": "42",
+							"mode":  "enforce",
+						},
+					},
+				},
+			},
+			clusterIPFamily: "IPv4",
+			wantErr:         false,
+			wantErrMessage:  "",
+		},
 		"Extract storage class parameters with export-path": {
 			parameters: map[string]string{
 				"availabilityDomain": "AD1",
@@ -1037,6 +1069,28 @@ func TestExtractStorageClassParameters(t *testing.T) {
 			wantErr:                        true,
 			wantErrMessage:                 "Neither Mount Target Ocid nor Mount Target Subnet Ocid provided in storage class",
 		},
+		"Error when invalid securityAttributes JSON is provided": {
+			parameters: map[string]string{
+				"availabilityDomain":    "AD1",
+				"mountTargetSubnetOcid": "oc1.subnet.xxxx",
+				"securityAttributes":    `{"Oracle-ZPR":{"MaxEgressCount":`,
+			},
+			expectedStorageClassParameters: &StorageClassParameters{},
+			clusterIPFamily:                "IPv4",
+			wantErr:                        true,
+			wantErrMessage:                 "Failed to parse securityAttributes provided in storage class. Please provide valid input.",
+		},
+		"Error when securityAttributes is provided with mountTargetOcid": {
+			parameters: map[string]string{
+				"availabilityDomain": "AD1",
+				"mountTargetOcid":    "oc1.mounttarget.xxxx",
+				"securityAttributes": `{"Oracle-ZPR":{"MaxEgressCount":{"value":"42","mode":"enforce"}}}`,
+			},
+			expectedStorageClassParameters: &StorageClassParameters{},
+			clusterIPFamily:                "IPv4",
+			wantErr:                        true,
+			wantErrMessage:                 "securityAttributes cannot be used with mountTargetOcid",
+		},
 		"Error when full ad name not provided in storage class parameters for IPv6 single stack cluster": {
 			parameters: map[string]string{
 				"availabilityDomain": "AD1",
@@ -1101,7 +1155,41 @@ func isStorageClassParametersEqual(gotStorageClassParameters, expectedStorageCla
 		(gotStorageClassParameters.mountTargetOcid == expectedStorageClassParameters.mountTargetOcid) &&
 		(gotStorageClassParameters.compartmentOcid == expectedStorageClassParameters.compartmentOcid) &&
 		(gotStorageClassParameters.exportPath == expectedStorageClassParameters.exportPath) &&
-		(gotStorageClassParameters.kmsKey == expectedStorageClassParameters.kmsKey)
+		(gotStorageClassParameters.kmsKey == expectedStorageClassParameters.kmsKey) &&
+		reflect.DeepEqual(gotStorageClassParameters.scTags, expectedStorageClassParameters.scTags) &&
+		reflect.DeepEqual(gotStorageClassParameters.nsgOcids, expectedStorageClassParameters.nsgOcids) &&
+		reflect.DeepEqual(gotStorageClassParameters.securityAttributes, expectedStorageClassParameters.securityAttributes)
+}
+
+func TestProvisionMountTargetIncludesSecurityAttributes(t *testing.T) {
+	mockFSSClient := &MockFileStorageClient{}
+	storageClassParameters := StorageClassParameters{
+		availabilityDomain:    "AD1",
+		compartmentOcid:       "oc1.compartment.xxxx",
+		mountTargetSubnetOcid: "oc1.subnet.xxxx",
+		scTags:                &config.TagConfig{},
+		securityAttributes: map[string]map[string]interface{}{
+			"Oracle-ZPR": {
+				"MaxEgressCount": map[string]interface{}{
+					"value": "42",
+					"mode":  "enforce",
+				},
+			},
+		},
+	}
+
+	_, err := provisionMountTarget(context.Background(), zap.S(), nil, "ut-volume", storageClassParameters, mockFSSClient)
+	if err != nil {
+		t.Fatalf("provisionMountTarget() error = %v, want nil", err)
+	}
+
+	if mockFSSClient.lastCreateMountTargetDetails == nil {
+		t.Fatal("CreateMountTarget was not called")
+	}
+
+	if !reflect.DeepEqual(mockFSSClient.lastCreateMountTargetDetails.SecurityAttributes, storageClassParameters.securityAttributes) {
+		t.Fatalf("CreateMountTarget SecurityAttributes = %v, want %v", mockFSSClient.lastCreateMountTargetDetails.SecurityAttributes, storageClassParameters.securityAttributes)
+	}
 }
 
 func Test_validateMountTargetWithClusterIpFamily(t *testing.T) {

@@ -1,5 +1,6 @@
 #customHandle is used to change resource names to help deploy csi related resources alongside default OKE installation
 #for example customHandle: "custom" results in service account csi-oci-custom-sa and container csi-oci-custom-controller
 customHandle: ""
+volumeAttachmentLimit: 32
 lustreCsi:
   controllerDriverEnabled: true

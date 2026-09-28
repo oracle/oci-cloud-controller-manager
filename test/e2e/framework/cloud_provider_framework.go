@@ -325,7 +325,10 @@ func (f *CloudProviderFramework) AfterEach() {
 	for _, backupID := range f.BackupIDs {
 		By(fmt.Sprintf("Deleting backups %q", backupID))
 		ctx := context.TODO()
-		_, err := f.BlockStorageClient.DeleteVolumeBackup(ctx, ocicore.DeleteVolumeBackupRequest{VolumeBackupId: &backupID})
+		_, err := f.BlockStorageClient.DeleteVolumeBackup(ctx, ocicore.DeleteVolumeBackupRequest{
+			VolumeBackupId:  &backupID,
+			RequestMetadata: blockStorageDeleteRequestMetadata(),
+		})
 		if err != nil && !apierrors.IsNotFound(err) {
 			Logf("Failed to delete backup id %q: %v", backupID, err)
 		}

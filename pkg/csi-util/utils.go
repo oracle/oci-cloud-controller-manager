@@ -80,6 +80,7 @@ const (
 	LabelIpFamilyPreferred         = "oci.oraclecloud.com/ip-family-preferred"
 	LabelIpFamilyIpv4              = "oci.oraclecloud.com/ip-family-ipv4"
 	LabelIpFamilyIpv6              = "oci.oraclecloud.com/ip-family-ipv6"
+	LabelVolumeAttachmentLimit     = "oci.oraclecloud.com/volume-attachment-limit-override"
 	IscsiIpv6Prefix                = "fd00:00c1::"
 
 	Ipv6Stack = "IPv6"
@@ -114,6 +115,7 @@ type NodeMetadata struct {
 	AvailabilityDomain     string
 	FullAvailabilityDomain string
 	NodeInternalIP         string
+	VolumeAttachmentLimit  int64
 	IsNodeMetadataLoaded   bool
 }
 
@@ -199,6 +201,13 @@ func (u *Util) LoadNodeMetadataFromApiServer(ctx context.Context, k kubernetes.I
 		if ipv6Enabled, ok := node.Labels[LabelIpFamilyIpv6]; ok && strings.EqualFold(ipv6Enabled, "true") {
 			nodeMetadata.Ipv6Enabled = true
 		}
+		if volumeAttachmentLimit, found, err := getVolumeAttachmentLimit(node.Labels); found {
+			if err != nil {
+				u.Logger.With("nodeId", nodeID, "label", LabelVolumeAttachmentLimit, "value", node.Labels[LabelVolumeAttachmentLimit]).With(zap.Error(err)).Warn("Ignoring invalid node volume attachment limit label.")
+			} else {
+				nodeMetadata.VolumeAttachmentLimit = volumeAttachmentLimit
+			}
+		}
 	}
 
 	if !nodeMetadata.Ipv4Enabled && !nodeMetadata.Ipv6Enabled {
@@ -210,6 +219,23 @@ func (u *Util) LoadNodeMetadataFromApiServer(ctx context.Context, k kubernetes.I
 	}
 	nodeMetadata.IsNodeMetadataLoaded = true
 	return nil
+}
+
+func getVolumeAttachmentLimit(labels map[string]string) (int64, bool, error) {
+	value, found := labels[LabelVolumeAttachmentLimit]
+	if !found {
+		return 0, false, nil
+	}
+
+	limit, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		return 0, true, fmt.Errorf("must be a positive integer: %w", err)
+	}
+	if limit <= 0 {
+		return 0, true, fmt.Errorf("must be a positive integer")
+	}
+
+	return limit, true, nil
 }
 
 // waitForPathToExist waits for for a given filesystem path to exist.
