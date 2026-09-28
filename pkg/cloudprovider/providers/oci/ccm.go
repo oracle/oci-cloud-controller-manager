@@ -30,7 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/informers"
 	v1 "k8s.io/client-go/informers/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	listersv1 "k8s.io/client-go/listers/core/v1"
@@ -85,6 +84,8 @@ type CloudProvider struct {
 	logger        *zap.SugaredLogger
 	instanceCache cache.Store
 	metricPusher  *metrics.MetricPusher
+
+	nodeFilterRequirements string
 
 	lbLocks *loadBalancerLocks
 }
@@ -183,7 +184,14 @@ func (cp *CloudProvider) Initialize(clientBuilder cloudprovider.ControllerClient
 		utilruntime.HandleError(fmt.Errorf("failed to create kubeclient: %v", err))
 	}
 
-	factory := informers.NewSharedInformerFactory(cp.kubeclient, 5*time.Minute)
+	factory, err := NewNodeFilteredSharedInformerFactory(cp.kubeclient, 5*time.Minute, cp.nodeFilterRequirements)
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("failed to create node-filtered informer factory: %w", err))
+		return
+	}
+	if strings.TrimSpace(cp.nodeFilterRequirements) != "" {
+		cp.logger.Infof("Restricting node-scoped reconciliation to Nodes matching %q", cp.nodeFilterRequirements)
+	}
 
 	nodeInfoController := NewNodeInfoController(
 		factory.Core().V1().Nodes(),
@@ -270,6 +278,12 @@ func (cp *CloudProvider) Initialize(clientBuilder cloudprovider.ControllerClient
 		}
 		return newSecurityListManager(cp.logger, cp.client, serviceInformer, cp.config.LoadBalancer.SecurityLists, mode)
 	}
+}
+
+// SetNodeFilterRequirements restricts node-scoped reconciliation to Nodes
+// matching the Kubernetes label selector.
+func (cp *CloudProvider) SetNodeFilterRequirements(requirements string) {
+	cp.nodeFilterRequirements = requirements
 }
 
 // ProviderName returns the cloud-provider ID.
