@@ -1864,7 +1864,7 @@ func Test_getLbListenerBackendSetIpVersion(t *testing.T) {
 			listenerBackendSetIpVersions: []string{IPv4},
 			wantErr:                      nil,
 		},
-		"PreferDualStack IPv4": {
+		"PreferDualStack IPv4 - ipFamilies takes precedence over subnet capabilities": {
 			ipFamilies:     []string{IPv4},
 			ipFamilyPolicy: string(v1.IPFamilyPolicyPreferDualStack),
 			nodeSubnets: []*core.Subnet{
@@ -1874,10 +1874,10 @@ func Test_getLbListenerBackendSetIpVersion(t *testing.T) {
 					Ipv6CidrBlocks: []string{"2001:0000:130F:0000:0000:09C0:876A:130B"},
 				},
 			},
-			listenerBackendSetIpVersions: []string{IPv4, IPv6},
+			listenerBackendSetIpVersions: []string{IPv4},
 			wantErr:                      nil,
 		},
-		"PreferDualStack IPv4 multiple subnets": {
+		"PreferDualStack IPv4 multiple subnets - ipFamilies takes precedence": {
 			ipFamilies:     []string{IPv4},
 			ipFamilyPolicy: string(v1.IPFamilyPolicyPreferDualStack),
 			nodeSubnets: []*core.Subnet{
@@ -1889,7 +1889,7 @@ func Test_getLbListenerBackendSetIpVersion(t *testing.T) {
 					Ipv6CidrBlocks: []string{"2001:0000:130F:0000:0000:09C0:876A:130B"},
 				},
 			},
-			listenerBackendSetIpVersions: []string{IPv4, IPv6},
+			listenerBackendSetIpVersions: []string{IPv4},
 			wantErr:                      nil,
 		},
 	}

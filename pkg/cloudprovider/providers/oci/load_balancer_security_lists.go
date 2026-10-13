@@ -116,6 +116,7 @@ func (s *baseSecurityListManager) updateBackendRules(ctx context.Context, lbSubn
 		logger := s.logger.With("securityListID", *secList.Id)
 
 		ingressRules := getNodeIngressRules(logger, secList.IngressSecurityRules, lbSubnets, actualPorts, desiredPorts, s.serviceLister, sourceCIDRs, isPreserveSource, ipFamilies)
+		ingressRules = dedupeIngressSecurityRules(logger, ingressRules)
 
 		if !securityListRulesChanged(secList, ingressRules, secList.EgressSecurityRules) {
 			logger.Debug("No changes for node subnet security list")
@@ -155,11 +156,13 @@ func (s *baseSecurityListManager) updateLoadBalancerRules(ctx context.Context, l
 
 		lbEgressRules := getLoadBalancerEgressRules(logger, secList.EgressSecurityRules, nodeSubnets, currentBackEndPort, desiredPorts.BackendPort, s.serviceLister, ipFamilies)
 		lbEgressRules = getLoadBalancerEgressRules(logger, lbEgressRules, nodeSubnets, currentHealthCheck, desiredPorts.HealthCheckerPort, s.serviceLister, ipFamilies)
+		lbEgressRules = dedupeEgressSecurityRules(logger, lbEgressRules)
 
 		lbIngressRules := secList.IngressSecurityRules
 		if desiredPorts.ListenerPort != 0 {
 			lbIngressRules = getLoadBalancerIngressRules(logger, lbIngressRules, sourceCIDRs, desiredPorts.ListenerPort, s.serviceLister)
 		}
+		lbIngressRules = dedupeIngressSecurityRules(logger, lbIngressRules)
 
 		if !securityListRulesChanged(secList, lbIngressRules, lbEgressRules) {
 			logger.Debug("No changes for load balancer subnet security list")
@@ -327,6 +330,133 @@ func securityListRulesChanged(securityList *core.SecurityList, ingressRules []co
 	}
 
 	return false
+}
+
+func dedupeIngressSecurityRules(logger *zap.SugaredLogger, rules []core.IngressSecurityRule) []core.IngressSecurityRule {
+	seen := map[string]struct{}{}
+	deduped := make([]core.IngressSecurityRule, 0, len(rules))
+	for _, rule := range rules {
+		key := ingressSecurityRuleKey(rule)
+		if _, ok := seen[key]; ok {
+			logger.With(
+				"source", stringPtrKey(rule.Source),
+				"sourceType", ingressSourceTypeKey(rule.SourceType),
+				"protocol", stringPtrKey(rule.Protocol),
+				"tcpOptions", tcpOptionsKey(rule.TcpOptions),
+				"udpOptions", udpOptionsKey(rule.UdpOptions),
+				"icmpOptions", icmpOptionsKey(rule.IcmpOptions),
+			).Debug("Dropping duplicate ingress security rule")
+			continue
+		}
+		seen[key] = struct{}{}
+		deduped = append(deduped, rule)
+	}
+	return deduped
+}
+
+func dedupeEgressSecurityRules(logger *zap.SugaredLogger, rules []core.EgressSecurityRule) []core.EgressSecurityRule {
+	seen := map[string]struct{}{}
+	deduped := make([]core.EgressSecurityRule, 0, len(rules))
+	for _, rule := range rules {
+		key := egressSecurityRuleKey(rule)
+		if _, ok := seen[key]; ok {
+			logger.With(
+				"destination", stringPtrKey(rule.Destination),
+				"destinationType", egressDestinationTypeKey(rule.DestinationType),
+				"protocol", stringPtrKey(rule.Protocol),
+				"tcpOptions", tcpOptionsKey(rule.TcpOptions),
+				"udpOptions", udpOptionsKey(rule.UdpOptions),
+				"icmpOptions", icmpOptionsKey(rule.IcmpOptions),
+			).Debug("Dropping duplicate egress security rule")
+			continue
+		}
+		seen[key] = struct{}{}
+		deduped = append(deduped, rule)
+	}
+	return deduped
+}
+
+func ingressSecurityRuleKey(rule core.IngressSecurityRule) string {
+	return fmt.Sprintf(
+		"stateless=%s|protocol=%s|source=%s|sourceType=%s|icmp=%s|tcp=%s|udp=%s",
+		boolPtrKey(rule.IsStateless),
+		stringPtrKey(rule.Protocol),
+		stringPtrKey(rule.Source),
+		ingressSourceTypeKey(rule.SourceType),
+		icmpOptionsKey(rule.IcmpOptions),
+		tcpOptionsKey(rule.TcpOptions),
+		udpOptionsKey(rule.UdpOptions),
+	)
+}
+
+func egressSecurityRuleKey(rule core.EgressSecurityRule) string {
+	return fmt.Sprintf(
+		"stateless=%s|protocol=%s|destination=%s|destinationType=%s|icmp=%s|tcp=%s|udp=%s",
+		boolPtrKey(rule.IsStateless),
+		stringPtrKey(rule.Protocol),
+		stringPtrKey(rule.Destination),
+		egressDestinationTypeKey(rule.DestinationType),
+		icmpOptionsKey(rule.IcmpOptions),
+		tcpOptionsKey(rule.TcpOptions),
+		udpOptionsKey(rule.UdpOptions),
+	)
+}
+
+func icmpOptionsKey(options *core.IcmpOptions) string {
+	if options == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("code=%s,type=%s", intPtrKey(options.Code), intPtrKey(options.Type))
+}
+
+func tcpOptionsKey(options *core.TcpOptions) string {
+	if options == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("source=%s,destination=%s", portRangeKey(options.SourcePortRange), portRangeKey(options.DestinationPortRange))
+}
+
+func udpOptionsKey(options *core.UdpOptions) string {
+	if options == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("source=%s,destination=%s", portRangeKey(options.SourcePortRange), portRangeKey(options.DestinationPortRange))
+}
+
+func portRangeKey(portRange *core.PortRange) string {
+	if portRange == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("min=%s,max=%s", intPtrKey(portRange.Min), intPtrKey(portRange.Max))
+}
+
+func stringPtrKey(value *string) string {
+	if value == nil {
+		return "<nil>"
+	}
+	return *value
+}
+
+func ingressSourceTypeKey(value core.IngressSecurityRuleSourceTypeEnum) string {
+	return string(value)
+}
+
+func egressDestinationTypeKey(value core.EgressSecurityRuleDestinationTypeEnum) string {
+	return string(value)
+}
+
+func boolPtrKey(value *bool) string {
+	if value == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("%t", *value)
+}
+
+func intPtrKey(value *int) string {
+	if value == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("%d", *value)
 }
 
 func portRangeMatchesSpec(r core.PortRange, ports *portSpec) bool {
