@@ -18,8 +18,13 @@ spec:
         app: csi-oci-{{ if .Values.customHandle }}{{ .Values.customHandle }}-{{ end }}controller
         role: csi-oci{{ if .Values.customHandle }}-{{ .Values.customHandle }}{{ end }}
     spec:
-      nodeSelector:
-        node-role.kubernetes.io/control-plane: ""
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
       containers:
         - name: csi-volume-provisioner
           image: registry.k8s.io/sig-storage/csi-provisioner:v6.3.0
