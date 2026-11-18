@@ -21,8 +21,13 @@ spec:
     spec:
       serviceAccountName: cloud-controller-manager
       hostNetwork: true
-      nodeSelector:
-        node-role.kubernetes.io/control-plane: ""
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/control-plane
+                operator: Exists
       tolerations:
       - key: node.cloudprovider.kubernetes.io/uninitialized
         value: "true"
